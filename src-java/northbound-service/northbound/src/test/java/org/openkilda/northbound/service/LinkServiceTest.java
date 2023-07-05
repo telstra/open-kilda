@@ -15,11 +15,8 @@
 
 package org.openkilda.northbound.service;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -60,10 +57,10 @@ import org.openkilda.northbound.utils.RequestCorrelationId;
 import org.openkilda.northbound.utils.TestCorrelationIdFactory;
 import org.openkilda.stubs.ManualClock;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -74,7 +71,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.scheduling.TaskScheduler;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Clock;
@@ -86,7 +83,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 public class LinkServiceTest {
     private int requestIdIndex = 0;
 
@@ -110,7 +107,7 @@ public class LinkServiceTest {
     @Value("${bfd.apply.period.seconds}")
     private Long bfdPropertiesApplyPeriod;
 
-    @Before
+    @BeforeEach
     public void reset() {
         Mockito.reset(taskScheduler);
         messageExchanger.resetMockedResponses();
@@ -135,7 +132,7 @@ public class LinkServiceTest {
         List<LinkDto> result =
                 linkService.getLinks(islInfoData.getSource().getSwitchId(), islInfoData.getSource().getPortNo(),
                         islInfoData.getDestination().getSwitchId(), islInfoData.getDestination().getPortNo()).join();
-        assertFalse("List of link shouldn't be empty", result.isEmpty());
+        Assertions.assertFalse(result.isEmpty(), "List of link shouldn't be empty");
 
         LinkDto link = result.get(0);
         assertThat(link.getSpeed(), is(0L));
@@ -145,7 +142,7 @@ public class LinkServiceTest {
         assertThat(link.isUnderMaintenance(), is(false));
         assertThat(link.getState(), is(LinkStatus.DISCOVERED));
 
-        assertFalse(link.getPath().isEmpty());
+        Assertions.assertFalse(link.getPath().isEmpty());
         PathDto path = link.getPath().get(0);
         assertThat(path.getSwitchId(), is(switchId.toString()));
         assertThat(path.getPortNo(), is(1));
@@ -162,7 +159,7 @@ public class LinkServiceTest {
         RequestCorrelationId.create(correlationId);
 
         List<LinkPropsDto> result = linkService.getLinkProps(null, 0, null, 0).join();
-        assertTrue("List of link props should be empty", result.isEmpty());
+        Assertions.assertTrue(result.isEmpty(), "List of link props should be empty");
     }
 
     @Test
@@ -178,7 +175,7 @@ public class LinkServiceTest {
         RequestCorrelationId.create(correlationId);
 
         List<LinkPropsDto> result = linkService.getLinkProps(null, 0, null, 0).join();
-        assertFalse("List of link props shouldn't be empty", result.isEmpty());
+        Assertions.assertFalse(result.isEmpty(), "List of link props shouldn't be empty");
 
         LinkPropsDto dto = result.get(0);
         assertThat(dto.getSrcSwitch(), is(linkPropsData.getLinkProps().getSource().getDatapath().toString()));
@@ -213,7 +210,7 @@ public class LinkServiceTest {
 
         assertThat(result.getFailures(), is(0));
         assertThat(result.getSuccesses(), is(1));
-        assertTrue(result.getMessages().isEmpty());
+        Assertions.assertTrue(result.getMessages().isEmpty());
     }
 
     @Test
@@ -244,11 +241,11 @@ public class LinkServiceTest {
         LinkMaxBandwidthDto result =
                 linkService.updateLinkBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, inputRequest).join();
 
-        assertEquals(srcSwitch.toString(), result.getSrcSwitch());
-        assertEquals(dstSwitch.toString(), result.getDstSwitch());
-        assertEquals(srcPort, result.getSrcPort());
-        assertEquals(dstPort, result.getDstPort());
-        assertEquals(maxBandwidth, result.getMaxBandwidth());
+        Assertions.assertEquals(srcSwitch.toString(), result.getSrcSwitch());
+        Assertions.assertEquals(dstSwitch.toString(), result.getDstSwitch());
+        Assertions.assertEquals(srcPort, result.getSrcPort());
+        Assertions.assertEquals(dstPort, result.getDstPort());
+        Assertions.assertEquals(maxBandwidth, result.getMaxBandwidth());
     }
 
     @Test
@@ -277,7 +274,7 @@ public class LinkServiceTest {
 
         assertThat(result.getFailures(), is(0));
         assertThat(result.getSuccesses(), is(1));
-        assertTrue(result.getMessages().isEmpty());
+        Assertions.assertTrue(result.getMessages().isEmpty());
     }
 
     @Test
@@ -300,13 +297,13 @@ public class LinkServiceTest {
                 islInfoData.getDestination().getSwitchId().toString(),
                 islInfoData.getDestination().getPortNo(), underMaintenance, evacuate);
         List<LinkDto> result = linkService.updateLinkUnderMaintenance(linkUnderMaintenanceDto).join();
-        assertFalse("List of link shouldn't be empty", result.isEmpty());
+        Assertions.assertFalse(result.isEmpty(), "List of link shouldn't be empty");
 
         LinkDto link = result.get(0);
         assertThat(link.isUnderMaintenance(), is(true));
         assertThat(link.getState(), is(LinkStatus.DISCOVERED));
 
-        assertFalse(link.getPath().isEmpty());
+        Assertions.assertFalse(link.getPath().isEmpty());
         PathDto path = link.getPath().get(0);
         assertThat(path.getSwitchId(), is(switchId.toString()));
         assertThat(path.getPortNo(), is(1));
@@ -339,7 +336,7 @@ public class LinkServiceTest {
         // make write request and schedule read request
         CompletableFuture<BfdPropertiesPayload> future = linkService.writeBfdProperties(source, destination, goal);
 
-        Assert.assertFalse(future.isDone());
+        Assertions.assertFalse(future.isDone());
 
         ArgumentCaptor<Runnable> monitorTaskCaptor = ArgumentCaptor.forClass(Runnable.class);
         verify(taskScheduler).schedule(monitorTaskCaptor.capture(), any(Date.class));
@@ -355,12 +352,12 @@ public class LinkServiceTest {
         // make read request
         monitorTaskCaptor.getValue().run();
 
-        Assert.assertTrue(future.isDone());
+        Assertions.assertTrue(future.isDone());
         BfdPropertiesPayload result = future.get();
 
-        Assert.assertEquals(goal, result.getProperties());
-        Assert.assertEquals(goal, result.getEffectiveSource().getProperties());
-        Assert.assertEquals(goal, result.getEffectiveDestination().getProperties());
+        Assertions.assertEquals(goal, result.getProperties());
+        Assertions.assertEquals(goal, result.getEffectiveSource().getProperties());
+        Assertions.assertEquals(goal, result.getEffectiveDestination().getProperties());
     }
 
     @Test
@@ -390,7 +387,7 @@ public class LinkServiceTest {
         // make write request and schedule read request
         CompletableFuture<BfdPropertiesPayload> future = linkService.writeBfdProperties(source, destination, goal);
 
-        Assert.assertFalse(future.isDone());
+        Assertions.assertFalse(future.isDone());
 
         ArgumentCaptor<Runnable> monitorTaskCaptor = ArgumentCaptor.forClass(Runnable.class);
         verify(taskScheduler).schedule(monitorTaskCaptor.capture(), any(Date.class));
@@ -408,7 +405,7 @@ public class LinkServiceTest {
         // make read request and schedule one more read
         monitorTaskCaptor.getValue().run();
         verify(taskScheduler).schedule(monitorTaskCaptor.capture(), any(Date.class));
-        Assert.assertFalse(future.isDone());
+        Assertions.assertFalse(future.isDone());
 
         clock.adjust(Duration.ofSeconds(bfdPropertiesApplyPeriod));
 
@@ -423,13 +420,13 @@ public class LinkServiceTest {
         // make read request and fail due to timeout
         monitorTaskCaptor.getValue().run();
 
-        Assert.assertTrue(future.isDone());
+        Assertions.assertTrue(future.isDone());
         try {
             future.get();
-            Assert.fail("ExecutionException exception expected");
+            Assertions.fail("ExecutionException exception expected");
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
-            Assert.assertTrue(cause instanceof InconclusiveException);
+            Assertions.assertTrue(cause instanceof InconclusiveException);
         }
     }
 

@@ -16,10 +16,10 @@
 package org.openkilda.model;
 
 import static com.google.common.collect.Sets.newHashSet;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.model.SwitchFeature.MAX_BURST_COEFFICIENT_LIMITATION;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.Set;
 

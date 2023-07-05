@@ -21,8 +21,8 @@ import org.openkilda.messaging.model.SwitchReference;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.model.Endpoint;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
@@ -65,8 +65,8 @@ public abstract class AbstractBfdSessionActionTest {
         BfdSessionAction.ActionResult result = action.consumeSpeakerResponse(requestKey, response)
                 .orElseThrow(expectResultError);
 
-        Assert.assertFalse(result.isSuccess());
-        Assert.assertEquals(NoviBfdSession.Errors.SWITCH_RESPONSE_ERROR, result.getErrorCode());
+        Assertions.assertFalse(result.isSuccess());
+        Assertions.assertEquals(NoviBfdSession.Errors.SWITCH_RESPONSE_ERROR, result.getErrorCode());
     }
 
     protected abstract BfdSessionAction makeAction(String requestKey);

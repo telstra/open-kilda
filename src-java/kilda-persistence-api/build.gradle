@@ -14,7 +14,8 @@ dependencies {
     implementation 'net.jodah:failsafe'
     implementation 'org.aspectj:aspectjrt'
 
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
 
     compileOnly 'org.projectlombok:lombok'
     testCompileOnly 'org.projectlombok:lombok'
@@ -36,4 +37,8 @@ task testJar(type: Jar) {
 
 artifacts {
     testArtifacts testJar
+}
+
+test {
+    useJUnitPlatform()
 }

@@ -17,7 +17,6 @@ package org.openkilda.northbound.dto;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
-import static org.junit.Assert.assertEquals;
 
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.model.FlowPathDirection;
@@ -49,7 +48,8 @@ import org.openkilda.northbound.dto.v1.switches.SwitchValidationResult;
 import org.openkilda.northbound.dto.v1.switches.UnderMaintenanceDto;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -68,7 +68,7 @@ public class JsonSerializationTest {
     @Test
     public void pathDiscrepancyDtoTest() throws IOException {
         PathDiscrepancyDto dto = new PathDiscrepancyDto("rule", "field", "expected", "actual");
-        assertEquals(dto, pass(dto, PathDiscrepancyDto.class));
+        Assertions.assertEquals(dto, pass(dto, PathDiscrepancyDto.class));
     }
 
     @Test
@@ -79,26 +79,26 @@ public class JsonSerializationTest {
                 true, singletonList(0L), singletonList(1L), singletonList(discrepancyDto),
                 10, 11, 2, 4,
                 true, true);
-        assertEquals(dto, pass(dto, FlowValidationDto.class));
+        Assertions.assertEquals(dto, pass(dto, FlowValidationDto.class));
     }
 
     @Test
     public void uniFlowPingOutputTest() throws IOException {
         UniFlowPingOutput dto = new UniFlowPingOutput(true, "err-test", 10);
-        assertEquals(dto, pass(dto, UniFlowPingOutput.class));
+        Assertions.assertEquals(dto, pass(dto, UniFlowPingOutput.class));
     }
 
     @Test
     public void verificationInputTest() throws IOException {
         PingInput dto = new PingInput(10);
-        assertEquals(dto, pass(dto, PingInput.class));
+        Assertions.assertEquals(dto, pass(dto, PingInput.class));
     }
 
     @Test
     public void verificationOutputTest() throws IOException {
         UniFlowPingOutput verification = new UniFlowPingOutput(true, "err-test", 10);
         PingOutput dto = new PingOutput(FLOW_ID, verification, verification, "error");
-        assertEquals(dto, pass(dto, PingOutput.class));
+        Assertions.assertEquals(dto, pass(dto, PingOutput.class));
     }
 
 
@@ -107,40 +107,40 @@ public class JsonSerializationTest {
         LinkDto dto = new LinkDto(-1, 1, 0, 0, 0, LinkStatus.DISCOVERED,
                 LinkStatus.DISCOVERED, LinkStatus.FAILED, 0, false, false,
                 "bfd-session-status", singletonList(new PathDto(SWITCH_ID, 1, 0, 10L)), null);
-        assertEquals(dto, pass(dto, LinkDto.class));
+        Assertions.assertEquals(dto, pass(dto, LinkDto.class));
     }
 
     @Test
     public void pathDtoTest() throws IOException {
         PathDto dto = new PathDto(SWITCH_ID, 1, 0, 10L);
-        assertEquals(dto, pass(dto, PathDto.class));
+        Assertions.assertEquals(dto, pass(dto, PathDto.class));
     }
 
     @Test
     public void linksPropsDtoTest() throws IOException {
         LinkPropsDto dto = new LinkPropsDto(SWITCH_ID, 0, SWITCH_ID, 1, Collections.singletonMap("key", "val"));
-        assertEquals(dto, pass(dto, LinkPropsDto.class));
+        Assertions.assertEquals(dto, pass(dto, LinkPropsDto.class));
     }
 
 
     @Test
     public void deleteMeterResultTest() throws IOException {
         DeleteMeterResult dto = new DeleteMeterResult(true);
-        assertEquals(dto, pass(dto, DeleteMeterResult.class));
+        Assertions.assertEquals(dto, pass(dto, DeleteMeterResult.class));
     }
 
     @Test
     public void rulesValidationResultTest() throws IOException {
         RulesValidationResult dto = new RulesValidationResult(
                 singletonList(0L), singletonList(1L), singletonList(2L));
-        assertEquals(dto, pass(dto, RulesValidationResult.class));
+        Assertions.assertEquals(dto, pass(dto, RulesValidationResult.class));
     }
 
     @Test
     public void rulesSyncResultTest() throws IOException {
         RulesSyncResult dto = new RulesSyncResult(
                 singletonList(0L), singletonList(1L), singletonList(2L), singletonList(3L));
-        assertEquals(dto, pass(dto, RulesSyncResult.class));
+        Assertions.assertEquals(dto, pass(dto, RulesSyncResult.class));
     }
 
     @Test
@@ -154,7 +154,7 @@ public class JsonSerializationTest {
         LogicalPortsSyncDto logicalPorts = new LogicalPortsSyncDto(emptyList(), emptyList(), emptyList(), emptyList(),
                 emptyList(), emptyList(), "");
         SwitchSyncResult dto = new SwitchSyncResult(rules, meters, groups, logicalPorts);
-        assertEquals(dto, pass(dto, SwitchSyncResult.class));
+        Assertions.assertEquals(dto, pass(dto, SwitchSyncResult.class));
     }
 
     @Test
@@ -171,7 +171,7 @@ public class JsonSerializationTest {
                 .groups(groups)
                 .logicalPorts(logicalPorts)
                 .build();
-        assertEquals(dto, pass(dto, SwitchValidationResult.class));
+        Assertions.assertEquals(dto, pass(dto, SwitchValidationResult.class));
     }
 
     @Test
@@ -180,18 +180,18 @@ public class JsonSerializationTest {
                 SwitchChangeType.ACTIVATED, false, "of_version",
                 "manufacturer", "hardware", "software", "serial_number", "pop",
                 new SwitchLocationDto(48.860611, 2.337633, "street", "city", "country"));
-        assertEquals(dto, pass(dto, SwitchDto.class));
+        Assertions.assertEquals(dto, pass(dto, SwitchDto.class));
     }
 
     @Test
     public void switchUnderMaintenanceDtoTest() throws IOException {
         UnderMaintenanceDto dto = new UnderMaintenanceDto(false, false);
-        assertEquals(dto, pass(dto, UnderMaintenanceDto.class));
+        Assertions.assertEquals(dto, pass(dto, UnderMaintenanceDto.class));
     }
 
     @Test
     public void batchResultsTest() throws IOException {
         BatchResults dto = new BatchResults(1, 0, singletonList("qwerty"));
-        assertEquals(dto, pass(dto, BatchResults.class));
+        Assertions.assertEquals(dto, pass(dto, BatchResults.class));
     }
 }

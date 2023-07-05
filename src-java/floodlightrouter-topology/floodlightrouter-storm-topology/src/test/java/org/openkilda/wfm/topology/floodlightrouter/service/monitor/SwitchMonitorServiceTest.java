@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.service.monitor;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -41,11 +43,10 @@ import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingRemove;
 import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingSet;
 import org.openkilda.wfm.topology.floodlightrouter.service.SwitchMonitorCarrier;
 
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -54,7 +55,7 @@ import java.util.Comparator;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class SwitchMonitorServiceTest {
     private static final String REGION_ALPHA = "alpha";
     private static final String REGION_BETA = "beta";
@@ -169,7 +170,7 @@ public class SwitchMonitorServiceTest {
         SwitchMonitorService subject = makeSubject();
 
         SwitchInfoData activate = makeSwitchActivateNotification(SWITCH_ALPHA, 1);
-        Assert.assertFalse(subject.isMonitorExists(activate.getSwitchId()));
+        assertFalse(subject.isMonitorExists(activate.getSwitchId()));
         subject.handleStatusUpdateNotification(activate, REGION_ALPHA);
 
         clock.adjust(Duration.ofMillis(1));
@@ -184,7 +185,7 @@ public class SwitchMonitorServiceTest {
         SwitchMonitorService subject = makeSubject();
 
         SwitchInfoData activate = makeSwitchActivateNotification(SWITCH_ALPHA, 1);
-        Assert.assertFalse(subject.isMonitorExists(activate.getSwitchId()));
+        assertFalse(subject.isMonitorExists(activate.getSwitchId()));
         subject.handleStatusUpdateNotification(activate, REGION_ALPHA);
 
         verifyAutomaticCleanUp(subject, activate.getSwitchId(), false);
@@ -203,7 +204,7 @@ public class SwitchMonitorServiceTest {
         verifyNoMoreInteractions(carrier);
         reset(carrier);
 
-        SwitchInfoData swDeactivate = new SwitchInfoData(swActivate.getSwitchId(),  SwitchChangeType.DEACTIVATED);
+        SwitchInfoData swDeactivate = new SwitchInfoData(swActivate.getSwitchId(), SwitchChangeType.DEACTIVATED);
         subject.handleStatusUpdateNotification(swDeactivate, REGION_ALPHA);
         verify(carrier).regionUpdateNotification(
                 eq(new RegionMappingRemove(swActivate.getSwitchId(), REGION_ALPHA, true)));
@@ -467,18 +468,18 @@ public class SwitchMonitorServiceTest {
     }
 
     private void verifyAutomaticCleanUp(SwitchMonitorService subject, SwitchId switchId, boolean expectRemoval) {
-        Assert.assertTrue(subject.isMonitorExists(switchId));
+        assertTrue(subject.isMonitorExists(switchId));
 
         clock.adjust(subject.getGarbageDelay().minus(Duration.ofSeconds(1)));
         subject.handleTimerTick();
-        Assert.assertTrue(subject.isMonitorExists(switchId));
+        assertTrue(subject.isMonitorExists(switchId));
 
         clock.adjust(Duration.ofSeconds(2));
         subject.handleTimerTick();
         if (expectRemoval) {
-            Assert.assertFalse(subject.isMonitorExists(switchId));
+            assertFalse(subject.isMonitorExists(switchId));
         } else {
-            Assert.assertTrue(subject.isMonitorExists(switchId));
+            assertTrue(subject.isMonitorExists(switchId));
         }
     }
 

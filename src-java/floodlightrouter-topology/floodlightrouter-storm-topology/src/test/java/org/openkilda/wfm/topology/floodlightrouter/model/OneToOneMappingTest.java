@@ -15,18 +15,21 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.model;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.openkilda.model.SwitchId;
 import org.openkilda.stubs.ManualClock;
 
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.util.Optional;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class OneToOneMappingTest {
     private static final SwitchId SWITCH_ALPHA = new SwitchId(1);
     private static final SwitchId SWITCH_BETA = new SwitchId(2);
@@ -44,15 +47,15 @@ public class OneToOneMappingTest {
         subject.remove(SWITCH_ALPHA);
 
         Optional<String> result = subject.lookup(SWITCH_ALPHA);
-        Assert.assertTrue(result.isPresent());
-        Assert.assertEquals(REGION_A, result.get());
+        assertTrue(result.isPresent());
+        assertEquals(REGION_A, result.get());
 
-        Assert.assertTrue(subject.lookup(SWITCH_ALPHA).isPresent());  // remove is delayed
+        assertTrue(subject.lookup(SWITCH_ALPHA).isPresent());  // remove is delayed
         clock.adjust(staleDelay.plus(Duration.ofSeconds(1)));
-        Assert.assertFalse(subject.lookup(SWITCH_ALPHA).isPresent());  // remove is delayed
+        assertFalse(subject.lookup(SWITCH_ALPHA).isPresent());  // remove is delayed
 
         // active mapping visible despite removed marker
-        Assert.assertTrue(subject.lookup(SWITCH_BETA).isPresent());
+        assertTrue(subject.lookup(SWITCH_BETA).isPresent());
     }
 
     @Test
@@ -65,29 +68,29 @@ public class OneToOneMappingTest {
         subject.add(SWITCH_BETA, REGION_A);
         subject.remove(SWITCH_BETA);
 
-        Assert.assertTrue(subject.lookup(SWITCH_ALPHA).isPresent());
-        Assert.assertTrue(subject.lookup(SWITCH_BETA).isPresent());
+        assertTrue(subject.lookup(SWITCH_ALPHA).isPresent());
+        assertTrue(subject.lookup(SWITCH_BETA).isPresent());
 
         clock.adjust(staleDelay.minus(Duration.ofSeconds(1)));
 
         // make lookup for one of 2 existing records
         Optional<String> result = subject.lookup(SWITCH_ALPHA);
-        Assert.assertTrue(result.isPresent());
-        Assert.assertEquals(REGION_A, result.get());
+        assertTrue(result.isPresent());
+        assertEquals(REGION_A, result.get());
 
         clock.adjust(Duration.ofSeconds(2));
 
         // first record must be still alive, because of recent lookup for it
         result = subject.lookup(SWITCH_ALPHA);
-        Assert.assertTrue(result.isPresent());
-        Assert.assertEquals(REGION_A, result.get());
+        assertTrue(result.isPresent());
+        assertEquals(REGION_A, result.get());
 
         // while second must go away
-        Assert.assertFalse(subject.lookup(SWITCH_BETA).isPresent());
+        assertFalse(subject.lookup(SWITCH_BETA).isPresent());
 
         clock.adjust(staleDelay.plus(Duration.ofSeconds(1)));
         // now first record must go away too
-        Assert.assertFalse(subject.lookup(SWITCH_ALPHA).isPresent());
+        assertFalse(subject.lookup(SWITCH_ALPHA).isPresent());
     }
 
     private OneToOneMapping makeSubject() {

@@ -15,9 +15,11 @@
 
 package org.openkilda.model.cookie;
 
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.openkilda.model.bitops.BitField;
 
-import org.junit.Assert;
 
 abstract class GenericCookieTest {
     protected void testFieldsIntersection(BitField[] fields) {
@@ -30,10 +32,10 @@ abstract class GenericCookieTest {
                 }
 
                 long rightField = CookieBase.setField(0L, fields[rightIdx], -1);
-                Assert.assertEquals(
+                assertEquals(
+                        0, (leftField & rightField),
                         String.format(
-                                "Detect cookie fields collision between 0x%016x and 0x%016x", leftField, rightField),
-                        0, (leftField & rightField));
+                                "Detect cookie fields collision between 0x%016x and 0x%016x", leftField, rightField));
             }
         }
     }
@@ -45,7 +47,7 @@ abstract class GenericCookieTest {
     protected void testFieldReadWrite(
             long blank, long expected, BitField field, long valueWrite, long valueRead) {
         long result = CookieBase.setField(blank, field, valueWrite);
-        Assert.assertEquals(expected, result);
-        Assert.assertEquals(valueRead, new Cookie(result).getField(field));
+        assertEquals(expected, result);
+        assertEquals(valueRead, new Cookie(result).getField(field));
     }
 }

@@ -15,7 +15,7 @@
 
 package org.openkilda.model.cookie;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class ServiceCookieTest extends GenericCookieTest {
     @Test

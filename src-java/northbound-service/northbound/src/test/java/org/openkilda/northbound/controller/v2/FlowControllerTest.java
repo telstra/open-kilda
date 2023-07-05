@@ -15,7 +15,6 @@
 
 package org.openkilda.northbound.controller.v2;
 
-import static org.junit.Assert.assertEquals;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.MAPPER;
@@ -33,14 +32,15 @@ import org.openkilda.northbound.controller.mock.TestMessageMock;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -49,7 +49,7 @@ import org.springframework.web.context.WebApplicationContext;
 
 import java.util.UUID;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 @WebAppConfiguration
 @ContextConfiguration(classes = TestConfig.class)
 @TestPropertySource("classpath:northbound.properties")
@@ -63,7 +63,7 @@ public class FlowControllerTest {
     @Autowired
     private WebApplicationContext webApplicationContext;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).apply(springSecurity()).build();
         RequestCorrelationId.create(DEFAULT_CORRELATION_ID);
@@ -74,9 +74,9 @@ public class FlowControllerTest {
     public void bulkUpdateFlow() throws Exception {
 
         MvcResult mvcResult = mockMvc.perform(post("/v2/flows/swap-endpoint")
-                .header(CORRELATION_ID, testCorrelationId())
-                .contentType(APPLICATION_JSON_VALUE)
-                .content(MAPPER.writeValueAsString(TestMessageMock.bulkFlow)))
+                        .header(CORRELATION_ID, testCorrelationId())
+                        .contentType(APPLICATION_JSON_VALUE)
+                        .content(MAPPER.writeValueAsString(TestMessageMock.bulkFlow)))
                 .andReturn();
 
         MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
@@ -85,8 +85,8 @@ public class FlowControllerTest {
                 .andReturn();
         SwapFlowEndpointPayload response
                 = MAPPER.readValue(result.getResponse().getContentAsString(), SwapFlowEndpointPayload.class);
-        assertEquals(TestMessageMock.bulkFlow.getFirstFlow(), response.getFirstFlow());
-        assertEquals(TestMessageMock.bulkFlow.getSecondFlow(), response.getSecondFlow());
+        Assertions.assertEquals(TestMessageMock.bulkFlow.getFirstFlow(), response.getFirstFlow());
+        Assertions.assertEquals(TestMessageMock.bulkFlow.getSecondFlow(), response.getSecondFlow());
     }
 
     @Test
@@ -101,7 +101,7 @@ public class FlowControllerTest {
                 .andReturn();
 
         MessageError response = MAPPER.readValue(result.getResponse().getContentAsString(), MessageError.class);
-        assertEquals(TestMessageMock.DIFFERENT_FLOW_ID_ERROR, response);
+        Assertions.assertEquals(TestMessageMock.DIFFERENT_FLOW_ID_ERROR, response);
     }
 
     private static String testCorrelationId() {

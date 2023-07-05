@@ -19,11 +19,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.openkilda.northbound.converter.PingMapper.TIMEOUT_ERROR_MESSAGE;
 
 import org.openkilda.messaging.command.flow.FlowMirrorPointCreateRequest;
@@ -67,12 +62,13 @@ import org.openkilda.northbound.dto.v2.flows.FlowStatistics;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import org.assertj.core.util.Lists;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -80,7 +76,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 public class FlowMapperTest {
     public static final int ENCAPSULATION_ID = 18;
     private static final String FLOW_ID = "flow1";
@@ -169,24 +165,28 @@ public class FlowMapperTest {
                 .build();
         FlowRequest flowRequest = flowMapper.toFlowRequest(flowRequestV2);
 
-        assertEquals(FLOW_ID, flowRequest.getFlowId());
-        assertEquals(SRC_SWITCH_ID, flowRequest.getSource().getSwitchId());
-        assertEquals(SRC_PORT, (int) flowRequest.getSource().getPortNumber());
-        assertEquals(SRC_VLAN, flowRequest.getSource().getOuterVlanId());
-        assertEquals(DST_SWITCH_ID, flowRequest.getDestination().getSwitchId());
-        assertEquals(DST_PORT, (int) flowRequest.getDestination().getPortNumber());
-        assertEquals(DST_VLAN, flowRequest.getDestination().getOuterVlanId());
-        assertEquals(FlowEncapsulationType.TRANSIT_VLAN, flowRequest.getEncapsulationType());
-        assertEquals(DESCRIPTION, flowRequest.getDescription());
-        assertEquals(BANDWIDTH, flowRequest.getBandwidth());
-        assertEquals(LATENCY * MS_TO_NS_MULTIPLIER, (long) flowRequest.getMaxLatency()); // ms to ns
-        assertEquals(LATENCY_TIER2 * MS_TO_NS_MULTIPLIER, (long) flowRequest.getMaxLatencyTier2());
-        assertEquals(PRIORITY, flowRequest.getPriority());
-        assertEquals(DIVERSE_FLOW_ID, flowRequest.getDiverseFlowId());
-        assertEquals(SRC_DETECT_CONNECTED_DEVICES.isLldp(), flowRequest.getDetectConnectedDevices().isSrcLldp());
-        assertEquals(SRC_DETECT_CONNECTED_DEVICES.isArp(), flowRequest.getDetectConnectedDevices().isSrcArp());
-        assertEquals(DST_DETECT_CONNECTED_DEVICES.isLldp(), flowRequest.getDetectConnectedDevices().isDstLldp());
-        assertEquals(DST_DETECT_CONNECTED_DEVICES.isArp(), flowRequest.getDetectConnectedDevices().isDstArp());
+        Assertions.assertEquals(FLOW_ID, flowRequest.getFlowId());
+        Assertions.assertEquals(SRC_SWITCH_ID, flowRequest.getSource().getSwitchId());
+        Assertions.assertEquals(SRC_PORT, (int) flowRequest.getSource().getPortNumber());
+        Assertions.assertEquals(SRC_VLAN, flowRequest.getSource().getOuterVlanId());
+        Assertions.assertEquals(DST_SWITCH_ID, flowRequest.getDestination().getSwitchId());
+        Assertions.assertEquals(DST_PORT, (int) flowRequest.getDestination().getPortNumber());
+        Assertions.assertEquals(DST_VLAN, flowRequest.getDestination().getOuterVlanId());
+        Assertions.assertEquals(FlowEncapsulationType.TRANSIT_VLAN, flowRequest.getEncapsulationType());
+        Assertions.assertEquals(DESCRIPTION, flowRequest.getDescription());
+        Assertions.assertEquals(BANDWIDTH, flowRequest.getBandwidth());
+        Assertions.assertEquals(LATENCY * MS_TO_NS_MULTIPLIER, (long) flowRequest.getMaxLatency()); // ms to ns
+        Assertions.assertEquals(LATENCY_TIER2 * MS_TO_NS_MULTIPLIER, (long) flowRequest.getMaxLatencyTier2());
+        Assertions.assertEquals(PRIORITY, flowRequest.getPriority());
+        Assertions.assertEquals(DIVERSE_FLOW_ID, flowRequest.getDiverseFlowId());
+        Assertions.assertEquals(SRC_DETECT_CONNECTED_DEVICES.isLldp(),
+                flowRequest.getDetectConnectedDevices().isSrcLldp());
+        Assertions.assertEquals(SRC_DETECT_CONNECTED_DEVICES.isArp(),
+                flowRequest.getDetectConnectedDevices().isSrcArp());
+        Assertions.assertEquals(DST_DETECT_CONNECTED_DEVICES.isLldp(),
+                flowRequest.getDetectConnectedDevices().isDstLldp());
+        Assertions.assertEquals(DST_DETECT_CONNECTED_DEVICES.isArp(),
+                flowRequest.getDetectConnectedDevices().isDstArp());
         assertThat(flowRequest.getVlanStatistics(), containsInAnyOrder(FLOW_STATISTICS.getVlans().toArray()));
     }
 
@@ -201,37 +201,42 @@ public class FlowMapperTest {
                 Instant.MIN, Y_FLOW_ID, FLOW_STATISTICS.getVlans());
 
         FlowResponseV2 response = flowMapper.toFlowResponseV2(flowDto);
-        assertEquals(FLOW_ID, response.getFlowId());
-        assertEquals(BANDWIDTH, response.getMaximumBandwidth());
-        assertTrue(response.isIgnoreBandwidth());
-        assertFalse(response.isStrictBandwidth());
-        assertTrue(response.isPeriodicPings());
-        assertFalse(response.isAllocateProtectedPath());
-        assertEquals(CREATE_TIME, response.getCreated());
-        assertEquals(UPDATE_TIME, response.getLastUpdated());
-        assertEquals(SRC_SWITCH_ID, response.getSource().getSwitchId());
-        assertEquals(SRC_PORT, response.getSource().getPortNumber().intValue());
-        assertEquals(SRC_VLAN, response.getSource().getVlanId());
-        assertEquals(SRC_INNER_VLAN, response.getSource().getInnerVlanId());
-        assertEquals(DST_SWITCH_ID, response.getDestination().getSwitchId());
-        assertEquals(DST_PORT, response.getDestination().getPortNumber().intValue());
-        assertEquals(DST_VLAN, response.getDestination().getVlanId());
-        assertEquals(DST_INNER_VLAN, response.getDestination().getInnerVlanId());
-        assertEquals(FlowState.UP.toString(), response.getStatus());
-        assertEquals("Up", response.getStatusDetails().getMainPath());
-        assertEquals("degraded", response.getStatusDetails().getProtectedPath());
-        assertEquals("UP", response.getStatusInfo());
-        assertEquals((Long) (LATENCY / 1_000_000), response.getMaxLatency());
-        assertEquals((Long) (LATENCY_TIER2 / 1_000_000), response.getMaxLatencyTier2());
-        assertEquals(PRIORITY, response.getPriority());
-        assertTrue(response.isPinned());
-        assertEquals(FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase(), response.getEncapsulationType());
-        assertEquals(PathComputationStrategy.COST.toString().toLowerCase(), response.getPathComputationStrategy());
-        assertEquals(PathComputationStrategy.LATENCY.toString().toLowerCase(),
+        Assertions.assertEquals(FLOW_ID, response.getFlowId());
+        Assertions.assertEquals(BANDWIDTH, response.getMaximumBandwidth());
+        Assertions.assertTrue(response.isIgnoreBandwidth());
+        Assertions.assertFalse(response.isStrictBandwidth());
+        Assertions.assertTrue(response.isPeriodicPings());
+        Assertions.assertFalse(response.isAllocateProtectedPath());
+        Assertions.assertEquals(CREATE_TIME, response.getCreated());
+        Assertions.assertEquals(UPDATE_TIME, response.getLastUpdated());
+        Assertions.assertEquals(SRC_SWITCH_ID, response.getSource().getSwitchId());
+        Assertions.assertEquals(SRC_PORT, response.getSource().getPortNumber().intValue());
+        Assertions.assertEquals(SRC_VLAN, response.getSource().getVlanId());
+        Assertions.assertEquals(SRC_INNER_VLAN, response.getSource().getInnerVlanId());
+        Assertions.assertEquals(DST_SWITCH_ID, response.getDestination().getSwitchId());
+        Assertions.assertEquals(DST_PORT, response.getDestination().getPortNumber().intValue());
+        Assertions.assertEquals(DST_VLAN, response.getDestination().getVlanId());
+        Assertions.assertEquals(DST_INNER_VLAN, response.getDestination().getInnerVlanId());
+        Assertions.assertEquals(FlowState.UP.toString(), response.getStatus());
+        Assertions.assertEquals("Up", response.getStatusDetails().getMainPath());
+        Assertions.assertEquals("degraded", response.getStatusDetails().getProtectedPath());
+        Assertions.assertEquals("UP", response.getStatusInfo());
+        Assertions.assertEquals((Long) (LATENCY / 1_000_000), response.getMaxLatency());
+        Assertions.assertEquals((Long) (LATENCY_TIER2 / 1_000_000), response.getMaxLatencyTier2());
+        Assertions.assertEquals(PRIORITY, response.getPriority());
+        Assertions.assertTrue(response.isPinned());
+        Assertions.assertEquals(FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase(),
+
+                response.getEncapsulationType());
+        Assertions.assertEquals(PathComputationStrategy.COST.toString().toLowerCase(),
+
+                response.getPathComputationStrategy());
+        Assertions.assertEquals(PathComputationStrategy.LATENCY.toString().toLowerCase(),
+
                 response.getTargetPathComputationStrategy());
-        assertEquals(Sets.newHashSet(FLOW_ID_2), response.getDiverseWith());
-        assertEquals(FLOW_ID_2, response.getAffinityWith());
-        assertEquals(FLOW_STATISTICS.getVlans(), response.getStatistics().getVlans());
+        Assertions.assertEquals(Sets.newHashSet(FLOW_ID_2), response.getDiverseWith());
+        Assertions.assertEquals(FLOW_ID_2, response.getAffinityWith());
+        Assertions.assertEquals(FLOW_STATISTICS.getVlans(), response.getStatistics().getVlans());
     }
 
     @Test
@@ -241,75 +246,79 @@ public class FlowMapperTest {
                 .portNumber(SRC_PORT)
                 .vlanId(SRC_VLAN)
                 .build();
-        assertNotNull(flowEndpointV2.getDetectConnectedDevices());
-        assertFalse(flowEndpointV2.getDetectConnectedDevices().isArp());
-        assertFalse(flowEndpointV2.getDetectConnectedDevices().isLldp());
+        Assertions.assertNotNull(flowEndpointV2.getDetectConnectedDevices());
+        Assertions.assertFalse(flowEndpointV2.getDetectConnectedDevices().isArp());
+        Assertions.assertFalse(flowEndpointV2.getDetectConnectedDevices().isLldp());
     }
 
     @Test
     public void testFlowEndpointV2WithoutConnectedDevices2Constructor() {
         FlowEndpointV2 flowEndpointV2 = new FlowEndpointV2(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, null);
-        assertNotNull(flowEndpointV2.getDetectConnectedDevices());
-        assertFalse(flowEndpointV2.getDetectConnectedDevices().isArp());
-        assertFalse(flowEndpointV2.getDetectConnectedDevices().isLldp());
+        Assertions.assertNotNull(flowEndpointV2.getDetectConnectedDevices());
+        Assertions.assertFalse(flowEndpointV2.getDetectConnectedDevices().isArp());
+        Assertions.assertFalse(flowEndpointV2.getDetectConnectedDevices().isLldp());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testFlowRequestV2InvalidEncapsulation() {
-        FlowRequestV2 flowRequestV2 = FlowRequestV2.builder()
-                .flowId(FLOW_ID)
-                .encapsulationType("abc")
-                .source(new FlowEndpointV2(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, SRC_DETECT_CONNECTED_DEVICES))
-                .destination(new FlowEndpointV2(DST_SWITCH_ID, DST_PORT, DST_VLAN, DST_DETECT_CONNECTED_DEVICES))
-                .build();
-        flowMapper.toFlowRequest(flowRequestV2);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            FlowRequestV2 flowRequestV2 = FlowRequestV2.builder()
+                    .flowId(FLOW_ID)
+                    .encapsulationType("abc")
+                    .source(new FlowEndpointV2(SRC_SWITCH_ID, SRC_PORT, SRC_VLAN, SRC_DETECT_CONNECTED_DEVICES))
+                    .destination(new FlowEndpointV2(DST_SWITCH_ID, DST_PORT, DST_VLAN, DST_DETECT_CONNECTED_DEVICES))
+                    .build();
+            flowMapper.toFlowRequest(flowRequestV2);
+        });
     }
 
     @Test
     public void testFlowCreatePayloadToFlowRequest() {
         FlowRequest flowRequest = flowMapper.toFlowCreateRequest(FLOW_CREATE_PAYLOAD);
-        assertEquals(FLOW_CREATE_PAYLOAD.getDiverseFlowId(), flowRequest.getDiverseFlowId());
-        assertEquals(Type.CREATE, flowRequest.getType());
+        Assertions.assertEquals(FLOW_CREATE_PAYLOAD.getDiverseFlowId(), flowRequest.getDiverseFlowId());
+        Assertions.assertEquals(Type.CREATE, flowRequest.getType());
         assertFlowDtos(FLOW_CREATE_PAYLOAD, flowRequest);
     }
 
     @Test
     public void testFlowUpdatePayloadToFlowRequest() {
         FlowRequest flowRequest = flowMapper.toFlowUpdateRequest(FLOW_UPDATE_PAYLOAD);
-        assertEquals(FLOW_UPDATE_PAYLOAD.getDiverseFlowId(), flowRequest.getDiverseFlowId());
-        assertEquals(Type.UPDATE, flowRequest.getType());
+        Assertions.assertEquals(FLOW_UPDATE_PAYLOAD.getDiverseFlowId(), flowRequest.getDiverseFlowId());
+        Assertions.assertEquals(Type.UPDATE, flowRequest.getType());
         assertFlowDtos(FLOW_UPDATE_PAYLOAD, flowRequest);
     }
 
     private void assertFlowDtos(FlowPayload expected, FlowRequest actual) {
-        assertEquals(expected.getId(), actual.getFlowId());
-        assertEquals(expected.getMaximumBandwidth(), actual.getBandwidth());
-        assertEquals(expected.isIgnoreBandwidth(), actual.isIgnoreBandwidth());
-        assertEquals(expected.isAllocateProtectedPath(), actual.isAllocateProtectedPath());
-        assertEquals(expected.isPeriodicPings(), actual.isPeriodicPings());
-        assertEquals(expected.isPinned(), actual.isPinned());
-        assertEquals(expected.getDescription(), actual.getDescription());
-        assertEquals(expected.getMaxLatency() * MS_TO_NS_MULTIPLIER, (long) actual.getMaxLatency()); // ms to ns
-        assertEquals(expected.getPriority(), actual.getPriority());
-        assertEquals(expected.getEncapsulationType(), actual.getEncapsulationType().name().toLowerCase());
-        assertEquals(expected.getPathComputationStrategy(), actual.getPathComputationStrategy());
+        Assertions.assertEquals(expected.getId(), actual.getFlowId());
+        Assertions.assertEquals(expected.getMaximumBandwidth(), actual.getBandwidth());
+        Assertions.assertEquals(expected.isIgnoreBandwidth(), actual.isIgnoreBandwidth());
+        Assertions.assertEquals(expected.isAllocateProtectedPath(), actual.isAllocateProtectedPath());
+        Assertions.assertEquals(expected.isPeriodicPings(), actual.isPeriodicPings());
+        Assertions.assertEquals(expected.isPinned(), actual.isPinned());
+        Assertions.assertEquals(expected.getDescription(), actual.getDescription());
+        Assertions.assertEquals(expected.getMaxLatency() * MS_TO_NS_MULTIPLIER,
+                (long) actual.getMaxLatency()); // ms to ns
+        Assertions.assertEquals(expected.getPriority(), actual.getPriority());
+        Assertions.assertEquals(expected.getEncapsulationType(), actual.getEncapsulationType().name().toLowerCase());
+        Assertions.assertEquals(expected.getPathComputationStrategy(), actual.getPathComputationStrategy());
 
-        assertEquals(expected.getSource().getDatapath(), actual.getSource().getSwitchId());
-        assertEquals(expected.getSource().getPortNumber(), actual.getSource().getPortNumber());
-        assertEquals(expected.getSource().getVlanId(), (Integer) actual.getSource().getOuterVlanId());
+        Assertions.assertEquals(expected.getSource().getDatapath(), actual.getSource().getSwitchId());
+        Assertions.assertEquals(expected.getSource().getPortNumber(), actual.getSource().getPortNumber());
+        Assertions.assertEquals(expected.getSource().getVlanId(), (Integer) actual.getSource().getOuterVlanId());
 
-        assertEquals(expected.getSource().getDetectConnectedDevices().isLldp(),
+        Assertions.assertEquals(expected.getSource().getDetectConnectedDevices().isLldp(),
                 actual.getDetectConnectedDevices().isSrcLldp());
-        assertEquals(expected.getSource().getDetectConnectedDevices().isArp(),
+        Assertions.assertEquals(expected.getSource().getDetectConnectedDevices().isArp(),
                 actual.getDetectConnectedDevices().isSrcArp());
 
-        assertEquals(expected.getDestination().getDatapath(), actual.getDestination().getSwitchId());
-        assertEquals(expected.getDestination().getPortNumber(), actual.getDestination().getPortNumber());
-        assertEquals(expected.getDestination().getVlanId(), (Integer) actual.getDestination().getOuterVlanId());
+        Assertions.assertEquals(expected.getDestination().getDatapath(), actual.getDestination().getSwitchId());
+        Assertions.assertEquals(expected.getDestination().getPortNumber(), actual.getDestination().getPortNumber());
+        Assertions.assertEquals(expected.getDestination().getVlanId(),
+                (Integer) actual.getDestination().getOuterVlanId());
 
-        assertEquals(expected.getDestination().getDetectConnectedDevices().isLldp(),
+        Assertions.assertEquals(expected.getDestination().getDetectConnectedDevices().isLldp(),
                 actual.getDetectConnectedDevices().isDstLldp());
-        assertEquals(expected.getDestination().getDetectConnectedDevices().isArp(),
+        Assertions.assertEquals(expected.getDestination().getDetectConnectedDevices().isArp(),
                 actual.getDetectConnectedDevices().isDstArp());
     }
 
@@ -318,10 +327,10 @@ public class FlowMapperTest {
         FlowPatchDto flowPatchDto = new FlowPatchDto(LATENCY, PRIORITY, PERIODIC_PINGS,
                 TARGET_PATH_COMPUTATION_STRATEGY);
         FlowPatch flowPatch = flowMapper.toFlowPatch(flowPatchDto);
-        assertEquals(flowPatchDto.getMaxLatency() * MS_TO_NS_MULTIPLIER, (long) flowPatch.getMaxLatency());
-        assertEquals(flowPatchDto.getPriority(), flowPatch.getPriority());
-        assertEquals(flowPatchDto.getPeriodicPings(), flowPatch.getPeriodicPings());
-        assertEquals(flowPatchDto.getTargetPathComputationStrategy(),
+        Assertions.assertEquals(flowPatchDto.getMaxLatency() * MS_TO_NS_MULTIPLIER, (long) flowPatch.getMaxLatency());
+        Assertions.assertEquals(flowPatchDto.getPriority(), flowPatch.getPriority());
+        Assertions.assertEquals(flowPatchDto.getPeriodicPings(), flowPatch.getPeriodicPings());
+        Assertions.assertEquals(flowPatchDto.getTargetPathComputationStrategy(),
                 flowPatch.getTargetPathComputationStrategy().name().toLowerCase());
     }
 
@@ -335,38 +344,43 @@ public class FlowMapperTest {
                 ENCAPSULATION_TYPE, PATH_COMPUTATION_STRATEGY, TARGET_PATH_COMPUTATION_STRATEGY, FLOW_STATISTICS);
         FlowPatch flowPatch = flowMapper.toFlowPatch(flowPatchDto);
 
-        assertEquals(flowPatchDto.getSource().getSwitchId(), flowPatch.getSource().getSwitchId());
-        assertEquals(flowPatchDto.getSource().getPortNumber(), flowPatch.getSource().getPortNumber());
-        assertEquals(flowPatchDto.getSource().getVlanId(), flowPatch.getSource().getVlanId());
-        assertEquals(flowPatchDto.getSource().getInnerVlanId(), flowPatch.getSource().getInnerVlanId());
-        assertEquals(flowPatchDto.getSource().getDetectConnectedDevices().isLldp(),
+        Assertions.assertEquals(flowPatchDto.getSource().getSwitchId(), flowPatch.getSource().getSwitchId());
+        Assertions.assertEquals(flowPatchDto.getSource().getPortNumber(), flowPatch.getSource().getPortNumber());
+        Assertions.assertEquals(flowPatchDto.getSource().getVlanId(), flowPatch.getSource().getVlanId());
+        Assertions.assertEquals(flowPatchDto.getSource().getInnerVlanId(), flowPatch.getSource().getInnerVlanId());
+        Assertions.assertEquals(flowPatchDto.getSource().getDetectConnectedDevices().isLldp(),
                 flowPatch.getSource().getTrackLldpConnectedDevices());
-        assertEquals(flowPatchDto.getSource().getDetectConnectedDevices().isArp(),
+        Assertions.assertEquals(flowPatchDto.getSource().getDetectConnectedDevices().isArp(),
                 flowPatch.getSource().getTrackArpConnectedDevices());
-        assertEquals(flowPatchDto.getDestination().getSwitchId(), flowPatch.getDestination().getSwitchId());
-        assertEquals(flowPatchDto.getDestination().getPortNumber(), flowPatch.getDestination().getPortNumber());
-        assertEquals(flowPatchDto.getDestination().getVlanId(), flowPatch.getDestination().getVlanId());
-        assertEquals(flowPatchDto.getDestination().getInnerVlanId(), flowPatch.getDestination().getInnerVlanId());
-        assertEquals(flowPatchDto.getDestination().getDetectConnectedDevices().isLldp(),
+        Assertions.assertEquals(flowPatchDto.getDestination().getSwitchId(), flowPatch.getDestination().getSwitchId());
+        Assertions.assertEquals(flowPatchDto.getDestination().getPortNumber(),
+                flowPatch.getDestination().getPortNumber());
+        Assertions.assertEquals(flowPatchDto.getDestination().getVlanId(), flowPatch.getDestination().getVlanId());
+        Assertions.assertEquals(flowPatchDto.getDestination().getInnerVlanId(),
+                flowPatch.getDestination().getInnerVlanId());
+        Assertions.assertEquals(flowPatchDto.getDestination().getDetectConnectedDevices().isLldp(),
                 flowPatch.getDestination().getTrackLldpConnectedDevices());
-        assertEquals(flowPatchDto.getDestination().getDetectConnectedDevices().isArp(),
+        Assertions.assertEquals(flowPatchDto.getDestination().getDetectConnectedDevices().isArp(),
                 flowPatch.getDestination().getTrackArpConnectedDevices());
-        assertEquals(flowPatchDto.getMaxLatency() * MS_TO_NS_MULTIPLIER, (long) flowPatch.getMaxLatency());
-        assertEquals(flowPatchDto.getMaxLatencyTier2() * MS_TO_NS_MULTIPLIER, (long) flowPatch.getMaxLatencyTier2());
-        assertEquals(flowPatchDto.getPriority(), flowPatch.getPriority());
-        assertEquals(flowPatchDto.getPeriodicPings(), flowPatch.getPeriodicPings());
-        assertEquals(flowPatchDto.getTargetPathComputationStrategy(),
+        Assertions.assertEquals(flowPatchDto.getMaxLatency() * MS_TO_NS_MULTIPLIER,
+                (long) flowPatch.getMaxLatency());
+        Assertions.assertEquals(flowPatchDto.getMaxLatencyTier2() * MS_TO_NS_MULTIPLIER,
+                (long) flowPatch.getMaxLatencyTier2());
+        Assertions.assertEquals(flowPatchDto.getPriority(), flowPatch.getPriority());
+        Assertions.assertEquals(flowPatchDto.getPeriodicPings(), flowPatch.getPeriodicPings());
+        Assertions.assertEquals(flowPatchDto.getTargetPathComputationStrategy(),
                 flowPatch.getTargetPathComputationStrategy().name().toLowerCase());
-        assertEquals(flowPatchDto.getDiverseFlowId(), flowPatch.getDiverseFlowId());
-        assertEquals(flowPatchDto.getAffinityFlowId(), flowPatch.getAffinityFlowId());
-        assertEquals(flowPatchDto.getMaximumBandwidth(), flowPatch.getBandwidth());
-        assertEquals(flowPatchDto.getAllocateProtectedPath(), flowPatch.getAllocateProtectedPath());
-        assertEquals(flowPatchDto.getPinned(), flowPatch.getPinned());
-        assertEquals(flowPatchDto.getIgnoreBandwidth(), flowPatch.getIgnoreBandwidth());
-        assertEquals(flowPatchDto.getStrictBandwidth(), flowPatch.getStrictBandwidth());
-        assertEquals(flowPatchDto.getDescription(), flowPatch.getDescription());
-        assertEquals(flowPatchDto.getEncapsulationType(), flowPatch.getEncapsulationType().name().toLowerCase());
-        assertEquals(flowPatchDto.getPathComputationStrategy(),
+        Assertions.assertEquals(flowPatchDto.getDiverseFlowId(), flowPatch.getDiverseFlowId());
+        Assertions.assertEquals(flowPatchDto.getAffinityFlowId(), flowPatch.getAffinityFlowId());
+        Assertions.assertEquals(flowPatchDto.getMaximumBandwidth(), flowPatch.getBandwidth());
+        Assertions.assertEquals(flowPatchDto.getAllocateProtectedPath(), flowPatch.getAllocateProtectedPath());
+        Assertions.assertEquals(flowPatchDto.getPinned(), flowPatch.getPinned());
+        Assertions.assertEquals(flowPatchDto.getIgnoreBandwidth(), flowPatch.getIgnoreBandwidth());
+        Assertions.assertEquals(flowPatchDto.getStrictBandwidth(), flowPatch.getStrictBandwidth());
+        Assertions.assertEquals(flowPatchDto.getDescription(), flowPatch.getDescription());
+        Assertions.assertEquals(flowPatchDto.getEncapsulationType(),
+                flowPatch.getEncapsulationType().name().toLowerCase());
+        Assertions.assertEquals(flowPatchDto.getPathComputationStrategy(),
                 flowPatch.getPathComputationStrategy().name().toLowerCase());
         assertThat(flowPatch.getVlanStatistics(),
                 containsInAnyOrder(flowPatchDto.getStatistics().getVlans().toArray()));
@@ -383,14 +397,15 @@ public class FlowMapperTest {
 
         FlowMirrorPointCreateRequest request = flowMapper.toFlowMirrorPointCreateRequest(FLOW_ID, payload);
 
-        assertEquals(FLOW_ID, request.getFlowId());
-        assertEquals(payload.getMirrorPointId(), request.getMirrorPointId());
-        assertEquals(payload.getMirrorPointDirection(), request.getMirrorPointDirection().toString().toLowerCase());
-        assertEquals(payload.getMirrorPointSwitchId(), request.getMirrorPointSwitchId());
-        assertEquals(payload.getSinkEndpoint().getSwitchId(), request.getSinkEndpoint().getSwitchId());
-        assertEquals(payload.getSinkEndpoint().getPortNumber(), request.getSinkEndpoint().getPortNumber());
-        assertEquals(payload.getSinkEndpoint().getVlanId(), request.getSinkEndpoint().getOuterVlanId());
-        assertEquals(payload.getSinkEndpoint().getInnerVlanId(), request.getSinkEndpoint().getInnerVlanId());
+        Assertions.assertEquals(FLOW_ID, request.getFlowId());
+        Assertions.assertEquals(payload.getMirrorPointId(), request.getMirrorPointId());
+        Assertions.assertEquals(payload.getMirrorPointDirection(),
+                request.getMirrorPointDirection().toString().toLowerCase());
+        Assertions.assertEquals(payload.getMirrorPointSwitchId(), request.getMirrorPointSwitchId());
+        Assertions.assertEquals(payload.getSinkEndpoint().getSwitchId(), request.getSinkEndpoint().getSwitchId());
+        Assertions.assertEquals(payload.getSinkEndpoint().getPortNumber(), request.getSinkEndpoint().getPortNumber());
+        Assertions.assertEquals(payload.getSinkEndpoint().getVlanId(), request.getSinkEndpoint().getOuterVlanId());
+        Assertions.assertEquals(payload.getSinkEndpoint().getInnerVlanId(), request.getSinkEndpoint().getInnerVlanId());
     }
 
     @Test
@@ -410,14 +425,17 @@ public class FlowMapperTest {
 
         FlowMirrorPointResponseV2 apiResponse = flowMapper.toFlowMirrorPointResponseV2(response);
 
-        assertEquals(response.getFlowId(), apiResponse.getFlowId());
-        assertEquals(response.getMirrorPointId(), apiResponse.getMirrorPointId());
-        assertEquals(response.getMirrorPointDirection(), apiResponse.getMirrorPointDirection());
-        assertEquals(response.getMirrorPointSwitchId(), apiResponse.getMirrorPointSwitchId());
-        assertEquals(response.getSinkEndpoint().getSwitchId(), apiResponse.getSinkEndpoint().getSwitchId());
-        assertEquals(response.getSinkEndpoint().getPortNumber(), apiResponse.getSinkEndpoint().getPortNumber());
-        assertEquals(response.getSinkEndpoint().getOuterVlanId(), apiResponse.getSinkEndpoint().getVlanId());
-        assertEquals(response.getSinkEndpoint().getInnerVlanId(), apiResponse.getSinkEndpoint().getInnerVlanId());
+        Assertions.assertEquals(response.getFlowId(), apiResponse.getFlowId());
+        Assertions.assertEquals(response.getMirrorPointId(), apiResponse.getMirrorPointId());
+        Assertions.assertEquals(response.getMirrorPointDirection(), apiResponse.getMirrorPointDirection());
+        Assertions.assertEquals(response.getMirrorPointSwitchId(), apiResponse.getMirrorPointSwitchId());
+        Assertions.assertEquals(response.getSinkEndpoint().getSwitchId(), apiResponse.getSinkEndpoint().getSwitchId());
+        Assertions.assertEquals(response.getSinkEndpoint().getPortNumber(),
+                apiResponse.getSinkEndpoint().getPortNumber());
+        Assertions.assertEquals(response.getSinkEndpoint().getOuterVlanId(),
+                apiResponse.getSinkEndpoint().getVlanId());
+        Assertions.assertEquals(response.getSinkEndpoint().getInnerVlanId(),
+                apiResponse.getSinkEndpoint().getInnerVlanId());
     }
 
     @Test
@@ -452,26 +470,34 @@ public class FlowMapperTest {
 
         FlowMirrorPointsResponseV2 apiResponse = flowMapper.toFlowMirrorPointsResponseV2(response);
 
-        assertEquals(response.getFlowId(), apiResponse.getFlowId());
-        assertEquals(2, apiResponse.getPoints().size());
+        Assertions.assertEquals(response.getFlowId(), apiResponse.getFlowId());
+        Assertions.assertEquals(2, apiResponse.getPoints().size());
 
         FlowMirrorPointPayload firstPayload = apiResponse.getPoints().get(0);
-        assertEquals(firstPoint.getMirrorPointId(), firstPayload.getMirrorPointId());
-        assertEquals(firstPoint.getMirrorPointDirection(), firstPayload.getMirrorPointDirection());
-        assertEquals(firstPoint.getMirrorPointSwitchId(), firstPayload.getMirrorPointSwitchId());
-        assertEquals(firstPoint.getSinkEndpoint().getSwitchId(), firstPayload.getSinkEndpoint().getSwitchId());
-        assertEquals(firstPoint.getSinkEndpoint().getPortNumber(), firstPayload.getSinkEndpoint().getPortNumber());
-        assertEquals(firstPoint.getSinkEndpoint().getOuterVlanId(), firstPayload.getSinkEndpoint().getVlanId());
-        assertEquals(firstPoint.getSinkEndpoint().getInnerVlanId(), firstPayload.getSinkEndpoint().getInnerVlanId());
+        Assertions.assertEquals(firstPoint.getMirrorPointId(), firstPayload.getMirrorPointId());
+        Assertions.assertEquals(firstPoint.getMirrorPointDirection(), firstPayload.getMirrorPointDirection());
+        Assertions.assertEquals(firstPoint.getMirrorPointSwitchId(), firstPayload.getMirrorPointSwitchId());
+        Assertions.assertEquals(firstPoint.getSinkEndpoint().getSwitchId(),
+                firstPayload.getSinkEndpoint().getSwitchId());
+        Assertions.assertEquals(firstPoint.getSinkEndpoint().getPortNumber(),
+                firstPayload.getSinkEndpoint().getPortNumber());
+        Assertions.assertEquals(firstPoint.getSinkEndpoint().getOuterVlanId(),
+                firstPayload.getSinkEndpoint().getVlanId());
+        Assertions.assertEquals(firstPoint.getSinkEndpoint().getInnerVlanId(),
+                firstPayload.getSinkEndpoint().getInnerVlanId());
 
         FlowMirrorPointPayload secondPayload = apiResponse.getPoints().get(1);
-        assertEquals(secondPoint.getMirrorPointId(), secondPayload.getMirrorPointId());
-        assertEquals(secondPoint.getMirrorPointDirection(), secondPayload.getMirrorPointDirection());
-        assertEquals(secondPoint.getMirrorPointSwitchId(), secondPayload.getMirrorPointSwitchId());
-        assertEquals(secondPoint.getSinkEndpoint().getSwitchId(), secondPayload.getSinkEndpoint().getSwitchId());
-        assertEquals(secondPoint.getSinkEndpoint().getPortNumber(), secondPayload.getSinkEndpoint().getPortNumber());
-        assertEquals(secondPoint.getSinkEndpoint().getOuterVlanId(), secondPayload.getSinkEndpoint().getVlanId());
-        assertEquals(secondPoint.getSinkEndpoint().getInnerVlanId(), secondPayload.getSinkEndpoint().getInnerVlanId());
+        Assertions.assertEquals(secondPoint.getMirrorPointId(), secondPayload.getMirrorPointId());
+        Assertions.assertEquals(secondPoint.getMirrorPointDirection(), secondPayload.getMirrorPointDirection());
+        Assertions.assertEquals(secondPoint.getMirrorPointSwitchId(), secondPayload.getMirrorPointSwitchId());
+        Assertions.assertEquals(secondPoint.getSinkEndpoint().getSwitchId(),
+                secondPayload.getSinkEndpoint().getSwitchId());
+        Assertions.assertEquals(secondPoint.getSinkEndpoint().getPortNumber(),
+                secondPayload.getSinkEndpoint().getPortNumber());
+        Assertions.assertEquals(secondPoint.getSinkEndpoint().getOuterVlanId(),
+                secondPayload.getSinkEndpoint().getVlanId());
+        Assertions.assertEquals(secondPoint.getSinkEndpoint().getInnerVlanId(),
+                secondPayload.getSinkEndpoint().getInnerVlanId());
     }
 
     @Test
@@ -481,16 +507,16 @@ public class FlowMapperTest {
                 new UniFlowPingResponse(true, null, new PingMeters(1, 2, 3), null), ERROR_MESSAGE);
         PingOutput output = flowMapper.toPingOutput(response);
 
-        assertEquals(response.getFlowId(), output.getFlowId());
-        assertEquals(response.getError(), output.getError());
+        Assertions.assertEquals(response.getFlowId(), output.getFlowId());
+        Assertions.assertEquals(response.getError(), output.getError());
 
-        assertEquals(response.getForward().isPingSuccess(), output.getForward().isPingSuccess());
-        assertEquals(0, output.getForward().getLatency());
-        assertEquals(TIMEOUT_ERROR_MESSAGE, output.getForward().getError());
+        Assertions.assertEquals(response.getForward().isPingSuccess(), output.getForward().isPingSuccess());
+        Assertions.assertEquals(0, output.getForward().getLatency());
+        Assertions.assertEquals(TIMEOUT_ERROR_MESSAGE, output.getForward().getError());
 
-        assertEquals(response.getReverse().isPingSuccess(), output.getReverse().isPingSuccess());
-        assertEquals(1, output.getReverse().getLatency());
-        assertNull(output.getReverse().getError());
+        Assertions.assertEquals(response.getReverse().isPingSuccess(), output.getReverse().isPingSuccess());
+        Assertions.assertEquals(1, output.getReverse().getLatency());
+        Assertions.assertNull(output.getReverse().getError());
     }
 
     @Test

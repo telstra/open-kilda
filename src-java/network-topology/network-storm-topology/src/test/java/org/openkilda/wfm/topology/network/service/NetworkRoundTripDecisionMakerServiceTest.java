@@ -25,15 +25,15 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.stubs.ManualClock;
 import org.openkilda.wfm.share.model.Endpoint;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class NetworkRoundTripDecisionMakerServiceTest {
     private static final Duration EXPIRE_DELAY = Duration.ofSeconds(4);
 
@@ -42,7 +42,7 @@ public class NetworkRoundTripDecisionMakerServiceTest {
 
     private ManualClock clock;
 
-    @Before
+    @BeforeEach
     public void setup() {
         reset(carrier);
 

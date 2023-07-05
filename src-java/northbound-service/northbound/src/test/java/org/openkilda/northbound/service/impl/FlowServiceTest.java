@@ -15,7 +15,7 @@
 
 package org.openkilda.northbound.service.impl;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 
 import org.openkilda.messaging.info.flow.FlowResponse;
@@ -36,19 +36,19 @@ import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 import org.openkilda.northbound.utils.TestCorrelationIdFactory;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.web.client.RestTemplate;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 public class FlowServiceTest {
 
     @Autowired
@@ -57,7 +57,7 @@ public class FlowServiceTest {
     @Autowired
     private MessageExchanger messageExchanger;
 
-    @Before
+    @BeforeEach
     public void reset() {
         messageExchanger.resetMockedResponses();
     }
