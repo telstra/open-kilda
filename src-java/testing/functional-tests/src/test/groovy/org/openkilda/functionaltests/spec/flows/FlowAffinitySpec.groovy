@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_ACTION
@@ -10,10 +12,7 @@ import static groovyx.gpars.GParsPool.withPool
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.PathNode
-
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
@@ -199,6 +198,8 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow1)
         def affinityFlow = flowHelperV2.randomFlow(swPair, false, [flow1]).tap { affinityFlowId = flow1.flowId }
         flowHelperV2.addFlow(affinityFlow)
+        def expectedError =
+                new FlowNotCreatedExpectedError(~/Couldn't create diverse group with flow in the same affinity group/)
 
         when: "Create affinity flow on the same switch pair"
         def affinityFlow2 = flowHelperV2.randomFlow(swPair, false, [flow1, affinityFlow]).tap { affinityFlowId = flow1.flowId; diverseFlowId = affinityFlow.flowId }
@@ -206,23 +207,14 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.BAD_REQUEST
-        with(e.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not create flow"
-            errorDescription == "Couldn't create diverse group with flow in the same affinity group"
-        }
-
+        expectedError.matches(e)
         when: "Create affinity flow on the same switch pair"
         def affinityFlow3 = flowHelperV2.randomFlow(swPair, false, [flow1, affinityFlow]).tap { affinityFlowId = affinityFlow.flowId; diverseFlowId = flow1.flowId }
         northboundV2.addFlow(affinityFlow3)
 
         then: "Error is returned"
         def e2 = thrown(HttpClientErrorException)
-        e2.statusCode == HttpStatus.BAD_REQUEST
-        with(e2.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not create flow"
-            errorDescription == "Couldn't create diverse group with flow in the same affinity group"
-        }
+        expectedError.matches(e2)
 
         cleanup:
         [flow1, affinityFlow].each { flowHelperV2.deleteFlow(it.flowId) }
@@ -249,18 +241,15 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.BAD_REQUEST
-        with(e.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not create flow"
-            errorDescription == "Couldn't create a diverse group with flow in a different diverse group than main affinity flow"
-        }
+        new FlowNotCreatedExpectedError(
+                ~/Couldn't create a diverse group with flow in a different diverse group than main affinity flow/).matches(e)
         cleanup:
         [flow1, flow2, affinityFlow, diverseFlow].each { flowHelperV2.deleteFlow(it.flowId) }
         !e && flowHelperV2.deleteFlow(affinityFlow2.flowId)
     }
 
     @Tidy
-    def "Unable to create an affinity flow with a 1-switch flow"() {
+    def "Able to create an affinity flow with a 1-switch flow"() {
         given: "A one-switch flow"
         def sw = topology.activeSwitches[0]
         def oneSwitchFlow = flowHelperV2.singleSwitchFlow(sw)
@@ -297,12 +286,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.BAD_REQUEST
-        with(e.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not create flow"
-            errorDescription == "Failed to find diverse flow id $NON_EXISTENT_FLOW_ID"
-        }
-
+        new FlowNotCreatedExpectedError(~/Failed to find diverse flow id $NON_EXISTENT_FLOW_ID/).matches(e)
         cleanup:
         !e && flowHelperV2.deleteFlow(flow.flowId)
     }

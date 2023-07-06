@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
@@ -15,10 +17,7 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.LoopTask
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.testing.tools.SoftAssertions
-
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Isolated
 import spock.lang.Narrative
@@ -89,11 +88,8 @@ class MultiFloodlightsSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        verifyAll(e.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Switch $sw.dpId was not found"
-            errorDescription == "The switch was not found when requesting a rules dump."
-        }
+        new SwitchNotFoundExpectedError(
+                "Switch $sw.dpId was not found", ~/The switch was not found when requesting a rules dump./).matches(e)
 
         when: "Broken region restores connection to kafka"
         cleanupActions.pop().call() //lockKeeper.reviveFloodlight(sw.regions[1])

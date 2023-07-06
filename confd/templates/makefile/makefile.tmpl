@@ -18,7 +18,7 @@ build-base: {{if not (exists "/no_grpc_stub")}}build-grpc-stub {{end}}build-lock
 
 .PHONY: build-lock-keeper
 build-lock-keeper:
-	cp src-python/lock-keeper/* docker/lock-keeper/
+	cp -r src-python/lock-keeper/* docker/lock-keeper/
 	docker build -t kilda/lock-keeper:latest docker/lock-keeper/
 
 .PHONY: build-grpc-stub

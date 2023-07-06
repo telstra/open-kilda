@@ -1,5 +1,9 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithConflictExpectedError
+import org.openkilda.functionaltests.error.haflow.HaFlowNotUpdatedExpectedError
+import spock.lang.Ignore
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat
@@ -19,7 +23,6 @@ import org.openkilda.northbound.dto.v2.haflows.HaSubFlowPatchPayload
 import com.shazam.shazamcrest.matcher.CustomisableMatcher
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
@@ -282,11 +285,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == data.errorStatusCode
-        exc.responseBodyAsString.to(MessageError).with {
-            assert errorMessage == "Couldn't update HA-flow"
-            assertThat(errorDescription).matches(data.errorDescrPattern)
-        }
+        new HaFlowNotUpdatedExpectedError(data.errorDescription).matches(exc)
 
         and: "And involved switches pass validation"
         withPool {
@@ -312,16 +311,14 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                             payload.subFlows[0].endpoint.portNumber = allowedPorts[0]
                             setRandomVlans(payload) // to do not conflict with existing sub flows
                         },
-                        errorStatusCode: HttpStatus.BAD_REQUEST,
-                        errorDescrPattern: /Invalid sub flow IDs: .*?\. Valid sub flows IDs are:.*?/
+                        errorDescription: ~/Invalid sub flow IDs: .*\. Valid sub flows IDs are: .*?/
                 ],
                 [
                         descr: "with subflowId not specified",
                         updateClosure: { HaFlow payload ->
                             payload.subFlows[1].flowId = null
                         },
-                        errorStatusCode: HttpStatus.BAD_REQUEST,
-                        errorDescrPattern: /The sub-flow of ha-flow .*? has no sub-flow id provided.*?/
+                        errorDescription: ~/The sub-flow of .* has no sub-flow id provided/
                 ],
                 [
                         descr: "to one switch ha-flow",
@@ -329,15 +326,15 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                             payload.subFlows[0].endpoint.switchId = payload.getSharedEndpoint().switchId
                             payload.subFlows[1].endpoint.switchId = payload.getSharedEndpoint().switchId
                         },
-                         errorStatusCode: HttpStatus.BAD_REQUEST,
-                        errorDescrPattern: /The ha-flow .*? is one switch flow\..*?/
+                        errorDescription: ~/The ha-flow.* ? is one switch flow\. \
+At least one of subflow endpoint switch id must differ from shared endpoint switch.* ?/
                 ]
         ]
     }
 
     private void setRandomVlans(HaFlow payload) {
-        payload.sharedEndpoint.vlanId = haFlowHelper.randomVlan(payload.sharedEndpoint.vlanId)
-        payload.subFlows.forEach { it.endpoint.vlanId = haFlowHelper.randomVlan(it.endpoint.vlanId) }
+        payload.sharedEndpoint.vlanId = flowHelperV2.randomVlan([payload.sharedEndpoint.vlanId])
+        payload.subFlows.forEach { it.endpoint.vlanId = flowHelperV2.randomVlan([it.endpoint.vlanId]) }
     }
 
     @Tidy
@@ -355,12 +352,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == data.errorStatusCode
-        exc.responseBodyAsString.to(MessageError).with {
-            assert errorMessage == data.errorMessage
-            assertThat(errorDescription).matches(data.errorDescrPattern)
-        }
-
+        new HaFlowNotUpdatedExpectedError(data.errorDescrPattern).matches(exc)
         and: "And involved switches pass validation"
         withPool {
             involvedSwitchIds.eachParallel { SwitchId switchId ->
@@ -390,9 +382,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                                                        .build()])
                                     .build()
                         },
-                        errorStatusCode: HttpStatus.BAD_REQUEST,
-                        errorMessage: "Couldn't update HA-flow",
-                        errorDescrPattern: /HA-flow .*? has no sub flow .*?/
+                        errorDescrPattern: ~/HA-flow .*? has no sub flow .*?/
                 ],
                 [
                         descr: "switch conflict in request",
@@ -416,9 +406,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                                                        .build()])
                                     .build()
                         },
-                        errorStatusCode: HttpStatus.BAD_REQUEST,
-                        errorMessage: "Couldn't update HA-flow",
-                        errorDescrPattern: /The sub-flows .* and .* have endpoint conflict: .*/
+                        errorDescrPattern: ~/The sub-flows .* and .* have endpoint conflict: .*/
                 ],
                 [
                         descr: "switch conflict after update",
@@ -438,9 +426,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                                                     .build()])
                                     .build()
                         },
-                        errorStatusCode  : HttpStatus.BAD_REQUEST,
-                        errorMessage     : "Couldn't update HA-flow",
-                        errorDescrPattern: /The sub-flows .* and .* have endpoint conflict: .*/
+                        errorDescrPattern: ~/The sub-flows .* and .* have endpoint conflict: .*/
                 ],
                 [
                         descr: "different inner vlans of sub flows on one switch",
@@ -460,10 +446,8 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                                                     .build()])
                                     .build()
                         },
-                        errorStatusCode  : HttpStatus.BAD_REQUEST,
-                        errorMessage     : "Couldn't update HA-flow",
-                        errorDescrPattern: "To have ability to use double vlan tagging for both sub flow destination " +
-                                "endpoints which are placed on one switch .* you must set equal inner vlan for both endpoints.*"
+                        errorDescrPattern: ~/To have ability to use double vlan tagging for both sub flow destination \
+endpoints which are placed on one switch .* you must set equal inner vlan for both endpoints.*/
                 ]
         ]
     }

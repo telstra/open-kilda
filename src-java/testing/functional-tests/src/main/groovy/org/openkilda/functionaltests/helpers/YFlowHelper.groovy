@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
+import static org.openkilda.functionaltests.helpers.FlowHelper.KILDA_ALLOWED_VLANS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS_Y
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS_Y
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
@@ -52,7 +53,6 @@ class YFlowHelper {
 
     def random = new Random()
     def faker = new Faker()
-    def allowedVlans = 101..4095
 
     /**
      * Creates YFlowCreatePayload for a y-flow with random vlan.
@@ -288,7 +288,7 @@ class YFlowHelper {
     }
 
     private int randomVlan() {
-        return allowedVlans[random.nextInt(allowedVlans.size())]
+        return KILDA_ALLOWED_VLANS.shuffled().first()
     }
 
     private String generateDescription() {

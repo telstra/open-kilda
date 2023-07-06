@@ -2,7 +2,7 @@ import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, Input, OnChange
 import { SwitchService } from '../../../common/services/switch.service';
 import { SwitchidmaskPipe } from "../../../common/pipes/switchidmask.pipe";
 import { ToastrService } from 'ngx-toastr';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { DataTableDirective } from 'angular-datatables';
 import { Subject ,Subscription} from 'rxjs';
 import { NgxSpinnerService } from "ngx-spinner";
@@ -41,6 +41,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
     private router:Router,
     private loaderService: LoaderService,
     private titleService: Title,
+    private route: ActivatedRoute,
     private commonService:CommonService,
   ) {
     this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
@@ -103,7 +104,8 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
 
   showPortDetail(item){
     var portDataObject = item;
-    localStorage.setItem('portDataObject', JSON.stringify(portDataObject));
+    const portDataObjectKey = 'portDataObject_' + this.switch_id + '_' + item.port_number;
+    localStorage.setItem(portDataObjectKey, JSON.stringify(portDataObject));
     this.currentActivatedRoute = 'port-details';
     this.router.navigate(['/switches/details/'+this.switch_id+'/port/'+item.port_number]);
   }

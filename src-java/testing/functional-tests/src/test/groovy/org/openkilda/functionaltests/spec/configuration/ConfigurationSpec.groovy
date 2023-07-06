@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.configuration
 
+import org.openkilda.functionaltests.error.NonExistingEncapsulationTypeExpectedError
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -13,7 +15,6 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.model.FlowEncapsulationType
@@ -21,8 +22,6 @@ import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Isolated
 import spock.lang.Narrative
@@ -85,10 +84,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.BAD_REQUEST
-        e.responseBodyAsString.to(MessageError).errorMessage ==
-                "No enum constant org.openkilda.model.FlowEncapsulationType.$incorrectValue"
-
+        new NonExistingEncapsulationTypeExpectedError(incorrectValue).matches(e)
         cleanup: "Restore default configuration"
         if (!e) {
             northbound.updateKildaConfiguration(
