@@ -7,7 +7,7 @@ import { ToastrService } from 'ngx-toastr';
 import { DygraphService } from '../../../common/services/dygraph.service';
 import { IslDataService } from '../../../common/services/isl-data.service';
 import { SwitchService } from '../../../common/services/switch.service';
-import { ActivatedRoute, Router, NavigationEnd} from "@angular/router";
+import { Router, NavigationEnd} from "@angular/router";
 import { filter } from "rxjs/operators";
 import { LoaderService } from "../../../common/services/loader.service";
 import { ClipboardService } from "ngx-clipboard";
@@ -33,8 +33,6 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
   portFlows :any = [];
   flowBandwidthSum :any = 0;
   flowBandwidthFlag:boolean = false;
-  switchId  = null;
-  portId  = null;
 
   hasStoreSetting = false;
   
@@ -65,7 +63,6 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
     private loaderService: LoaderService,
     private router: Router,
     private dygraphService:DygraphService,
-    private route: ActivatedRoute,
     
     private switchService:SwitchService,
     private clipboardService: ClipboardService,
@@ -82,19 +79,14 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
   }
 
   ngOnInit() {
-      this.titleService.setTitle('OPEN KILDA - Port');
-      this.route.parent.params.subscribe(params => this.switchId = params['id']);
-      this.route.params.subscribe(params => this.portId = params['port']);
-
-      const portDataObjectKey = 'portDataObject_' + this.switchId + '_' + this.portId;
-      this.portDataObject = JSON.parse(localStorage.getItem(portDataObjectKey));
-      this.portForm = this.formBuiler.group({
-          portStatus: [this.portDataObject.status],
-      });
-      const switchDetailsKey = 'switchDetailsKey_' + this.switchId;
-      this.retrievedSwitchObject = JSON.parse(localStorage.getItem(switchDetailsKey));
-      this.port_src_switch = this.maskPipe.transform(this.retrievedSwitchObject.switch_id, 'legacy');
-      this.clipBoardItems.sourceSwitch = this.retrievedSwitchObject.switch_id;
+    this.titleService.setTitle('OPEN KILDA - Port');
+     this.portDataObject = JSON.parse(localStorage.getItem('portDataObject'));
+     this.portForm = this.formBuiler.group({
+      portStatus: [this.portDataObject.status],
+    });
+    this.retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON'));
+    this.port_src_switch = this.maskPipe.transform(this.retrievedSwitchObject.switch_id,'legacy');
+    this.clipBoardItems.sourceSwitch = this.retrievedSwitchObject.switch_id;
     
     if(this.portDataObject['discrepancy'] && (this.portDataObject['discrepancy']['assignment-type'])){
       if(this.portDataObject['discrepancy']['assignment-type']){
@@ -181,8 +173,7 @@ export class PortDetailsComponent implements OnInit, OnDestroy{
         this.loaderService.hide();
         this.toastr.success(MessageObj.port_configured,'Success');
         this.portDataObject.status = portStatus;
-        const portDataObjectKey = 'portDataObject_' + this.switchId + '_' + this.portId;
-        localStorage.setItem(portDataObjectKey, JSON.stringify(this.portDataObject));
+        localStorage.setItem('portDataObject', JSON.stringify(this.portDataObject));
         this.editConfigStatus = false;
 
       },error => {

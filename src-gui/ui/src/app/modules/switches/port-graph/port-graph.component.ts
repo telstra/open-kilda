@@ -8,7 +8,6 @@ import { LoaderService } from 'src/app/common/services/loader.service';
 import { IslDataService } from 'src/app/common/services/isl-data.service';
 import { CommonService } from 'src/app/common/services/common.service';
 import { MessageObj } from 'src/app/common/constants/constants';
-import { ActivatedRoute } from '@angular/router';
 
 declare var moment: any;
 
@@ -35,36 +34,26 @@ export class PortGraphComponent implements OnInit, AfterViewInit,OnDestroy {
   autoReloadTimerId = null;  
   getautoReloadValues = this.commonService.getAutoreloadValues();
   portMetrics = [];
-  switchId  = null;
-  portId  = null;
-
+    
   @Output() hideToValue: EventEmitter<any> = new EventEmitter();
   constructor(
     private maskPipe: SwitchidmaskPipe,
     private formBuiler: FormBuilder,
     private toastr: ToastrService,
-    private route: ActivatedRoute,
-    private dygraphService: DygraphService,
+    private dygraphService:DygraphService,
     private loaderService: LoaderService,
     private islDataService: IslDataService,
     private commonService:CommonService,
   ) { }
 
   ngOnInit() {
-    this.route.parent.params.subscribe(params => this.switchId = params['id']);
-    this.route.params.subscribe(params => this.portId = params['port']);
-
-    const portDataObjectKey = 'portDataObject_' + this.switchId + '_' + this.portId;
-    this.portDataObject = JSON.parse(localStorage.getItem(portDataObjectKey));
+    this.portDataObject = JSON.parse(localStorage.getItem('portDataObject'));
      this.portForm = this.formBuiler.group({
       portStatus: [this.portDataObject.status],
     });
-    const currentUrl = this.commonService.getCurrentUrl();
-    const switchDetailsKey = 'switchDetailsKey_' + this.switchId;
-
-    this.retrievedSwitchObject = JSON.parse(localStorage.getItem(switchDetailsKey));
-    this.port_src_switch = this.maskPipe.transform(this.retrievedSwitchObject.switch_id, 'legacy');
-    const dateRange = this.getDateRange();
+    this.retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON'));
+    this.port_src_switch = this.maskPipe.transform(this.retrievedSwitchObject.switch_id,'legacy');
+    let dateRange = this.getDateRange(); 
 
     this.filterForm = this.formBuiler.group({
       timezone: ["LOCAL"],

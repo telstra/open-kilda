@@ -248,9 +248,9 @@ export class SwitchDatatableComponent implements OnInit, OnChanges,OnDestroy,Aft
       "description": switchObj.description,
       "state": switchObj.state
     };
-    const switchDetailsKey = 'switchDetailsKey_' + switchObj.switch_id;
+
     localStorage.setItem(
-        switchDetailsKey,
+      "switchDetailsJSON",
       JSON.stringify(switchDetailsJSON)
     );
     localStorage.setItem("switchFilterFlag",this.switchFilterFlag);
