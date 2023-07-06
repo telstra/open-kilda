@@ -38,6 +38,7 @@ import org.openkilda.model.LinkProps;
 import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.PopLocation;
 import org.openkilda.model.SwitchDiscrepancy;
+import org.openkilda.model.SwitchFlowsInfoPerPort;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.model.SwitchLocation;
 import org.openkilda.model.SwitchMeter;
@@ -76,27 +77,26 @@ public class SwitchService {
 
     @Autowired
     private SwitchStoreService switchStoreService;
-    
+
     @Autowired
     private UserService userService;
 
     @Autowired
     private StoreService storeService;
-    
+
     @Autowired
     private SwitchNameRepository switchNameRepository;
-    
+
     @Autowired
     private ApplicationSettingService applicationSettingService;
-    
+
     /**
      * get All SwitchList.
      *
      * @return SwitchRelationData the switch info
      * @throws IntegrationException the integration exception
-
      */
-    public List<SwitchInfo> getSwitches(boolean storeConfigurationStatus, boolean controller) 
+    public List<SwitchInfo> getSwitches(boolean storeConfigurationStatus, boolean controller)
             throws IntegrationException {
         List<SwitchInfo> switchInfo = switchIntegrationService.getSwitches();
         if (switchInfo == null) {
@@ -118,13 +118,12 @@ public class SwitchService {
         }
         return switchInfo;
     }
-    
+
     /**
      * get All SwitchList.
      *
      * @return SwitchRelationData the switch info
      * @throws IntegrationException the integration exception
-
      */
     public SwitchInfo getSwitch(final String switchId, boolean controller) throws IntegrationException {
         SwitchInfo switchInfo = null;
@@ -189,13 +188,11 @@ public class SwitchService {
     /**
      * Process inventory switch.
      *
-     * @param switches the switch.
-
+     * @param switches          the switch.
      * @param inventorySwitches the inventory switch.
-
      */
     private void processInventorySwitch(final List<SwitchInfo> switches,
-            final List<InventorySwitch> inventorySwitches) {
+                                        final List<InventorySwitch> inventorySwitches) {
         List<SwitchInfo> discrepancySwitch = new ArrayList<SwitchInfo>();
         for (InventorySwitch inventorySwitch : inventorySwitches) {
             int index = -1;
@@ -206,7 +203,7 @@ public class SwitchService {
                 }
             }
             if (index >= 0) {
-                SwitchInfo switchObj =  switches.get(index);
+                SwitchInfo switchObj = switches.get(index);
                 appendInventoryInfo(switchObj, inventorySwitch);
                 SwitchDiscrepancy discrepancy = new SwitchDiscrepancy();
                 discrepancy.setControllerDiscrepancy(false);
@@ -247,14 +244,14 @@ public class SwitchService {
                 switchState.setControllerStatus(switchInfo.getState());
                 switchState.setInventoryStatus(null);
                 discrepancy.setStatusValue(switchState);
-                
+
                 switchInfo.setDiscrepancy(discrepancy);
             }
             switchInfo.setControllerSwitch(true);
         }
         switches.addAll(discrepancySwitch);
     }
-    
+
     private void appendInventoryInfo(final SwitchInfo switchInfo, final InventorySwitch inventorySwitch) {
         switchInfo.setUuid(inventorySwitch.getUuid());
         switchInfo.setCommonName(inventorySwitch.getCommonName());
@@ -298,7 +295,7 @@ public class SwitchService {
         switchState.setInventoryStatus(inventorySwitch.getStatus());
         discrepancy.setStatusValue(switchState);
         switchInfo.setDiscrepancy(discrepancy);
-        
+
         appendInventoryInfo(switchInfo, inventorySwitch);
     }
 
@@ -306,13 +303,13 @@ public class SwitchService {
      * Gets the isl links.
      *
      * @param srcSwitch the src switch
-     * @param srcPort the src port
+     * @param srcPort   the src port
      * @param dstSwitch the dst switch
-     * @param dstPort the dst port
+     * @param dstPort   the dst port
      * @return the isl links
      */
     public List<IslLinkInfo> getIslLinks(final String srcSwitch, final String srcPort, final String dstSwitch,
-            final String dstPort) {
+                                         final String dstPort) {
         if (StringUtil.isAnyNullOrEmpty(srcSwitch, srcPort, dstPort, dstSwitch)) {
             return switchIntegrationService.getIslLinks(null);
         }
@@ -323,22 +320,18 @@ public class SwitchService {
         keys.setSrcSwitch(srcSwitch);
         return switchIntegrationService.getIslLinks(keys);
     }
-    
+
     /**
      * Gets the link props.
      *
      * @param srcSwitch the src switch
-
-     * @param srcPort  the src port
-
+     * @param srcPort   the src port
      * @param dstSwitch the dst switch
-
-     * @param dstPort the dst port
-
+     * @param dstPort   the dst port
      * @return the link props
      */
     public LinkProps getLinkProps(final String srcSwitch, final String srcPort, final String dstSwitch,
-            final String dstPort) {
+                                  final String dstPort) {
 
         if (StringUtil.isAnyNullOrEmpty(srcSwitch, srcPort, dstPort, dstSwitch)) {
             throw new InvalidResponseException(HttpError.PRECONDITION_FAILED.getCode(),
@@ -373,9 +366,8 @@ public class SwitchService {
 
     /**
      * Update link props.
-     * 
+     *
      * @param keys the link properties
-
      * @return the link properties
      */
     public String updateLinkProps(List<LinkProps> keys) {
@@ -384,9 +376,8 @@ public class SwitchService {
 
     /**
      * Get Switch Rules.
-     * 
+     *
      * @param switchId the switch id
-
      * @return the switch rules
      */
     public String getSwitchRules(String switchId) {
@@ -396,33 +387,30 @@ public class SwitchService {
     /**
      * Configure port.
      *
-     * @param switchId the switch id
-
-     * @param port the port
-
+     * @param switchId      the switch id
+     * @param port          the port
      * @param configuration the configuration
-
      * @return the configuredPort
      */
     public ConfiguredPort configurePort(String switchId, String port, PortConfiguration configuration) {
         return switchIntegrationService.configurePort(switchId, port, configuration);
     }
-    
+
     /**
      * Gets port flows.
      *
      * @param switchId the switch id
-     * @param port the port
+     * @param port     the port
      * @return the customers detail
      * @throws AccessDeniedException the access denied exception
      */
-    public ResponseEntity<List<?>> getPortFlows(String switchId, String port, boolean inventory) 
+    public ResponseEntity<List<?>> getPortFlows(String switchId, String port, boolean inventory)
             throws AccessDeniedException {
         if (!inventory) {
             List<FlowInfo> flowList = switchIntegrationService.getSwitchFlows(switchId, port);
-            return new ResponseEntity<List<?>>(flowList, HttpStatus.OK);
-        } 
-        if (inventory && port != null) {
+            return new ResponseEntity<>(flowList, HttpStatus.OK);
+        }
+        if (port != null) {
             if (userService.getLoggedInUserInfo().getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
                 List<Customer> customers = new ArrayList<Customer>();
                 if (storeService.getSwitchStoreConfig().getUrls().size() > 0) {
@@ -433,23 +421,37 @@ public class SwitchService {
                         throw new StoreIntegrationException("Error occured while retreiving port flows.", ex);
                     }
                 }
-                return new ResponseEntity<List<?>>(customers, HttpStatus.OK);
+                return new ResponseEntity<>(customers, HttpStatus.OK);
             }
         }
         return null;
     }
-    
+
+    /**
+     * Gets flows per port for a specific switch.
+     *
+     * @param switchId the switch id
+     * @param portIds  the ports
+     * @return the customers detail
+     */
+    public ResponseEntity<SwitchFlowsInfoPerPort> getFlowsByPorts(String switchId, List<Integer> portIds) {
+        SwitchFlowsInfoPerPort flowsByPorts = switchIntegrationService.getSwitchFlowsByPorts(switchId, portIds);
+        return new ResponseEntity<>(flowsByPorts, HttpStatus.OK);
+
+
+    }
+
     /**
      * Gets the isl Flows.
      *
      * @param srcSwitch the source switch
-     * @param srcPort the source port
+     * @param srcPort   the source port
      * @param dstSwitch the destination switch
-     * @param dstPort the destination port
+     * @param dstPort   the destination port
      * @return the isl flows
      */
     public List<FlowInfo> getIslFlows(String srcSwitch, String srcPort, String dstSwitch,
-            String dstPort) {
+                                      String dstPort) {
         return switchIntegrationService.getIslFlows(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 
@@ -465,7 +467,7 @@ public class SwitchService {
     /**
      * Save or update switch name.
      *
-     * @param switchId the switch id
+     * @param switchId   the switch id
      * @param switchName the switch name
      * @return the SwitchInfo
      */
@@ -492,36 +494,33 @@ public class SwitchService {
     }
 
     /**
- * Switch under maintenance.
+     * Switch under maintenance.
      *
-     * @param switchId
-     *            the switch id
-     * @param switchInfo
-     *        the switch info
+     * @param switchId   the switch id
+     * @param switchInfo the switch info
      * @return the SwitchInfo
      */
     public SwitchInfo updateMaintenanceStatus(String switchId, SwitchInfo switchInfo) {
         switchInfo = switchIntegrationService.updateMaintenanceStatus(switchId, switchInfo);
         return switchInfo;
-        
+
     }
-    
+
     /**
      * Updates the links under-maintenance status.
      *
-     * @param linkUnderMaintenanceDto
-     *           the isl maintenance dto
+     * @param linkUnderMaintenanceDto the isl maintenance dto
      * @return the isl link info
-    */
+     */
     public List<IslLinkInfo> updateLinkMaintenanceStatus(LinkUnderMaintenanceDto linkUnderMaintenanceDto) {
         return switchIntegrationService.updateIslLinks(linkUnderMaintenanceDto);
     }
-    
-    
-    /** Delete link.
+
+
+    /**
+     * Delete link.
      *
-     * @param linkParametersDto
-     *            the link parameters
+     * @param linkParametersDto the link parameters
      * @return the IslLinkInfo
      */
     public List<IslLinkInfo> deleteLink(LinkParametersDto linkParametersDto, Long userId) {
@@ -532,18 +531,19 @@ public class SwitchService {
             return null;
         }
     }
-    
-    /** Update max bandwidth.
-   *
-   * @param srcSwitch the source switch
-   * @param srcPort the source port
-   * @param dstSwitch the destination switch
-   * @param dstPort the destination port
-   * @param linkMaxBandwidth the max bandwidth
-   * @return the LinkMaxBandwidth
-   */
+
+    /**
+     * Update max bandwidth.
+     *
+     * @param srcSwitch        the source switch
+     * @param srcPort          the source port
+     * @param dstSwitch        the destination switch
+     * @param dstPort          the destination port
+     * @param linkMaxBandwidth the max bandwidth
+     * @return the LinkMaxBandwidth
+     */
     public LinkMaxBandwidth updateLinkBandwidth(String srcSwitch, String srcPort, String dstSwitch, String dstPort,
-                LinkMaxBandwidth linkMaxBandwidth) {
+                                                LinkMaxBandwidth linkMaxBandwidth) {
         LinkMaxBandwidth linkBandwidthUpdate = switchIntegrationService
                 .updateLinkBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, linkMaxBandwidth);
         return linkBandwidthUpdate;
@@ -552,44 +552,47 @@ public class SwitchService {
     /**
      * Delete switch.
      *
-     * @param switchId
-     *            the switch id
+     * @param switchId the switch id
      * @return the SwitchInfo
      */
     public SwitchInfo deleteSwitch(String switchId, boolean force) {
         SwitchInfo switchInfo = switchIntegrationService.deleteSwitch(switchId, force);
         return switchInfo;
-        
+
     }
 
-    /** Update enable-bfd flag.
+    /**
+     * Update enable-bfd flag.
      *
-     * @param linkParametersDto
-     *            the link parameters
+     * @param linkParametersDto the link parameters
      * @return the IslLinkInfo
-   */
+     */
     public List<IslLinkInfo> updateLinkBfdFlag(LinkParametersDto linkParametersDto) {
-        List<IslLinkInfo> islLinkInfo = switchIntegrationService.updateIslBfdFlag(linkParametersDto); 
+        List<IslLinkInfo> islLinkInfo = switchIntegrationService.updateIslBfdFlag(linkParametersDto);
         return islLinkInfo;
     }
-    
-    /** Updates switch port property.
-     * @param switchId the switch id
-     * @param port the switch port
+
+    /**
+     * Updates switch port property.
+     *
+     * @param switchId       the switch id
+     * @param port           the switch port
      * @param switchProperty the switch property
      * @return the SwitchProperty
-  */
+     */
     public SwitchProperty updateSwitchPortProperty(String switchId, String port, SwitchProperty switchProperty) {
         SwitchProperty switchPropertyInfo = switchIntegrationService
                 .updateSwitchPortProperty(switchId, port, switchProperty);
         return switchPropertyInfo;
     }
 
-    /** Gets switch port property.
+    /**
+     * Gets switch port property.
+     *
      * @param switchId the switch id
-     * @param port the switch port
+     * @param port     the switch port
      * @return the SwitchProperty
-  */
+     */
     public SwitchProperty getSwitchPortProperty(String switchId, String port) {
         SwitchProperty switchProperty = switchIntegrationService.getSwitchPortProperty(switchId, port);
         return switchProperty;
@@ -603,8 +606,8 @@ public class SwitchService {
         return switchIntegrationService.getLinkBfdProperties(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 
-    public LinkBfdProperties updateLinkBfdProperties(String srcSwitch, String srcPort, String dstSwitch, 
-            String dstPort, BfdProperties properties) {
+    public LinkBfdProperties updateLinkBfdProperties(String srcSwitch, String srcPort, String dstSwitch,
+                                                     String dstPort, BfdProperties properties) {
         return switchIntegrationService.updateLinkBfdProperties(srcSwitch, srcPort, dstSwitch, dstPort, properties);
     }
 
