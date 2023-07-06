@@ -19,14 +19,12 @@ import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowEndpoint;
 import org.openkilda.integration.model.FlowV2;
 import org.openkilda.integration.model.FlowV2Endpoint;
-import org.openkilda.integration.model.response.SwitchFlowsPerPort;
 import org.openkilda.integration.service.SwitchIntegrationService;
 import org.openkilda.integration.source.store.dto.InventoryFlow;
 import org.openkilda.model.FlowBandwidth;
 import org.openkilda.model.FlowDiscrepancy;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowState;
-import org.openkilda.model.SwitchFlowsInfoPerPort;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.StringUtil;
 
@@ -36,17 +34,14 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * The Class FlowConverter.
  */
 @Component
 public class FlowConverter {
-
-    /**
-     * The switch integration service.
-     */
+    
+    /** The switch integration service. */
     @Autowired
     SwitchIntegrationService switchIntegrationService;
 
@@ -56,7 +51,7 @@ public class FlowConverter {
      * @param flows the flows
      * @return the list
      */
-    public List<FlowInfo> toFlowsInfo(final List<Flow> flows) {
+    public List<FlowInfo> toFlowsInfo(final List<Flow> flows) { 
         if (!CollectionUtil.isEmpty(flows)) {
             final List<FlowInfo> flowsInfo = new ArrayList<>();
             final Map<String, String> csNames = switchIntegrationService.getSwitchNames();
@@ -67,36 +62,14 @@ public class FlowConverter {
         }
         return null;
     }
-
+    
     /**
-     * To SwitchFlowsInfoPerPort info.
-     *
-     * @param switchFlowsPerPort switch flowsPer port
-     * @return the list
-     */
-    public SwitchFlowsInfoPerPort toFlowV2InfosPerPorts(final SwitchFlowsPerPort switchFlowsPerPort) {
-        if (switchFlowsPerPort == null || switchFlowsPerPort.getFlowsByPort() == null
-                || switchFlowsPerPort.getFlowsByPort().isEmpty()) {
-            return null;
-        }
-        final SwitchFlowsInfoPerPort switchFlowsInfoPerPort = new SwitchFlowsInfoPerPort();
-
-        Map<Integer, List<FlowInfo>> flowsByPortsMap = switchFlowsPerPort.getFlowsByPort().entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> toFlowV2sInfo(e.getValue())));
-        switchFlowsInfoPerPort.setFlowsByPort(flowsByPortsMap);
-
-        return switchFlowsInfoPerPort;
-
-    }
-
-
-    /**
-     * To flowV2s info.
-     *
-     * @param flowV2s the flowV2s
-     * @return the list
-     */
-    public List<FlowInfo> toFlowV2sInfo(final List<FlowV2> flowV2s) {
+    * To flowV2s info.
+    *
+    * @param flowV2s the flowV2s
+    * @return the list
+    */
+    public List<FlowInfo> toFlowV2sInfo(final List<FlowV2> flowV2s) { 
         if (!CollectionUtil.isEmpty(flowV2s)) {
             final List<FlowInfo> flowsInfo = new ArrayList<>();
             final Map<String, String> csNames = switchIntegrationService.getSwitchNames();
@@ -107,15 +80,16 @@ public class FlowConverter {
         }
         return null;
     }
-
+    
+    
 
     /**
-     * To flow info.
-     *
-     * @param flow    the flow
-     * @param csNames the cs names
-     * @return the flow info
-     */
+    * To flow info.
+    *
+    * @param flow the flow
+    * @param csNames the cs names
+    * @return the flow info
+    */
     public FlowInfo toFlowInfo(final Flow flow, Map<String, String> csNames) {
         FlowInfo flowInfo = new FlowInfo();
         flowInfo.setFlowid(flow.getId());
@@ -166,34 +140,35 @@ public class FlowConverter {
         }
         return flowInfo;
     }
+ 
 
-
+    
     /**
      * To flow info.
      *
-     * @param flowInfo      the flow info
+     * @param flowInfo the flow info
      * @param inventoryFlow the inventory flow
-     * @param csNames       the cs names
+     * @param csNames the cs names
      * @return the flow info
      */
     public FlowInfo toFlowInfo(final FlowInfo flowInfo, final InventoryFlow inventoryFlow,
-                               final Map<String, String> csNames) {
+            final Map<String, String> csNames) {
 
         FlowDiscrepancy discrepancy = new FlowDiscrepancy();
         discrepancy.setControllerDiscrepancy(true);
         discrepancy.setStatus(true);
         discrepancy.setBandwidth(true);
-
+        
         FlowBandwidth flowBandwidth = new FlowBandwidth();
         flowBandwidth.setControllerBandwidth(0);
         flowBandwidth.setInventoryBandwidth(inventoryFlow.getMaximumBandwidth());
         discrepancy.setBandwidthValue(flowBandwidth);
-
+        
         FlowState flowState = new FlowState();
         flowState.setControllerState(null);
         flowState.setInventoryState(inventoryFlow.getState());
         discrepancy.setStatusValue(flowState);
-
+        
         flowInfo.setFlowid(inventoryFlow.getId());
         flowInfo.setDiscrepancy(discrepancy);
         if (!StringUtil.isNullOrEmpty(inventoryFlow.getSource().getId())) {
@@ -209,7 +184,7 @@ public class FlowConverter {
         } catch (NumberFormatException numberFormatException) {
             inventoryFlow.getSource().setVlanId(null);
         }
-
+        
         if (!StringUtil.isNullOrEmpty(inventoryFlow.getDestination().getId())) {
             flowInfo.setTargetSwitch(inventoryFlow.getDestination().getId());
             flowInfo.setTargetSwitchName(
@@ -230,15 +205,16 @@ public class FlowConverter {
         flowInfo.setInventoryFlow(true);
         return flowInfo;
     }
-
+    
+    
 
     /**
-     * To flow V2 info.
-     *
-     * @param flow    V2 the flow
-     * @param csNames the cs names
-     * @return the flow info
-     */
+    * To flow V2 info.
+    * 
+    * @param flow V2 the flow
+    * @param csNames the cs names
+    * @return the flow info
+    */
     public FlowInfo toFlowV2Info(final FlowV2 flow, Map<String, String> csNames) {
         FlowInfo flowInfo = new FlowInfo();
         flowInfo.setFlowid(flow.getId());

@@ -179,7 +179,6 @@ public abstract class IConstants {
         public static final String FLOW_PING = GET_FLOW + "/{flow_id}/ping";
         public static final String UPDATE_SWITCH_UNDER_MAINTENANCE = GET_SWITCHES + "/{switch_id}/under-maintenance";
         public static final String GET_SWITCH_FLOWS = GET_SWITCHES + "/{switch_id}/flows";
-        public static final String GET_SWITCH_FLOWS_BY_PORTS = VERSION_TWO + "/switches/{switch_id}/flows-by-port";
         public static final String GET_SWITCH_PORT_FLOWS = GET_SWITCHES + "/{switch_id}/flows?port={port}";
         public static final String UPDATE_LINK_UNDER_MAINTENANCE = GET_LINKS + "/under-maintenance";
         public static final String UPDATE_LINK_MAINTENANCE = GET_LINKS + "/under-maintenance";

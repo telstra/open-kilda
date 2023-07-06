@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import {HttpClient, HttpParams} from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { Observable } from 'rxjs';
 import { Switch } from '../data-models/switch';
@@ -63,14 +63,6 @@ getNetworkPath(source_switch,target_switch, strategy, max_latency){
       url = url + "&port="+port;
     }
     return this.httpClient.get(url);
-  }
-
-  getSwitchFlowsForPorts(switchId, ports: Array<number>): Observable<{}> {
-    let queryParams = new HttpParams();
-    ports.forEach(port => queryParams = queryParams.append('ports', String(port)));
-    const url = `${environment.apiEndPoint}/switch/${switchId}/flows-by-port`;
-    console.log('calling the API, generated url: ' + url + ', params: ' + queryParams.getAll('ports'));
-    return this.httpClient.get(url, {params: queryParams});
   }
 
   getSwitchMetersList(switchId) : Observable<any[]>{
