@@ -31,7 +31,6 @@ import org.openkilda.model.LinkMaxBandwidth;
 import org.openkilda.model.LinkParametersDto;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.LinkUnderMaintenanceDto;
-import org.openkilda.model.SwitchFlowsInfoPerPort;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.model.SwitchLocation;
 import org.openkilda.model.SwitchMeter;
@@ -72,7 +71,7 @@ public class SwitchController {
 
     @Autowired
     private ActivityLogger activityLogger;
-
+    
     @Autowired
     private ServerContext serverContext;
 
@@ -89,9 +88,9 @@ public class SwitchController {
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = { IConstants.Permission.MENU_SWITCHES })
     public @ResponseBody List<SwitchInfo> getSwitchesDetail(
-            @RequestParam(value = "storeConfigurationStatus", required = false)
+            @RequestParam(value = "storeConfigurationStatus", required = false) 
             final boolean storeConfigurationStatus,
-            @RequestParam(value = "controller", required = false)
+            @RequestParam(value = "controller", required = false) 
             final boolean controller) {
         return serviceSwitch.getSwitches(storeConfigurationStatus, controller);
     }
@@ -105,12 +104,12 @@ public class SwitchController {
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = { IConstants.Permission.MENU_SWITCHES })
     public @ResponseBody SwitchInfo getSwitchDetail(@PathVariable final String switchId,
-            @RequestParam(value = "controller", required = false)
+            @RequestParam(value = "controller", required = false) 
             final boolean controller) {
         return serviceSwitch.getSwitch(switchId, controller);
     }
 
-
+    
     /**
      * Save or update switch name.
      *
@@ -149,7 +148,7 @@ public class SwitchController {
             required = false) final String dstPort) {
         return serviceSwitch.getIslLinks(srcSwitch, srcPort, dstSwitch, dstPort);
     }
-
+    
     /**
      * Delete Isl.
      *
@@ -202,7 +201,7 @@ public class SwitchController {
                     value = "dst_port", required = true) final String dstPort) {
         return serviceSwitch.getLinkProps(srcSwitch, srcPort, dstSwitch, dstPort);
     }
-
+    
     /**
      * Updates the link max bandwidth.
      *
@@ -219,7 +218,7 @@ public class SwitchController {
             @RequestParam(value = "src_switch", required = true) final String srcSwitch,
             @RequestParam(value = "src_port", required = true) final String srcPort, @RequestParam(
                     value = "dst_switch", required = true) final String dstSwitch, @RequestParam(
-                    value = "dst_port", required = true) final String dstPort,
+                    value = "dst_port", required = true) final String dstPort, 
                     @RequestBody LinkMaxBandwidth linkMaxBandwidth) {
         activityLogger.log(ActivityType.UPDATE_ISL_BANDWIDTH, linkMaxBandwidth.toString());
         return serviceSwitch.updateLinkBandwidth(srcSwitch, srcPort, dstSwitch, dstPort, linkMaxBandwidth);
@@ -239,7 +238,7 @@ public class SwitchController {
         activityLogger.log(ActivityType.UPDATE_ISL_BFD_FLAG, linkParametersDto.toString());
         return serviceSwitch.updateLinkBfdFlag(linkParametersDto);
     }
-
+    
     /**
      * Get Link Props.
      *
@@ -289,7 +288,7 @@ public class SwitchController {
         activityLogger.log(ActivityType.CONFIGURE_SWITCH_PORT, "SW_" + switchId + ", P_" + port);
         return serviceSwitch.configurePort(switchId, port, configuration);
     }
-
+    
     /**
      * Gets Port flows.
      *
@@ -301,24 +300,9 @@ public class SwitchController {
     @RequestMapping(path = "/{switchId}/flows", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody ResponseEntity<List<?>> getPortFlows(@PathVariable final String switchId,
-            @RequestParam(value = "port", required = false) final String port,
+            @RequestParam(value = "port", required = false) final String port, 
             @RequestParam(value = "inventory", required = false) final boolean inventory) throws AccessDeniedException {
         return serviceSwitch.getPortFlows(switchId, port, inventory);
-    }
-
-    /**
-     * Gets flows by ports.
-     *
-     * @param switchId the switch id
-     * @param portIds the ports list
-     * @return the customers detail
-     */
-    @RequestMapping(path = "/{switchId}/flows-by-port", method = RequestMethod.GET)
-    @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody ResponseEntity<SwitchFlowsInfoPerPort> getFlowsByPort(
-            @PathVariable final String switchId,
-            @RequestParam(value = "ports", required = false) List<Integer> portIds) {
-        return serviceSwitch.getFlowsByPorts(switchId, portIds);
     }
 
     /**
@@ -368,7 +352,7 @@ public class SwitchController {
         activityLogger.log(ActivityType.SWITCH_MAINTENANCE, switchId);
         return serviceSwitch.updateMaintenanceStatus(switchId, switchInfo);
     }
-
+    
     /**
      * Delete Switch.
      *
@@ -384,7 +368,7 @@ public class SwitchController {
         activityLogger.log(ActivityType.DELETE_SWITCH, switchId);
         return serviceSwitch.deleteSwitch(switchId, force);
     }
-
+    
     /**
      * Updates the switch port properties.
      *
@@ -393,25 +377,25 @@ public class SwitchController {
     @RequestMapping(value = "/{switchId}/ports/{port}/properties", method = RequestMethod.PUT)
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = { IConstants.Permission.SW_UPDATE_PORT_PROPERTIES })
-    public @ResponseBody SwitchProperty updateSwitchPortProperty(@PathVariable final String switchId,
+    public @ResponseBody SwitchProperty updateSwitchPortProperty(@PathVariable final String switchId, 
             @PathVariable final String port, @RequestBody SwitchProperty switchProperty) {
         activityLogger.log(ActivityType.UPDATE_SW_PORT_PROPERTIES, switchId);
         return serviceSwitch.updateSwitchPortProperty(switchId, port, switchProperty);
     }
-
+    
     /**
      * Gets the switch port properties.
      *
      * @return the SwitchProperty
-     *
+     * 
      */
     @RequestMapping(value = "/{switchId}/ports/{port}/properties", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
-    public @ResponseBody SwitchProperty getSwitchPortProperty(@PathVariable final String switchId,
+    public @ResponseBody SwitchProperty getSwitchPortProperty(@PathVariable final String switchId, 
             @PathVariable final String port) {
         return serviceSwitch.getSwitchPortProperty(switchId, port);
     }
-
+    
 
     /**
      * Updates switch location.
@@ -428,7 +412,7 @@ public class SwitchController {
         activityLogger.log(ActivityType.UPDATE_SWITCH_LOCATION, switchId);
         return serviceSwitch.updateSwitchLocation(switchId, switchLocation);
     }
-
+    
     /**
      * Gets the link BFD properties.
      *
@@ -447,7 +431,7 @@ public class SwitchController {
             required = false) final String dstPort) {
         return serviceSwitch.getLinkBfdProperties(srcSwitch, srcPort, dstSwitch, dstPort);
     }
-
+    
     /**
      * Updates the link BFD properties.
      *
