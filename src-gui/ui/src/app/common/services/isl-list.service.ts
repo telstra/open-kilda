@@ -79,26 +79,7 @@ export class IslListService {
 	];
         const url = `${environment.apiEndPoint}/switch/link/props`; 
         return this.httpClient.put(url,requestPayload);
-  }
-  
-  updateDescription(src_switch, src_port, dst_switch, dst_port, description): Observable<{}>{
-    let requestPayload = [
-      {"src_switch":src_switch,
-       "src_port":src_port,
-       "dst_switch":dst_switch,
-       "dst_port":dst_port,
-       "props":{"description":description}
-      },
-      {"src_switch":dst_switch,
-       "src_port":dst_port,
-       "dst_switch":src_switch,
-       "dst_port":src_port,
-       "props":{"description":description}
-      }
-    ];
-          const url = `${environment.apiEndPoint}/switch/link/props`; 
-          return this.httpClient.put(url,requestPayload);
-      }
+    }
 
     getLinkBFDProperties(src_switch, src_port, dst_switch, dst_port){
       let date = new Date().getTime();

@@ -10,35 +10,6 @@
       <input style="height: 20px; width: 20px; margin: 0px 4px"  type="checkbox" name="doevacuate"  (change)="setEvacuate($event)"  />
       <label style="margin-top: -10px; vertical-align: middle;" >Evacuate all flows as well.</label>
     </div>
-   <div  *ngIf="isDescription">
-    <form [formGroup]="DescriptionForm">
-      <div class='isl_sbl_details'>
-        <label id="isl_description" class='col-form-label'>Description:</label>
-        <div class="text_cost_details mt-2" id="text_cost_details" [hidden]="showDescriptionEditing">
-          <span style="padding-right: 0 !important">{{descriptionValue ||'-'}}</span>
-          <span>
-            <span class="isl_div_cost"></span><span class="ml-1 cursor-pointer" id="edit_isl_cost"
-             style="display: inline;">
-              <i title="Edit" (click)="editDescription()" class="fa fa-pencil-square-o fa-2x cursor-pointer"></i>
-            </span>
-          </span>
-        </div>
-        <div class="update_isl_description"  [hidden]="!showDescriptionEditing">
-          <div class="row" style=" margin-bottom: 10px;">
-           <div class="col-lg-11">
-            <textarea formControlName="description"  id="isl_description" 
-            class="form-control"></textarea>     
-           </div>
-           <div class="mt-2">
-          <span style="margin-right: 5px; border: 1; padding: 6px 11px;" id="cancel_isl_cost_update"
-            class="btn kilda_btn ml-0.5" (click)="cancelEditedDescription()"><i
-              class="icon icon-remove-sign"></i></span>
-           </div>
-          </div>
-        </div>
-      </div>
-    </form>
-   </div>
   </div>
   <div class="modal-footer">
     <button type="button" class="btn kilda_btn" (click)="submitConfirmation()">Yes</button>
