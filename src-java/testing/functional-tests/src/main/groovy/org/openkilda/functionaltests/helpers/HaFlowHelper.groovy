@@ -270,7 +270,7 @@ class HaFlowHelper {
 
     SwitchId getYPoint(HaFlow haFlow) {
         def sharedForwardPath = northboundV2.getHaFlowPaths(haFlow.getHaFlowId()).getSharedPath().getForward()
-        return sharedForwardPath == null ? sharedForwardPath.last().getSwitchId() :
+        return sharedForwardPath != null ? sharedForwardPath.last().getSwitchId() :
                 haFlow.getSharedEndpoint().getSwitchId()
     }
 

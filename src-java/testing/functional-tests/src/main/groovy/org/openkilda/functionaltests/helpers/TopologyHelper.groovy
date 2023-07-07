@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.functionaltests.helpers.model.SwitchPairs
+
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 import org.openkilda.functionaltests.helpers.model.SwitchPair
@@ -43,7 +45,9 @@ class TopologyHelper {
      * Get a switch pair of random switches.
      *
      * @param forceDifferent whether to exclude the picked src switch when looking for dst switch
+     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
      */
+    @Deprecated
     Tuple2<Switch, Switch> getRandomSwitchPair(boolean forceDifferent = true) {
         def randomSwitch = { List<Switch> switches ->
             switches[new Random().nextInt(switches.size())]
@@ -53,32 +57,60 @@ class TopologyHelper {
         return new Tuple2(src, dst)
     }
 
+    SwitchPairs getAllSwitchPairs(boolean includeReverse = false) {
+        return new SwitchPairs(getSwitchPairs(includeReverse))
+    }
+
+    /**
+     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
+     */
+    @Deprecated
     SwitchPair getSingleSwitchPair() {
         return SwitchPair.singleSwitchInstance(topology.activeSwitches.first())
     }
 
+    /**
+     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
+     */
+    @Deprecated
     List<SwitchPair> getAllSingleSwitchPairs() {
         return topology.activeSwitches.collect { SwitchPair.singleSwitchInstance(it) }
     }
 
+    /**
+     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
+     */
+    @Deprecated
     SwitchPair getNeighboringSwitchPair() {
         getSwitchPairs().find {
             it.paths.min { it.size() }?.size() == 2
         }
     }
 
+    /**
+     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
+     */
+    @Deprecated
     SwitchPair getNotNeighboringSwitchPair() {
         getSwitchPairs().find {
             it.paths.min { it.size() }?.size() > 2
         }
     }
 
+    /**
+     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
+     */
+    @Deprecated
     List<SwitchPair> getAllNeighboringSwitchPairs() {
         getSwitchPairs().findAll {
             it.paths.min { it.size() }?.size() == 2
         }
     }
 
+    /**
+     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
+     */
+    @Deprecated
     List<SwitchPair> getAllNotNeighboringSwitchPairs() {
         getSwitchPairs().findAll {
             it.paths.min { it.size() }?.size() > 2
@@ -90,10 +122,13 @@ class TopologyHelper {
         swPair.src in tgSwitches && swPair.dst in tgSwitches
     }
 
+    /**
+     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
+     */
+    @Deprecated
     List<SwitchPair> getSwitchPairs(boolean includeReverse = false) {
         //get deep copy
-        def mapper = new ObjectMapper()
-        def result = mapper.readValue(mapper.writeValueAsString(getSwitchPairsCached()), SwitchPair[]).toList()
+        def result = getSwitchPairsCached().collect()
         return includeReverse ? result.collectMany { [it, it.reversed] } : result
     }
 
@@ -192,7 +227,11 @@ class TopologyHelper {
                 .findAll { src, dst -> src != dst } //non-single-switch
                 .unique { it.sort() } //no reversed versions of same flows
                 .collect { Switch src, Switch dst ->
-                    new SwitchPair(src: src, dst: dst, paths: getDbPathsCached(src.dpId, dst.dpId))
+                    new SwitchPair(src: src,
+                            dst: dst,
+                            paths: getDbPathsCached(src.dpId, dst.dpId),
+                            northboundService: northbound,
+                            topologyDefinition: topology)
                 }
     }
 
