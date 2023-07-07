@@ -14,8 +14,9 @@ wget https://raw.githubusercontent.com/jpetazzo/pipework/master/pipework && chmo
 `sudo dmidecode | grep Interleaved -- memory channels`
 
 # connect to kilda setup
-`sudo ./pipework br_kilda_int  -i eth1 server42-dpdk    10.0.77.2/24
-sudo ./pipework br_kilda_test -i eth2 server42-dpdk    10.0.88.1/24
+`
+sudo ./pipework br_kilda_int  -i eth1 server42-server    10.0.77.2/24
+sudo ./pipework br_kilda_test -i eth2 server42-server    10.0.88.1/24
 sudo ./pipework br_kilda_int  -i eth1 server42-control 10.0.77.1/24
 sudo ./pipework br_kilda_int  -i eth1 server42-stats   10.0.77.3/24
 `

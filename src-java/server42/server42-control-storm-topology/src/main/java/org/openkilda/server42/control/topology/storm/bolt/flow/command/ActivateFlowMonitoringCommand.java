@@ -16,7 +16,6 @@
 
 package org.openkilda.server42.control.topology.storm.bolt.flow.command;
 
-import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.server42.control.messaging.flowrtt.ActivateFlowMonitoringInfoData;
 import org.openkilda.server42.control.topology.storm.bolt.flow.FlowHandler;
 
@@ -33,7 +32,12 @@ public class ActivateFlowMonitoringCommand extends FlowCommand {
 
     @Override
     public void apply(FlowHandler handler) {
-        FlowEndpointPayload flow = isForward ? data.getSource() : data.getDestination();
-        handler.processActivateFlowMonitoring(data.getId(), flow, isForward);
+        if (isForward) {
+            handler.processActivateFlowMonitoring(data.getId(), data.getSource(),
+                    data.getDestination().getDatapath(), true);
+        } else {
+            handler.processActivateFlowMonitoring(data.getId(), data.getDestination(),
+                    data.getSource().getDatapath(), false);
+        }
     }
 }

@@ -17,17 +17,17 @@ package org.openkilda.server42.control.messaging.flowrtt;
 
 import org.openkilda.server42.messaging.FlowDirection;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
 @Builder
-@AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
+@JsonIgnoreProperties(ignoreUnknown = true)
 @EqualsAndHashCode(callSuper = false)
 public class AddFlow extends Message {
     Headers headers;
@@ -36,4 +36,5 @@ public class AddFlow extends Message {
     Long innerTunnelId;
     FlowDirection direction;
     Integer port;
+    String dstMac;
 }

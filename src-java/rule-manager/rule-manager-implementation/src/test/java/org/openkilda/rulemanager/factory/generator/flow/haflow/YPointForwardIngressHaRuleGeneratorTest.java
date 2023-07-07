@@ -15,6 +15,7 @@
 
 package org.openkilda.rulemanager.factory.generator.flow.haflow;
 
+
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;

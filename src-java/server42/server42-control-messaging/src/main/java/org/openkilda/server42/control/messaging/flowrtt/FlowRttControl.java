@@ -93,6 +93,16 @@ public final class FlowRttControl {
      * <code>int64 inner_tunnel_id = 10;</code>
      */
     long getInnerTunnelId();
+
+    /**
+     * <code>string switch_id = 11;</code>
+     */
+    java.lang.String getSwitchId();
+    /**
+     * <code>string switch_id = 11;</code>
+     */
+    com.google.protobuf.ByteString
+        getSwitchIdBytes();
   }
   /**
    * Protobuf type {@code org.openkilda.server42.control.messaging.flowrtt.Flow}
@@ -111,6 +121,7 @@ public final class FlowRttControl {
       encapsulationType_ = 0;
       transitEncapsulationType_ = 0;
       dstMac_ = "";
+      switchId_ = "";
     }
 
     @java.lang.Override
@@ -195,6 +206,12 @@ public final class FlowRttControl {
             case 80: {
 
               innerTunnelId_ = input.readInt64();
+              break;
+            }
+            case 90: {
+              java.lang.String s = input.readStringRequireUtf8();
+
+              switchId_ = s;
               break;
             }
             default: {
@@ -491,6 +508,40 @@ public final class FlowRttControl {
       return innerTunnelId_;
     }
 
+    public static final int SWITCH_ID_FIELD_NUMBER = 11;
+    private volatile java.lang.Object switchId_;
+    /**
+     * <code>string switch_id = 11;</code>
+     */
+    public java.lang.String getSwitchId() {
+      java.lang.Object ref = switchId_;
+      if (ref instanceof java.lang.String) {
+        return (java.lang.String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        java.lang.String s = bs.toStringUtf8();
+        switchId_ = s;
+        return s;
+      }
+    }
+    /**
+     * <code>string switch_id = 11;</code>
+     */
+    public com.google.protobuf.ByteString
+        getSwitchIdBytes() {
+      java.lang.Object ref = switchId_;
+      if (ref instanceof java.lang.String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8(
+                (java.lang.String) ref);
+        switchId_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+
     private byte memoizedIsInitialized = -1;
     @java.lang.Override
     public final boolean isInitialized() {
@@ -534,6 +585,9 @@ public final class FlowRttControl {
       }
       if (innerTunnelId_ != 0L) {
         output.writeInt64(10, innerTunnelId_);
+      }
+      if (!getSwitchIdBytes().isEmpty()) {
+        com.google.protobuf.GeneratedMessageV3.writeString(output, 11, switchId_);
       }
       unknownFields.writeTo(output);
     }
@@ -582,6 +636,9 @@ public final class FlowRttControl {
         size += com.google.protobuf.CodedOutputStream
           .computeInt64Size(10, innerTunnelId_);
       }
+      if (!getSwitchIdBytes().isEmpty()) {
+        size += com.google.protobuf.GeneratedMessageV3.computeStringSize(11, switchId_);
+      }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
       return size;
@@ -615,6 +672,8 @@ public final class FlowRttControl {
           != other.getHashCode()) return false;
       if (getInnerTunnelId()
           != other.getInnerTunnelId()) return false;
+      if (!getSwitchId()
+          .equals(other.getSwitchId())) return false;
       if (!unknownFields.equals(other.unknownFields)) return false;
       return true;
     }
@@ -650,6 +709,8 @@ public final class FlowRttControl {
       hash = (37 * hash) + INNER_TUNNEL_ID_FIELD_NUMBER;
       hash = (53 * hash) + com.google.protobuf.Internal.hashLong(
           getInnerTunnelId());
+      hash = (37 * hash) + SWITCH_ID_FIELD_NUMBER;
+      hash = (53 * hash) + getSwitchId().hashCode();
       hash = (29 * hash) + unknownFields.hashCode();
       memoizedHashCode = hash;
       return hash;
@@ -803,6 +864,8 @@ public final class FlowRttControl {
 
         innerTunnelId_ = 0L;
 
+        switchId_ = "";
+
         return this;
       }
 
@@ -839,6 +902,7 @@ public final class FlowRttControl {
         result.udpSrcPort_ = udpSrcPort_;
         result.hashCode_ = hashCode_;
         result.innerTunnelId_ = innerTunnelId_;
+        result.switchId_ = switchId_;
         onBuilt();
         return result;
       }
@@ -918,6 +982,10 @@ public final class FlowRttControl {
         }
         if (other.getInnerTunnelId() != 0L) {
           setInnerTunnelId(other.getInnerTunnelId());
+        }
+        if (!other.getSwitchId().isEmpty()) {
+          switchId_ = other.switchId_;
+          onChanged();
         }
         this.mergeUnknownFields(other.unknownFields);
         onChanged();
@@ -1348,6 +1416,75 @@ public final class FlowRttControl {
       public Builder clearInnerTunnelId() {
         
         innerTunnelId_ = 0L;
+        onChanged();
+        return this;
+      }
+
+      private java.lang.Object switchId_ = "";
+      /**
+       * <code>string switch_id = 11;</code>
+       */
+      public java.lang.String getSwitchId() {
+        java.lang.Object ref = switchId_;
+        if (!(ref instanceof java.lang.String)) {
+          com.google.protobuf.ByteString bs =
+              (com.google.protobuf.ByteString) ref;
+          java.lang.String s = bs.toStringUtf8();
+          switchId_ = s;
+          return s;
+        } else {
+          return (java.lang.String) ref;
+        }
+      }
+      /**
+       * <code>string switch_id = 11;</code>
+       */
+      public com.google.protobuf.ByteString
+          getSwitchIdBytes() {
+        java.lang.Object ref = switchId_;
+        if (ref instanceof String) {
+          com.google.protobuf.ByteString b = 
+              com.google.protobuf.ByteString.copyFromUtf8(
+                  (java.lang.String) ref);
+          switchId_ = b;
+          return b;
+        } else {
+          return (com.google.protobuf.ByteString) ref;
+        }
+      }
+      /**
+       * <code>string switch_id = 11;</code>
+       */
+      public Builder setSwitchId(
+          java.lang.String value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  
+        switchId_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>string switch_id = 11;</code>
+       */
+      public Builder clearSwitchId() {
+        
+        switchId_ = getDefaultInstance().getSwitchId();
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>string switch_id = 11;</code>
+       */
+      public Builder setSwitchIdBytes(
+          com.google.protobuf.ByteString value) {
+        if (value == null) {
+    throw new NullPointerException();
+  }
+  checkByteStringIsUtf8(value);
+        
+        switchId_ = value;
         onChanged();
         return this;
       }
@@ -4567,7 +4704,7 @@ public final class FlowRttControl {
     java.lang.String[] descriptorData = {
       "\n\026flow-rtt-control.proto\0220org.openkilda." +
       "server42.control.messaging.flowrtt\032\031goog" +
-      "le/protobuf/any.proto\"\261\003\n\004Flow\022\017\n\007flow_i" +
+      "le/protobuf/any.proto\"\304\003\n\004Flow\022\017\n\007flow_i" +
       "d\030\001 \001(\t\022h\n\022encapsulation_type\030\002 \001(\0162H.or" +
       "g.openkilda.server42.control.messaging.f" +
       "lowrtt.Flow.EncapsulationTypeB\002\030\001\022\021\n\ttun" +
@@ -4577,16 +4714,17 @@ public final class FlowRttControl {
       "peB\002\030\001\022\031\n\021transit_tunnel_id\030\005 \001(\003\022\021\n\tdir" +
       "ection\030\006 \001(\010\022\017\n\007dst_mac\030\007 \001(\t\022\024\n\014udp_src" +
       "_port\030\010 \001(\r\022\021\n\thash_code\030\t \001(\005\022\027\n\017inner_" +
-      "tunnel_id\030\n \001(\003\"(\n\021EncapsulationType\022\010\n\004" +
-      "VLAN\020\000\022\t\n\005VXLAN\020\001\"O\n\007AddFlow\022D\n\004flow\030\001 \001" +
-      "(\01326.org.openkilda.server42.control.mess" +
-      "aging.flowrtt.Flow\"R\n\nRemoveFlow\022D\n\004flow" +
-      "\030\001 \001(\01326.org.openkilda.server42.control." +
-      "messaging.flowrtt.Flow\"#\n\020ClearFlowsFilt" +
-      "er\022\017\n\007dst_mac\030\001 \001(\t\"Q\n\tListFlows\022D\n\004flow" +
-      "\030\001 \003(\01326.org.openkilda.server42.control." +
-      "messaging.flowrtt.Flow\"\"\n\017ListFlowsFilte" +
-      "r\022\017\n\007dst_mac\030\001 \001(\tb\006proto3"
+      "tunnel_id\030\n \001(\003\022\021\n\tswitch_id\030\013 \001(\t\"(\n\021En" +
+      "capsulationType\022\010\n\004VLAN\020\000\022\t\n\005VXLAN\020\001\"O\n\007" +
+      "AddFlow\022D\n\004flow\030\001 \001(\01326.org.openkilda.se" +
+      "rver42.control.messaging.flowrtt.Flow\"R\n" +
+      "\nRemoveFlow\022D\n\004flow\030\001 \001(\01326.org.openkild" +
+      "a.server42.control.messaging.flowrtt.Flo" +
+      "w\"#\n\020ClearFlowsFilter\022\017\n\007dst_mac\030\001 \001(\t\"Q" +
+      "\n\tListFlows\022D\n\004flow\030\001 \003(\01326.org.openkild" +
+      "a.server42.control.messaging.flowrtt.Flo" +
+      "w\"\"\n\017ListFlowsFilter\022\017\n\007dst_mac\030\001 \001(\tb\006p" +
+      "roto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -4598,7 +4736,7 @@ public final class FlowRttControl {
     internal_static_org_openkilda_server42_control_messaging_flowrtt_Flow_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_org_openkilda_server42_control_messaging_flowrtt_Flow_descriptor,
-        new java.lang.String[] { "FlowId", "EncapsulationType", "TunnelId", "TransitEncapsulationType", "TransitTunnelId", "Direction", "DstMac", "UdpSrcPort", "HashCode", "InnerTunnelId", });
+        new java.lang.String[] { "FlowId", "EncapsulationType", "TunnelId", "TransitEncapsulationType", "TransitTunnelId", "Direction", "DstMac", "UdpSrcPort", "HashCode", "InnerTunnelId", "SwitchId", });
     internal_static_org_openkilda_server42_control_messaging_flowrtt_AddFlow_descriptor =
       getDescriptor().getMessageTypes().get(1);
     internal_static_org_openkilda_server42_control_messaging_flowrtt_AddFlow_fieldAccessorTable = new

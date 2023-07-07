@@ -37,7 +37,7 @@ public class RoutingMetadata extends MetadataBase {
     // NOTE: port count was increased from 128 to 4096. At this moment only 1000 ports can be used
     // on Noviflow switches. But according to open flow specs port count could be up to 65536.
     // So we increased port count to maximum possible value.
-    private static final BitField INPUT_PORT_FIELD         = new BitField(0x0000_0000_0FFF_0000L);
+    private static final BitField INPUT_PORT_FIELD         = new BitField(0x0000_0000_0FFE_0000L);
 
     static final long MAX_INPUT_PORT = INPUT_PORT_FIELD.getMask() >> INPUT_PORT_FIELD.getOffset();
 

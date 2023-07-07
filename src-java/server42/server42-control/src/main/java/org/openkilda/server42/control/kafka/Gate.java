@@ -109,12 +109,10 @@ public class Gate implements ConsumerSeekAware {
     @KafkaHandler
     void listen(@Payload AddFlow data,
                 @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String switchIdKey) {
-
         SwitchId switchId = new SwitchId(switchIdKey);
-
-        Builder builder = CommandPacket.newBuilder();
         Flow flow = Flow.newBuilder()
                 .setFlowId(data.getFlowId())
+                .setSwitchId(switchId.toMacAddress())
                 .setEncapsulationType(Flow.EncapsulationType.VLAN)
                 .setTunnelId(data.getTunnelId())
                 .setTransitEncapsulationType(Flow.EncapsulationType.VLAN)
@@ -122,14 +120,15 @@ public class Gate implements ConsumerSeekAware {
                 .setTransitTunnelId(switchToVlanMap.get(switchIdKey))
                 .setDirection(FlowDirection.toBoolean(data.getDirection()))
                 .setUdpSrcPort(flowRttUdpSrcPortOffset + data.getPort())
-                .setDstMac(switchId.toMacAddress())
+                .setDstMac(data.getDstMac())
                 .setHashCode(data.hashCode())
                 .build();
 
         FlowRttControl.AddFlow addFlow = FlowRttControl.AddFlow.newBuilder().setFlow(flow).build();
-        builder.setType(Type.ADD_FLOW);
-        builder.addCommand(Any.pack(addFlow));
-        CommandPacket packet = builder.build();
+        CommandPacket packet = CommandPacket.newBuilder()
+                .setType(Type.ADD_FLOW)
+                .addCommand(Any.pack(addFlow))
+                .build();
         try {
             zeroMqClient.send(packet);
         } catch (InvalidProtocolBufferException e) {
