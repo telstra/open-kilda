@@ -143,7 +143,8 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
                     modalRef.close();
                     this.toastr.success(MessageObj.switch_deleted, "Success!");
                     this.loaderService.hide();
-                    localStorage.removeItem('switchDetailsJSON');
+                    const switchDetailsKey = 'switchDetailsKey_' + this.switchId;
+                    localStorage.removeItem(switchDetailsKey);
                     localStorage.removeItem('SWITCHES_LIST');
                     localStorage.removeItem('switchPortDetail');
                     this.router.navigate(["/switches"]);
@@ -250,10 +251,11 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit,OnDestroy {
             self.loaderService.hide();
             self.name = response.name;
             self.switchDetail.name = response.name;
-            let retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON'));
-            localStorage.removeItem('switchDetailsJSON');
+            const switchDetailsKey = 'switchDetailsKey_' + this.switch_id;
+            const retrievedSwitchObject = JSON.parse(localStorage.getItem(switchDetailsKey));
+            localStorage.removeItem(switchDetailsKey);
             retrievedSwitchObject.name = response.name;
-            localStorage.setItem('switchDetailsJSON',JSON.stringify(retrievedSwitchObject));
+            localStorage.setItem(switchDetailsKey, JSON.stringify(retrievedSwitchObject));
             localStorage.removeItem('SWITCHES_LIST');
           },(error)=>{ 
             this.toastr.error(error.error['error-message']);
