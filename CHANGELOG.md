@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.138.0 (06/07/2023)
+
+### Bug Fixes:
+-  [#5245](https://github.com/telstra/open-kilda/pull/5245) [Kilda GUI] wrong port information on switch port page (Issue: [#4922](https://github.com/telstra/open-kilda/issues/4922))
+
+### Improvements:
+
+-  [#5253](https://github.com/telstra/open-kilda/pull/5253) [Kilda GUI] GUI Switch details page sends one API request per each switch port (Issue: [#5153](https://github.com/telstra/open-kilda/issues/5248))
+-  [#5246](https://github.com/telstra/open-kilda/pull/5246) [Kilda GUI] Adding ticket reference field in isl detail (Issue: [#5072](https://github.com/telstra/open-kilda/issues/5072))
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.137.0...v1.138.0).
+
+### Affected Components:
+Kilda GUI
+
+---
+
 ## v1.137.0 (29/06/2023)
 
 ### Features:
