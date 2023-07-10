@@ -4,6 +4,7 @@ import { ToastrService } from 'ngx-toastr';
 import { ClipboardService } from "ngx-clipboard";
 import { LoaderService } from "../../../common/services/loader.service";
 import { CommonService } from '../../../common/services/common.service';
+import {ActivatedRoute} from '@angular/router';
 
 @Component({
   selector: 'app-switch-meters',
@@ -27,11 +28,17 @@ export class SwitchMetersComponent implements OnInit {
     private toastr: ToastrService,
     private loaderService: LoaderService,
     private clipboardService: ClipboardService,
+    private route: ActivatedRoute,
     public commonService: CommonService
   ) {}
 
   ngOnInit() {
-      let retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON'));
+      let switchDetailsKey = 'switchDetailsKey_';
+      this.route.params.subscribe(params => {
+          const id = params['id'];
+          switchDetailsKey = switchDetailsKey + id;
+      });
+      const retrievedSwitchObject = JSON.parse(localStorage.getItem(switchDetailsKey));
       this.switch_id =retrievedSwitchObject.switch_id;
       this.tabularViewer = false;
       this.switchMeters();
