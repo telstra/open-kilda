@@ -22,4 +22,16 @@ public class CacheExpirationRequest {
     private final String flowId;
     private final long forwardCookie;
     private final long reverseCookie;
+
+    public CacheExpirationRequest(FlowWithTransitEncapsulation flow) {
+        if (flow.getHaFlow() != null) {
+            flowId = flow.getHaFlow().getHaFlowId();
+            forwardCookie = flow.getHaFlow().getForwardPath().getCookie().getValue();
+            reverseCookie = flow.getHaFlow().getReversePath().getCookie().getValue();
+        } else {
+            flowId = flow.getFlow().getFlowId();
+            forwardCookie = flow.getFlow().getForwardPath().getCookie().getValue();
+            reverseCookie = flow.getFlow().getReversePath().getCookie().getValue();
+        }
+    }
 }

@@ -45,14 +45,12 @@ import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.ping.model.CacheExpirationRequest;
+import org.openkilda.wfm.topology.ping.model.FlowWithTransitEncapsulation;
 import org.openkilda.wfm.topology.ping.model.GroupId;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 import org.openkilda.wfm.topology.ping.model.PingContext.Kinds;
 
 import com.google.common.annotations.VisibleForTesting;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -206,7 +204,7 @@ public class FlowFetcher extends Abstract {
                     .group(new GroupId(DIRECTION_COUNT_PER_FLOW))
                     .kind(Kinds.PERIODIC)
                     .flow(flow.getFlow())
-                    .yFlowId(flow.yFlowId)
+                    .yFlowId(flow.getYFlowId())
                     .transitEncapsulation(flow.getTransitEncapsulation())
                     .build();
             emit(input, pingContext, commandContext);
@@ -428,17 +426,7 @@ public class FlowFetcher extends Abstract {
         OutputCollector collector = getOutput();
         flowsSet.removeAll(flows);
         for (FlowWithTransitEncapsulation flow : flowsSet) {
-            CacheExpirationRequest cacheExpirationRequest;
-            if (flow.getHaFlow() != null) {
-                cacheExpirationRequest = new CacheExpirationRequest(flow.getHaFlow().getHaFlowId(),
-                        flow.getHaFlow().getForwardPath().getCookie().getValue(),
-                        flow.getHaFlow().getReversePath().getCookie().getValue());
-            } else {
-                cacheExpirationRequest = new CacheExpirationRequest(flow.getFlow().getFlowId(),
-                        flow.getFlow().getForwardPath().getCookie().getValue(),
-                        flow.getFlow().getReversePath().getCookie().getValue());
-            }
-            Values output = new Values(cacheExpirationRequest, commandContext);
+            Values output = new Values(new CacheExpirationRequest(flow), commandContext);
             collector.emit(STREAM_EXPIRE_CACHE_ID, input, output);
         }
     }
@@ -493,13 +481,4 @@ public class FlowFetcher extends Abstract {
         }
     }
 
-    @Value
-    @AllArgsConstructor
-    @EqualsAndHashCode(exclude = {"transitEncapsulation"})
-    private static class FlowWithTransitEncapsulation {
-        Flow flow;
-        String yFlowId;
-        HaFlow haFlow;
-        FlowTransitEncapsulation transitEncapsulation;
-    }
 }
