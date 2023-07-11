@@ -19,9 +19,6 @@ import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -63,18 +60,19 @@ import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.ValidationResult;
 import org.openkilda.wfm.topology.switchmanager.service.configs.SwitchSyncConfig;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.UUID;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class SwitchSyncServiceTest {
 
     private static final int OF_COMMANDS_BATCH_SIZE = 500;
@@ -107,7 +105,7 @@ public class SwitchSyncServiceTest {
     private List<MeterSpeakerData> actualMeters;
     private List<GroupSpeakerData> actualGroups;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         service = new SwitchSyncService(carrier, commandBuilder, new SwitchSyncConfig(OF_COMMANDS_BATCH_SIZE));
 
@@ -141,9 +139,12 @@ public class SwitchSyncServiceTest {
         verifyNoMoreInteractions(carrier);
     }
 
-    @Test(expected = MessageDispatchException.class)
-    public void reportErrorInCaseOfMissingHandler() throws UnexpectedInputException, MessageDispatchException {
-        service.dispatchWorkerMessage(new DeleteLogicalPortResponse("", 2, true), new MessageCookie("dummy"));
+    @Test
+    public void reportErrorInCaseOfMissingHandler() {
+        Assertions.assertThrows(MessageDispatchException.class, () -> {
+            service.dispatchWorkerMessage(new DeleteLogicalPortResponse("", 2, true),
+                    new MessageCookie("dummy"));
+        });
     }
 
     @Test
@@ -151,10 +152,10 @@ public class SwitchSyncServiceTest {
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
         verify(carrier).sendOfCommandsToSpeaker(eq(KEY), captor.capture(), eq(OfCommandAction.INSTALL), eq(SWITCH_ID));
-        assertEquals(1, captor.getValue().size());
-        assertTrue(captor.getValue().get(0) instanceof FlowCommand);
+        Assertions.assertEquals(1, captor.getValue().size());
+        Assertions.assertTrue(captor.getValue().get(0) instanceof FlowCommand);
         FlowCommand flowCommand = (FlowCommand) captor.getValue().get(0);
-        assertEquals(flowEntry.getCookie(), flowCommand.getData().getCookie().getValue());
+        Assertions.assertEquals(flowEntry.getCookie(), flowCommand.getData().getCookie().getValue());
 
         service.dispatchWorkerMessage(buildSpeakerCommandResponse(), new MessageCookie(KEY));
 
@@ -249,17 +250,17 @@ public class SwitchSyncServiceTest {
         service.handleSwitchSync(KEY, request, makeValidationResult());
 
         verify(carrier).sendOfCommandsToSpeaker(eq(KEY), captor.capture(), eq(OfCommandAction.DELETE), eq(SWITCH_ID));
-        assertEquals(2, captor.getValue().size());
+        Assertions.assertEquals(2, captor.getValue().size());
         FlowCommand flowCommand = captor.getValue().stream()
                 .filter(command -> command instanceof FlowCommand)
                 .map(command -> (FlowCommand) command)
                 .findFirst().orElseThrow(() -> new IllegalStateException("Flow command not found"));
-        assertEquals(EXCESS_COOKIE, flowCommand.getData().getCookie().getValue());
+        Assertions.assertEquals(EXCESS_COOKIE, flowCommand.getData().getCookie().getValue());
         MeterCommand meterCommand = captor.getValue().stream()
                 .filter(command -> command instanceof MeterCommand)
                 .map(command -> (MeterCommand) command)
                 .findFirst().orElseThrow(() -> new IllegalStateException("Meter command not found"));
-        assertEquals(EXCESS_COOKIE, meterCommand.getData().getMeterId().getValue());
+        Assertions.assertEquals(EXCESS_COOKIE, meterCommand.getData().getMeterId().getValue());
         service.dispatchWorkerMessage(buildSpeakerCommandResponse(), new MessageCookie(KEY));
 
         verify(carrier).sendOfCommandsToSpeaker(eq(KEY), any(List.class), eq(OfCommandAction.INSTALL), eq(SWITCH_ID));
@@ -309,7 +310,7 @@ public class SwitchSyncServiceTest {
         verify(carrier).cancelTimeoutCallback(eq(KEY));
         ArgumentCaptor<InfoMessage> responseCaptor = ArgumentCaptor.forClass(InfoMessage.class);
         verify(carrier).response(eq(KEY), responseCaptor.capture());
-        assertNull(((SwitchSyncResponse) responseCaptor.getValue().getData()).getMeters());
+        Assertions.assertNull(((SwitchSyncResponse) responseCaptor.getValue().getData()).getMeters());
 
         verifyNoInteractions(commandBuilder);
         verifyNoMoreInteractions(carrier);

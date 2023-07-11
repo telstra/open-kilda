@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology.switchmanager.mappers;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
 import static org.openkilda.wfm.topology.switchmanager.mappers.FlowEntryConverter.INSTANCE;
 
 import org.openkilda.messaging.info.rule.FlowApplyActions;
@@ -37,8 +35,9 @@ import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -79,7 +78,7 @@ public class FlowEntryConverterTest {
     public static Instructions instructions;
     public static FlowSpeakerData data;
 
-    @BeforeClass
+    @BeforeAll
     public static void initializeData() {
 
         applyActions.add(SET_FIELD_ACTION);
@@ -117,44 +116,44 @@ public class FlowEntryConverterTest {
 
         FlowEntry entry = INSTANCE.toFlowEntry(data);
         // General asserts
-        assertEquals(COOKIE_VALUE, entry.getCookie());
-        assertEquals(DURATION_SECONDS, entry.getDurationSeconds());
-        assertEquals(DURATION_NANOSECONDS, entry.getDurationNanoSeconds());
-        assertEquals(OF_TABLE_FIELD.getTableId(), entry.getTableId());
-        assertEquals(PACKET_COUNT, entry.getPacketCount());
-        assertEquals(OF_VERSION.toString(), entry.getVersion());
-        assertEquals(PRIORITY, entry.getPriority());
-        assertEquals(IDLE_TIMEOUT, entry.getIdleTimeout());
-        assertEquals(HARD_TIMEOUT, entry.getHardTimeout());
-        assertEquals(BYTE_COUNT, entry.getByteCount());
+        Assertions.assertEquals(COOKIE_VALUE, entry.getCookie());
+        Assertions.assertEquals(DURATION_SECONDS, entry.getDurationSeconds());
+        Assertions.assertEquals(DURATION_NANOSECONDS, entry.getDurationNanoSeconds());
+        Assertions.assertEquals(OF_TABLE_FIELD.getTableId(), entry.getTableId());
+        Assertions.assertEquals(PACKET_COUNT, entry.getPacketCount());
+        Assertions.assertEquals(OF_VERSION.toString(), entry.getVersion());
+        Assertions.assertEquals(PRIORITY, entry.getPriority());
+        Assertions.assertEquals(IDLE_TIMEOUT, entry.getIdleTimeout());
+        Assertions.assertEquals(HARD_TIMEOUT, entry.getHardTimeout());
+        Assertions.assertEquals(BYTE_COUNT, entry.getByteCount());
 
         // Field match
         FlowMatchField entryMatchField = entry.getMatch();
         // Metadata field case
-        assertEquals(OF_METADATA_MASK.toString(), entryMatchField.getMetadataMask());
-        assertEquals(OF_METADATA_VALUE.toString(), entryMatchField.getMetadataValue());
+        Assertions.assertEquals(OF_METADATA_MASK.toString(), entryMatchField.getMetadataMask());
+        Assertions.assertEquals(OF_METADATA_VALUE.toString(), entryMatchField.getMetadataValue());
         // Other cases
-        assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getEthType());
-        assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getEthSrc());
-        assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getEthDst());
-        assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getInPort());
-        assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getIpProto());
-        assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getUdpSrc());
-        assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getUdpDst());
-        assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getVlanVid());
-        assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getTunnelId());
+        Assertions.assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getEthType());
+        Assertions.assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getEthSrc());
+        Assertions.assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getEthDst());
+        Assertions.assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getInPort());
+        Assertions.assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getIpProto());
+        Assertions.assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getUdpSrc());
+        Assertions.assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getUdpDst());
+        Assertions.assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getVlanVid());
+        Assertions.assertEquals(Integer.toString(MATCH_VALUE), entryMatchField.getTunnelId());
 
         // Instructions
         FlowInstructions instructions = entry.getInstructions();
-        assertEquals(METER_ID.getValue(), instructions.getGoToMeter().longValue());
-        assertEquals(OF_TABLE_FIELD.getTableId(), instructions.getGoToTable().longValue());
+        Assertions.assertEquals(METER_ID.getValue(), instructions.getGoToMeter().longValue());
+        Assertions.assertEquals(OF_TABLE_FIELD.getTableId(), instructions.getGoToTable().longValue());
         FlowApplyActions applyActions = instructions.getApplyActions();
         FlowSetFieldAction setFieldAction = applyActions.getSetFieldActions().get(0);
-        assertEquals(SET_FIELD_ACTION.getField().toString(), setFieldAction.getFieldName());
-        assertEquals(Long.toString(SET_FIELD_ACTION.getValue()), setFieldAction.getFieldValue());
+        Assertions.assertEquals(SET_FIELD_ACTION.getField().toString(), setFieldAction.getFieldName());
+        Assertions.assertEquals(Long.toString(SET_FIELD_ACTION.getValue()), setFieldAction.getFieldValue());
 
         // Flags
-        assertArrayEquals(flags.stream().map(OfFlowFlag::toString).toArray(), entry.getFlags());
+        Assertions.assertArrayEquals(flags.stream().map(OfFlowFlag::toString).toArray(), entry.getFlags());
 
     }
 

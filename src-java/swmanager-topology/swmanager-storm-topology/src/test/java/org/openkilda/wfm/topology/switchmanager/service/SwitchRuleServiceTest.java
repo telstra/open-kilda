@@ -45,18 +45,14 @@ import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.wfm.topology.switchmanager.bolt.SwitchManagerHub;
 import org.openkilda.wfm.topology.switchmanager.bolt.SwitchManagerHub.OfCommandAction;
 
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -65,15 +61,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@RunWith(Parameterized.class)
+@ExtendWith(MockitoExtension.class)
 public class SwitchRuleServiceTest {
     private static final String KEY = "some key";
     private static final BitField SERVICE_BIT_FIELD = new BitField(0x8000_0000_0000_0000L);
     private static final BitField FIRST_FLOW_BIT_FIELD = new BitField(0x2000_0000_0000_0000L);
     private static final BitField SECOND_FLOW_BIT_FIELD = new BitField(0x4000_0000_0000_0000L);
 
-    @Rule
-    public MockitoRule rule = MockitoJUnit.rule();
 
     @Mock
     private SwitchRepository switchRepository;
@@ -93,14 +87,9 @@ public class SwitchRuleServiceTest {
     @Captor
     private ArgumentCaptor<List<OfCommand>> listCaptor;
 
-    @Parameter
-    public List<SpeakerData> speakerDataList;
-    @Parameter(value = 1)
-    public Integer expectedServiceRulesCount;
-
     private SwitchRuleService switchRuleService;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
         when(switchRepository.exists(any(SwitchId.class))).thenReturn(true);
@@ -108,14 +97,17 @@ public class SwitchRuleServiceTest {
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
         when(flowPathRepository.findByEndpointSwitch(any(SwitchId.class))).thenReturn(Collections.emptyList());
         when(flowPathRepository.findBySegmentSwitch(any(SwitchId.class))).thenReturn(Collections.emptyList());
-        when(ruleManager.buildRulesForSwitch(any(SwitchId.class), any(DataAdapter.class)))
-                .thenReturn(speakerDataList);
 
         switchRuleService = new SwitchRuleService(carrier, persistenceManager, ruleManager);
     }
 
-    @Test
-    public void shouldDeleteOnlyServiceRulesWhenOverwriteDefaultsAction() {
+    @ParameterizedTest
+    @MethodSource("data")
+    public void shouldDeleteOnlyServiceRulesWhenOverwriteDefaultsAction(List<SpeakerData> speakerDataList,
+                                                                        Integer expectedServiceRulesCount) {
+        when(ruleManager.buildRulesForSwitch(any(SwitchId.class), any(DataAdapter.class)))
+                .thenReturn(speakerDataList);
+
         SwitchRulesDeleteRequest request = new SwitchRulesDeleteRequest(
                 new SwitchId("1"),
                 OVERWRITE_DEFAULTS,
@@ -142,7 +134,6 @@ public class SwitchRuleServiceTest {
     /**
      * Generating test data.
      */
-    @Parameters(name = "ServiceRules count = {1}")
     public static Collection<Object[]> data() {
         FlowSpeakerDataBuilder<?, ?> speakerDataBuilder = FlowSpeakerData.builder();
 

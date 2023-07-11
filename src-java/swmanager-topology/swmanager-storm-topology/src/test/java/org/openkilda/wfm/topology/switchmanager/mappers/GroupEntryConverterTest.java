@@ -37,8 +37,8 @@ import org.openkilda.rulemanager.group.GroupType;
 import org.openkilda.rulemanager.group.WatchGroup;
 import org.openkilda.rulemanager.group.WatchPort;
 
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -83,7 +83,7 @@ public class GroupEntryConverterTest {
     public static Set<Action> writeActions = new HashSet<>();
     public static List<Bucket> buckets = new LinkedList<>();
 
-    @BeforeClass
+    @BeforeAll
     public static void initializeData() {
         writeActions.add(SET_FIELD_ACTION);
         writeActions.add(PORT_OUT_ACTION);
