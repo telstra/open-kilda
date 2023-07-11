@@ -67,6 +67,10 @@ if [[ "$(docker images -q kilda-otsdb-dump-restore 2> /dev/null)" == "" ]]; then
   exit 1
 fi
 
+# Convert start and end date to interval format
+start_date="$(gdate -d "${start_date}" +${interval_format})"
+end_date="$(gdate -d "${end_date}" +${interval_format})"
+
 # Define function to dump data from OpenTSDB
 function dump_data {
     docker run --rm --network="host" -v "opentsdb-data-${5}":/tmp kilda-otsdb-dump-restore kilda-otsdb-dump --query-frame-size "${7}" --concurrent "${6}" --metrics-prefix "${2}" --time-stop "${3}" "${4}" "${1}"
