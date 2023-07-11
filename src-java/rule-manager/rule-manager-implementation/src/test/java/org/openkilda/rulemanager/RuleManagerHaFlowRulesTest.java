@@ -17,7 +17,6 @@ package org.openkilda.rulemanager;
 
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toMap;
-import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.METERS;
@@ -50,8 +49,9 @@ import org.openkilda.rulemanager.adapter.InMemoryDataAdapter;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.commons.lang3.ArrayUtils;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -115,7 +115,7 @@ public class RuleManagerHaFlowRulesTest {
 
     private RuleManagerImpl ruleManager;
 
-    @Before
+    @BeforeEach
     public void setup() {
         RuleManagerConfig config = mock(RuleManagerConfig.class);
         when(config.getBroadcastRateLimit()).thenReturn(200);
@@ -133,25 +133,25 @@ public class RuleManagerHaFlowRulesTest {
         List<SpeakerData> forwardSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getForwardPath(), false, adapter);
 
-        assertEquals(7, forwardSpeakerData.size());
+        Assertions.assertEquals(7, forwardSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> forwardCommands = groupBySwitchId(forwardSpeakerData);
-        assertEquals(3, forwardCommands.get(SWITCH_ID_1).size());
-        assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_1)));
-        assertEquals(1, getMeterCount(forwardCommands.get(SWITCH_ID_1)));
+        Assertions.assertEquals(3, forwardCommands.get(SWITCH_ID_1).size());
+        Assertions.assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, getMeterCount(forwardCommands.get(SWITCH_ID_1)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_1), INPUT, INGRESS);
 
-        assertEquals(2, forwardCommands.get(SWITCH_ID_2).size());
-        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_2)));
-        assertEquals(1, getGroupCount(forwardCommands.get(SWITCH_ID_2)));
+        Assertions.assertEquals(2, forwardCommands.get(SWITCH_ID_2).size());
+        Assertions.assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_2)));
+        Assertions.assertEquals(1, getGroupCount(forwardCommands.get(SWITCH_ID_2)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_2), TRANSIT);
 
-        assertEquals(1, forwardCommands.get(SWITCH_ID_3).size());
-        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_3)));
+        Assertions.assertEquals(1, forwardCommands.get(SWITCH_ID_3).size());
+        Assertions.assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_3)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_3), EGRESS);
 
-        assertEquals(1, forwardCommands.get(SWITCH_ID_4).size());
-        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_4)));
+        Assertions.assertEquals(1, forwardCommands.get(SWITCH_ID_4).size());
+        Assertions.assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_4)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_4), EGRESS);
     }
 
@@ -162,26 +162,26 @@ public class RuleManagerHaFlowRulesTest {
         List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getReversePath(), false, adapter);
 
-        assertEquals(10, reverseSpeakerData.size());
+        Assertions.assertEquals(10, reverseSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_1), EGRESS);
 
-        assertEquals(3, switchCommandMap.get(SWITCH_ID_2).size());
-        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_2)));
+        Assertions.assertEquals(3, switchCommandMap.get(SWITCH_ID_2).size());
+        Assertions.assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_2)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT, TRANSIT);
 
-        assertEquals(3, switchCommandMap.get(SWITCH_ID_3).size());
-        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(3, switchCommandMap.get(SWITCH_ID_3).size());
+        Assertions.assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_3), INPUT, INGRESS);
 
-        assertEquals(3, switchCommandMap.get(SWITCH_ID_4).size());
-        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_4)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_4)));
+        Assertions.assertEquals(3, switchCommandMap.get(SWITCH_ID_4).size());
+        Assertions.assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_4)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_4)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_4), INPUT, INGRESS);
     }
 
@@ -191,37 +191,37 @@ public class RuleManagerHaFlowRulesTest {
         DataAdapter adapter = buildAdapter(haFlow);
         List<SpeakerData> forwardSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getForwardPath(), false, adapter);
-        assertEquals(10, forwardSpeakerData.size());
+        Assertions.assertEquals(10, forwardSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(forwardSpeakerData);
-        assertEquals(3, switchCommandMap.get(SWITCH_ID_1).size());
-        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_1)));
+        Assertions.assertEquals(3, switchCommandMap.get(SWITCH_ID_1).size());
+        Assertions.assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_1)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_1), INPUT, INGRESS);
 
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT);
 
-        assertEquals(2, switchCommandMap.get(SWITCH_ID_3).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
-        assertEquals(1, getGroupCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(2, switchCommandMap.get(SWITCH_ID_3).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(1, getGroupCount(switchCommandMap.get(SWITCH_ID_3)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_3), TRANSIT);
 
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_4).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_4)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_4).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_4)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_4), TRANSIT);
 
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_5).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_5)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_5).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_5)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_5), EGRESS);
 
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_6).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_6)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_6).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_6)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_6), TRANSIT);
 
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_7).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_7)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_7).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_7)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_7), EGRESS);
     }
 
@@ -231,38 +231,38 @@ public class RuleManagerHaFlowRulesTest {
         DataAdapter adapter = buildAdapter(haFlow);
         List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getReversePath(), false, adapter);
-        assertEquals(13, reverseSpeakerData.size());
+        Assertions.assertEquals(13, reverseSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_1), EGRESS);
 
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT);
 
-        assertEquals(3, switchCommandMap.get(SWITCH_ID_3).size());
-        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(3, switchCommandMap.get(SWITCH_ID_3).size());
+        Assertions.assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_3), TRANSIT, TRANSIT);
 
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_4).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_4)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_4).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_4)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_4), TRANSIT);
 
-        assertEquals(3, switchCommandMap.get(SWITCH_ID_5).size());
-        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_5)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_5)));
+        Assertions.assertEquals(3, switchCommandMap.get(SWITCH_ID_5).size());
+        Assertions.assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_5)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_5)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_5), INPUT, INGRESS);
 
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_6).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_6)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_6).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_6)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_6), TRANSIT);
 
-        assertEquals(3, switchCommandMap.get(SWITCH_ID_7).size());
-        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_7)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_7)));
+        Assertions.assertEquals(3, switchCommandMap.get(SWITCH_ID_7).size());
+        Assertions.assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_7)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_7)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_7), INPUT, INGRESS);
     }
 
@@ -273,25 +273,25 @@ public class RuleManagerHaFlowRulesTest {
         List<SpeakerData> forwardSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getForwardPath(), false, adapter);
 
-        assertEquals(7, forwardSpeakerData.size());
+        Assertions.assertEquals(7, forwardSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> forwardCommands = groupBySwitchId(forwardSpeakerData);
-        assertEquals(3, forwardCommands.get(SWITCH_ID_1).size());
-        assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_1)));
-        assertEquals(1, getMeterCount(forwardCommands.get(SWITCH_ID_1)));
+        Assertions.assertEquals(3, forwardCommands.get(SWITCH_ID_1).size());
+        Assertions.assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, getMeterCount(forwardCommands.get(SWITCH_ID_1)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_1), INPUT, INGRESS);
 
-        assertEquals(1, forwardCommands.get(SWITCH_ID_2).size());
-        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_2)));
+        Assertions.assertEquals(1, forwardCommands.get(SWITCH_ID_2).size());
+        Assertions.assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_2)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_2), TRANSIT);
 
-        assertEquals(2, forwardCommands.get(SWITCH_ID_3).size());
-        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_3)));
-        assertEquals(1, getGroupCount(forwardCommands.get(SWITCH_ID_3)));
+        Assertions.assertEquals(2, forwardCommands.get(SWITCH_ID_3).size());
+        Assertions.assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_3)));
+        Assertions.assertEquals(1, getGroupCount(forwardCommands.get(SWITCH_ID_3)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_3), TRANSIT);
 
-        assertEquals(1, forwardCommands.get(SWITCH_ID_4).size());
-        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_4)));
+        Assertions.assertEquals(1, forwardCommands.get(SWITCH_ID_4).size());
+        Assertions.assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_4)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_4), EGRESS);
     }
 
@@ -302,25 +302,25 @@ public class RuleManagerHaFlowRulesTest {
         List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getReversePath(), false, adapter);
 
-        assertEquals(9, reverseSpeakerData.size());
+        Assertions.assertEquals(9, reverseSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_1), EGRESS);
 
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT);
 
-        assertEquals(4, switchCommandMap.get(SWITCH_ID_3).size());
-        assertEquals(3, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(4, switchCommandMap.get(SWITCH_ID_3).size());
+        Assertions.assertEquals(3, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_3), INPUT, INGRESS, TRANSIT);
 
-        assertEquals(3, switchCommandMap.get(SWITCH_ID_4).size());
-        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_4)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_4)));
+        Assertions.assertEquals(3, switchCommandMap.get(SWITCH_ID_4).size());
+        Assertions.assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_4)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_4)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_4), INPUT, INGRESS);
     }
 
@@ -331,16 +331,16 @@ public class RuleManagerHaFlowRulesTest {
         List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getReversePath(), true, false, true, false, adapter);
 
-        assertEquals(5, reverseSpeakerData.size());
+        Assertions.assertEquals(5, reverseSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
-        assertEquals(2, switchCommandMap.get(SWITCH_ID_3).size());
-        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(2, switchCommandMap.get(SWITCH_ID_3).size());
+        Assertions.assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_3), INPUT, INGRESS);
 
-        assertEquals(3, switchCommandMap.get(SWITCH_ID_4).size());
-        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_4)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_4)));
+        Assertions.assertEquals(3, switchCommandMap.get(SWITCH_ID_4).size());
+        Assertions.assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_4)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_4)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_4), INPUT, INGRESS);
     }
 
@@ -351,20 +351,20 @@ public class RuleManagerHaFlowRulesTest {
         List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getReversePath(), true, false, false, true, adapter);
 
-        assertEquals(4, reverseSpeakerData.size());
+        Assertions.assertEquals(4, reverseSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_1), EGRESS);
 
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT);
 
-        assertEquals(2, switchCommandMap.get(SWITCH_ID_3).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(2, switchCommandMap.get(SWITCH_ID_3).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_3), TRANSIT);
     }
 
@@ -375,21 +375,21 @@ public class RuleManagerHaFlowRulesTest {
         List<SpeakerData> forwardSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getForwardPath(), false, adapter);
 
-        assertEquals(6, forwardSpeakerData.size());
+        Assertions.assertEquals(6, forwardSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> forwardCommands = groupBySwitchId(forwardSpeakerData);
-        assertEquals(3, forwardCommands.get(SWITCH_ID_1).size());
-        assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_1)));
-        assertEquals(1, getMeterCount(forwardCommands.get(SWITCH_ID_1)));
+        Assertions.assertEquals(3, forwardCommands.get(SWITCH_ID_1).size());
+        Assertions.assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, getMeterCount(forwardCommands.get(SWITCH_ID_1)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_1), INPUT, INGRESS);
 
-        assertEquals(1, forwardCommands.get(SWITCH_ID_2).size());
-        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_2)));
+        Assertions.assertEquals(1, forwardCommands.get(SWITCH_ID_2).size());
+        Assertions.assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_2)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_2), TRANSIT);
 
-        assertEquals(2, forwardCommands.get(SWITCH_ID_3).size());
-        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_3)));
-        assertEquals(1, getGroupCount(forwardCommands.get(SWITCH_ID_3)));
+        Assertions.assertEquals(2, forwardCommands.get(SWITCH_ID_3).size());
+        Assertions.assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_3)));
+        Assertions.assertEquals(1, getGroupCount(forwardCommands.get(SWITCH_ID_3)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_3), EGRESS);
     }
 
@@ -400,20 +400,20 @@ public class RuleManagerHaFlowRulesTest {
         List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getReversePath(), false, adapter);
 
-        assertEquals(7, reverseSpeakerData.size());
+        Assertions.assertEquals(7, reverseSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_1), EGRESS);
 
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT);
 
-        assertEquals(5, switchCommandMap.get(SWITCH_ID_3).size());
-        assertEquals(4, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(5, switchCommandMap.get(SWITCH_ID_3).size());
+        Assertions.assertEquals(4, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_3), INPUT, INGRESS, INPUT, INGRESS);
     }
 
@@ -424,12 +424,12 @@ public class RuleManagerHaFlowRulesTest {
         List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getReversePath(), true, false, true, false, adapter);
 
-        assertEquals(5, reverseSpeakerData.size());
+        Assertions.assertEquals(5, reverseSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
-        assertEquals(5, switchCommandMap.get(SWITCH_ID_3).size());
-        assertEquals(4, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(5, switchCommandMap.get(SWITCH_ID_3).size());
+        Assertions.assertEquals(4, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_3), INPUT, INGRESS, INPUT, INGRESS);
     }
 
@@ -440,15 +440,15 @@ public class RuleManagerHaFlowRulesTest {
         List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getReversePath(), true, false, false, true, adapter);
 
-        assertEquals(2, reverseSpeakerData.size());
+        Assertions.assertEquals(2, reverseSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_1).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_1), EGRESS);
 
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT);
     }
 
@@ -459,17 +459,17 @@ public class RuleManagerHaFlowRulesTest {
         List<SpeakerData> forwardSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getForwardPath(), false, adapter);
 
-        assertEquals(6, forwardSpeakerData.size());
+        Assertions.assertEquals(6, forwardSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> forwardCommands = groupBySwitchId(forwardSpeakerData);
-        assertEquals(4, forwardCommands.get(SWITCH_ID_1).size());
-        assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_1)));
-        assertEquals(1, getGroupCount(forwardCommands.get(SWITCH_ID_1)));
-        assertEquals(1, getMeterCount(forwardCommands.get(SWITCH_ID_1)));
+        Assertions.assertEquals(4, forwardCommands.get(SWITCH_ID_1).size());
+        Assertions.assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, getGroupCount(forwardCommands.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, getMeterCount(forwardCommands.get(SWITCH_ID_1)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_1), INPUT, INGRESS);
 
-        assertEquals(2, forwardCommands.get(SWITCH_ID_2).size());
-        assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_2)));
+        Assertions.assertEquals(2, forwardCommands.get(SWITCH_ID_2).size());
+        Assertions.assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_2)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_2), EGRESS, EGRESS);
     }
 
@@ -480,17 +480,17 @@ public class RuleManagerHaFlowRulesTest {
         List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getReversePath(), false, adapter);
 
-        assertEquals(9, reverseSpeakerData.size());
+        Assertions.assertEquals(9, reverseSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
-        assertEquals(3, switchCommandMap.get(SWITCH_ID_1).size());
-        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_1)));
+        Assertions.assertEquals(3, switchCommandMap.get(SWITCH_ID_1).size());
+        Assertions.assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_1)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_1), EGRESS, EGRESS);
 
-        assertEquals(6, switchCommandMap.get(SWITCH_ID_2).size());
-        assertEquals(4, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
-        assertEquals(2, getMeterCount(switchCommandMap.get(SWITCH_ID_2)));
+        Assertions.assertEquals(6, switchCommandMap.get(SWITCH_ID_2).size());
+        Assertions.assertEquals(4, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        Assertions.assertEquals(2, getMeterCount(switchCommandMap.get(SWITCH_ID_2)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_2), INPUT, INGRESS, INPUT, INGRESS);
     }
 
@@ -501,21 +501,21 @@ public class RuleManagerHaFlowRulesTest {
         List<SpeakerData> forwardSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getForwardPath(), false, adapter);
 
-        assertEquals(6, forwardSpeakerData.size());
+        Assertions.assertEquals(6, forwardSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> forwardCommands = groupBySwitchId(forwardSpeakerData);
-        assertEquals(4, forwardCommands.get(SWITCH_ID_1).size());
-        assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_1)));
-        assertEquals(1, getMeterCount(forwardCommands.get(SWITCH_ID_1)));
-        assertEquals(1, getGroupCount(forwardCommands.get(SWITCH_ID_1)));
+        Assertions.assertEquals(4, forwardCommands.get(SWITCH_ID_1).size());
+        Assertions.assertEquals(2, getFlowCount(forwardCommands.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, getMeterCount(forwardCommands.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, getGroupCount(forwardCommands.get(SWITCH_ID_1)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_1), INPUT, INGRESS);
 
-        assertEquals(1, forwardCommands.get(SWITCH_ID_2).size());
-        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_2)));
+        Assertions.assertEquals(1, forwardCommands.get(SWITCH_ID_2).size());
+        Assertions.assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_2)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_2), TRANSIT);
 
-        assertEquals(1, forwardCommands.get(SWITCH_ID_3).size());
-        assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_3)));
+        Assertions.assertEquals(1, forwardCommands.get(SWITCH_ID_3).size());
+        Assertions.assertEquals(1, getFlowCount(forwardCommands.get(SWITCH_ID_3)));
         assertFlowTables(forwardCommands.get(SWITCH_ID_3), EGRESS);
     }
 
@@ -526,21 +526,21 @@ public class RuleManagerHaFlowRulesTest {
         List<SpeakerData> reverseSpeakerData = ruleManager.buildRulesHaFlowPath(
                 haFlow.getReversePath(), false, adapter);
 
-        assertEquals(8, reverseSpeakerData.size());
+        Assertions.assertEquals(8, reverseSpeakerData.size());
 
         Map<SwitchId, List<SpeakerData>> switchCommandMap = groupBySwitchId(reverseSpeakerData);
-        assertEquals(4, switchCommandMap.get(SWITCH_ID_1).size());
-        assertEquals(3, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_1)));
+        Assertions.assertEquals(4, switchCommandMap.get(SWITCH_ID_1).size());
+        Assertions.assertEquals(3, getFlowCount(switchCommandMap.get(SWITCH_ID_1)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_1)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_1), INPUT, INGRESS, EGRESS);
 
-        assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
-        assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
+        Assertions.assertEquals(1, switchCommandMap.get(SWITCH_ID_2).size());
+        Assertions.assertEquals(1, getFlowCount(switchCommandMap.get(SWITCH_ID_2)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_2), TRANSIT);
 
-        assertEquals(3, switchCommandMap.get(SWITCH_ID_3).size());
-        assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
-        assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(3, switchCommandMap.get(SWITCH_ID_3).size());
+        Assertions.assertEquals(2, getFlowCount(switchCommandMap.get(SWITCH_ID_3)));
+        Assertions.assertEquals(1, getMeterCount(switchCommandMap.get(SWITCH_ID_3)));
         assertFlowTables(switchCommandMap.get(SWITCH_ID_3), INPUT, INGRESS);
     }
 
@@ -783,7 +783,7 @@ public class RuleManagerHaFlowRulesTest {
                 .collect(Collectors.toList());
 
         Arrays.sort(expectedTables);
-        assertEquals(Arrays.asList(expectedTables), actualTables);
+        Assertions.assertEquals(Arrays.asList(expectedTables), actualTables);
     }
 
     private int getFlowCount(Collection<SpeakerData> commands) {

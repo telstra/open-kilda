@@ -15,9 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
@@ -51,8 +48,9 @@ import org.openkilda.rulemanager.factory.generator.service.noviflow.RoundTripLat
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.List;
@@ -61,7 +59,7 @@ public class RoundTripLatencyRuleGeneratorTest {
 
     private RuleManagerConfig config;
 
-    @Before
+    @BeforeEach
     public void setup() {
         config = mock(RuleManagerConfig.class);
         when(config.getDiscoveryBcastPacketDst()).thenReturn("00:26:E1:FF:FF:FF");
@@ -75,52 +73,52 @@ public class RoundTripLatencyRuleGeneratorTest {
                 .build();
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
-        assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
-        assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
+        Assertions.assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(new Cookie(ROUND_TRIP_LATENCY_RULE_COOKIE), flowCommandData.getCookie());
-        assertEquals(OfTable.INPUT, flowCommandData.getTable());
-        assertEquals(ROUND_TRIP_LATENCY_RULE_PRIORITY, flowCommandData.getPriority());
+        Assertions.assertEquals(new Cookie(ROUND_TRIP_LATENCY_RULE_COOKIE), flowCommandData.getCookie());
+        Assertions.assertEquals(OfTable.INPUT, flowCommandData.getTable());
+        Assertions.assertEquals(ROUND_TRIP_LATENCY_RULE_PRIORITY, flowCommandData.getPriority());
 
         FieldMatch ethSrcMatch = getMatchByField(Field.ETH_SRC, flowCommandData.getMatch());
-        assertEquals(sw.getSwitchId().toLong(), ethSrcMatch.getValue());
-        assertFalse(ethSrcMatch.isMasked());
+        Assertions.assertEquals(sw.getSwitchId().toLong(), ethSrcMatch.getValue());
+        Assertions.assertFalse(ethSrcMatch.isMasked());
 
         FieldMatch ethDstMatch = getMatchByField(Field.ETH_DST, flowCommandData.getMatch());
-        assertEquals(new SwitchId(config.getDiscoveryBcastPacketDst()).toLong(), ethDstMatch.getValue());
-        assertFalse(ethDstMatch.isMasked());
+        Assertions.assertEquals(new SwitchId(config.getDiscoveryBcastPacketDst()).toLong(), ethDstMatch.getValue());
+        Assertions.assertFalse(ethDstMatch.isMasked());
 
         FieldMatch ethTypeMatch = getMatchByField(Field.ETH_TYPE, flowCommandData.getMatch());
-        assertEquals(EthType.IPv4, ethTypeMatch.getValue());
-        assertFalse(ethTypeMatch.isMasked());
+        Assertions.assertEquals(EthType.IPv4, ethTypeMatch.getValue());
+        Assertions.assertFalse(ethTypeMatch.isMasked());
 
         FieldMatch ipProtoMatch = getMatchByField(Field.IP_PROTO, flowCommandData.getMatch());
-        assertEquals(IpProto.UDP, ipProtoMatch.getValue());
-        assertFalse(ipProtoMatch.isMasked());
+        Assertions.assertEquals(IpProto.UDP, ipProtoMatch.getValue());
+        Assertions.assertFalse(ipProtoMatch.isMasked());
 
         FieldMatch udpDstMatch = getMatchByField(Field.UDP_DST, flowCommandData.getMatch());
-        assertEquals(Constants.LATENCY_PACKET_UDP_PORT, udpDstMatch.getValue());
-        assertFalse(udpDstMatch.isMasked());
+        Assertions.assertEquals(Constants.LATENCY_PACKET_UDP_PORT, udpDstMatch.getValue());
+        Assertions.assertFalse(udpDstMatch.isMasked());
 
         Instructions instructions = flowCommandData.getInstructions();
-        assertEquals(2, instructions.getApplyActions().size());
+        Assertions.assertEquals(2, instructions.getApplyActions().size());
         Action first = instructions.getApplyActions().get(0);
-        assertTrue(first instanceof CopyFieldAction);
+        Assertions.assertTrue(first instanceof CopyFieldAction);
         CopyFieldAction copyFieldAction = (CopyFieldAction) first;
-        assertEquals(ROUND_TRIP_LATENCY_TIMESTAMP_SIZE, copyFieldAction.getNumberOfBits());
-        assertEquals(0, copyFieldAction.getSrcOffset());
-        assertEquals(ROUND_TRIP_LATENCY_T1_OFFSET, copyFieldAction.getDstOffset());
-        assertEquals(NOVIFLOW_RX_TIMESTAMP, copyFieldAction.getOxmSrcHeader());
-        assertEquals(NOVIFLOW_PACKET_OFFSET, copyFieldAction.getOxmDstHeader());
+        Assertions.assertEquals(ROUND_TRIP_LATENCY_TIMESTAMP_SIZE, copyFieldAction.getNumberOfBits());
+        Assertions.assertEquals(0, copyFieldAction.getSrcOffset());
+        Assertions.assertEquals(ROUND_TRIP_LATENCY_T1_OFFSET, copyFieldAction.getDstOffset());
+        Assertions.assertEquals(NOVIFLOW_RX_TIMESTAMP, copyFieldAction.getOxmSrcHeader());
+        Assertions.assertEquals(NOVIFLOW_PACKET_OFFSET, copyFieldAction.getOxmDstHeader());
 
         Action second = instructions.getApplyActions().get(1);
-        assertTrue(second instanceof PortOutAction);
+        Assertions.assertTrue(second instanceof PortOutAction);
         PortOutAction portOutAction = (PortOutAction) second;
-        assertEquals(SpecialPortType.CONTROLLER, portOutAction.getPortNumber().getPortType());
+        Assertions.assertEquals(SpecialPortType.CONTROLLER, portOutAction.getPortNumber().getPortType());
     }
 
     @Test
@@ -129,6 +127,6 @@ public class RoundTripLatencyRuleGeneratorTest {
         BfdCatchRuleGenerator generator = new BfdCatchRuleGenerator();
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertTrue(commands.isEmpty());
+        Assertions.assertTrue(commands.isEmpty());
     }
 }

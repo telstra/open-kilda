@@ -15,8 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.service.server42;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD;
@@ -46,8 +44,9 @@ import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Set;
@@ -59,7 +58,7 @@ public class Server42IslRttInputRuleGeneratorTest {
 
     private Server42IslRttInputRuleGenerator generator;
 
-    @Before
+    @BeforeEach
     public void setup() {
         RuleManagerConfig config = mock(RuleManagerConfig.class);
         when(config.getServer42IslRttMagicMacAddress()).thenReturn(MAC_ADDRESS.toString());
@@ -77,16 +76,17 @@ public class Server42IslRttInputRuleGeneratorTest {
         Switch sw = buildSwitch("OF_13", Sets.newHashSet(NOVIFLOW_COPY_FIELD));
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
-        assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
-        assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
+        Assertions.assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(new PortColourCookie(CookieType.SERVER_42_ISL_RTT_INPUT, ISL_PORT), flowCommandData.getCookie());
-        assertEquals(OfTable.INPUT, flowCommandData.getTable());
-        assertEquals(SERVER_42_ISL_RTT_INPUT_PRIORITY, flowCommandData.getPriority());
+        Assertions.assertEquals(new PortColourCookie(CookieType.SERVER_42_ISL_RTT_INPUT, ISL_PORT),
+                flowCommandData.getCookie());
+        Assertions.assertEquals(OfTable.INPUT, flowCommandData.getTable());
+        Assertions.assertEquals(SERVER_42_ISL_RTT_INPUT_PRIORITY, flowCommandData.getPriority());
 
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(Utils.SERVER_42_PORT).build(),
@@ -94,7 +94,7 @@ public class Server42IslRttInputRuleGeneratorTest {
                 FieldMatch.builder().field(Field.ETH_TYPE).value(EthType.IPv4).build(),
                 FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP).build(),
                 FieldMatch.builder().field(Field.UDP_SRC).value(OFFSET + ISL_PORT).build());
-        assertEquals(expectedMatch, flowCommandData.getMatch());
+        Assertions.assertEquals(expectedMatch, flowCommandData.getMatch());
 
         List<Action> expectedApplyActions = Lists.newArrayList(
                 SetFieldAction.builder().field(Field.UDP_SRC).value(SERVER_42_ISL_RTT_FORWARD_UDP_PORT).build(),
@@ -102,6 +102,6 @@ public class Server42IslRttInputRuleGeneratorTest {
                 new PortOutAction(new PortNumber(ISL_PORT)));
 
         Instructions expectedInstructions = Instructions.builder().applyActions(expectedApplyActions).build();
-        assertEquals(expectedInstructions, flowCommandData.getInstructions());
+        Assertions.assertEquals(expectedInstructions, flowCommandData.getInstructions());
     }
 }

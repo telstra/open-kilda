@@ -17,14 +17,15 @@ package org.openkilda.wfm.topology.reroute.service;
 
 import static java.lang.String.format;
 import static java.time.temporal.ChronoUnit.MINUTES;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -53,18 +54,18 @@ import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData.FlowThrottlin
 import org.openkilda.wfm.topology.reroute.model.RerouteQueue;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatcher;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Optional;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class RerouteQueueServiceTest {
 
     private static final String CORRELATION_ID = "CORRELATION_ID";
@@ -89,17 +90,17 @@ public class RerouteQueueServiceTest {
 
     private RerouteQueueService rerouteQueueService;
 
-    @Before
+    @BeforeEach
     public void setup() {
         flow = Flow.builder().flowId(FLOW_ID).srcSwitch(SWITCH_A)
                 .destSwitch(SWITCH_B).priority(2)
                 .build();
-        when(flowRepository.findById(FLOW_ID)).thenReturn(Optional.of(flow));
+        lenient().when(flowRepository.findById(FLOW_ID)).thenReturn(Optional.of(flow));
 
 
         yFlow = YFlow.builder().yFlowId(YFLOW_ID).sharedEndpoint(new SharedEndpoint(SWITCH_A.getSwitchId(), 10))
                 .priority(2).build();
-        when(yFlowRepository.findById(YFLOW_ID)).thenReturn(Optional.of(yFlow));
+        lenient().when(yFlowRepository.findById(YFLOW_ID)).thenReturn(Optional.of(yFlow));
 
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);

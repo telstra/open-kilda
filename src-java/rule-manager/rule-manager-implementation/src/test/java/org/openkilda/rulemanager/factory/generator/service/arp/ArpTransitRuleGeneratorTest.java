@@ -15,8 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.service.arp;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
 import static org.openkilda.model.cookie.Cookie.ARP_TRANSIT_COOKIE;
@@ -30,13 +28,14 @@ import org.openkilda.rulemanager.ProtoConstants.EthType;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.util.Set;
 
 public class ArpTransitRuleGeneratorTest extends ArpRuleGeneratorTest {
 
-    @Before
+    @BeforeEach
     public void setup() {
         config = prepareConfig();
 
@@ -53,9 +52,9 @@ public class ArpTransitRuleGeneratorTest extends ArpRuleGeneratorTest {
 
     @Override
     protected void checkMatch(Set<FieldMatch> match) {
-        assertEquals(1, match.size());
+        Assertions.assertEquals(1, match.size());
         FieldMatch ethTypeMatch = getMatchByField(Field.ETH_TYPE, match);
-        assertEquals(EthType.ARP, ethTypeMatch.getValue());
-        assertFalse(ethTypeMatch.isMasked());
+        Assertions.assertEquals(EthType.ARP, ethTypeMatch.getValue());
+        Assertions.assertFalse(ethTypeMatch.isMasked());
     }
 }

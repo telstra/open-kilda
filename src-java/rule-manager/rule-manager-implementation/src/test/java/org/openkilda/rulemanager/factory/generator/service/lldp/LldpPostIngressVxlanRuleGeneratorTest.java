@@ -15,10 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.service.lldp;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
@@ -46,15 +42,16 @@ import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.rulemanager.utils.RoutingMetadata;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Set;
 
 public class LldpPostIngressVxlanRuleGeneratorTest extends LldpRuleGeneratorTest {
 
-    @Before
+    @BeforeEach
     public void setup() {
         config = prepareConfig();
 
@@ -75,69 +72,69 @@ public class LldpPostIngressVxlanRuleGeneratorTest extends LldpRuleGeneratorTest
         sw = buildSwitch("OF_13", expectedFeatures);
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertTrue(commands.isEmpty());
+        Assertions.assertTrue(commands.isEmpty());
     }
 
     @Override
     protected void checkMatch(Set<FieldMatch> match) {
-        assertEquals(4, match.size());
+        Assertions.assertEquals(4, match.size());
         FieldMatch metadataMatch = getMatchByField(Field.METADATA, match);
         RoutingMetadata expectedMetadata = RoutingMetadata.builder().lldpFlag(true).build(sw.getFeatures());
-        assertEquals(expectedMetadata.getValue(), metadataMatch.getValue());
-        assertTrue(metadataMatch.isMasked());
-        assertEquals(expectedMetadata.getMask(), metadataMatch.getMask().longValue());
+        Assertions.assertEquals(expectedMetadata.getValue(), metadataMatch.getValue());
+        Assertions.assertTrue(metadataMatch.isMasked());
+        Assertions.assertEquals(expectedMetadata.getMask(), metadataMatch.getMask().longValue());
 
         FieldMatch ipProtoMatch = getMatchByField(Field.IP_PROTO, match);
-        assertEquals(IpProto.UDP, ipProtoMatch.getValue());
-        assertFalse(ipProtoMatch.isMasked());
+        Assertions.assertEquals(IpProto.UDP, ipProtoMatch.getValue());
+        Assertions.assertFalse(ipProtoMatch.isMasked());
 
         FieldMatch udpSrcMatch = getMatchByField(Field.UDP_SRC, match);
-        assertEquals(STUB_VXLAN_UDP_SRC, udpSrcMatch.getValue());
-        assertFalse(udpSrcMatch.isMasked());
+        Assertions.assertEquals(STUB_VXLAN_UDP_SRC, udpSrcMatch.getValue());
+        Assertions.assertFalse(udpSrcMatch.isMasked());
 
         FieldMatch updDestMatch = getMatchByField(Field.UDP_DST, match);
-        assertEquals(VXLAN_UDP_DST, updDestMatch.getValue());
-        assertFalse(updDestMatch.isMasked());
+        Assertions.assertEquals(VXLAN_UDP_DST, updDestMatch.getValue());
+        Assertions.assertFalse(updDestMatch.isMasked());
     }
 
     @Override
     protected void checkInstructions(Instructions instructions, MeterId meterId) {
-        assertEquals(2, instructions.getApplyActions().size());
+        Assertions.assertEquals(2, instructions.getApplyActions().size());
         Action first = instructions.getApplyActions().get(0);
-        assertTrue(first instanceof PopVxlanAction);
+        Assertions.assertTrue(first instanceof PopVxlanAction);
         PopVxlanAction popVxlanAction = (PopVxlanAction) first;
-        assertEquals(ActionType.POP_VXLAN_NOVIFLOW, popVxlanAction.getType());
+        Assertions.assertEquals(ActionType.POP_VXLAN_NOVIFLOW, popVxlanAction.getType());
 
         Action second = instructions.getApplyActions().get(1);
-        assertTrue(second instanceof PortOutAction);
+        Assertions.assertTrue(second instanceof PortOutAction);
         PortOutAction portOutAction = (PortOutAction) second;
-        assertEquals(SpecialPortType.CONTROLLER, portOutAction.getPortNumber().getPortType());
+        Assertions.assertEquals(SpecialPortType.CONTROLLER, portOutAction.getPortNumber().getPortType());
 
-        assertNull(instructions.getWriteActions());
-        assertEquals(instructions.getGoToMeter(), meterId);
-        assertNull(instructions.getGoToTable());
+        Assertions.assertNull(instructions.getWriteActions());
+        Assertions.assertEquals(instructions.getGoToMeter(), meterId);
+        Assertions.assertNull(instructions.getGoToTable());
     }
 
     @Override
     protected void checkInstructionsOf15(Instructions instructions, MeterId meterId) {
-        assertEquals(3, instructions.getApplyActions().size());
+        Assertions.assertEquals(3, instructions.getApplyActions().size());
         Action first = instructions.getApplyActions().get(0);
-        assertTrue(first instanceof PopVxlanAction);
+        Assertions.assertTrue(first instanceof PopVxlanAction);
         PopVxlanAction popVxlanAction = (PopVxlanAction) first;
-        assertEquals(ActionType.POP_VXLAN_NOVIFLOW, popVxlanAction.getType());
+        Assertions.assertEquals(ActionType.POP_VXLAN_NOVIFLOW, popVxlanAction.getType());
 
         Action second = instructions.getApplyActions().get(1);
-        assertTrue(second instanceof PortOutAction);
+        Assertions.assertTrue(second instanceof PortOutAction);
         PortOutAction portOutAction = (PortOutAction) second;
-        assertEquals(SpecialPortType.CONTROLLER, portOutAction.getPortNumber().getPortType());
+        Assertions.assertEquals(SpecialPortType.CONTROLLER, portOutAction.getPortNumber().getPortType());
 
         Action third = instructions.getApplyActions().get(2);
-        assertTrue(third instanceof MeterAction);
+        Assertions.assertTrue(third instanceof MeterAction);
         MeterAction meterAction = (MeterAction) third;
-        assertEquals(meterId, meterAction.getMeterId());
+        Assertions.assertEquals(meterId, meterAction.getMeterId());
 
-        assertNull(instructions.getWriteActions());
-        assertNull(instructions.getGoToMeter());
-        assertNull(instructions.getGoToTable());
+        Assertions.assertNull(instructions.getWriteActions());
+        Assertions.assertNull(instructions.getGoToMeter());
+        Assertions.assertNull(instructions.getGoToTable());
     }
 }

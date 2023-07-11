@@ -15,8 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
 import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
@@ -45,7 +43,8 @@ import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Set;
@@ -132,16 +131,16 @@ public class TransitRuleGeneratorTest {
 
     private void assertTransitCommands(List<SpeakerData> commands, OfTable table,
                                        FlowTransitEncapsulation encapsulation) {
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
-        assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
-        assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
+        Assertions.assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(COOKIE, flowCommandData.getCookie());
-        assertEquals(table, flowCommandData.getTable());
-        assertEquals(Priority.FLOW_PRIORITY, flowCommandData.getPriority());
+        Assertions.assertEquals(COOKIE, flowCommandData.getCookie());
+        Assertions.assertEquals(table, flowCommandData.getTable());
+        Assertions.assertEquals(Priority.FLOW_PRIORITY, flowCommandData.getPriority());
 
 
         Set<FieldMatch> expectedMatch;
@@ -155,8 +154,8 @@ public class TransitRuleGeneratorTest {
         Instructions expectedInstructions = Instructions.builder()
                 .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(PORT_NUMBER_2))))
                 .build();
-        assertEquals(expectedInstructions, flowCommandData.getInstructions());
-        assertTrue(flowCommandData.getFlags().isEmpty());
+        Assertions.assertEquals(expectedInstructions, flowCommandData.getInstructions());
+        Assertions.assertTrue(flowCommandData.getFlags().isEmpty());
     }
 
     private Set<FieldMatch> buildExpectedVlanMatch(int port, int vlanId) {
@@ -191,6 +190,6 @@ public class TransitRuleGeneratorTest {
                 .multiTable(true)
                 .encapsulation(VLAN_ENCAPSULATION)
                 .build();
-        assertEquals(0, generator.generateCommands(SWITCH_1).size());
+        Assertions.assertEquals(0, generator.generateCommands(SWITCH_1).size());
     }
 }

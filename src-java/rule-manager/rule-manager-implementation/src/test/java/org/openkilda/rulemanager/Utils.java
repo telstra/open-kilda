@@ -17,6 +17,7 @@ package org.openkilda.rulemanager;
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toSet;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.MacAddress;
@@ -31,7 +32,6 @@ import org.openkilda.rulemanager.utils.RoutingMetadata;
 
 import com.google.common.collect.Lists;
 import lombok.Value;
-import org.junit.Assert;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -161,7 +161,7 @@ public final class Utils {
     public static void assertEqualsMatch(Set<FieldMatch> expected, Set<FieldMatch> actual) {
         Set<FullComparableMatch> expectedSet = expected.stream().map(FullComparableMatch::new).collect(toSet());
         Set<FullComparableMatch> actualSet = actual.stream().map(FullComparableMatch::new).collect(toSet());
-        Assert.assertEquals(expectedSet, actualSet);
+        assertEquals(expectedSet, actualSet);
     }
 
     private Utils() {

@@ -15,10 +15,10 @@
 
 package org.openkilda.testing.service.traffexam.networkpool;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -42,10 +42,8 @@ public class Inet4NetworkTest {
             raises = true;
         }
 
-        assertTrue(
-                String.format(
-                        "Here must be %s exception", Inet4ValueException.class),
-                raises);
+        assertTrue(raises, String.format(
+                "Here must be %s exception", Inet4ValueException.class));
     }
 
     @Test
@@ -65,9 +63,7 @@ public class Inet4NetworkTest {
         } catch (Inet4ValueException e) {
             raises = true;
         }
-        assertTrue(
-                String.format(
-                        "Here must be %s exception", Inet4ValueException.class),
-                raises);
+        assertTrue(raises, String.format(
+                "Here must be %s exception", Inet4ValueException.class));
     }
 }

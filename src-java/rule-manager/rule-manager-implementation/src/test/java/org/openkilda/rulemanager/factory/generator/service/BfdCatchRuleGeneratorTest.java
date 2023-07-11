@@ -15,9 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.openkilda.model.SwitchFeature.BFD;
 import static org.openkilda.model.cookie.Cookie.CATCH_BFD_RULE_COOKIE;
 import static org.openkilda.rulemanager.Constants.Priority.CATCH_BFD_RULE_PRIORITY;
@@ -41,7 +38,8 @@ import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.List;
@@ -54,39 +52,39 @@ public class BfdCatchRuleGeneratorTest {
         BfdCatchRuleGenerator generator = new BfdCatchRuleGenerator();
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
-        assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
-        assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
+        Assertions.assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(new Cookie(CATCH_BFD_RULE_COOKIE), flowCommandData.getCookie());
-        assertEquals(OfTable.INPUT, flowCommandData.getTable());
-        assertEquals(CATCH_BFD_RULE_PRIORITY, flowCommandData.getPriority());
+        Assertions.assertEquals(new Cookie(CATCH_BFD_RULE_COOKIE), flowCommandData.getCookie());
+        Assertions.assertEquals(OfTable.INPUT, flowCommandData.getTable());
+        Assertions.assertEquals(CATCH_BFD_RULE_PRIORITY, flowCommandData.getPriority());
 
         FieldMatch ethDstMatch = getMatchByField(Field.ETH_DST, flowCommandData.getMatch());
-        assertEquals(sw.getSwitchId().toLong(), ethDstMatch.getValue());
-        assertFalse(ethDstMatch.isMasked());
+        Assertions.assertEquals(sw.getSwitchId().toLong(), ethDstMatch.getValue());
+        Assertions.assertFalse(ethDstMatch.isMasked());
 
         FieldMatch ethTypeMatch = getMatchByField(Field.ETH_TYPE, flowCommandData.getMatch());
-        assertEquals(EthType.IPv4, ethTypeMatch.getValue());
-        assertFalse(ethTypeMatch.isMasked());
+        Assertions.assertEquals(EthType.IPv4, ethTypeMatch.getValue());
+        Assertions.assertFalse(ethTypeMatch.isMasked());
 
         FieldMatch ipProtoMatch = getMatchByField(Field.IP_PROTO, flowCommandData.getMatch());
-        assertEquals(IpProto.UDP, ipProtoMatch.getValue());
-        assertFalse(ipProtoMatch.isMasked());
+        Assertions.assertEquals(IpProto.UDP, ipProtoMatch.getValue());
+        Assertions.assertFalse(ipProtoMatch.isMasked());
 
         FieldMatch udpDstMatch = getMatchByField(Field.UDP_DST, flowCommandData.getMatch());
-        assertEquals(Constants.BDF_DEFAULT_PORT, udpDstMatch.getValue());
-        assertFalse(udpDstMatch.isMasked());
+        Assertions.assertEquals(Constants.BDF_DEFAULT_PORT, udpDstMatch.getValue());
+        Assertions.assertFalse(udpDstMatch.isMasked());
 
         Instructions instructions = flowCommandData.getInstructions();
-        assertEquals(1, instructions.getApplyActions().size());
+        Assertions.assertEquals(1, instructions.getApplyActions().size());
         Action action = instructions.getApplyActions().get(0);
-        assertTrue(action instanceof PortOutAction);
+        Assertions.assertTrue(action instanceof PortOutAction);
         PortOutAction portOutAction = (PortOutAction) action;
-        assertEquals(SpecialPortType.LOCAL, portOutAction.getPortNumber().getPortType());
+        Assertions.assertEquals(SpecialPortType.LOCAL, portOutAction.getPortNumber().getPortType());
     }
 
     @Test
@@ -95,6 +93,6 @@ public class BfdCatchRuleGeneratorTest {
         BfdCatchRuleGenerator generator = new BfdCatchRuleGenerator();
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertTrue(commands.isEmpty());
+        Assertions.assertTrue(commands.isEmpty());
     }
 }
