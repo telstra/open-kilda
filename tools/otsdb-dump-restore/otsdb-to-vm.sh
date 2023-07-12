@@ -67,9 +67,16 @@ if [[ "$(docker images -q kilda-otsdb-dump-restore 2> /dev/null)" == "" ]]; then
   exit 1
 fi
 
+# Use 'gdate' command if it is MacOS or 'date' otherwise
+if [[ "$(uname)" == "Darwin" ]]; then
+  date="gdate"
+else
+  date="date"
+fi
+
 # Convert start and end date to interval format
-start_date="$(gdate -d "${start_date}" +${interval_format})"
-end_date="$(gdate -d "${end_date}" +${interval_format})"
+start_date="$($date -d "${start_date}" +${interval_format})"
+end_date="$($date -d "${end_date}" +${interval_format})"
 
 # Define function to dump data from OpenTSDB
 function dump_data {
@@ -78,13 +85,13 @@ function dump_data {
 
 # Define function to restore data to Victoria Metrics
 function restore_data {
-    docker run --rm --network="host" -v "opentsdb-data-${2}":/tmp kilda-otsdb-dump-restore kilda-otsdb-restore "${1}" && docker volume rm "opentsdb-data-${2}" || echo "Failed to restore data to Victoria Metrics" >&2
+    docker run --rm --network="host" -v "opentsdb-data-${2}":/tmp kilda-otsdb-dump-restore kilda-otsdb-restore --request-size-limit 1048576 "${1}" && docker volume rm "opentsdb-data-${2}" || echo "Failed to restore data to Victoria Metrics" >&2
 }
 
 function increment_date()
 {
     local  __resultvar=$1
-    eval $__resultvar=$(date -d "${start_date} ${increment}" +${interval_format})
+    eval $__resultvar=$($date -d "${start_date} ${increment}" +${interval_format})
 }
 
 # Loop through dates
@@ -101,7 +108,7 @@ while [[ "$start_date" < "$end_date" ]]; do
     dump_data "${start_date}" "${metrics_prefix}" "${interval_end_date}" "${opentsdb_endpoint}" "${volume_subfix}" "${concurrent_jobs}" "${query_frame_size}"
 
     echo "Restoring data from ${start_date} to ${interval_end_date} in background"
-    # restore_data "${victoria_metrics_endpoint}" "${volume_subfix}" &
+    restore_data "${victoria_metrics_endpoint}" "${volume_subfix}" &
 
     # Increment date by time interval
     increment_date start_date
