@@ -16,6 +16,7 @@
 package org.openkilda.testing.service.northbound;
 
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
+import org.openkilda.messaging.payload.history.HaFlowHistoryEntry;
 import org.openkilda.messaging.payload.network.PathValidationPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
@@ -31,6 +32,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.dto.v2.flows.PathValidateResponse;
 import org.openkilda.northbound.dto.v2.haflows.HaFlow;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowHistoryPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPingPayload;
@@ -211,5 +213,11 @@ public interface NorthboundServiceV2 {
     HaFlowRerouteResult rerouteHaFlow(String haFlowId);
 
     HaFlowPingResult pingHaFlow(String haFlowId, HaFlowPingPayload payload);
-    HaFlowHis getHaFlowHistory(String haFlowId);
+    List<HaFlowHistoryEntry> getHaFlowHistory(String haFlowId);
+
+    List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Long timeFrom, Long timeTo);
+
+    List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Integer maxCount);
+
+    List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Long timeFrom, Long timeTo, Integer maxCount);
 }

@@ -19,6 +19,7 @@ import static org.openkilda.messaging.model.ValidationFilter.FLOW_INFO;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
+import org.openkilda.messaging.payload.history.HaFlowHistoryEntry;
 import org.openkilda.messaging.payload.network.PathValidationPayload;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
@@ -637,9 +638,34 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
                 HaFlowPingResult.class, haFlowId).getBody();
     }
     @Override
-    public HaFlowPaths getHaFlowHistory(String haFlowId) {
-        return restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}/history", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), HaFlowPaths.class, haFlowId).getBody();
+    public List<HaFlowHistoryEntry> getHaFlowHistory(String flowId) {
+        return getHaFlowHistory(flowId, null);
+    }
+    @Override
+    public List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Long timeFrom, Long timeTo) {
+        return getHaFlowHistory(flowId, timeFrom, timeTo, null);
+    }
+
+    @Override
+    public List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Integer maxCount) {
+        return getHaFlowHistory(flowId, null, null, maxCount);
+    }
+
+    @Override
+    public List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Long timeFrom, Long timeTo, Integer maxCount) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v2/ha-flows//{flow_id}/history");
+        if (timeFrom != null) {
+            uriBuilder.queryParam("timeFrom", timeFrom);
+        }
+        if (timeTo != null) {
+            uriBuilder.queryParam("timeTo", timeTo);
+        }
+        if (maxCount != null) {
+            uriBuilder.queryParam("max_count", maxCount);
+        }
+        HaFlowHistoryEntry[] haFlowHistory = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity(buildHeadersWithCorrelationId()), HaFlowHistoryEntry[].class, flowId).getBody();
+        return Arrays.asList(haFlowHistory);
     }
 
 

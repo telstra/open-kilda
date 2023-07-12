@@ -835,7 +835,7 @@ class LinkSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Ignorew
+    @Ignore
     def "System detects a 1-way ISL as a Failed ISL"() {
         given: "A deleted a-switch ISL"
         def isl = topology.islsForActiveSwitches.find {

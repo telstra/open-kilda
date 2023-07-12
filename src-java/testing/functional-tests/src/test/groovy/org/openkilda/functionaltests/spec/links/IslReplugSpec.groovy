@@ -217,7 +217,6 @@ class IslReplugSpec extends HealthCheckSpecification {
     }
 
     @Tags(SMOKE)
-    @Ignore
     @Ignore("https://github.com/telstra/open-kilda/issues/3633")
     def "New potential self-loop ISL (different ports on the same switch) is not getting discovered when replugging"() {
         given: "Two a-switch links on a single switch"

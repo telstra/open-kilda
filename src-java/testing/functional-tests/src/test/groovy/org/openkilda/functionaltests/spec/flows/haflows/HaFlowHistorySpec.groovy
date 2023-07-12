@@ -21,6 +21,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.messaging.payload.history.FlowHistoryEntry
+import org.openkilda.messaging.payload.history.HaFlowHistoryEntry
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchFeature
@@ -56,33 +57,15 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
     @Shared
     HaFlowHelper haFlowHelper
 
-    def setupSpec() {
-        specStartTime = System.currentTimeSeconds()
-        def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
-        def precreatedHaFlow = haFlowHelper.addHaFlow(haFlowHelper.randomHaFlow(swT))
-
-
-
-    }
 
     @Tidy
     def "History records are created for the create/update actions using custom timeline"() {
-        when: "Create a flow"
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        //set non default values
-        flow.ignoreBandwidth = true
-        flow.periodicPings = true
-        flow.allocateProtectedPath = true
-        flow.source.innerVlanId = flow.destination.vlanId
-        flow.destination.innerVlanId = flow.source.vlanId
-        flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
-        flow.pathComputationStrategy = PathComputationStrategy.LATENCY
-        flow.maxLatency = 12345678
-        flowHelperV2.addFlow(flow)
+        given: "flow"
+        def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
+        def precreatedHaFlow = haFlowHelper.addHaFlow(haFlowHelper.randomHaFlow(swT))
 
-        Long timestampAfterCreate = System.currentTimeSeconds()
+        when: "Create a flow"
+        print("aksdn")
 
         then: "History record is created"
         def haFlowHistory =  northboundV2.getHaFlowHistory( precreatedHaFlow.haFlowId)
@@ -183,13 +166,13 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
 //        northboundV2.getFlowHistoryStatuses(flow.flowId, 1).historyStatuses*.statusBecome == ["DELETED"]
 
         cleanup:
-        !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
+        haFlowHelper.deleteHaFlow(precreatedHaFlow.haFlowId)
     }
 
 
 
-    void checkHistoryCreateAction(FlowHistoryEntry flowHistory, String flowId) {
-        assert flowHistory.action == CREATE_ACTION
+    void checkHistoryCreateAction(HaFlowHistoryEntry flowHistory, String flowId) {
+        assert haflowHistory.action == CREATE_ACTION
         assert flowHistory.payload.action[-1] == CREATE_SUCCESS
         checkHistoryCommonStuff(flowHistory, flowId)
     }
