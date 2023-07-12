@@ -1,5 +1,9 @@
 package org.openkilda.functionaltests.spec.network
 
+
+import org.openkilda.functionaltests.error.PathsNotReturnedExpectedError
+import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -8,13 +12,10 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 
 class PathsSpec extends HealthCheckSpecification {
@@ -97,8 +98,8 @@ class PathsSpec extends HealthCheckSpecification {
 
         then: "Get 400 BadRequest error because request is invalid"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-    }
+        new PathsNotReturnedExpectedError("Source and destination switch IDs are equal: '${sw.getDpId()}'",
+        ~/Bad request./).matches(exc)    }
 
     @Tidy
     @Tags(LOW_PRIORITY)
@@ -111,8 +112,7 @@ class PathsSpec extends HealthCheckSpecification {
 
         then: "Get 404 NotFound error"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.NOT_FOUND
-    }
+        new SwitchNotFoundExpectedError(NON_EXISTENT_SWITCH_ID, ~/Switch not found./).matches(exc)    }
 
     @Tidy
     def "Unable to get paths with max_latency strategy without max latency parameter"() {
@@ -125,11 +125,9 @@ class PathsSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.BAD_REQUEST
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Missed max_latency parameter."
-        errorDetails.errorDescription == "MAX_LATENCY path computation strategy requires non null max_latency " +
-                "parameter. If max_latency will be equal to 0 LATENCY strategy will be used instead of MAX_LATENCY."
+        new PathsNotReturnedExpectedError("Missed max_latency parameter.",
+                ~/MAX_LATENCY path computation strategy requires non null max_latency parameter. \
+If max_latency will be equal to 0 LATENCY strategy will be used instead of MAX_LATENCY./).matches(error)
     }
 
     @Tidy
@@ -155,12 +153,9 @@ class PathsSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Switch $switchPair.src.dpId doesn't support $FlowEncapsulationType.VXLAN " +
+        new PathsNotReturnedExpectedError("Switch $switchPair.src.dpId doesn't support $FlowEncapsulationType.VXLAN " +
                 "encapsulation type. Choose one of the supported encapsulation types $encapsTypesWithoutVxlan or " +
-                "update switch properties and add needed encapsulation type."
-
+                "update switch properties and add needed encapsulation type.", ~/Bad request./).matches(exc)
         cleanup:
         initProps.each { sw, swProps ->
             switchHelper.updateSwitchProperties(sw, swProps)

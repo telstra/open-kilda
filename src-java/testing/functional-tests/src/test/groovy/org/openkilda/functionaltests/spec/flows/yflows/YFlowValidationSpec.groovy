@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.error.yflow.YFlowNotFoundExpectedError
+
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
@@ -12,11 +14,9 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
 
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
@@ -162,11 +162,7 @@ class YFlowValidationSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        verifyAll(e.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not ${data.actionInMsg} y-flow"
-            errorDescription == "Y-flow $NON_EXISTENT_FLOW_ID not found"
-        }
+        new YFlowNotFoundExpectedError("Could not ${data.actionInMsg} y-flow", NON_EXISTENT_FLOW_ID).matches(e)
 
         where:
         data << [

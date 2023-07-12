@@ -38,4 +38,8 @@ class SwitchTriplet {
     static Closure ALL_ENDPOINTS_DIFFERENT = {
         SwitchTriplet swT -> swT.ep1 != swT.ep2 && swT.ep1 != swT.shared && swT.ep2 != swT.shared
     }
+
+    static Closure ONE_SUB_FLOW_IS_ONE_SWITCH_FLOW = {
+        SwitchTriplet swT -> swT.shared == swT.ep1 && swT.shared != swT.ep2
+    }
 }

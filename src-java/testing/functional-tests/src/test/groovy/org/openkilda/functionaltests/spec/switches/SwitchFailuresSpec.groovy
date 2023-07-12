@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.error.flow.FlowNotValidatedExpectedError
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -16,14 +18,12 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
@@ -168,10 +168,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
         then: "Error is returned, explaining that this is impossible for DOWN flows"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.UNPROCESSABLE_ENTITY
-        e.responseBodyAsString.to(MessageError).errorDescription ==
-                "Could not validate flow: Flow $flow.flowId is in DOWN state"
-
+        new FlowNotValidatedExpectedError(~/Could not validate flow: Flow $flow.flowId is in DOWN state/).matches(e)
         when: "Switch returns back UP"
         switchHelper.reviveSwitch(srcSwitch, blockData)
         def swIsOnline = true

@@ -112,11 +112,23 @@ public class TestKafkaConsumer extends Thread {
      * @return list of messages
      */
     public <T> List<T> assertNAndPoll(final int expectedCount, Class<T> clazz) {
+        return assertNAndPoll(expectedCount, kafkaMessagePollTimeout, clazz);
+    }
+
+    /**
+     * Polls messages from Kafka until expectedCount is reached.
+     *
+     * @param expectedCount expected count of messages
+     * @param pollTimeout timeout for poll
+     * @param clazz class of messages
+     * @return list of messages
+     */
+    public <T> List<T> assertNAndPoll(final int expectedCount, final long pollTimeout, Class<T> clazz) {
         List<T> messages = new ArrayList<>();
         ConsumerRecord<String, String> record = null;
         for (int i = 0; i < expectedCount; i++) {
             try {
-                record = pollMessage();
+                record = pollMessage(pollTimeout);
                 if (record == null) {
                     throw new AssertionError(format("Could not get %d records. %d records gotten",
                             expectedCount, messages.size()));

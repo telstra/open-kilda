@@ -11,6 +11,7 @@ import org.openkilda.testing.service.traffexam.model.Vlan
 
 import javax.inject.Provider
 
+import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
 import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult
 
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
@@ -70,7 +71,6 @@ class HaFlowHelper {
 
     def random = new Random()
     def faker = new Faker()
-    def allowedVlans = 101..4094
 
     /**
      * Creates HaFlowCreatePayload for a ha-flow with random vlan.
@@ -86,7 +86,7 @@ class HaFlowHelper {
         def se = HaFlowSharedEndpoint.builder()
                 .switchId(sharedSwitch.dpId)
                 .portNumber(randomEndpointPort(sharedSwitch, useTraffgenPorts, busyEndpoints))
-                .vlanId(randomVlan())
+                .vlanId(randomVlan([]))
                 .build()
         def subFlows = [firstSwitch, secondSwitch].collect { sw ->
             busyEndpoints << new SwitchPortVlan(se.switchId, se.portNumber, se.vlanId)
@@ -339,6 +339,12 @@ class HaFlowHelper {
         return new HaFlowBidirectionalExam(traffExam, forward1, reverse1, forward2, reverse2);
     }
 
+    SwitchId getYPoint(HaFlow haFlow) {
+        def sharedForwardPath = northboundV2.getHaFlowPaths(haFlow.getHaFlowId()).getSharedPath().getForward()
+        return sharedForwardPath == null ? sharedForwardPath.last().getSwitchId() :
+                haFlow.getSharedEndpoint().getSwitchId()
+    }
+
     /**
      * Returns an endpoint with randomly chosen port & vlan.
      */
@@ -368,16 +374,8 @@ class HaFlowHelper {
         return port
     }
 
-    int randomVlan(excludeVlan = null) {
-        Integer vlan
-        do {
-            vlan = allowedVlans[random.nextInt(allowedVlans.size())]
-        } while (vlan == excludeVlan)
-        return vlan
-    }
-
     private String generateDescription() {
         def methods = ["asYouLikeItQuote", "kingRichardIIIQuote", "romeoAndJulietQuote", "hamletQuote"]
-        sprintf("autotest y-flow: %s", faker.shakespeare()."${methods[random.nextInt(methods.size())]}"())
+        sprintf("autotest HA-Flow: %s", faker.shakespeare()."${methods[random.nextInt(methods.size())]}"())
     }
 }

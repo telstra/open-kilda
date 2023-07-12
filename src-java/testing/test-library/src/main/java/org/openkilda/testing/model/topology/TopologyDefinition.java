@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Defines a topology with switches, links and traffgens.
@@ -189,7 +190,9 @@ public class TopologyDefinition {
                 .filter(it -> it.switchConnected.dpId.equals(sw.dpId))
                 .map(it -> it.switchPort).collect(toList());
         allPorts.addAll(tgPorts);
-        return allPorts;
+        return Stream.concat(allPorts.stream(), tgPorts.stream())
+                .distinct()
+                .collect(toList());
     }
 
     public Switch find(SwitchId id) {

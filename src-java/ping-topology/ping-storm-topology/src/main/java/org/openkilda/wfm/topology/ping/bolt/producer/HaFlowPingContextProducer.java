@@ -22,6 +22,8 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.HaSubFlow;
+import org.openkilda.wfm.topology.ping.bolt.FlowFetcher;
+import org.openkilda.wfm.topology.ping.model.GroupId;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 
 import org.slf4j.Logger;
@@ -46,7 +48,12 @@ public class HaFlowPingContextProducer implements PingContextProducer {
      * @return a list of PingContexts produced from the given PingContext
      */
     @Override
-    public List<PingContext> produce(final PingContext pingContext) {
+    public List<PingContext> produce(PingContext pingContext) {
+        GroupId groupId = new GroupId(
+                FlowFetcher.DIRECTION_COUNT_PER_FLOW * countHaFlowHasOneSwitchSubFlows(pingContext.getHaFlow()));
+
+        pingContext.setGroup(groupId);
+
         final List<PingContext> pingContexts = new ArrayList<>();
 
         HaFlow haFlow = pingContext.getHaFlow();
@@ -59,6 +66,10 @@ public class HaFlowPingContextProducer implements PingContextProducer {
         return pingContexts;
     }
 
+    private int countHaFlowHasOneSwitchSubFlows(HaFlow haFlow) {
+        return (int) haFlow.getHaSubFlows().stream().filter(subFlow -> !subFlow.isOneSwitchFlow()).count();
+    }
+
     private List<PingContext> createPingContextsFromHaFlowPath(final PingContext pingContext,
                                                                final FlowDirection direction,
                                                                final HaFlow haFlow,
@@ -68,7 +79,7 @@ public class HaFlowPingContextProducer implements PingContextProducer {
         for (FlowPath subFlowPath : haFlowPath.getSubPaths()) {
             HaSubFlow haSubFlow = subFlowPath.getHaSubFlow();
             if (haSubFlow.getEndpointSwitchId().equals(haFlow.getSharedSwitchId())) {
-                log.warn("Skip ping for ha sub-flow {} because it is one-switch flow", haSubFlow.getHaSubFlowId());
+                log.debug("Skip ping for ha sub-flow {} because it is one-switch flow", haSubFlow.getHaSubFlowId());
                 continue;
             }
             NetworkEndpoint networkEndpoint1 =

@@ -58,6 +58,7 @@ import java.util.stream.Collectors;
 @Service
 @Profile("hardware")
 public class LockKeeperServiceImpl implements LockKeeperService {
+    public static final String SWITCH_TYPE_ARGUMENT = "?switch_type=noviflow";
 
     @Autowired
     @Qualifier("islandNb")
@@ -79,7 +80,8 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     @Override
     public void addFlows(List<ASwitchFlow> flows) {
         RestTemplate restTemplate = lockKeepersByRegion.values().iterator().next(); //any template fits
-        restTemplate.exchange("/flows", HttpMethod.POST, new HttpEntity<>(flows, buildJsonHeaders()), String.class);
+        restTemplate.exchange("/flows" + SWITCH_TYPE_ARGUMENT, HttpMethod.POST,
+                new HttpEntity<>(flows, buildJsonHeaders()), String.class);
         log.debug("Added flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
                 .collect(toList()));
@@ -88,7 +90,8 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     @Override
     public void removeFlows(List<ASwitchFlow> flows) {
         RestTemplate restTemplate = lockKeepersByRegion.values().iterator().next();
-        restTemplate.exchange("/flows", HttpMethod.DELETE, new HttpEntity<>(flows, buildJsonHeaders()), String.class);
+        restTemplate.exchange("/flows" + SWITCH_TYPE_ARGUMENT, HttpMethod.DELETE,
+                new HttpEntity<>(flows, buildJsonHeaders()), String.class);
         log.debug("Removed flows: {}", flows.stream()
                 .map(flow -> String.format("%s->%s", flow.getInPort(), flow.getOutPort()))
                 .collect(toList()));
@@ -97,22 +100,24 @@ public class LockKeeperServiceImpl implements LockKeeperService {
     @Override
     public List<ASwitchFlow> getAllFlows() {
         RestTemplate restTemplate = lockKeepersByRegion.values().iterator().next();
-        ASwitchFlow[] flows = restTemplate.exchange("/flows",
-                HttpMethod.GET, new HttpEntity(buildJsonHeaders()), ASwitchFlow[].class).getBody();
+        ASwitchFlow[] flows = restTemplate.exchange("/flows" + SWITCH_TYPE_ARGUMENT,
+                HttpMethod.GET, new HttpEntity<>(buildJsonHeaders()), ASwitchFlow[].class).getBody();
         return Arrays.asList(flows);
     }
 
     @Override
     public void portsUp(List<Integer> ports) {
         RestTemplate restTemplate = lockKeepersByRegion.values().iterator().next();
-        restTemplate.exchange("/ports", HttpMethod.POST, new HttpEntity<>(ports, buildJsonHeaders()), String.class);
+        restTemplate.exchange("/ports" + SWITCH_TYPE_ARGUMENT, HttpMethod.POST,
+                new HttpEntity<>(ports, buildJsonHeaders()), String.class);
         log.debug("Brought up ports: {}", ports);
     }
 
     @Override
     public void portsDown(List<Integer> ports) {
         RestTemplate restTemplate = lockKeepersByRegion.values().iterator().next();
-        restTemplate.exchange("/ports", HttpMethod.DELETE, new HttpEntity<>(ports, buildJsonHeaders()), String.class);
+        restTemplate.exchange("/ports" + SWITCH_TYPE_ARGUMENT, HttpMethod.DELETE,
+                new HttpEntity<>(ports, buildJsonHeaders()), String.class);
         log.debug("Brought down ports: {}", ports);
     }
 
@@ -270,7 +275,6 @@ public class LockKeeperServiceImpl implements LockKeeperService {
         String[] parts = uri.split(":");
         return Integer.valueOf(parts[parts.length - 1]);
     }
-
 
     private List<FloodlightResourceAddress> toFlResources(Switch sw, List<String> regions) {
         return sw.getRegions().stream().filter(regions::contains).map(region -> {

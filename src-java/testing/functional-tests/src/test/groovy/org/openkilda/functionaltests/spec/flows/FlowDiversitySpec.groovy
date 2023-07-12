@@ -331,7 +331,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
     def "Able to get flow paths with correct overlapping segments stats (casual + single-switch flows)"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getNotNeighboringSwitchPair()
-
         and: "Create a casual flow going through these switches"
         def flow1 = flowHelperV2.randomFlow(switchPair, false)
         flowHelperV2.addFlow(flow1)
@@ -358,6 +357,8 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         withPool {
             [flow1, flow2, flow3].eachParallel { it && flowHelperV2.deleteFlow(it.flowId) }
         }
+        //https://github.com/telstra/open-kilda/issues/5221
+        switchHelper.synchronize([switchPair.getSrc().getDpId(), switchPair.getDst().getDpId()])
     }
 
     @Tidy

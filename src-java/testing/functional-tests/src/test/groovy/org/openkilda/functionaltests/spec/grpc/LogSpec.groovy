@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.grpc
 
+import org.openkilda.functionaltests.error.LogServerNotSetExpectedError
+
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.ConstantsGrpc.DEFAULT_LOG_MESSAGES_STATE
 import static org.openkilda.testing.ConstantsGrpc.DEFAULT_LOG_OF_MESSAGES_STATE
@@ -116,9 +118,7 @@ on #sw.hwSwString"() {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).errorMessage == data.errorMessage
-
+        new LogServerNotSetExpectedError(data.errorMessage).matches(exc)
         where:
         [data, sw] << [
                 [

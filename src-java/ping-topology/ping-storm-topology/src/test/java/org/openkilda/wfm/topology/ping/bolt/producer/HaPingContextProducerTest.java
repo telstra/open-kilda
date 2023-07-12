@@ -105,15 +105,21 @@ public class HaPingContextProducerTest {
         FlowTransitEncapsulation transitEncapsulation =
                 new FlowTransitEncapsulation(0, FlowEncapsulationType.TRANSIT_VLAN);
         PingContext pingContext = PingContext.builder()
-                .group(new org.openkilda.wfm.topology.ping.model.GroupId(4))
                 .kind(Kinds.ON_DEMAND_HA_FLOW)
                 .haFlow(haFlow)
                 .transitEncapsulation(transitEncapsulation)
                 .timeout(0L)
                 .build();
 
+        PingContext.PingContextBuilder pingContextBuilder = PingContext.builder()
+                .group(new org.openkilda.wfm.topology.ping.model.GroupId(4))
+                .kind(Kinds.ON_DEMAND_HA_FLOW)
+                .haFlow(haFlow)
+                .transitEncapsulation(transitEncapsulation)
+                .timeout(0L);
+
         final List<PingContext> expectedPingContexts = Lists.newArrayList(
-                pingContext.toBuilder()
+                pingContextBuilder
                         .ping(new Ping(
                                 new NetworkEndpoint(sharedSwitch.getSwitchId(), PORT_1),
                                 new NetworkEndpoint(endpointSwitchA.getSwitchId(), PORT_1),
@@ -122,7 +128,7 @@ public class HaPingContextProducerTest {
                         .haSubFlowId(haSubFlowA.getHaSubFlowId())
                         .direction(FlowDirection.FORWARD)
                         .build(),
-                pingContext.toBuilder()
+                pingContextBuilder
                         .ping(new Ping(
                                 new NetworkEndpoint(sharedSwitch.getSwitchId(), PORT_1),
                                 new NetworkEndpoint(endpointSwitchB.getSwitchId(), PORT_2),
@@ -131,7 +137,7 @@ public class HaPingContextProducerTest {
                         .haSubFlowId(haSubFlowB.getHaSubFlowId())
                         .direction(FlowDirection.FORWARD)
                         .build(),
-                pingContext.toBuilder()
+                pingContextBuilder
                         .ping(new Ping(
                                 new NetworkEndpoint(endpointSwitchA.getSwitchId(), PORT_1),
                                 new NetworkEndpoint(sharedSwitch.getSwitchId(), PORT_1),
@@ -140,7 +146,7 @@ public class HaPingContextProducerTest {
                         .haSubFlowId(haSubFlowA.getHaSubFlowId())
                         .direction(FlowDirection.REVERSE)
                         .build(),
-                pingContext.toBuilder()
+                pingContextBuilder
                         .ping(new Ping(
                                 new NetworkEndpoint(endpointSwitchB.getSwitchId(), PORT_2),
                                 new NetworkEndpoint(sharedSwitch.getSwitchId(), PORT_1),
@@ -154,8 +160,7 @@ public class HaPingContextProducerTest {
 
         List<PingContext> resultPingContexts = haFlowPingContextProducer.produce(pingContext);
 
-        Assert.assertEquals(4, resultPingContexts.size());
-        Assert.assertEquals(expectedPingContexts, resultPingContexts);
+        assertPingContextAreEquals(expectedPingContexts, resultPingContexts);
     }
 
     @Test
@@ -167,15 +172,21 @@ public class HaPingContextProducerTest {
         FlowTransitEncapsulation transitEncapsulation =
                 new FlowTransitEncapsulation(0, FlowEncapsulationType.TRANSIT_VLAN);
         PingContext pingContext = PingContext.builder()
-                .group(new org.openkilda.wfm.topology.ping.model.GroupId(4))
                 .kind(Kinds.ON_DEMAND_HA_FLOW)
                 .haFlow(haFlow)
                 .transitEncapsulation(transitEncapsulation)
                 .timeout(0L)
                 .build();
 
+        PingContext.PingContextBuilder pingContextBuilder = PingContext.builder()
+                .group(new org.openkilda.wfm.topology.ping.model.GroupId(2))
+                .kind(Kinds.ON_DEMAND_HA_FLOW)
+                .haFlow(haFlow)
+                .transitEncapsulation(transitEncapsulation)
+                .timeout(0L);
+
         final List<PingContext> expectedPingContexts = Lists.newArrayList(
-                pingContext.toBuilder()
+                pingContextBuilder
                         .ping(new Ping(
                                 new NetworkEndpoint(sharedSwitch.getSwitchId(), PORT_1),
                                 new NetworkEndpoint(endpointSwitchB.getSwitchId(), PORT_2),
@@ -184,7 +195,7 @@ public class HaPingContextProducerTest {
                         .haSubFlowId(haSubFlowB.getHaSubFlowId())
                         .direction(FlowDirection.FORWARD)
                         .build(),
-                pingContext.toBuilder()
+                pingContextBuilder
                         .ping(new Ping(
                                 new NetworkEndpoint(endpointSwitchB.getSwitchId(), PORT_2),
                                 new NetworkEndpoint(sharedSwitch.getSwitchId(), PORT_1),
@@ -198,8 +209,37 @@ public class HaPingContextProducerTest {
 
         List<PingContext> resultPingContexts = haFlowPingContextProducer.produce(pingContext);
 
-        Assert.assertEquals(2, resultPingContexts.size());
-        Assert.assertEquals(expectedPingContexts, resultPingContexts);
+        assertPingContextAreEquals(expectedPingContexts, resultPingContexts);
+
+    }
+
+    /**
+     * Assert PingContext list are equals bypassing the pingId.
+     */
+    private void assertPingContextAreEquals(List<PingContext> expected, List<PingContext> actual) {
+        Assert.assertEquals(expected.size(), actual.size());
+        for (int i = 0; i < expected.size(); i++) {
+            PingContext expectedPingContext = expected.get(i);
+            PingContext actualPingContext = actual.get(i);
+            assertPingAreEquals(expectedPingContext.getPing(), actualPingContext.getPing());
+            Assert.assertEquals(expectedPingContext.getGroup().getSize(), actualPingContext.getGroup().getSize());
+            Assert.assertEquals(expectedPingContext.getKind(), actualPingContext.getKind());
+            Assert.assertEquals(expectedPingContext.getHaFlow(), actualPingContext.getHaFlow());
+            Assert.assertEquals(expectedPingContext.getTransitEncapsulation(),
+                    actualPingContext.getTransitEncapsulation());
+            Assert.assertEquals(expectedPingContext.getTimeout(), actualPingContext.getTimeout());
+            Assert.assertEquals(expectedPingContext.getDirection(), actualPingContext.getDirection());
+            Assert.assertEquals(expectedPingContext.getHaSubFlowId(), actualPingContext.getHaSubFlowId());
+        }
+    }
+
+    /**
+     * Assert two Ping objects are equals bypassing the pingId.
+     */
+    private void assertPingAreEquals(Ping expected, Ping actual) {
+        Assert.assertEquals(expected.getSource(), actual.getSource());
+        Assert.assertEquals(expected.getDest(), actual.getDest());
+        Assert.assertEquals(expected.getTransitEncapsulation(), actual.getTransitEncapsulation());
     }
 
     private void createHaFlow(boolean oneIsOneSwitchFlow) {
@@ -226,7 +266,7 @@ public class HaPingContextProducerTest {
         final HaFlowPath pathB = createHaFlowPath(PATH_ID_2, COOKIE_2, sharedSwitch);
 
         haSubFlowA = buildHaSubFlow(SUB_FLOW_ID_A, endpointSwitchA, PORT_1, VLAN_1, 0, DESCRIPTION_1);
-        haSubFlows.add(haSubFlowA);
+        haSubFlows.add(new HaSubFlow(haSubFlowA, haFlow));
         forwardSubPaths.add(createPathWithSegments(SUB_PATH_ID_1, pathA, haSubFlowA,
                 Lists.newArrayList(sharedSwitch, ySwitch, endpointSwitchA)));
         reverseSubPaths.add(createPathWithSegments(SUB_PATH_ID_3, pathB, haSubFlowA,
@@ -234,7 +274,7 @@ public class HaPingContextProducerTest {
 
 
         haSubFlowB = buildHaSubFlow(SUB_FLOW_ID_B, endpointSwitchB, PORT_2, VLAN_2, 0, DESCRIPTION_2);
-        haSubFlows.add(haSubFlowB);
+        haSubFlows.add(new HaSubFlow(haSubFlowB, haFlow));
         forwardSubPaths.add(createPathWithSegments(SUB_PATH_ID_2, pathA, haSubFlowB,
                 Lists.newArrayList(sharedSwitch, ySwitch, endpointSwitchB)));
         reverseSubPaths.add(createPathWithSegments(SUB_PATH_ID_4, pathB, haSubFlowB,

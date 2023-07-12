@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.error.PortNotFoundExpectedError
+import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
+
 import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -12,13 +15,10 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
-
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
@@ -85,21 +85,14 @@ class PortPropertiesSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.NOT_FOUND
-        def response = e.responseBodyAsString.to(MessageError)
-        response.errorMessage == "Switch ${NON_EXISTENT_SWITCH_ID} not found."
-        response.errorDescription == "Couldn't get port properties"
-
+        new SwitchNotFoundExpectedError(NON_EXISTENT_SWITCH_ID, ~/Couldn't get port properties/).matches(e)
         when: "Try to update port discovery property for non-existing switch"
         northboundV2.updatePortProperties(NON_EXISTENT_SWITCH_ID, port, new PortPropertiesDto(discoveryEnabled: true))
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.NOT_FOUND
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Could not update port properties for '${NON_EXISTENT_SWITCH_ID}_${port}':\
- Switch ${NON_EXISTENT_SWITCH_ID} not found."
-    }
+        new SwitchNotFoundExpectedError("Could not update port properties for \
+'${NON_EXISTENT_SWITCH_ID}_${port}': Switch ${NON_EXISTENT_SWITCH_ID} not found.", ~/Persistence exception/).matches(exc)    }
 
     @Tidy
     def "Informative error is returned when trying to update port properties with non-existing port number"() {
@@ -121,10 +114,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.NOT_FOUND
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "Port not found: 'Port FSM not found (${sw.dpId}_${nonExistentPort}).'"
-    }
+        new PortNotFoundExpectedError(sw.dpId, nonExistentPort, ~/Port not found exception/).matches(exc)    }
 
     def "System doesn't discover link when port discovery property is disabled"() {
         given: "A deleted link"
