@@ -21,7 +21,7 @@ class DoCleanupListener extends AbstractSpringListener {
     void error(ErrorInfo error) {
         def thrown = error.exception
         if (thrown instanceof AssertionError) {
-            if (thrown.getMessage().contains("SwitchValidationExtendedResult(")) {
+            if (thrown.getMessage() && thrown.getMessage().contains("SwitchValidationExtendedResult(")) {
                 withPool {
                     topology.activeSwitches.eachParallel { sw ->
                         northbound.synchronizeSwitch(sw.dpId, true)

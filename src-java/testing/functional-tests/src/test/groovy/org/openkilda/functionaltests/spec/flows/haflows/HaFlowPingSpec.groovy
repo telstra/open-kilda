@@ -1,15 +1,5 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
-import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -18,20 +8,35 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.functionaltests.model.stats.Direction
+import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPingPayload
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPingResult
-import org.openkilda.northbound.dto.v2.haflows.HaSubFlow
 import org.openkilda.northbound.dto.v2.yflows.SubFlowPingPayload
 import org.openkilda.northbound.dto.v2.yflows.UniSubFlowPingPayload
-
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
+
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
+import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.LATENCY
+import static org.openkilda.functionaltests.model.stats.Status.ERROR
+import static org.openkilda.functionaltests.model.stats.Status.SUCCESS
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Narrative("""This spec tests 'periodic ping' functionality.""")
 class HaFlowPingSpec extends HealthCheckSpecification {
@@ -42,13 +47,13 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     @Value('${flow.ping.interval}')
     int pingInterval
 
-    @Shared
-    @Value('${opentsdb.metric.prefix}')
-    String metricPrefix
-
     @Autowired
     @Shared
     SwitchRulesFactory switchRulesFactory
+
+    @Autowired
+    @Shared
+    FlowStats flowStats
 
     @Tidy
     @Tags([LOW_PRIORITY])
@@ -68,14 +73,13 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         then: "Periodic pings are really disabled"
         !updatedHaFlow.periodicPings
         !northboundV2.getHaFlow(haFlow.haFlowId).periodicPings
-        def afterUpdateTime = new Date()
+        def afterUpdateTime = new Date().getTime()
 
         and: "There is no metrics for HA-subflows"
-        def subFlowTags = generatePingMetricTags(haFlow, "*")
         timedLoop(pingInterval + WAIT_OFFSET) {
-            subFlowTags.each { Map<String, String> tags ->
-                def statsData = otsdb.query(afterUpdateTime, metricPrefix + "flow.latency", tags).dps
-                assert statsData != null && statsData.isEmpty()
+            [haFlow.subFlows*.flowId, [FORWARD, REVERSE]].combinations().each {String flowId, Direction direction ->
+                def stats = flowStats.of(flowId).get(LATENCY, direction)
+                assert stats != null && !stats.hasNonZeroValuesAfter(afterUpdateTime)
             }
         }
 
@@ -100,21 +104,17 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         when: "Fail an HA-flow ISL (bring switch port down)"
         antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
         wait(WAIT_OFFSET) { northbound.getLink(islToFail).state == FAILED }
-        def afterFailTime = new Date()
+        def afterFailTime = new Date().getTime()
 
         then: "Periodic pings are still enabled"
         northboundV2.getHaFlow(haFlow.haFlowId).periodicPings
 
-        and: "Metrics for HA-subflows have 'error' in otsdb"
-        def subFlowTags = generatePingMetricTags(haFlow, "error")
+        and: "Metrics for HA-subflows have 'error' in tsdb"
         wait(pingInterval + WAIT_OFFSET * 2, 2) {
             withPool {
-                subFlowTags.eachParallel { Map<String, String> tags ->
-                    def statsData = otsdb.query(afterFailTime, metricPrefix + "flow.latency", tags).dps
-                    assert statsData && !statsData.isEmpty()
-                    for (Long metricValue : statsData.values()) {
-                        assert metricValue == -1
-                    }
+                [haFlow.subFlows*.flowId, [FORWARD, REVERSE]].combinations().eachParallel {
+                    String flowId, Direction direction ->
+                        flowStats.of(flowId).get(LATENCY, direction, ERROR).hasNonZeroValuesAfter(afterFailTime)
                 }
             }
         }
@@ -130,7 +130,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     def "Able to turn on periodic pings on a HA-flow"() {
         when: "Create a HA-flow with periodic pings turned on"
         def swT = topologyHelper.findSwitchTripletWithDifferentEndpoints()
-        def beforeCreationTime = new Date()
+        def beforeCreationTime = new Date().getTime()
         def haFlowRequest = haFlowHelper.randomHaFlow(swT).tap {
             it.periodicPings = true
         }
@@ -142,13 +142,12 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         and: "Packet counter on catch ping rules grows due to pings happening"
         arePingRuleCountersGrow(swT, haFlow)
 
-        and: "Metrics for HA-subflows have 'success' in otsdb"
-        def subFlowTags = generatePingMetricTags(haFlow, "success")
+        and: "Metrics for HA-subflows have 'success' in tsdb"
         wait(pingInterval + WAIT_OFFSET, 2) {
             withPool {
-                subFlowTags.eachParallel { Map<String, String> tags ->
-                    def statsData = otsdb.query(beforeCreationTime, metricPrefix + "flow.latency", tags).dps
-                    assert statsData && !statsData.isEmpty()
+                [haFlow.subFlows*.flowId, [FORWARD, REVERSE]].combinations().eachParallel {
+                    String flowId, Direction direction ->
+                        flowStats.of(flowId).get(LATENCY, direction, SUCCESS).hasNonZeroValuesAfter(beforeCreationTime)
                 }
             }
         }
@@ -222,18 +221,5 @@ class HaFlowPingSpec extends HealthCheckSpecification {
 
     private long getPacketCountOfVlanPingRule(SwitchId switchId, HaFlow haFlow) {
         return switchRulesFactory.get(switchId).pingRule(haFlow.encapsulationType).packetCount
-    }
-
-    private List<Map<String, String>> generatePingMetricTags(HaFlow haFlow, String status) {
-        def result = []
-        for (HaSubFlow subFlow : haFlow.subFlows) {
-            for (String direction : new String[]{"forward", "reverse"}) {
-                result.add([ha_flow_id: haFlow.haFlowId,
-                            flowid    : subFlow.flowId,
-                            direction : direction,
-                            status    : status])
-            }
-        }
-        return result
     }
 }

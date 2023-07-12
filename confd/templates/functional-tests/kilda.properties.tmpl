@@ -8,8 +8,9 @@ elasticsearch.endpoint={{ getv "/kilda_tests_logging_elasticsearch_proto" "n/a" 
 zookeeper.connect_string = {{ getv "/kilda_tests_zookeeper_hosts" "n/a" }}/{{ getv "/kilda_zookeeper_state_root" }}
 kafka.bootstrap.server={{ getv "/kilda_tests_kafka_hosts" "n/a" }}
 kafka.bootstrap.server.internal={{ getv "/kilda_tests_kafka_hosts_internal" "n/a" }}
-opentsdb.endpoint=http://{{ getv "/kilda_tests_opentsdb_hosts" "n/a" }}:{{ getv "/kilda_tests_opentsdb_port" "n/a" }}
 grpc.endpoint={{ getv "/kilda_tests_grpc_endpoint" "n/a" }}:{{ getv "/kilda_tests_grpc_rest_port" "n/a" }}
+legacy.tsdb.endpoint=http://{{ getv "/kilda_tests_opentsdb_hosts" }}:{{ getv "/kilda_tests_opentsdb_port" }}
+tsdb.endpoint=http://{{ getv "/kilda_tests_victoriametrics_hosts" }}:{{ getv "/kilda_tests_victoriametrics_port" }}
 {{else}}
 northbound.endpoint={{ getv "/kilda_northbound_endpoint" }}:{{ getv "/kilda_northbound_rest_port" }}
 orientdb.url=remote:{{ getv "/kilda_orientdb_hosts" }}/{{ getv "/kilda_orientdb_database" }}
@@ -18,8 +19,9 @@ elasticsearch.endpoint={{ getv "/kilda_logging_elasticsearch_proto" }}://{{ getv
 zookeeper.connect_string = {{ getv "/kilda_zookeeper_hosts"}}/{{ getv "/kilda_zookeeper_state_root" }}
 kafka.bootstrap.server={{ getv "/kilda_kafka_hosts" }}
 kafka.bootstrap.server.internal={{ getv "/kilda_kafka_hosts" }}
-opentsdb.endpoint=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
 grpc.endpoint={{ getv "/kilda_grpc_endpoint" }}:{{ getv "/kilda_grpc_rest_port" }}
+legacy.tsdb.endpoint=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
+tsdb.endpoint=http://{{ getv "/kilda_victoriametrics_hosts" }}:{{ getv "/kilda_victoriametrics_port" }}{{ getv "kilda_tests_victoriametrics_query_path" }}
 {{end}}
 northbound.username={{ getv "/kilda_northbound_username" }}
 northbound.password={{ getv "/kilda_northbound_password" }}
@@ -52,7 +54,7 @@ kafka.topic.topo.disco=kilda.topo.disco.storm
 lab-api.endpoint={{ getv "/kilda_lab_api_endpoint" }}:{{ getv "/kilda_lab_api_port" }}
 lockkeeper.port={{ getv "/kilda_lockkeeper_port" }}
 
-opentsdb.metric.prefix = {{ getv "/kilda_opentsdb_metric_prefix" }}
+tsdb.metric.prefix = {{ getv "/kilda_opentsdb_metric_prefix" }}
 
 spring.profiles.active={{ getv "/kilda_test_profile" }}
 

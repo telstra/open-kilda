@@ -1,5 +1,10 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.model.stats.SwitchStats
+import org.openkilda.functionaltests.model.stats.SwitchStatsMetric
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Shared
+
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -13,25 +18,20 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
-import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 
 @Narrative("Verify that Kilda allows to properly control port state on switches (bring ports up or down).")
 @Tags([SMOKE_SWITCHES])
 class SwitchPortConfigSpec extends HealthCheckSpecification {
 
-    @Value('${opentsdb.metric.prefix}')
-    String metricPrefix
-
-    def otsdbPortUp = 1
-    def otsdbPortDown = 0
+    @Autowired @Shared
+    SwitchStats switchStats;
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Able to bring ISL-busy port down/up on an #isl.srcSwitch.ofVersion switch #isl.srcSwitch.dpId"() {
         when: "Bring port down on the switch"
-        def portDownTime = new Date()
+        def portDownTime = new Date().getTime()
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
 
         then: "Forward and reverse ISLs between switches becomes 'FAILED'"
@@ -41,14 +41,11 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
         }
 
-        and: "Port failure is logged in OpenTSDB"
+        and: "Port failure is logged in TSDB"
         def statsData = [:]
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
-            statsData = otsdb.query(portDownTime, metricPrefix + "switch.state",
-                    [switchid: isl.srcSwitch.dpId.toOtsdFormat(), port: isl.srcPort]).dps
-            assert statsData.size() == 1
+            switchStats.of(isl.getSrcSwitch().getDpId()).get(SwitchStatsMetric.STATE, isl.getSrcPort()).hasValue(0)
         }
-        statsData.values().first() == otsdbPortDown
 
         when: "Bring port up on the switch"
         def portUpTime = new Date()
@@ -61,13 +58,10 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
         }
 
-        and: "Port UP event is logged in OpenTSDB"
+        and: "Port UP event is logged in TSDB"
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
-            statsData = otsdb.query(portUpTime, metricPrefix + "switch.state",
-                    [switchid: isl.srcSwitch.dpId.toOtsdFormat(), port: isl.srcPort]).dps
-            assert statsData.size() == 1
+            switchStats.of(isl.getSrcSwitch().getDpId()).get(SwitchStatsMetric.STATE, isl.getSrcPort()).hasValue(1)
         }
-        statsData.values().first() == otsdbPortUp
 
         cleanup:
         if (portDownTime && !portUpTime) {

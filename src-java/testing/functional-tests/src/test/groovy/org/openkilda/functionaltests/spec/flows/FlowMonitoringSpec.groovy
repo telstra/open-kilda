@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.model.stats.FlowStats
+import org.springframework.beans.factory.annotation.Autowired
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.FLOW_MON_TOGGLE
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
@@ -9,6 +12,9 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
+import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -36,9 +42,8 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
     List<Isl> mainIsls, alternativeIsls, islsToBreak
     @Shared
     SwitchPair switchPair
-    @Shared
-    @Value('${opentsdb.metric.prefix}')
-    String metricPrefix
+    @Autowired @Shared
+    FlowStats flowStats
 
     /** System tries to reroute a flow in case latency on a path is (flowLatency + flowLatency * 0.05);
      * NOTE: There is some possible latency calculation error in virtual lab(ovs/linux) after applying 'tc' command
@@ -94,14 +99,7 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
         //wait for generating some flow-monitoring stats
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
-         assert !otsdb.query(createFlowTime, metricPrefix + "flow.rtt",
-                 [flowid   : flow.flowId,
-                  direction: "forward",
-                  origin   : "flow-monitoring"]).dps.isEmpty()
-        assert !otsdb.query(createFlowTime, metricPrefix + "flow.rtt",
-                [flowid   : flow.flowId,
-                 direction: "reverse",
-                 origin   : "flow-monitoring"]).dps.isEmpty()
+            flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValues()
         }
 
         def path = northbound.getFlowPath(flow.flowId)
@@ -114,9 +112,8 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         def newLatency = (flow.maxLatency + (flow.maxLatency * flowLatencySlaThresholdPercent)).toInteger()
         lockKeeper.setLinkDelay(srcInterfaceName, newLatency)
         lockKeeper.setLinkDelay(dstInterfaceName, newLatency)
-        def updateLatencyTime = new Date()
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
-            verifyLatencyInOpenTSDB(updateLatencyTime, flow.flowId, newLatency)
+            verifyLatencyInTsdb(flow.flowId, newLatency)
         }
 
         then: "System detects that flowPathLatency doesn't satisfy max_latency and reroute the flow"
@@ -166,14 +163,7 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         flowHelperV2.addFlow(flow)
         //wait for generating some flow-monitoring stats
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
-            assert !otsdb.query(createFlowTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward",
-                     origin   : "flow-monitoring"]).dps.isEmpty()
-            assert !otsdb.query(createFlowTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "reverse",
-                     origin   : "flow-monitoring"]).dps.isEmpty()
+            flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE).hasNonZeroValues()
         }
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
 
@@ -184,9 +174,8 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         def newLatency = (flow.maxLatency + (flow.maxLatency * flowLatencySlaThresholdPercent)).toInteger()
         lockKeeper.setLinkDelay(srcInterfaceName, newLatency)
         lockKeeper.setLinkDelay(dstInterfaceName, newLatency)
-        def updateLatencyTime = new Date()
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
-            verifyLatencyInOpenTSDB(updateLatencyTime, flow.flowId, newLatency)
+            verifyLatencyInTsdb(flow.flowId, newLatency)
         }
 
         then: "Flow is not rerouted because flowLatencyMonitoringReactions is disabled in featureToggle"
@@ -217,11 +206,8 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         alternativeIsls.tail().each { [it, it.reversed].each { database.updateIslLatency(it, alternativeIslLatency) } }
     }
 
-    void verifyLatencyInOpenTSDB(date, flowId, expectedMs) {
-        def actual = otsdb.query(date, metricPrefix + "flow.rtt",
-                [flowid   : flowId,
-                 direction: "forward",
-                 origin   : "flow-monitoring"]).dps.values().last()
+    void verifyLatencyInTsdb(flowId, expectedMs) {
+        def actual = flowStats.of(flowId).get(FLOW_RTT).getDataPoints().max {it.getKey()}.getValue()
         def nanoMultiplier = 1000000
         def expectedNs = expectedMs * nanoMultiplier
         assert Math.abs(expectedNs - actual) <= expectedNs * 0.3 //less than 0.3 is unstable on jenkins
