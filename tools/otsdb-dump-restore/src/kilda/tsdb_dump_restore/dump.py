@@ -96,7 +96,7 @@ def dump(dump_frame, dump_location, metric_name, query_frame_size, need_remove_m
         http_session = requests.Session()
         http_session.hooks['response'].append(utils.ResponseStatisticsHook(rest_statistics))
 
-        retries = Retry(total=3, status_forcelist=[424, 500])
+        retries = Retry(total=5, backoff_factor=1, status_forcelist=[424, 500])
         http_session.mount('http://', HTTPAdapter(max_retries=retries))
 
         client = stats_client.OpenTSDBStatsClient(http_session, opentsdb_endpoint)
