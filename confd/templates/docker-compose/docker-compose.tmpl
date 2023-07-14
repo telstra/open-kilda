@@ -296,9 +296,15 @@ services:
     depends_on:
       zookeeper:
         condition: service_healthy
-{{if not (exists "/no_opentsdb")}}      opentsdb:
+{{if not (exists "/no_opentsdb")}}
+      opentsdb:
         condition: service_started
-{{end}}    healthcheck:
+{{end}}
+{{if not (exists "/no_victoriametrics")}}
+      victoriametrics:
+        condition: service_started
+{{end}}
+    healthcheck:
       test: ["CMD-SHELL", "jps | grep --silent nimbus"]
       interval: 30s
       timeout: 10s
@@ -344,11 +350,19 @@ services:
         condition: service_healthy
       storm-nimbus:
         condition: service_healthy
-{{if not (exists "/no_logstash")}}      logstash:
+{{if not (exists "/no_logstash")}}
+      logstash:
         condition: service_healthy
-{{end}}{{if not (exists "/no_opentsdb")}}      opentsdb:
+{{end}}
+{{if not (exists "/no_opentsdb")}}
+      opentsdb:
         condition: service_started
-{{end}}    healthcheck:
+{{end}}
+{{if not (exists "/no_victoriametrics")}}
+      victoriametrics:
+        condition: service_started
+{{end}}
+    healthcheck:
       test: ["CMD-SHELL", "/simple-storm-supervisor-healthcheck.sh"]
       interval: 10s
       timeout: 10s
@@ -559,6 +573,24 @@ services:
          - opentsdb.pendev
     mem_limit: ${OTSDB_MEM_LIMIT:-2g}
 {{end}}
+{{if not (exists "/no_victoriametrics")}}
+  victoriametrics:
+    container_name: victoriametrics
+    hostname: victoriametrics.pendev
+    image: victoriametrics/victoria-metrics:v1.90.0
+    command:
+      - "--opentsdbListenAddr=:4242"
+      - "--retentionPeriod=1200"  # in months
+    volumes:
+      - victoriametrics_data:/victoria-metrics-data
+    ports:
+      - "8428:8428"
+    networks:
+      default:
+        aliases:
+         - victoriametrics.pendev
+    mem_limit: ${VICTORIAMETRICS_MEM_LIMIT:-2g}
+{{end}}
 {{if not (exists "/no_gui")}}
   gui:
     container_name: gui
@@ -571,6 +603,8 @@ services:
       northbound:
         condition: service_started
 {{if not (exists "/no_opentsdb")}}      opentsdb:
+        condition: service_started
+{{end}}{{if not (exists "/no_victoriametrics")}}      victoriametrics:
         condition: service_started
 {{end}}    networks:
       default:
@@ -771,8 +805,8 @@ volumes:
   app_server_data:
   hbase_data:
   odb1_data:
-{{if not (exists "/single_orientdb")}}
-  odb2_data:
-  odb3_data:
-{{end}}
   sql_data:
+{{if not (exists "/single_orientdb")}}  odb2_data:
+  odb3_data:
+{{end}}{{if not (exists "/no_victoriametrics")}}  victoriametrics_data:
+{{end}}
