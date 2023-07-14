@@ -51,8 +51,8 @@ class StatsHelper {
         "force kilda to collect stats"(yFlow.getYFlowId())
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
             def yFlowId = yFlow.YFlowId
-            def dpsShared = otsdb.query(from, metricPrefix + "yFlow.meter.shared.bytes", ["y_flow_id": yFlowId]).dps
-            def dpsYPoint = otsdb.query(from, metricPrefix + "yFlow.meter.yPoint.bytes", ["y_flow_id": yFlowId]).dps
+            def dpsShared = otsdb.query(from, metricPrefix + "yflow.meter.shared.bytes", ["y_flow_id": yFlowId]).dps
+            def dpsYPoint = otsdb.query(from, metricPrefix + "yflow.meter.ypoint.bytes", ["y_flow_id": yFlowId]).dps
             def dpsSubFlows = otsdb.query(from,
                     metricPrefix + "flow.raw.bytes",
                     ["flowid": "${yFlow.subFlows[0].flowId}|${yFlow.subFlows[1].flowId}"]).dps

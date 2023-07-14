@@ -146,13 +146,13 @@ public final class MeterStatsHandler extends BaseStatsEntryHandler {
 
     private void emitYFlowSharedMeterPoints(TagsFormatter tagsFormatter) {
         meterEmitter.emitPacketAndBytePoints(
-                new MetricFormatter("yFlow.meter.shared."), timestamp,
+                new MetricFormatter("yflow.meter.shared."), timestamp,
                 statsEntry.getPacketsInCount(), statsEntry.getByteInCount(), tagsFormatter.getTags());
     }
 
     private void emitYFlowYPointMeterPoints(TagsFormatter tagsFormatter) {
         meterEmitter.emitPacketAndBytePoints(
-                new MetricFormatter("yFlow.meter.yPoint."), timestamp,
+                new MetricFormatter("yflow.meter.ypoint."), timestamp,
                 statsEntry.getPacketsInCount(), statsEntry.getByteInCount(), tagsFormatter.getTags());
     }
 
