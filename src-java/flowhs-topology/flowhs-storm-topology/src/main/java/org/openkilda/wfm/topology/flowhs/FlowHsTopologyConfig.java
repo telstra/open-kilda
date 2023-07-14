@@ -183,10 +183,6 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Default("100")
     int getFlowReadRetryDelayMillis();
 
-    @Key("y_flow.validation.speaker.timeout.seconds")
-    @Default("10")
-    int getYFlowValidationSpeakerTimeoutSeconds();
-
     @Key("y_flow.pathswap.hub.timeout.seconds")
     @Default("30")
     int getYFlowPathSwapHubTimeoutSeconds();
@@ -194,10 +190,6 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Key("y_flow.pathswap.speaker.command.retries")
     @Default("3")
     int getYFlowPathSwapSpeakerCommandRetriesLimit();
-
-    @Key("ha_flow.validation.speaker.timeout.seconds")
-    @Default("10")
-    int getHaFlowValidationSpeakerTimeoutSeconds();
 
     @Key("burst.coefficient")
     @Default("1.05")
