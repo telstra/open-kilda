@@ -68,7 +68,7 @@ public class BuildNewRulesAction
         List<SpeakerData> ingressCommands = new ArrayList<>();
         List<SpeakerData> nonIngressCommands = new ArrayList<>();
 
-        if (stateMachine.getNewProtectedPathIds() != null) {
+        if (stateMachine.getNewPrimaryPathIds() != null) {
             HaFlowPath forwardPath = getHaFlowPath(
                     haFlow, stateMachine.getNewPrimaryPathIds().getForward().getHaPathId());
             List<SpeakerData> forwardCommands = buildPrimaryCommands(

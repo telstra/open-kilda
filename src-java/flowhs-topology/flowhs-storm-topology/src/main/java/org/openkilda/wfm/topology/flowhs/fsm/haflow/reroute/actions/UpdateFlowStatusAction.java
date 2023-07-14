@@ -58,6 +58,7 @@ public class UpdateFlowStatusAction extends
             } else if (FlowStatus.DEGRADED.equals(flowStatus)) {
                 haFlow.setStatusInfo(getDegradedFlowStatusInfo(stateMachine));
             }
+            haFlow.recalculateHaSubFlowStatuses();
             stateMachine.setNewHaFlowStatus(flowStatus);
             return flowStatus;
         });

@@ -140,6 +140,21 @@ class TopologyHelper {
         return topology.getActiveSwitches().shuffled().first()
     }
 
+    SwitchTriplet findSwitchTripletWithDifferentEndpoints() {
+        return switchTriplets.find { SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it) }
+    }
+
+    SwitchTriplet findSwitchTripletWithAlternativeFirstPortPaths() {
+        return switchTriplets.find {
+            if (!SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it)) {
+                return false
+            }
+            def firstIslPorts = it.pathsEp1*.first().portNo as Set
+            firstIslPorts.addAll(it.pathsEp2*.first().portNo)
+            return firstIslPorts.size() > 1
+        }
+    }
+
     SwitchTriplet findSwitchTripletWithAlternativePaths() {
         return switchTriplets.find {
             if (!SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it)) {

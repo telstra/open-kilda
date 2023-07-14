@@ -109,6 +109,7 @@ public class ValidateHaFlowAction extends
             stateMachine.setPeriodicPingsEnabled(foundHaFlow.isPeriodicPings());
 
             foundHaFlow.setStatus(FlowStatus.IN_PROGRESS);
+            foundHaFlow.getHaSubFlows().forEach(subFlow -> subFlow.setStatus(FlowStatus.IN_PROGRESS));
             return foundHaFlow;
         });
 

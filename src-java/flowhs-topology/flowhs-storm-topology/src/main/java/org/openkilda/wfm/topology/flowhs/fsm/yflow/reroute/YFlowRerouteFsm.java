@@ -80,7 +80,6 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
 
     private String rerouteReason;
     private Set<IslEndpoint> affectedIsls;
-    private boolean forceReroute;
     private boolean ignoreBandwidth;
 
     private Set<String> targetSubFlowIds;

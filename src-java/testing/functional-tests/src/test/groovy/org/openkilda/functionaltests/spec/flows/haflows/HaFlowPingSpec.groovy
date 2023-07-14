@@ -54,7 +54,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Able to turn off periodic pings on a HA-flow"() {
         given: "An HA-flow with periodic pings turned on"
-        def swT = topologyHelper.switchTriplets.find { SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it) }
+        def swT = topologyHelper.findSwitchTripletWithDifferentEndpoints()
         def haFlowRequest = haFlowHelper.randomHaFlow(swT).tap {
             it.periodicPings = true
         }
@@ -87,7 +87,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Unable to ping HA-flow via periodic pings if ISL is broken"() {
         given: "Pinned HA-flow with periodic pings turned on which won't be rerouted after ISL fails"
-        def swT = topologyHelper.switchTriplets.find { SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it) }
+        def swT = topologyHelper.findSwitchTripletWithDifferentEndpoints()
         def haFlowRequest = haFlowHelper.randomHaFlow(swT).tap {
             it.periodicPings = true
             it.pinned = true
@@ -129,7 +129,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     @Tidy
     def "Able to turn on periodic pings on a HA-flow"() {
         when: "Create a HA-flow with periodic pings turned on"
-        def swT = topologyHelper.switchTriplets.find { SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it) }
+        def swT = topologyHelper.findSwitchTripletWithDifferentEndpoints()
         def beforeCreationTime = new Date()
         def haFlowRequest = haFlowHelper.randomHaFlow(swT).tap {
             it.periodicPings = true

@@ -27,6 +27,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
+import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaFlowPathIds;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.TimedExecution;
@@ -41,6 +42,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 @Slf4j
@@ -78,10 +80,16 @@ public class AllocateProtectedResourcesAction extends
 
         HaFlowPathPair oldPaths = new HaFlowPathPair(haFlow.getProtectedForwardPath(),
                 haFlow.getProtectedReversePath());
-        HaFlowPath primaryForward = getHaFlowPath(
-                haFlow, stateMachine.getNewPrimaryPathIds().getForward().getHaPathId());
-        HaFlowPath primaryReverse = getHaFlowPath(haFlow,
-                stateMachine.getNewPrimaryPathIds().getReverse().getHaPathId());
+        HaFlowPath primaryForward = Optional.ofNullable(stateMachine.getNewPrimaryPathIds())
+                .map(HaPathIdsPair::getForward)
+                .map(HaFlowPathIds::getHaPathId)
+                .map(pathId -> getHaFlowPath(haFlow, pathId))
+                .orElse(null);
+        HaFlowPath primaryReverse = Optional.ofNullable(stateMachine.getNewPrimaryPathIds())
+                .map(HaPathIdsPair::getReverse)
+                .map(HaFlowPathIds::getHaPathId)
+                .map(pathId -> getHaFlowPath(haFlow, pathId))
+                .orElse(null);
         Predicate<GetHaPathsResult> testNonOverlappingPath = buildNonOverlappingPathPredicate(
                 primaryForward, primaryReverse);
 

@@ -386,11 +386,11 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
     @Override
     public Collection<Flow> findInactiveFlows() {
         String downFlowStatus = FlowStatusConverter.INSTANCE.toGraphProperty(FlowStatus.DOWN);
-        String degragedFlowStatus = FlowStatusConverter.INSTANCE.toGraphProperty(FlowStatus.DEGRADED);
+        String degradedFlowStatus = FlowStatusConverter.INSTANCE.toGraphProperty(FlowStatus.DEGRADED);
 
         return framedGraph().traverse(g -> g.V()
                 .hasLabel(FlowFrame.FRAME_LABEL)
-                .has(FlowFrame.STATUS_PROPERTY, P.within(downFlowStatus, degragedFlowStatus)))
+                .has(FlowFrame.STATUS_PROPERTY, P.within(downFlowStatus, degradedFlowStatus)))
                 .toListExplicit(FlowFrame.class).stream()
                 .map(Flow::new)
                 .collect(Collectors.toList());

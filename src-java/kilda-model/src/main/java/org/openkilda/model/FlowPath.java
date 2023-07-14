@@ -220,6 +220,17 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         return null;
     }
 
+    /**
+     * Returns HA-flow id, if path belongs to an HA-flow, null otherwise.
+     */
+    public HaFlow getHaFlow() {
+        HaFlowPath haFlowPath = getHaFlowPath();
+        if (haFlowPath != null) {
+            return haFlowPath.getHaFlow();
+        }
+        return null;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

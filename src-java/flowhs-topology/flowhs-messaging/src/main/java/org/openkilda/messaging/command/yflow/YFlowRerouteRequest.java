@@ -15,12 +15,12 @@
 
 package org.openkilda.messaging.command.yflow;
 
-import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.BaseRerouteRequest;
 import org.openkilda.model.IslEndpoint;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
@@ -32,25 +32,31 @@ import java.util.Set;
  * Represents a reroute request for y-flow.
  */
 @Data
-@AllArgsConstructor
-@EqualsAndHashCode(callSuper = false)
-@JsonNaming(SnakeCaseStrategy.class)
-public class YFlowRerouteRequest extends CommandData {
+@EqualsAndHashCode(callSuper = true)
+public class YFlowRerouteRequest extends BaseRerouteRequest {
     private static final long serialVersionUID = 1L;
 
+    @JsonProperty("y_flow_id")
     String yFlowId;
-    Set<IslEndpoint> affectedIsl;
-    boolean force;  // TODO: remove
-    String reason;
     boolean ignoreBandwidth;
 
     public YFlowRerouteRequest(@NonNull String flowId, String reason) {
-        this(flowId, Collections.emptySet(), reason);
+        this(flowId, Collections.emptySet(), reason, false);
     }
 
-    public YFlowRerouteRequest(@NonNull String flowId, @NonNull Set<IslEndpoint> affectedIsl, String reason) {
-        this.yFlowId = flowId;
-        this.affectedIsl = affectedIsl;
-        this.reason = reason;
+    @JsonCreator
+    public YFlowRerouteRequest(
+            @NonNull @JsonProperty("y_flow_id") String yFlowId,
+            @NonNull @JsonProperty("affected_isls") Set<IslEndpoint> affectedIsls,
+            @JsonProperty("reason") String reason,
+            @JsonProperty("ignore_bandwidth") boolean ignoreBandwidth) {
+        super(affectedIsls, reason, ignoreBandwidth);
+        this.yFlowId = yFlowId;
+    }
+
+    @JsonIgnore
+    @Override
+    public String getFlowId() {
+        return getYFlowId();
     }
 }

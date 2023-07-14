@@ -22,6 +22,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.haflow.HaFlowPathSwapRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
 import org.openkilda.messaging.command.reroute.RerouteAffectedInactiveFlows;
@@ -198,6 +199,22 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
 
         log.warn("Y-flow {} swap path command message sent with correlationId {}, reason \"{}\"",
                 yFlowId, context.getCorrelationId(), reason);
+    }
+
+    /**
+     * Emit HA-flow paths swap command for consumer.
+     *
+     * @param correlationId correlation id to pass through
+     * @param haFlowId HA-flow ID
+     */
+    @Override
+    public void emitHaFlowPathSwapCommand(String correlationId, String haFlowId, String reason) {
+        CommandContext context = new CommandContext(correlationId).fork(UUID.randomUUID().toString());
+        emit(STREAM_OPERATION_QUEUE_ID, getCurrentTuple(),
+                new Values(haFlowId, new HaFlowPathSwapRequest(haFlowId), context));
+
+        log.warn("HA-flow {} swap path command message sent with correlationId {}, reason \"{}\"",
+                haFlowId, context.getCorrelationId(), reason);
     }
 
     @Override
