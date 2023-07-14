@@ -2,15 +2,23 @@
 
 ## Overview
 
-Rule Manager is a separate OpenKilda component responsible for building switch rules. The main goal of this component is to gather all rule-related logic in one place. All other components (flow CRUD, flow/switch validation and sync, service rules management, etc.) should use rule Manager API to build rules.
+Rule Manager is a separate OpenKilda component responsible for building switch rules. The main goal of this component is 
+to gather all rule-related logic in one place. All other components (flow CRUD, flow/switch validation and sync, service
+rules management, etc.) should use rule Manager API to build rules.
 
 ## Details
 
-Rule Manager implemented as a separate library module. It should support input data from database (for internal system calls) and data provided by user in json format (for manual calls). Manual calls should have CLI options to support data input from a file. Rule Manager should use adapters to encapsulate input data and provide the same results for different input types. 
+Rule Manager implemented as a separate library module. For internal system calls, it should support reading input data from database.
+For manual calls, it should support reading data provided by a user in JSON format. Manual calls should have CLI options 
+to support data input from a file. Rule Manager should use adapters to encapsulate input data and provide the same results
+for different input types. 
 
-Rule Manager should build rules as close as possible to the actual OpenFlow representation so Floodlight may just translate messages directly into OF commands. Rule Manager takes care of OpenFLow protocol version used by switch and create rules according to it. 
+Rule Manager should build rules as close as possible to the actual OpenFlow representation, so that Floodlight may just 
+translate messages directly into OF commands. Rule Manager takes care of OpenFLow protocol version used by switch and 
+create rules according to it. 
 
-Rule Manager doesn't send any commands to anywhere it's responsible only for building rules. Sending results to floodlight is out of scope and should be covered by calling component.
+Rule Manager doesn't send any commands anywhere; it's responsible only for building rules. Sending results to Floodlight 
+is out of scope and should be covered by calling component.
 
 ![Sequence diagram](sequence-diagram.png "sequence diagram")
 

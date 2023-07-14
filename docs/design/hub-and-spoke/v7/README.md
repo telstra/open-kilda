@@ -2,7 +2,7 @@
 
 ## Fire and forget model
 
-Сurrently, in kilda (ver 1.2.*) we use fire-and-forget model that I'll abbreviate here as FAF. 
+Currently, in OpenKilda (ver 1.2.*) we use fire-and-forget model that I'll abbreviate here as FAF. 
 FAF is the simplest of all conversations. The simplicity and loose coupling of FAF comes at a 
 price: error handling is not possible because there is no feedback regarding message delivery. 
 Therefore, FAF has to use Guaranteed Delivery or be content with "best effort" delivery, where 
@@ -62,7 +62,7 @@ run-time depending on that state. Or, an application is characterized by large a
 statements that vector flow of control based on the state of the application.
 
 You could find that in FlowCrudService.handleAsyncResponseFromWorker in that project or in 
-current Crud or Flow implementation in real kilda.
+current Crud or Flow implementation in real OpenKilda.
 
 I propose to model it with a Finite State Machine (a.k.a FSM). Implementation of that solution 
 located in FlowCrudServiceFsm and FlowCrudFsm.
@@ -74,12 +74,12 @@ FSM is default impl look FlowCrudBolt.prepare for details.
 
 ### Simplifications
 
-Because this project is only for test concept I did't create that:
+Because this project is only for test concept I didn't create:
 - tests
 - docker-compose
 - real services impl
 - db support
-- recovery after poweroff
+- recovery after power off
 - retries on create operation
 - that list will be expanded after code review
 
@@ -100,7 +100,7 @@ Because this project is only for test concept I did't create that:
 
 ## how to run
 
-- Run Kafka server. I prefer do docker run --rm --net=host landoop/fast-data-dev
+- Run Kafka server. I prefer do `docker run --rm --net=host landoop/fast-data-dev`
 - Create virtualenv for nb.py and fl.py with requirements from requirements.txt
 - Run nb.py and fl.py
 - Run main method from Topology class.

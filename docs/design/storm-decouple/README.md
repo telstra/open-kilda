@@ -6,7 +6,7 @@
 
 ## The idea
 Move domain logic of the application to the service layer. Interaction between
-layers through an interface from the service layer.
+layers happens through an interface from the service layer.
 
 ## Diagrams
 ![UC](./storm-decouple.png)

@@ -2,7 +2,7 @@
 
 ## Goal
 
-The goal of this document is to describe how kilda works with switches that support multi-table mode.
+The goal of this document is to describe how OpenKilda works with switches that support multi-table mode.
 
 ## OpenKilda OF Rules
 
@@ -14,26 +14,26 @@ There are 4 types of rules that controller installs to a switch:
 
 ### Default Rules
 
-Kilda has a set of default switch rules that handle telemetry and discovery processes and also 
-verify link consistency:
+OpenKilda has a set of default switch rules that handles telemetry and discovery processes and 
+verifies links consistency:
 
 * Drop Rule: a custom rule to track all unresolved or un-routable packets.
 * Verification Broadcast rule: catches discovery packets and passes them back to the speaker.
-* Verification Unicast rule: catches customer flow ping packets and passes them back to the speaker.
+* Verification Unicast rule: catches customer's flow ping packets and passes them back to the speaker.
 * Drop Verification Loop rule: prevents flood of discovery packets among switches.
 * Catch BFD rule: catch BFD telemetry packets and passes them to the switch.
 * Round Trip Latency Rule: copies disco packets with timestamp writing and passes it back to speaker.
-* Verification Unicast VxLAN rule: catches customer flow ping packets for VXLAN encapsulated flow.
+* Verification Unicast VxLAN rule: catches customer's flow ping packets for a VXLAN encapsulated flow.
 
 ### Customer Flow Rules
 
-Along with the default rules, there are 4 types that belong to customer flows:
+Along with the default rules, there are 4 types that belong to the customer's flows:
 
-* Ingress Flow rule: match packet by port/vlan encapsulate it with VLAN/VXLAN and passes to the next hop.
-* Single Switch Flow rule: match packet by port/vlan optionally re-tag packet and pass it to customer port.
-* Transit Flow rule: matches packet by a port (and transit VLAN/VXLAN) and passes to the next hop.
-* Egress Flow rule: matches packet by a port (and transit VLAN/VXLAN), removes transit encapsulation in case of
-  VXLAN, and, optionally, re-tags VLAN. After that, it passes packets out to the customer port.
+* Ingress Flow rule: matches packets by port or VLAN, encapsulates it with VLAN/VXLAN, and passes to the next hop.
+* Single Switch Flow rule: matches packets by port or VLAN, optionally re-tags packet, and passes it to a customer port.
+* Transit Flow rule: matches packets by a port (and transit VLAN/VXLAN) and passes to the next hop.
+* Egress Flow rule: matches packets by a port (and transit VLAN/VXLAN), removes transit encapsulation in case of
+  VXLAN, and, optionally, re-tags VLAN. After that, it passes packets out to a customer port.
 
 ## Single-Table Mode Design
 
@@ -44,10 +44,10 @@ For mode details on single-table mode refer [Single Table Mode](SingleTableMode.
 
 ## Multi-Table Mode
 
-To address problems of single-table mode, it's proposed to split rules by tables and specify a set of additional
+To address problems of a single-table mode, it's proposed to split rules by tables and specify a set of additional
 rules that will wire them together. In this mode, the controller will manage 7 tables of a switch:
 * Input table(0): an entry point for the packet.
-* Pre Ingress Table(1): the first table in a chain to handle customer port traffic could contain additional matches. 
+* Pre Ingress Table(1): the first table in a chain to handle customer's port traffic; it could contain additional matches. 
 * Ingress Table(2): the second table in a chain for the ingress traffic.
 * Post Ingress Table(3): the last table in a chain for the ingress traffic.
 * Egress Table(4): a table for egress rules.
@@ -60,7 +60,7 @@ An aggregated list of rules for Multi-Table Mode is available [here](MultiTableM
 
 In multi-table mode, the input table(0) is responsible for doing the following:
 * Provide backward compatibility for single-table mode customer flows.
-* Color traffic by port and pass it to the proper table.
+* Color traffic by a port and pass it to the proper table.
 * Maintain default rules.
 
 Here is a set of possible rules and its actions that could be placed in a table(0):
@@ -74,13 +74,13 @@ To dispatch a packet to proper tables, there must be an additional set of rules:
 * VXLAN Egress rule: matches traffic by eth_dst and VXLAN ports and passes it directly into the Egress table (VXLAN shortcut)
 * VXLAN Transit rule: matches traffic by in port and VXLAN ports and passes it directly into theTransit table (VXLAN shortcut)
 * ISL VLAN Egress rule: if traffic comes from an ISL port, but doesn't have a VxLAN encapsulation, passes it to the egress table for further processing. 
-NOTICE: the Egress Table is defaulted to passing packets down for transit. This is due to it is impossible to figure out whether 
-the switch is a terminating switch for a customer flow or a transit switch. For details, please see VXLAN vs VLAN encapsulation.
+NOTICE: the Egress Table is defaulted to passing packets down for transit. This is due to impossibility to figure out whether 
+a switch is a terminating switch for a customer's flow or a transit switch. For details, please see pages describing VXLAN vs VLAN encapsulation.
 
 #### Backward-compatibility
 
-After switching to Multi-Table mode, all existing flows will still remain in table 0 (where they are normally in a 
-Single-Table mode). Service default rules won't steal traffic, since they have priority lower than the rules listed above. 
+After switching to Multi-Table mode, all existing flows will still remain in the table 0 (where they are normally in a 
+Single-Table mode). Service default rules won't steal traffic, since they have a lower priority than the rules listed above. 
 
 ### Pre Ingress Table Rules
 
@@ -104,7 +104,7 @@ The Post Ingress Table is a third table in ingress packet processing. Notice tha
   
 ### Egress Table Rules
 
-The Egress Table contains the rule to re-tag customer packets and remove VXLAN. By default, it passes packets down to the Transit Table.
+The Egress Table contains the rule to re-tag customer's packets and remove VXLAN. By default, it passes packets down to the Transit Table.
 
  ![Table Egress](Table_Egress.png "Table Egress")
 
@@ -139,7 +139,7 @@ A Flow migration from one mode to the other could be achieved by various ways:
 * Flow sync.
 * Flow update.
 * Flow re-route (NOTE: reroute will migrate the flow only if the rerouting is successful. The rerouting logic assures that the current flow
-path and new one is not the same and the flow is not in the `UP` state. If the checks pass, actual re-route will happen)
+path and the new one is not the same and the flow is not in the `UP` state. If the checks are passed, the actual re-route will happen).
 
 NOTE: default flows should be migrated to multi-table mode first.
 
@@ -158,6 +158,6 @@ per each switch. NOTE: since single switch flows don't have path segments in DB,
 the tracking is done on the both levels.
 
 A new switch property and OpenKilda configuration parameters are introduced and added to REST API as well.
-Kilda configuration is responsible for handling newly added switches, while switch property changes
+OpenKilda configuration is responsible for handling newly added switches, while switch property changes
 switch mode on the fly.
 

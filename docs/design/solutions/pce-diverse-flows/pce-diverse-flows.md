@@ -2,39 +2,40 @@
 
 ## Goals
 Have redundancy on flows: different flows reside on different switches and/or ISLs.
-Main goal is to find shortest diverse path with minimal overlapping.
+The main goal is to find the shortest diverse path with a minimal overlapping.
 
 ## NB contract changes
-Create\Update Flow Request: add optional flow id, to make flow diverse with.
+Create\Update Flow Request: add an optional field that contains the flow ID, to make the flow diverse with.
 
-Get Flow Path Response: if the flow belongs to diversity group, additionally returns other paths in group, with intersection statistics.
+Get Flow Path Response: if a flow belongs to a diversity group, the response additionally returns other paths in the group with intersection statistics.
 
 ## DB changes
-Flow relation keeps `flow group` id as a property.
+Diverse group ID is as a property of a flow.
 
 ## Algorithm
-Initial, construct AvailableNetwork as usual.
-Then fill AvailableNetwork diversity weights on edges(ISLs) and nodes(switches) what are used by paths in diverse group with some constants, passed as system parameters.
+Construct AvailableNetwork as usual. Then fill AvailableNetwork diversity weights on edges (ISLs) and nodes (switches) 
+that are used by paths in a diverse group with some constants passed as system parameters.
 
-To avoid excessive complexity in weight strategies, propose always add static weights what are filling by additional AvailableNetworkFactory building options, like diversity.
-Such static weights are either zero in default AvailableNetwork building scenario, or meaningful constant, if target flow has "flow group" property.
+To avoid excessive complexity in weight strategies, it is proposed to always add static weights that are filled by 
+AvailableNetworkFactory. These static weights are either zero in default AvailableNetwork building scenario, or a
+constant value, if a target flow has "diversity group" property.
 
 The final Edge weight computing formulas are: 
-- `edge src sw static weight + edge strategy result + edge static weight + edge dest sw static weight` for the first Edge in path.
-- `edge strategy result + edge static weight + edge dest sw static weight` for the rest Edges in path.
+- `edge src sw static weight + edge strategy result + edge static weight + edge dest sw static weight` for the first Edge in the path.
+- `edge strategy result + edge static weight + edge dest sw static weight` for the rest Edges in the path.
 
 ## Reroutes
-The same logic is used - diversity weights will be filled if rerouting flow has "flow group" property.
+The same logic is used - diversity weights will be filled if a rerouting flow has the "diverse group" property.
 Reroute will fail only if path not found.
 
 ## Limitations
-Flow can belongs to only one flow group.
+A flow can belong to only one diversity group.
 
 Flow groups is an implementation detail and there is no API to access it directly.
 
-System knows nothing about physical network topology, so computed paths not truly diverse in hardware meaning.
+System knows nothing about physical network topology, so computed paths not truly diverse from hardware perspective.
 
-In the current implementation, affinity and diverse groups can not be specified at the same time for one flow.
+In the current implementation, affinity and diverse groups cannot be specified at the same time for the same flow.
 ([Affinity flows](../pce-affinity-flows/pce-affinity-flows.md))
 
 ## Sequence Diagram
