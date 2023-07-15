@@ -81,6 +81,15 @@ public interface PathComputer {
             throws UnroutableFlowException, RecoverableException;
 
     /**
+     * Calculates a protected path based on the given parameters and configuration.
+     * @param flow This method calculates a protected path to the main path of this flow.
+     * @param reusePathsResources include these resources as if they are not allocated
+     * @return GetPathResult containing a protected path or an empty path with fail reasons if it is not possible
+     *      to calculate the path.
+     */
+    GetPathsResult getProtectedPath(Flow flow, Collection<PathId> reusePathsResources);
+
+    /**
      * Gets the best N paths. N is a number, not greater than the count param, of all paths that can be found.
      *
      * @param srcSwitch source switchId

@@ -15,15 +15,10 @@
 
 package org.openkilda.pce;
 
-import static com.google.common.collect.Sets.newHashSet;
-
 import org.openkilda.model.Flow;
-import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.HaFlow;
-import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.PathId;
-import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.impl.AvailableNetwork;
 import org.openkilda.pce.model.Edge;
@@ -34,19 +29,13 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslImmutableView;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.NonNull;
-import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * A factory for {@link AvailableNetwork} instances.
@@ -105,7 +94,7 @@ public class AvailableNetworkFactory {
 
         if (parameters.getDiverseGroupId() != null) {
             log.info("Filling AvailableNetwork diverse weights for group with id {}", parameters.getDiverseGroupId());
-            fillDiverseWeights(parameters, reusePathsResources, network);
+            DiverseWeightsProcessor.fillDiverseWeights(parameters, reusePathsResources, network, flowPathRepository);
         }
 
         if (needToFillAffinityWeights(parameters)) {
@@ -128,39 +117,6 @@ public class AvailableNetworkFactory {
             result.addAll(flowPathRepository.findPathIdsBySharedBandwidthGroupId(sharedBandwidthGroupId));
         }
         return result;
-    }
-
-    private void fillDiverseWeights(
-            FlowParameters parameters, Collection<PathId> reusePathsResources, AvailableNetwork network) {
-        Collection<PathId> flowPaths = flowPathRepository.findPathIdsByFlowDiverseGroupId(
-                parameters.getDiverseGroupId());
-        if (!reusePathsResources.isEmpty()) {
-            flowPaths = flowPaths.stream()
-                    .filter(s -> !reusePathsResources.contains(s))
-                    .collect(Collectors.toList());
-        }
-
-        Set<PathId> affinityPathIds =
-                new HashSet<>(flowPathRepository.findPathIdsByFlowAffinityGroupId(parameters.getAffinityGroupId()));
-        flowPaths.forEach(pathId ->
-                flowPathRepository.findById(pathId)
-                        .filter(flowPath -> isNeedToAddDiversePenalties(flowPath, affinityPathIds, parameters))
-                        .ifPresent(flowPath -> {
-                            network.processDiversityGroupForSingleSwitchFlow(flowPath);
-                            network.processDiversitySegments(flowPath.getSegments(),
-                                    parameters.getTerminatingSwitchIds());
-                            network.processDiversitySegmentsWithPop(flowPath.getSegments());
-                        }));
-    }
-
-    private boolean isNeedToAddDiversePenalties(FlowPath path, Set<PathId> affinityPathIds, FlowParameters parameters) {
-        if (parameters.isCommonFlow() && Objects.equals(path.getFlowId(), parameters.getFlowId())) {
-            return true; // it is a diverse group for a protected path of a common flow
-        }
-        if (parameters.isHaFlow() && Objects.equals(path.getHaFlowId(), parameters.getHaFlowId())) {
-            return true; // it is a diverse group for a protected path of an ha flow
-        }
-        return !affinityPathIds.contains(path.getPathId()); // affinity group priority is higher then diversity
     }
 
     /**
@@ -276,44 +232,6 @@ public class AvailableNetworkFactory {
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException(String.format("BuildStrategy %s is not supported", strategy));
             }
-        }
-    }
-
-    @Value
-    @AllArgsConstructor(access = AccessLevel.PRIVATE)
-    private static class FlowParameters {
-        public FlowParameters(Flow flow) {
-            this(flow.isIgnoreBandwidth(), flow.getBandwidth(), flow.getEncapsulationType(), flow.getFlowId(), null,
-                    flow.getYFlowId(), flow.getDiverseGroupId(), flow.getAffinityGroupId(),
-                    newHashSet(flow.getSrcSwitchId(), flow.getDestSwitchId()), true, false);
-        }
-
-        public FlowParameters(HaFlow haFlow) {
-            this(haFlow.isIgnoreBandwidth(), haFlow.getMaximumBandwidth(), haFlow.getEncapsulationType(), null,
-                    haFlow.getHaFlowId(), null, haFlow.getDiverseGroupId(), haFlow.getAffinityGroupId(),
-                    getSwitchIds(haFlow), false, true);
-        }
-
-        boolean ignoreBandwidth;
-        long bandwidth;
-        FlowEncapsulationType encapsulationType;
-        String flowId;
-        String haFlowId;
-        String yFlowId;
-        String diverseGroupId;
-        String affinityGroupId;
-        @NonNull
-        Set<SwitchId> terminatingSwitchIds;
-
-        boolean commonFlow;
-        boolean haFlow;
-
-        private static Set<SwitchId> getSwitchIds(HaFlow haFlow) {
-            Set<SwitchId> result = haFlow.getHaSubFlows().stream()
-                    .map(HaSubFlow::getEndpointSwitchId)
-                    .collect(Collectors.toSet());
-            result.add(haFlow.getSharedSwitchId());
-            return result;
         }
     }
 }

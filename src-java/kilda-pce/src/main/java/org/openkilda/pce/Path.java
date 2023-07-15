@@ -37,7 +37,7 @@ public class Path implements Serializable {
     SwitchId destSwitchId;
 
     /**
-     * Latency value in nseconds.
+     * Latency value in nanoseconds.
      */
     long latency;
 
@@ -47,6 +47,8 @@ public class Path implements Serializable {
     List<Segment> segments;
 
     boolean isBackupPath;
+
+    Path protectedPath;
 
     @Value
     @Builder(toBuilder = true)

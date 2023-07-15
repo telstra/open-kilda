@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,30 +13,27 @@
  *   limitations under the License.
  */
 
-package org.openkilda.messaging.info.network;
+package org.openkilda.messaging.payload.network;
 
-import org.openkilda.messaging.payload.flow.PathNodePayload;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Value;
+import lombok.AccessLevel;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Setter;
+import lombok.experimental.FieldDefaults;
+import lombok.experimental.SuperBuilder;
 
-import java.io.Serializable;
-import java.time.Duration;
-import java.util.List;
-
-@Value
-@Builder
-@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@Data
+@Setter(value = AccessLevel.PRIVATE)
+@FieldDefaults(level = AccessLevel.PRIVATE)
+@SuperBuilder
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(value = SnakeCaseStrategy.class)
-public class Path implements Serializable {
-    Long bandwidth;
-    Duration latency;
-    List<PathNodePayload> nodes;
-    Boolean isBackupPath;
-    Path protectedPath;
+@JsonNaming(SnakeCaseStrategy.class)
+public class ProtectedPathPayload extends PathDto {
+    @JsonIgnore
+    ProtectedPathPayload protectedPath;
 }
