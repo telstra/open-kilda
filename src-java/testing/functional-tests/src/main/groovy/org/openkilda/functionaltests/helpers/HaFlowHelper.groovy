@@ -1,6 +1,9 @@
 package org.openkilda.functionaltests.helpers
 
 import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
+
+import org.openkilda.functionaltests.helpers.model.HaFlowHistory
+import org.openkilda.messaging.payload.history.HaFlowHistoryEntry
 import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult
 
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
@@ -295,4 +298,9 @@ class HaFlowHelper {
         def methods = ["asYouLikeItQuote", "kingRichardIIIQuote", "romeoAndJulietQuote", "hamletQuote"]
         sprintf("autotest HA-Flow: %s", faker.shakespeare()."${methods[random.nextInt(methods.size())]}"())
     }
+
+    HaFlowHistory getHistory (String id) {
+        return new HaFlowHistory(northboundV2.getHaFlowHistory(id))
+    }
+
 }
