@@ -795,8 +795,9 @@ export class FlowDetailComponent implements OnInit {
 
   processErrorResult(error: any) {
       this.loaderService.hide();
-      const { 'error-auxiliary-message': auxMessage, 'error-description': description } = error.error;
-      this.toaster.error(`${auxMessage} ${description}`, 'Error!');
+      const { 'error-auxiliary-message': auxMessage, 'error-description': description, 'error-message': message } = error.error;
+      this.toaster.error(`${auxMessage} ${description} ${message}`, 'Error!');
+      this.reRoutingInProgress = false;
   }
 
   addPingToLinks() {
