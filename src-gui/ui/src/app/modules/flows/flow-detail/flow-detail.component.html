@@ -296,7 +296,7 @@
           <div class="tab-pane" *ngIf="openedTab == 'path'" [ngClass]="{'active': openedTab == 'path'}">
             <div class="text-right mb-2">
               <button *ngIf="commonService.hasPermission('fw_permission_reroute')" class="btn btn-dark btn-sm" (click)="reRouteFlow()">
-                Re-route {{ y_flow_id ? 'Y-Flow ' : 'Flow' }}</button>
+                Re-route {{isSubflowForYFlow()?'Y-Flow':'Flow'}}</button>
             </div>
             <app-flow-path *ngIf="!reRoutingInProgress"  [flowId]="flowDetail.flowid"></app-flow-path>
           </div>
