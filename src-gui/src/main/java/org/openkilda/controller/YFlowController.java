@@ -44,11 +44,11 @@ public class YFlowController extends BaseController {
     private ActivityLogger activityLogger;
 
     /**
-     * Re route the y-flow and returns shared path and sub-flow paths with all nodes/switches exists in
+     * Reroute the y-flow and returns the shared path and sub-flow paths with all nodes/switches exists in
      * provided y-flow.
      *
-     * @param yFlowId id of reroute requested.
-     * @return reroute flow of new flow path with all nodes/switches exist
+     * @param yFlowId ID of y-flow to be rerouted.
+     * @return the result of the rerouting operation.
      */
     @RequestMapping(value = "/{yFlowId}/reroute", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)

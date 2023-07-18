@@ -48,6 +48,7 @@ import org.springframework.web.util.UriUtils;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
+import javax.validation.constraints.NotNull;
 
 /**
  * The Class FlowsIntegrationService.
@@ -207,7 +208,7 @@ public class FlowsIntegrationService {
      * @param yFlowId y-flow id
      * @return YFlowRerouteResult
      */
-    public YFlowRerouteResult rerouteYFlow(String yFlowId) {
+    public YFlowRerouteResult rerouteYFlow(@NotNull String yFlowId) {
         try {
             HttpResponse response = restClientManager.invoke(
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_Y_FLOW_REROUTE

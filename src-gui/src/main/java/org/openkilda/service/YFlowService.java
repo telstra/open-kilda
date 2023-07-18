@@ -37,7 +37,7 @@ public class YFlowService {
      * @return flow path
      */
     public YFlowRerouteResult rerouteFlow(String yFlowId) {
-        LOGGER.info(String.format("Re-rote request for y-flow is in progress, for y-flow id: %s", yFlowId));
+        LOGGER.info(String.format("The re-routing request for y-flow is in progress, y-flow ID: %s", yFlowId));
         return flowsIntegrationService.rerouteYFlow(yFlowId);
     }
 
