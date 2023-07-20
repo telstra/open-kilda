@@ -203,12 +203,12 @@ class HaFlowHelper {
     /**
      * Checks if status of HA-flow and statuses of HA-sub flows are equal to expected
      */
-    static void assertHaFlowAndSubFlowStatuses(HaFlow haFlow, FlowState expectedStatus) {
+    void assertHaFlowAndSubFlowStatuses(HaFlow haFlow, FlowState expectedStatus) {
         assert haFlow
         assert haFlow.status == expectedStatus.toString()
-        for (HaSubFlow subFlow : haFlow.subFlows ) {
-            assert subFlow.status == expectedStatus.toString()
-        }
+                && haFlow.getSubFlows().get(0).status == expectedStatus.toString()
+                && haFlow.getSubFlows().get(1).status == expectedStatus.toString(),
+                "Flow: ${haFlow}\nPaths: ${northboundV2.getHaFlowPaths(haFlow.getHaFlowId())}"
     }
 
     /**
@@ -289,7 +289,7 @@ class HaFlowHelper {
 
     SwitchId getYPoint(HaFlow haFlow) {
         def sharedForwardPath = northboundV2.getHaFlowPaths(haFlow.getHaFlowId()).getSharedPath().getForward()
-        return sharedForwardPath == null ? sharedForwardPath.last().getSwitchId() :
+        return sharedForwardPath != null ? sharedForwardPath.last().getSwitchId() :
                 haFlow.getSharedEndpoint().getSwitchId()
     }
 
