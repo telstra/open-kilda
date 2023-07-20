@@ -604,6 +604,10 @@ export class FlowDetailComponent implements OnInit {
       }
     );
   }
+   if (this.isSubflowForYFlow()) {
+       this.y_flow_id = this.flowDetail.y_flow_id;
+   }
+
   }
 
   convertSwitchPattern(switchId) {
