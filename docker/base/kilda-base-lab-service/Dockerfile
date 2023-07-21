@@ -18,7 +18,7 @@ FROM ${base_image}
 
 ARG OVS_VERSION
 # By default OVS version doesn't support vxlan flows. This could be overrided via `build-arg`, see makefile.tmpl.
-ENV OVS_VERSION=${OVS_VERSION:-"kilda.v2.15.0.1"}
+ENV OVS_VERSION=${OVS_VERSION:-"v3.1.2"}
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -42,9 +42,10 @@ RUN apt update \
     && pip3 install wheel==0.34.2 \
     && pip3 install tox==3.14.4 \
     && cd /root \
-    && wget https://github.com/kilda/ovs/archive/refs/tags/${OVS_VERSION}.tar.gz \
+    && wget https://github.com/openvswitch/ovs/archive/refs/tags/${OVS_VERSION}.tar.gz \
     && tar -xvf ${OVS_VERSION}.tar.gz \
-    && cd ovs-${OVS_VERSION} \
+    && rm ${OVS_VERSION}.tar.gz \
+    && cd ovs-* \
     && ./boot.sh \
     && ./configure --prefix=/usr --localstatedir=/var --sysconfdir=/etc \
     && make \
