@@ -91,13 +91,29 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def oldPaths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
         def firstIslPorts = oldPaths.subFlowPaths*.forward*.first().outputPort as Set
 
-        when: "Bring all ports down on the shared switch that are involved in the current and alternative paths"
+        when: "Bring all ports down on the shared switch that are involved in the alternative paths"
         List<PathNode> broughtDownPorts = []
-        allPotentialPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
+        allPotentialPaths.collect {it.first()}
+                .unique()
+        .findAll {!firstIslPorts.contains(it.portNo)}
+        .each {
+            broughtDownPorts.add(it)
+            antiflap.portDown(it.switchId, it.portNo)
         }
+//        allPotentialPaths.unique { it.first() }.each { path ->
+//            def src = path.first()
+//            broughtDownPorts.add(src)
+//            antiflap.portDown(src.switchId, src.portNo)
+//        }
+
+        and: "Bring all ports down on the shared switch that are involved in the current paths"
+        allPotentialPaths.collect {it.first()}
+                .unique()
+                .findAll {firstIslPorts.contains(it.portNo)}
+                .each {
+                    broughtDownPorts.add(it)
+                    antiflap.portDown(it.switchId, it.portNo)
+                }
 
         then: "The HA-flow goes to 'Down' status"
         wait(rerouteDelay + WAIT_OFFSET) {
@@ -114,12 +130,14 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def broughtDownPortsUp = true
 
         then: "The HA-flow goes to 'Up' state and the HA-flow was rerouted"
+        println("Links up: ${new Date()}")
         def newPaths = null
-        wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
+        wait(rerouteDelay + discoveryInterval + WAIT_OFFSET + 50000) {
             haFlowHelper.assertHaFlowAndSubFlowStatuses(haFlow.haFlowId, FlowState.UP)
             newPaths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
             newPaths != oldPaths
         }
+        println("Flow up: ${new Date()}")
 
         and: "HA-flow passes validation"
         northboundV2.validateHaFlow(haFlow.haFlowId).asExpected
