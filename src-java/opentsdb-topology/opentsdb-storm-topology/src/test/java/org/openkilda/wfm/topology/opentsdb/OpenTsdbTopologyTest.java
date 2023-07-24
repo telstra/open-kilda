@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.opentsdb;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 import static org.openkilda.wfm.topology.opentsdb.OpenTsdbTopology.OTSDB_PARSE_BOLT_ID;
 
@@ -76,7 +78,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     }
 
     @Test
-    public void shouldSuccessfulSendDatapoint() {
+    public void successfulSendDatapoint() {
         Datapoint datapoint = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
 
         MockedSources sources = new MockedSources();
@@ -101,7 +103,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     }
 
     @Test
-    public void shouldSendDatapointRequestsOnlyOnce() throws Exception {
+    public void sendDatapointRequestsOnlyOnce() throws Exception {
         Datapoint datapoint = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
 
         MockedSources sources = new MockedSources();
@@ -126,7 +128,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     }
 
     @Test
-    public void shouldSendDatapointRequestsTwice() throws Exception {
+    public void sendDatapointRequestsTwice() throws Exception {
         Datapoint datapoint1 = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
         Datapoint datapoint2 = new Datapoint("metric", timestamp, Collections.emptyMap(), 456);
 
@@ -155,6 +157,20 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
         });
         //verify that request is sent to OpenTSDB server once
         mockServer.verify(REQUEST, VerificationTimes.exactly(2));
+    }
+
+    @Test
+    public void isValidUrl() {
+        assertTrue(OpenTsdbTopology.isValidUrl("http://localhost:4243"));
+        assertTrue(OpenTsdbTopology.isValidUrl("http://localhost:4243/api/put"));
+    }
+
+    @Test
+    public void isValidUrlNoHost() {
+        assertFalse(OpenTsdbTopology.isValidUrl("http://:4243"));
+        assertFalse(OpenTsdbTopology.isValidUrl("http://localhost:"));
+        assertFalse(OpenTsdbTopology.isValidUrl("localhost:4242"));
+        assertFalse(OpenTsdbTopology.isValidUrl(""));
     }
 
     /**

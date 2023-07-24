@@ -28,7 +28,6 @@ import org.openkilda.wfm.topology.opentsdb.bolts.OpenTsdbFilterBolt;
 import org.openkilda.wfm.topology.utils.InfoDataTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
-import org.apache.commons.lang.StringUtils;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
@@ -39,6 +38,8 @@ import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -152,7 +153,7 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
         return "opentsdb";
     }
 
-    private static Map<String, String> collectTargets(String prefix, Properties rawTopologyConfig) {
+    private Map<String, String> collectTargets(String prefix, Properties rawTopologyConfig) {
         Map<String, String> targets = new HashMap<>();
         for (Map.Entry<Object, Object> entry : rawTopologyConfig.entrySet()) {
             String property = String.valueOf(entry.getKey());
@@ -167,13 +168,24 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
             }
 
             String value = String.valueOf(entry.getValue());
-            if (StringUtils.isNotBlank(value)) {
+            if (isValidUrl(value)) {
                 targets.put(name, value);
+            } else {
+                logger.error("The target's URL is invalid (property: \"{}\", url: \"{}\")", property, value);
             }
         }
         return targets;
     }
 
+    @VisibleForTesting
+    protected static boolean isValidUrl(String url) {
+        try {
+            URL u = new URL(url);
+            return u.getHost() != null && !u.getHost().isEmpty() && u.getPort() != -1;
+        } catch (MalformedURLException e) {
+            return false;
+        }
+    }
 
     public static String addNameToId(String entityId, String name) {
         // TODO(surabujin): perhaps we need to limit the set of allowed characters in "name" or add some escaping
