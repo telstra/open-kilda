@@ -100,8 +100,8 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
       'aoColumns': [
         { sWidth: '7%' , 'bSortable': false},
         { sWidth: '15%' },
-        { sWidth: '10%' },
-        { sWidth:  '13%', 'sType': 'name', 'bSortable': true },
+        { sWidth: '15%' },
+        { sWidth:  '13%',"sType": "name","bSortable": true },
         { sWidth: '8%' },
         { sWidth: '8%' },
         { sWidth: '9%' },
