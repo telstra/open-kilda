@@ -1,11 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
 import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
-
-import org.openkilda.functionaltests.helpers.model.HaFlowHistory
-import org.openkilda.messaging.payload.history.HaFlowHistoryEntry
-import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult
-
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
@@ -26,11 +21,14 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths
 import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload
+import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
+import org.openkilda.functionaltests.helpers.model.HaFlowHistory
+import org.openkilda.testing.service.northbound.model.HaFlowHistoryPayload
 
 import com.github.javafaker.Faker
 import groovy.util.logging.Slf4j
@@ -299,8 +297,8 @@ class HaFlowHelper {
         sprintf("autotest HA-Flow: %s", faker.shakespeare()."${methods[random.nextInt(methods.size())]}"())
     }
 
-    HaFlowHistory getHistory (String id) {
-        return new HaFlowHistory(northboundV2.getHaFlowHistory(id))
+    HaFlowHistoryPayload getHistory (String id) {
+        return new HaFlowHistory (northboundV2.getHaFlowHistory(id))
     }
 
 }

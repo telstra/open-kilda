@@ -1,13 +1,10 @@
 package org.openkilda.functionaltests.helpers.model
 
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.history.HaFlowHistoryEntry
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
-import com.fasterxml.jackson.annotation.JsonIgnore
 import groovy.transform.EqualsAndHashCode
 import groovy.transform.TupleConstructor
+import org.openkilda.testing.service.northbound.model.HaFlowHistoryEntry
 
 @TupleConstructor
 @EqualsAndHashCode
@@ -29,7 +26,7 @@ class HaFlowHistory {
         return entries.findAll({it ->it.action == "HA-Flow update"})
     }
     HaFlowHistoryEntry[] getCreateEntries(){
-        return entries.findAll({it ->it.action == "HA-Flow create"})
+        return entries.findAll({it ->it.payloads.action == "HA-flow has been created successfully"})
     }
 
 

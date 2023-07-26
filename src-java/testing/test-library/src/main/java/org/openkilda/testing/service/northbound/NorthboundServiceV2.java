@@ -31,8 +31,6 @@ import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.dto.v2.flows.PathValidateResponse;
 import org.openkilda.northbound.dto.v2.haflows.HaFlow;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
-import org.openkilda.northbound.dto.v2.haflows.HaFlowHistoryEntry;
-import org.openkilda.northbound.dto.v2.haflows.HaFlowHistoryPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPingPayload;
@@ -64,6 +62,7 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.northbound.model.HaFlowHistoryEntry;
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult;
 
 import java.util.Date;
