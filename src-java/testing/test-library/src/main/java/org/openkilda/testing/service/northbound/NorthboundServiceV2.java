@@ -212,6 +212,7 @@ public interface NorthboundServiceV2 {
     HaFlowRerouteResult rerouteHaFlow(String haFlowId);
 
     HaFlowPingResult pingHaFlow(String haFlowId, HaFlowPingPayload payload);
+
     List<HaFlowHistoryEntry> getHaFlowHistory(String haFlowId);
 
     List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Long timeFrom, Long timeTo);

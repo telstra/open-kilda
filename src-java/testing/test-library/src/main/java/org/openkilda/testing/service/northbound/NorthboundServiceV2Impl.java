@@ -637,10 +637,12 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         return restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}/ping", HttpMethod.POST, httpEntity,
                 HaFlowPingResult.class, haFlowId).getBody();
     }
+
     @Override
     public List<HaFlowHistoryEntry> getHaFlowHistory(String flowId) {
         return getHaFlowHistory(flowId, null);
     }
+
     @Override
     public List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Long timeFrom, Long timeTo) {
         return getHaFlowHistory(flowId, timeFrom, timeTo, null);
@@ -667,6 +669,4 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
                 new HttpEntity(buildHeadersWithCorrelationId()), HaFlowHistoryEntry[].class, flowId).getBody();
         return Arrays.asList(haFlowHistory);
     }
-
-
 }

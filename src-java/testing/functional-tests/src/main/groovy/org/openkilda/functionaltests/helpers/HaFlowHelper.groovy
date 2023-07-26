@@ -297,7 +297,7 @@ class HaFlowHelper {
         sprintf("autotest HA-Flow: %s", faker.shakespeare()."${methods[random.nextInt(methods.size())]}"())
     }
 
-    HaFlowHistoryPayload getHistory (String id) {
+    HaFlowHistory getHistory (String id) {
         return new HaFlowHistory (northboundV2.getHaFlowHistory(id))
     }
 

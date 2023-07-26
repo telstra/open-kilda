@@ -18,19 +18,12 @@ package org.openkilda.testing.service.northbound.model;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
+import lombok.Data;
 
 import java.time.Instant;
 import java.util.List;
 
-
-@Value
-@Builder
-@AllArgsConstructor
-@EqualsAndHashCode(callSuper = false)
+@Data
 @JsonNaming(SnakeCaseStrategy.class)
 public class HaFlowHistoryEntry {
     String haFlowId;

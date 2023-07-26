@@ -17,15 +17,11 @@ package org.openkilda.testing.service.northbound.model;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
 
 import java.time.Instant;
 
-@Value
-@Builder
-@AllArgsConstructor
+@Data
 @JsonNaming(SnakeCaseStrategy.class)
 public class HaFlowHistoryPayload {
     Instant timestamp;
@@ -33,4 +29,3 @@ public class HaFlowHistoryPayload {
     String action;
     String details;
 }
- 
