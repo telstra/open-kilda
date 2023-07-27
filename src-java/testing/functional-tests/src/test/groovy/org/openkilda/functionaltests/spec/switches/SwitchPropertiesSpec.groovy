@@ -47,7 +47,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
 
         when: "Update switch properties"
         SwitchPropertiesDto switchProperties = new SwitchPropertiesDto()
-        def newMultiTable = !initSwitchProperties.multiTable
+        def newMultiTable = initSwitchProperties.multiTable // multi_table 'false' was deprecated and forbidden
         def newTransitEncapsulation = (initSwitchProperties.supportedTransitEncapsulation.size() == 1) ?
                 [FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase(),
                  FlowEncapsulationType.VXLAN.toString().toLowerCase()].sort() :
@@ -164,13 +164,13 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
                         description: ~/Invalid server 42 Port/),
 
                 new PropertiesData(desc: "set invalid server42mac_address property",
-                        multiTable: false, server42FlowRtt: false, server42Port: null, server42MacAddress: "INVALID",
+                        multiTable: true, server42FlowRtt: false, server42Port: null, server42MacAddress: "INVALID",
                         server42Vlan: 15,
                         error: "Property 'server42_mac_address' for switch %s has invalid value 'INVALID'.",
                         description: ~/Invalid server 42 Mac Address/),
 
                 new PropertiesData(desc: "set invalid server42_vlan property",
-                        multiTable: false, server42FlowRtt: false, server42Port: null, server42MacAddress: null,
+                        multiTable: true, server42FlowRtt: false, server42Port: null, server42MacAddress: null,
                         server42Vlan: -1,
                         error: "Property 'server42_vlan' for switch %s has invalid value '-1'. Vlan must be in range [0, 4095]",
                         description: ~/Invalid server 42 Vlan/),
@@ -184,6 +184,10 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
                         multiTable: true, server42IslRtt: "ENABLED", server42Port: 42, server42MacAddress: null,
                         error: "Illegal switch properties combination for switch %s. To enable property " +
                                 "'server42_isl_rtt' you need to specify valid property 'server42_mac_address'"),
+
+                new PropertiesData(desc: "enable to set multi_table property to 'false'", multiTable: false,
+                        error: "Single table mode was deprecated and it is not supported " +
+                                "anymore. The only valid value for switch property 'multi_table' is 'true'."),
         ]
     }
 
@@ -194,48 +198,6 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         String server42MacAddress, desc, error
         String server42IslRtt
         Pattern description = null
-    }
-
-    @Tidy
-    def "Unable to turn on switchLldp property without turning on multiTable property"() {
-        given: "A switch"
-        def sw = topology.activeSwitches.first()
-        def initSwitchProperties = switchHelper.getCachedSwProps(sw.dpId)
-
-        when: "Try to update set switchLldp property to True and multiTable property to False"
-        def switchProperties = new SwitchPropertiesDto()
-        switchProperties.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
-        switchProperties.multiTable = false
-        switchProperties.switchLldp = true
-        northbound.updateSwitchProperties(sw.dpId, switchProperties)
-
-        then: "Human readable error is returned"
-        def exc = thrown(HttpClientErrorException)
-        new SwitchPropertiesNotUpdatedExpectedError("Illegal switch properties combination for switch $sw.dpId. " +
-                "'switchLldp' property can be set to 'true' only if 'multiTable' property is 'true'.").matches(exc)
-        cleanup:
-        !exc && switchHelper.updateSwitchProperties(sw, initSwitchProperties)
-    }
-
-    @Tidy
-    def "Unable to turn on switchArp property without turning on multiTable property"() {
-        given: "A switch"
-        def sw = topology.activeSwitches.first()
-        def initSwitchProperties = switchHelper.getCachedSwProps(sw.dpId)
-
-        when: "Try to update set switchArp property to True and multiTable property to False"
-        def switchProperties = new SwitchPropertiesDto()
-        switchProperties.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
-        switchProperties.multiTable = false
-        switchProperties.switchArp = true
-        northbound.updateSwitchProperties(sw.dpId, switchProperties)
-
-        then: "Human readable error is returned"
-        def exc = thrown(HttpClientErrorException)
-        new SwitchPropertiesNotUpdatedExpectedError("Illegal switch properties combination for switch $sw.dpId. " +
-                "'switchArp' property can be set to 'true' only if 'multiTable' property is 'true'.").matches(exc)
-        cleanup:
-        !exc && switchHelper.updateSwitchProperties(sw, initSwitchProperties)
     }
 
     @Tidy
