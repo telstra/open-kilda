@@ -51,6 +51,10 @@ public class KildaConfigurationService {
      */
     public KildaConfiguration updateKildaConfiguration(KildaConfiguration kildaConfiguration) {
         log.info("Process kilda config update - config: {}", kildaConfiguration);
+        if (Boolean.FALSE.equals(kildaConfiguration.getUseMultiTable())) {
+            throw new IllegalArgumentException("Single table mode was deprecated. OpenKilda doesn't support it "
+                    + "anymore. Configuration property `use_multi_table` can't be 'false'.");
+        }
         return transactionManager.doInTransaction(() -> {
             Optional<KildaConfiguration> currentKildaConfiguration = kildaConfigurationRepository.find();
             if (currentKildaConfiguration.isPresent()) {

@@ -1,9 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
-import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
-import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotUpdatedExpectedError
-
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -23,11 +19,11 @@ import static org.openkilda.model.cookie.CookieBase.CookieType.LLDP_INPUT_CUSTOM
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.payload.flow.FlowState
@@ -70,8 +66,6 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
-
-    List<SwitchId> switchesToSync = []
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
@@ -992,79 +986,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         true       | true
 
         descr = "default(no-vlan) flow endpoints on ${getDescr(srcDefault, dstDefault)}"
-    }
-
-    @Tidy
-    def "System forbids to turn on '#propertyToTurnOn' on a single-table-mode switch"() {
-        when: "Try to change switch props so that connected devices are 'on' but switch is in a single-table mode"
-        def sw = topology.activeSwitches.first()
-        def initSwitchProperties = switchHelper.getCachedSwProps(sw.dpId)
-        switchHelper.updateSwitchProperties(sw, initSwitchProperties.jacksonCopy().tap {
-            it.multiTable = false
-            it."$propertyToTurnOn" = true
-        })
-
-        then: "Bad request error is returned"
-        def e = thrown(HttpClientErrorException)
-        new SwitchPropertiesNotUpdatedExpectedError("Illegal switch properties combination for switch ${sw.getDpId()}." +
-                " '${propertyToTurnOn}' property can be set to 'true' only if 'multiTable' property is 'true'.").matches(e)
-        cleanup:
-        !e && switchHelper.updateSwitchProperties(sw, initSwitchProperties)
-
-        where:
-        propertyToTurnOn << ["switchLldp", "switchArp"]
-    }
-
-    @Tidy
-    def "System forbids to turn on 'connected devices per flow' on a single-table-mode switch"() {
-        given: "Switch in single-table mode"
-        def swPair = topologyHelper.switchPairs.first()
-        def sw = swPair.src
-        def initProps = switchHelper.getCachedSwProps(sw.dpId)
-        switchHelper.updateSwitchProperties(sw, initProps.jacksonCopy().tap {
-            it.multiTable = false
-        })
-
-        when: "Try to create an lldp-enabled flow using single-table switch as src"
-        def flow = flowHelperV2.randomFlow(swPair).tap {
-            it.source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
-        }
-        northboundV2.addFlow(flow)
-
-        then: "Bad request error is returned"
-        def e = thrown(HttpClientErrorException)
-        new FlowNotCreatedExpectedError(~/Catching of LLDP\/ARP packets supported only on \
-switches with enabled 'multiTable' switch feature. This feature is disabled on switch $sw.dpId./).matches(e)
-        cleanup: "Restore switch props"
-        flow && !e && flowHelperV2.deleteFlow(flow.flowId)
-        SwitchHelper.updateSwitchProperties(sw, initProps)
-    }
-
-    @Tidy
-    def "System forbids to turn off multi-table mode if switch has an lldp-enabled flow"() {
-        given: "Switch in multi-table mode"
-        def swPair = topologyHelper.switchPairs.find { it.src.features.contains(SwitchFeature.MULTI_TABLE) }
-        def sw = swPair.src
-        def initProps = enableMultiTableIfNeeded(true, sw.dpId)
-
-        when: "Create an lldp-enabled flow"
-        def flow = flowHelperV2.randomFlow(swPair).tap {
-            it.source.detectConnectedDevices = new DetectConnectedDevicesV2(true, false)
-        }
-        flowHelperV2.addFlow(flow)
-
-        and: "Try disabling multi-table mode on a switch where lldp-per-flow is being enabled"
-        northbound.updateSwitchProperties(sw.dpId, initProps.jacksonCopy().tap { it.multiTable = false })
-
-        then: "Error is returned, stating that this operation cannot be performed"
-        def e = thrown(HttpClientErrorException)
-        new SwitchPropertiesNotUpdatedExpectedError("Illegal switch properties combination for switch $sw.dpId. " +
-                "Detect Connected Devices feature is turn on for following flows [$flow.flowId]. " +
-                "For correct work of this feature switch property 'multiTable' must be set to 'true' " +
-                "Please disable detecting of connected devices via LLDP for each flow before set 'multiTable' property to 'false'").matches(e)
-        cleanup: "Restore switch props"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        initProps && SwitchHelper.updateSwitchProperties(sw, initProps)
     }
 
     @Tidy
