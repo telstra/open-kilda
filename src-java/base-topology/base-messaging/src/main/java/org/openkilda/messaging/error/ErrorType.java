@@ -101,7 +101,12 @@ public enum ErrorType {
     /**
      * The request cannot be processed.
      */
-    UNPROCESSABLE_REQUEST("The request cannot be processed");
+    UNPROCESSABLE_REQUEST("The request cannot be processed"),
+
+    /**
+     * The error message for Y-Flow subflow that can not be rerouted since already on the best path.
+     */
+    ALREADY_ON_BEST_PATH("The sub-flow already on the best path");
 
     /**
      * The text type value.

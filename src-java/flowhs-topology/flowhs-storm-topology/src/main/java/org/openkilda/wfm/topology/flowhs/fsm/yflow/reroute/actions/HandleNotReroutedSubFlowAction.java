@@ -18,12 +18,18 @@ package org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.yflow.YFlowRerouteResponse;
+import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowPaths;
+import org.openkilda.wfm.topology.flowhs.utils.YFlowUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,8 +38,12 @@ import java.util.Optional;
 @Slf4j
 public class HandleNotReroutedSubFlowAction
         extends NbTrackableWithHistorySupportAction<YFlowRerouteFsm, State, Event, YFlowRerouteContext> {
+
+    private final YFlowUtils utils;
+
     public HandleNotReroutedSubFlowAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
+        utils = new YFlowUtils(persistenceManager);
     }
 
     @Override
@@ -76,12 +86,29 @@ public class HandleNotReroutedSubFlowAction
         }
 
         if (isFirstError) {
-            Message message = stateMachine.buildErrorMessage(context.getErrorType(), getGenericErrorMessage(),
-                    context.getError());
+            Message message;
+            if (ErrorType.ALREADY_ON_BEST_PATH.equals(context.getErrorType())) {
+                message = buildRerouteResponseMessage(stateMachine);
+            } else {
+                message = stateMachine.buildErrorMessage(context.getErrorType(), getGenericErrorMessage(),
+                        context.getError());
+            }
             return Optional.of(message);
         }
 
         return Optional.empty();
+    }
+
+    private Message buildRerouteResponseMessage(YFlowRerouteFsm stateMachine) {
+        YFlowPaths paths = utils.definePaths(stateMachine.getYFlowId(), stateMachine.getOldYFlowPathCookies());
+        boolean rerouted = !(
+                paths.getSharedPath().equals(stateMachine.getOldSharedPath())
+                        && paths.getSubFlowPaths().equals(stateMachine.getOldSubFlowPathDtos()));
+        YFlowRerouteResponse response = new YFlowRerouteResponse(
+                paths.getSharedPath(), paths.getSubFlowPaths(), rerouted);
+        CommandContext commandContext = stateMachine.getCommandContext();
+        return new InfoMessage(response, commandContext.getCreateTime(),
+                commandContext.getCorrelationId());
     }
 
     @Override

@@ -21,8 +21,6 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.yflow.YFlowRerouteResponse;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteContext;
@@ -39,13 +37,10 @@ import java.util.Optional;
 @Slf4j
 public class OnSubFlowAllocatedAction extends
         NbTrackableWithHistorySupportAction<YFlowRerouteFsm, State, Event, YFlowRerouteContext> {
-    private final YFlowRepository yFlowRepository;
     private final YFlowUtils utils;
 
     public OnSubFlowAllocatedAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        yFlowRepository = repositoryFactory.createYFlowRepository();
         utils = new YFlowUtils(persistenceManager);
     }
 
