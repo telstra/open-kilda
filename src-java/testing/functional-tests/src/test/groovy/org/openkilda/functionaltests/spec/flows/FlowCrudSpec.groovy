@@ -1,27 +1,13 @@
 package org.openkilda.functionaltests.spec.flows
 
-
-import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
-import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
-import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithMissingPathExpectedError
-import org.openkilda.functionaltests.error.flow.FlowNotDeletedExpectedError
-import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
-import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithMissingPathExpectedError
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.model.PathComputationStrategy
-import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
-import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
-import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
-import org.openkilda.northbound.dto.v2.flows.FlowStatistics
-
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
@@ -32,11 +18,18 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithMissingPathExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotDeletedExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithMissingPathExpectedError
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
@@ -44,12 +37,17 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
+import org.openkilda.northbound.dto.v2.flows.FlowStatistics
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
@@ -569,13 +567,12 @@ class FlowCrudSpec extends HealthCheckSpecification {
             validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
             validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
             def swProps = switchHelper.getCachedSwProps(it.dpId)
-            def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId, dstSwitch.dpId]) ? 1 : 0
-            if (swProps.multiTable && swProps.server42FlowRtt) {
+            if (swProps.server42FlowRtt) {
                 if ((flow.destination.getSwitchId() == it.dpId && flow.destination.vlanId) || (flow.source.getSwitchId() == it.dpId && flow.source.vlanId))
                     amountOfServer42Rules += 1
             }
-            def amountOfFlowRules = 2 + amountOfMultiTableRules + amountOfServer42Rules
+            def amountOfFlowRules = 3 + amountOfServer42Rules
             assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
         }
 
@@ -1025,7 +1022,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
         and: "Flow rules are recreated"
         def flowInfoFromDb2 = database.getFlow(flow.flowId)
         wait(RULES_INSTALLATION_TIME) {
-            def isMultiTableEnabled = switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable
             with(northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
                 !new Cookie(it.cookie).serviceFlag
             }) { rules ->
@@ -1035,8 +1031,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
                 def ingressRule = rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }
                 ingressRule.match.inPort == updatedFlow.source.portNumber.toString()
                 //vlan is matched in shared rule
-                isMultiTableEnabled ? !ingressRule.match.vlanVid : (ingressRule.match.vlanVid == updatedFlow.source
-                        .vlanId.toString())
+                !ingressRule.match.vlanVid
             }
         }
 
@@ -1276,7 +1271,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
     @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])
     def "System allows to update single switch flow to multi switch flow"() {
         given: "A single switch flow with enabled lldp/arp on the dst side"
-        assumeTrue(useMultitable, "This test can be run in multiTable mode due to lldp/arp")
         def swPair = topologyHelper.getNeighboringSwitchPair()
         def flow = flowHelperV2.singleSwitchFlow(swPair.src)
         flow.destination.detectConnectedDevices.lldp = true

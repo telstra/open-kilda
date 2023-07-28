@@ -755,7 +755,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Able to update vlanId via partialUpdate in case vlanId==0 and innerVlanId!=0"() {
         given: "A default flow"
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         def swPair = topologyHelper.switchPairs.first()
         def defaultFlow = flowHelperV2.randomFlow(swPair).tap {
             source.vlanId = 0

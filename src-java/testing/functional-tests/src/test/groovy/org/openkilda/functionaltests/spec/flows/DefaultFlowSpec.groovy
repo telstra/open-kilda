@@ -43,15 +43,6 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         assumeTrue([srcSwitch, dstSwitch, newDstSwitch].every { it.features.contains(SwitchFeature.MULTI_TABLE) },
  "MultiTable mode should be supported by the src and dst switches")
 
-        Map<SwitchId, SwitchPropertiesDto> initSwProps = [srcSwitch, dstSwitch, newDstSwitch].collectEntries {
-            [(it): switchHelper.getCachedSwProps(it.dpId)]
-        }
-        initSwProps.each { sw, swProps ->
-            switchHelper.updateSwitchProperties(sw, swProps.jacksonCopy().tap {
-                it.multiTable = true
-            })
-        }
-
         def bandwidth = 1000
         def vlanFlow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         vlanFlow.maximumBandwidth = bandwidth
@@ -112,9 +103,6 @@ class DefaultFlowSpec extends HealthCheckSpecification {
 
         cleanup:
         [vlanFlow, defaultFlow, qinqFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
-        initSwProps.each { sw, swProps ->
-            switchHelper.updateSwitchProperties(sw, swProps)
-        }
     }
 
     @Tidy

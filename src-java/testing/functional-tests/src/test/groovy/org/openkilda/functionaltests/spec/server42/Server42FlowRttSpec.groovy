@@ -175,7 +175,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                  * (if there are 10 flows on port number 5, then there will be installed one INPUT rule);
                  * - SERVER_42_FLOW_RTT_INGRESS is installed for each flow.
                  */
-                def amountOfRules = northbound.getSwitchProperties(it.dpId).multiTable ? 4 : 2
+                def amountOfRules = 4
                 assert northbound.getSwitchRules(it.dpId).flowEntries.findAll {
                     new Cookie(it.cookie).getType() in  [CookieType.SERVER_42_FLOW_RTT_INPUT,
                                                          CookieType.SERVER_42_FLOW_RTT_INGRESS]
@@ -1032,9 +1032,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
     def "getSwPairConnectedToS42ForQinQ"(List<SwitchId> switchIdsConnectedToS42) {
         getTopologyHelper().getSwitchPairs().find { swP ->
-            [swP.dst, swP.src].every { it.dpId in switchIdsConnectedToS42 && !it.wb5164 } && swP.paths.findAll { path ->
-                pathHelper.getInvolvedSwitches(path).every { getNorthbound().getSwitchProperties(it.dpId).multiTable }
-            }
+            [swP.dst, swP.src].every { it.dpId in switchIdsConnectedToS42 && !it.wb5164 } && swP.paths
         }
     }
 

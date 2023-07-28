@@ -40,7 +40,6 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Valid ha-flow can be created [!NO TRAFFIC CHECK!], covered cases: #coveredCases"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         assumeTrue(swT != null, "These cases cannot be covered on given topology: $coveredCases")
 
         when: "Create a ha-flow of certain configuration"
@@ -94,7 +93,6 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
 
     @Tidy
     def "User cannot create a ha-flow with existent ha_flow_id"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
@@ -113,7 +111,6 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
 
     @Tidy
     def "User cannot create a ha-flow with equal A-B endpoints and different inner vlans at these endpoints"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "A switch triplet with equal A-B endpoint switches"
         def swT  = topologyHelper.switchTriplets[0]
         def iShapedSwitchTriplet = new SwitchTriplet(swT.shared, swT.ep1, swT.ep1, swT.pathsEp1, swT.pathsEp1)
@@ -138,7 +135,6 @@ and ${haFlowRequest.subFlows[1].endpoint.innerVlanId}./).matches(exc)
 
     @Tidy
     def "User cannot create a one switch ha-flow"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "A switch"
         def sw = topologyHelper.getRandomSwitch()
 

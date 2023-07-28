@@ -174,40 +174,38 @@ class SwitchHelper {
         def vxlanRules = []
         def lacpRules = []
         def toggles = northbound.get().getFeatureToggles()
-        if (swProps.multiTable) {
-            multiTableRules = [PRE_INGRESS_PASS_THROUGH_COOKIE, INGRESS_DROP_COOKIE,
-                               POST_INGRESS_DROP_COOKIE, EGRESS_PASS_THROUGH_COOKIE,
-                               TRANSIT_DROP_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE,
-                               ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE]
+        multiTableRules = [PRE_INGRESS_PASS_THROUGH_COOKIE, INGRESS_DROP_COOKIE,
+                       POST_INGRESS_DROP_COOKIE, EGRESS_PASS_THROUGH_COOKIE,
+                       TRANSIT_DROP_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE,
+                       ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE]
+        if (sw.features.contains(NOVIFLOW_PUSH_POP_VXLAN) || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
+            multiTableRules.addAll([LLDP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE])
+        }
+        northbound.get().getLinks(sw.dpId, null, null, null).each {
             if (sw.features.contains(NOVIFLOW_PUSH_POP_VXLAN) || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-                multiTableRules.addAll([LLDP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE])
+                multiTableRules.add(new PortColourCookie(CookieType.ISL_VXLAN_EGRESS_RULES, it.source.portNo).getValue())
+                multiTableRules.add(new PortColourCookie(CookieType.ISL_VXLAN_TRANSIT_RULES, it.source.portNo).getValue())
             }
-            northbound.get().getLinks(sw.dpId, null, null, null).each {
-                if (sw.features.contains(NOVIFLOW_PUSH_POP_VXLAN) || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-                    multiTableRules.add(new PortColourCookie(CookieType.ISL_VXLAN_EGRESS_RULES, it.source.portNo).getValue())
-                    multiTableRules.add(new PortColourCookie(CookieType.ISL_VXLAN_TRANSIT_RULES, it.source.portNo).getValue())
+            multiTableRules.add(new PortColourCookie(CookieType.ISL_VLAN_EGRESS_RULES, it.source.portNo).getValue())
+            multiTableRules.add(new PortColourCookie(CookieType.PING_INPUT, it.source.portNo).getValue())
+        }
+        northbound.get().getSwitchFlows(sw.dpId).each {
+            if (it.source.datapath.equals(sw.dpId)) {
+                multiTableRules.add(new PortColourCookie(CookieType.INGRESS_RULES, it.source.portNumber).getValue())
+                if (swProps.switchLldp || it.source.detectConnectedDevices.lldp) {
+                    devicesRules.add(new PortColourCookie(CookieType.LLDP_INPUT_CUSTOMER_TYPE, it.source.portNumber).getValue())
                 }
-                multiTableRules.add(new PortColourCookie(CookieType.ISL_VLAN_EGRESS_RULES, it.source.portNo).getValue())
-                multiTableRules.add(new PortColourCookie(CookieType.PING_INPUT, it.source.portNo).getValue())
+                if (swProps.switchArp || it.source.detectConnectedDevices.arp) {
+                    devicesRules.add(new PortColourCookie(CookieType.ARP_INPUT_CUSTOMER_TYPE, it.source.portNumber).getValue())
+                }
             }
-            northbound.get().getSwitchFlows(sw.dpId).each {
-                if (it.source.datapath.equals(sw.dpId)) {
-                    multiTableRules.add(new PortColourCookie(CookieType.INGRESS_RULES, it.source.portNumber).getValue())
-                    if (swProps.switchLldp || it.source.detectConnectedDevices.lldp) {
-                        devicesRules.add(new PortColourCookie(CookieType.LLDP_INPUT_CUSTOMER_TYPE, it.source.portNumber).getValue())
-                    }
-                    if (swProps.switchArp || it.source.detectConnectedDevices.arp) {
-                        devicesRules.add(new PortColourCookie(CookieType.ARP_INPUT_CUSTOMER_TYPE, it.source.portNumber).getValue())
-                    }
+            if (it.destination.datapath.equals(sw.dpId)) {
+                multiTableRules.add(new PortColourCookie(CookieType.INGRESS_RULES, it.destination.portNumber).getValue())
+                if (swProps.switchLldp || it.destination.detectConnectedDevices.lldp) {
+                    devicesRules.add(new PortColourCookie(CookieType.LLDP_INPUT_CUSTOMER_TYPE, it.destination.portNumber).getValue())
                 }
-                if (it.destination.datapath.equals(sw.dpId)) {
-                    multiTableRules.add(new PortColourCookie(CookieType.INGRESS_RULES, it.destination.portNumber).getValue())
-                    if (swProps.switchLldp || it.destination.detectConnectedDevices.lldp) {
-                        devicesRules.add(new PortColourCookie(CookieType.LLDP_INPUT_CUSTOMER_TYPE, it.destination.portNumber).getValue())
-                    }
-                    if (swProps.switchArp || it.destination.detectConnectedDevices.arp) {
-                        devicesRules.add(new PortColourCookie(CookieType.ARP_INPUT_CUSTOMER_TYPE, it.destination.portNumber).getValue())
-                    }
+                if (swProps.switchArp || it.destination.detectConnectedDevices.arp) {
+                    devicesRules.add(new PortColourCookie(CookieType.ARP_INPUT_CUSTOMER_TYPE, it.destination.portNumber).getValue())
                 }
             }
         }
@@ -283,15 +281,13 @@ class SwitchHelper {
         if (sw.features.contains(NOVIFLOW_PUSH_POP_VXLAN) || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
             result << MeterId.createMeterIdForDefaultRule(VERIFICATION_UNICAST_VXLAN_RULE_COOKIE) //7
         }
-        if (swProps.multiTable) {
-            result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE) //16
-            result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE) //18
-            result << MeterId.createMeterIdForDefaultRule(ARP_POST_INGRESS_COOKIE) //22
-            result << MeterId.createMeterIdForDefaultRule(ARP_POST_INGRESS_ONE_SWITCH_COOKIE) //24
-            if (sw.features.contains(NOVIFLOW_PUSH_POP_VXLAN) || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-                result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_VXLAN_COOKIE) //17
-                result << MeterId.createMeterIdForDefaultRule(ARP_POST_INGRESS_VXLAN_COOKIE) //23
-            }
+        result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE)
+        result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_ONE_SWITCH_COOKIE)
+        result << MeterId.createMeterIdForDefaultRule(ARP_POST_INGRESS_COOKIE)
+        result << MeterId.createMeterIdForDefaultRule(ARP_POST_INGRESS_ONE_SWITCH_COOKIE)
+        if (sw.features.contains(NOVIFLOW_PUSH_POP_VXLAN) || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
+            result << MeterId.createMeterIdForDefaultRule(LLDP_POST_INGRESS_VXLAN_COOKIE) //17
+            result << MeterId.createMeterIdForDefaultRule(ARP_POST_INGRESS_VXLAN_COOKIE) //23
         }
         if (swProps.switchLldp) {
             result << MeterId.createMeterIdForDefaultRule(LLDP_INPUT_PRE_DROP_COOKIE) //13
@@ -576,18 +572,6 @@ class SwitchHelper {
                 }
             }
         }
-    }
-
-    /**
-     * Change switch to required table mode if it is not already in it.
-     * Return original switch mode which was active before change.
-     */
-    static boolean changeMultitable(Switch sw, boolean requiredState) {
-        def originalProps = northbound.get().getSwitchProperties(sw.dpId)
-        if (originalProps.multiTable != requiredState) {
-            northbound.get().updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap { multiTable = requiredState })
-        }
-        return originalProps.multiTable
     }
 
     /**

@@ -1378,11 +1378,7 @@ switches"() {
                      flow2Src = flow2.source
                      flow2Dst = flow1.destination
                  }].collect { iterationData ->
-            def switchPair = getTopologyHelper().getAllNeighboringSwitchPairs().find {
-                [it.src, it.dst].every { sw ->
-                    getNorthbound().getSwitchProperties(sw.dpId).multiTable
-                }
-            }
+            def switchPair = getTopologyHelper().getAllNeighboringSwitchPairs().first()
             def flow1 = getFirstFlow(switchPair, switchPair).tap {
                 source.innerVlanId = 300
                 destination.innerVlanId = 400

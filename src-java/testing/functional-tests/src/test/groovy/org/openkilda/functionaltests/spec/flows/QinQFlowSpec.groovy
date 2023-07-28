@@ -48,10 +48,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
-    def setupSpec() {
-        assumeTrue(useMultitable)
-    }
-
     @Tidy
     @Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
     def "System allows to manipulate with QinQ flow\

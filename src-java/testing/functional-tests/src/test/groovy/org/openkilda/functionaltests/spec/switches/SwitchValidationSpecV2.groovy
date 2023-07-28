@@ -369,8 +369,7 @@ misconfigured"
         def sharedCookieOnSrcSw = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
             new Cookie(it.cookie).getType() in [CookieType.SHARED_OF_FLOW, CookieType.SERVER_42_FLOW_RTT_INGRESS]
         }?.cookie
-        def untouchedCookiesOnSrcSw = switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable ?
-                (reverseCookies + sharedCookieOnSrcSw).sort() : reverseCookies
+        def untouchedCookiesOnSrcSw = (reverseCookies + sharedCookieOnSrcSw).sort()
         def cookiesOnDstSw = northbound.getSwitchRules(dstSwitch.dpId).flowEntries*.cookie
         northbound.deleteMeter(srcSwitch.dpId, srcSwitchCreatedMeterIds[0])
 
@@ -466,8 +465,7 @@ misconfigured"
         def sharedCookieOnSrcSw = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
             new Cookie(it.cookie).getType() in [CookieType.SHARED_OF_FLOW, CookieType.SERVER_42_FLOW_RTT_INGRESS]
         }?.cookie
-        def untouchedCookies = switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable ?
-                ([egressCookie] + sharedCookieOnSrcSw).sort() : [egressCookie]
+        def untouchedCookies = ([egressCookie] + sharedCookieOnSrcSw).sort()
         verifyAll(northboundV2.validateSwitch(srcSwitch.dpId)) {
             it.rules.missing*.cookie == [ingressCookie]
             it.rules.proper*.cookie.findAll {
@@ -802,13 +800,13 @@ misconfigured"
                 def switchIdInSrcOrDst = (it.dpId in [switchPair.src.dpId, switchPair.dst.dpId])
                 def defaultAmountOfFlowRules = 2 // ingress + egress
                 def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
-                if (swProps.multiTable && swProps.server42FlowRtt) {
+                if (swProps.server42FlowRtt) {
                     if ((flow.destination.getSwitchId() == it.dpId && flow.destination.vlanId) || (
                             flow.source.getSwitchId() == it.dpId && flow.source.vlanId))
                         amountOfServer42Rules += 1
                 }
                 def rulesCount = defaultAmountOfFlowRules + amountOfServer42Rules +
-                        (switchIdInSrcOrDst && swProps.multiTable ? 1 : 0)
+                        (switchIdInSrcOrDst ? 1 : 0)
                 assert validationResultsMap[it.dpId].rules.missing.size() == rulesCount
                 assert validationResultsMap[it.dpId].rules.missing.cookieHex.size() == rulesCount
             }
@@ -936,8 +934,6 @@ misconfigured"
         def swPair = topologyHelper.switchPairs.find {
             [it.src, it.dst].every { it.features.contains(SwitchFeature.MULTI_TABLE) }
         }
-        Map<Switch, SwitchPropertiesDto> initialProps = [swPair.src, swPair.dst]
-                .collectEntries { [(it): enableMultiTableIfNeeded(true, it.dpId)] }
         def flow = flowHelper.randomFlow(swPair)
         flow.destination.detectConnectedDevices = new DetectConnectedDevicesPayload(true, true)
         flowHelper.addFlow(flow)
@@ -976,9 +972,6 @@ misconfigured"
         }
         cleanup:
         flow && !deleteFlow && flowHelper.deleteFlow(flow.id)
-        initialProps.each {
-            switchHelper.updateSwitchProperties(it.key, it.value)
-        }
         where:
         data << [
                 [
@@ -1067,16 +1060,5 @@ misconfigured"
         return northbound.getSwitchRules(switchId).flowEntries.findAll {
             !new Cookie(it.cookie).serviceFlag && it.instructions.goToMeter
         }*.cookie.sort()
-    }
-
-    private SwitchPropertiesDto enableMultiTableIfNeeded(boolean needDevices, SwitchId switchId) {
-        def initialProps = northbound.getSwitchProperties(switchId)
-        if (needDevices && !initialProps.multiTable) {
-            def sw = topology.switches.find { it.dpId == switchId }
-            switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
-                it.multiTable = true
-            })
-        }
-        return initialProps
     }
 }

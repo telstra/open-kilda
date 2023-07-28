@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
+import static org.openkilda.testing.Constants.EGRESS_RULE_ID
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
@@ -95,8 +95,6 @@ class ConfigurationSpec extends HealthCheckSpecification {
     @Tidy
     @Tags(VIRTUAL)
     def "System takes into account default multi table value while connecting a new switch"() {
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
-
         expect: "Already added switch was discovered according to the multi table field in kilda configuration"
         def initConf = northbound.getKildaConfiguration()
         def sw = topology.activeSwitches.first()
@@ -109,7 +107,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         }
         with(islRules) { rules ->
             rules.size() == isls.size()
-            rules*.instructions.goToTable.unique() == [(short) EGRESS_RULE_MULTI_TABLE_ID]  // 4 - egress table id
+            rules*.instructions.goToTable.unique() == [(short) EGRESS_RULE_ID]  // 4 - egress table id
             islRules*.match.inPort.sort() == isls*.srcPort.collect { it.toString() }.sort()
         }
 

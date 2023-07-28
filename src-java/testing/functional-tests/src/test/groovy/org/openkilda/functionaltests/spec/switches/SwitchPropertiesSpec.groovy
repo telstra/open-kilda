@@ -37,7 +37,6 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
                 || it.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN) }
         assumeTrue(sw as boolean, "Wasn't able to find vxlan-enabled switch")
         def initSwitchProperties = switchHelper.getCachedSwProps(sw.dpId)
-        assert initSwitchProperties.multiTable != null
         assert !initSwitchProperties.supportedTransitEncapsulation.empty
         //make sure that two endpoints have the same info
         with(northboundV2.getAllSwitchProperties().switchProperties.find { it.switchId == sw.dpId }){

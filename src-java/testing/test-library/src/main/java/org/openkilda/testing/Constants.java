@@ -34,11 +34,9 @@ public final class Constants {
     public static final Integer FL_DUMP_INTERVAL = 60; //floodlight.dump.interval defaults to 60
     public static final Integer STATS_FROM_SERVER42_LOGGING_TIMEOUT = 60;
     public static final String NON_EXISTENT_FLOW_ID = "non-existent-" + UUID.randomUUID().toString();
-    public static final Integer SINGLE_TABLE_ID = 0;
-    public static final Integer INGRESS_RULE_MULTI_TABLE_ID = 2;
-    public static final Integer EGRESS_RULE_MULTI_TABLE_ID = 4;
-    public static final Integer TRANSIT_RULE_MULTI_TABLE_ID = 5;
-    public static final Integer SHARED_RULE_TABLE_ID = 1;
+    public static final Integer INGRESS_RULE_TABLE_ID = 2;
+    public static final Integer EGRESS_RULE_ID = 4;
+    public static final Integer TRANSIT_RULE_ID = 5;
     public static final String DUMMY_SW_IP_1 = "192.0.2.1";
     public static final SwitchId NON_EXISTENT_SWITCH_ID = new SwitchId("de:ad:be:ef:de:ad:be:ef");
 

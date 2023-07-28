@@ -45,10 +45,7 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
         assumeTrue(sw as boolean, "Unable to find required switch")
 
         and: "Multi table is enabled in the kilda configuration"
-        def initConf = northbound.getKildaConfiguration()
-        !initConf.useMultiTable && northbound.updateKildaConfiguration(northbound.getKildaConfiguration().tap {
-            it.useMultiTable = true
-        })
+        assert northbound.getKildaConfiguration().useMultiTable
         def isls = topology.getRelatedIsls(sw)
         assert !northbound.getSwitchProperties(sw.dpId).multiTable
 
@@ -69,8 +66,5 @@ class MultitableFlowsSpec extends HealthCheckSpecification {
                 rules.findAll { it.tableId }.empty
             }
         }
-
-        and: "Cleanup: Revert system to origin state"
-        !initConf.useMultiTable && northbound.updateKildaConfiguration(initConf)
     }
 }

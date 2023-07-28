@@ -91,11 +91,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def defaultPlusFlowRules = []
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             defaultPlusFlowRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries
-            def multiTableFlowRules = 0
-            if (switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable) {
-                multiTableFlowRules = multiTableFlowRulesCount + sharedRulesCount
-            }
-            assert defaultPlusFlowRules.size() == srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRules
+            assert defaultPlusFlowRules.size() == srcSwDefaultRules.size() + flowRulesCount + multiTableFlowRulesCount
+                + sharedRulesCount
         }
 
         def blockData = switchHelper.knockoutSwitch(srcSwitch, RW)
@@ -111,78 +108,10 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([SMOKE, LOW_PRIORITY])
-    @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /delete-action=DROP_ALL\)/)
-    def "Able to delete rules from a single-table mode switch (delete-action=#data.deleteRulesAction)"() {
-        given: "A switch with some flow rules installed"
-        assumeTrue(!switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable,
-"Multi table should be disabled on the src switch")
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.addFlow(flow)
-
-        when: "Delete rules from the switch"
-        def expectedRules = data.getExpectedRules(srcSwitch, srcSwDefaultRules)
-        def deletedRules = northbound.deleteSwitchRules(srcSwitch.dpId, data.deleteRulesAction)
-
-        then: "The corresponding rules are really deleted"
-        deletedRules.size() == data.rulesDeleted
-        Wrappers.wait(RULES_DELETION_TIME) {
-            compareRules(northbound.getSwitchRules(srcSwitch.dpId).flowEntries, expectedRules)
-        }
-
-        cleanup: "Delete the flow and install default rules if necessary"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        if (data.deleteRulesAction in [DeleteRulesAction.DROP_ALL, DeleteRulesAction.REMOVE_DEFAULTS]) {
-            northbound.installSwitchRules(srcSwitch.dpId, InstallRulesAction.INSTALL_DEFAULTS)
-            Wrappers.wait(RULES_INSTALLATION_TIME) {
-                assert northbound.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwDefaultRules.size()
-            }
-        }
-
-        where:
-        data << [
-                [// Drop all rules in single-table mode
-                 deleteRulesAction: DeleteRulesAction.DROP_ALL,
-                 rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount +
-                         (s42IsEnabledOnSrcSw ? s42FlowRttIngressForwardCount : 0),
-                 getExpectedRules : { sw, defaultRules -> [] }
-                ],
-                [// Drop all rules, add back in the base default rules in single-table mode
-                 deleteRulesAction: DeleteRulesAction.DROP_ALL_ADD_DEFAULTS,
-                 rulesDeleted     : srcSwDefaultRules.size() + flowRulesCount +
-                         (s42IsEnabledOnSrcSw ? s42FlowRttIngressForwardCount : 0),
-                 getExpectedRules : { sw, defaultRules -> defaultRules }
-                ],
-                [// Don't drop the default rules, but do drop everything else
-                 deleteRulesAction: DeleteRulesAction.IGNORE_DEFAULTS,
-                 rulesDeleted     : flowRulesCount + (s42IsEnabledOnSrcSw ? s42FlowRttIngressForwardCount : 0),
-                 getExpectedRules : { sw, defaultRules -> defaultRules }
-                ],
-                [// Drop all non-base rules (ie IGNORE), and add base rules back (eg overwrite)
-                 deleteRulesAction: DeleteRulesAction.OVERWRITE_DEFAULTS,
-                 rulesDeleted     : srcSwDefaultRules.size(),
-                 getExpectedRules : { sw, defaultRules -> defaultRules + getFlowRules(sw) }
-                ],
-                [// Drop all default rules in single-table mode
-                 deleteRulesAction: DeleteRulesAction.REMOVE_DEFAULTS,
-                 rulesDeleted     : srcSwDefaultRules.size(),
-                 getExpectedRules : { sw, defaultRules -> getFlowRules(sw) }
-                ],
-                [// Drop the default, add them back in single-table mode
-                 deleteRulesAction: DeleteRulesAction.REMOVE_ADD_DEFAULTS,
-                 rulesDeleted     : srcSwDefaultRules.size(),
-                 getExpectedRules : { sw, defaultRules -> defaultRules + getFlowRules(sw) }
-                ]
-        ]
-    }
-
-    @Tidy
     @Tags([SMOKE])
     @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /delete-action=DROP_ALL\)/)
     def "Able to delete rules from a switch with multi table mode (delete-action=#data.deleteRulesAction)"() {
         given: "A switch with some flow rules installed"
-        assumeTrue(switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable,
-                "Multi table should be enabled on the src switch")
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flowHelperV2.addFlow(flow)
 
@@ -316,13 +245,11 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flowHelperV2.addFlow(flow)
 
-        if (switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable) {
-            def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
-                new Cookie(it.cookie).serviceFlag
-            }
-            if (ingressRule) {
-                data.defaultRules = (data.defaultRules + ingressRule + sharedRulesCount)
-            }
+        def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
+            new Cookie(it.cookie).serviceFlag
+        }
+        if (ingressRule) {
+            data.defaultRules = (data.defaultRules + ingressRule + sharedRulesCount)
         }
 
         when: "Delete switch rules by non-existing #data.description"
@@ -385,7 +312,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
                   inVlan           : null,
                   encapsulationType: null,
                   outPort          : null,
-                  removedRules     : 1 + (getUseMultitable() ? 2 : 0)
+                  removedRules     : 3
                  ].tap { inPort = flow.source.portNumber },
                  [description      : "inVlan",
                   flow             : buildFlow(),
@@ -498,13 +425,13 @@ class FlowRulesSpec extends HealthCheckSpecification {
             def switchIdInSrcOrDst = (switchId in [switchPair.src.dpId, switchPair.dst.dpId])
             def defaultAmountOfFlowRules = 2 // ingress + egress
             def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
-            if (swProps.multiTable && swProps.server42FlowRtt) {
+            if (swProps.server42FlowRtt) {
                 if ((flow.destination.getSwitchId() == switchId && flow.destination.vlanId) || (
                         flow.source.getSwitchId() == switchId && flow.source.vlanId))
                     amountOfServer42Rules += 1
             }
             def rulesCount = defaultAmountOfFlowRules + amountOfServer42Rules +
-                    (switchIdInSrcOrDst && swProps.multiTable ? 1 : 0)
+                    (switchIdInSrcOrDst ? 1 : 0)
 
             [switchId, (rulesCount)]
         }
@@ -641,7 +568,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Tags([SMOKE_SWITCHES, LOW_PRIORITY])
     def "Traffic counters in ingress rule are reset on flow rerouting(singleTable mode)"() {
         given: "Two active neighboring switches and two possible flow paths at least"
-        assumeTrue(!useMultitable, "This test is not ready to be run under multiTable mode")
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected*.dpId
         List<List<PathNode>> possibleFlowPaths = []
         def isl = topology.getIslsForActiveSwitches().find {
@@ -703,7 +629,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Traffic counters in ingress rule are reset on flow rerouting(multiTable mode)"() {
         given: "Two active neighboring switches and two possible flow paths at least"
-        assumeTrue(useMultitable, "This test can be run in multiTable mode")
         def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected*.dpId
         List<List<PathNode>> possibleFlowPaths = []
         def isl = topology.getIslsForActiveSwitches().find {
@@ -881,13 +806,13 @@ class FlowRulesSpec extends HealthCheckSpecification {
             def switchIdInSrcOrDst = (switchId in [switchPair.src.dpId, switchPair.dst.dpId])
             def defaultAmountOfFlowRules = 2 // ingress + egress
             def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
-            if (swProps.multiTable && swProps.server42FlowRtt) {
+            if (swProps.server42FlowRtt) {
                 if ((flow.destination.getSwitchId() == switchId && flow.destination.vlanId) || (
                         flow.source.getSwitchId() == switchId && flow.source.vlanId))
                     amountOfServer42Rules += 1
             }
             def rulesCount = defaultAmountOfFlowRules + amountOfServer42Rules +
-                    (switchIdInSrcOrDst && swProps.multiTable ? 1 : 0)
+                    (switchIdInSrcOrDst ? 1 : 0)
             [switchId, rulesCount]
         }
 

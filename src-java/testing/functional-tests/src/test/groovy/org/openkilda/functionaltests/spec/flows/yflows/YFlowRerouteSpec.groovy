@@ -41,7 +41,6 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Valid y-flow can be rerouted"() {
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         given: "A qinq y-flow"
         def swT = topologyHelper.switchTriplets.find { it ->
             def yPoints = yFlowHelper.findPotentialYPoints(it)

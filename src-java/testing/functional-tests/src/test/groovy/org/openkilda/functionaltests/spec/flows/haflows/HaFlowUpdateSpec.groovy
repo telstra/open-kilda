@@ -36,7 +36,6 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
     @Tidy
     def "User can update #data.descr of a ha-flow"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
@@ -108,7 +107,6 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
     @Tidy
     def "User can update ha-flow where one of subflows has both ends on shared switch"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow where one of subflows has both ends on shared switch"
         def switchTriplet = topologyHelper.getSwitchTriplets(true, true)
                 .find{it.ep1 == it.shared && it.ep2 != it.shared}
@@ -143,7 +141,6 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
     @Tidy
     def "User can partially update #data.descr of a ha-flow"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets.find { it.ep1 != it.ep2 }
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
@@ -271,7 +268,6 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
     @Tidy
     def "User cannot update a ha-flow #data.descr"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
@@ -339,7 +335,6 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
 
     @Tidy
     def "User cannot partial update a ha-flow with #data.descr"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)

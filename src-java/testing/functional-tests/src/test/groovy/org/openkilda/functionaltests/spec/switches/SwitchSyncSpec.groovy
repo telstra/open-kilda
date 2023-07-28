@@ -112,12 +112,8 @@ class SwitchSyncSpec extends BaseSpecification {
             [switchPair.src, switchPair.dst].each {
                 def swProps = switchHelper.getCachedSwProps(it.dpId)
                 def amountFlowRules = 2 //INGRESS_REVERSE, INGRESS_FORWARD
-                def amountS42Rules = swProps.server42FlowRtt ? 1 : 0
-                def amountMultiTableSharedRules = 0
-                if (swProps.multiTable) {
-                    amountS42Rules = swProps.server42FlowRtt ? amountS42Rules + 2 : amountS42Rules
-                    amountMultiTableSharedRules += 1
-                }
+                def amountS42Rules = swProps.server42FlowRtt ? 4 : 0
+                def amountMultiTableSharedRules = 1
                 /**
                  * s42Rules
                  * multi/single table: SERVER_42_FLOW_RTT_INGRESS_REVERSE
@@ -324,13 +320,12 @@ class SwitchSyncSpec extends BaseSpecification {
                 def switchIdInSrcOrDst = (it.dpId in [switchPair.src.dpId, switchPair.dst.dpId])
                 def defaultAmountOfFlowRules = 2 // ingress + egress
                 def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
-                if (swProps.multiTable && swProps.server42FlowRtt) {
+                if (swProps.server42FlowRtt) {
                     if ((flow.destination.getSwitchId() == it.dpId && flow.destination.vlanId) || (
                             flow.source.getSwitchId() == it.dpId && flow.source.vlanId))
                         amountOfServer42Rules += 1
                 }
-                def rulesCount = defaultAmountOfFlowRules + amountOfServer42Rules +
-                        (switchIdInSrcOrDst && swProps.multiTable ? 1 : 0)
+                def rulesCount = defaultAmountOfFlowRules + amountOfServer42Rules + 1
                 assert validationResultsMap[it.dpId].rules.missing.size() == rulesCount }
             [switchPair.src, switchPair.dst].each { assert validationResultsMap[it.dpId].meters.missing.size() == 1 }
         }

@@ -36,7 +36,6 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
         given: "Clean switch without customer flows and with the given switchProps"
         def originalProps = switchHelper.getCachedSwProps(sw.dpId)
         northbound.updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap({
-            it.multiTable = swProps.multiTable
             it.switchLldp = swProps.switchLldp
             it.switchArp = swProps.switchArp
         }))
@@ -65,18 +64,10 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
         [swProps, sw] <<
                 [[
                     [
-                        multiTable: false,
-                        switchLldp: false,
-                        switchArp: false
-                    ],
-
-                    [
-                        multiTable: true,
                         switchLldp: false,
                         switchArp: false
                     ],
                     [
-                        multiTable: true,
                         switchLldp: true,
                         switchArp: true
                     ]
@@ -85,16 +76,11 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
                     //filter out combinations where we pick non-multitable switch and do multitable switch props
                     !(swProp.multiTable && !_sw.features.contains(SwitchFeature.MULTI_TABLE))
                 }
-        propsDescr = getDescr(swProps.multiTable, swProps.switchLldp, swProps.switchArp)
+        propsDescr = getDescr(swProps.switchLldp, swProps.switchArp)
     }
 
     String getDescr(boolean multitable, boolean lldp, boolean arp) {
         String r = ""
-        if (multitable) {
-            r += "multi-table"
-        } else {
-            r += "single-table"
-        }
         if (lldp && arp) {
             r += " with lldp and arp"
         } else if (lldp) {

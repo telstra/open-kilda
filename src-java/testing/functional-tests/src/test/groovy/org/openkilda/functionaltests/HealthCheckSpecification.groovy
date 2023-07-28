@@ -139,7 +139,7 @@ class HealthCheckSpecification extends HealthCheckBaseSpecification {
             withPool {
                 topology.activeSwitches.eachParallel { sw ->
                     verifyAll(northbound.getSwitchProperties(sw.dpId)) {
-                        multiTable == useMultitable && sw.features.contains(SwitchFeature.MULTI_TABLE)
+                        sw.features.contains(SwitchFeature.MULTI_TABLE)
                         //server42 props can be either on or off
                     }
                 }

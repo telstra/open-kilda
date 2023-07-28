@@ -8,7 +8,6 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.PortAntiflapHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.model.system.FeatureTogglesDto
-import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.performancetests.helpers.TopologyHelper
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
@@ -80,9 +79,6 @@ class BaseSpecification extends Specification {
     @Value('${use.hs}')
     boolean useHs
 
-    @Value('${use.multitable}')
-    boolean useMultitable
-
     @Value('${perf.debug}')
     boolean debug
 
@@ -112,7 +108,6 @@ class BaseSpecification extends Specification {
                     .syncSwitchOnConnect(true)
                     .build()
             northbound.toggleFeature(features)
-            northbound.updateKildaConfiguration(KildaConfigurationDto.builder().useMultiTable(useMultitable).build())
         } catch (Throwable t) {
             healthCheckError = t
             throw t

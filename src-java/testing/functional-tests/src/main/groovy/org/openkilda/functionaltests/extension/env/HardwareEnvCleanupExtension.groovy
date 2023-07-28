@@ -21,8 +21,6 @@ import org.springframework.context.ApplicationContext
 class HardwareEnvCleanupExtension extends EnvCleanupExtension {
     @Value('${env.hardware.cleanup:false}')
     boolean cleanup
-    @Value('${use.multitable}')
-    boolean useMultitable
 
     @Override
     void notifyContextInitialized(ApplicationContext applicationContext) {
@@ -54,20 +52,7 @@ class HardwareEnvCleanupExtension extends EnvCleanupExtension {
             northbound.getAllSwitches().findAll { it.state == SwitchChangeType.ACTIVATED }.each { sw ->
                 if (database.getSwitch(sw.switchId).features.contains(SwitchFeature.MULTI_TABLE)) {
                     def s42Config = topology.activeSwitches.find { it.dpId == sw.switchId }.prop
-                    def payload
-                    if (useMultitable) {
-                        payload = northbound.getSwitchProperties(sw.switchId).tap { it.multiTable = true }
-                        northbound.updateSwitchProperties(sw.switchId, northbound.getSwitchProperties(sw.switchId).tap {
-                            it.multiTable = true
-                        })
-                    } else {
-                        payload = northbound.getSwitchProperties(sw.switchId).tap {
-                            it.multiTable = false
-                            // arp/lldp  properties can be set to 'true' only if 'multiTable' property is 'true'.
-                            it.switchLldp = false
-                            it.switchArp = false
-                        }
-                    }
+                    def payload = northbound.getSwitchProperties(sw.switchId)
                     northbound.updateSwitchProperties(sw.switchId, payload.tap {
                         it.server42FlowRtt = s42Config.server42FlowRtt
                         it.server42Port = s42Config.server42Port
