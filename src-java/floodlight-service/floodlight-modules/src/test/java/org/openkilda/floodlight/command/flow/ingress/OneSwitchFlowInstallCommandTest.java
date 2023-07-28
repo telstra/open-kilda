@@ -42,27 +42,15 @@ public class OneSwitchFlowInstallCommandTest extends IngressCommandInstallTest {
             IngressCommandInstallTest.endpointEgressSingleVlan.getOuterVlanId());
 
     @Test
-    public void zeroVlanSingleTable() throws Exception {
-        processZeroVlanSingleTable(makeCommand(
-                endpointIngressZeroVlan, endpointEgressOneVlan, meterConfig, makeMetadata(false)));
-    }
-
-    @Test
-    public void oneVlanSingleTable() throws Exception {
-        processOneVlanSingleTable(makeCommand(
-                endpointIngressSingleVlan, endpointEgressZeroVlan, meterConfig, makeMetadata(false)));
-    }
-
-    @Test
     public void zeroVlanMultiTable() throws Exception {
         processZeroVlanMultiTable(makeCommand(
-                endpointIngressZeroVlan, endpointEgressOneVlan, meterConfig, makeMetadata(true)));
+                endpointIngressZeroVlan, endpointEgressOneVlan, meterConfig, makeMetadata()));
     }
 
     @Test
     public void oneVlanMultiTable() throws Exception {
         processOneVlanMultiTable(makeCommand(
-                endpointIngressSingleVlan, endpointEgressZeroVlan, meterConfig, makeMetadata(true)));
+                endpointIngressSingleVlan, endpointEgressZeroVlan, meterConfig, makeMetadata()));
     }
 
     @Override

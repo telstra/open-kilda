@@ -61,19 +61,13 @@ public interface FlowRepository extends Repository<Flow> {
 
     Collection<Flow> findOneSwitchFlows(SwitchId switchId);
 
-    Collection<String> findFlowsIdsByEndpointWithMultiTableSupport(SwitchId switchId, int port);
+    Collection<String> findFlowsIdsByEndpoint(SwitchId switchId, int port);
 
-    Collection<String> findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(SwitchId switchId, int port);
+    Collection<String> findFlowIdsForMultiSwitchFlowsByEndpoint(SwitchId switchId, int port);
 
     Collection<Flow> findByEndpointSwitch(SwitchId switchId);
 
     Collection<Flow> findByEndpointSwitchAndOuterVlan(SwitchId switchId, int vlan);
-
-    Collection<Flow> findByEndpointSwitchWithMultiTableSupport(SwitchId switchId);
-
-    Collection<Flow> findByEndpointSwitchWithEnabledLldp(SwitchId switchId);
-
-    Collection<Flow> findByEndpointSwitchWithEnabledArp(SwitchId switchId);
 
     Collection<Flow> findInactiveFlows();
 

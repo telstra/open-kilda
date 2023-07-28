@@ -20,6 +20,7 @@ import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 import static org.openkilda.wfm.topology.flowhs.fsm.validation.SwitchFlowEntriesBuilder.BURST_COEFFICIENT;
 import static org.openkilda.wfm.topology.flowhs.fsm.validation.SwitchFlowEntriesBuilder.MIN_BURST_SIZE_IN_KBITS;
+import static org.openkilda.wfm.topology.flowhs.fsm.validation.SwitchFlowEntriesBuilder.getIngressFlow;
 
 import org.openkilda.messaging.info.group.GroupDumpResponse;
 import org.openkilda.model.Flow;
@@ -39,6 +40,7 @@ import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.MeterFlag;
 import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.wfm.topology.flowhs.fsm.validation.SwitchFlowEntriesBuilder;
 
 import com.google.common.collect.Sets;
@@ -106,12 +108,10 @@ public final class YFlowSwitchFlowEntriesBuilder {
             FlowSegmentCookie forwardCookie = forwardPath.getCookie().toBuilder().yFlow(true).build();
             boolean isVxlan = flow.getEncapsulationType() == VXLAN;
             flowEntries.put(yFlow.getSharedEndpoint().getSwitchId(),
-                    SwitchFlowEntriesBuilder.getFlowEntry(forwardCookie.getValue(),
-                            yFlow.getSharedEndpoint().getSwitchId(),
-                            flow.getSrcPort(), flow.getSrcVlan(), null,
-                            firstSegment.getSrcPort(), isVxlan ? null : forwardTransitEncId,
-                            isVxlan ? forwardTransitEncId : null,
-                            yFlow.getSharedEndpointMeterId().getValue()));
+                    getIngressFlow(yFlow.getSharedEndpoint().getSwitchId(), forwardCookie.getValue(), flow.getSrcPort(),
+                            flow.getSrcVlan(),
+                            new PortNumber(firstSegment.getSrcPort()), forwardTransitEncId,
+                            (int) yFlow.getSharedEndpointMeterId().getValue(), isVxlan));
 
             if (!yFlow.getYPoint().equals(flow.getSrcSwitchId())) {
                 FlowPath reversePath = flow.getReversePath();

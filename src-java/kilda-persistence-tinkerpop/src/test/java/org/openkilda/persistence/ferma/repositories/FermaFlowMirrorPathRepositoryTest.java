@@ -129,10 +129,10 @@ public class FermaFlowMirrorPathRepositoryTest extends InMemoryGraphBasedTest {
         List<FlowMirrorPath> foundPaths =
                 new ArrayList<>(flowMirrorPathRepository.findByEgressSwitchIdAndPort(switchC.getSwitchId(), 3));
         assertEquals(2, foundPaths.size());
-        assertEquals(switchA.getSwitchId(), foundPaths.get(1).getMirrorSwitchId());
-        assertEquals(switchC.getSwitchId(), foundPaths.get(1).getEgressSwitchId());
-        assertEquals(switchB.getSwitchId(), foundPaths.get(0).getMirrorSwitchId());
+        assertEquals(switchA.getSwitchId(), foundPaths.get(0).getMirrorSwitchId());
         assertEquals(switchC.getSwitchId(), foundPaths.get(0).getEgressSwitchId());
+        assertEquals(switchB.getSwitchId(), foundPaths.get(1).getMirrorSwitchId());
+        assertEquals(switchC.getSwitchId(), foundPaths.get(1).getEgressSwitchId());
     }
 
     @Test

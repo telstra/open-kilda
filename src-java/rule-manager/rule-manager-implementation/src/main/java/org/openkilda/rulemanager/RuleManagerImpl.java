@@ -129,28 +129,23 @@ public class RuleManagerImpl implements RuleManager {
         FlowEndpoint endpoint = makeIngressAdapter(flow, path).getEndpoint();
         Set<PathId> excludePathIds = Sets.newHashSet(
                 path.getPathId(), flow.getForwardPathId(), flow.getReversePathId());
-        return getOverlappingMultiTableIngressAdapters(endpoint, path.isSrcWithMultiTable(), excludePathIds, adapter);
+        return getOverlappingMultiTableIngressAdapters(endpoint, excludePathIds, adapter);
     }
 
     private Set<FlowSideAdapter> getOverlappingMultiTableIngressAdapters(
             HaFlow haFlow, FlowPath subPath, Collection<PathId> subPathIds, DataAdapter adapter) {
         Set<PathId> excludePathIds = Sets.newHashSet(subPathIds);
         FlowEndpoint endpoint = makeIngressAdapter(haFlow, subPath).getEndpoint();
-        return getOverlappingMultiTableIngressAdapters(endpoint, true, excludePathIds, adapter);
+        return getOverlappingMultiTableIngressAdapters(endpoint, excludePathIds, adapter);
     }
 
     private Set<FlowSideAdapter> getOverlappingMultiTableIngressAdapters(
-            FlowEndpoint endpoint, boolean multiTable, Set<PathId> excludePathIds, DataAdapter adapter) {
+            FlowEndpoint endpoint, Set<PathId> excludePathIds, DataAdapter adapter) {
 
         Set<FlowSideAdapter> result = new HashSet<>();
-        if (!multiTable) {
-            // we do not care about overlapping for single table paths
-            return result;
-        }
 
         for (FlowPath overlappingPath : adapter.getCommonFlowPaths().values()) {
-            if (overlappingPath.isSrcWithMultiTable()
-                    && !excludePathIds.contains(overlappingPath.getPathId())
+            if (!excludePathIds.contains(overlappingPath.getPathId())
                     && endpoint.getSwitchId().equals(overlappingPath.getSrcSwitchId())) {
                 Flow overlappingFlow = adapter.getFlow(overlappingPath.getPathId());
                 FlowSideAdapter flowAdapter = makeIngressAdapter(overlappingFlow, overlappingPath);
@@ -199,40 +194,38 @@ public class RuleManagerImpl implements RuleManager {
         generators.add(serviceRulesFactory.getRoundTripLatencyRuleGenerator());
         generators.add(serviceRulesFactory.getUnicastVerificationVxlanRuleGenerator());
 
+        generators.add(serviceRulesFactory.getTableDefaultRuleGenerator(
+                new Cookie(MULTITABLE_INGRESS_DROP_COOKIE), OfTable.INGRESS));
+        generators.add(serviceRulesFactory.getTableDefaultRuleGenerator(
+                new Cookie(MULTITABLE_TRANSIT_DROP_COOKIE), OfTable.TRANSIT));
+        generators.add(serviceRulesFactory.getTableDefaultRuleGenerator(
+                new Cookie(MULTITABLE_POST_INGRESS_DROP_COOKIE), OfTable.POST_INGRESS));
+        generators.add(serviceRulesFactory.getTablePassThroughDefaultRuleGenerator(
+                new Cookie(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE), OfTable.TRANSIT, OfTable.EGRESS));
+        generators.add(serviceRulesFactory.getTablePassThroughDefaultRuleGenerator(
+                new Cookie(MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE), OfTable.INGRESS, OfTable.PRE_INGRESS));
+        generators.add(serviceRulesFactory.getLldpPostIngressRuleGenerator());
+        generators.add(serviceRulesFactory.getLldpPostIngressVxlanRuleGenerator());
+        generators.add(serviceRulesFactory.getLldpPostIngressOneSwitchRuleGenerator());
+        generators.add(serviceRulesFactory.getArpPostIngressRuleGenerator());
+        generators.add(serviceRulesFactory.getArpPostIngressVxlanRuleGenerator());
+        generators.add(serviceRulesFactory.getArpPostIngressOneSwitchRuleGenerator());
+
         SwitchProperties switchProperties = adapter.getSwitchProperties(switchId);
-        if (switchProperties.isMultiTable()) {
-            generators.add(serviceRulesFactory.getTableDefaultRuleGenerator(
-                    new Cookie(MULTITABLE_INGRESS_DROP_COOKIE), OfTable.INGRESS));
-            generators.add(serviceRulesFactory.getTableDefaultRuleGenerator(
-                    new Cookie(MULTITABLE_TRANSIT_DROP_COOKIE), OfTable.TRANSIT));
-            generators.add(serviceRulesFactory.getTableDefaultRuleGenerator(
-                    new Cookie(MULTITABLE_POST_INGRESS_DROP_COOKIE), OfTable.POST_INGRESS));
-            generators.add(serviceRulesFactory.getTablePassThroughDefaultRuleGenerator(
-                    new Cookie(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE), OfTable.TRANSIT, OfTable.EGRESS));
-            generators.add(serviceRulesFactory.getTablePassThroughDefaultRuleGenerator(
-                    new Cookie(MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE), OfTable.INGRESS, OfTable.PRE_INGRESS));
-            generators.add(serviceRulesFactory.getLldpPostIngressRuleGenerator());
-            generators.add(serviceRulesFactory.getLldpPostIngressVxlanRuleGenerator());
-            generators.add(serviceRulesFactory.getLldpPostIngressOneSwitchRuleGenerator());
-            generators.add(serviceRulesFactory.getArpPostIngressRuleGenerator());
-            generators.add(serviceRulesFactory.getArpPostIngressVxlanRuleGenerator());
-            generators.add(serviceRulesFactory.getArpPostIngressOneSwitchRuleGenerator());
-
-            if (switchProperties.isSwitchLldp()) {
-                generators.add(serviceRulesFactory.getLldpTransitRuleGenerator());
-                generators.add(serviceRulesFactory.getLldpInputPreDropRuleGenerator());
-                generators.add(serviceRulesFactory.getLldpIngressRuleGenerator());
-            }
-            if (switchProperties.isSwitchArp()) {
-                generators.add(serviceRulesFactory.getArpTransitRuleGenerator());
-                generators.add(serviceRulesFactory.getArpInputPreDropRuleGenerator());
-                generators.add(serviceRulesFactory.getArpIngressRuleGenerator());
-            }
-
-            Set<Integer> islPorts = adapter.getSwitchIslPorts(switchId);
-
-            islPorts.forEach(islPort -> generators.addAll(getIslServiceRuleGenerators(islPort)));
+        if (switchProperties.isSwitchLldp()) {
+            generators.add(serviceRulesFactory.getLldpTransitRuleGenerator());
+            generators.add(serviceRulesFactory.getLldpInputPreDropRuleGenerator());
+            generators.add(serviceRulesFactory.getLldpIngressRuleGenerator());
         }
+        if (switchProperties.isSwitchArp()) {
+            generators.add(serviceRulesFactory.getArpTransitRuleGenerator());
+            generators.add(serviceRulesFactory.getArpInputPreDropRuleGenerator());
+            generators.add(serviceRulesFactory.getArpIngressRuleGenerator());
+        }
+
+        Set<Integer> islPorts = adapter.getSwitchIslPorts(switchId);
+
+        islPorts.forEach(islPort -> generators.addAll(getIslServiceRuleGenerators(islPort)));
 
         List<LagLogicalPort> lacpPorts = adapter.getLagLogicalPorts(switchId)
                 .stream().filter(LagLogicalPort::isLacpReply).collect(toList());
@@ -494,9 +487,6 @@ public class RuleManagerImpl implements RuleManager {
     @Override
     public List<SpeakerData> buildIslServiceRules(SwitchId switchId, int port, DataAdapter adapter) {
         SwitchProperties switchProperties = adapter.getSwitchProperties(switchId);
-        if (!switchProperties.isMultiTable()) {
-            return emptyList();
-        }
         Switch sw = adapter.getSwitch(switchId);
         List<RuleGenerator> generators = getIslServiceRuleGenerators(port);
         if (adapter.getFeatureToggles().getServer42IslRtt() && switchProperties.hasServer42IslRttEnabled()) {

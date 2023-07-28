@@ -562,7 +562,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
                         .map(SwitchPropertiesResponse.class::cast)
                         .map(r -> switchMapper.map(r.getSwitchProperties()))
                         .collect(Collectors.toList()))
-                .thenApply(dump -> new SwitchPropertiesDump(dump));
+                .thenApply(SwitchPropertiesDump::new);
     }
 
     @Override

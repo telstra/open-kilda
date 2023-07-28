@@ -1,0 +1,41 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: snikitin
+      changes:
+        - tagDatabase:
+            tag: 030-ensure-all-objects-are-multi-table
+  - changeSet:
+      id: remove_multi_table_fields
+      author: snikitin
+      preConditions:
+        - onFail: HALT
+        - onFailMessage: "Failed preconditions for migration '030-ensure-all-objects-are-multi-table.yaml'.\n
+            \n
+            Current release removes multi table fields from Java classes. \n
+            This migration is required to be sure that all objects in DB are in multi table mode. \n
+            It means that values of all following fields must be 'true':\n
+             1. switch_properties.multi_table\n
+             2. flow_path.src_with_multi_table\n
+             3. flow_path.dst_with_multi_table\n
+             4. path_segment.src_with_multi_table\n
+             5. path_segment.dst_with_multi_table\n
+             6. flow_mirror_path.egress_with_multi_table\n"
+        - sqlCheck:
+            expectedResult: 0
+            sql: "SELECT COUNT(*) FROM switch_properties WHERE multi_table <> true"
+        - sqlCheck:
+            expectedResult: 0
+            sql: "SELECT COUNT(*) FROM flow_path WHERE src_with_multi_table <> true"
+        - sqlCheck:
+            expectedResult: 0
+            sql: "SELECT COUNT(*) FROM flow_path WHERE dst_with_multi_table <> true"
+        - sqlCheck:
+            expectedResult: 0
+            sql: "SELECT COUNT(*) FROM path_segment WHERE src_with_multi_table <> true"
+        - sqlCheck:
+            expectedResult: 0
+            sql: "SELECT COUNT(*) FROM path_segment WHERE dst_with_multi_table <> true"
+        - sqlCheck:
+            expectedResult: 0
+            sql: "SELECT COUNT(*) FROM flow_mirror_path WHERE egress_with_multi_table <> true"

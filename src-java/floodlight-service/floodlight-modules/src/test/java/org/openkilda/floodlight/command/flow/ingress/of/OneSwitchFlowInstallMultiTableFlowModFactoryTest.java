@@ -35,7 +35,7 @@ public class OneSwitchFlowInstallMultiTableFlowModFactoryTest extends OneSwitchF
 
     @Override
     FlowSegmentMetadata makeMetadata() {
-        return new FlowSegmentMetadata(flowId, cookie, true);
+        return new FlowSegmentMetadata(flowId, cookie);
     }
 
     @Override

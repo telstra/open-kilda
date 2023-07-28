@@ -24,7 +24,6 @@ import org.openkilda.messaging.nbtopology.request.KildaConfigurationGetRequest;
 import org.openkilda.messaging.nbtopology.request.KildaConfigurationUpdateRequest;
 import org.openkilda.messaging.nbtopology.response.KildaConfigurationResponse;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.mappers.KildaConfigurationMapper;
 import org.openkilda.wfm.topology.nbworker.services.KildaConfigurationService;
 
 import org.apache.storm.tuple.Tuple;
@@ -62,13 +61,12 @@ public class KildaConfigurationBolt extends PersistenceOperationsBolt {
     }
 
     private KildaConfigurationDto getKildaConfiguration() {
-        return KildaConfigurationMapper.INSTANCE.map(kildaConfigurationService.getKildaConfiguration());
+        return kildaConfigurationService.getKildaConfiguration();
     }
 
     private KildaConfigurationDto updateKildaConfiguration(KildaConfigurationDto kildaConfigurationDto) {
         try {
-            return KildaConfigurationMapper.INSTANCE.map(kildaConfigurationService
-                    .updateKildaConfiguration(KildaConfigurationMapper.INSTANCE.map(kildaConfigurationDto)));
+            return kildaConfigurationService.updateKildaConfiguration(kildaConfigurationDto);
         } catch (IllegalArgumentException e) {
             throw new MessageException(ErrorType.PARAMETERS_INVALID, e.getMessage(), "Update kilda configuration.");
         }

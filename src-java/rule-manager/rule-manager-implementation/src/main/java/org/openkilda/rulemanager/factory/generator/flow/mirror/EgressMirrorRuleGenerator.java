@@ -83,7 +83,7 @@ public class EgressMirrorRuleGenerator extends EgressRuleGenerator {
                 .switchId(flowPath.getDestSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie().toBuilder().mirror(true).build())
-                .table(flowPath.isDestWithMultiTable() ? OfTable.EGRESS : OfTable.INPUT)
+                .table(OfTable.EGRESS)
                 .priority(Priority.MIRROR_FLOW_PRIORITY)
                 .match(makeTransitMatch(sw, inPort, encapsulation))
                 .instructions(Instructions.builder()

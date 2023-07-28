@@ -53,7 +53,7 @@ abstract class IngressFlowSegmentCommandJsonTest
         IngressFlowSegmentRequestFactory factory = new IngressFlowSegmentRequestFactory(
                 new MessageContext(),
                 new FlowSegmentMetadata(
-                        "ingress-flow-segment-json-remove-request", new Cookie(1), false),
+                        "ingress-flow-segment-json-remove-request", new Cookie(1)),
                 new FlowEndpoint(new SwitchId(2), 3, 4),
                 new MeterConfig(new MeterId(6), 7000),
                 new SwitchId(20),

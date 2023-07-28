@@ -27,7 +27,6 @@ import org.openkilda.model.IslStatus;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.PersistenceException;
@@ -345,18 +344,8 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
             return;
         }
 
-        Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(ingress.getDatapath());
-        boolean multitableMode = switchProperties.map(SwitchProperties::isMultiTable).orElse(false);
-        boolean server42IslRtt = featureTogglesRepository.getOrDefault().getServer42IslRtt()
-                && switchProperties.map(SwitchProperties::hasServer42IslRttEnabled).orElse(false);
-        Integer server42Port = switchProperties.map(SwitchProperties::getServer42Port).orElse(null);
-
-        if (multitableMode || server42IslRtt) {
-            log.info("Emit ISL resource allocation request for {} to {}", reference, ingress.getDatapath());
-            carrier.islRulesInstall(reference, ingress);
-        } else {
-            endpointResourcesManagementCompleteStatus.put(ingress, true);
-        }
+        log.info("Emit ISL resource allocation request for {} to {}", reference, ingress.getDatapath());
+        carrier.islRulesInstall(reference, ingress);
     }
 
     private void sendIslRemovedNotification(IIslCarrier carrier) {
@@ -381,7 +370,7 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
         // TODO(surabujin): why for we need this check?
         boolean isIslRemoved = islRepository.findByEndpoint(ingress.getDatapath(), ingress.getPortNumber())
                 .isEmpty();
-        if (isIslRemoved && isSwitchInMultiTableModeOrServer42IslRtt(ingress.getDatapath())) {
+        if (isIslRemoved) {
             log.info("Emit ISL resource release request for {} to {}", reference, ingress.getDatapath());
             carrier.islRulesDelete(reference, ingress);
         } else {
@@ -660,13 +649,6 @@ public final class IslFsm extends AbstractBaseFsm<IslFsm, IslFsmState, IslFsmEve
                 .map(IslMapper.INSTANCE::readBfdProperties)
                 .orElseThrow(() -> new PersistenceException(
                         String.format("Isl %s ===> %s record not found in DB", source, dest)));
-    }
-
-    private boolean isSwitchInMultiTableModeOrServer42IslRtt(SwitchId switchId) {
-        return switchPropertiesRepository
-                .findBySwitchId(switchId)
-                .map(sp -> sp.isMultiTable() || sp.hasServer42IslRttEnabled())
-                .orElse(false);
     }
 
     private boolean isResourcesManagementCompleted() {

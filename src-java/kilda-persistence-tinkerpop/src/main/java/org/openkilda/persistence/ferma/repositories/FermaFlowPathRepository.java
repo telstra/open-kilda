@@ -335,28 +335,6 @@ public class FermaFlowPathRepository extends FermaGenericRepository<FlowPath, Fl
     }
 
     @Override
-    public Collection<FlowPath> findBySegmentSwitchWithMultiTable(SwitchId switchId, boolean multiTable) {
-        Map<PathId, FlowPath> result = new HashMap<>();
-        framedGraph().traverse(g -> g.V()
-                .hasLabel(PathSegmentFrame.FRAME_LABEL)
-                .has(PathSegmentFrame.SRC_SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
-                .has(PathSegmentFrame.SRC_W_MULTI_TABLE_PROPERTY, multiTable)
-                .in(FlowPathFrame.OWNS_SEGMENTS_EDGE)
-                .hasLabel(FlowPathFrame.FRAME_LABEL))
-                .frameExplicit(FlowPathFrame.class)
-                .forEachRemaining(frame -> result.put(frame.getPathId(), new FlowPath(frame)));
-        framedGraph().traverse(g -> g.V()
-                .hasLabel(PathSegmentFrame.FRAME_LABEL)
-                .has(PathSegmentFrame.DST_SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(switchId))
-                .has(PathSegmentFrame.DST_W_MULTI_TABLE_PROPERTY, multiTable)
-                .in(FlowPathFrame.OWNS_SEGMENTS_EDGE)
-                .hasLabel(FlowPathFrame.FRAME_LABEL))
-                .frameExplicit(FlowPathFrame.class)
-                .forEachRemaining(frame -> result.put(frame.getPathId(), new FlowPath(frame)));
-        return result.values();
-    }
-
-    @Override
     public Collection<FlowPath> findWithPathSegment(SwitchId srcSwitchId, int srcPort,
                                                     SwitchId dstSwitchId, int dstPort) {
         return framedGraph().traverse(g -> g.V()

@@ -46,6 +46,7 @@ public class TransitFlowSegmentInstallCommandTest extends TransitFlowSegmentComm
         verifyWriteCount(1);
         OFFlowAdd expected = of.buildFlowAdd()
                 .setPriority(TransitFlowSegmentInstallCommand.FLOW_PRIORITY)
+                .setTableId(TRANSIT_TABLE)
                 .setCookie(U64.of(command.getCookie().getValue()))
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
@@ -67,6 +68,7 @@ public class TransitFlowSegmentInstallCommandTest extends TransitFlowSegmentComm
 
         OFFlowAdd expected = of.buildFlowAdd()
                 .setPriority(TransitFlowSegmentInstallCommand.FLOW_PRIORITY)
+                .setTableId(TRANSIT_TABLE)
                 .setCookie(U64.of(command.getCookie().getValue()))
                 .setMatch(OfAdapter.INSTANCE.matchVxLanVni(of, of.buildMatch(), command.getEncapsulation().getId())
                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
@@ -87,7 +89,7 @@ public class TransitFlowSegmentInstallCommandTest extends TransitFlowSegmentComm
 
         TransitFlowSegmentInstallCommand command = makeCommand(
                 encapsulationVxLan,
-                new FlowSegmentMetadata("transit-segment-install-multitable", new Cookie(5), true));
+                new FlowSegmentMetadata("transit-segment-install-multitable", new Cookie(5)));
         verifySuccessCompletion(command.execute(commandProcessor));
         verifyWriteCount(1);
 
@@ -110,7 +112,7 @@ public class TransitFlowSegmentInstallCommandTest extends TransitFlowSegmentComm
 
     @Override
     protected TransitFlowSegmentInstallCommand makeCommand(FlowTransitEncapsulation encapsulation) {
-        FlowSegmentMetadata metadata = new FlowSegmentMetadata("transit-segment-install-flow-id", new Cookie(5), false);
+        FlowSegmentMetadata metadata = new FlowSegmentMetadata("transit-segment-install-flow-id", new Cookie(5));
         return makeCommand(encapsulation, metadata);
     }
 

@@ -46,7 +46,7 @@ public class FlowSegmentRequestMetaFactory {
     private SequentialNumberGenerator meterIdGenerator = new SequentialNumberGenerator();
 
     public FlowSegmentRequestMetaFactory(String flowId, Cookie cookie, int vlanId) {
-        this(new FlowSegmentMetadata(flowId, cookie, false), new MessageContext(),
+        this(new FlowSegmentMetadata(flowId, cookie), new MessageContext(),
                 new FlowTransitEncapsulation(vlanId, FlowEncapsulationType.TRANSIT_VLAN));
     }
 
