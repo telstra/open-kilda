@@ -15,9 +15,7 @@
 
 package org.openkilda.rulemanager.adapter;
 
-import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -32,7 +30,6 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.TransitVlan;
@@ -198,30 +195,6 @@ public class PersistenceDataAdapterTest {
 
         verify(switchPropertiesRepository).findBySwitchIds(switchIds);
         verifyNoMoreInteractions(switchPropertiesRepository);
-    }
-
-    @Test
-    public void shouldKeepMultitableForFlowInSwitchProperties() {
-        Set<SwitchId> switchIds = Sets.newHashSet(SWITCH_ID_1, SWITCH_ID_2);
-        Switch sw1 = buildSwitch(SWITCH_ID_1, singleton(SwitchFeature.MULTI_TABLE));
-        SwitchProperties switchProperties1 = buildSwitchProperties(sw1, false);
-        Switch sw2 = buildSwitch(SWITCH_ID_2, singleton(SwitchFeature.MULTI_TABLE));
-        SwitchProperties switchProperties2 = buildSwitchProperties(sw2, true);
-        Map<SwitchId, SwitchProperties> switchProperties = new HashMap<>();
-        switchProperties.put(SWITCH_ID_1, switchProperties1);
-        switchProperties.put(SWITCH_ID_2, switchProperties2);
-        when(switchPropertiesRepository.findBySwitchIds(switchIds)).thenReturn(switchProperties);
-        when(flowRepository.findByEndpointSwitchWithMultiTableSupport(SWITCH_ID_1))
-                .thenReturn(singleton(mock(Flow.class)));
-
-        adapter = PersistenceDataAdapter.builder()
-                .switchIds(switchIds)
-                .persistenceManager(persistenceManager)
-                .keepMultitableForFlow(true)
-                .build();
-
-        assertTrue(adapter.getSwitchProperties(SWITCH_ID_1).isMultiTable());
-        assertTrue(adapter.getSwitchProperties(SWITCH_ID_2).isMultiTable());
     }
 
     @Test

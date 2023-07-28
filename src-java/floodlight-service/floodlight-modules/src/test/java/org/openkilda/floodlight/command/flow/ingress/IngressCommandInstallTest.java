@@ -52,13 +52,15 @@ abstract class IngressCommandInstallTest extends IngressCommandTest {
         IngressFlowSegmentBase command = makeCommand(endpointIngressSingleVlan, null, makeMetadata());
 
         switchFeaturesSetup(sw, true);
-        expectMakeOuterOnlyVlanForwardMessage(command, new EffectiveIds());
+        expectMakeSingleVlanForwardMessage(command, new EffectiveIds());
+        expectMakeCustomerPortSharedCatchInstallMessage(command);
+        expectMakeOuterVlanMatchSharedMessage(command);
         expectNoMoreOfMessages();
         replayAll();
 
         CompletableFuture<FlowSegmentReport> result = command.execute(commandProcessor);
         verifySuccessCompletion(result);
-        verifyWriteCount(1);
+        verifyWriteCount(3);
         verifyNoMeterCall((OFFlowAdd) getWriteRecord(0).getRequest());
     }
 
@@ -68,12 +70,14 @@ abstract class IngressCommandInstallTest extends IngressCommandTest {
         IngressFlowSegmentBase command = makeCommand(endpointIngressSingleVlan, meterConfig, makeMetadata());
         expectMeterInstall(
                 new UnsupportedSwitchOperationException(dpIdNext, "Switch doesn't support meters (unit-test)"));
-        expectMakeOuterOnlyVlanForwardMessage(command, new EffectiveIds());
+        expectMakeSingleVlanForwardMessage(command, new EffectiveIds());
+        expectMakeCustomerPortSharedCatchInstallMessage(command);
+        expectMakeOuterVlanMatchSharedMessage(command);
         expectNoMoreOfMessages();
         replayAll();
 
         CompletableFuture<FlowSegmentReport> result = command.execute(commandProcessor);
-        verifyWriteCount(1);
+        verifyWriteCount(3);
         verifySuccessCompletion(result);
         verifyNoMeterCall((OFFlowAdd) getWriteRecord(0).getRequest());
     }
@@ -94,11 +98,13 @@ abstract class IngressCommandInstallTest extends IngressCommandTest {
 
     @Test
     public void errorOnFlowMod() {
-        IngressFlowSegmentBase command = makeCommand(endpointIngressSingleVlan, meterConfig, makeMetadata(false));
+        IngressFlowSegmentBase command = makeCommand(endpointIngressSingleVlan, meterConfig, makeMetadata());
 
         switchFeaturesSetup(sw, true);
         expectMeterInstall();
-        expectMakeOuterOnlyVlanForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
+        expectMakeSingleVlanForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
+        expectMakeCustomerPortSharedCatchInstallMessage(command);
+        expectMakeOuterVlanMatchSharedMessage(command);
         expectNoMoreOfMessages();
         replayAll();
 

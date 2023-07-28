@@ -42,7 +42,6 @@ import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslEndpoints;
-import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.wfm.error.FlowAlreadyExistException;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
@@ -95,11 +94,8 @@ public class ResourcesAllocationAction extends
         this.resourcesManager = resourcesManager;
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
         this.haFlowPathRepository = persistenceManager.getRepositoryFactory().createHaFlowPathRepository();
-        KildaConfigurationRepository kildaConfigurationRepository = persistenceManager.getRepositoryFactory()
-                .createKildaConfigurationRepository();
 
-        this.flowPathBuilder = new FlowPathBuilder(persistenceManager.getRepositoryFactory()
-                .createSwitchPropertiesRepository(), kildaConfigurationRepository);
+        this.flowPathBuilder = new FlowPathBuilder();
     }
 
     @Override

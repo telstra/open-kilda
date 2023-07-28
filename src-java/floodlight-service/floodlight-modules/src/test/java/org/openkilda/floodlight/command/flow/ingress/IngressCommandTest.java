@@ -131,11 +131,7 @@ abstract class IngressCommandTest extends AbstractSpeakerCommandTest {
             FlowEndpoint endpoint, MeterConfig meterConfig, FlowSegmentMetadata metadata);
 
     protected FlowSegmentMetadata makeMetadata() {
-        return makeMetadata(false);
-    }
-
-    protected FlowSegmentMetadata makeMetadata(boolean isMultiTable) {
         return new FlowSegmentMetadata(
-                "speaker-unit-test", new Cookie(1), isMultiTable);
+                "speaker-unit-test", new Cookie(1));
     }
 }

@@ -17,9 +17,6 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -31,14 +28,10 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.pce.HaPath;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
-import org.openkilda.persistence.repositories.KildaConfigurationRepository;
-import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
-import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 
 import com.google.common.collect.ImmutableList;
@@ -49,7 +42,6 @@ import org.junit.jupiter.api.Test;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 public class FlowPathBuilderTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId(1);
@@ -65,17 +57,7 @@ public class FlowPathBuilderTest {
 
     @BeforeEach
     public void setUp() {
-        SwitchRepository switchRepository = mock(SwitchRepository.class);
-        SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
-        KildaConfigurationRepository kildaConfigurationRepository = mock(KildaConfigurationRepository.class);
-        when(switchRepository.findById(any())).thenAnswer(invocation ->
-                Optional.of(Switch.builder().switchId(invocation.getArgument(0)).build()));
-        when(switchPropertiesRepository.findBySwitchId(any())).thenAnswer(invocation -> {
-            Switch sw = Switch.builder().switchId(invocation.getArgument(0)).build();
-            return Optional.of(SwitchProperties.builder().switchObj(sw).multiTable(false)
-                    .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES).build());
-        });
-        builder = new FlowPathBuilder(switchPropertiesRepository, kildaConfigurationRepository);
+        builder = new FlowPathBuilder();
     }
 
     @Test

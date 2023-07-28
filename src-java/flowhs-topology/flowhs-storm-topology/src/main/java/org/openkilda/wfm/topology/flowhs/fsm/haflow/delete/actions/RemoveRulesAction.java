@@ -164,7 +164,7 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
         Set<SwitchId> switchIds = haFlowPath.getAllInvolvedSwitches();
         Set<PathId> pathIds = new HashSet<>(overlappingPathIds);
         pathIds.addAll(haFlowPath.getSubPathIds());
-        return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false);
+        return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds);
     }
 
     private List<SpeakerData> buildSpeakerCommands(HaFlow haFlow, Collection<HaFlowPath> paths) {

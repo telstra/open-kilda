@@ -107,6 +107,6 @@ public class RevertNewRulesAction extends HaFlowRuleManagerProcessingAction<
         Set<SwitchId> switchIds = haPath.getAllInvolvedSwitches();
         Set<PathId> pathIds = new HashSet<>(overlappingPathIds);
         pathIds.addAll(targetPathIds);
-        return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false);
+        return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds);
     }
 }

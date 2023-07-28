@@ -44,7 +44,7 @@ abstract class TransitFlowSegmentCommandJsonTest
         TransitFlowSegmentRequestFactory factory = new TransitFlowSegmentRequestFactory(
                 new MessageContext(),
                 new SwitchId(1),
-                new FlowSegmentMetadata("transit-flow-segment-install-request", new Cookie(2), false),
+                new FlowSegmentMetadata("transit-flow-segment-install-request", new Cookie(2)),
                 3, 4,
                 new FlowTransitEncapsulation(5, FlowEncapsulationType.TRANSIT_VLAN));
         return makeRequest(factory);

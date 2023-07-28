@@ -249,7 +249,7 @@ public class BaseFlowRuleRemovalActionTest extends InMemoryGraphBasedTest {
 
     @Test
     public void hasOtherFlowRemoveSharedServer42InputRuleTest() {
-        when(flowRepository.findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(eq(SWITCH_ID_1), eq(PORT_1)))
+        when(flowRepository.findFlowIdsForMultiSwitchFlowsByEndpoint(eq(SWITCH_ID_1), eq(PORT_1)))
                 .thenReturn(newArrayList(FLOW_ID_2));
         FlowEndpoint oldEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1);
         FlowEndpoint sameEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_1);

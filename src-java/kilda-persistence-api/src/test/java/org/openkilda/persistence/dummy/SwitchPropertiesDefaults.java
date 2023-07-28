@@ -28,7 +28,6 @@ public class SwitchPropertiesDefaults {
     private Set<FlowEncapsulationType> supportedTransitEncapsulation = Collections.singleton(
             FlowEncapsulationType.TRANSIT_VLAN);
 
-    private boolean multiTable = false;
     private boolean switchLldp = false;
 
     /**
@@ -36,7 +35,6 @@ public class SwitchPropertiesDefaults {
      */
     public SwitchProperties.SwitchPropertiesBuilder fill(SwitchProperties.SwitchPropertiesBuilder properties) {
         properties.supportedTransitEncapsulation(supportedTransitEncapsulation);
-        properties.multiTable(multiTable);
         properties.switchLldp(switchLldp);
 
         return properties;

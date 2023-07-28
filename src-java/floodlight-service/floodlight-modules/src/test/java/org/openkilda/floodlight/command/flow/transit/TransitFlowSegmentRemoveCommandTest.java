@@ -25,6 +25,7 @@ import org.junit.Test;
 import org.projectfloodlight.openflow.protocol.OFFlowDeleteStrict;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.OFPort;
+import org.projectfloodlight.openflow.types.TableId;
 import org.projectfloodlight.openflow.types.U64;
 
 import java.util.UUID;
@@ -40,6 +41,7 @@ public class TransitFlowSegmentRemoveCommandTest extends TransitFlowSegmentComma
 
         OFFlowDeleteStrict expected = of.buildFlowDeleteStrict()
                 .setPriority(TransitFlowSegmentRemoveCommand.FLOW_PRIORITY)
+                .setTableId(TableId.of(5))
                 .setCookie(U64.of(command.getCookie().getValue()))
                 .setCookieMask(U64.NO_MASK)
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
@@ -54,7 +56,7 @@ public class TransitFlowSegmentRemoveCommandTest extends TransitFlowSegmentComma
         MessageContext messageContext = new MessageContext();
         UUID commandId = UUID.randomUUID();
         FlowSegmentMetadata metadata = new FlowSegmentMetadata(
-                "transit-flow-segment-remove-flow-id", new Cookie(6), false);
+                "transit-flow-segment-remove-flow-id", new Cookie(6));
         int ingressIslPort = 3;
         int egressIslPort = 5;
         return new TransitFlowSegmentRemoveCommand(

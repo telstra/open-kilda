@@ -92,26 +92,25 @@ public final class Utils {
      * Build switch properties object for tests.
      */
     public static SwitchProperties buildSwitchProperties(Switch sw, boolean multiTable) {
-        return buildSwitchProperties(sw, multiTable, false, false);
+        return buildSwitchProperties(sw, false, false);
     }
 
     /**
      * Build switch properties object for tests.
      */
     public static SwitchProperties buildSwitchProperties(
-            Switch sw, boolean multiTable, boolean switchLldp, boolean switchArp) {
-        return buildSwitchProperties(sw, multiTable, switchLldp, switchArp, false, RttState.DISABLED);
+            Switch sw, boolean switchLldp, boolean switchArp) {
+        return buildSwitchProperties(sw, switchLldp, switchArp, false, RttState.DISABLED);
     }
 
     /**
      * Build switch properties object for tests.
      */
     public static SwitchProperties buildSwitchProperties(
-            Switch sw, boolean multiTable, boolean switchLldp, boolean switchArp,
+            Switch sw, boolean switchLldp, boolean switchArp,
             boolean server42FlowRtt, RttState server42IslRtt) {
         return SwitchProperties.builder()
                 .switchObj(sw)
-                .multiTable(multiTable)
                 .switchLldp(switchLldp)
                 .switchArp(switchArp)
                 .server42FlowRtt(server42FlowRtt)

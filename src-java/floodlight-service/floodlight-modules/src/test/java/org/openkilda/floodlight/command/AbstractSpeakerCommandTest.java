@@ -60,6 +60,7 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
 import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.types.TableId;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -95,6 +96,8 @@ public abstract class AbstractSpeakerCommandTest extends EasyMockSupport {
             mapSwitchId(dpId), 22, 70);
     protected static final FlowEndpoint endpointIngressDoubleVlan = new FlowEndpoint(
             mapSwitchId(dpId), 23, 80, 81);
+    protected static final TableId EGRESS_TABLE = TableId.of(4);
+    protected static final TableId TRANSIT_TABLE = TableId.of(5);
 
     private final SwitchDescription swDesc = SwitchDescription.builder()
             .setManufacturerDescription("manufacturer")

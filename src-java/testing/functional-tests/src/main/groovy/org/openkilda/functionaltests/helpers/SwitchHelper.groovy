@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult
-import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.hamcrest.MatcherAssert.assertThat

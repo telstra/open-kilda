@@ -85,7 +85,7 @@ public class EgressRuleGeneratorTest {
 
     @Test
     public void buildVlanMultiTableOuterInnerVlanEgressRuleTest() {
-        FlowPath path = buildPath(true);
+        FlowPath path = buildPath();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, INNER_VLAN_ID);
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
@@ -96,12 +96,12 @@ public class EgressRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
-        assertEgressCommands(commands, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions);
+        assertEgressCommands(commands, VLAN_ENCAPSULATION, expectedApplyActions);
     }
     
     @Test
     public void buildVlanMultiTableOuterVlanEgressRuleTest() {
-        FlowPath path = buildPath(true);
+        FlowPath path = buildPath();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
@@ -110,12 +110,12 @@ public class EgressRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
-        assertEgressCommands(commands, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions);
+        assertEgressCommands(commands, VLAN_ENCAPSULATION, expectedApplyActions);
     }
 
     @Test
     public void buildVlanMultiTableOuterVlanEqualsTransitEgressRuleTest() {
-        FlowPath path = buildPath(true);
+        FlowPath path = buildPath();
         Flow flow = buildFlow(path, VLAN_ENCAPSULATION.getId(), 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
@@ -123,13 +123,13 @@ public class EgressRuleGeneratorTest {
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
-        assertEgressCommands(commands, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions);
+        assertEgressCommands(commands, VLAN_ENCAPSULATION, expectedApplyActions);
     }
 
 
     @Test
     public void buildVlanMultiTableOuterInnerVlanEqualsTransitEgressRuleTest() {
-        FlowPath path = buildPath(true);
+        FlowPath path = buildPath();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, VLAN_ENCAPSULATION.getId());
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
@@ -139,12 +139,12 @@ public class EgressRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
-        assertEgressCommands(commands, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions);
+        assertEgressCommands(commands, VLAN_ENCAPSULATION, expectedApplyActions);
     }
 
     @Test
     public void buildVlanMultiTableFullPortEgressRuleTest() {
-        FlowPath path = buildPath(true);
+        FlowPath path = buildPath();
         Flow flow = buildFlow(path, 0, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
@@ -153,53 +153,12 @@ public class EgressRuleGeneratorTest {
                 new PopVlanAction(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
-        assertEgressCommands(commands, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions);
-    }
-
-    @Test
-    public void buildVlanSingleTableOuterVlanEgressRuleTest() {
-        FlowPath path = buildPath(false);
-        Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
-        EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
-
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        ArrayList<Action> expectedApplyActions = Lists.newArrayList(
-                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
-                new PortOutAction(new PortNumber(PORT_NUMBER_4))
-        );
-        assertEgressCommands(commands, OfTable.INPUT, VLAN_ENCAPSULATION, expectedApplyActions);
-    }
-
-    @Test
-    public void buildVlanSingleTableOuterVlanEqualsTransitVlanEgressRuleTest() {
-        FlowPath path = buildPath(false);
-        Flow flow = buildFlow(path, VLAN_ENCAPSULATION.getId(), 0);
-        EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
-
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        ArrayList<Action> expectedApplyActions = Lists.newArrayList(
-                new PortOutAction(new PortNumber(PORT_NUMBER_4))
-        );
-        assertEgressCommands(commands, OfTable.INPUT, VLAN_ENCAPSULATION, expectedApplyActions);
-    }
-
-    @Test
-    public void buildVlanSingleTableFullPortEgressRuleTest() {
-        FlowPath path = buildPath(false);
-        Flow flow = buildFlow(path, 0, 0);
-        EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
-
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        ArrayList<Action> expectedApplyActions = Lists.newArrayList(
-                new PopVlanAction(),
-                new PortOutAction(new PortNumber(PORT_NUMBER_4))
-        );
-        assertEgressCommands(commands, OfTable.INPUT, VLAN_ENCAPSULATION, expectedApplyActions);
+        assertEgressCommands(commands, VLAN_ENCAPSULATION, expectedApplyActions);
     }
 
     @Test
     public void buildVxlanMultiTableOuterInnerVlanEgressRuleTest() {
-        FlowPath path = buildPath(true);
+        FlowPath path = buildPath();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, INNER_VLAN_ID);
         EgressRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
@@ -212,12 +171,12 @@ public class EgressRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
-        assertEgressCommands(commands, OfTable.EGRESS, VXLAN_ENCAPSULATION, expectedApplyActions);
+        assertEgressCommands(commands, VXLAN_ENCAPSULATION, expectedApplyActions);
     }
 
     @Test
     public void buildVxlanMultiTableOuterVlanEgressRuleTest() {
-        FlowPath path = buildPath(true);
+        FlowPath path = buildPath();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
@@ -228,12 +187,12 @@ public class EgressRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
-        assertEgressCommands(commands, OfTable.EGRESS, VXLAN_ENCAPSULATION, expectedApplyActions);
+        assertEgressCommands(commands, VXLAN_ENCAPSULATION, expectedApplyActions);
     }
 
     @Test
     public void buildVxlanMultiTableFullPortEgressRuleTest() {
-        FlowPath path = buildPath(true);
+        FlowPath path = buildPath();
         Flow flow = buildFlow(path, 0, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
@@ -242,40 +201,10 @@ public class EgressRuleGeneratorTest {
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
                 new PortOutAction(new PortNumber(PORT_NUMBER_4))
         );
-        assertEgressCommands(commands, OfTable.EGRESS, VXLAN_ENCAPSULATION, expectedApplyActions);
+        assertEgressCommands(commands, VXLAN_ENCAPSULATION, expectedApplyActions);
     }
 
-    @Test
-    public void buildVxlanSingleTableOuterVlanEgressRuleTest() {
-        FlowPath path = buildPath(false);
-        Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
-        EgressRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
-
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        ArrayList<Action> expectedApplyActions = Lists.newArrayList(
-                new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                new PushVlanAction(),
-                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
-                new PortOutAction(new PortNumber(PORT_NUMBER_4))
-        );
-        assertEgressCommands(commands, OfTable.INPUT, VXLAN_ENCAPSULATION, expectedApplyActions);
-    }
-
-    @Test
-    public void buildVxlanSingleTableFullPortEgressRuleTest() {
-        FlowPath path = buildPath(false);
-        Flow flow = buildFlow(path, 0, 0);
-        EgressRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
-
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        ArrayList<Action> expectedApplyActions = Lists.newArrayList(
-                new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                new PortOutAction(new PortNumber(PORT_NUMBER_4))
-        );
-        assertEgressCommands(commands, OfTable.INPUT, VXLAN_ENCAPSULATION, expectedApplyActions);
-    }
-
-    private void assertEgressCommands(List<SpeakerData> commands, OfTable table,
+    private void assertEgressCommands(List<SpeakerData> commands,
                                       FlowTransitEncapsulation encapsulation, List<Action> expectedApplyActions) {
         assertEquals(1, commands.size());
 
@@ -285,7 +214,7 @@ public class EgressRuleGeneratorTest {
         assertTrue(flowCommandData.getDependsOn().isEmpty());
 
         assertEquals(COOKIE, flowCommandData.getCookie());
-        assertEquals(table, flowCommandData.getTable());
+        assertEquals(OfTable.EGRESS, flowCommandData.getTable());
         assertEquals(Priority.FLOW_PRIORITY, flowCommandData.getPriority());
 
 
@@ -352,13 +281,12 @@ public class EgressRuleGeneratorTest {
                 .build();
     }
 
-    private FlowPath buildPath(boolean multiTable) {
+    private FlowPath buildPath() {
         return FlowPath.builder()
                 .pathId(PATH_ID)
                 .cookie(COOKIE)
                 .srcSwitch(SWITCH_1)
                 .destSwitch(SWITCH_2)
-                .destWithMultiTable(multiTable)
                 .segments(Lists.newArrayList(PathSegment.builder()
                         .pathId(PATH_ID)
                         .srcPort(PORT_NUMBER_2)

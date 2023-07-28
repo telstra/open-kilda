@@ -24,7 +24,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.INGRESS_TABLE_ID;
-import static org.openkilda.floodlight.switchmanager.SwitchManager.INPUT_TABLE_ID;
 import static org.openkilda.model.SwitchFeature.HALF_SIZE_METADATA;
 import static org.openkilda.model.SwitchFeature.MULTI_TABLE;
 import static org.projectfloodlight.openflow.protocol.OFInstructionType.APPLY_ACTIONS;
@@ -88,10 +87,10 @@ public class IngressFlowLoopSegmentInstallCommandTest {
 
     @Test
     public void ingressFlowLoopDoubleTagMultiTableTest() throws Exception {
-        IngressFlowLoopSegmentInstallCommand command = createCommand(VLAN_1, VLAN_2, true);
+        IngressFlowLoopSegmentInstallCommand command = createCommand(VLAN_1, VLAN_2);
         OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
-        assertCommon(mod, INGRESS_TABLE_ID);
+        assertCommon(mod);
         assertEquals(3, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
         assertEquals(VLAN_2, mod.getMatch().get(MatchField.VLAN_VID).getVlan());
         assertMetadata(mod.getMatch(), VLAN_1);
@@ -105,10 +104,10 @@ public class IngressFlowLoopSegmentInstallCommandTest {
 
     @Test
     public void ingressFlowLoopSigleTagMultiTableTest() throws Exception {
-        IngressFlowLoopSegmentInstallCommand command = createCommand(VLAN_1, 0, true);
+        IngressFlowLoopSegmentInstallCommand command = createCommand(VLAN_1, 0);
         OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
-        assertCommon(mod, INGRESS_TABLE_ID);
+        assertCommon(mod);
         assertEquals(2, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
         assertNull(mod.getMatch().get(MatchField.VLAN_VID));
         assertMetadata(mod.getMatch(), VLAN_1);
@@ -122,44 +121,16 @@ public class IngressFlowLoopSegmentInstallCommandTest {
 
     @Test
     public void ingressFlowLoopDefaultTagMultiTableTest() throws Exception {
-        IngressFlowLoopSegmentInstallCommand command = createCommand(0, 0, true);
+        IngressFlowLoopSegmentInstallCommand command = createCommand(0, 0);
         OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
 
-        assertCommon(mod, INGRESS_TABLE_ID);
+        assertCommon(mod);
         assertEquals(1, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
         assertEquals(1, applyActions.size());
         assertOutputAction(applyActions.get(0));
     }
-
-    @Test
-    public void ingressFlowLoopSigleTagSingleTableTest() throws Exception {
-        IngressFlowLoopSegmentInstallCommand command = createCommand(VLAN_1, 0, false);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
-
-        assertCommon(mod, INPUT_TABLE_ID);
-        assertEquals(2, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
-        assertEquals(VLAN_1, mod.getMatch().get(MatchField.VLAN_VID).getVlan());
-
-        List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
-        assertEquals(1, applyActions.size());
-        assertOutputAction(applyActions.get(0));
-    }
-
-    @Test
-    public void ingressFlowLoopDefaultTagSingleTableTest() throws Exception {
-        IngressFlowLoopSegmentInstallCommand command = createCommand(0, 0, false);
-        OFFlowMod mod = assertModCountAndReturnMod(command.makeFlowModMessages(new EffectiveIds()));
-
-        assertCommon(mod, INPUT_TABLE_ID);
-        assertEquals(1, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
-
-        List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
-        assertEquals(1, applyActions.size());
-        assertOutputAction(applyActions.get(0));
-    }
-
 
     private OFFlowMod assertModCountAndReturnMod(List<OFFlowMod> mods) {
         assertEquals(1, mods.size());
@@ -174,8 +145,8 @@ public class IngressFlowLoopSegmentInstallCommandTest {
         assertEquals(metadata.getMask(), match.getMasked(MatchField.METADATA).getMask().getValue());
     }
 
-    private void assertCommon(OFFlowMod mod, int tableId) {
-        assertEquals(tableId, mod.getTableId().getValue());
+    private void assertCommon(OFFlowMod mod) {
+        assertEquals(INGRESS_TABLE_ID, mod.getTableId().getValue());
         assertEquals(COOKIE.getValue(), mod.getCookie().getValue());
         assertEquals(PORT_1, mod.getMatch().get(MatchField.IN_PORT).getPortNumber());
         assertEquals(1, mod.getInstructions().size());
@@ -200,8 +171,8 @@ public class IngressFlowLoopSegmentInstallCommandTest {
     }
 
     private IngressFlowLoopSegmentInstallCommand createCommand(
-            int outerVlan, int innerVlan, boolean multiTable) throws Exception {
-        FlowSegmentMetadata metadata = new FlowSegmentMetadata(FLOW_ID, COOKIE, multiTable);
+            int outerVlan, int innerVlan) throws Exception {
+        FlowSegmentMetadata metadata = new FlowSegmentMetadata(FLOW_ID, COOKIE);
         FlowEndpoint endpoint = FlowEndpoint.builder()
                 .switchId(SWITCH_ID_1)
                 .portNumber(PORT_1)

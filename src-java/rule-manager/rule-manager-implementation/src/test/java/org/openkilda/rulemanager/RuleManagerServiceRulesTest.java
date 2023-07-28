@@ -125,7 +125,6 @@ public class RuleManagerServiceRulesTest {
             .meterId(METER_ID)
             .srcSwitch(SWITCH_1)
             .destSwitch(SWITCH_2)
-            .srcWithMultiTable(true)
             .bandwidth(BANDWIDTH)
             .segments(newArrayList(PathSegment.builder()
                     .pathId(PATH_ID)
@@ -133,7 +132,6 @@ public class RuleManagerServiceRulesTest {
                     .srcSwitch(SWITCH_1)
                     .destPort(PORT_NUMBER_3)
                     .destSwitch(SWITCH_2)
-                    .srcWithMultiTable(true)
                     .build()))
             .build();
 
@@ -178,7 +176,6 @@ public class RuleManagerServiceRulesTest {
                 .meterId(METER_ID)
                 .srcSwitch(SWITCH_2)
                 .destSwitch(SWITCH_1)
-                .srcWithMultiTable(true)
                 .bandwidth(BANDWIDTH)
                 .segments(newArrayList(PathSegment.builder()
                         .pathId(PATH_ID)
@@ -186,7 +183,6 @@ public class RuleManagerServiceRulesTest {
                         .srcSwitch(SWITCH_1)
                         .destPort(PORT_NUMBER_3)
                         .destSwitch(SWITCH_2)
-                        .srcWithMultiTable(true)
                         .build()))
                 .build();
 
@@ -195,27 +191,6 @@ public class RuleManagerServiceRulesTest {
 
         List<SpeakerData> speakerData = ruleManager.buildRulesForYFlow(flowPaths, adapter);
         assertEquals(2, speakerData.size());
-    }
-
-    @Test
-    public void shouldUseCorrectServiceRuleGeneratorsForSwitchInSingleTableMode() {
-        Switch sw = buildSwitch("OF_13", Collections.emptySet());
-        SwitchId switchId = sw.getSwitchId();
-        SwitchProperties switchProperties = buildSwitchProperties(sw, false);
-
-        List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(
-                switchId, buildAdapter(switchId, switchProperties, new HashSet<>(), false, LAG_PORTS));
-
-        assertEquals(10, generators.size());
-        assertTrue(generators.stream().anyMatch(g -> g instanceof TableDefaultRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof BroadCastDiscoveryRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof UniCastDiscoveryRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof DropDiscoveryLoopRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof BfdCatchRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof RoundTripLatencyRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof UnicastVerificationVxlanRuleGenerator));
-        assertTrue(generators.stream().anyMatch(g -> g instanceof DropSlowProtocolsLoopRuleGenerator));
-        assertEquals(2, generators.stream().filter(g -> g instanceof LacpReplyRuleGenerator).count());
     }
 
     @Test
@@ -252,7 +227,7 @@ public class RuleManagerServiceRulesTest {
     public void shouldUseCorrectServiceRuleGeneratorsForSwitchInMultiTableModeWithSwitchArpAndLldp() {
         Switch sw = buildSwitch("OF_13", Collections.emptySet());
         SwitchId switchId = sw.getSwitchId();
-        SwitchProperties switchProperties = buildSwitchProperties(sw, true, true, true);
+        SwitchProperties switchProperties = buildSwitchProperties(sw, true, true);
 
         List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(
                 switchId, buildAdapter(switchId, switchProperties, new HashSet<>(), false, null));
@@ -285,7 +260,7 @@ public class RuleManagerServiceRulesTest {
     public void shouldUseCorrectServiceRuleGeneratorsForSwitchInMultiTableModeWithAllRules() {
         Switch sw = buildSwitch("OF_13", Collections.emptySet());
         SwitchId switchId = sw.getSwitchId();
-        SwitchProperties switchProperties = buildSwitchProperties(sw, true, true, true, true, RttState.ENABLED);
+        SwitchProperties switchProperties = buildSwitchProperties(sw, true, true, true, RttState.ENABLED);
 
         List<RuleGenerator> generators = ruleManager.getServiceRuleGenerators(
                 switchId, buildAdapter(switchId, switchProperties, Sets.newHashSet(ISL_PORT), true, LAG_PORTS));

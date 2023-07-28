@@ -113,7 +113,7 @@ public class EmitUpdateRulesRequestsAction extends
 
         Set<PathId> involvedPaths = newHashSet(path.getPathId(), oppositePathId);
         DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths,
-                newHashSet(stateMachine.getMirrorSwitchId()), false);
+                newHashSet(stateMachine.getMirrorSwitchId()));
 
         return ruleManager.buildMirrorPointRules(mirrorPoint, dataAdapter);
     }

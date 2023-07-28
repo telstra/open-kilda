@@ -96,3 +96,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 028-add-ha-flow-status-info.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 029-remove-multi-table-fields.yaml

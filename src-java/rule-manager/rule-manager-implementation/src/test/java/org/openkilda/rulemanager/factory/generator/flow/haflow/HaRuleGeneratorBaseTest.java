@@ -180,9 +180,7 @@ public class HaRuleGeneratorBaseTest {
                 .pathId(pathId)
                 .cookie(cookie)
                 .srcSwitch(srcSwitch)
-                .srcWithMultiTable(true)
                 .destSwitch(dstSwitch)
-                .destWithMultiTable(true)
                 .bandwidth(BANDWIDTH)
                 .segments(segments)
                 .build();

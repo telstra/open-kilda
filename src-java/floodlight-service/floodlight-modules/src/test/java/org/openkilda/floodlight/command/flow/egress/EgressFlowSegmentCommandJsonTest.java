@@ -47,7 +47,7 @@ abstract class EgressFlowSegmentCommandJsonTest
         SwitchId swId = new SwitchId(1);
         EgressFlowSegmentRequestFactory factory = new EgressFlowSegmentRequestFactory(
                 new MessageContext(),
-                new FlowSegmentMetadata("egress-flow-segment-install-request", new Cookie(2), false),
+                new FlowSegmentMetadata("egress-flow-segment-install-request", new Cookie(2)),
                 new FlowEndpoint(swId, 3, 4),
                 new FlowEndpoint(new SwitchId(swId.toLong() + 1), 6, 7),
                 9,

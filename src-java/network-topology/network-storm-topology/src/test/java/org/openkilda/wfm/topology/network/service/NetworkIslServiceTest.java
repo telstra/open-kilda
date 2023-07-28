@@ -213,7 +213,6 @@ public class NetworkIslServiceTest {
                 .build();
         switchRepository.add(swA);
         switchPropertiesRepository.add(SwitchProperties.builder()
-                .multiTable(false)
                 .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)
                 .switchObj(swA).build());
         Switch swB = Switch.builder()
@@ -222,7 +221,6 @@ public class NetworkIslServiceTest {
                 .build();
         switchRepository.add(swB);
         switchPropertiesRepository.add(SwitchProperties.builder()
-                .multiTable(false)
                 .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)
                 .switchObj(swB).build());
 
@@ -288,37 +286,23 @@ public class NetworkIslServiceTest {
     @Test
     public void deleteWhenActive() {
         setupIslStorageStub();
-        prepareAndPerformDelete(IslStatus.ACTIVE, false);
+        prepareAndPerformDelete(IslStatus.ACTIVE);
 
         // ISL can't be delete in ACTIVE state
         verifyNoMoreInteractions(carrier);
     }
 
     @Test
-    public void deleteWhenActiveMultiTable() {
-        setupIslStorageStub();
-        prepareAndPerformDelete(IslStatus.ACTIVE, true);
-        verifyNoMoreInteractions(carrier);
-    }
-
-    @Test
     public void deleteWhenInactive() {
         setupIslStorageStub();
-        prepareAndPerformDelete(IslStatus.INACTIVE, false);
-        verifyDelete();
-    }
-
-    @Test
-    public void deleteWhenInactiveMultiTable() {
-        setupIslStorageStub();
-        prepareAndPerformDelete(IslStatus.INACTIVE, true);
+        prepareAndPerformDelete(IslStatus.INACTIVE);
         verifyDelete();
     }
 
     @Test
     public void deleteWhenMoved() {
         setupIslStorageStub();
-        prepareAndPerformDelete(IslStatus.MOVED, false);
+        prepareAndPerformDelete(IslStatus.MOVED);
         verifyDelete();
     }
 
@@ -347,12 +331,12 @@ public class NetworkIslServiceTest {
         assertEquals(1, endpointAlpha1.getPortNumber());
     }
 
-    private void prepareAndPerformDelete(IslStatus initialStatus, boolean multiTable) {
-        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, multiTable)
+    private void prepareAndPerformDelete(IslStatus initialStatus) {
+        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2)
                 .actualStatus(initialStatus)
                 .status(initialStatus)
                 .build();
-        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1, multiTable)
+        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1)
                 .actualStatus(initialStatus)
                 .status(initialStatus)
                 .build();
@@ -375,7 +359,7 @@ public class NetworkIslServiceTest {
         // remove
         service.remove(reference);
 
-        if (multiTable && (initialStatus == IslStatus.INACTIVE || initialStatus == IslStatus.MOVED)) {
+        if (initialStatus == IslStatus.INACTIVE || initialStatus == IslStatus.MOVED) {
             service.islRulesDeleted(reference, endpointAlpha1);
             service.islRulesDeleted(reference, endpointBeta2);
             verify(carrier).islRulesDelete(reference, endpointAlpha1);
@@ -402,10 +386,10 @@ public class NetworkIslServiceTest {
     public void considerLinkPropsDataOnHistory() {
         setupIslStorageStub();
 
-        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, false)
+        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2)
                 .maxBandwidth(100L)
                 .build();
-        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1, false)
+        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1)
                 .maxBandwidth(100L)
                 .build();
 
@@ -455,11 +439,11 @@ public class NetworkIslServiceTest {
     public void considerLinkPropsDataOnRediscovery() {
         setupIslStorageStub();
 
-        final Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, false)
+        final Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2)
                 .defaultMaxBandwidth(300L)
                 .availableBandwidth(300L)
                 .build();
-        final Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1, false)
+        final Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1)
                 .defaultMaxBandwidth(300L)
                 .availableBandwidth(300L)
                 .build();
@@ -574,11 +558,11 @@ public class NetworkIslServiceTest {
     public void considerBfdEventOnlyWhenBfdEnabledForBothEndpoints() {
         setupIslStorageStub();
 
-        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, false)
+        Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2)
                 .bfdInterval(genericBfdProperties.getInterval())
                 .bfdMultiplier(genericBfdProperties.getMultiplier())
                 .build();
-        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1, false)
+        Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1)
                 .bfdInterval(genericBfdProperties.getInterval())
                 .bfdMultiplier(genericBfdProperties.getMultiplier())
                 .build();
@@ -609,6 +593,8 @@ public class NetworkIslServiceTest {
         verify(carrier).auxiliaryPollModeUpdateRequest(eq(reference.getSource()), eq(true));
         verify(carrier).auxiliaryPollModeUpdateRequest(eq(reference.getDest()), eq(true));
         service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatusUpdate.UP);
+        service.islRulesInstalled(reference, reference.getSource());
+        service.islRulesInstalled(reference, reference.getDest());
 
         verify(dashboardLogger, never()).onIslDown(eq(reference), any());
 
@@ -621,6 +607,8 @@ public class NetworkIslServiceTest {
         reset(dashboardLogger);
 
         service.bfdStatusUpdate(endpointAlpha1, reference, BfdStatusUpdate.UP);
+        service.islRulesInstalled(reference, reference.getSource());
+        service.islRulesInstalled(reference, reference.getDest());
         verify(dashboardLogger).onIslUp(eq(reference), any());  // one BFD session enough to raise ISL UP
         verifyNoMoreInteractions(dashboardLogger);
         reset(dashboardLogger);
@@ -689,9 +677,9 @@ public class NetworkIslServiceTest {
                 lookupIsl(referenceAlpha.getDest(), referenceAlpha.getSource()));
 
         IslDataHolder betaSource = new IslDataHolder(
-                makeIsl(referenceBeta.getSource(), referenceBeta.getDest(), false).build());
+                makeIsl(referenceBeta.getSource(), referenceBeta.getDest()).build());
         IslDataHolder betaDest = new IslDataHolder(
-                makeIsl(referenceBeta.getDest(), referenceBeta.getSource(), false).build());
+                makeIsl(referenceBeta.getDest(), referenceBeta.getSource()).build());
 
         IslStatusUpdateNotification alphaNotification = new IslStatusUpdateNotification(
                 referenceAlpha.getSource().getDatapath(), referenceAlpha.getSource().getPortNumber(),
@@ -706,6 +694,8 @@ public class NetworkIslServiceTest {
             service.islMove(referenceAlpha.getSource(), referenceAlpha);
             service.islUp(referenceBeta.getSource(), referenceBeta, betaSource);
             service.islUp(referenceBeta.getDest(), referenceBeta, betaDest);
+            service.islRulesInstalled(referenceBeta, referenceBeta.getSource());
+            service.islRulesInstalled(referenceBeta, referenceBeta.getDest());
             service.roundTripStatusNotification(
                     referenceBeta, new RoundTripStatus(referenceBeta.getSource(), IslStatus.ACTIVE));
 
@@ -730,6 +720,8 @@ public class NetworkIslServiceTest {
             service.islMove(referenceBeta.getSource(), referenceBeta);
             service.islUp(referenceAlpha.getSource(), referenceAlpha, alphaSource);
             service.islUp(referenceAlpha.getDest(), referenceAlpha, alphaDest);
+            service.islRulesInstalled(referenceAlpha, referenceAlpha.getSource());
+            service.islRulesInstalled(referenceAlpha, referenceAlpha.getDest());
             service.roundTripStatusNotification(
                     referenceAlpha, new RoundTripStatus(referenceAlpha.getSource(), IslStatus.ACTIVE));
 
@@ -755,12 +747,12 @@ public class NetworkIslServiceTest {
         setupIslStorageStub();
 
         final Instant start = clock.adjust(Duration.ofSeconds(1));
-        Isl alphaToBeta = makeIsl(endpointAlpha1, endpointBeta2, false)
+        Isl alphaToBeta = makeIsl(endpointAlpha1, endpointBeta2)
                 .bfdSessionStatus(initialStatus)
                 .build();
         islStorage.save(alphaToBeta);
         islStorage.save(
-                makeIsl(endpointBeta2, endpointAlpha1, false)
+                makeIsl(endpointBeta2, endpointAlpha1)
                         .bfdSessionStatus(initialStatus)
                         .build());
 
@@ -815,9 +807,13 @@ public class NetworkIslServiceTest {
         verifyNoInteractions(dashboardLogger); // only destination endpoint status is cleaned
 
         service.islUp(reference.getSource(), reference, new IslDataHolder(100, 100, 100));
+        service.islRulesInstalled(reference, reference.getSource());
+        service.islRulesInstalled(reference, reference.getDest());
         verifyNoInteractions(dashboardLogger); // only destination endpoint status is cleaned
 
         service.islUp(reference.getDest(), reference, new IslDataHolder(100, 100, 100));
+        service.islRulesInstalled(reference, reference.getSource());
+        service.islRulesInstalled(reference, reference.getDest());
         verify(dashboardLogger).onIslUp(eq(reference), any());
         verifyNoMoreInteractions(dashboardLogger);
     }
@@ -828,10 +824,14 @@ public class NetworkIslServiceTest {
 
         service.roundTripStatusNotification(
                 reference, new RoundTripStatus(reference.getSource(), IslStatus.ACTIVE));
+        service.islRulesInstalled(reference, reference.getSource());
+        service.islRulesInstalled(reference, reference.getDest());
         verifyNoMoreInteractions(dashboardLogger);
 
         service.roundTripStatusNotification(
                 reference, new RoundTripStatus(reference.getSource(), IslStatus.ACTIVE));
+        service.islRulesInstalled(reference, reference.getSource());
+        service.islRulesInstalled(reference, reference.getDest());
         verify(dashboardLogger).onIslUp(eq(reference), any());
         verifyNoMoreInteractions(dashboardLogger);
     }
@@ -842,10 +842,14 @@ public class NetworkIslServiceTest {
 
         service.roundTripStatusNotification(
                 reference, new RoundTripStatus(reference.getDest(), IslStatus.ACTIVE));
+        service.islRulesInstalled(reference, reference.getSource());
+        service.islRulesInstalled(reference, reference.getDest());
         verifyNoMoreInteractions(dashboardLogger);
 
         service.roundTripStatusNotification(
                 reference, new RoundTripStatus(reference.getDest(), IslStatus.ACTIVE));
+        service.islRulesInstalled(reference, reference.getSource());
+        service.islRulesInstalled(reference, reference.getDest());
         verify(dashboardLogger).onIslUp(eq(reference), any());
         verifyNoMoreInteractions(dashboardLogger);
     }
@@ -909,7 +913,7 @@ public class NetworkIslServiceTest {
     private IslReference prepareResurrection() {
         setupIslStorageStub();
 
-        IslReference reference = prepareActiveIsl(true);
+        IslReference reference = prepareActiveIsl();
 
         final Endpoint alphaEnd = reference.getSource();
         final Endpoint zetaEnd = reference.getDest();
@@ -984,13 +988,9 @@ public class NetworkIslServiceTest {
     }
 
     private IslReference prepareActiveIsl() {
-        return prepareActiveIsl(false);
-    }
-
-    private IslReference prepareActiveIsl(boolean isMultitable) {
         // prepare data
-        final Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2, isMultitable).build();
-        final Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1, isMultitable).build();
+        final Isl islAlphaBeta = makeIsl(endpointAlpha1, endpointBeta2).build();
+        final Isl islBetaAlpha = makeIsl(endpointBeta2, endpointAlpha1).build();
 
         // setup alpha -> beta half
         IslReference reference = new IslReference(endpointAlpha1, endpointBeta2);
@@ -1000,10 +1000,8 @@ public class NetworkIslServiceTest {
         // setup beta -> alpha half
         service.islUp(endpointBeta2, reference, new IslDataHolder(islBetaAlpha));
 
-        if (isMultitable) {
-            service.islRulesInstalled(reference, endpointAlpha1);
-            service.islRulesInstalled(reference, endpointBeta2);
-        }
+        service.islRulesInstalled(reference, endpointAlpha1);
+        service.islRulesInstalled(reference, endpointBeta2);
 
         verify(dashboardLogger).onIslUp(eq(reference), any());
         reset(dashboardLogger);
@@ -1079,9 +1077,9 @@ public class NetworkIslServiceTest {
                 .thenReturn(allocation);
     }
 
-    private Isl.IslBuilder makeIsl(Endpoint source, Endpoint dest, boolean multiTable) {
-        Switch sourceSwitch = lookupSwitchCreateMockIfAbsent(source.getDatapath(), multiTable);
-        Switch destSwitch = lookupSwitchCreateMockIfAbsent(dest.getDatapath(), multiTable);
+    private Isl.IslBuilder makeIsl(Endpoint source, Endpoint dest) {
+        Switch sourceSwitch = lookupSwitchCreateMockIfAbsent(source.getDatapath());
+        Switch destSwitch = lookupSwitchCreateMockIfAbsent(dest.getDatapath());
         return Isl.builder()
                 .srcSwitch(sourceSwitch).srcPort(source.getPortNumber())
                 .destSwitch(destSwitch).destPort(dest.getPortNumber())
@@ -1100,7 +1098,7 @@ public class NetworkIslServiceTest {
                 .dstSwitchId(dest.getDatapath()).dstPort(dest.getPortNumber());
     }
 
-    private Switch lookupSwitchCreateMockIfAbsent(SwitchId datapath, boolean multiTable) {
+    private Switch lookupSwitchCreateMockIfAbsent(SwitchId datapath) {
         Switch entry = allocatedSwitches.get(datapath);
         if (entry == null) {
             entry = Switch.builder()
@@ -1111,7 +1109,6 @@ public class NetworkIslServiceTest {
             SwitchProperties switchProperties = SwitchProperties.builder()
                     .switchObj(entry)
                     .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)
-                    .multiTable(multiTable)
                     .build();
             allocatedSwitches.put(datapath, entry);
 

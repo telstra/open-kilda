@@ -99,7 +99,7 @@ public class BuildNewRulesAction
         Set<SwitchId> switchIds = haFlowPath.getAllInvolvedSwitches();
         Set<PathId> pathIds = new HashSet<>(overlappingPathIds);
         pathIds.addAll(haFlowPath.getSubPathIds());
-        return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false, additionalHaFlowMap);
+        return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, additionalHaFlowMap);
     }
 
     private Map<PathId, HaFlow> buildAdditionalHaFlowMap(HaFlow haFlow, HaFlowUpdateFsm stateMachine) {

@@ -92,13 +92,9 @@ public class SimpleSwitchRuleConverter {
 
         FlowSideAdapter ingress = FlowSideAdapter.makeIngressAdapter(flow, flowPath);
         FlowEndpoint endpoint = ingress.getEndpoint();
-        if (flowPath.isSrcWithMultiTable()) {
-            // in multi-table mode actual ingress rule will match port+inner_vlan+metadata(outer_vlan)
-            if (FlowEndpoint.isVlanIdSet(endpoint.getInnerVlanId())) {
-                rule.setInVlan(endpoint.getInnerVlanId());
-            }
-        } else {
-            rule.setInVlan(endpoint.getOuterVlanId());
+        // actual ingress rule is match port+inner_vlan+metadata(outer_vlan)
+        if (FlowEndpoint.isVlanIdSet(endpoint.getInnerVlanId())) {
+            rule.setInVlan(endpoint.getInnerVlanId());
         }
 
         int transitVlan = 0;
@@ -161,7 +157,7 @@ public class SimpleSwitchRuleConverter {
                 .inPort(rule.getInPort())
                 .inVlan(rule.getInVlan())
                 .outPort(rule.getInPort());
-        if (flowPath.isSrcWithMultiTable() && ingress.getEndpoint().getOuterVlanId() != 0) {
+        if (ingress.getEndpoint().getOuterVlanId() != 0) {
             builder.outVlan(Collections.singletonList(ingress.getEndpoint().getOuterVlanId()));
         }
         return builder.build();
@@ -433,13 +429,8 @@ public class SimpleSwitchRuleConverter {
 
     private static List<Integer> calcVlanSetSequence(FlowSideAdapter ingress, FlowPath flowPath,
                                                      List<Integer> desiredVlanStack) {
-        List<Integer> current;
-        if (flowPath.isSrcWithMultiTable()) {
-            // outer vlan is removed by first shared rule
-            current = FlowEndpoint.makeVlanStack(ingress.getEndpoint().getInnerVlanId());
-        } else {
-            current = ingress.getEndpoint().getVlanStack();
-        }
+        // outer vlan is removed by first shared rule
+        List<Integer> current = FlowEndpoint.makeVlanStack(ingress.getEndpoint().getInnerVlanId());
         return calcVlanSetSequence(current, desiredVlanStack);
     }
 

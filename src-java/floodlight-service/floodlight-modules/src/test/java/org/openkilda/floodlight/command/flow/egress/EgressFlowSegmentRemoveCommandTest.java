@@ -40,6 +40,7 @@ public class EgressFlowSegmentRemoveCommandTest extends EgressFlowSegmentCommand
 
         OFFlowDeleteStrict expected = of.buildFlowDeleteStrict()
                 .setPriority(EgressFlowSegmentRemoveCommand.FLOW_PRIORITY)
+                .setTableId(EGRESS_TABLE)
                 .setCookie(U64.of(command.getCookie().getValue()))
                 .setCookieMask(U64.NO_MASK)
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
@@ -55,7 +56,7 @@ public class EgressFlowSegmentRemoveCommandTest extends EgressFlowSegmentCommand
         MessageContext messageContext = new MessageContext();
         UUID commandId = UUID.randomUUID();
         FlowSegmentMetadata metadata = new FlowSegmentMetadata(
-                "egress-flow-segment-remove-flow-id", new Cookie(101), false);
+                "egress-flow-segment-remove-flow-id", new Cookie(101));
         int islPort = 8;
         return new EgressFlowSegmentRemoveCommand(
                 messageContext, commandId, metadata, endpoint, ingressEndpoint, islPort, encapsulation, null);

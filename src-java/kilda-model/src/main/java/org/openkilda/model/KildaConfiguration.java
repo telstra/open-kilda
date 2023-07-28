@@ -41,7 +41,6 @@ import java.util.Objects;
 public class KildaConfiguration implements CompositeDataEntity<KildaConfiguration.KildaConfigurationData> {
     public static final KildaConfiguration DEFAULTS = new KildaConfiguration(KildaConfigurationDataImpl.builder()
             .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
-            .useMultiTable(true)
             .pathComputationStrategy(PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH)
             .build());
 
@@ -68,10 +67,9 @@ public class KildaConfiguration implements CompositeDataEntity<KildaConfiguratio
     }
 
     @Builder
-    public KildaConfiguration(FlowEncapsulationType flowEncapsulationType, Boolean useMultiTable,
+    public KildaConfiguration(FlowEncapsulationType flowEncapsulationType,
                               PathComputationStrategy pathComputationStrategy) {
         data = KildaConfigurationDataImpl.builder().flowEncapsulationType(flowEncapsulationType)
-                .useMultiTable(useMultiTable)
                 .pathComputationStrategy(pathComputationStrategy).build();
     }
 
@@ -90,14 +88,13 @@ public class KildaConfiguration implements CompositeDataEntity<KildaConfiguratio
         KildaConfiguration that = (KildaConfiguration) o;
         return new EqualsBuilder()
                 .append(getFlowEncapsulationType(), that.getFlowEncapsulationType())
-                .append(getUseMultiTable(), that.getUseMultiTable())
                 .append(getPathComputationStrategy(), that.getPathComputationStrategy())
                 .isEquals();
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getFlowEncapsulationType(), getUseMultiTable(), getPathComputationStrategy());
+        return Objects.hash(getFlowEncapsulationType(), getPathComputationStrategy());
     }
 
     /**
@@ -107,10 +104,6 @@ public class KildaConfiguration implements CompositeDataEntity<KildaConfiguratio
         FlowEncapsulationType getFlowEncapsulationType();
 
         void setFlowEncapsulationType(FlowEncapsulationType flowEncapsulationType);
-
-        Boolean getUseMultiTable();
-
-        void setUseMultiTable(Boolean useMultiTable);
 
         PathComputationStrategy getPathComputationStrategy();
 
@@ -127,7 +120,6 @@ public class KildaConfiguration implements CompositeDataEntity<KildaConfiguratio
     static final class KildaConfigurationDataImpl implements KildaConfigurationData, Serializable {
         private static final long serialVersionUID = 1L;
         FlowEncapsulationType flowEncapsulationType;
-        Boolean useMultiTable;
         PathComputationStrategy pathComputationStrategy;
     }
 
@@ -159,9 +151,6 @@ public class KildaConfiguration implements CompositeDataEntity<KildaConfiguratio
         default void replaceNullProperties(KildaConfiguration source, KildaConfiguration target) {
             if (target.getFlowEncapsulationType() == null) {
                 target.setFlowEncapsulationType(source.getFlowEncapsulationType());
-            }
-            if (target.getUseMultiTable() == null) {
-                target.setUseMultiTable(source.getUseMultiTable());
             }
             if (target.getPathComputationStrategy() == null) {
                 target.setPathComputationStrategy(source.getPathComputationStrategy());
