@@ -40,7 +40,6 @@ import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnect;
 import org.openkilda.model.SwitchConnectedDevice;
-import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchProperties.RttState;
@@ -325,7 +324,7 @@ public class SwitchOperationsService {
         Collection<SwitchProperties> result = switchPropertiesRepository.findAll();
 
         return result.stream().map(SwitchPropertiesMapper.INSTANCE::map)
-                .map(x -> new SwitchPropertiesResponse(x)).collect(Collectors.toList());
+                .map(SwitchPropertiesResponse::new).collect(Collectors.toList());
     }
 
     /**
@@ -337,24 +336,19 @@ public class SwitchOperationsService {
      * @throws SwitchPropertiesNotFoundException if switch properties is not found by switch id
      */
     public SwitchPropertiesDto updateSwitchProperties(SwitchId switchId, SwitchPropertiesDto switchPropertiesDto) {
-        if (isEmpty(switchPropertiesDto.getSupportedTransitEncapsulation())) {
-            throw new IllegalSwitchPropertiesException("Supported transit encapsulations should not be null or empty");
-        }
+        validateSwitchPropertiesDto(switchPropertiesDto);
         SwitchProperties update = SwitchPropertiesMapper.INSTANCE.map(switchPropertiesDto);
         UpdateSwitchPropertiesResult result = transactionManager.doInTransaction(() -> {
             SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
                     .orElseThrow(() -> new SwitchPropertiesNotFoundException(switchId));
             final SwitchProperties oldProperties = new SwitchProperties(switchProperties);
-            final Switch sw = findSwitch(switchId);
-
-            validateSwitchProperties(switchId, update, sw.getFeatures());
+            validateSwitchProperties(switchId, update);
 
             // must be called before updating of switchProperties object
             final boolean isSwitchSyncNeeded = isSwitchSyncNeeded(switchProperties, update);
             final boolean switchLldpChanged = switchProperties.isSwitchLldp() != update.isSwitchLldp();
             final boolean switchArpChanged = switchProperties.isSwitchArp() != update.isSwitchArp();
 
-            switchProperties.setMultiTable(update.isMultiTable());
             switchProperties.setSwitchLldp(update.isSwitchLldp());
             switchProperties.setSwitchArp(update.isSwitchArp());
             switchProperties.setSupportedTransitEncapsulation(update.getSupportedTransitEncapsulation());
@@ -422,20 +416,24 @@ public class SwitchOperationsService {
                 || !Objects.equals(current.getServer42MacAddress(), updated.getServer42MacAddress())
                 || !Objects.equals(current.getServer42Vlan(), updated.getServer42Vlan()));
 
-        return current.isMultiTable() != updated.isMultiTable()
-                || current.isSwitchLldp() != updated.isSwitchLldp()
+        return current.isSwitchLldp() != updated.isSwitchLldp()
                 || current.isSwitchArp() != updated.isSwitchArp()
                 || server42RttChanged
                 || server42PropsChanged;
     }
 
-    private void validateSwitchProperties(
-            SwitchId switchId, SwitchProperties updatedSwitchProperties, Set<SwitchFeature> features) {
-        if (!updatedSwitchProperties.isMultiTable()) {
-            throw new IllegalSwitchPropertiesException("Single table mode was deprecated and it is not supported "
-                    + "anymore. The only valid value for switch property 'multi_table' is 'true'.");
+    private static void validateSwitchPropertiesDto(SwitchPropertiesDto switchPropertiesDto) {
+        if (isEmpty(switchPropertiesDto.getSupportedTransitEncapsulation())) {
+            throw new IllegalSwitchPropertiesException("Supported transit encapsulations should not be null or empty");
         }
+        if (!switchPropertiesDto.isMultiTable()) {
+            throw new IllegalSwitchPropertiesException(
+                    "Single table mode was deprecated and it is not supported "
+                            + "anymore. The only valid value for switch property 'multi_table' is 'true'.");
+        }
+    }
 
+    private void validateSwitchProperties(SwitchId switchId, SwitchProperties updatedSwitchProperties) {
         if (updatedSwitchProperties.getServer42Port() != null) {
             Optional<PhysicalPort> physicalPort = physicalPortRepository.findBySwitchIdAndPortNumber(
                     switchId, updatedSwitchProperties.getServer42Port());
@@ -451,29 +449,13 @@ public class SwitchOperationsService {
         if (updatedSwitchProperties.isServer42FlowRtt()) {
             String errorMessage = "Illegal switch properties combination for switch %s. To enable property "
                     + "'server42_flow_rtt' you need to specify valid property '%s'";
-            if (updatedSwitchProperties.getServer42Port() == null) {
-                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_port"));
-            }
-            if (updatedSwitchProperties.getServer42MacAddress() == null) {
-                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_mac_address"));
-            }
-            if (updatedSwitchProperties.getServer42Vlan() == null) {
-                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_vlan"));
-            }
+            validateServer42FieldsAreNonNull(switchId, updatedSwitchProperties, errorMessage);
         }
 
         if (updatedSwitchProperties.getServer42IslRtt() == RttState.ENABLED) {
             String errorMessage = "Illegal switch properties combination for switch %s. To enable property "
                     + "'server42_isl_rtt' you need to specify valid property '%s'";
-            if (updatedSwitchProperties.getServer42Port() == null) {
-                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_port"));
-            }
-            if (updatedSwitchProperties.getServer42MacAddress() == null) {
-                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_mac_address"));
-            }
-            if (updatedSwitchProperties.getServer42Vlan() == null) {
-                throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_vlan"));
-            }
+            validateServer42FieldsAreNonNull(switchId, updatedSwitchProperties, errorMessage);
         }
 
         Collection<FlowMirrorPoints> flowMirrorPoints = flowMirrorPointsRepository.findBySwitchId(switchId);
@@ -499,6 +481,19 @@ public class SwitchOperationsService {
                 throw new IllegalSwitchPropertiesException(
                         format(errorMessage, switchId, server42port, "flow mirror path", server42port));
             }
+        }
+    }
+
+    private void validateServer42FieldsAreNonNull(
+            SwitchId switchId, SwitchProperties updatedSwitchProperties, String errorMessage) {
+        if (updatedSwitchProperties.getServer42Port() == null) {
+            throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_port"));
+        }
+        if (updatedSwitchProperties.getServer42MacAddress() == null) {
+            throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_mac_address"));
+        }
+        if (updatedSwitchProperties.getServer42Vlan() == null) {
+            throw new IllegalSwitchPropertiesException(format(errorMessage, switchId, "server42_vlan"));
         }
     }
 

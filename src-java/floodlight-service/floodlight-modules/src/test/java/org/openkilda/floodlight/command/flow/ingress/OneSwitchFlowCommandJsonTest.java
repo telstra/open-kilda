@@ -50,7 +50,7 @@ abstract class OneSwitchFlowCommandJsonTest
         SwitchId swId = new SwitchId(1);
         OneSwitchFlowRequestFactory factory = new OneSwitchFlowRequestFactory(
                 new MessageContext(),
-                new FlowSegmentMetadata("single-switch-flow-install-request", new Cookie(2), false),
+                new FlowSegmentMetadata("single-switch-flow-install-request", new Cookie(2)),
                 new FlowEndpoint(swId, 3, 4),
                 new MeterConfig(new MeterId(6), 7000),
                 new FlowEndpoint(swId, 8, 9),

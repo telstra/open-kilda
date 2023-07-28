@@ -88,14 +88,14 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
         assertEquals(0, result.get(1).getDiscrepancies().size());
         assertEquals(0, result.get(2).getDiscrepancies().size());
         assertEquals(0, result.get(3).getDiscrepancies().size());
-        assertEquals(3, (int) result.get(0).getFlowRulesTotal());
-        assertEquals(3, (int) result.get(1).getFlowRulesTotal());
+        assertEquals(5, (int) result.get(0).getFlowRulesTotal());
+        assertEquals(5, (int) result.get(1).getFlowRulesTotal());
         assertEquals(2, (int) result.get(2).getFlowRulesTotal());
         assertEquals(2, (int) result.get(3).getFlowRulesTotal());
-        assertEquals(10, (int) result.get(0).getSwitchRulesTotal());
-        assertEquals(10, (int) result.get(1).getSwitchRulesTotal());
-        assertEquals(10, (int) result.get(2).getSwitchRulesTotal());
-        assertEquals(10, (int) result.get(3).getSwitchRulesTotal());
+        assertEquals(14, (int) result.get(0).getSwitchRulesTotal());
+        assertEquals(14, (int) result.get(1).getSwitchRulesTotal());
+        assertEquals(14, (int) result.get(2).getSwitchRulesTotal());
+        assertEquals(14, (int) result.get(3).getSwitchRulesTotal());
 
         flowEntries =
                 isTransitVlan ? getWrongSwitchFlowEntriesWithTransitVlan() : getWrongSwitchFlowEntriesWithVxlan();
@@ -171,13 +171,13 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
         assertEquals(0, result.get(1).getDiscrepancies().size());
         assertEquals(0, result.get(2).getDiscrepancies().size());
         assertEquals(0, result.get(3).getDiscrepancies().size());
-        assertEquals(3, (int) result.get(0).getFlowRulesTotal());
-        assertEquals(3, (int) result.get(1).getFlowRulesTotal());
+        assertEquals(5, (int) result.get(0).getFlowRulesTotal());
+        assertEquals(5, (int) result.get(1).getFlowRulesTotal());
         assertEquals(2, (int) result.get(2).getFlowRulesTotal());
         assertEquals(2, (int) result.get(3).getFlowRulesTotal());
-        assertEquals(10, (int) result.get(0).getSwitchRulesTotal());
-        assertEquals(10, (int) result.get(1).getSwitchRulesTotal());
-        assertEquals(10, (int) result.get(2).getSwitchRulesTotal());
-        assertEquals(10, (int) result.get(3).getSwitchRulesTotal());
+        assertEquals(14, (int) result.get(0).getSwitchRulesTotal());
+        assertEquals(14, (int) result.get(1).getSwitchRulesTotal());
+        assertEquals(14, (int) result.get(2).getSwitchRulesTotal());
+        assertEquals(14, (int) result.get(3).getSwitchRulesTotal());
     }
 }

@@ -86,17 +86,17 @@ public class HaFlowValidatorTest {
                 .thenReturn(Optional.of(Switch.builder().switchId(SWITCH_ID_1).ofDescriptionSoftware("")
                         .status(SwitchStatus.ACTIVE).build()));
         when(switchPropertiesRepository.findBySwitchId(SWITCH_ID_1))
-                .thenReturn(Optional.of(SwitchProperties.builder().multiTable(true).build()));
+                .thenReturn(Optional.of(SwitchProperties.builder().build()));
         when(switchRepository.findById(SWITCH_ID_2))
                 .thenReturn(Optional.of(Switch.builder().switchId(SWITCH_ID_2).ofDescriptionSoftware("")
                         .status(SwitchStatus.ACTIVE).build()));
         when(switchPropertiesRepository.findBySwitchId(SWITCH_ID_2))
-                .thenReturn(Optional.of(SwitchProperties.builder().multiTable(true).build()));
+                .thenReturn(Optional.of(SwitchProperties.builder().build()));
         when(switchRepository.findById(SWITCH_ID_3))
                 .thenReturn(Optional.of(Switch.builder().switchId(SWITCH_ID_3).ofDescriptionSoftware("")
                         .status(SwitchStatus.ACTIVE).build()));
         when(switchPropertiesRepository.findBySwitchId(SWITCH_ID_3))
-                .thenReturn(Optional.of(SwitchProperties.builder().multiTable(true).build()));
+                .thenReturn(Optional.of(SwitchProperties.builder().build()));
 
         when(physicalPortRepository.findBySwitchIdAndPortNumber(any(), anyInt())).thenReturn(Optional.empty());
     }

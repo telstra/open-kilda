@@ -32,7 +32,7 @@ abstract class IngressCommandRemoveTest extends IngressCommandTest {
         IngressFlowSegmentBase command = makeCommand(endpointIngressSingleVlan, null, makeMetadata());
 
         switchFeaturesSetup(sw, false);
-        expectMakeOuterOnlyVlanForwardMessage(command, new EffectiveIds());
+        expectMakeSingleVlanForwardMessage(command, new EffectiveIds());
         expectNoMoreOfMessages();
         replayAll();
 
@@ -46,7 +46,7 @@ abstract class IngressCommandRemoveTest extends IngressCommandTest {
         switchFeaturesSetup(sw, false);
         expectMeterDryRun(
                 new UnsupportedSwitchOperationException(dpIdNext, "Switch doesn't support meters (unit-test)"));
-        expectMakeOuterOnlyVlanForwardMessage(command, new EffectiveIds());
+        expectMakeSingleVlanForwardMessage(command, new EffectiveIds());
         expectNoMoreOfMessages();
         replayAll();
 
@@ -60,7 +60,7 @@ abstract class IngressCommandRemoveTest extends IngressCommandTest {
         switchFeaturesSetup(sw, true);
         expectMeterDryRun();
         expectMeterRemove(new SwitchErrorResponseException(dpIdNext, "fake fail to remove meter error"));
-        expectMakeOuterOnlyVlanForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
+        expectMakeSingleVlanForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
         expectNoMoreOfMessages();
         replayAll();
 
@@ -74,7 +74,7 @@ abstract class IngressCommandRemoveTest extends IngressCommandTest {
 
         switchFeaturesSetup(sw, true);
         expectMeterDryRun();
-        expectMakeOuterOnlyVlanForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
+        expectMakeSingleVlanForwardMessage(command, new EffectiveIds(meterConfig.getId(), null));
         expectNoMoreOfMessages();
         replayAll();
 

@@ -38,33 +38,21 @@ import java.util.UUID;
 
 public class IngressFlowSegmentInstallCommandTest extends IngressCommandInstallTest {
     @Test
-    public void zeroVlanSingleTable() throws Exception {
-        processZeroVlanSingleTable(makeCommand(
-                endpointIngressZeroVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(false)));
-    }
-
-    @Test
-    public void singleVlanSingleTable() throws Exception {
-        processOneVlanSingleTable(makeCommand(
-                endpointIngressSingleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(false)));
-    }
-
-    @Test
     public void zeroVlanMultiTable() throws Exception {
         processZeroVlanMultiTable(makeCommand(
-                endpointIngressZeroVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(true)));
+                endpointIngressZeroVlan, endpointEgressSingleVlan, meterConfig, makeMetadata()));
     }
 
     @Test
     public void singleVlanMultiTable() throws Exception {
         processOneVlanMultiTable(makeCommand(
-                endpointIngressSingleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(true)));
+                endpointIngressSingleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata()));
     }
 
     @Test
     public void doubleVlanMultiTable() throws Exception {
         processDoubleVlanMultiTable(makeCommand(
-                endpointIngressDoubleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata(true)));
+                endpointIngressDoubleVlan, endpointEgressSingleVlan, meterConfig, makeMetadata()));
     }
 
     @Override

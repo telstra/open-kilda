@@ -25,7 +25,6 @@ import org.openkilda.model.KildaFeatureToggles;
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.TransitVlan;
@@ -90,20 +89,15 @@ public class PersistenceDataAdapter implements DataAdapter {
     private Set<PathId> haFlowPathIds;
     private final Map<PathId, HaFlow> additionalHaFlows;
 
-    @Builder.Default
-    @Deprecated
-    private boolean keepMultitableForFlow = false;
-
     public PersistenceDataAdapter(
-            PersistenceManager persistenceManager, Set<PathId> pathIds, Set<SwitchId> switchIds,
-            boolean keepMultitableForFlow) {
-        this(persistenceManager, pathIds, switchIds, keepMultitableForFlow, null);
+            PersistenceManager persistenceManager, Set<PathId> pathIds, Set<SwitchId> switchIds) {
+        this(persistenceManager, pathIds, switchIds, null);
     }
 
     @Builder
     public PersistenceDataAdapter(
             PersistenceManager persistenceManager, Set<PathId> pathIds, Set<SwitchId> switchIds,
-            boolean keepMultitableForFlow, Map<PathId, HaFlow> additionalHaFlows) {
+            Map<PathId, HaFlow> additionalHaFlows) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         flowRepository = repositoryFactory.createFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
@@ -122,7 +116,6 @@ public class PersistenceDataAdapter implements DataAdapter {
 
         encapsulationCache = new HashMap<>();
 
-        this.keepMultitableForFlow = keepMultitableForFlow;
     }
 
     @Override
@@ -192,20 +185,6 @@ public class PersistenceDataAdapter implements DataAdapter {
     public SwitchProperties getSwitchProperties(SwitchId switchId) {
         if (switchPropertiesCache == null) {
             switchPropertiesCache = switchPropertiesRepository.findBySwitchIds(switchIds);
-
-            if (keepMultitableForFlow) {
-                // Override the multitable flag with actual flow data.
-                for (SwitchProperties switchProps : switchPropertiesCache.values()) {
-                    SwitchId swId = switchProps.getSwitchId();
-                    Switch sw = switchProps.getSwitchObj();
-                    if (!switchProps.isMultiTable() && sw.supports(SwitchFeature.MULTI_TABLE)
-                            && (!flowPathRepository.findBySegmentSwitchWithMultiTable(swId, true).isEmpty()
-                            || !flowRepository.findByEndpointSwitchWithMultiTableSupport(swId).isEmpty())) {
-                        switchPropertiesRepository.detach(switchProps);
-                        switchProps.setMultiTable(true);
-                    }
-                }
-            }
         }
         return switchPropertiesCache.get(switchId);
     }

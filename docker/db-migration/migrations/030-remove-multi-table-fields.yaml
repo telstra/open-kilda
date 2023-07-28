@@ -1,0 +1,74 @@
+databaseChangeLog:
+  - changeSet:
+      id: tag
+      author: snikitin
+      changes:
+        - tagDatabase:
+            tag: 030-remove-multi-table-fields
+  - changeSet:
+      id: remove_multi_table_fields
+      author: snikitin
+      preConditions:
+        - onFail: HALT
+        - onFailMessage: "Failed preconditions for migration '030-remove-multi-table-fields.yaml'.\n
+            \n
+            Before run this migration you must be sure that values of all following fields are 'true':\n
+             1. switch_properties.multi_table\n
+             2. flow_path.src_with_multi_table\n
+             3. flow_path.dst_with_multi_table\n
+             4. path_segment.src_with_multi_table\n
+             5. path_segment.dst_with_multi_table\n
+             6. flow_mirror_path.egress_with_multi_table\n"
+        - sqlCheck:
+            expectedResult: 0
+            sql: "SELECT COUNT(*) FROM switch_properties WHERE multi_table <> true"
+        - sqlCheck:
+            expectedResult: 0
+            sql: "SELECT COUNT(*) FROM flow_path WHERE src_with_multi_table <> true"
+        - sqlCheck:
+            expectedResult: 0
+            sql: "SELECT COUNT(*) FROM flow_path WHERE dst_with_multi_table <> true"
+        - sqlCheck:
+            expectedResult: 0
+            sql: "SELECT COUNT(*) FROM path_segment WHERE src_with_multi_table <> true"
+        - sqlCheck:
+            expectedResult: 0
+            sql: "SELECT COUNT(*) FROM path_segment WHERE dst_with_multi_table <> true"
+        - sqlCheck:
+            expectedResult: 0
+            sql: "SELECT COUNT(*) FROM flow_mirror_path WHERE egress_with_multi_table <> true"
+      comment: "We have to put all changes into one changelog, because databaseChangeLog level preconditions are related
+       to all changeSets in the root.yaml, not only to the current changeLog. Also we can not have one precondition for 
+       each table changeSet because whole remove changes must be transactional."
+      changes:
+        - sql: "DROP INDEX flow_path.src_with_multi_table IF EXISTS"
+        - sql: "DROP INDEX flow_path.dst_with_multi_table IF EXISTS"
+        - sql: "DROP PROPERTY flow_path.src_with_multi_table IF EXISTS"
+        - sql: "DROP PROPERTY flow_path.dst_with_multi_table IF EXISTS"
+        - sql: "UPDATE flow_path REMOVE src_with_multi_table"
+        - sql: "UPDATE flow_path REMOVE dst_with_multi_table"
+
+        - sql: "UPDATE path_segment REMOVE src_with_multi_table"
+        - sql: "UPDATE path_segment REMOVE dst_with_multi_table"
+
+        - sql: "UPDATE flow_mirror_path REMOVE egress_with_multi_table"
+
+        - sql: "UPDATE switch_properties REMOVE multi_table"
+
+        - sql: "UPDATE kilda_configuration REMOVE use_multi_table"
+      rollback:
+        - sql: "UPDATE kilda_configuration SET use_multi_table = true"
+
+        - sql: "UPDATE switch_properties SET multi_table = true"
+
+        - sql: "UPDATE flow_mirror_path SET egress_with_multi_table = true"
+
+        - sql: "UPDATE path_segment SET src_with_multi_table = true"
+        - sql: "UPDATE path_segment SET dst_with_multi_table = true"
+
+        - sql: "CREATE PROPERTY flow_path.src_with_multi_table IF NOT EXISTS STRING"
+        - sql: "CREATE PROPERTY flow_path.dst_with_multi_table IF NOT EXISTS STRING"
+        - sql: "UPDATE flow_path SET src_with_multi_table = true"
+        - sql: "UPDATE flow_path SET dst_with_multi_table = true"
+        - sql: "CREATE INDEX flow_path.src_with_multi_table IF NOT EXISTS NOTUNIQUE_HASH_INDEX"
+        - sql: "CREATE INDEX flow_path.dst_with_multi_table IF NOT EXISTS NOTUNIQUE_HASH_INDEX"

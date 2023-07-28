@@ -105,7 +105,6 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     public static final SwitchProperties SWITCH_PROPERTIES = SwitchProperties.builder()
             .server42Port(SERVER_42_PORT_NUMBER)
             .server42MacAddress(SERVER_42_MAC_ADDRESS)
-            .multiTable(true)
             .server42FlowRtt(true)
             .build();
     public static final FlowTransitEncapsulation VLAN_ENCAPSULATION = new FlowTransitEncapsulation(
@@ -123,7 +122,6 @@ public class MultiTableServer42IngressRuleGeneratorTest {
             .meterId(METER_ID)
             .srcSwitch(SWITCH_1)
             .destSwitch(SWITCH_2)
-            .srcWithMultiTable(true)
             .bandwidth(BANDWIDTH)
             .segments(newArrayList(PathSegment.builder()
                     .pathId(PATH_ID)
@@ -138,7 +136,6 @@ public class MultiTableServer42IngressRuleGeneratorTest {
             .cookie(PATH_COOKIE_1)
             .srcSwitch(SWITCH_1)
             .destSwitch(SWITCH_1)
-            .srcWithMultiTable(true)
             .bandwidth(0)
             .segments(new ArrayList<>())
             .build();
@@ -246,18 +243,9 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     }
 
     @Test
-    public void singleTableSwitchPropertiesTest() {
-        MultiTableServer42IngressRuleGenerator generator = MultiTableServer42IngressRuleGenerator.builder()
-                .switchProperties(SwitchProperties.builder().multiTable(false).server42FlowRtt(true).build())
-                .flowPath(PATH)
-                .build();
-        Assertions.assertEquals(0, generator.generateCommands(SWITCH_1).size());
-    }
-
-    @Test
     public void falseServer42SwitchPropertiesTest() {
         MultiTableServer42IngressRuleGenerator generator = MultiTableServer42IngressRuleGenerator.builder()
-                .switchProperties(SwitchProperties.builder().multiTable(true).server42FlowRtt(false).build())
+                .switchProperties(SwitchProperties.builder().server42FlowRtt(false).build())
                 .flowPath(PATH)
                 .build();
         Assertions.assertEquals(0, generator.generateCommands(SWITCH_1).size());

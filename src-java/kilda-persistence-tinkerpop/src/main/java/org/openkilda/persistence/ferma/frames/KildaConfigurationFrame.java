@@ -39,14 +39,6 @@ public abstract class KildaConfigurationFrame extends KildaBaseVertexFrame imple
     public abstract void setFlowEncapsulationType(FlowEncapsulationType flowEncapsulationType);
 
     @Override
-    @Property("use_multi_table")
-    public abstract Boolean getUseMultiTable();
-
-    @Override
-    @Property("use_multi_table")
-    public abstract void setUseMultiTable(Boolean useMultiTable);
-
-    @Override
     @Property("path_computation_strategy")
     @Convert(PathComputationStrategyConverter.class)
     public abstract PathComputationStrategy getPathComputationStrategy();

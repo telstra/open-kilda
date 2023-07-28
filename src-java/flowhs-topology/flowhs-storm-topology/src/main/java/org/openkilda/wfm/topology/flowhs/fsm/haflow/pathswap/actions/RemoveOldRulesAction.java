@@ -78,7 +78,7 @@ public class RemoveOldRulesAction extends HaFlowRuleManagerProcessingAction<
         Set<PathId> pathIds = new HashSet<>(overlappingPathIds);
         pathIds.addAll(haPath.getSubPathIds());
         pathIds.addAll(haFlow.getPrimarySubPathIds());
-        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false);
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, pathIds, switchIds);
         return ruleManager.buildRulesHaFlowPath(
                 haPath, true, false, true, false, dataAdapter);
     }

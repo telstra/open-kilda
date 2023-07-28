@@ -45,8 +45,6 @@ public class OrientDbPathSegmentRepository extends FermaPathSegmentRepository {
                 .put("src_port", segment.getSrcPort())
                 .put("dst_sw", SwitchIdConverter.INSTANCE.toGraphProperty(segment.getDestSwitchId()))
                 .put("dst_port", segment.getDestPort())
-                .put("src_mt", segment.isSrcWithMultiTable())
-                .put("dst_mt", segment.isDestWithMultiTable())
                 .put("ignore_bw", segment.isIgnoreBandwidth())
                 .put("bw", segment.getBandwidth())
                 .put("seq_id", segment.getSeqId())
@@ -65,8 +63,6 @@ public class OrientDbPathSegmentRepository extends FermaPathSegmentRepository {
                             PathSegmentFrame.SRC_PORT_PROPERTY,
                             PathSegmentFrame.DST_SWITCH_ID_PROPERTY,
                             PathSegmentFrame.DST_PORT_PROPERTY,
-                            PathSegmentFrame.SRC_W_MULTI_TABLE_PROPERTY,
-                            PathSegmentFrame.DST_W_MULTI_TABLE_PROPERTY,
                             PathSegmentFrame.IGNORE_BANDWIDTH_PROPERTY,
                             PathSegmentFrame.BANDWIDTH_PROPERTY,
                             PathSegmentFrame.SEQ_ID_PROPERTY,
@@ -89,8 +85,6 @@ public class OrientDbPathSegmentRepository extends FermaPathSegmentRepository {
                             PathSegmentFrame.SRC_PORT_PROPERTY,
                             PathSegmentFrame.DST_SWITCH_ID_PROPERTY,
                             PathSegmentFrame.DST_PORT_PROPERTY,
-                            PathSegmentFrame.SRC_W_MULTI_TABLE_PROPERTY,
-                            PathSegmentFrame.DST_W_MULTI_TABLE_PROPERTY,
                             PathSegmentFrame.IGNORE_BANDWIDTH_PROPERTY,
                             PathSegmentFrame.BANDWIDTH_PROPERTY,
                             PathSegmentFrame.SEQ_ID_PROPERTY,

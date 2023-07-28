@@ -74,14 +74,14 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
 
     @Builder
     public SwitchProperties(Switch switchObj, Set<FlowEncapsulationType> supportedTransitEncapsulation,
-                            boolean multiTable, boolean switchLldp, boolean switchArp, boolean server42FlowRtt,
+                            boolean switchLldp, boolean switchArp, boolean server42FlowRtt,
                             RttState server42IslRtt,
                             Integer server42Port, MacAddress server42MacAddress, Integer server42Vlan,
                             Integer inboundTelescopePort, Integer outboundTelescopePort,
                             Integer telescopeIngressVlan, Integer telescopeEgressVlan) {
         this.data = SwitchPropertiesDataImpl.builder().switchObj(switchObj)
                 .supportedTransitEncapsulation(supportedTransitEncapsulation)
-                .multiTable(multiTable).switchLldp(switchLldp).switchArp(switchArp)
+                .switchLldp(switchLldp).switchArp(switchArp)
                 .server42FlowRtt(server42FlowRtt).server42IslRtt(server42IslRtt)
                 .server42Port(server42Port).server42MacAddress(server42MacAddress)
                 .server42Vlan(server42Vlan).inboundTelescopePort(inboundTelescopePort)
@@ -91,19 +91,6 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
 
     public SwitchProperties(@NonNull SwitchPropertiesData data) {
         this.data = data;
-    }
-
-
-    /**
-     * Sets multi-table flag. Validates it against supported features under the hood.
-     *
-     * @param multiTable target flag
-     */
-    public void setMultiTable(boolean multiTable) {
-        if (multiTable) {
-            validateProp(SwitchFeature.MULTI_TABLE);
-        }
-        data.setMultiTable(multiTable);
     }
 
     /**
@@ -171,7 +158,6 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
         }
         SwitchProperties that = (SwitchProperties) o;
         return new EqualsBuilder()
-                .append(isMultiTable(), that.isMultiTable())
                 .append(isSwitchLldp(), that.isSwitchLldp())
                 .append(isSwitchArp(), that.isSwitchArp())
                 .append(getSwitchId(), that.getSwitchId())
@@ -190,7 +176,7 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
 
     @Override
     public int hashCode() {
-        return Objects.hash(getSwitchId(), getSupportedTransitEncapsulation(), isMultiTable(),
+        return Objects.hash(getSwitchId(), getSupportedTransitEncapsulation(),
                 isSwitchLldp(), isSwitchArp(), isServer42FlowRtt(), getServer42IslRtt(),
                 getServer42Port(), getServer42MacAddress(),
                 getServer42Vlan(), getInboundTelescopePort(), getOutboundTelescopePort(),
@@ -208,9 +194,6 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
         void setSwitchObj(Switch switchObj);
 
         Set<FlowEncapsulationType> getSupportedTransitEncapsulation();
-
-        @Deprecated
-        boolean isMultiTable();
 
         boolean isSwitchLldp();
 
@@ -261,8 +244,6 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
      * Defines methods which don't need to be delegated.
      */
     interface SwitchPropertiesInternalData {
-        void setMultiTable(boolean multiTable);
-
         void setSupportedTransitEncapsulation(Set<FlowEncapsulationType> supportedTransitEncapsulation);
     }
 
@@ -279,8 +260,6 @@ public class SwitchProperties implements CompositeDataEntity<SwitchProperties.Sw
         @EqualsAndHashCode.Exclude
         Switch switchObj;
         Set<FlowEncapsulationType> supportedTransitEncapsulation;
-        @Deprecated
-        boolean multiTable;
         boolean switchLldp;
         boolean switchArp;
         boolean server42FlowRtt;

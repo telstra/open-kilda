@@ -529,14 +529,11 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     private void persistSwitchProperties(Switch sw) {
-        boolean multiTable = kildaConfigurationRepository.getOrDefault().getUseMultiTable()
-                && sw.getFeatures().contains(SwitchFeature.MULTI_TABLE);
         Optional<SwitchProperties> switchPropertiesResult = switchPropertiesRepository.findBySwitchId(sw.getSwitchId());
         if (!switchPropertiesResult.isPresent()) {
             SwitchProperties switchProperties = SwitchProperties.builder()
                     .switchObj(sw)
                     .supportedTransitEncapsulation(SwitchProperties.DEFAULT_FLOW_ENCAPSULATION_TYPES)
-                    .multiTable(multiTable)
                     .build();
             switchPropertiesRepository.add(switchProperties);
         }

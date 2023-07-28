@@ -42,7 +42,6 @@ import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslEndpoints;
-import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.CommandContext;
@@ -106,11 +105,8 @@ public class ResourcesAllocationAction extends
         this.switchPropertiesRepository = persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository();
         this.islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
         this.yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
-        KildaConfigurationRepository kildaConfigurationRepository = persistenceManager.getRepositoryFactory()
-                .createKildaConfigurationRepository();
 
-        this.flowPathBuilder = new FlowPathBuilder(switchPropertiesRepository,
-                kildaConfigurationRepository);
+        this.flowPathBuilder = new FlowPathBuilder();
         this.commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
     }
 
