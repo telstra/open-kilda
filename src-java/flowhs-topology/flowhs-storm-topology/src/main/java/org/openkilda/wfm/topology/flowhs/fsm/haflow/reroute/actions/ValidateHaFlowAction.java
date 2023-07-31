@@ -17,6 +17,8 @@ package org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptySet;
+import static org.openkilda.wfm.share.history.model.HaFlowEventData.Initiator.AUTO;
+import static org.openkilda.wfm.share.history.model.HaFlowEventData.Initiator.NB;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
@@ -33,7 +35,7 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.share.history.model.FlowEventData;
+import org.openkilda.wfm.share.history.model.HaFlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.TimedExecution;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -42,6 +44,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteContext
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -75,9 +79,16 @@ public class ValidateHaFlowAction extends
         dashboardLogger.onHaFlowReroute(flowId, affectedIsl);
 
         String rerouteReason = context.getRerouteReason();
-        stateMachine.saveNewEventToHistory("Started HA-flow validation", FlowEventData.Event.REROUTE,
-                rerouteReason == null ? FlowEventData.Initiator.NB : FlowEventData.Initiator.AUTO,
-                rerouteReason == null ? null : "Reason: " + rerouteReason);
+
+        HaFlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
+                .taskId(stateMachine.getCommandContext().getCorrelationId())
+                .event(HaFlowEventData.Event.REROUTE)
+                .haFlowId(stateMachine.getHaFlowId())
+                .action("Started HA-flow validation")
+                .initiator(rerouteReason == null ? NB : AUTO)
+                .details(rerouteReason == null ? null : "Reason: " + rerouteReason)
+                .build());
+
         stateMachine.setRerouteReason(rerouteReason);
 
         HaFlow haFlow = transactionManager.doInTransaction(() -> {
@@ -164,7 +175,11 @@ public class ValidateHaFlowAction extends
         stateMachine.setIgnoreBandwidth(context.isIgnoreBandwidth());
         stateMachine.saveOldPathIds(stateMachine.getOriginalHaFlow());
 
-        stateMachine.saveActionToHistory("HA-flow was validated successfully");
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction("HA-flow has been validated successfully")
+                .withHaFlowId(stateMachine.getHaFlowId()));
+
         return Optional.empty();
     }
 

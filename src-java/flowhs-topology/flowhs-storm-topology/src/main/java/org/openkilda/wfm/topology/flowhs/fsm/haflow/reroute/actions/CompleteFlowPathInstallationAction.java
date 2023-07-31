@@ -26,6 +26,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteContext
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -48,8 +50,12 @@ public class CompleteFlowPathInstallationAction extends
                     newForwardPathId, newReversePathId);
             updatePathStatuses(stateMachine.getNewPrimaryPathIds(), stateMachine);
 
-            stateMachine.saveActionToHistory("HA-flow paths were installed",
-                    format("The HA-flow paths %s / %s were installed", newForwardPathId, newReversePathId));
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("HA-flow paths have been installed")
+                    .withDescription(format("The HA-flow paths %s / %s were installed",
+                            newForwardPathId, newReversePathId))
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         }
 
         if (stateMachine.getNewProtectedPathIds() != null) {
@@ -60,9 +66,12 @@ public class CompleteFlowPathInstallationAction extends
                     newProtectedForwardPathId, newProtectedReversePathId);
             updatePathStatuses(stateMachine.getNewProtectedPathIds(), stateMachine);
 
-            stateMachine.saveActionToHistory("HA-flow paths were installed",
-                    format("The HA-flow paths %s / %s were installed",
-                            newProtectedForwardPathId, newProtectedReversePathId));
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("HA-flow paths have been installed")
+                    .withDescription(format("The HA-flow paths %s / %s were installed",
+                            newProtectedForwardPathId, newProtectedReversePathId))
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         }
     }
 

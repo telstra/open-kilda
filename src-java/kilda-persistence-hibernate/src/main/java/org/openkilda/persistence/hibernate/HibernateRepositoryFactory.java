@@ -18,6 +18,9 @@ package org.openkilda.persistence.hibernate;
 import org.openkilda.persistence.hibernate.repositories.HibernateHistoryFlowEventActionRepository;
 import org.openkilda.persistence.hibernate.repositories.HibernateHistoryFlowEventDumpRepository;
 import org.openkilda.persistence.hibernate.repositories.HibernateHistoryFlowEventRepository;
+import org.openkilda.persistence.hibernate.repositories.HibernateHistoryHaFlowEventActionRepository;
+import org.openkilda.persistence.hibernate.repositories.HibernateHistoryHaFlowEventDumpRepository;
+import org.openkilda.persistence.hibernate.repositories.HibernateHistoryHaFlowEventRepository;
 import org.openkilda.persistence.hibernate.repositories.HibernateHistoryPortEventRepository;
 import org.openkilda.persistence.repositories.ApplicationRepository;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
@@ -54,6 +57,9 @@ import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
 import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventActionRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventDumpRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventRepository;
 import org.openkilda.persistence.repositories.history.PortEventRepository;
 
 public class HibernateRepositoryFactory implements RepositoryFactory {
@@ -131,6 +137,23 @@ public class HibernateRepositoryFactory implements RepositoryFactory {
     @Override
     public FlowEventDumpRepository createFlowEventDumpRepository() {
         return new HibernateHistoryFlowEventDumpRepository(implementation, makeFlowEventRepository());
+    }
+
+    @Override
+    public HaFlowEventRepository createHaFlowEventRepository() {
+        return new HibernateHistoryHaFlowEventRepository(implementation);
+    }
+
+    @Override
+    public HaFlowEventDumpRepository createHaFlowEventDumpRepository() {
+        return new HibernateHistoryHaFlowEventDumpRepository(implementation,
+                new HibernateHistoryHaFlowEventRepository(implementation));
+    }
+
+    @Override
+    public HaFlowEventActionRepository createHaFlowEventActionRepository() {
+        return new HibernateHistoryHaFlowEventActionRepository(implementation,
+                new HibernateHistoryHaFlowEventRepository(implementation));
     }
 
     @Override

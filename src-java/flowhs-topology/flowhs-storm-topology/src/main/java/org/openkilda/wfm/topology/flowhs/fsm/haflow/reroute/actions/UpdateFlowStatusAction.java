@@ -27,6 +27,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteContext
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -63,7 +65,10 @@ public class UpdateFlowStatusAction extends
             return flowStatus;
         });
 
-        stateMachine.saveActionToHistory(format("The flow status was set to %s", resultStatus));
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction(format("The flow status has been set to %s", resultStatus))
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
 
     private String getFlowStatusInfo(FlowStatus flowStatus, HaFlowRerouteFsm stateMachine) {

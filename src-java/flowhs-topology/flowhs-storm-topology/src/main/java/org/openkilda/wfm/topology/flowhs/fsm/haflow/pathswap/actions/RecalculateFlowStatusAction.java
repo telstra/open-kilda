@@ -29,6 +29,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapConte
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -75,6 +77,13 @@ public class RecalculateFlowStatusAction extends
             return status;
         });
 
-        stateMachine.saveActionToHistory(format("The HA-flow status was set to %s", resultStatus));
+        saveActionToHistory(stateMachine, resultStatus);
+    }
+
+    private void saveActionToHistory(HaFlowPathSwapFsm stateMachine, FlowStatus resultStatus) {
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction(format("The HA-flow status has been set to %s", resultStatus))
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
 }

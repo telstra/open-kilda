@@ -212,6 +212,5 @@ public class HistoryMapperTest {
     public void toFlowDumpPayloadTest() {
         FlowDumpPayload payload = INSTANCE.map(flowEventDump);
         assertEquals(payload, expectedPayload);
-
     }
 }

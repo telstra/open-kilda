@@ -23,10 +23,8 @@ import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.Getter;
 
 import java.io.Serializable;
 import java.util.List;
@@ -67,13 +65,4 @@ public class FlowDumpData implements Serializable {
     private List<MirrorPointStatus> mirrorPointStatuses;
     private Integer priority;
     private SwitchId loopSwitchId;
-
-    @AllArgsConstructor
-    @Getter
-    public enum DumpType {
-        STATE_BEFORE("stateBefore"),
-        STATE_AFTER("stateAfter");
-
-        private String type;
-    }
 }

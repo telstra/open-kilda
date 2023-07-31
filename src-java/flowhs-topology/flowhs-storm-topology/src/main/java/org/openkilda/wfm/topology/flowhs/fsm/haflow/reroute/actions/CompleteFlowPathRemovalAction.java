@@ -22,6 +22,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteContext
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -36,8 +37,12 @@ public class CompleteFlowPathRemovalAction extends
     @Override
     protected void perform(
             State from, State to, Event event, HaFlowRerouteContext context, HaFlowRerouteFsm stateMachine) {
-        removeFlowPaths(stateMachine.getOldPrimaryPathIds());
-        removeFlowPaths(stateMachine.getOldProtectedPathIds());
-        removeRejectedPaths(stateMachine.getRejectedSubPathsIds(), stateMachine.getRejectedHaPathsIds());
+        HistoryUpdateCarrier carrier = stateMachine.getCarrier();
+        String correlationId = stateMachine.getCommandContext().getCorrelationId();
+
+        removeFlowPaths(stateMachine.getOldPrimaryPathIds(), carrier, correlationId);
+        removeFlowPaths(stateMachine.getOldProtectedPathIds(), carrier, correlationId);
+        removeRejectedPaths(stateMachine.getRejectedSubPathsIds(), stateMachine.getRejectedHaPathsIds(),
+                carrier, correlationId);
     }
 }

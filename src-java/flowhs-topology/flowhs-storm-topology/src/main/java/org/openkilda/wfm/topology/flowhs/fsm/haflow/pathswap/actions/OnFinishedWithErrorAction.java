@@ -20,6 +20,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapConte
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.AnonymousAction;
@@ -36,10 +38,18 @@ public class OnFinishedWithErrorAction extends AnonymousAction<HaFlowPathSwapFsm
     public void execute(
             State from, State to, Event event, HaFlowPathSwapContext context, HaFlowPathSwapFsm stateMachine) {
         dashboardLogger.onFailedHaFlowPathSwap(stateMachine.getFlowId(), stateMachine.getErrorReason());
-        stateMachine.saveActionToHistory("Failed to swap paths for the HA-flow", stateMachine.getErrorReason());
+        saveActionToHistory(stateMachine, stateMachine.getErrorReason());
 
         log.warn("HA-flow {} path swap failed", stateMachine.getHaFlowId());
         stateMachine.getCarrier().sendPathSwapResultStatus(stateMachine.getFlowId(), false,
                 stateMachine.getCommandContext().getCorrelationId());
+    }
+
+    private void saveActionToHistory(HaFlowPathSwapFsm stateMachine, String details) {
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction("Failed to swap paths for the HA-flow")
+                .withDescription(details)
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
 }

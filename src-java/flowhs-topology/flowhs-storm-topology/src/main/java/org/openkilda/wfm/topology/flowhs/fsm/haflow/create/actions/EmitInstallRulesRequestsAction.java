@@ -30,6 +30,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -56,7 +58,10 @@ public class EmitInstallRulesRequestsAction extends
                 speakerCommands, stateMachine.getCommandContext(), true);
 
         if (installRequests.isEmpty()) {
-            stateMachine.saveActionToHistory("No requests to install ha-flow rules");
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("No requests to install HA-flow rules")
+                    .withHaFlowId(stateMachine.getHaFlowId()));
             stateMachine.fire(Event.SKIP_RULES_INSTALL);
         } else {
             // emitting
@@ -66,7 +71,10 @@ public class EmitInstallRulesRequestsAction extends
                 stateMachine.addPendingCommand(request.getCommandId(), request.getSwitchId());
             });
 
-            stateMachine.saveActionToHistory("Commands for installing ha-flow rules have been sent");
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("Commands for installing HA-flow rules have been sent")
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         }
     }
 

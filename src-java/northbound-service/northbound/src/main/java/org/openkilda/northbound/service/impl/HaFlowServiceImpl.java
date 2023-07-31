@@ -35,7 +35,13 @@ import org.openkilda.messaging.command.haflow.HaFlowsDumpRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.flow.HaFlowPingResponse;
+import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
+import org.openkilda.messaging.nbtopology.request.GetFlowStatusTimestampsRequest;
+import org.openkilda.messaging.payload.history.FlowStatusTimestampsEntry;
+import org.openkilda.messaging.payload.history.HaFlowHistoryEntry;
+import org.openkilda.northbound.converter.FlowStatusMapper;
 import org.openkilda.northbound.converter.HaFlowMapper;
+import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.haflows.HaFlow;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowDump;
@@ -50,12 +56,14 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.HaFlowService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
+import org.openkilda.northbound.utils.flowhistory.FlowHistoryRangeConstraints;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -69,17 +77,23 @@ public class HaFlowServiceImpl implements HaFlowService {
     private String flowHsTopic;
     @Value("#{kafkaTopicsConfig.getTopoRerouteTopic()}")
     private String rerouteTopic;
-
+    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
+    private String nbworkerTopic;
     @Value("#{kafkaTopicsConfig.getPingTopic()}")
     private String pingTopic;
+
+    private final FlowStatusMapper flowStatusMapper;
 
     private final MessagingChannel messagingChannel;
     private final HaFlowMapper flowMapper;
 
     @Autowired
-    public HaFlowServiceImpl(MessagingChannel messagingChannel, HaFlowMapper flowMapper) {
+    public HaFlowServiceImpl(MessagingChannel messagingChannel,
+                             HaFlowMapper flowMapper,
+                             FlowStatusMapper flowStatusMapper) {
         this.messagingChannel = messagingChannel;
         this.flowMapper = flowMapper;
+        this.flowStatusMapper = flowStatusMapper;
     }
 
     @Override
@@ -246,5 +260,49 @@ public class HaFlowServiceImpl implements HaFlowService {
                 .thenApply(HaFlowResponse::getHaFlow)
                 .thenApply(flowMapper::toHaFlow);
 
+    }
+
+    @Override
+    public CompletableFuture<List<HaFlowHistoryEntry>> getFlowHistory(String flowId,
+                                                                      FlowHistoryRangeConstraints constraints) {
+        log.info("API request: get HA-flow history: HA-flow ID {}, timestampFrom {}, timestampTo {}, maxCount {}",
+                flowId, constraints.getTimeFrom(), constraints.getTimeTo(), constraints.getMaxCount());
+
+        String correlationId = RequestCorrelationId.getId();
+        GetFlowHistoryRequest request = GetFlowHistoryRequest.builder()
+                .flowId(flowId)
+                .modelType(org.openkilda.model.HaFlow.class)
+                .timestampFrom(constraints.getTimeFrom())
+                .timestampTo(constraints.getTimeTo())
+                .maxCount(constraints.getMaxCount())
+                .build();
+        CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, command)
+                .thenApply(result -> result.stream()
+                        .map(HaFlowHistoryEntry.class::cast)
+                        .collect(Collectors.toList()));
+    }
+
+    @Override
+    public CompletableFuture<FlowHistoryStatusesResponse> getFlowStatuses(String flowId,
+                                                                          FlowHistoryRangeConstraints constraints) {
+        log.info("API request: Get flow statuses: flowId {}, timestampFrom {}, timestampTo {}, maxCount {}",
+                flowId, constraints.getTimeFrom(), constraints.getTimeTo(), constraints.getMaxCount());
+
+        String correlationId = RequestCorrelationId.getId();
+        GetFlowStatusTimestampsRequest request = GetFlowStatusTimestampsRequest.builder()
+                .flowId(flowId)
+                .timestampFrom(constraints.getTimeFrom())
+                .timestampTo(constraints.getTimeTo())
+                .maxCount(constraints.getMaxCount())
+                .build();
+        CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);
+
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, command)
+                .thenApply(result -> result.stream()
+                        .map(FlowStatusTimestampsEntry.class::cast)
+                        .map(flowStatusMapper::toFlowHistoryStatus)
+                        .collect(Collectors.toList()))
+                .thenApply(FlowHistoryStatusesResponse::new);
     }
 }

@@ -20,22 +20,30 @@ import org.openkilda.model.history.FlowEvent;
 import org.openkilda.model.history.FlowEventAction;
 import org.openkilda.model.history.FlowEventDump;
 import org.openkilda.model.history.FlowStatusView;
+import org.openkilda.model.history.HaFlowEvent;
+import org.openkilda.model.history.HaFlowEventAction;
+import org.openkilda.model.history.HaFlowEventDump;
 import org.openkilda.model.history.PortEvent;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
 import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventActionRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventDumpRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventRepository;
 import org.openkilda.persistence.repositories.history.PortEventRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.history.model.PortEventData;
+import org.openkilda.wfm.share.mappers.HaFlowHistoryMapper;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 @Slf4j
@@ -45,6 +53,9 @@ public class HistoryService {
     private final PortEventRepository portEventRepository;
     private final FlowEventActionRepository flowEventActionRepository;
     private final FlowEventDumpRepository flowEventDumpRepository;
+    private final HaFlowEventRepository haFlowEventRepository;
+    private final HaFlowEventActionRepository haFlowEventActionRepository;
+    private final HaFlowEventDumpRepository haFlowEventDumpRepository;
 
     public HistoryService(PersistenceManager persistenceManager) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
@@ -53,16 +64,42 @@ public class HistoryService {
         flowEventActionRepository = repositoryFactory.createFlowEventActionRepository();
         flowEventDumpRepository = repositoryFactory.createFlowEventDumpRepository();
 
+        haFlowEventRepository = repositoryFactory.createHaFlowEventRepository();
+        haFlowEventActionRepository = repositoryFactory.createHaFlowEventActionRepository();
+        haFlowEventDumpRepository = repositoryFactory.createHaFlowEventDumpRepository();
+
         transactionManager = persistenceManager.getTransactionManager(
-                flowEventRepository, portEventRepository, flowEventActionRepository, flowEventDumpRepository);
+                flowEventRepository, portEventRepository, flowEventActionRepository, flowEventDumpRepository,
+                haFlowEventRepository, haFlowEventActionRepository, haFlowEventDumpRepository);
     }
 
-    /**
-     * Save history data into data storage.
-     *
-     * @param historyHolder holder of history information.
-     */
-    public void store(FlowHistoryHolder historyHolder) {
+    private void storeHaFlowHistory(FlowHistoryHolder historyHolder) {
+        HaFlowHistoryMapper mapper = HaFlowHistoryMapper.INSTANCE;
+        log.debug("HaFlowHistory start saving data: {}", historyHolder);
+        transactionManager.doInTransaction(() -> {
+            String taskId = historyHolder.getTaskId();
+            if (historyHolder.getHaFlowEventData() != null) {
+                HaFlowEvent event = mapper.createHaFlowEvent(historyHolder.getHaFlowEventData());
+                event.setTaskId(taskId);
+                haFlowEventRepository.add(event);
+            }
+
+            if (historyHolder.getHaFlowHistoryData() != null) {
+                HaFlowEventAction history = mapper.createHaFlowEventAction(historyHolder.getHaFlowHistoryData());
+                history.setTaskId(taskId);
+                haFlowEventActionRepository.add(history);
+            }
+
+            if (historyHolder.getHaFlowDumpData() != null) {
+                HaFlowEventDump dump = new HaFlowEventDump(
+                        mapper.createHaFlowEventDump(historyHolder.getHaFlowDumpData()));
+                dump.setTaskId(taskId);
+                haFlowEventDumpRepository.add(dump);
+            }
+        });
+    }
+
+    private void storeSimpleFlowHistory(FlowHistoryHolder historyHolder) {
         transactionManager.doInTransaction(() -> {
             String taskId = historyHolder.getTaskId();
             if (historyHolder.getFlowEventData() != null) {
@@ -86,6 +123,19 @@ public class HistoryService {
     }
 
     /**
+     * Persists supported non-empty fields of the history holder.
+     *
+     * @param historyHolder holder of history information.
+     */
+    public void store(FlowHistoryHolder historyHolder) {
+        if (historyHolder.isHaFlowHistory()) {
+            storeHaFlowHistory(historyHolder);
+        } else {
+            storeSimpleFlowHistory(historyHolder);
+        }
+    }
+
+    /**
      * Persist the history record.
      */
     public void store(PortEventData data) {
@@ -103,6 +153,28 @@ public class HistoryService {
                     flowEventRepository.detach(entry);
                     result.add(entry);
                 }));
+        return result;
+    }
+
+    /**
+     * Retrieves HA-flow history data from repository.
+     * @param haFlowId target HA-flow ID
+     * @param timeFrom get history starting from this time
+     * @param timeTo get history ending by this time
+     * @param maxCount get no more than this number of entries
+     * @return a list of HA-flow events
+     */
+    public List<HaFlowEvent> getHaFlowHistoryEvents(String haFlowId, Instant timeFrom, Instant timeTo, int maxCount) {
+        List<HaFlowEvent> result = new LinkedList<>();
+        log.debug("getHaFlowHistoryEvents fetching events using time from: {}, time to: {}, maxCount: {}, flow ID: {}",
+                timeFrom, timeTo, maxCount, haFlowId);
+        transactionManager.doInTransaction(() -> haFlowEventRepository
+                .findByHaFlowIdAndTimeFrame(haFlowId, timeFrom, timeTo, maxCount))
+                .forEach(haFlowEvent -> {
+                    haFlowEventRepository.detach(haFlowEvent);
+                    result.add(haFlowEvent);
+                });
+        log.info("getHaFlowHistoryEvents fetched {} events", result.size());
         return result;
     }
 

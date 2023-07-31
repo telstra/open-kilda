@@ -30,6 +30,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.model.Segment;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -60,9 +62,12 @@ public class ResourcesDeallocationAction extends
     protected void perform(
             State from, State to, Event event, HaFlowCreateContext context, HaFlowCreateFsm stateMachine) {
         if (!haFlowRepository.exists(stateMachine.getHaFlowId())) {
-            stateMachine.saveActionToHistory("Skip resources deallocation",
-                    format("Skip resources deallocation. HA-flow %s has already been deleted.",
-                            stateMachine.getHaFlowId()));
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("Skip resources de-allocation")
+                    .withDescription(format("Skip resources de-allocation. HA-flow %s has already been deleted.",
+                            stateMachine.getHaFlowId()))
+                    .withHaFlowId(stateMachine.getHaFlowId()));
             return;
         }
 
@@ -86,7 +91,10 @@ public class ResourcesDeallocationAction extends
             haFlowRepository.remove(stateMachine.getHaFlowId());
         }
 
-        stateMachine.saveActionToHistory("The resources have been deallocated");
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction("The resources have been deallocated")
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
 
     private void updateIslsForSegments(List<PathSegment> pathSegments) {

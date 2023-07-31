@@ -115,34 +115,10 @@ public class FlowEvent implements CompositeDataEntity<FlowEvent.FlowEventData> {
     /**
      * Defines persistable data of the FlowEvent.
      */
-    public interface FlowEventData {
+    public interface FlowEventData extends GenericFlowEventData<FlowEventDump, FlowEventAction> {
         String getFlowId();
 
         void setFlowId(String flowId);
-
-        Instant getTimestamp();
-
-        void setTimestamp(Instant timestamp);
-
-        String getActor();
-
-        void setActor(String actor);
-
-        String getAction();
-
-        void setAction(String action);
-
-        String getTaskId();
-
-        void setTaskId(String taskId);
-
-        String getDetails();
-
-        void setDetails(String details);
-
-        List<FlowEventAction> getEventActions();
-
-        List<FlowEventDump> getEventDumps();
     }
 
     /**

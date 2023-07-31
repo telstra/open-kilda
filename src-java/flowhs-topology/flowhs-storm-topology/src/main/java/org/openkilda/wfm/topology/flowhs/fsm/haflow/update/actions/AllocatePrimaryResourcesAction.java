@@ -94,7 +94,7 @@ public class AllocatePrimaryResourcesAction extends
                 haFlowId, haFlowResources, allocatedPaths, forceIgnoreBandwidth);
         log.debug("New primary ha-path has been created: {}", createdPaths);
 
-        saveAllocationActionWithDumpsToHistory(stateMachine, haFlow, PATHS_TYPE, createdPaths);
+        saveAllocationActionToHistory(stateMachine, haFlow, PATHS_TYPE, createdPaths);
     }
 
     @Override

@@ -31,6 +31,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -61,11 +63,17 @@ public class RevertNewRulesAction extends HaFlowRuleManagerProcessingAction<
         installOldRules(stateMachine);
 
         if (stateMachine.getPendingCommands().isEmpty()) {
-            stateMachine.saveActionToHistory("No need to remove new rules or re-install original ingress rule");
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("No need to remove new rules or re-install original ingress rule")
+                    .withHaFlowId(stateMachine.getHaFlowId()));
             stateMachine.fire(Event.RULES_REMOVED);
         } else {
-            stateMachine.saveActionToHistory(
-                    "Commands for removing new rules and re-installing original ingress rule have been sent");
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction(
+                            "Commands for removing new rules and re-installing original ingress rule have been sent")
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         }
     }
 

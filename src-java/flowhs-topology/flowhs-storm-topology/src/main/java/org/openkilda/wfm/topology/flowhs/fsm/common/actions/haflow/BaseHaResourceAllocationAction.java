@@ -52,6 +52,8 @@ import org.openkilda.wfm.topology.flow.model.HaFlowPathPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import com.google.common.base.Suppliers;
 import lombok.SneakyThrows;
@@ -59,6 +61,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.FailsafeException;
 import net.jodah.failsafe.RetryPolicy;
+import org.apache.commons.lang.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -273,10 +276,16 @@ public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappin
         return subPaths;
     }
 
-    protected void saveAllocationActionWithDumpsToHistory(
-            T stateMachine, HaFlow haFlow, String pathsType, HaFlowPathPair newHaFlowPaths) {
-        // TODO save history like in BaseFlowResourceAllocationAction.saveAllocationActionWithDumpsToHistory()
-        // https://github.com/telstra/open-kilda/issues/5169
+    protected void saveAllocationActionToHistory(T stateMachine, HaFlow haFlow, String pathsType,
+                                                 HaFlowPathPair newHaFlowPaths) {
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction(format("%s paths have been allocated", StringUtils.capitalize(pathsType)))
+                .withDescription(
+                        format("The following paths have been allocated for HA-flow %s: forward: %s, reverse: %s",
+                                haFlow.getHaFlowId(),
+                                newHaFlowPaths.getForward().getHaPathId(),
+                                newHaFlowPaths.getReverse().getHaPathId())));
     }
 
     @Override

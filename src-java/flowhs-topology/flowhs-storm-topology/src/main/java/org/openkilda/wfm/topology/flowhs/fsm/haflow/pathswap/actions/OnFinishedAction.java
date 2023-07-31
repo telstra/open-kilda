@@ -21,6 +21,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapConte
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,7 +39,7 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowPathSwapFsm, 
             State from, State to, Event event, HaFlowPathSwapContext context, HaFlowPathSwapFsm stateMachine) {
         dashboardLogger.onSuccessfulHaFlowPathSwap(stateMachine.getHaFlowId());
         sendPeriodicPingNotification(stateMachine);
-        stateMachine.saveActionToHistory("HA-flow was updated successfully");
+        saveActionToHistory(stateMachine);
 
         log.info("HA-flow {} path swap success", stateMachine.getHaFlowId());
         stateMachine.getCarrier().sendPathSwapResultStatus(stateMachine.getHaFlowId(), true,
@@ -47,5 +49,12 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowPathSwapFsm, 
     private void sendPeriodicPingNotification(HaFlowPathSwapFsm stateMachine) {
         stateMachine.getCarrier().sendPeriodicPingNotification(stateMachine.getHaFlowId(),
                 stateMachine.isPeriodicPingsEnabled());
+    }
+
+    private void saveActionToHistory(HaFlowPathSwapFsm stateMachine) {
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction("HA-flow has been updated successfully")
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
 }
