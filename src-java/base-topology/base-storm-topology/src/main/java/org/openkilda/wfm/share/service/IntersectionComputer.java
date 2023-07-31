@@ -61,7 +61,7 @@ public class IntersectionComputer {
             if (path.getPathId().equals(targetForwardPathId) || path.getPathId().equals(targetReversePathId)) {
                 handleTargetPath(path);
             }
-            if (!path.getFlow().getFlowId().equals(targetFlowId)) {
+            if (path.getFlow() != null && !path.getFlow().getFlowId().equals(targetFlowId)) {
                 handleAnotherPath(path);
             }
         });

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
+import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
 import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult
 
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
@@ -10,6 +11,7 @@ import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.FlowStatus
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.BaseFlowEndpointV2
@@ -22,6 +24,7 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths
 import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload
+import org.openkilda.northbound.dto.v2.haflows.HaSubFlow
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -57,7 +60,6 @@ class HaFlowHelper {
 
     def random = new Random()
     def faker = new Faker()
-    def allowedVlans = 101..4094
 
     /**
      * Creates HaFlowCreatePayload for a ha-flow with random vlan.
@@ -73,7 +75,7 @@ class HaFlowHelper {
         def se = HaFlowSharedEndpoint.builder()
                 .switchId(sharedSwitch.dpId)
                 .portNumber(randomEndpointPort(sharedSwitch, busyEndpoints))
-                .vlanId(randomVlan())
+                .vlanId(randomVlan([]))
                 .build()
         def subFlows = [firstSwitch, secondSwitch].collect { sw ->
             busyEndpoints << new SwitchPortVlan(se.switchId, se.portNumber, se.vlanId)
@@ -155,8 +157,7 @@ class HaFlowHelper {
         HaFlow haFlow
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             haFlow = northboundV2.getHaFlow(response.haFlowId)
-            assert haFlow
-            assert haFlow.status == FlowState.UP.toString()
+            assertHaFlowAndSubFlowStatuses(haFlow, FlowState.UP)
         }
         haFlow
     }
@@ -190,6 +191,24 @@ class HaFlowHelper {
         // https://github.com/telstra/open-kilda/issues/3411
         northbound.synchronizeSwitch(response.sharedEndpoint.switchId, true)
         return response
+    }
+
+    /**
+     * Checks if status of HA-flow and statuses of HA-sub flows are equal to expected
+     */
+    void assertHaFlowAndSubFlowStatuses(String haFlowId, FlowState expectedStatus) {
+        assertHaFlowAndSubFlowStatuses(northboundV2.getHaFlow(haFlowId), expectedStatus)
+    }
+
+    /**
+     * Checks if status of HA-flow and statuses of HA-sub flows are equal to expected
+     */
+    static void assertHaFlowAndSubFlowStatuses(HaFlow haFlow, FlowState expectedStatus) {
+        assert haFlow
+        assert haFlow.status == expectedStatus.toString()
+        for (HaSubFlow subFlow : haFlow.subFlows ) {
+            assert subFlow.status == expectedStatus.toString()
+        }
     }
 
     /**
@@ -268,6 +287,12 @@ class HaFlowHelper {
         }
     }
 
+    SwitchId getYPoint(HaFlow haFlow) {
+        def sharedForwardPath = northboundV2.getHaFlowPaths(haFlow.getHaFlowId()).getSharedPath().getForward()
+        return sharedForwardPath == null ? sharedForwardPath.last().getSwitchId() :
+                haFlow.getSharedEndpoint().getSwitchId()
+    }
+
     /**
      * Returns an endpoint with randomly chosen port & vlan.
      */
@@ -285,16 +310,8 @@ class HaFlowHelper {
         allowedPorts[random.nextInt(allowedPorts.size())]
     }
 
-    int randomVlan(excludeVlan = null) {
-        Integer vlan
-        do {
-            vlan = allowedVlans[random.nextInt(allowedVlans.size())]
-        } while (vlan == excludeVlan)
-        return vlan
-    }
-
     private String generateDescription() {
         def methods = ["asYouLikeItQuote", "kingRichardIIIQuote", "romeoAndJulietQuote", "hamletQuote"]
-        sprintf("autotest y-flow: %s", faker.shakespeare()."${methods[random.nextInt(methods.size())]}"())
+        sprintf("autotest HA-Flow: %s", faker.shakespeare()."${methods[random.nextInt(methods.size())]}"())
     }
 }

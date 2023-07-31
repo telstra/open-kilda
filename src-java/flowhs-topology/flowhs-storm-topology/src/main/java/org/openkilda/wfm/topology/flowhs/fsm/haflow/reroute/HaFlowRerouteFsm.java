@@ -31,13 +31,13 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.DeallocateResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HandleNotCompletedCommandsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HandleNotDeallocatedResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HandleNotRemovedPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HandleNotRevertedResourceAllocationAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.NotifyHaFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.NotifyHaFlowStatsOnNewPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.NotifyHaFlowStatsOnRemovedPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.OnReceivedInstallResponseAction;
@@ -363,12 +363,12 @@ public final class HaFlowRerouteFsm extends HaFlowPathSwappingFsm<HaFlowRerouteF
                     .from(State.NOTIFY_FLOW_MONITOR)
                     .to(State.FINISHED)
                     .on(Event.NEXT)
-                    .perform(new NotifyFlowMonitorAction<>(persistenceManager, carrier));
+                    .perform(new NotifyHaFlowMonitorAction<>(persistenceManager, carrier));
             builder.transition()
                     .from(State.NOTIFY_FLOW_MONITOR_WITH_ERROR)
                     .to(State.FINISHED_WITH_ERROR)
                     .on(Event.NEXT)
-                    .perform(new NotifyFlowMonitorAction<>(persistenceManager, carrier));
+                    .perform(new NotifyHaFlowMonitorAction<>(persistenceManager, carrier));
 
             builder.defineFinalState(State.FINISHED)
                     .addEntryAction(new OnFinishedAction(dashboardLogger, carrier));

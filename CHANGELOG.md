@@ -1,6 +1,75 @@
 # Changelog
 
-## v1.136.0 (29/05/2023)
+## v1.139.0 (31/07/2023)
+
+### Bug Fixes:
+-  [#5299](https://github.com/telstra/open-kilda/pull/5299) modify topology.tmpl to not include the VictoriaMetrics (Issue: [#5306](https://github.com/telstra/open-kilda/issues/5306))
+
+### Features:
+-  [#5257](https://github.com/telstra/open-kilda/pull/5257) open-kilda-5255 GUI: Add inner vlans into Edit flow page (Issue: [#5255](https://github.com/telstra/open-kilda/issues/5255)) [**gui**]
+-  [#5225](https://github.com/telstra/open-kilda/pull/5225) HA flows Part 16: Add auto reroute (Issues: [#5061](https://github.com/telstra/open-kilda/issues/5061) [#5238](https://github.com/telstra/open-kilda/issues/5238))
+
+
+### Improvements:
+-  [#5251](https://github.com/telstra/open-kilda/pull/5251) Docs improvements and clean up (Issue: [#5247](https://github.com/telstra/open-kilda/issues/5247)) [**docs**]
+-  [#5254](https://github.com/telstra/open-kilda/pull/5254) open-kilda-5226 Remove `yFlow.shared.*` Opentsdb metrics (Issue: [#5226](https://github.com/telstra/open-kilda/issues/5226))
+-  [#5259](https://github.com/telstra/open-kilda/pull/5259) open-kilda-5258 Unite SpeakerWorkerForDumpsBolt for flow/yflow/haflow… (Issue: [#5258](https://github.com/telstra/open-kilda/issues/5258))
+-  [#4940](https://github.com/telstra/open-kilda/pull/4940) Able to write stats data in multiple OpenTSDB databases (Issue: [#4925](https://github.com/telstra/open-kilda/issues/4925))
+-  [#5261](https://github.com/telstra/open-kilda/pull/5261) [TEST] Fix negative scenario tests running on HW environment only (Issue: [#5228](https://github.com/telstra/open-kilda/issues/5228)) [**tests**]
+-  [#5236](https://github.com/telstra/open-kilda/pull/5236) #5141: [TEST] Excess rules when update flow with stats VLANs (Issue: [#5141](https://github.com/telstra/open-kilda/issues/5141)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.138.0...v1.139.0).
+
+### Affected Components:
+otsdb
+
+---
+
+## v1.138.0 (06/07/2023)
+
+### Bug Fixes:
+-  [#5245](https://github.com/telstra/open-kilda/pull/5245) [Kilda GUI] wrong port information on switch port page (Issue: [#4922](https://github.com/telstra/open-kilda/issues/4922))
+
+### Improvements:
+
+-  [#5253](https://github.com/telstra/open-kilda/pull/5253) [Kilda GUI] GUI Switch details page sends one API request per each switch port (Issue: [#5153](https://github.com/telstra/open-kilda/issues/5248))
+-  [#5246](https://github.com/telstra/open-kilda/pull/5246) [Kilda GUI] Adding ticket reference field in isl detail (Issue: [#5072](https://github.com/telstra/open-kilda/issues/5072))
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.137.0...v1.138.0).
+
+### Affected Components:
+Kilda GUI
+
+---
+
+## v1.137.0 (29/06/2023)
+
+### Features:
+-  [#5218](https://github.com/telstra/open-kilda/pull/5218) [TEST] Creating tests for HA-flow ping functionality [**tests**]
+-  [#5206](https://github.com/telstra/open-kilda/pull/5206) Add HA-Flows into Monitoring topology (Issue: [#5172](https://github.com/telstra/open-kilda/issues/5172))
+-  [#5176](https://github.com/telstra/open-kilda/pull/5176) feat(ha-flow-ping): Add HA Flow manual ping (Issue: [#5153](https://github.com/telstra/open-kilda/issues/5153))
+-  [#5209](https://github.com/telstra/open-kilda/pull/5209) feat(ha-flow-ping): add ha flow periodic pings (Issue: [#5153](https://github.com/telstra/open-kilda/issues/5153)) [**storm-topologies**]
+-  [#5211](https://github.com/telstra/open-kilda/pull/5211) Add doc which describes OpenKilda metrics [**docs**]
+
+### Bug Fixes:
+-  [#5229](https://github.com/telstra/open-kilda/pull/5229) Fix delete old rules based on vlan stats
+-  [#5233](https://github.com/telstra/open-kilda/pull/5233) fix ping rule bug
+
+### Improvements:
+-  [#5216](https://github.com/telstra/open-kilda/pull/5216) #5198: [TEST]Fix unstable 'Create diverse HA-Flow' test (Issues: [#5198](https://github.com/telstra/open-kilda/issues/5198) [#5198](https://github.com/telstra/open-kilda/issues/5198)) [**tests**]
+-  [#5252](https://github.com/telstra/open-kilda/pull/5252) Add NoviFlow switches support into lockkeeper
+-  [#5227](https://github.com/telstra/open-kilda/pull/5227) [TEST] Fix several flaky tests [**tests**]
+-  [#5228](https://github.com/telstra/open-kilda/pull/5228) [TEST] Refactor errors verification [**tests**]
+-  [#5196](https://github.com/telstra/open-kilda/pull/5196) #5152: [TEST]Add ability to validate HA-Flow (Issue: [#5152](https://github.com/telstra/open-kilda/issues/5152)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.136.0...v1.137.0).
+
+### Affected Components:
+ping
+
+---
+
+## v1.136.0 (31/05/2023)
 
 ### Features:
 -  [#5195](https://github.com/telstra/open-kilda/pull/5195) HA flows Part 13: Add H&S swap path operation (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
@@ -27,7 +96,7 @@ OrientDB schema have been changed in this release. You need to apply schema migr
 
 ---
 
-## v1.135.0 (18/05/2023)
+## v1.135.0 (19/05/2023)
 
 ### Features:
 -  [#5190](https://github.com/telstra/open-kilda/pull/5190) Update API doc for HA-Flow read operation (Issue: [#5148](https://github.com/telstra/open-kilda/issues/5148)) [**docs**]

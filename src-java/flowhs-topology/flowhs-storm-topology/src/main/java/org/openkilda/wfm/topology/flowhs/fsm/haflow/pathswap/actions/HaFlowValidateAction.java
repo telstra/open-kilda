@@ -74,6 +74,7 @@ public class HaFlowValidateAction extends
                         format("Could not swap paths: Protected path of HA-flow %s is not in ACTIVE state", haFlowId));
             }
             haFlow.setStatus(FlowStatus.IN_PROGRESS);
+            haFlow.getHaSubFlows().forEach(subFlow -> subFlow.setStatus(FlowStatus.IN_PROGRESS));
             saveAndSetInProgressStatuses(haFlow.getForwardPath(), stateMachine);
             saveAndSetInProgressStatuses(haFlow.getReversePath(), stateMachine);
             saveAndSetInProgressStatuses(haFlow.getProtectedForwardPath(), stateMachine);

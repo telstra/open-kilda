@@ -18,5 +18,6 @@ FROM ${base_image}
 
 RUN pip install flask paramiko docker
 ADD lockkeeper.py /lockkeeper.py
+ADD cli/* /cli/
 ENV FLASK_APP=lockkeeper.py
 CMD ["flask", "run", "--host=0.0.0.0", "--port=5001"]

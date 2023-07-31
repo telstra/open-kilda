@@ -236,7 +236,7 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
                     .within(State.INSTALLING_RULES)
                     .on(Event.RESPONSE_RECEIVED)
                     .perform(new OnReceivedResponseAction(
-                            config.speakerCommandRetriesLimit, REMOVE_ACTION_NAME, Event.RULES_INSTALLED));
+                            config.speakerCommandRetriesLimit, INSTALL_ACTION_NAME, Event.RULES_INSTALLED));
 
             // rollback in case of error
             builder.transitions()

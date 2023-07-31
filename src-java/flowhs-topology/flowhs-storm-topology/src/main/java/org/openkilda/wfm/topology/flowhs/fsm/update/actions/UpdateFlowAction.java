@@ -194,6 +194,10 @@ public class UpdateFlowAction extends
                 targetFlow.setPathComputationStrategy(flow.getPathComputationStrategy());
             }
         }
+        if (targetFlow.getVlanStatistics() != null) {
+            flow.setVlanStatistics(targetFlow.getVlanStatistics());
+        }
+
         flow.setLoopSwitchId(targetFlow.getLoopSwitchId());
         return targetFlow;
     }

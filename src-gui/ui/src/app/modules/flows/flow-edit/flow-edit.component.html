@@ -4,8 +4,8 @@
         <div class="col-sm-12">
     <h6 class="card-title card-custom-title">FLOW DETAILS
 
-      <span *ngIf="commonService.hasPermission('fw_flow_delete') && (!storeLinkSetting || (flowDetailData.hasOwnProperty('controller-flow')  && flowDetailData['controller-flow'] ) || (storeLinkSetting && flowDetailData.hasOwnProperty('discrepancy') && flowDetailData['discrepancy'].hasOwnProperty('controller-discrepancy') && !flowDetailData['discrepancy']['controller-discrepancy']))" class="btn btn-dark btn-sm pull-right" (click)="deleteFlow()">Delete</span> 
-      <div class="clear clearfix"></div>     
+      <span *ngIf="commonService.hasPermission('fw_flow_delete') && (!storeLinkSetting || (flowDetailData.hasOwnProperty('controller-flow')  && flowDetailData['controller-flow'] ) || (storeLinkSetting && flowDetailData.hasOwnProperty('discrepancy') && flowDetailData['discrepancy'].hasOwnProperty('controller-discrepancy') && !flowDetailData['discrepancy']['controller-discrepancy']))" class="btn btn-dark btn-sm pull-right" (click)="deleteFlow()">Delete</span>
+      <div class="clear clearfix"></div>
     </h6>
     <div class="card">
       <div class="card-body">
@@ -163,6 +163,15 @@
                   </div>
                 </div>
             </div>
+            <div class='form-group row'>
+              <label class='col-sm-3 col-form-label'>Inner Vlan:</label>
+              <div class='col-sm-6'>
+                <ng-select dropdownPosition="bottom" searchable="true" placeholder="Select source inner VLAN" formControlName="source_inner_vlan" [items]="vlanPorts" bindLabel="label"     bindValue="value"></ng-select>
+                <div *ngIf="submitted && f.source_inner_vlan.errors" class="invalid-feedback">
+                  <div *ngIf="f.source_inner_vlan.errors.required">Please select source inner VLAN</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -195,6 +204,15 @@
                 <ng-select dropdownPosition="bottom" searchable="true" placeholder="Select destination VLAN" formControlName="target_vlan" [items]="vlanPorts" bindLabel="label"     bindValue="value"></ng-select>
                 <div *ngIf="submitted && f.target_vlan.errors" class="invalid-feedback">
                   <div *ngIf="f.target_vlan.errors.required">Please select destination VLAN</div>
+                </div>
+              </div>
+            </div>
+            <div class='form-group row'>
+              <label class='col-sm-3 col-form-label'>Inner Vlan:</label>
+              <div class='col-sm-6'>
+                <ng-select dropdownPosition="bottom" searchable="true" placeholder="Select destination inner VLAN" formControlName="target_inner_vlan" [items]="vlanPorts" bindLabel="label"     bindValue="value"></ng-select>
+                <div *ngIf="submitted && f.target_inner_vlan.errors" class="invalid-feedback">
+                  <div *ngIf="f.target_inner_vlan.errors.required">Please select destination inner VLAN</div>
                 </div>
               </div>
             </div>

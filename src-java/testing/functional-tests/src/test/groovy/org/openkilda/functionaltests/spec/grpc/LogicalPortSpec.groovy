@@ -1,14 +1,14 @@
 package org.openkilda.functionaltests.spec.grpc
 
+import org.openkilda.functionaltests.error.LogicalPortNotCreatedExpectedError
+import org.openkilda.functionaltests.error.LogicalPortNotFoundExpectedError
+
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.grpc.speaker.model.LogicalPortDto
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.model.grpc.LogicalPortType
-
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
@@ -59,8 +59,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.NOT_FOUND
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Provided logical port does not exist."
+        new LogicalPortNotFoundExpectedError()
         Boolean testIsCompleted = true
 
         cleanup: "Remove created port"
@@ -86,9 +85,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
 
         then: "Human readable error is returned."
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).errorMessage == data.errorMessage
-
+        new LogicalPortNotCreatedExpectedError(data.errorMessage, ~/.*/).matches(exc)
         where:
         [data, sw] << [
                 [
@@ -119,9 +116,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
 
         then: "Human readable error is returned."
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.NOT_FOUND
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Provided logical port does not exist."
-
+        new LogicalPortNotFoundExpectedError(~/.*/).matches(exc)
         where:
         sw << getNoviflowSwitches()
     }

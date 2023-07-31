@@ -111,6 +111,7 @@ public class ValidateFlowAction extends
 
             foundHaFlow.setStatus(FlowStatus.IN_PROGRESS);
             foundHaFlow.setStatusInfo(null);
+            foundHaFlow.getHaSubFlows().forEach(sunFlow -> sunFlow.setStatus(FlowStatus.IN_PROGRESS));
             return foundHaFlow;
         });
 

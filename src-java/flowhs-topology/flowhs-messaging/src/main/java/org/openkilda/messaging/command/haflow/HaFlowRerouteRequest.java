@@ -15,12 +15,12 @@
 
 package org.openkilda.messaging.command.haflow;
 
-import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.command.BaseRerouteRequest;
 import org.openkilda.model.IslEndpoint;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NonNull;
@@ -28,17 +28,32 @@ import lombok.NonNull;
 import java.util.Set;
 
 @Data
-@AllArgsConstructor
-@EqualsAndHashCode(callSuper = false)
-@JsonNaming(SnakeCaseStrategy.class)
-public class HaFlowRerouteRequest extends CommandData {
+@EqualsAndHashCode(callSuper = true)
+public class HaFlowRerouteRequest extends BaseRerouteRequest {
     private static final long serialVersionUID = 1L;
 
     @NonNull
     String haFlowId;
-    Set<IslEndpoint> affectedIsls;
     boolean effectivelyDown;
-    String reason;
-    boolean ignoreBandwidth;
     boolean manual;
+
+    @JsonCreator
+    public HaFlowRerouteRequest(
+            @NonNull @JsonProperty("ha_flow_id") String haFlowId,
+            @NonNull @JsonProperty("affected_isls") Set<IslEndpoint> affectedIsls,
+            @JsonProperty("effectively_down") boolean effectivelyDown,
+            @JsonProperty("reason") String reason,
+            @JsonProperty("ignore_bandwidth") boolean ignoreBandwidth,
+            @JsonProperty("manual") boolean manual) {
+        super(affectedIsls, reason, ignoreBandwidth);
+        this.haFlowId = haFlowId;
+        this.effectivelyDown = effectivelyDown;
+        this.manual = manual;
+    }
+
+    @JsonIgnore
+    @Override
+    public String getFlowId() {
+        return getHaFlowId();
+    }
 }

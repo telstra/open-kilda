@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithConflictExpectedError
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -15,7 +18,6 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
@@ -33,9 +35,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -223,7 +223,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         def flow1 = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow1)
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.flowId))
-        def flow2 = flowHelperV2.randomFlow(switchPair)
+        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1])
         flowHelperV2.addFlow(flow2)
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow1.flowId))
 
@@ -616,11 +616,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         then: "Error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        def error = exc.responseBodyAsString.to(MessageError)
-        error.errorMessage == "Could not update flow"
-        error.errorDescription == data.message(isl)
-
+        new FlowNotUpdatedExpectedError(data.descriptionPattern(isl)).matches(exc)
         cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
 
@@ -629,14 +625,14 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                 [
                         switchType: "source",
                         port      : "srcPort",
-                        message   : { Isl violatedIsl ->
+                        descriptionPattern   : { Isl violatedIsl ->
                             getPortViolationError("source", violatedIsl.srcPort, violatedIsl.srcSwitch.dpId)
                         }
                 ],
                 [
                         switchType: "destination",
                         port      : "dstPort",
-                        message   : { Isl violatedIsl ->
+                        descriptionPattern   : { Isl violatedIsl ->
                             getPortViolationError("destination", violatedIsl.dstPort, violatedIsl.dstSwitch.dpId)
                         }
                 ]
@@ -661,11 +657,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         then: "Error is returned, stating a readable reason of conflict"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.CONFLICT
-        with(error.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not update flow"
-            errorDescription == data.getError(flow1, flow2, patch)
-        }
+        new FlowNotUpdatedWithConflictExpectedError(data.errorDescription(flow1, flow2, patch)).matches(error)
 
         cleanup:
         [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
@@ -681,7 +673,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                                 }
                             }
                         },
-                        getError: { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict, FlowPatchV2 patchDto ->
+                        errorDescription: { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict, FlowPatchV2 patchDto ->
                             errorDescription(dominantFlow, "source", flowToConflict, "source", patchDto)
                         }
                 ],
@@ -694,7 +686,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                                 }
                             }
                         },
-                        getError: { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict, FlowPatchV2 patchDto ->
+                        errorDescription: { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict, FlowPatchV2 patchDto ->
                             errorDescription(dominantFlow, "destination", flowToConflict, "destination", patchDto)
                         }
                 ],
@@ -708,7 +700,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                                 }
                             }
                         },
-                        getError: { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict, FlowPatchV2 patchDto ->
+                        errorDescription: { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict, FlowPatchV2 patchDto ->
                             errorDescription(dominantFlow, "source", flowToConflict, "source", patchDto)
                         }
                 ],
@@ -722,7 +714,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                                 }
                             }
                         },
-                        getError: { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict, FlowPatchV2 patchDto ->
+                        errorDescription: { FlowRequestV2 dominantFlow, FlowRequestV2 flowToConflict, FlowPatchV2 patchDto ->
                             errorDescription(dominantFlow, "destination", flowToConflict, "destination", patchDto)
                         }
                 ]
@@ -746,10 +738,8 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         then: "Bad Request response is returned"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.BAD_REQUEST
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not update flow"
-        errorDetails.errorDescription == "Can not turn on ignore bandwidth flag and strict bandwidth flag at the same time"
+        new FlowNotUpdatedExpectedError(
+                ~/Can not turn on ignore bandwidth flag and strict bandwidth flag at the same time/).matches(error)
 
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
@@ -815,38 +805,32 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         then: "Bad Request response is returned"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == HttpStatus.BAD_REQUEST
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Invalid flow data"
+        new FlowNotUpdatedExpectedError("Invalid flow data", description).matches(error)
 
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
 
         where:
-        maxLatencyBefore | maxLatencyT2Before | maxLatencyAfter | maxLatencyT2After
-        null             | null               | null            | 1
-        2                | 3                  | null            | 1
+        maxLatencyBefore | maxLatencyT2Before | maxLatencyAfter | maxLatencyT2After | description
+        null             | null               | null            | 1                 | ~/maxLatencyTier2 property cannot be used without maxLatency/
+        2                | 3                  | null            | 1                 | ~/The maxLatency 2ms is higher than maxLatencyTier2 1ms/
     }
 
     @Shared
     def getPortViolationError = { String endpoint, int port, SwitchId swId ->
-        "The port $port on the switch '$swId' is occupied by an ISL ($endpoint endpoint collision)."
+        ~/The port $port on the switch \'$swId\' is occupied by an ISL \($endpoint endpoint collision\)./
     }
 
     @Shared
     def errorDescription = { FlowRequestV2 flow, String endpoint, FlowRequestV2 conflictingFlow,
             String conflictingEndpoint, FlowPatchV2 patch ->
         def requestedFlow = jacksonMerge(conflictingFlow, patch)
-        "Requested flow '$conflictingFlow.flowId' " +
-                "conflicts with existing flow '$flow.flowId'. " +
-                "Details: requested flow '$requestedFlow.flowId' $conflictingEndpoint: " +
-                "switchId=\"${requestedFlow."$conflictingEndpoint".switchId}\" " +
-                "port=${requestedFlow."$conflictingEndpoint".portNumber}" +
-                "${requestedFlow."$conflictingEndpoint".vlanId ? " vlanId=" + requestedFlow."$conflictingEndpoint".vlanId : ""}, " +
-                "existing flow '$flow.flowId' $endpoint: " +
-                "switchId=\"${flow."$endpoint".switchId}\" " +
-                "port=${flow."$endpoint".portNumber}" +
-                "${flow."$endpoint".vlanId ? " vlanId=" + flow."$endpoint".vlanId : ""}"
+        ~/Requested flow \'$conflictingFlow.flowId\' conflicts with existing flow \'$flow.flowId\'. \
+Details: requested flow \'$requestedFlow.flowId\' $conflictingEndpoint: switchId=\"\
+${requestedFlow."$conflictingEndpoint".switchId}\" port=${requestedFlow."$conflictingEndpoint".portNumber}\
+${requestedFlow."$conflictingEndpoint".vlanId ? " vlanId=" + requestedFlow."$conflictingEndpoint".vlanId : ""}, \
+existing flow \'$flow.flowId\' $endpoint: switchId=\"${flow."$endpoint".switchId}\" port=${flow."$endpoint".portNumber}\
+${flow."$endpoint".vlanId ? " vlanId=" + flow."$endpoint".vlanId : ""}/
     }
 
     /**

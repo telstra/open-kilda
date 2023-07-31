@@ -1,16 +1,16 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.error.yflow.YFlowNotUpdatedExpectedError
+import org.openkilda.functionaltests.error.yflow.YFlowNotUpdatedWithConflictExpectedError
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.YFlowHelper
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.yflows.SubFlowPatchPayload
 import org.openkilda.northbound.dto.v2.yflows.YFlow
@@ -328,18 +328,13 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == data.errorStatusCode
-        exc.responseBodyAsString.to(MessageError).with {
-            assert errorMessage == "Could not update y-flow"
-            assertThat(errorDescription).matches(data.errorDescrPattern)
-        }
-
+        data.expectedError.matches(exc)
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
 
         where: data << [
                 [
-                        descr: "non-existent subflowId",
+                        descr        : "non-existent subflowId",
                         updateClosure: { YFlow payload ->
                             payload.subFlows[0].flowId += "non-existent"
                             def allowedPorts = topology.getAllowedPortsForSwitch(topology.find(
@@ -347,40 +342,38 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                                     payload.subFlows[1].endpoint.portNumber
                             payload.subFlows[0].endpoint.portNumber = allowedPorts[0]
                         },
-                        errorStatusCode: HttpStatus.CONFLICT,
-                        errorDescrPattern: /Requested flow '.*?' conflicts with existing flow '.*'. Details: .*/
+                        expectedError: new YFlowNotUpdatedWithConflictExpectedError(
+                                ~/Requested flow '.*?' conflicts with existing flow '.*'. Details:.*/)
                 ],
                 [
                         descr: "subflowId not specified",
                         updateClosure: { YFlow payload ->
                             payload.subFlows[1].flowId = null
                         },
-                        errorStatusCode: HttpStatus.CONFLICT,
-                        errorDescrPattern: /Requested flow '.*?' conflicts with existing flow '.*'. Details: .*/
+                        expectedError: new YFlowNotUpdatedWithConflictExpectedError(
+                                ~/Requested flow '.*?' conflicts with existing flow '.*'. Details:.*/)
                 ],
                 [
                         descr: "only 1 subflow in payload",
                         updateClosure: { YFlow payload ->
                             payload.subFlows.removeLast()
                         },
-                        errorStatusCode: HttpStatus.BAD_REQUEST,
-                        errorDescrPattern: /The y-flow .* must have at least 2 sub flows/
+                        expectedError: new YFlowNotUpdatedExpectedError(~/The y-flow.* must have at least 2 sub flows/)
                 ],
                 [
                         descr: "conflict after update",
                         updateClosure: { YFlow payload ->
                             payload.subFlows[0].sharedEndpoint.vlanId = payload.subFlows[1].sharedEndpoint.vlanId
                         },
-                        errorStatusCode: HttpStatus.BAD_REQUEST,
-                        errorDescrPattern: /The sub-flows .* and .* have shared endpoint conflict: .*/
+                        expectedError: new YFlowNotUpdatedExpectedError(
+                                ~/The sub-flows .* and .* have shared endpoint conflict: .*/)
                 ],
                 [
                         descr: "empty shared endpoint",
                         updateClosure: { YFlow payload ->
                             payload.sharedEndpoint = null
                         },
-                        errorStatusCode: HttpStatus.BAD_REQUEST,
-                        errorDescrPattern: /Errors: SharedEndpoint is required/
+                        expectedError: new YFlowNotUpdatedExpectedError(~/Errors: SharedEndpoint is required/)
                 ]
         ]
     }
@@ -398,12 +391,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == data.errorStatusCode
-        exc.responseBodyAsString.to(MessageError).with {
-            assert errorMessage == data.errorMessage
-            assertThat(errorDescription).matches(data.errorDescrPattern)
-        }
-
+        new YFlowNotUpdatedExpectedError(data.errorMessage, data.errorDescrPattern).matches(exc)
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
 
@@ -425,7 +413,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                         },
                         errorStatusCode: HttpStatus.BAD_REQUEST,
                         errorMessage: "Y-flow update error",
-                        errorDescrPattern: /There is no sub-flows with sub-flow id: non-existent-flowid/
+                        errorDescrPattern: ~/There is no sub-flows with sub-flow id: non-existent-flowid/
                 ],
                 [
                         descr: "only 1 subflow specified",
@@ -441,7 +429,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                         },
                         errorStatusCode: HttpStatus.BAD_REQUEST,
                         errorMessage: "Could not update y-flow",
-                        errorDescrPattern: /The y-flow .* must have at least 2 sub flows/
+                        errorDescrPattern: ~/The y-flow .* must have at least 2 sub flows/
                 ],
                 [
                         descr: "switch conflict after update",
@@ -464,7 +452,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                         },
                         errorStatusCode: HttpStatus.BAD_REQUEST,
                         errorMessage: "Could not update y-flow",
-                        errorDescrPattern: /The sub-flows .* and .* have shared endpoint conflict: .*/
+                        errorDescrPattern: ~/The sub-flows .* and .* have shared endpoint conflict: .*/
                 ]
         ]
     }

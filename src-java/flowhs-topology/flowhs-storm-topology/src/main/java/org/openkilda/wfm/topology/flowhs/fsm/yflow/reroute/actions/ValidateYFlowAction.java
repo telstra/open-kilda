@@ -77,13 +77,12 @@ public class ValidateYFlowAction extends
         YFlowRerouteRequest request = context.getRerouteRequest();
         String yFlowId = request.getYFlowId();
         Set<IslEndpoint> affectedIsls =
-                new HashSet<>(Optional.ofNullable(request.getAffectedIsl()).orElse(emptySet()));
+                new HashSet<>(Optional.ofNullable(request.getAffectedIsls()).orElse(emptySet()));
 
-        dashboardLogger.onYFlowReroute(yFlowId, affectedIsls, request.isForce());
+        dashboardLogger.onYFlowReroute(yFlowId, affectedIsls);
 
         stateMachine.setAffectedIsls(affectedIsls);
         stateMachine.setRerouteReason(request.getReason());
-        stateMachine.setForceReroute(request.isForce());
         stateMachine.setIgnoreBandwidth(request.isIgnoreBandwidth());
 
         YFlow yFlow = transactionManager.doInTransaction(() -> {
@@ -122,8 +121,7 @@ public class ValidateYFlowAction extends
 
             boolean mainAffinitySubFlowIsAffected = isFlowAffected(mainAffinitySubFlow, affectedIsls);
             Set<String> affectedFlowIds = subFlows.stream()
-                    .filter(flow -> stateMachine.isForceReroute() || mainAffinitySubFlowIsAffected
-                            || isFlowAffected(flow, affectedIsls))
+                    .filter(flow -> mainAffinitySubFlowIsAffected || isFlowAffected(flow, affectedIsls))
                     .map(Flow::getFlowId)
                     .collect(Collectors.toSet());
             stateMachine.setTargetSubFlowIds(affectedFlowIds);

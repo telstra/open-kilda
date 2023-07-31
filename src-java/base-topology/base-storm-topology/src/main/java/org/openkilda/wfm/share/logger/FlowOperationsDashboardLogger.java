@@ -85,7 +85,6 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String FAILED_RESULT = "failed";
 
     private static final String FAILURE_REASON = "failure-reason";
-    private static final String FORCED_REROUTE = "forced_reroute";
 
     public FlowOperationsDashboardLogger(Logger logger) {
         super(logger);
@@ -385,12 +384,11 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     /**
      * Log a flow-paths-reroute event.
      */
-    public void onFlowPathReroute(String flowId, Collection<IslEndpoint> affectedIsl, boolean forceToReroute) {
+    public void onFlowPathReroute(String flowId, Collection<IslEndpoint> affectedIsl) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "flow-paths-reroute");
         data.put(FLOW_ID, flowId);
         data.put(EVENT_TYPE, REROUTE_EVENT);
-        data.put(FORCED_REROUTE, Boolean.toString(forceToReroute));
         invokeLogger(Level.INFO, String.format("Reroute due to failure on %s ISLs flow %s", affectedIsl, flowId), data);
     }
 
@@ -597,12 +595,11 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     /**
      * Log a y-flow-reroute event.
      */
-    public void onYFlowReroute(String yFlowId, Collection<IslEndpoint> affectedIsl, boolean forceToReroute) {
+    public void onYFlowReroute(String yFlowId, Collection<IslEndpoint> affectedIsl) {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "y-flow-reroute");
         data.put(FLOW_ID, yFlowId);
         data.put(EVENT_TYPE, YFLOW_REROUTE_EVENT);
-        data.put(FORCED_REROUTE, Boolean.toString(forceToReroute));
         invokeLogger(Level.INFO, String.format("Reroute y-flow due to failure on %s ISLs flow %s",
                 affectedIsl, yFlowId), data);
     }

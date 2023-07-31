@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -17,7 +19,6 @@ import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.model.FlowEncapsulationType
@@ -26,11 +27,9 @@ import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v1.flows.PingOutput.PingOutputBuilder
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput
-import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
@@ -376,12 +375,7 @@ class FlowPingSpec extends HealthCheckSpecification {
 
         then: "Error is returned in response"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.BAD_REQUEST
-        with(e.responseBodyAsString.to(MessageError)) {
-            it.errorMessage == "Could not create flow"
-            it.errorDescription == "Couldn't turn on periodic pings for one-switch flow"
-        }
-
+        new FlowNotCreatedExpectedError(~/Couldn\'t turn on periodic pings for one-switch flow/).matches(e)
         cleanup:
         !e && flowHelperV2.deleteFlow(flow.flowId)
     }

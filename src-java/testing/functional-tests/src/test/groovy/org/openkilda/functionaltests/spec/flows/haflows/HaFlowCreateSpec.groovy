@@ -1,7 +1,9 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import org.openkilda.functionaltests.error.haflow.HaFlowNotCreatedExpectedError
+import org.openkilda.functionaltests.error.haflow.HaFlowNotCreatedWithConflictExpectedError
+
 import static groovyx.gpars.GParsPool.withPool
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
@@ -14,7 +16,6 @@ import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload
@@ -22,7 +23,6 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowPingPayload
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
@@ -106,12 +106,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.CONFLICT
-        exc.responseBodyAsString.to(MessageError).with {
-            assert errorMessage == "Could not create ha-flow"
-            assertThat(errorDescription).matches(/HA-flow .*? already exists/)
-        }
-
+        new HaFlowNotCreatedWithConflictExpectedError(~/HA-flow ${haFlow.getHaFlowId()} already exists/).matches(exc)
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }
@@ -133,15 +128,10 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).with {
-            assert errorMessage == "Could not create ha-flow"
-            assertThat(errorDescription).matches("To have ability to use double vlan tagging for both sub flow "
-            + "destination endpoints which are placed on one switch .*? you must set equal inner vlan for both endpoints. "
-            + "Current inner vlans: ${haFlowRequest.subFlows[0].endpoint.innerVlanId} and "
-            + "${haFlowRequest.subFlows[1].endpoint.innerVlanId}.")
-        }
-
+        new HaFlowNotCreatedExpectedError(~/To have ability to use double vlan tagging for both sub flow \
+destination endpoints which are placed on one switch .*? you must set equal inner vlan for both endpoints. \
+Current inner vlans: ${haFlowRequest.subFlows[0].endpoint.innerVlanId} \
+and ${haFlowRequest.subFlows[1].endpoint.innerVlanId}./).matches(exc)
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }
@@ -158,12 +148,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        exc.responseBodyAsString.to(MessageError).with {
-            assert errorMessage == "Could not create ha-flow"
-            assertThat(errorDescription).matches(/The ha-flow .*? is one switch flow\..*?/)
-        }
-
+        new HaFlowNotCreatedExpectedError(~/The ha-flow .*? is one switch flow/).matches(exc)
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }

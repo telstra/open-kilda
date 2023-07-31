@@ -363,19 +363,7 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
                 return FlowStatus.DOWN;
             }
 
-            switch (mainFlowPrioritizedPathsStatus) {
-                case ACTIVE:
-                    return FlowStatus.UP;
-                case INACTIVE:
-                    return FlowStatus.DOWN;
-                case IN_PROGRESS:
-                    return FlowStatus.IN_PROGRESS;
-                case DEGRADED:
-                    return FlowStatus.DEGRADED;
-                default:
-                    throw new IllegalArgumentException(
-                            format("Unsupported flow path status %s", mainFlowPrioritizedPathsStatus));
-            }
+            return FlowStatus.convertFromPathStatus(mainFlowPrioritizedPathsStatus);
         }
     }
 

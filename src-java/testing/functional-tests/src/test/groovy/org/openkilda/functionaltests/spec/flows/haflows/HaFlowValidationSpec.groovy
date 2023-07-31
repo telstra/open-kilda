@@ -76,7 +76,7 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
         switchRole | switchToManipulate
         "shared endpoint"    | { HaFlow flow -> flow.getSharedEndpoint().getSwitchId()}
         "other endpoint"| {HaFlow flow -> flow.getSubFlows().shuffled().first().getEndpoint().getSwitchId()}
-        "transit switch"| {HaFlow flow -> (haFlowHelper.getInvolvedSwitches(flow.getHaFlowId()) -
+        "transit"| {HaFlow flow -> (haFlowHelper.getInvolvedSwitches(flow.getHaFlowId()) -
                 (flow.subFlows*.endpoint.switchId + flow.sharedEndpoint.switchId)).first()}
     }
 
@@ -108,8 +108,7 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
         switchRole | switchToManipulate
         "shared endpoint"    | { HaFlow flow -> flow.getSharedEndpoint().getSwitchId()}
         "other endpoint"| {HaFlow flow -> flow.getSubFlows().shuffled().first().getEndpoint().getSwitchId()}
-        "transit switch"| {HaFlow flow -> (haFlowHelper.getInvolvedSwitches(flow.getHaFlowId()) -
-                (flow.subFlows*.endpoint.switchId + flow.sharedEndpoint.switchId)).first()}
+        "transit"| {HaFlow flow -> (haFlowHelper.getYPoint(flow))}
     }
 
 }

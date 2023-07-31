@@ -38,6 +38,24 @@ public enum FlowStatus {
     /**
      * Flow is in degraded state.
      */
-    DEGRADED
+    DEGRADED;
+
+    /**
+     * Converts form path status to corresponding flow status.
+     */
+    public static FlowStatus convertFromPathStatus(FlowPathStatus pathStatus) {
+        switch (pathStatus) {
+            case ACTIVE:
+                return UP;
+            case INACTIVE:
+                return DOWN;
+            case DEGRADED:
+                return DEGRADED;
+            case IN_PROGRESS:
+                return IN_PROGRESS;
+            default:
+                throw new IllegalArgumentException(String.format("Unknown path status %s", pathStatus));
+        }
+    }
 }
 

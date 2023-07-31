@@ -1,26 +1,28 @@
 # Protected path for flow
 
 ## Goals
-Calculate and deploy protected diverse path for flow, so if the primary path will fail we can switch traffic fast to protected path.
+Calculate and deploy a protected diverse path for flow, so if the primary path will fail, we can switch traffic quickly to a protected path.
 
 ## API changes
-- flow object should be extended with an boolean parameter allocate-protected-path with values false(default) and true
-- `/flows/{flow-id}/path` should also return `protected_path` with the protected path.
-- Add `/flows/{flow-id}/swap`, that should swap primary and protected paths for flow with protected paths feature enabled.
+- a flow object should be extended with a boolean parameter `allocate-protected-path` with values the false value by default
+- `/flows/{flow-id}/path` should also return a `protected_path` field with the protected path.
+- Add `/flows/{flow-id}/swap` API that should swap primary and protected paths for the flow when the protected paths feature is enabled.
 
 ## DB changes
 - Flow: add allocate_protected_path, protected_forward_path_id, protected_reverse_path_id properties.
 
-Path will store in Neo4J as usual.
+A path will store in Neo4J as usual.
 
-Protected path must be fully diverse from the primary one, in terms ISL or switches (configurable). If no overlapping protected path can be fond, flow move to DOWN state. 
+A protected path must be fully diverse from the primary one in terms ISL or switches (configurable). If a non-overlapping 
+protected path cannot be found, the flow moves to the DOWN state. 
 
 ### Sequence Diagrams
 ![Create protected flow](protected-paths-create.png)
 ![Reroute protected flow](protected-paths-reroute.png)
 
 ### Get path response example
-GET `/flows/flow1/path` example response, when `flow1` has protected path and another flow `other1` is in the same diversity group, with its out protected path
+GET `/flows/flow1/path` example response, when `flow1` has a protected path and another flow `other1` is in the same 
+diversity group with its own protected path:
 ```
 {
   "flowid": "flow1", 
@@ -101,4 +103,4 @@ GET `/flows/flow1/path` example response, when `flow1` has protected path and an
 ```
 
 ### Limitations
-We still needed for the control plane to perform switching to protected path, with several controller roundtrips.
+We still need for the control plane to perform switching to protected path with several controller round trips.

@@ -1,5 +1,9 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.error.flowloop.FlowLoopNotCreatedExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -22,7 +26,6 @@ import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
@@ -33,7 +36,6 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
@@ -691,12 +693,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def e = thrown(HttpClientErrorException)
-        e.statusCode == HttpStatus.BAD_REQUEST
-        with(e.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not update flow"
-            errorDescription == "Source switch $switchPair.src.dpId is not connected to the controller"
-        }
-
+        new FlowNotUpdatedExpectedError(~/Source switch $switchPair.src.dpId is not connected to the controller/).matches(e)
         and: "FlowLoop is not created"
         !northbound.getFlow(flow.flowId).loopSwitchId
 
@@ -705,12 +702,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned" //system can't update the flow when it is down
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        with(exc.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not update flow"
-            errorDescription == "Source switch $switchPair.src.dpId is not connected to the controller"
-        }
-
+        new FlowNotUpdatedExpectedError(~/Source switch $switchPair.src.dpId is not connected to the controller/).matches(exc)
         then: "FlowLoop is not created"
         !northbound.getFlow(flow.flowId).loopSwitchId
 
@@ -736,11 +728,8 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         then: "FlowLoop is not created on the dst switch"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.UNPROCESSABLE_ENTITY
-        with(exc.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Can't create flow loop on '$flow.flowId'"
-            errorDescription == "Flow is already looped on switch '$switchPair.src.dpId'"
-        }
+        new FlowLoopNotCreatedExpectedError(flow.getFlowId(),
+                ~/Flow is already looped on switch \'$switchPair.src.dpId\'/).matches(exc)
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
@@ -760,12 +749,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned" //flowLoop is no allowed on a transit switch
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        with(exc.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not update flow"
-            errorDescription == "Loop switch is not terminating in flow path"
-        }
-
+        new FlowNotUpdatedExpectedError(~/Loop switch is not terminating in flow path/).matches(exc)
         then: "FlowLoop is not created"
         !northbound.getFlow(flow.flowId).loopSwitchId
 
@@ -785,12 +769,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.NOT_FOUND
-        with(exc.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Flow not found"
-            errorDescription == "Flow '$NON_EXISTENT_FLOW_ID' not found."
-        }
-
+        new FlowNotFoundExpectedError(NON_EXISTENT_FLOW_ID).matches(exc)
         and: "FlowLoop rules are not created on the switch"
         getFlowLoopRules(sw.dpId).empty
 
@@ -815,12 +794,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == HttpStatus.BAD_REQUEST
-        with(exc.responseBodyAsString.to(MessageError)) {
-            errorMessage == "Could not update flow"
-            errorDescription == "Loop switch is not terminating in flow path"
-        }
-
+        new FlowNotUpdatedExpectedError(~/Loop switch is not terminating in flow path/).matches(exc)
         and: "FlowLoop rules are not created for the flow"
         !northboundV2.getFlow(flow.flowId).loopSwitchId
 

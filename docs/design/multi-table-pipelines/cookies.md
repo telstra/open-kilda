@@ -1,6 +1,7 @@
 # OpenFlow cookies data
 
-The length of a cookie field is 64. It is divided into several bit groups. Some bit fields are system-wide, i.e. have same meaning for possible cookies. Other bit fields are specific for a specific cookie type (some subset of cookies).
+The length of a cookie field is 64. It is divided into several bit groups. Some bit fields are system-wide, i.e. have 
+the same meaning for all cookies. Other bit fields are specific for a specific cookie type (some subset of cookies).
 
 ## System wide cookie fields
 This is a set of basic fields that are present in all cookie types.
@@ -11,12 +12,14 @@ S00TTTTT TTTT0000 00000000 00000000 00000000 00000000 00000000 00000000
 `- 63 bit                                                             `- 0 bit
 ```
 
-* S - SERVICE_FLAG (1 bit): if OF flow marked with 1 in this bit, then it is a service flow.  OpenKilda uses it to manage service traffic: ISL detection, ISL health check, loops prevention, etc.
-* T - TYPE_FIELD (9 bit): contains a cookie type code. This type defines the existence and layout of all other bit fields in the cookie.
+* S - SERVICE_FLAG (1 bit): if OF flow marked with 1 in this bit, then it is a service flow. OpenKilda uses it to manage 
+service traffic: ISL detection, ISL health check, loops prevention, etc.
+* T - TYPE_FIELD (9 bit): contains a cookie type code. This type defines the existence and the layout of all other bit fields in the cookie.
 
 
 ## Generic cookies (org.openkilda.model.cookie.CookieBase)
-This cookie format was the only existing format in OpenKilda from the beginning. It does not put any restrictions on a cookie format, and it can be used to read a "raw" cookie value to determine its actual type.
+This cookie format was the only existing format in OpenKilda from the beginning. It does not put any restrictions on a 
+cookie format, and it can be used to read a "raw" cookie value to determine its actual type.
 
 ## Service cookies (org.openkilda.model.cookie.ServiceCookie)
 Fields:
@@ -33,7 +36,7 @@ Constraints:
 * SERVICE_FLAG == 1
 * TYPE_FIELD == SERVICE_OR_FLOW_SEGMENT (0x000)
 
-## OpenKilda-flow's segment cookies (org.openkilda.model.cookie.FlowSegmentCookie)
+## OpenKilda flow's segment cookies (org.openkilda.model.cookie.FlowSegmentCookie)
 Fields:
 
 ```
@@ -42,20 +45,20 @@ _FR_____ ____LMY0 00000000 00000000 00000000 0000IIII IIIIIIII IIIIIIII
 `- 63 bit                                                             `- 0 bit
 ```
 
-* I - FLOW_EFFECTIVE_ID_FIELD (20 bits): a unique numeric kilda-flow identifier (equal across all paths)
-* R - FLOW_REVERSE_DIRECTION_FLAG (1 bit): if set, OF flow belongs to a reverse (Z-to-A) kilda-flow path
-* F - FLOW_FORWARD_DIRECTION_FLAG (1 bit): if set, OF flow belongs to a forward (A-to-Z) kilda-flow path
-* L - FLOW_LOOP_FLAG (1 bit): if set, this is a OF flow that "makes" a loop on a kilda-flow 
-* M - MIRROR_LOOP_FLAG (1 bit): if set, this is a OF flow that mirrors a kilda-flow
+* I - FLOW_EFFECTIVE_ID_FIELD (20 bits): a unique numeric OpenKilda flow identifier (equal across all paths)
+* R - FLOW_REVERSE_DIRECTION_FLAG (1 bit): if set, OF flow belongs to a reverse (Z-to-A) OpenKilda flow path
+* F - FLOW_FORWARD_DIRECTION_FLAG (1 bit): if set, OF flow belongs to a forward (A-to-Z) OpenKilda flow path
+* L - FLOW_LOOP_FLAG (1 bit): if set, this is a OF flow that "makes" a loop on a OpenKilda flow
+* M - MIRROR_LOOP_FLAG (1 bit): if set, this is a OF flow that mirrors a OpenKilda flow
 * Y - Y_FLOW_FLAG (1 bit): if set, this is a OF flow that is used by y-flows to share the same meter
 
 Constraints:
 * SERVICE_FLAG == 0
 * TYPE_FIELD one of {SERVICE_OR_FLOW_SEGMENT(0x000), SERVER_42_FLOW_RTT_INGRESS(0x00C)}
-* FLOW_REVERSE_DIRECTION_FLAG or FLOW_FORWARD_DIRECTION_FLAG must be set, but not both of them 
+* FLOW_REVERSE_DIRECTION_FLAG or FLOW_FORWARD_DIRECTION_FLAG must be set, but not both of them
 
-## Kilda-flow's shared segment cookies (org.openkilda.model.cookie.FlowSharedSegmentCookie)
-Refers to the OF flows used by several (at least one) kilda-flows.
+## OpenKilda flow's shared segment cookies (org.openkilda.model.cookie.FlowSharedSegmentCookie)
+Refers to the OF flows used by several (at least one) OpenKilda flows.
 
 Fields:
 ```
@@ -64,9 +67,9 @@ _00_____ ____SSSS 00000000 00000000 0000VVVV VVVVVVVV PPPPPPPP PPPPPPPP
 `- 63 bit                                                             `- 0 bit
 ```
 
-* S - SHARED_TYPE_FIELD (4 bits): shared segment type 
+* S - SHARED_TYPE_FIELD (4 bits): shared segment type
 * p - PORT_NUMBER_FIELD (16 bits): a switch port number with the OF flow belongs to this port
-* V - VLAN_ID_FIELD (12 bits): vlanId this OF flow matches
+* V - VLAN_ID_FIELD (12 bits): VLAN ID that this OF flow matches
 
 Constraints:
 
@@ -92,14 +95,16 @@ _00_____ ____0000 00000000 00000000 PPPPPPPP PPPPPPPP PPPPPPPP PPPPPPPP
 Constraints:
 * SERVICE_FLAG == 1
 * TYPE_FIELD one of {
-  LLDP_INPUT_CUSTOMER_TYPE(0x001), 
-  MULTI_TABLE_ISL_VLAN_EGRESS_RULES(0x002), 
-  MULTI_TABLE_ISL_VXLAN_EGRESS_RULES(0x003), 
-  MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES(0x004), 
-  MULTI_TABLE_INGRESS_RULES(0x005), 
-  ARP_INPUT_CUSTOMER_TYPE(0x006), 
+  LLDP_INPUT_CUSTOMER_TYPE(0x001),
+  MULTI_TABLE_ISL_VLAN_EGRESS_RULES(0x002),
+  MULTI_TABLE_ISL_VXLAN_EGRESS_RULES(0x003),
+  MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES(0x004),
+  MULTI_TABLE_INGRESS_RULES(0x005),
+  ARP_INPUT_CUSTOMER_TYPE(0x006),
   SERVER_42_FLOW_RTT_INPUT(0x009),
-  SERVER_42_ISL_RTT_INPUT(0x00D)}
+  SERVER_42_ISL_RTT_INPUT(0x00D),
+  LACP_REPLY_INPUT(0x00E),
+  PING_INPUT(0x00F)}
 
 ## Exclusion cookies (org.openkilda.model.cookie.ExclusionCookie)
 Fields:
@@ -110,8 +115,8 @@ _FR_____ ____0000 00000000 00000000 00000000 0000EEEE EEEEEEEE EEEEEEEE
 `- 63 bit                                                             `- 0 bit
 ```
 
-* E - EXCLUSION_ID_FIELD (20 bits): a unique exclusion numeric identifier 
-* R - FLOW_REVERSE_DIRECTION_FLAG (1 bit): refer to a kilda-flow's reverse path (Z-to-A) 
+* E - EXCLUSION_ID_FIELD (20 bits): a unique exclusion numeric identifier
+* R - FLOW_REVERSE_DIRECTION_FLAG (1 bit): refer to a kilda-flow's reverse path (Z-to-A)
 * F - FLOW_FORWARD_DIRECTION_FLAG (1 bit): refer to a kilda-flow's forward path (Z-to-A)
 
 Constraints:
@@ -166,6 +171,7 @@ Constraints:
 | `0x80A0_0000_0000_0000` | `APPLICATION_MIRROR_FLOW`                 | Mirrors traffic for application purposes.                                                                                                                                                                                                                                |
 | `0x80D0_0000_XXXX_XXXX` | `SERVER_42_ISL_RTT_INPUT`                 | Forwards server42 ISL RTT packet to ISL port XXX.                                                                                                                                                                                                                        |
 | `0x80E0_0000_XXXX_XXXX` | `LACP_REPLY_INPUT`                        | Catches LACP request packets from port XXX, sends it to Floodlight for modification, and then return it back to the port.                                                                                                                                                |
+| `0x80F0_0000_XXXX_XXXX` | `INPUT_PING`                              | Copies the functionality of MULTI_TABLE_ISL_VLAN_EGRESS but adding a new match entry (ETH_SRC=ping_magic_mac_address) and sends the packet directly to the transit table.                                                                                                 |
 | `0x4000_0000_000X_XXXX` | `INGRESS_FORWARD`                         | Receives Customer packets, push transit encapsulation if needed, and sends it to the port. Path direction is forward. XXX is a path unmasked cookie.                                                                                                                     |
 | `0x2000_0000_000X_XXXX` | `INGRESS_REVERSE`                         | Receives Customer packets, push transit encapsulation if needed, and sends it to the port. Path direction is reverse. XXX is a path unmasked cookie.                                                                                                                     |
 | `0x4008_0000_000X_XXXX` | `FLOW_LOOP_FORWARD`                       | Makes flow loop for forward direction (sends all customer traffic back to IN_PORT). XXX - path unmasked cookie.                                                                                                                                                          |
@@ -180,3 +186,4 @@ Constraints:
 | `0x20C0_0000_000X_XXXX` | `SERVER_42_FLOW_RTT_INGRESS_REVERSE`      | Receives server42 flow RTT packets from SERVER_42_FLOW_RTT_INPUT, pushes transit encapsulation, and sends them to ISL port. (It's a copy of a regular flow INGRESS_REVERSE rule, but with the matching by server42 input port). XXX is a path unmasked cookie.           |
 | `0x4070_0000_YYYX_XXXX` | `STAT_VLAN_FORWARD`                       | Receives Customer packets with a specific VLAN YYY for full port flow and sends them to the ingress table. The path direction is forward. XXX is a path unmasked cookie. This rule is needed to collect statistics about packet's VLANs which go through full port flow. |
 | `0x2070_0000_YYYX_XXXX` | `STAT_VLAN_REVERSE`                       | Receives Customer packets with a specific VLAN YYY for full port flow and sends them to the ingress table. The path direction id reverse. XXX is a path unmasked cookie. This rule is needed to collect statistics about packet's VLANs which go through full port flow. |
+

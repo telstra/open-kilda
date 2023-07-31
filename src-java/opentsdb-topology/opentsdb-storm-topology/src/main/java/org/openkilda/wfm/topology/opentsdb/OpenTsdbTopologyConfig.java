@@ -25,20 +25,14 @@ import com.sabre.oss.conf4j.annotation.Key;
 
 @Configuration
 public interface OpenTsdbTopologyConfig extends AbstractTopologyConfig {
+    String PREFIX = "opentsdb";
 
     @IgnoreKey
     OpenTsdbConfig getOpenTsdbConfig();
 
-    default String getKafkaOtsdbTopic() {
-        return getKafkaTopics().getOtsdbTopic();
-    }
-
     @Configuration
-    @Key("opentsdb")
+    @Key(PREFIX)
     interface OpenTsdbConfig {
-        @Key("hosts")
-        String getHosts();
-
         @Key("timeout")
         @Converter(SecondsToMilisConverter.class)
         int getTimeout();
