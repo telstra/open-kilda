@@ -12,93 +12,93 @@ declare var jQuery: any;
   templateUrl: './port-flows.component.html',
   styleUrls: ['./port-flows.component.css']
 })
-export class PortFlowsComponent implements  OnDestroy, OnInit,OnChanges, AfterViewInit {
+export class PortFlowsComponent implements  OnDestroy, OnInit, OnChanges, AfterViewInit {
   @ViewChild(DataTableDirective, { static: true })
   datatableElement: DataTableDirective;
   @Input() data;
-  @Input() textSearch:any;
+  @Input() textSearch: any;
   dtOptions: any = {};
   dtTrigger: Subject<any> = new Subject();
   wrapperHide = false;
-  srcSwitch : string;
-  dstSwitch : string;
-  expandedSrcSwitchName : boolean = false;
-  expandedSrcSwitchPort : boolean = false;
-  expandedSrcSwitchVlan : boolean = false;
+  srcSwitch: string;
+  dstSwitch: string;
+  expandedSrcSwitchName = false;
+  expandedSrcSwitchPort = false;
+  expandedSrcSwitchVlan = false;
 
-  expandedTargetSwitchName : boolean = false;
-  expandedTargetSwitchPort : boolean = false;
-  expandedTargetSwitchVlan : boolean = false;
+  expandedTargetSwitchName = false;
+  expandedTargetSwitchPort = false;
+  expandedTargetSwitchVlan = false;
 
-  expandedBandwidth: boolean = false;
-  expandedFlowId : boolean = false;
-  expandedState : boolean = false;
-  expandedStatus : boolean = false;
-  expandedDescription : boolean = false;
-  constructor(private renderer:Renderer2 , private loaderService:LoaderService,private switchService:SwitchService,public commonService:CommonService, private router: Router) { }
+  expandedBandwidth = false;
+  expandedFlowId = false;
+  expandedState = false;
+  expandedStatus = false;
+  expandedDescription = false;
+  constructor(private renderer: Renderer2 , private loaderService: LoaderService, private switchService: SwitchService, public commonService: CommonService, private router: Router) { }
 
   ngOnInit() {
-    var ref = this;
+    const ref = this;
     this.dtOptions = {
       pageLength: 10,
       deferRender: true,
-      info:true,
+      info: true,
       dom: 'tpli',
-      "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
+      'aLengthMenu': [[10, 20, 35, 50, -1], [10, 20, 35, 50, 'All']],
       retrieve: true,
       autoWidth: false,
       colResize: false,
       stateSave: false,
       language: {
-        searchPlaceholder: "Search"
-      }, 
-      drawCallback:function(){
-        if(jQuery('#portflowDataTable tbody tr').length < 10){
+        searchPlaceholder: 'Search'
+      },
+      drawCallback: function() {
+        if (jQuery('#portflowDataTable tbody tr').length < 10) {
           jQuery('#portflowDataTable_next').addClass('disabled');
-        }else{
+        } else {
           jQuery('#portflowDataTable_next').removeClass('disabled');
         }
       },
-      buttons:{
-        buttons:[
-          { extend: 'csv', text: 'Export', className: 'btn btn-dark',exportOptions:{columns: ':visible'} }
+      buttons: {
+        buttons: [
+          { extend: 'csv', text: 'Export', className: 'btn btn-dark', exportOptions: {columns: ':visible'} }
         ]
       },
-      "aoColumns": [
+      'aoColumns': [
         { sWidth: '15%' },
-        { sWidth:  '13%',"sType": "name","bSortable": true },
+        { sWidth:  '13%', 'sType': 'name', 'bSortable': true },
         { sWidth: '8%' },
         { sWidth: '8%' },
         { sWidth: '9%' },
-        { sWidth: '13%',"sType": "name","bSortable": true },
+        { sWidth: '13%', 'sType': 'name', 'bSortable': true },
         { sWidth: '8%' },
         { sWidth: '8%' },
         { sWidth: '9%' },
         { sWidth: '10%' },
         { sWidth: '10%' },
         { sWidth: '10%' },
-        { sWidth: '1%' ,"bSortable": false},
+        { sWidth: '1%' , 'bSortable': false},
         ],
-      columnDefs:[
+      columnDefs: [
         {
-          "targets": [ 2 ],
-          "visible": false,
-          "searchable": true
+          'targets': [ 2 ],
+          'visible': false,
+          'searchable': true
       },
       {
-          "targets": [ 6 ],
-          "visible": false,
-          "searchable": true
+          'targets': [ 6 ],
+          'visible': false,
+          'searchable': true
       },
-      { "targets": [12], "visible": false},
+      { 'targets': [12], 'visible': false},
       ],
-      initComplete:function( settings, json ){ 
-        setTimeout(function(){
+      initComplete: function( settings, json ) {
+        setTimeout(function() {
           ref.loaderService.hide();
           ref.wrapperHide = true;
-        },this.data.length/2);
+        }, this.data.length / 2);
       }
-    }
+    };
   }
 
 
@@ -116,8 +116,8 @@ export class PortFlowsComponent implements  OnDestroy, OnInit,OnChanges, AfterVi
     });
     this.enableButtons();
   }
-  showFlow(flowObj){
-    this.router.navigate(['/flows/details/'+flowObj.flowid]);
+  showFlow(flowObj) {
+    this.router.navigate(['/flows/details/' + flowObj.flowid]);
   }
   rerender(): void {
     this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
@@ -128,16 +128,16 @@ export class PortFlowsComponent implements  OnDestroy, OnInit,OnChanges, AfterVi
 
   ngOnDestroy(): void {
     this.dtTrigger.unsubscribe();
-   
+
   }
 
-  ngOnChanges(change: SimpleChanges){
-    if(typeof(change.data)!=='undefined' && change.data){
-      if(typeof(change.data)!=='undefined' && change.data.currentValue){
+  ngOnChanges(change: SimpleChanges) {
+    if (typeof(change.data) !== 'undefined' && change.data) {
+      if (typeof(change.data) !== 'undefined' && change.data.currentValue) {
         this.data  = change.data.currentValue;
       }
     }
-    if(typeof(change.textSearch)!=='undefined' && change.textSearch.currentValue){
+    if (typeof(change.textSearch) !== 'undefined' && change.textSearch.currentValue) {
       this.fulltextSearch(change.textSearch.currentValue);
     }
   }
@@ -147,12 +147,12 @@ export class PortFlowsComponent implements  OnDestroy, OnInit,OnChanges, AfterVi
     this[inputContainer] = this[inputContainer] ? false : true;
     if (this[inputContainer]) {
       setTimeout(() => {
-        this.renderer.selectRootElement("#" + inputContainer).focus();
+        this.renderer.selectRootElement('#' + inputContainer).focus();
       });
-    }else{
+    } else {
       setTimeout(() => {
-        this.renderer.selectRootElement('#'+inputContainer).value = "";
-        jQuery('#'+inputContainer).trigger('change');
+        this.renderer.selectRootElement('#' + inputContainer).value = '';
+        jQuery('#' + inputContainer).trigger('change');
       });
     }
   }
@@ -160,52 +160,52 @@ export class PortFlowsComponent implements  OnDestroy, OnInit,OnChanges, AfterVi
   stopPropagationmethod(e) {
     event.stopPropagation();
 
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       return false;
     }
   }
 
-  fulltextSearch(value:any){ 
+  fulltextSearch(value: any) {
      this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
         dtInstance.search(value)
                 .draw();
       });
   }
-  descrepancyString(row){
-    let text = [];
-    if(row.hasOwnProperty('controller-flow')){
-        if(row['controller-flow']){
-          text.push("controller:true");
-        }else{
-          text.push("controller:false");
+  descrepancyString(row) {
+    const text = [];
+    if (row.hasOwnProperty('controller-flow')) {
+        if (row['controller-flow']) {
+          text.push('controller:true');
+        } else {
+          text.push('controller:false');
         }
-    }else{
-      text.push("controller:false");
+    } else {
+      text.push('controller:false');
     }
 
-    if(row.hasOwnProperty('inventory-flow')){
-      if(row['inventory-flow']){
-        text.push("inventory:true");
-      }else{
-        text.push("inventory:false");
+    if (row.hasOwnProperty('inventory-flow')) {
+      if (row['inventory-flow']) {
+        text.push('inventory:true');
+      } else {
+        text.push('inventory:false');
       }
-    }else{
-      text.push("inventory:false");
+    } else {
+      text.push('inventory:false');
     }
 
-    return text.join(", ");
+    return text.join(', ');
   }
-  enableButtons(){
-    setTimeout(()=>{
+  enableButtons() {
+    setTimeout(() => {
       this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
-        var buttons = new jQuery.fn.dataTable.Buttons(dtInstance, {
+        const buttons = new jQuery.fn.dataTable.Buttons(dtInstance, {
           buttons: [
-            { extend: 'csv', text: 'Export', className: 'btn btn-dark' ,exportOptions:{columns: ':visible'} }
+            { extend: 'csv', text: 'Export', className: 'btn btn-dark' , exportOptions: {columns: ':visible'} }
           ]
         }).container().appendTo($('#buttons'));
       });
     });
-    
+
   }
 
 }

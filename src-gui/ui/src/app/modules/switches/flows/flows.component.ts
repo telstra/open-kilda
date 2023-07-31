@@ -9,107 +9,107 @@ import { MessageObj } from 'src/app/common/constants/constants';
   templateUrl: './flows.component.html',
   styleUrls: ['./flows.component.css']
 })
-export class FlowsComponent implements OnDestroy, OnInit,OnChanges, AfterViewInit {
+export class FlowsComponent implements OnDestroy, OnInit, OnChanges, AfterViewInit {
   @Input() switchid;
   @Input() portnumber;
   data = [];
-  textSearch:any;
+  textSearch: any;
   flowSubscriber = null;
   portFlowFlag = 'controller';
   ifLoadingData = false;
   storeLinkSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
 
-  constructor(private loaderService : LoaderService,private switchService:SwitchService,public commonService:CommonService) { }
+  constructor(private loaderService: LoaderService, private switchService: SwitchService, public commonService: CommonService) { }
 
   ngOnInit() {
     this.loadPortFlows(this.portFlowFlag);
   }
 
-  loadPortFlows(filter){
+  loadPortFlows(filter) {
     this.ifLoadingData = true;
     this.loaderService.show(MessageObj.fetching_flows);
-    if(filter){
+    if (filter) {
       this.portFlowFlag = filter;
     }
-    var ref = this;
-    var filterFlag = this.portFlowFlag == 'inventory';
-    let switchId = this.switchid;
-    let portNumber = this.portnumber
-    var flowData = null;
-    if(filterFlag){
+    const ref = this;
+    const filterFlag = this.portFlowFlag == 'inventory';
+    const switchId = this.switchid;
+    const portNumber = this.portnumber;
+    let flowData = null;
+    if (filterFlag) {
       flowData = JSON.parse(localStorage.getItem('portFlowInventory')) || null;
-    }else{
+    } else {
       flowData = JSON.parse(localStorage.getItem('portFlows')) || null;
     }
-    if(flowData && flowData.length){
+    if (flowData && flowData.length) {
       this.data = flowData;
       this.loaderService.hide();
       this.ifLoadingData = false;
-    }else{
-      this.flowSubscriber = this.switchService.getSwitchFlows(switchId,filterFlag,portNumber).subscribe((flows:any)=>{
-        if(this.portFlowFlag == 'controller'){
+    } else {
+      this.flowSubscriber = this.switchService.getSwitchFlows(switchId, filterFlag, portNumber).subscribe((flows: any) => {
+        if (this.portFlowFlag == 'controller') {
             this.data = flows;
-            localStorage.setItem('portFlows',JSON.stringify(this.data));
+            localStorage.setItem('portFlows', JSON.stringify(this.data));
             this.ifLoadingData = false;
-        }else{
-          let flowList =  flows || [];
-          let newFlowList = [];
+        } else {
+          const flowList =  flows || [];
+          const newFlowList = [];
           flowList.forEach(customer => {
-              if(customer.flows){
+              if (customer.flows) {
                 customer.flows.forEach(flow => {
                   newFlowList.push({
-                    "flow-id":flow['flow-id'],
-                    "customer-uuid":customer['customer-uuid'] || '-',
-                    "company-name":customer['company-name'] || '-',
-                    "bandwidth":flow['bandwidth']
-                  })
+                    'flow-id': flow['flow-id'],
+                    'customer-uuid': customer['customer-uuid'] || '-',
+                    'company-name': customer['company-name'] || '-',
+                    'bandwidth': flow['bandwidth']
+                  });
                 });
               }
           });
           this.data = newFlowList;
           this.ifLoadingData = false;
-          localStorage.setItem('portFlowInventory',JSON.stringify(this.data));
+          localStorage.setItem('portFlowInventory', JSON.stringify(this.data));
         }
-      
-      },error =>{
+
+      }, error => {
         this.data = [];
         ref.loaderService.hide();
         this.ifLoadingData = false;
       });
     }
-    
+
   }
 
-  fulltextSearch(e){ 
+  fulltextSearch(e) {
     this.textSearch = e.target.value || ' ';
   }
 
- 
+
 
   ngAfterViewInit(): void {
-   
+
   }
 
   rerender(): void {
-  
+
   }
 
   ngOnDestroy(): void {
-    if(this.flowSubscriber){
+    if (this.flowSubscriber) {
       this.flowSubscriber.unsubscribe();
       this.flowSubscriber = null;
     }
   }
 
-  ngOnChanges(change: SimpleChanges){
-    if(change.data){
-      if(change.data.currentValue){
+  ngOnChanges(change: SimpleChanges) {
+    if (change.data) {
+      if (change.data.currentValue) {
         this.data  = change.data.currentValue;
       }
     }
   }
 
- 
+
 
 
 }

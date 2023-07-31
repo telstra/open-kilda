@@ -12,8 +12,8 @@ export class SwitchMetersTableComponent implements OnInit, OnChanges {
   ngOnInit() {
   }
 
-  ngOnChanges(change:SimpleChanges){
-    if(change.data && change.data.currentValue){
+  ngOnChanges(change: SimpleChanges) {
+    if (change.data && change.data.currentValue) {
       this.data = change.data.currentValue;
     }
   }

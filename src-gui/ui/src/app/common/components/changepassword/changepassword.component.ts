@@ -19,19 +19,19 @@ export class ChangepasswordComponent implements OnInit {
   submitted: boolean;
   formData: any;
   userId: any;
-  is2FaEnabled:any;
+  is2FaEnabled: any;
 
   constructor(
     public activeModal: NgbActiveModal,
-    private formBuilder:FormBuilder, 
+    private formBuilder: FormBuilder,
     private userService: UserService,
     private toastr: ToastrService,
     private modalService: NgbModal,
-    private loader:LoaderService
+    private loader: LoaderService
   ) {
 
     // Get userId from session
-    this.userId = localStorage.getItem('user_id');;
+    this.userId = localStorage.getItem('user_id');
     this.is2FaEnabled = localStorage.getItem('is2FaEnabled');
    }
 
@@ -42,24 +42,24 @@ export class ChangepasswordComponent implements OnInit {
   private createForm() {
 
     this.changePasswordForm = new FormGroup({
-      oldPassword : new FormControl(null,[Validators.required]),
+      oldPassword : new FormControl(null, [Validators.required]),
       otp : new FormControl(null)
     });
 
     this.changePasswordFormGroup = new FormGroup({
       newPassword : new FormControl('', [Validators.required, Validators.minLength(8), Validators.maxLength(15)]),
-      confirmPassword: new FormControl('',[Validators.required])
+      confirmPassword: new FormControl('', [Validators.required])
     }, this.validateAreEqual);
 
-    if(this.is2FaEnabled == 'true'){
+    if (this.is2FaEnabled == 'true') {
       this.changePasswordForm.setValidators([Validators.required]);
     }
   }
 
   private validateAreEqual(form: FormGroup) {
 
-    let password = form.get('newPassword').value;
-    let confirmPassword = form.get('confirmPassword').value;
+    const password = form.get('newPassword').value;
+    const confirmPassword = form.get('confirmPassword').value;
 
     if (confirmPassword.length <= 0) {
       return null;
@@ -72,35 +72,35 @@ export class ChangepasswordComponent implements OnInit {
     }
 
     return null;
-    
+
   }
 
   /**
    * Method: submitForm
    * Description: trigger on change password submit form
   */
-  submitForm(){
+  submitForm() {
     this.submitted = true;
     if (this.changePasswordForm.invalid || this.changePasswordFormGroup.invalid) {
       return;
     }
 
     this.formData = {
-      'password': this.changePasswordForm.value.oldPassword, 
+      'password': this.changePasswordForm.value.oldPassword,
       'new_password': this.changePasswordFormGroup.value.newPassword
     };
 
-    if(this.is2FaEnabled == 'true'){
-      this.formData.code = this.changePasswordForm.value.otp
+    if (this.is2FaEnabled == 'true') {
+      this.formData.code = this.changePasswordForm.value.otp;
     }
      this.loader.show(MessageObj.changing_pwd);
      this.userService.changePassword(this.userId, this.formData).subscribe(user => {
-      this.toastr.success(MessageObj.pwd_changed,'Success! ');
+      this.toastr.success(MessageObj.pwd_changed, 'Success! ');
       this.modalService.dismissAll();
       this.loader.hide();
-    },error =>{
+    }, error => {
       this.loader.hide();
-      this.toastr.error(error.error['error-message'],'Error! ');
+      this.toastr.error(error.error['error-message'], 'Error! ');
     });
   }
 

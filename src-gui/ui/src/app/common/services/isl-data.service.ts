@@ -19,16 +19,16 @@ export class IslDataService {
   constructor() { }
 
   changeMessage(message: {}) {
-    this.messageSource.next(message)
+    this.messageSource.next(message);
   }
 
   changeGraphOptionsObject(optionsObject: {}) {
-    this.graphOptionsObject.next(optionsObject)
+    this.graphOptionsObject.next(optionsObject);
   }
-  changeIslFlowGraph(dataObj:{}){
+  changeIslFlowGraph(dataObj: {}) {
     this.islFlowObj.next(dataObj);
   }
-  changeIslFlowStackedGraph(dataObj:{}){
+  changeIslFlowStackedGraph(dataObj: {}) {
     this.islFlowStackedObj.next(dataObj);
   }
 }

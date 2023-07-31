@@ -13,22 +13,22 @@ import { MessageObj } from 'src/app/common/constants/constants';
 })
 export class IslComponent implements OnInit {
 
-  page: string = 'list';	
+  page = 'list';
   constructor(
     private titleService: Title,
-    private commonService:CommonService,
-    private toastr:ToastrService,
-    private router:Router
+    private commonService: CommonService,
+    private toastr: ToastrService,
+    private router: Router
   ) {
-    if(!this.commonService.hasPermission('menu_isl')){
-      this.toastr.error(MessageObj.unauthorised);  
-       this.router.navigate(["/home"]);
+    if (!this.commonService.hasPermission('menu_isl')) {
+      this.toastr.error(MessageObj.unauthorised);
+       this.router.navigate(['/home']);
       }
    }
 
   ngOnInit() {
   }
-  openPage(page){
+  openPage(page) {
     this.titleService.setTitle('OPEN KILDA - ISL');
     this.page = page;
   }

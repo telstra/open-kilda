@@ -1,4 +1,4 @@
-import { Injectable,EventEmitter } from '@angular/core';
+import { Injectable, EventEmitter } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
@@ -16,38 +16,35 @@ export class CommonService {
   sessionReceiver = this.sessionTranmitter.asObservable();
   currentUrl = null;
 
-  constructor(private httpClient:HttpClient) { }
-  
-  groupBy(array , f)
-  {
-		  var groups = {};
-		  array.forEach( function( o )
-		  {
-		    var group = JSON.stringify( f(o) );
+  constructor(private httpClient: HttpClient) { }
+
+  groupBy(array , f) {
+		  const groups = {};
+		  array.forEach( function( o ) {
+		    const group = JSON.stringify( f(o) );
 		    groups[group] = groups[group] || [];
-		    groups[group].push( o );  
+		    groups[group].push( o );
 		  });
-		  return Object.keys(groups).map( function( group )
-		  {
-		    return groups[group]; 
-		  })
+		  return Object.keys(groups).map( function( group ) {
+		    return groups[group];
+		  });
   }
- getCommonColorCode(i,arr){
-   var colourArr = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080', '#ffffff', '#000000'];
-   if(i < colourArr.length){
+ getCommonColorCode(i, arr) {
+   const colourArr = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9a6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#808080', '#ffffff', '#000000'];
+   if (i < colourArr.length) {
     return colourArr[i];
-   }else{
-    return this.getColorCode(i,arr);
-   } 
-   
+   } else {
+    return this.getColorCode(i, arr);
+   }
+
   }
   getColorCode(j, arr) {
-    var chars = "0123456789ABCDE".split("");
-    var hex = "#";
-    for (var i = 0; i < 6; i++) {
+    const chars = '0123456789ABCDE'.split('');
+    let hex = '#';
+    for (let i = 0; i < 6; i++) {
       hex += chars[Math.floor(Math.random() * 14)];
     }
-    var colorCode = hex;
+    const colorCode = hex;
     if (arr.indexOf(colorCode) < 0) {
       return colorCode;
     } else {
@@ -55,130 +52,130 @@ export class CommonService {
     }
   }
 
-  pluck(array,key){
-   return array.map(function(d){
+  pluck(array, key) {
+   return array.map(function(d) {
       return d[key];
-    })
+    });
   }
 
-  getPercentage(val,baseVal){
-    var percentage = (val/baseVal) * 100;
-    var percentage_fixed = percentage.toFixed(2);
-    var value_percentage = percentage_fixed.split(".");
-    if(parseInt(value_percentage[1]) > 0){
+  getPercentage(val, baseVal) {
+    const percentage = (val / baseVal) * 100;
+    const percentage_fixed = percentage.toFixed(2);
+    const value_percentage = percentage_fixed.split('.');
+    if (parseInt(value_percentage[1]) > 0) {
       return percentage.toFixed(2);
-    }else{
+    } else {
       return value_percentage[0];
     }
-      
+
   }
 
-  isInt(n){
-    var num = /^-?[0-9]+$/;
+  isInt(n) {
+    const num = /^-?[0-9]+$/;
 	  return num.test(n);
   }
 
-  isFloat(n){    
-    var num = /^[-+]?[0-9]+\.[0-9]+$/;
+  isFloat(n) {
+    const num = /^[-+]?[0-9]+\.[0-9]+$/;
     return num.test(n);
   }
 
-  hasPermission(permission){
-    if(JSON.parse(localStorage.getItem("userPermissions"))) {
-        let userPermissions = JSON.parse(localStorage.getItem("userPermissions"));
-        if((userPermissions).find(up => up == permission)){
+  hasPermission(permission) {
+    if (JSON.parse(localStorage.getItem('userPermissions'))) {
+        const userPermissions = JSON.parse(localStorage.getItem('userPermissions'));
+        if ((userPermissions).find(up => up == permission)) {
             return true;
-        }else{
+        } else {
             return false;
         }
     }
     return false;
   }
 
-  setIdentityServer(value:Boolean){
+  setIdentityServer(value: Boolean) {
     this.linkStoreTransmitter.emit(value);
   }
 
-  setCurrentUrl(url){
+  setCurrentUrl(url) {
     this.currentUrl  = url;
   }
-  
-  getCurrentUrl(){
+
+  getCurrentUrl() {
     return this.currentUrl;
   }
 
-  setUserData(user){
+  setUserData(user) {
     this.sessionTranmitter.emit(user);
   }
 
-  getLogout():Observable<any>{
-    return this.httpClient.post(`${environment.appEndPoint}/logout`,{});
+  getLogout(): Observable<any> {
+    return this.httpClient.post(`${environment.appEndPoint}/logout`, {});
   }
-  getAutoreloadValues(){
+  getAutoreloadValues() {
     return [
-      {value:10,text:'10'},
-      {value:15,text:'15'},
-      {value:30,text:'30'},
-      {value:45,text:'45'},
-      {value:60,text:'60'},
-    ]
+      {value: 10, text: '10'},
+      {value: 15, text: '15'},
+      {value: 30, text: '30'},
+      {value: 45, text: '45'},
+      {value: 60, text: '60'},
+    ];
   }
-  convertBytesToMbps(value){
-    let valInMbps = (value/1000)/1000; // conversion
-    return (valInMbps < 1)?Math.ceil(valInMbps * 1000) / 1000:Math.ceil(valInMbps * 100) / 100
+  convertBytesToMbps(value) {
+    const valInMbps = (value / 1000) / 1000; // conversion
+    return (valInMbps < 1) ? Math.ceil(valInMbps * 1000) / 1000 : Math.ceil(valInMbps * 100) / 100;
   }
 
-  convertNumberToString(data){
-    var returnDatajson = data.replace(/([\[:])?(\d+)([,\}\]])/g, "$1\"$2\"$3").replace(/-"/g,'\"-');
+  convertNumberToString(data) {
+    let returnDatajson = data.replace(/([\[:])?(\d+)([,\}\]])/g, '$1"$2"$3').replace(/-"/g, '\"-');
    returnDatajson = JSON.parse(returnDatajson);
    return returnDatajson;
   }
-  convertDpsToSecond(data){
-    var dps = (data.dps && Object.keys(data.dps).length > 0) ? data.dps: [];
-    var dpsData = {};
-    Object.keys(dps).forEach(function(i,v){
+  convertDpsToSecond(data) {
+    const dps = (data.dps && Object.keys(data.dps).length > 0) ? data.dps : [];
+    const dpsData = {};
+    Object.keys(dps).forEach(function(i, v) {
        dpsData[i] = Number(dps[i] / 1000000000).toFixed(4);
-    })
+    });
     data.dps = dpsData;
     return data;
   }
-  convertDpsToMicroSecond(data){
-    var dps = (data.dps && Object.keys(data.dps).length > 0) ? data.dps: [];
-    var dpsData = {};
-    Object.keys(dps).forEach(function(i,v){
+  convertDpsToMicroSecond(data) {
+    const dps = (data.dps && Object.keys(data.dps).length > 0) ? data.dps : [];
+    const dpsData = {};
+    Object.keys(dps).forEach(function(i, v) {
        dpsData[i] = Number(dps[i] / 1000).toFixed(4);
-    })
+    });
     data.dps = dpsData;
     return data;
   }
-  convertDpsToMilliSecond(data){
-    var dps = (data.dps && Object.keys(data.dps).length > 0) ? data.dps: [];
-    var dpsData = {};
-    Object.keys(dps).forEach(function(i,v){
+  convertDpsToMilliSecond(data) {
+    const dps = (data.dps && Object.keys(data.dps).length > 0) ? data.dps : [];
+    const dpsData = {};
+    Object.keys(dps).forEach(function(i, v) {
        dpsData[i] = Number(dps[i] / 1000000).toFixed(4);
-    })
+    });
     data.dps = dpsData;
     return data;
   }
 
-  saveSessionTimeoutSetting(timeout){
-    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/SESSION_TIMEOUT`,timeout);
+  saveSessionTimeoutSetting(timeout) {
+    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/SESSION_TIMEOUT`, timeout);
   }
 
-  getSwitchNameSourceTypes(){
+  getSwitchNameSourceTypes() {
     return this.httpClient.get<any>(`${environment.apiEndPoint}/settings/storagetypes`);
   }
- 
-  saveSwitchNameSourceSettings(value){
-    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/SWITCH_NAME_STORAGE_TYPE`,value);
+
+  saveSwitchNameSourceSettings(value) {
+    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/SWITCH_NAME_STORAGE_TYPE`, value);
   }
-  saveInvalidLoginAttemptSettings(value){
-    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/INVALID_LOGIN_ATTEMPT`,value);
+  saveInvalidLoginAttemptSettings(value) {
+    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/INVALID_LOGIN_ATTEMPT`, value);
   }
-  saveUserAccountUnlockTimeSettings(value){
-    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/USER_ACCOUNT_UNLOCK_TIME`,value);
+  saveUserAccountUnlockTimeSettings(value) {
+    return this.httpClient.patch<any>(`${environment.apiEndPoint}/settings/USER_ACCOUNT_UNLOCK_TIME`, value);
   }
-  getAllSettings(){
+  getAllSettings() {
     return this.httpClient.get<any>(`${environment.apiEndPoint}/settings`);
   }
 }

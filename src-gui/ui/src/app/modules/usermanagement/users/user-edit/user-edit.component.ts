@@ -21,71 +21,71 @@ export class UserEditComponent implements OnInit {
   openedTab: String;
   subscription: Subscription;
   userEmail: string;
-  userid:number;
-  value:number;
+  userid: number;
+  value: number;
   submitted: boolean;
   selectedUser: number;
   userUpdatedData: any;
   roleData: NgOption[];
   roles: any;
-  r:any;
+  r: any;
   selectedRoles: any;
 
-  constructor(private formBuilder:FormBuilder, 
-    private tabService: TabService, 
-    private roleService: RoleService, 
+  constructor(private formBuilder: FormBuilder,
+    private tabService: TabService,
+    private roleService: RoleService,
     private userService: UserService,
     private toastr: ToastrService,
     private titleService: Title,
     private loaderService: LoaderService
   ) {
-    
+
     this.roles = [];
     this.selectedRoles = [];
     this.loaderService.show(MessageObj.loading_details);
     this.roleService.getRoles().subscribe((role: Array<object>) => {
-      role.map((role:any) => {
-        this.roles.push({ id: role.role_id, name: role.name })
+      role.map((role: any) => {
+        this.roles.push({ id: role.role_id, name: role.name });
       });
       this.roleData = this.roles;
       this.userService.currentUser.subscribe(userId => {
-        if(userId){
+        if (userId) {
           this.selectedUser = userId;
           this.userService.getUserById(userId).subscribe(user => {
             this.r = user.roles;
             this.r.map((u) => {
-              role.map((role:any) => {
-                if(role.name == u){
+              role.map((role: any) => {
+                if (role.name == u) {
                   this.selectedRoles.push(role.role_id);
                 }
               });
             });
             this.userEditForm.patchValue({
-                    email: user.email, 
+                    email: user.email,
                     name: user.name,
                     roles: this.selectedRoles,
                     is2FaEnabled: user.is2FaEnabled
-            },{emitEvent: false});
-            setTimeout(()=>{
+            }, {emitEvent: false});
+            setTimeout(() => {
               this.loaderService.hide();
-            },2000)
-           
+            }, 2000);
+
           });
         }
       });
-    },error => {
-      
-    });  
-  
+    }, error => {
+
+    });
+
   }
 
-  /* 
+  /*
     Method: createEditForm
     Description: Create User edit form
   */
   private createEditForm() {
     this.userEditForm = this.formBuilder.group({
-      email : [{value:'', disabled: true},Validators.required],
+      email : [{value: '', disabled: true}, Validators.required],
       name : ['', Validators.required],
       roles: ['', Validators.required],
       is2FaEnabled: []
@@ -96,26 +96,26 @@ export class UserEditComponent implements OnInit {
    * Method: submitform
    * Description: Update user information
    */
-  submitform(){
+  submitform() {
     this.submitted = true;
     if (this.userEditForm.invalid) {
       return;
     }
-    
+
     this.loaderService.show(MessageObj.updating_user);
 
     this.userUpdatedData = {
       name: this.userEditForm.value.name,
       role_id: this.userEditForm.value.roles,
       is2FaEnabled: this.userEditForm.value.is2FaEnabled
-    }
+    };
 
     this.userService.editUser(this.selectedUser, this.userUpdatedData).subscribe(user => {
-      this.toastr.success(MessageObj.user_updated,'Success! ');
+      this.toastr.success(MessageObj.user_updated, 'Success! ');
       this.tabService.setSelectedTab('users');
       this.loaderService.hide();
-    },error =>{
-      this.toastr.error(error.error['error-message'],'Error! ');
+    }, error => {
+      this.toastr.error(error.error['error-message'], 'Error! ');
       this.loaderService.hide();
     });
   }
