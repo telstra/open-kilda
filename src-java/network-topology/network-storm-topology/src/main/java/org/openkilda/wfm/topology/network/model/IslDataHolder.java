@@ -21,9 +21,11 @@ import org.openkilda.model.Isl;
 import lombok.AllArgsConstructor;
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
 @AllArgsConstructor
-public class IslDataHolder {
+public class IslDataHolder implements Serializable {
     /**
      * Physical link speed (speed reported by switch port).
      */
