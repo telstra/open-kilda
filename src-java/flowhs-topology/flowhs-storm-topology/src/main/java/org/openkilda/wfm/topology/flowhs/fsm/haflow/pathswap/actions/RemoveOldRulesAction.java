@@ -29,6 +29,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapConte
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -57,7 +59,7 @@ public class RemoveOldRulesAction extends HaFlowRuleManagerProcessingAction<
         }
 
         if (commands.isEmpty()) {
-            stateMachine.saveActionToHistory("No need to remove old rules");
+            saveActionToHistory(stateMachine, "No need to remove old rules");
             stateMachine.fire(Event.RULES_REMOVED);
         } else {
             stateMachine.clearPendingAndRetriedAndFailedCommands();
@@ -67,7 +69,7 @@ public class RemoveOldRulesAction extends HaFlowRuleManagerProcessingAction<
                         stateMachine.addPendingCommand(request.getCommandId(), request.getSwitchId());
                         stateMachine.getCarrier().sendSpeakerRequest(request);
                     });
-            stateMachine.saveActionToHistory("Remove commands for old rules have been sent");
+            saveActionToHistory(stateMachine, "Remove commands for old rules have been sent");
         }
     }
 
@@ -79,5 +81,12 @@ public class RemoveOldRulesAction extends HaFlowRuleManagerProcessingAction<
         DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false);
         return ruleManager.buildRulesHaFlowPath(
                 haPath, true, false, true, false, dataAdapter);
+    }
+
+    private void saveActionToHistory(HaFlowPathSwapFsm stateMachine, String action) {
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction(action)
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
 }

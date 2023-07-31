@@ -18,6 +18,9 @@ package org.openkilda.persistence.repositories;
 import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
 import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventActionRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventDumpRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventRepository;
 import org.openkilda.persistence.repositories.history.PortEventRepository;
 
 /**
@@ -51,6 +54,12 @@ public interface RepositoryFactory {
     FlowEventActionRepository createFlowEventActionRepository();
 
     FlowEventDumpRepository createFlowEventDumpRepository();
+
+    HaFlowEventRepository createHaFlowEventRepository();
+
+    HaFlowEventDumpRepository createHaFlowEventDumpRepository();
+
+    HaFlowEventActionRepository createHaFlowEventActionRepository();
 
     BfdSessionRepository createBfdSessionRepository();
 

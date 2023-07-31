@@ -205,6 +205,7 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
         Instant timeModify;
 
         @Override
+        @JsonIgnore
         public String getHaFlowId() {
             return haFlow != null ? haFlow.getHaFlowId() : null;
         }

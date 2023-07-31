@@ -22,9 +22,13 @@ import org.openkilda.messaging.nbtopology.request.GetFlowStatusTimestampsRequest
 import org.openkilda.messaging.nbtopology.request.PortHistoryRequest;
 import org.openkilda.messaging.payload.history.FlowDumpPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryPayload;
+import org.openkilda.messaging.payload.history.HaFlowDumpPayload;
+import org.openkilda.messaging.payload.history.HaFlowHistoryPayload;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.history.FlowEvent;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.history.service.HistoryService;
+import org.openkilda.wfm.share.mappers.HaFlowHistoryMapper;
 import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.share.metrics.TimedExecution;
 import org.openkilda.wfm.topology.nbworker.StreamType;
@@ -33,10 +37,16 @@ import org.apache.storm.tuple.Tuple;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class HistoryOperationsBolt extends PersistenceOperationsBolt {
     private transient HistoryService historyService;
+
+    public HistoryOperationsBolt(PersistenceManager persistenceManager, HistoryService historyService) {
+        super(persistenceManager);
+        this.historyService = historyService;
+    }
 
     public HistoryOperationsBolt(PersistenceManager persistenceManager) {
         super(persistenceManager);
@@ -69,14 +79,33 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
     private List<InfoData> getFlowHistory(GetFlowHistoryRequest request) {
         Instant timeFrom = Instant.ofEpochSecond(request.getTimestampFrom());
         Instant timeTo = Instant.ofEpochSecond(request.getTimestampTo() + 1).minusMillis(1);
-        return historyService.listFlowEvents(
-                request.getFlowId(), timeFrom, timeTo, request.getMaxCount()).stream()
+
+        if (Objects.equals(request.getModelType(), HaFlow.class)) {
+            return getHaFlowHistory(request.getFlowId(), timeFrom, timeTo, request.getMaxCount());
+        } else {
+            return getFlowHistory(request.getFlowId(), timeFrom, timeTo, request.getMaxCount());
+        }
+    }
+
+    private List<InfoData> getFlowHistory(String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
+        return historyService.listFlowEvents(flowId, timeFrom, timeTo, maxCount).stream()
                 .map(entry -> {
                     List<FlowHistoryPayload> payload = listFlowHistories(entry);
                     List<FlowDumpPayload> dumps = listFlowDumps(entry);
                     return HistoryMapper.INSTANCE.map(entry, payload, dumps);
                 })
                 .collect(Collectors.toList());
+    }
+
+    private List<InfoData> getHaFlowHistory(String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
+        return historyService.getHaFlowHistoryEvents(flowId, timeFrom, timeTo, maxCount)
+                .stream().map(entry -> {
+                    List<HaFlowHistoryPayload> payloads = entry.getEventActions().stream().map(
+                            HaFlowHistoryMapper.INSTANCE::toHaFlowHistoryPayload).collect(Collectors.toList());
+                    List<HaFlowDumpPayload> dumps = entry.getEventDumps().stream().map(
+                            HaFlowHistoryMapper.INSTANCE::persistenceToPayload).collect(Collectors.toList());
+                    return HaFlowHistoryMapper.INSTANCE.createHaFlowHistoryEntry(entry, payloads, dumps);
+                }).collect(Collectors.toList());
     }
 
     @TimedExecution("get_port_history")

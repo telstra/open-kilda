@@ -21,6 +21,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,7 +39,9 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowDeleteFsm, St
         //TODO deactivate flow monitoring
         stateMachine.getCarrier().sendPeriodicPingNotification(stateMachine.getHaFlowId(), false);
         dashboardLogger.onSuccessfulHaFlowDelete(stateMachine.getHaFlowId());
-        stateMachine.saveActionToHistory("Flow was deleted successfully");
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getHaFlowId())
+                .withAction("HA-flow has been deleted successfully")
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
-
 }

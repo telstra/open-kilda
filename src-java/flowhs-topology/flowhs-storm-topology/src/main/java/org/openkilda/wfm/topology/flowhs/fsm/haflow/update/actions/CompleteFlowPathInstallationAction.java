@@ -25,6 +25,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -46,8 +48,12 @@ public class CompleteFlowPathInstallationAction extends
 
         updatePathStatuses(stateMachine.getNewPrimaryPathIds(), stateMachine);
 
-        stateMachine.saveActionToHistory("HA-flow paths were installed",
-                format("The HA-flow paths %s / %s were installed", newPrimaryForwardPathId, newPrimaryReversePathId));
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction("HA-flow paths have been installed")
+                .withDescription(format("The HA-flow paths %s / %s have been installed",
+                        newPrimaryForwardPathId, newPrimaryReversePathId))
+                .withHaFlowId(stateMachine.getHaFlowId()));
 
         if (stateMachine.getNewProtectedPathIds() != null) {
             PathId newProtectedForwardPathId = stateMachine.getNewProtectedPathIds().getForward().getHaPathId();
@@ -57,9 +63,12 @@ public class CompleteFlowPathInstallationAction extends
                     newProtectedForwardPathId, newProtectedReversePathId);
             updatePathStatuses(stateMachine.getNewProtectedPathIds(), stateMachine);
 
-            stateMachine.saveActionToHistory("HA-flow paths were installed",
-                    format("The HA-flow paths %s / %s were installed",
-                            newProtectedForwardPathId, newProtectedReversePathId));
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("HA-flow paths have been installed")
+                    .withDescription(format("The HA-flow paths %s / %s have been installed",
+                            newProtectedForwardPathId, newProtectedReversePathId))
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         }
     }
 

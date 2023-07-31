@@ -26,6 +26,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -45,12 +47,15 @@ public class RevertFlowStatusAction extends
         FlowStatus originalHaFlowStatus = Optional.ofNullable(stateMachine.getOriginalHaFlow())
                 .map(HaFlow::getStatus).orElse(null);
         if (originalHaFlowStatus != null) {
-            log.debug("Reverting the ha-flow status of {} to {}", haFlowId, originalHaFlowStatus);
+            log.debug("Reverting the HA-flow status of {} to {}", haFlowId, originalHaFlowStatus);
 
             String flowStatusInfo = FlowStatus.DEGRADED.equals(originalHaFlowStatus)
                     ? StatusInfo.OVERLAPPING_PROTECTED_PATH : stateMachine.getOriginalHaFlow().getStatusInfo();
             haFlowRepository.updateStatus(haFlowId, originalHaFlowStatus, flowStatusInfo);
-            stateMachine.saveActionToHistory(format("The ha-flow status was reverted to %s", originalHaFlowStatus));
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction(format("The HA-flow status has been reverted to %s", originalHaFlowStatus))
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         }
     }
 }

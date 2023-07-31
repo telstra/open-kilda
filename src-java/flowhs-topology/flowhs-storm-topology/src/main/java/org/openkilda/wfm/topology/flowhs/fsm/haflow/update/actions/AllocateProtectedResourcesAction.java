@@ -107,7 +107,7 @@ public class AllocateProtectedResourcesAction extends
                 forceIgnoreBandwidth);
         log.debug("New protected ha-path has been created: {}", createdPaths);
 
-        saveAllocationActionWithDumpsToHistory(stateMachine, haFlow, PATHS_TYPE, createdPaths);
+        saveAllocationActionToHistory(stateMachine, haFlow, PATHS_TYPE, createdPaths);
     }
 
     @Override
