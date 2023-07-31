@@ -25,8 +25,17 @@ class HaFlowHistory {
     HaFlowHistoryEntry[] getUpdateEntries(){
         return entries.findAll({it ->it.action == "HA-Flow update"})
     }
+
     HaFlowHistoryEntry[] getCreateEntries(){
-        return entries.findAll({it ->it.payloads.action == "HA-flow has been created successfully"})
+        return entries.findAll({it ->it.action == "HA-Flow create"})
+    }
+
+    HaFlowHistoryEntry[] getDeleteEntries(){
+        return entries.findAll({it ->it.action == "HA-Flow delete"})
+    }
+
+    HaFlowHistoryEntry[] getRerouteEntries(){
+        return entries.findAll({it ->it.action == "HA-Flow reroute"})
     }
 
 
