@@ -67,10 +67,8 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
 
     @TimedExecution("get_flow_history")
     private List<InfoData> getFlowHistory(GetFlowHistoryRequest request) {
-        Instant timeFrom = Instant.ofEpochSecond(request.getTimestampFrom());
-        Instant timeTo = Instant.ofEpochSecond(request.getTimestampTo() + 1).minusMillis(1);
         return historyService.listFlowEvents(
-                request.getFlowId(), timeFrom, timeTo, request.getMaxCount()).stream()
+                request.getFlowId(), request.getTimeFrom(), request.getTimeTo(), request.getMaxCount()).stream()
                 .map(entry -> {
                     List<FlowHistoryPayload> payload = listFlowHistories(entry);
                     List<FlowDumpPayload> dumps = listFlowDumps(entry);

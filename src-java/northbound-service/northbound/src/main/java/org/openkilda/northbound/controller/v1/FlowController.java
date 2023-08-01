@@ -28,6 +28,7 @@ import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.northbound.controller.BaseController;
+import org.openkilda.northbound.converter.LongToInstantConverter;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
@@ -352,8 +353,9 @@ public class FlowController extends BaseController {
             }
         });
 
-        Long timeTo = optionalTimeTo.orElseGet(() -> Instant.now().getEpochSecond());
-        Long timeFrom = optionalTimeFrom.orElse(0L);
+        Instant timeTo = optionalTimeTo.map(LongToInstantConverter::convert).orElseGet(Instant::now);
+        Instant timeFrom = optionalTimeFrom.map(LongToInstantConverter::convert)
+                .orElseGet(() -> Instant.ofEpochSecond(0L));
         return flowService.listFlowEvents(flowId, timeFrom, timeTo, maxCount)
                 .thenApply(events -> {
                     HttpHeaders headers = new HttpHeaders();
@@ -361,7 +363,7 @@ public class FlowController extends BaseController {
                     if (!optionalMaxCount.isPresent() && !optionalTimeFrom.isPresent() && !optionalTimeTo.isPresent()
                             && events.size() == DEFAULT_MAX_HISTORY_RECORD_COUNT) {
                         // if request has no parameters we assume that default value of `maxCount` is 100. To indicate
-                        // that response may contain not all of history records "Content-Range" header will be added to
+                        // that response may contain not all history records "Content-Range" header will be added to
                         // response.
                         headers.add(HttpHeaders.CONTENT_RANGE, format("items 0-%d/*", events.size() - 1));
                     }

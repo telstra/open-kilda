@@ -17,66 +17,31 @@ package org.openkilda.messaging.payload.history;
 
 import org.openkilda.messaging.info.InfoData;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.time.Instant;
 import java.util.List;
 
 @JsonSerialize
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Data
 @EqualsAndHashCode(callSuper = false)
+@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
 public class FlowHistoryEntry extends InfoData {
-    @JsonProperty("flow_id")
     private String flowId;
-
-    @JsonProperty("timestamp")
     private long timestamp;
-
-    @JsonProperty("timestamp_iso")
-    private String timestampIso;
-
-    @JsonProperty("actor")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
+    private Instant timestampIso;
     private String actor;
-
-    @JsonProperty("action")
     private String action;
-
-    @JsonProperty("task_id")
     private String taskId;
-
-    @JsonProperty("details")
     private String details;
-
-    @JsonProperty("payload")
     private List<FlowHistoryPayload> payload;
-
-    @JsonProperty("dumps")
     private List<FlowDumpPayload> dumps;
-
-    @Builder
-    public FlowHistoryEntry(
-            @JsonProperty("flow_id") String flowId,
-            @JsonProperty("timestamp") long timestamp,
-            @JsonProperty("timestamp_iso") String timestampIso,
-            @JsonProperty("actor") String actor,
-            @JsonProperty("action") String action,
-            @JsonProperty("task_id") String taskId,
-            @JsonProperty("details") String details,
-            @JsonProperty("payload") List<FlowHistoryPayload> payload,
-            @JsonProperty("dumps") List<FlowDumpPayload> dumps) {
-        this.flowId = flowId;
-        this.timestamp = timestamp;
-        this.timestampIso = timestampIso;
-        this.actor = actor;
-        this.action = action;
-        this.taskId = taskId;
-        this.details = details;
-        this.payload = payload;
-        this.dumps = dumps;
-    }
 }

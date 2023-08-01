@@ -203,8 +203,8 @@ public class HistoryMapperTest {
         assertEquals(entry.getActor(), event.getActor());
         assertEquals(entry.getDumps(), flowDumpPayloads);
         assertEquals(entry.getPayload(), flowHistoryPayloads);
-        assertEquals(entry.getTimestampIso(), event.getTimestamp().atOffset(ZoneOffset.UTC).toString());
-        assertEquals(entry.getTimestampIso(), "2021-02-09T19:28:45Z");
+        assertEquals(entry.getTimestampIso(), event.getTimestamp());
+        assertEquals(entry.getTimestampIso().toString(), "2021-02-09T19:28:45Z");
         assertEquals(entry.getTaskId(), event.getTaskId());
     }
 

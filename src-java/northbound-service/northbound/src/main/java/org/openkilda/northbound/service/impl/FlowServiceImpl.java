@@ -668,10 +668,10 @@ public class FlowServiceImpl implements FlowService {
 
     @Override
     public CompletableFuture<List<FlowHistoryEntry>> listFlowEvents(String flowId,
-                                                                    long timestampFrom,
-                                                                    long timestampTo, int maxCount) {
-        log.info("API request: List flow events: flowId {}, timestampFrom {}, timestampTo {}, maxCount {}",
-                flowId, timestampFrom, timestampTo, maxCount);
+                                                                    Instant timeFrom,
+                                                                    Instant timeTo, int maxCount) {
+        log.info("API request: List flow events: flowId {}, timeFrom {}, timeTo {}, maxCount {}",
+                flowId, timeFrom, timeTo, maxCount);
         if (maxCount < 1) {
             throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
                     ErrorType.PARAMETERS_INVALID, format("Invalid `max_count` argument '%s'.", maxCount),
@@ -680,8 +680,8 @@ public class FlowServiceImpl implements FlowService {
         String correlationId = RequestCorrelationId.getId();
         GetFlowHistoryRequest request = GetFlowHistoryRequest.builder()
                 .flowId(flowId)
-                .timestampFrom(timestampFrom)
-                .timestampTo(timestampTo)
+                .timeFrom(timeFrom)
+                .timeTo(timeTo)
                 .maxCount(maxCount)
                 .build();
         CommandMessage command = new CommandMessage(request, System.currentTimeMillis(), correlationId);

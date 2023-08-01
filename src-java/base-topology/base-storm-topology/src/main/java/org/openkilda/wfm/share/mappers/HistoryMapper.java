@@ -64,8 +64,7 @@ public abstract class HistoryMapper {
 
     @Mapping(target = "payload", source = "payload")
     @Mapping(target = "dumps", source = "dumps")
-    @Mapping(target = "timestampIso",
-             expression = "java(flowEvent.getTimestamp().atOffset(ZoneOffset.UTC).toString())")
+    @Mapping(target = "timestampIso", source = "flowEvent.timestamp")
     public abstract FlowHistoryEntry map(
             FlowEvent flowEvent, List<FlowHistoryPayload> payload, List<FlowDumpPayload> dumps);
 

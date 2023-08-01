@@ -239,8 +239,8 @@ public interface FlowService {
     CompletableFuture<FlowMeterEntries> modifyMeter(String flowId);
 
     CompletableFuture<List<FlowHistoryEntry>> listFlowEvents(String flowId,
-                                                             long timestampFrom,
-                                                             long timestampTo, int maxCount);
+                                                             Instant timestampFrom,
+                                                             Instant timestampTo, int maxCount);
 
     CompletableFuture<FlowHistoryStatusesResponse> getFlowStatuses(String flowId,
                                                                    long timestampFrom,

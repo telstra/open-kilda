@@ -17,35 +17,22 @@ package org.openkilda.messaging.nbtopology.request;
 
 import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
+
+import java.time.Instant;
 
 @ReadRequest
 @Value
 @Builder
 @EqualsAndHashCode(callSuper = false)
+@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
 public class GetFlowHistoryRequest extends HistoryRequest {
-    @JsonProperty("flow_id")
     String flowId;
-
-    @JsonProperty("timestamp_from")
-    long timestampFrom;
-
-    @JsonProperty("timestamp_to")
-    long timestampTo;
-
-    @JsonProperty("max_count")
     int maxCount;
-
-    public GetFlowHistoryRequest(@JsonProperty("flow_id") String flowId,
-                                 @JsonProperty("timestamp_from") long timestampFrom,
-                                 @JsonProperty("timestamp_to") long timestampTo,
-                                 @JsonProperty("max_count") int maxCount) {
-        this.flowId = flowId;
-        this.timestampFrom = timestampFrom;
-        this.timestampTo = timestampTo;
-        this.maxCount = maxCount;
-    }
+    Instant timeFrom;
+    Instant timeTo;
 }
