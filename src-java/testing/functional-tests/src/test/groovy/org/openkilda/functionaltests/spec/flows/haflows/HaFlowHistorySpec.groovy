@@ -8,14 +8,11 @@ import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
 
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
 
-@Narrative("""Verify that history records are created for the create/update actions.
-History record is created in case the create/update action is completed successfully.""")
-@Slf4j
+@Narrative("""Verify that history records are created for the basic actions applied to Ha-Flow.""")
 class HaFlowHistorySpec extends HealthCheckSpecification {
 
     @Autowired
@@ -23,12 +20,11 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
     HaFlowHelper haFlowHelper
 
     @Shared
-    boolean  isDeleted
-
+    boolean isDeleted
 
     @Tidy
-    def "User can change a ha-flow and get its history event - #description"() {
-        given: "Existing ha-flow"
+    def "User can change a Ha-Flow and get its history event - #type"() {
+        given: "HA-FLow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
         def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
@@ -36,14 +32,14 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         when: "#description the flow"
         change(haFlow)
 
-        then: "Ha flow update event appears"
-        expectedAssertion(haFlow)
+        then: "Correct event appears in ha flow history"
+        haFlowHelper.getHistory(haFlow.haFlowId).getEntryByType(type).size() == 1
 
         cleanup:
         !isDeleted && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
 
         where:
-        description | change | expectedAssertion
+        type      | change
 
 //    @Ignore("https://github.com/telstra/open-kilda/issues/5320")
 //        "update"    |
@@ -55,29 +51,24 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
 //                    haFlowHelper.updateHaFlow(flow.haFlowId, updatedHaFlowPayload)
 //
 //                }            | { HaFlow flow -> haFlowHelper.getHistory(flow.haFlowId).getUpdateEntries().size() == 1}
-        "delete"    |
+        "delete"  |
                 { HaFlow flow ->
                     haFlowHelper.deleteHaFlow(flow.haFlowId)
                     isDeleted = true
 
-                }            | { HaFlow flow -> haFlowHelper.getHistory(flow.haFlowId).getDeleteEntries().size() == 1
-                                     }
+                }
 
-        "reroute"    |
+        "reroute" |
                 { HaFlow flow ->
                     haFlowHelper.rerouteHaFlow(flow.haFlowId)
 
-                }            | { HaFlow flow -> haFlowHelper.getHistory(flow.haFlowId).getRerouteEntries().size() == 1}
-        "create"    |
-                { HaFlow flow ->
-                    haFlowHelper.rerouteHaFlow(flow.haFlowId)
-
-                }            | { HaFlow flow -> haFlowHelper.getHistory(flow.haFlowId).getCreateEntries().size() == 1}
+                }
+        "create"  | {}
     }
 
 
     def "History records can be get with timestamp filters"() {
-        given: "Ha flow"
+        given: "HA-FLow"
         def timestampBeforeCreate = System.currentTimeSeconds()
         def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
         def haFlow = haFlowHelper.addHaFlow(haFlowHelper.randomHaFlow(swT))
@@ -86,7 +77,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         def timestampBeforeDelete = System.currentTimeSeconds()
         haFlowHelper.deleteHaFlow(haFlow.haFlowId)
         Wrappers.wait(WAIT_OFFSET) { assert !northboundV2.getHaFlow(haFlow.haFlowId) }
-        def flowRemoved = true
+        isDeleted = true
 
         then: "Possible to get ha flow history events with timestamp filters"
         def timestampAfterDelete = System.currentTimeSeconds()
@@ -94,21 +85,21 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         haFlowHelper.getHistory(haFlow.haFlowId, timestampBeforeDelete, timestampAfterDelete).getDeleteEntries().size() == 1
 
         cleanup:
-        haFlow && !flowRemoved && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+        haFlow && !isDeleted && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
 
     }
 
-    def "Empty history returned in case filters return no results (dateTo < dateBefore)"() {
-        given: "Ha flow"
+    def "Empty history returned in case filters return no results ()"() {
+        given: "HA-FLow"
         def timestampBeforeCreate = System.currentTimeSeconds()
         def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
         def haFlow = haFlowHelper.addHaFlow(haFlowHelper.randomHaFlow(swT))
 
-        when: "Delete ha flow"
-        def timestampAfterDelete = System.currentTimeSeconds()
+        when: "Get timestamp after create event"
+        def timestampAfterCreate = System.currentTimeSeconds()
 
-        then: "Check ha flow history ahs no entries"
-        assert haFlowHelper.getHistory(haFlow.haFlowId, timestampAfterDelete, timestampBeforeCreate).entries.isEmpty()
+        then: "Check HA-FLow history has no entries"
+        assert haFlowHelper.getHistory(haFlow.haFlowId, timestampAfterCreate, System.currentTimeSeconds()).entries.isEmpty()
 
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)

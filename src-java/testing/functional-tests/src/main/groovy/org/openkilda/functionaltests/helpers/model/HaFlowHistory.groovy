@@ -22,27 +22,15 @@ class HaFlowHistory {
     List<HaFlowHistoryEntry> entries;
 
 
-    HaFlowHistoryEntry[] getUpdateEntries(){
-        return entries.findAll({it ->it.action == "HA-Flow update"})
+    List<HaFlowHistoryEntry> getEntryByType(String type) {
+        switch (type) {
+            case "update": return entries.findAll({ it -> it.action == "HA-Flow update" })
+            case "create": return entries.findAll({ it -> it.action == "HA-Flow create" })
+            case "delete": return entries.findAll({ it -> it.action == "HA-Flow delete" })
+            case "reroute": return entries.findAll({ it -> it.action == "HA-Flow reroute" })
+        }
+
     }
 
-    HaFlowHistoryEntry[] getCreateEntries(){
-        return entries.findAll({it ->it.action == "HA-Flow create"})
-    }
-
-    HaFlowHistoryEntry[] getDeleteEntries(){
-        return entries.findAll({it ->it.action == "HA-Flow delete"})
-    }
-
-    HaFlowHistoryEntry[] getRerouteEntries(){
-        return entries.findAll({it ->it.action == "HA-Flow reroute"})
-    }
-
-
-
-
-    boolean isContainingCreateEvent() {
-        return false
-    }
 
 }
