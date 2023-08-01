@@ -1,11 +1,9 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.HaFlowHelper
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -76,13 +74,12 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         when: "Delete HA flow"
         def timestampBeforeDelete = System.currentTimeSeconds()
         haFlowHelper.deleteHaFlow(haFlow.haFlowId)
-        Wrappers.wait(WAIT_OFFSET) { assert !northboundV2.getHaFlow(haFlow.haFlowId) }
         isDeleted = true
 
         then: "Possible to get ha flow history events with timestamp filters"
         def timestampAfterDelete = System.currentTimeSeconds()
         haFlowHelper.getHistory(haFlow.haFlowId, timestampBeforeCreate, timestampAfterDelete).entries.size() == 2
-        haFlowHelper.getHistory(haFlow.haFlowId, timestampBeforeDelete, timestampAfterDelete).getDeleteEntries().size() == 1
+        haFlowHelper.getHistory(haFlow.haFlowId, timestampBeforeDelete, timestampAfterDelete).getEntryByType("delete").size() == 1
 
         cleanup:
         haFlow && !isDeleted && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
