@@ -296,7 +296,7 @@ class LagPortSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         new LagNotDeletedExpectedError(~/Couldn\'t delete LAG port \'$lagPort\' from switch $switchPair.src.dpId \
-because flows \'[$flow.flowId]\' use it as endpoint/).matches(exc)
+because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
         lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
@@ -369,10 +369,9 @@ on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        def expectedExc = new SwitchNotFoundExpectedError(
-                ~/Physical port $mirrorPort already used as sink by following mirror points flow \'${flow
-                        .getFlowId()}\'\: \[${mirrorEndpoint.getMirrorPointId()}\]/)
-        expectedExc.matches(exc)
+        new LagNotCreatedExpectedError(~/Physical port $mirrorPort already used as sink by following mirror points flow\
+ \'${flow.getFlowId()}\'\: \[${mirrorEndpoint.getMirrorPointId()}\]/).matches(exc)
+
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
         !exc && swP && deleteAllLagPorts(swP.src.dpId)

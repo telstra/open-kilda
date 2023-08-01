@@ -221,7 +221,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         // given
         YFlowRequest createYFlowRequest = createYFlow();
         YFlowRerouteRequest request = new YFlowRerouteRequest(createYFlowRequest.getYFlowId(), "reason");
-        request.setAffectedIsl(Collections.singleton(new IslEndpoint(SWITCH_TRANSIT, 25)));
+        request.setAffectedIsls(Collections.singleton(new IslEndpoint(SWITCH_TRANSIT, 25)));
 
         preparePathComputationForReroute("test_flow_1", buildFirstSubFlowPathPairWithNewTransit());
         preparePathComputationForReroute("test_flow_2", buildSecondSubFlowPathPairWithNewTransit());
@@ -243,7 +243,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         // given
         YFlowRequest createYFlowRequest = createYFlow();
         YFlowRerouteRequest request = new YFlowRerouteRequest(createYFlowRequest.getYFlowId(), "reason");
-        request.setAffectedIsl(Collections.singleton(new IslEndpoint(SWITCH_TRANSIT, 26)));
+        request.setAffectedIsls(Collections.singleton(new IslEndpoint(SWITCH_TRANSIT, 26)));
 
         preparePathComputationForReroute("test_flow_1", buildFirstSubFlowPathPairWithNewTransit());
         preparePathComputationForReroute("test_flow_2", buildSecondSubFlowPathPairWithNewTransit());
@@ -265,7 +265,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         // given
         YFlowRequest createYFlowRequest = createYFlow();
         YFlowRerouteRequest request = new YFlowRerouteRequest(createYFlowRequest.getYFlowId(), "reason");
-        request.setAffectedIsl(Collections.singleton(new IslEndpoint(SWITCH_TRANSIT, 27)));
+        request.setAffectedIsls(Collections.singleton(new IslEndpoint(SWITCH_TRANSIT, 27)));
 
         preparePathComputationForReroute("test_flow_2", buildSecondSubFlowPathPairWithNewTransit());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_SHARED);

@@ -1,0 +1,36 @@
+ 
+  i.fa {
+    font-size: 15px;
+    color: #262d37;
+    vertical-align: middle;
+    margin: 0 5px;
+    cursor: pointer;
+  }
+  
+  .fa-edit:before, .fa-pencil-square-o:before {
+    content: "\f044";
+  }
+  
+  .icon-ok-sign:before {
+    content: "\f058";
+  }
+  
+  .icon-remove-sign:before {
+    content: "\f057";
+  }
+  
+  i.icon {
+    font-family: FontAwesome;
+    font-weight: normal;
+    font-style: normal;
+    text-decoration: inherit;
+  }
+  
+  .isl_details_div .col-form-label {
+    line-height: 1;
+  }
+  
+  .update_isl_description{
+  padding-left: 0px;
+  }
+ 

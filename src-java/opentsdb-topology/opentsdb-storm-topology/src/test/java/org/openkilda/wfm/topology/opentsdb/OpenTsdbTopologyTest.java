@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.opentsdb;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockserver.integration.ClientAndServer.startClientAndServer;
 import static org.openkilda.wfm.topology.opentsdb.OpenTsdbTopology.OTSDB_PARSE_BOLT_ID;
 
@@ -48,11 +50,11 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.util.Collections;
-import java.util.Map;
 import java.util.Properties;
 
 public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     private static final long timestamp = System.currentTimeMillis();
+    private static String TEST_DESTINATION_NAME = "test";
     private static final int OPENTSDB_PORT = 4243;
     private static ClientAndServer mockServer;
     private static final HttpRequest REQUEST = HttpRequest.request().withMethod("POST").withPath("/api/put");
@@ -76,7 +78,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     }
 
     @Test
-    public void shouldSuccessfulSendDatapoint() {
+    public void successfulSendDatapoint() {
         Datapoint datapoint = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
 
         MockedSources sources = new MockedSources();
@@ -85,14 +87,15 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
 
             sources.addMockData(ZooKeeperSpout.SPOUT_ID,
                     new Values(LifecycleEvent.builder().signal(Signal.NONE).build(), null));
-            sources.addMockData(OpenTsdbTopology.OTSDB_SPOUT_ID,
+            sources.addMockData(OpenTsdbTopology.addNameToId(OpenTsdbTopology.OTSDB_SPOUT_ID, TEST_DESTINATION_NAME),
                     new Values(null, datapoint));
             completeTopologyParam.setMockedSources(sources);
 
             StormTopology stormTopology = topology.createTopology();
             stormTopology.get_bolts().remove(ZooKeeperBolt.BOLT_ID);
             activateDatapointParserBolt(stormTopology);
-            Map result = Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
+
+            Testing.completeTopology(cluster, stormTopology, completeTopologyParam);
         });
 
         //verify that request is sent to OpenTSDB server
@@ -100,7 +103,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     }
 
     @Test
-    public void shouldSendDatapointRequestsOnlyOnce() throws Exception {
+    public void sendDatapointRequestsOnlyOnce() throws Exception {
         Datapoint datapoint = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
 
         MockedSources sources = new MockedSources();
@@ -110,7 +113,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
 
             sources.addMockData(ZooKeeperSpout.SPOUT_ID,
                     new Values(LifecycleEvent.builder().signal(Signal.NONE).build(), null));
-            sources.addMockData(OpenTsdbTopology.OTSDB_SPOUT_ID,
+            sources.addMockData(OpenTsdbTopology.addNameToId(OpenTsdbTopology.OTSDB_SPOUT_ID, TEST_DESTINATION_NAME),
                     new Values(null, datapoint), new Values(null, datapoint));
             completeTopologyParam.setMockedSources(sources);
 
@@ -125,7 +128,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     }
 
     @Test
-    public void shouldSendDatapointRequestsTwice() throws Exception {
+    public void sendDatapointRequestsTwice() throws Exception {
         Datapoint datapoint1 = new Datapoint("metric", timestamp, Collections.emptyMap(), 123);
         Datapoint datapoint2 = new Datapoint("metric", timestamp, Collections.emptyMap(), 456);
 
@@ -142,7 +145,7 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
 
             sources.addMockData(ZooKeeperSpout.SPOUT_ID,
                     new Values(LifecycleEvent.builder().signal(Signal.NONE).build(), null));
-            sources.addMockData(OpenTsdbTopology.OTSDB_SPOUT_ID,
+            sources.addMockData(OpenTsdbTopology.addNameToId(OpenTsdbTopology.OTSDB_SPOUT_ID, TEST_DESTINATION_NAME),
                     new Values(null, datapoint1), new Values(null, datapoint2));
             completeTopologyParam.setMockedSources(sources);
 
@@ -156,6 +159,20 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
         mockServer.verify(REQUEST, VerificationTimes.exactly(2));
     }
 
+    @Test
+    public void isValidUrl() {
+        assertTrue(OpenTsdbTopology.isValidUrl("http://localhost:4243"));
+        assertTrue(OpenTsdbTopology.isValidUrl("http://localhost:4243/api/put"));
+    }
+
+    @Test
+    public void isValidUrlNoHost() {
+        assertFalse(OpenTsdbTopology.isValidUrl("http://:4243"));
+        assertFalse(OpenTsdbTopology.isValidUrl("http://localhost:"));
+        assertFalse(OpenTsdbTopology.isValidUrl("localhost:4242"));
+        assertFalse(OpenTsdbTopology.isValidUrl(""));
+    }
+
     /**
      * Sets field `active` of DatapointParserBolt to true.
      * TODO Need to be replaced with normal activation by sending START signal or by testing services by unit test
@@ -164,7 +181,8 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
      */
     private void activateDatapointParserBolt(StormTopology stormTopology) throws IOException, ClassNotFoundException {
         // get bolt instance
-        Bolt bolt = stormTopology.get_bolts().get(OTSDB_PARSE_BOLT_ID);
+        Bolt bolt = stormTopology.get_bolts().get(
+                OpenTsdbTopology.addNameToId(OTSDB_PARSE_BOLT_ID, TEST_DESTINATION_NAME));
         byte[] serializedBolt = bolt.get_bolt_object().get_serialized_java();
         ObjectInput inputStream = new ObjectInputStream(new ByteArrayInputStream(serializedBolt));
         DatapointParseBolt datapointParseBolt = (DatapointParseBolt) inputStream.readObject();
@@ -186,7 +204,10 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
 
     private Properties getProperties() {
         Properties properties = new Properties();
-        properties.setProperty("opentsdb.hosts", String.format("http://localhost:%d", OPENTSDB_PORT));
+        properties.setProperty("opentsdb.target.opentsdb", "");
+        properties.setProperty("opentsdb.target.victoriametrics", "");
+        properties.setProperty(
+                "opentsdb.target." + TEST_DESTINATION_NAME, String.format("http://localhost:%d", OPENTSDB_PORT));
         return properties;
     }
 }

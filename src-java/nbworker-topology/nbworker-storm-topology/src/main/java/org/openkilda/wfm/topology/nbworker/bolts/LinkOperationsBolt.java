@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 
 import static java.lang.String.format;
 
-import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.BaseRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
@@ -326,7 +326,7 @@ public class LinkOperationsBolt extends PersistenceOperationsBolt implements ILi
                 Collection<FlowPath> targetPaths = flowOperationsService.getFlowPathsForLink(
                         srcSwitch, srcPort, dstSwitch, dstPort);
 
-                for (FlowRerouteRequest reroute : flowOperationsService.makeRerouteRequests(
+                for (BaseRerouteRequest reroute : flowOperationsService.makeRerouteRequests(
                         targetPaths, affectedIslEndpoints, reason)) {
                     CommandContext forkedContext = getCommandContext().fork(reroute.getFlowId());
                     getOutput().emit(StreamType.REROUTE.toString(), getCurrentTuple(),

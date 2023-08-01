@@ -8,11 +8,11 @@ The message producer must add to the messages information that unambiguously des
 a message cookie object. A message recipient must produce a response and copy the message cookie from the request. So, the only 
 task for the message recipient in this approach is to copy the message cookie from the request to the response.
 
-Message cookie hierarchy represents/mirrors the code hierarchy that produces this cookie. For example, from innermost to 
+Message cookie hierarchy represents/mirrors the code hierarchy that produces this cookie. For example, from the innermost to 
 outermost layers: `unique-request-id => unique-handler-id => service-id`. During message producing each code layer must
-add corresponding cookie layer.
+add the corresponding cookie layer.
 
-Message cookie must be placed into a message envelope (`BaseMessage` and inheritors in our terminology). It will simplify
+A message cookie must be placed into a message envelope (`BaseMessage` and inheritors in our terminology). It will simplify
 its copying on recipient side: a message cookie will not be passed into the code that handles request itself, but it will be copied on the 
 level responsible for message decoding/encoding. At same time, on the request producer side, carrier decorators can add
 extra message cookie layers during delivering a message payload into the message ejecting level without any interaction with

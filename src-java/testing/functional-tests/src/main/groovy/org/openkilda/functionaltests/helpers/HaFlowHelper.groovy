@@ -10,6 +10,7 @@ import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.FlowStatus
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.BaseFlowEndpointV2
@@ -23,6 +24,7 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload
 import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult
+import org.openkilda.northbound.dto.v2.haflows.HaSubFlow
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -154,8 +156,7 @@ class HaFlowHelper {
         HaFlow haFlow
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             haFlow = northboundV2.getHaFlow(response.haFlowId)
-            assert haFlow
-            assert haFlow.status == FlowState.UP.toString()
+            assertHaFlowAndSubFlowStatuses(haFlow, FlowState.UP)
         }
         haFlow
     }
@@ -189,6 +190,24 @@ class HaFlowHelper {
         // https://github.com/telstra/open-kilda/issues/3411
         northbound.synchronizeSwitch(response.sharedEndpoint.switchId, true)
         return response
+    }
+
+    /**
+     * Checks if status of HA-flow and statuses of HA-sub flows are equal to expected
+     */
+    void assertHaFlowAndSubFlowStatuses(String haFlowId, FlowState expectedStatus) {
+        assertHaFlowAndSubFlowStatuses(northboundV2.getHaFlow(haFlowId), expectedStatus)
+    }
+
+    /**
+     * Checks if status of HA-flow and statuses of HA-sub flows are equal to expected
+     */
+    static void assertHaFlowAndSubFlowStatuses(HaFlow haFlow, FlowState expectedStatus) {
+        assert haFlow
+        assert haFlow.status == expectedStatus.toString()
+        for (HaSubFlow subFlow : haFlow.subFlows ) {
+            assert subFlow.status == expectedStatus.toString()
+        }
     }
 
     /**

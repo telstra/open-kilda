@@ -19,7 +19,7 @@ import static java.lang.String.format;
 import static org.openkilda.model.ConnectedDeviceType.ARP;
 import static org.openkilda.model.ConnectedDeviceType.LLDP;
 
-import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.BaseRerouteRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
@@ -199,7 +199,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
             Set<IslEndpoint> affectedIslEndpoint = new HashSet<>(
                     switchOperationsService.getSwitchIslEndpoints(switchId));
             String reason = format("evacuated due to switch maintenance %s", switchId);
-            for (FlowRerouteRequest reroute : flowOperationsService.makeRerouteRequests(
+            for (BaseRerouteRequest reroute : flowOperationsService.makeRerouteRequests(
                     paths, affectedIslEndpoint, reason)) {
                 CommandContext forkedContext = getCommandContext().fork(reroute.getFlowId());
                 getOutput().emit(StreamType.REROUTE.toString(), tuple,

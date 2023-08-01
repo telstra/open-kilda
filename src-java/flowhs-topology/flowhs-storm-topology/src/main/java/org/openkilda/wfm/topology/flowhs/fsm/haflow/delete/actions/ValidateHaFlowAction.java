@@ -72,6 +72,7 @@ public class ValidateHaFlowAction extends
             // Keep it, just in case we have to revert it.
             stateMachine.setOriginalFlowStatus(haFlow.getStatus());
             haFlow.setStatus(FlowStatus.IN_PROGRESS);
+            haFlow.getHaSubFlows().forEach(subFlow -> subFlow.setStatus(FlowStatus.IN_PROGRESS));
             return haFlow;
         });
 

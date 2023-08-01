@@ -74,8 +74,8 @@ public class RerouteQueueServiceTest {
     private static final Switch SWITCH_B = Switch.builder().switchId(SWITCH_ID_B).build();
     private static final SwitchId SWITCH_ID_C = new SwitchId(3L);
     private static final Switch SWITCH_C = Switch.builder().switchId(SWITCH_ID_C).build();
-    private static String FLOW_ID = "flow_id";
-    private static String YFLOW_ID = "yflow_id";
+    private static final String FLOW_ID = "flow_id";
+    private static final String YFLOW_ID = "yflow_id";
 
     private Flow flow;
     private YFlow yFlow;
@@ -132,7 +132,6 @@ public class RerouteQueueServiceTest {
                 .priority(1)
                 .timeCreate(Instant.now().plus(1, MINUTES))
                 .affectedIsl(Collections.singleton(new IslEndpoint(SWITCH_ID_A, 1)))
-                .force(false)
                 .effectivelyDown(false)
                 .reason("another reason")
                 .flowType(FlowType.FLOW)
@@ -335,7 +334,6 @@ public class RerouteQueueServiceTest {
                 .priority(7)
                 .timeCreate(flow.getTimeCreate())
                 .affectedIsl(Collections.singleton(new IslEndpoint(SWITCH_ID_A, 1)))
-                .force(false)
                 .effectivelyDown(true)
                 .reason("another reason")
                 .flowType(FlowType.FLOW)
@@ -374,7 +372,6 @@ public class RerouteQueueServiceTest {
                 .priority(7)
                 .timeCreate(yFlow.getTimeCreate())
                 .affectedIsl(Collections.singleton(new IslEndpoint(SWITCH_ID_A, 1)))
-                .force(false)
                 .effectivelyDown(true)
                 .reason("another reason")
                 .flowType(FlowType.Y_FLOW)
@@ -462,7 +459,6 @@ public class RerouteQueueServiceTest {
                 .priority(flow.getPriority())
                 .timeCreate(flow.getTimeCreate())
                 .affectedIsl(Collections.emptySet())
-                .force(false)
                 .effectivelyDown(false)
                 .reason("first reason")
                 .flowType(FlowType.FLOW)
@@ -472,7 +468,6 @@ public class RerouteQueueServiceTest {
                 .priority(flow.getPriority())
                 .timeCreate(flow.getTimeCreate())
                 .affectedIsl(Collections.singleton(new IslEndpoint(SWITCH_ID_B, 1)))
-                .force(false)
                 .effectivelyDown(true)
                 .reason("second reason")
                 .flowType(FlowType.FLOW)
@@ -482,7 +477,6 @@ public class RerouteQueueServiceTest {
                 .priority(7)
                 .timeCreate(Instant.now().plus(1, MINUTES))
                 .affectedIsl(Collections.singleton(new IslEndpoint(SWITCH_ID_A, 1)))
-                .force(true)
                 .effectivelyDown(false)
                 .flowType(FlowType.FLOW)
                 .reason("third reason")
@@ -503,7 +497,6 @@ public class RerouteQueueServiceTest {
                 .priority(throttling.getPriority())
                 .timeCreate(throttling.getTimeCreate())
                 .affectedIsl(Sets.newHashSet(new IslEndpoint(SWITCH_ID_A, 1), new IslEndpoint(SWITCH_ID_B, 1)))
-                .force(true)
                 .effectivelyDown(true)
                 .flowType(FlowType.FLOW)
                 .reason(pending.getReason())
@@ -596,7 +589,6 @@ public class RerouteQueueServiceTest {
                 .priority(flow.getPriority())
                 .timeCreate(flow.getTimeCreate())
                 .affectedIsl(Collections.emptySet())
-                .force(true)
                 .effectivelyDown(true)
                 .flowType(FlowType.FLOW)
                 .reason("reason");
@@ -608,7 +600,6 @@ public class RerouteQueueServiceTest {
                 .priority(flow.getPriority())
                 .timeCreate(flow.getTimeCreate())
                 .affectedIsl(Collections.emptySet())
-                .force(true)
                 .effectivelyDown(true)
                 .reason("reason")
                 .flowType(FlowType.Y_FLOW);
@@ -622,7 +613,7 @@ public class RerouteQueueServiceTest {
 
     private YFlowRerouteRequest getYFlowRerouteRequest(String flowId, FlowThrottlingData flowThrottlingData) {
         return new YFlowRerouteRequest(flowId, flowThrottlingData.getAffectedIsl(),
-                flowThrottlingData.isForce(), flowThrottlingData.getReason(), flowThrottlingData.isIgnoreBandwidth());
+                flowThrottlingData.getReason(), flowThrottlingData.isIgnoreBandwidth());
     }
 
     private ArgumentMatcher<ErrorData> flowNotFoundErrorData(String flowId) {

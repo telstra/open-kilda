@@ -55,13 +55,12 @@ public class OnSubFlowReroutedAction extends
                 String requestedFlowId = rerouteRequest.getFlowId();
                 if (!requestedFlowId.equals(subFlowId)) {
                     // clear to avoid the 'path has no affected ISLs' exception
-                    rerouteRequest.getAffectedIsl().clear();
+                    rerouteRequest.getAffectedIsls().clear();
                     stateMachine.addReroutingSubFlow(requestedFlowId);
                     stateMachine.notifyEventListeners(listener ->
                             listener.onSubFlowProcessingStart(yFlowId, requestedFlowId));
                     CommandContext flowContext = stateMachine.getCommandContext().fork(requestedFlowId);
-                    flowRerouteService.startFlowRerouting(rerouteRequest, flowContext, yFlowId,
-                            stateMachine.isForceReroute());
+                    flowRerouteService.startFlowRerouting(rerouteRequest, flowContext, yFlowId);
                 }
             });
         }

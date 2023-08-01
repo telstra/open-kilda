@@ -34,7 +34,6 @@ public class FlowThrottlingData implements Serializable {
     private Integer priority;
     private Instant timeCreate;
     private Set<IslEndpoint> affectedIsl;
-    private boolean force;
     private boolean ignoreBandwidth;
     private boolean strictBandwidth;
     private boolean effectivelyDown;
@@ -47,10 +46,10 @@ public class FlowThrottlingData implements Serializable {
 
     @Builder
     public FlowThrottlingData(String correlationId, Integer priority, Instant timeCreate,
-                              Set<IslEndpoint> affectedIsl, boolean force, boolean ignoreBandwidth,
+                              Set<IslEndpoint> affectedIsl, boolean ignoreBandwidth,
                               boolean strictBandwidth, boolean effectivelyDown, String reason,
                               PathComputationStrategy pathComputationStrategy, long bandwidth, int retryCounter,
-                              FlowType flowType) {
+                              @NonNull FlowType flowType) {
         this.correlationId = correlationId;
         this.priority = priority;
         this.timeCreate = timeCreate;
@@ -58,7 +57,6 @@ public class FlowThrottlingData implements Serializable {
         // FIXME(surabujin): this field treats as mutable set by object owners
         //  org.openkilda.wfm.topology.reroute.service.ReroutesThrottling.putRequest
         this.affectedIsl = new HashSet<>(affectedIsl);
-        this.force = force;
         this.ignoreBandwidth = ignoreBandwidth;
         this.strictBandwidth = strictBandwidth;
         this.effectivelyDown = effectivelyDown;

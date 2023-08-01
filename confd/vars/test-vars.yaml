@@ -33,4 +33,3 @@ kilda_logging_port_tests: 5006
 
 kilda_tests_grpc_endpoint: "http://localhost"
 kilda_tests_grpc_rest_port: "8091"
-

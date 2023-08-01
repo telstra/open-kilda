@@ -33,13 +33,13 @@ public enum FlowPathStatus {
     IN_PROGRESS,
 
     /**
-     * Flow path is installed, but inactive.
-     */
-    INACTIVE,
-
-    /**
      * Flow path is degraded.
      */
-    DEGRADED;
+    DEGRADED,
+
+    /**
+     * Flow path is installed, but inactive.
+     */
+    INACTIVE;
 }
 
