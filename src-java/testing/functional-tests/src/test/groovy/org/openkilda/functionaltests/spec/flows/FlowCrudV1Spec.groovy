@@ -702,7 +702,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
     }
 
     @Tidy
-    @Ignore
     def "Unable to create a flow on an isl port when ISL status is MOVED"() {
         given: "An inactive isl with moved state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }

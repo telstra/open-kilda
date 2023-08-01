@@ -25,7 +25,6 @@ import spock.lang.Narrative
 import java.util.concurrent.TimeUnit
 
 @Narrative("Verify scenarios around replugging ISLs between different switches/ports.")
-@Ignore
 @Tags([TOPOLOGY_DEPENDENT])
 class IslReplugSpec extends HealthCheckSpecification {
 

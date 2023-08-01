@@ -40,7 +40,7 @@ class HardwareEnvCleanupExtension extends EnvCleanupExtension {
             resetBandwidth(links)
 
             //a-switch rules
-//            resetAswRules()
+            resetAswRules()
 
             //now switches
             def activeSwitches = northbound.getAllSwitches().findAll { it.state == SwitchChangeType.ACTIVATED }

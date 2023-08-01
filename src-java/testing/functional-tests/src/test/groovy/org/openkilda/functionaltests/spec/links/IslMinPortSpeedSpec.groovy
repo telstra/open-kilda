@@ -12,7 +12,6 @@ import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 
-import spock.lang.Ignore
 import spock.lang.Narrative
 
 @Narrative("""Minimal port speed value is chosen for ISL capacity.
@@ -22,7 +21,6 @@ Eg. 10G on one side, and 1G on another side, the ISL should have a 1G capacity."
 class IslMinPortSpeedSpec extends HealthCheckSpecification {
     @Tidy
     @Tags([SMOKE, TOPOLOGY_DEPENDENT])
-    @Ignore
     def "System sets min port speed for isl capacity"() {
         given: "Two ports with different port speed"
         def isl = topology.islsForActiveSwitches.find {

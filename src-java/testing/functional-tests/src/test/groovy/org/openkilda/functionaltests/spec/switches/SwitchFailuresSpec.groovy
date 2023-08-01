@@ -36,7 +36,6 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])
-    @Ignore
     def "ISL is still able to properly fail even if switches have reconnected"() {
         given: "A flow"
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
