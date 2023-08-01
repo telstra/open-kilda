@@ -15,6 +15,7 @@
 
 package org.openkilda.messaging.info.switches.v2;
 
+import static org.openkilda.messaging.Utils.getNonNullEntries;
 import static org.openkilda.messaging.Utils.getSize;
 import static org.openkilda.messaging.Utils.joinBooleans;
 import static org.openkilda.messaging.Utils.joinLists;
@@ -46,9 +47,7 @@ public class LogicalPortsValidationEntryV2 implements Serializable {
             return null;
         }
 
-        List<LogicalPortsValidationEntryV2> nonNullEntries = entryList.stream()
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        List<LogicalPortsValidationEntryV2> nonNullEntries = getNonNullEntries(entryList);
         if (nonNullEntries.isEmpty()) {
             return null;
         }

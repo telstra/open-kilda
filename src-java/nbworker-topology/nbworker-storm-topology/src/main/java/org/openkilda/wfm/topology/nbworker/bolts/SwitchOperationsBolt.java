@@ -101,10 +101,11 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
         SwitchOperationsServiceCarrier {
     private transient SwitchOperationsService switchOperationsService;
     private transient FlowOperationsService flowOperationsService;
+    private final int kafkaChunkSize;
 
-    public SwitchOperationsBolt(PersistenceManager persistenceManager) {
+    public SwitchOperationsBolt(PersistenceManager persistenceManager, int kafkaChunkSize) {
         super(persistenceManager);
-
+        this.kafkaChunkSize = kafkaChunkSize;
         enableMeterRegistry("kilda.switch_operations", StreamType.TO_METRICS_BOLT.name());
     }
 
@@ -146,7 +147,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
         } else if (request instanceof GetPortPropertiesRequest) {
             result = Collections.singletonList(getPortProperties((GetPortPropertiesRequest) request));
         } else if (request instanceof GetSwitchConnectedDevicesRequest) {
-            result = Collections.singletonList(getSwitchConnectedDevices((GetSwitchConnectedDevicesRequest) request));
+            result = getSwitchConnectedDevices((GetSwitchConnectedDevicesRequest) request);
         } else if (request instanceof SwitchPatchRequest) {
             result = Collections.singletonList(patchSwitch((SwitchPatchRequest) request));
         } else if (request instanceof SwitchConnectionsRequest) {
@@ -279,7 +280,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
         }
     }
 
-    private SwitchConnectedDevicesResponse getSwitchConnectedDevices(GetSwitchConnectedDevicesRequest request) {
+    private List<SwitchConnectedDevicesResponse> getSwitchConnectedDevices(GetSwitchConnectedDevicesRequest request) {
         Collection<SwitchConnectedDevice> devices;
         try {
             devices = switchOperationsService.getSwitchConnectedDevices(request.getSwitchId());
@@ -310,7 +311,7 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
             arpDevices.sort(Comparator.comparing(o -> Instant.parse(o.getTimeLastSeen())));
             ports.add(new SwitchPortConnectedDevicesDto(entry.getKey(), lldpDevices, arpDevices));
         }
-        return new SwitchConnectedDevicesResponse(ports);
+        return new SwitchConnectedDevicesResponse(ports).split(kafkaChunkSize);
     }
 
     private List<SwitchLagPortResponse> getLagPorts(GetSwitchLagPortsRequest request) {

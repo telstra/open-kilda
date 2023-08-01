@@ -15,22 +15,79 @@
 
 package org.openkilda.messaging.nbtopology.response;
 
+import org.openkilda.messaging.Chunkable;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.split.SplitIterator;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.Singular;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class SwitchConnectedDevicesResponse extends InfoData {
+public class SwitchConnectedDevicesResponse extends InfoData implements Chunkable<SwitchConnectedDevicesResponse> {
+    @Singular
     private List<SwitchPortConnectedDevicesDto> ports;
+
+    @Override
+    public List<SwitchConnectedDevicesResponse> split(int chunkSize) {
+        List<SwitchConnectedDevicesResponse> result = new ArrayList<>();
+        SplitIterator<SwitchConnectedDevicesResponse, SwitchConnectedDevicesResponseBuilder> iterator
+                = new SplitIterator<>(chunkSize, chunkSize, SwitchConnectedDevicesResponseBuilder::build,
+                SwitchConnectedDevicesResponse::builder);
+
+        if (ports != null) {
+            for (SwitchPortConnectedDevicesDto port : ports) {
+                for (SwitchPortConnectedDevicesDto devicesDto : port.split(
+                        iterator.getRemainingChunkSize(), chunkSize)) {
+                    iterator.getCurrentBuilder().port(devicesDto);
+                    iterator.next(devicesDto.size()).ifPresent(result::add);
+                }
+            }
+        }
+        if (iterator.isAddCurrent()) {
+            result.add(iterator.getCurrentBuilder().build());
+        }
+
+        return result;
+    }
+
+    /**
+     * Unites several responses into one.
+     */
+    public static SwitchConnectedDevicesResponse unite(List<SwitchConnectedDevicesResponse> dataList) {
+        if (dataList == null) {
+            return null;
+        }
+        Map<Integer, List<SwitchPortConnectedDevicesDto>> devicesByPortOrderedMap = new LinkedHashMap<>();
+
+        for (SwitchConnectedDevicesResponse response : dataList) {
+            if (response != null && response.getPorts() != null) {
+                for (SwitchPortConnectedDevicesDto devicesDto : response.ports) {
+                    devicesByPortOrderedMap.putIfAbsent(devicesDto.getPortNumber(), new ArrayList<>());
+                    devicesByPortOrderedMap.get(devicesDto.getPortNumber()).add(devicesDto);
+                }
+            }
+        }
+
+        List<SwitchPortConnectedDevicesDto> connectedDevicesDtos = new ArrayList<>();
+        for (Integer portNumber : devicesByPortOrderedMap.keySet()) {
+            connectedDevicesDtos.add(SwitchPortConnectedDevicesDto.unite(devicesByPortOrderedMap.get(portNumber)));
+        }
+        return new SwitchConnectedDevicesResponse(connectedDevicesDtos);
+    }
 }

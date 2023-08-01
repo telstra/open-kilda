@@ -17,11 +17,13 @@ package org.openkilda.messaging.nbtopology.response;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Builder;
 import lombok.Data;
 
 import java.io.Serializable;
 
 @Data
+@Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class SwitchConnectedDeviceDto implements Serializable {
     private static final long serialVersionUID = 376496639708221203L;
