@@ -10,7 +10,6 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlow
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -23,23 +22,10 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
     @Shared
     HaFlowHelper haFlowHelper
 
-    @Tidy
-    def "History records are created for the create"() {
-        given: "Ha flow"
-        def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
-        def haFlow = haFlowHelper.addHaFlow(haFlowHelper.randomHaFlow(swT))
+    @Shared
+    boolean  isDeleted
 
-        when: "Ha Flow history contains create event"
-        //implement method
-        haFlowHelper.getHistory(haFlow.haFlowId).getCreateEntries().size() == 1
 
-        then: "Ha flow possible to be validated"
-        haFlowHelper.validate(haFlow.haFlowId)
-
-        cleanup:
-        haFlowHelper.deleteHaFlow(haFlow.haFlowId)
-    }
-    @Ignore("https://github.com/telstra/open-kilda/issues/5320")
     @Tidy
     def "User can change a ha-flow and get its history event - #description"() {
         given: "Existing ha-flow"
@@ -54,31 +40,39 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         expectedAssertion(haFlow)
 
         cleanup:
-        haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+        !isDeleted && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
 
         where:
         description | change | expectedAssertion
 
-        "update"    |
-                { HaFlow flow ->
-                    def allowedSharedPorts = topology.getAllowedPortsForSwitch(topology.find(
-                            flow.sharedEndpoint.switchId)) - flow.sharedEndpoint.portNumber
-                    flow.sharedEndpoint.portNumber = allowedSharedPorts[0]
-                    def updatedHaFlowPayload = haFlowHelper.convertToUpdate(flow)
-                    haFlowHelper.updateHaFlow(flow.haFlowId, updatedHaFlowPayload)
-
-                }            | { HaFlow flow -> haFlowHelper.getHistory(flow.haFlowId).getUpdateEntries().size() == 1}
+//    @Ignore("https://github.com/telstra/open-kilda/issues/5320")
+//        "update"    |
+//                { HaFlow flow ->
+//                    def allowedSharedPorts = topology.getAllowedPortsForSwitch(topology.find(
+//                            flow.sharedEndpoint.switchId)) - flow.sharedEndpoint.portNumber
+//                    flow.sharedEndpoint.portNumber = allowedSharedPorts[0]
+//                    def updatedHaFlowPayload = haFlowHelper.convertToUpdate(flow)
+//                    haFlowHelper.updateHaFlow(flow.haFlowId, updatedHaFlowPayload)
+//
+//                }            | { HaFlow flow -> haFlowHelper.getHistory(flow.haFlowId).getUpdateEntries().size() == 1}
         "delete"    |
                 { HaFlow flow ->
                     haFlowHelper.deleteHaFlow(flow.haFlowId)
+                    isDeleted = true
 
-                }            | { HaFlow flow -> haFlowHelper.getHistory(flow.haFlowId).getDeleteEntries().size() == 1}
+                }            | { HaFlow flow -> haFlowHelper.getHistory(flow.haFlowId).getDeleteEntries().size() == 1
+                                     }
 
         "reroute"    |
                 { HaFlow flow ->
                     haFlowHelper.rerouteHaFlow(flow.haFlowId)
 
                 }            | { HaFlow flow -> haFlowHelper.getHistory(flow.haFlowId).getRerouteEntries().size() == 1}
+        "create"    |
+                { HaFlow flow ->
+                    haFlowHelper.rerouteHaFlow(flow.haFlowId)
+
+                }            | { HaFlow flow -> haFlowHelper.getHistory(flow.haFlowId).getCreateEntries().size() == 1}
     }
 
 
