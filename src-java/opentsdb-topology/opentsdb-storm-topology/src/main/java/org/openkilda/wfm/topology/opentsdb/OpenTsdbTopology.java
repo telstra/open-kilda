@@ -82,6 +82,7 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
         int boltsToEnableCount = 0;
         List<String> boltsToEnable = new ArrayList<>();
         for (Map.Entry<String, String> entry : targets.entrySet()) {
+            logger.info("Creating metric channel for target {} with URL {}", entry.getKey(), entry.getValue());
             String boltId = createDeliveryChannel(tb, entry.getKey(), entry.getValue());
             boltsToEnableCount += getBoltInstancesCount(boltId);
             boltsToEnable.add(boltId);
