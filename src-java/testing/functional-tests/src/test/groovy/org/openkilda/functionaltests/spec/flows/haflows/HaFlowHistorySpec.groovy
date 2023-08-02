@@ -1,10 +1,10 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
+import org.openkilda.testing.service.northbound.model.HaFlowActionType
 
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
@@ -21,16 +21,16 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
     boolean isDeleted
 
     @Tidy
-    def "User can change a Ha-Flow and get its history event - #type"() {
+    def "User can change an Ha-Flow and get its history event - #type"() {
         given: "HA-FLow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
         def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
 
-        when: "#description the flow"
+        when: "Change the flow"
         change(haFlow)
 
-        then: "Correct event appears in ha flow history"
+        then: "Correct event appears in HA-Flow history"
         haFlowHelper.getHistory(haFlow.haFlowId).getEntryByType(type).size() == 1
 
         cleanup:
@@ -49,19 +49,19 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
 //                    haFlowHelper.updateHaFlow(flow.haFlowId, updatedHaFlowPayload)
 //
 //                }            | { HaFlow flow -> haFlowHelper.getHistory(flow.haFlowId).getUpdateEntries().size() == 1}
-        "delete"  |
+        HaFlowActionType.DELETE |
                 { HaFlow flow ->
                     haFlowHelper.deleteHaFlow(flow.haFlowId)
                     isDeleted = true
 
                 }
 
-        "reroute" |
+        HaFlowActionType.REROUTE  |
                 { HaFlow flow ->
                     haFlowHelper.rerouteHaFlow(flow.haFlowId)
 
                 }
-        "create"  | {}
+        HaFlowActionType.CREATE | {}
     }
 
 
@@ -71,22 +71,22 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
         def haFlow = haFlowHelper.addHaFlow(haFlowHelper.randomHaFlow(swT))
 
-        when: "Delete HA flow"
+        when: "Delete HA-flow"
         def timestampBeforeDelete = System.currentTimeSeconds()
         haFlowHelper.deleteHaFlow(haFlow.haFlowId)
         isDeleted = true
 
-        then: "Possible to get ha flow history events with timestamp filters"
+        then: "Possible to get HA-FLow history events with timestamp filters"
         def timestampAfterDelete = System.currentTimeSeconds()
         haFlowHelper.getHistory(haFlow.haFlowId, timestampBeforeCreate, timestampAfterDelete).entries.size() == 2
-        haFlowHelper.getHistory(haFlow.haFlowId, timestampBeforeDelete, timestampAfterDelete).getEntryByType("delete").size() == 1
+        haFlowHelper.getHistory(haFlow.haFlowId, timestampBeforeDelete, timestampAfterDelete).getEntryByType(HaFlowActionType.DELETE).size() == 1
 
         cleanup:
         haFlow && !isDeleted && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
 
     }
 
-    def "Empty history returned in case filters return no results ()"() {
+    def "Empty history returned in case filters return no results"() {
         given: "HA-FLow"
         def timestampBeforeCreate = System.currentTimeSeconds()
         def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()

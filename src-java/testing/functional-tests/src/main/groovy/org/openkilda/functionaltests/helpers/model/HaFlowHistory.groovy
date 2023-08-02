@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.helpers.model
 
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
+import org.openkilda.testing.service.northbound.model.HaFlowActionType
 
 import groovy.transform.EqualsAndHashCode
 import groovy.transform.TupleConstructor
@@ -22,12 +23,12 @@ class HaFlowHistory {
     List<HaFlowHistoryEntry> entries;
 
 
-    List<HaFlowHistoryEntry> getEntryByType(String type) {
+    List<HaFlowHistoryEntry> getEntryByType(HaFlowActionType type) {
         switch (type) {
-            case "update": return entries.findAll({ it -> it.action == "HA-Flow update" })
-            case "create": return entries.findAll({ it -> it.action == "HA-Flow create" })
-            case "delete": return entries.findAll({ it -> it.action == "HA-Flow delete" })
-            case "reroute": return entries.findAll({ it -> it.action == "HA-Flow reroute" })
+            case HaFlowActionType.UPDATE: return entries.findAll({ it -> it.action == "HA-Flow update" })
+            case HaFlowActionType.CREATE: return entries.findAll({ it -> it.action == "HA-Flow create" })
+            case HaFlowActionType.DELETE: return entries.findAll({ it -> it.action == "HA-Flow delete" })
+            case HaFlowActionType.REROUTE: return entries.findAll({ it -> it.action == "HA-Flow reroute" })
         }
 
     }
