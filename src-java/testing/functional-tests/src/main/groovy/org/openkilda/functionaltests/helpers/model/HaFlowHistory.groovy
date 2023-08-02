@@ -24,14 +24,16 @@ class HaFlowHistory {
 
 
     List<HaFlowHistoryEntry> getEntryByType(HaFlowActionType type) {
-        switch (type) {
-            case HaFlowActionType.UPDATE: return entries.findAll({ it -> it.action == "HA-Flow update" })
-            case HaFlowActionType.CREATE: return entries.findAll({ it -> it.action == "HA-Flow create" })
-            case HaFlowActionType.DELETE: return entries.findAll({ it -> it.action == "HA-Flow delete" })
-            case HaFlowActionType.REROUTE: return entries.findAll({ it -> it.action == "HA-Flow reroute" })
-        }
-
+        return entries.findAll({ it -> it.action == type.getValue() })
     }
 
+    boolean hasExactlyNEntriesOfType(HaFlowActionType entryType, int expectedAmountOfEntries) {
+        return getEntryByType(entryType).size() == expectedAmountOfEntries
+    }
 
 }
+
+
+
+
+

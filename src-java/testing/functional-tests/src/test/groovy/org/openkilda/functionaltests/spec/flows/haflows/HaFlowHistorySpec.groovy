@@ -22,7 +22,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
 
     @Tidy
     def "User can change an Ha-Flow and get its history event - #type"() {
-        given: "HA-FLow"
+        given: "HA-Flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
         def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
@@ -31,7 +31,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         change(haFlow)
 
         then: "Correct event appears in HA-Flow history"
-        haFlowHelper.getHistory(haFlow.haFlowId).getEntryByType(type).size() == 1
+        haFlowHelper.getHistory(haFlow.haFlowId).hasExactlyNEntriesOfType(type, 1)
 
         cleanup:
         !isDeleted && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
@@ -65,8 +65,8 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
     }
 
 
-    def "History records can be get with timestamp filters"() {
-        given: "HA-FLow"
+    def "History records can be received with timestamp filters"() {
+        given: "HA-Flow"
         def timestampBeforeCreate = System.currentTimeSeconds()
         def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
         def haFlow = haFlowHelper.addHaFlow(haFlowHelper.randomHaFlow(swT))
@@ -76,10 +76,10 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         haFlowHelper.deleteHaFlow(haFlow.haFlowId)
         isDeleted = true
 
-        then: "Possible to get HA-FLow history events with timestamp filters"
+        then: "Possible to get HA-Flow history events with timestamp filters"
         def timestampAfterDelete = System.currentTimeSeconds()
         haFlowHelper.getHistory(haFlow.haFlowId, timestampBeforeCreate, timestampAfterDelete).entries.size() == 2
-        haFlowHelper.getHistory(haFlow.haFlowId, timestampBeforeDelete, timestampAfterDelete).getEntryByType(HaFlowActionType.DELETE).size() == 1
+        haFlowHelper.getHistory(haFlow.haFlowId, timestampBeforeDelete, timestampAfterDelete).hasExactlyNEntriesOfType(HaFlowActionType.DELETE, 1)
 
         cleanup:
         haFlow && !isDeleted && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
@@ -87,15 +87,14 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
     }
 
     def "Empty history returned in case filters return no results"() {
-        given: "HA-FLow"
-        def timestampBeforeCreate = System.currentTimeSeconds()
+        given: "HA-Flow"
         def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
         def haFlow = haFlowHelper.addHaFlow(haFlowHelper.randomHaFlow(swT))
 
         when: "Get timestamp after create event"
         def timestampAfterCreate = System.currentTimeSeconds()
 
-        then: "Check HA-FLow history has no entries"
+        then: "Check HA-Flow history has no entries"
         assert haFlowHelper.getHistory(haFlow.haFlowId, timestampAfterCreate, System.currentTimeSeconds()).entries.isEmpty()
 
         cleanup:

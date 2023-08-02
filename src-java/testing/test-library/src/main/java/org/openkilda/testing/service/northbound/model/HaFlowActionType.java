@@ -15,14 +15,20 @@
 package org.openkilda.testing.service.northbound.model;
 
 public enum HaFlowActionType {
-    CREATE("create"),
-    DELETE("delete"),
-    UPDATE("update"),
-    REROUTE("reroute");
+    CREATE("HA-Flow create"),
+    DELETE("HA-Flow delete"),
+    UPDATE("HA-Flow update"),
+    REROUTE("HA-Flow reroute");
 
     final String value;
+
+    public String getValue() {
+        return value;
+    }
 
     HaFlowActionType(String value) {
         this.value = value;
     }
+
+
 }
