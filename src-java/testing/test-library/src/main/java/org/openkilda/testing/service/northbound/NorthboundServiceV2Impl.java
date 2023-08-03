@@ -638,10 +638,6 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
                 HaFlowPingResult.class, haFlowId).getBody();
     }
 
-    @Override
-    public List<HaFlowHistoryEntry> getHaFlowHistory(String flowId) {
-        return getHaFlowHistory(flowId, null);
-    }
 
     @Override
     public List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Long timeFrom, Long timeTo) {

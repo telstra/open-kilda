@@ -217,7 +217,6 @@ public interface NorthboundServiceV2 {
 
     List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Long timeFrom, Long timeTo);
 
-    List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Integer maxCount);
 
     List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Long timeFrom, Long timeTo, Integer maxCount);
 }
