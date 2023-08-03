@@ -161,7 +161,7 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     @Override
     public FlowResponseV2 partialUpdate(String flowId, FlowPatchV2 patch) {
         return restTemplate.exchange("/api/v2/flows/{flow_id}", HttpMethod.PATCH,
-                new HttpEntity<>(patch, buildHeadersWithCorrelationId()), FlowResponseV2.class, flowId)
+                        new HttpEntity<>(patch, buildHeadersWithCorrelationId()), FlowResponseV2.class, flowId)
                 .getBody();
     }
 
@@ -313,7 +313,7 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     @Override
     public SwitchDtoV2 partialSwitchUpdate(SwitchId switchId, SwitchPatchDto dto) {
         return restTemplate.exchange("/api/v2/switches/{switchId}", HttpMethod.PATCH,
-                new HttpEntity<>(dto, buildHeadersWithCorrelationId()), SwitchDtoV2.class, switchId)
+                        new HttpEntity<>(dto, buildHeadersWithCorrelationId()), SwitchDtoV2.class, switchId)
                 .getBody();
     }
 
@@ -375,7 +375,7 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
                 uriBuilder.build().toString(),
                 HttpMethod.GET,
                 new HttpEntity<>(buildHeadersWithCorrelationId()), SwitchFlowsPerPortResponse.class, switchId
-                ).getBody();
+        ).getBody();
     }
 
     @Override
@@ -636,11 +636,6 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         HttpEntity<HaFlowPingPayload> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
         return restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}/ping", HttpMethod.POST, httpEntity,
                 HaFlowPingResult.class, haFlowId).getBody();
-    }
-
-    @Override
-    public List<HaFlowHistoryEntry> getHaFlowHistory(String flowId) {
-        return getHaFlowHistory(flowId, null, null, null);
     }
 
     @Override

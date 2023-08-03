@@ -213,10 +213,7 @@ public interface NorthboundServiceV2 {
 
     HaFlowPingResult pingHaFlow(String haFlowId, HaFlowPingPayload payload);
 
-    List<HaFlowHistoryEntry> getHaFlowHistory(String haFlowId);
-
     List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Long timeFrom, Long timeTo);
-
 
     List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Long timeFrom, Long timeTo, Integer maxCount);
 }
