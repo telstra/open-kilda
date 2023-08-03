@@ -23,12 +23,12 @@ class HaFlowHistory {
     List<HaFlowHistoryEntry> entries;
 
 
-    List<HaFlowHistoryEntry> getEntryByType(HaFlowActionType type) {
+    private List<HaFlowHistoryEntry> getEntriesByType(HaFlowActionType type) {
         return entries.findAll({ it -> it.action == type.getValue() })
     }
 
     boolean hasExactlyNEntriesOfType(HaFlowActionType entryType, int expectedAmountOfEntries) {
-        return getEntryByType(entryType).size() == expectedAmountOfEntries
+        return getEntriesByType(entryType).size() == expectedAmountOfEntries
     }
 
 }
