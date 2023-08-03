@@ -648,10 +648,6 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
         return getHaFlowHistory(flowId, timeFrom, timeTo, null);
     }
 
-    @Override
-    public List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Integer maxCount) {
-        return getHaFlowHistory(flowId, null, null, maxCount);
-    }
 
     @Override
     public List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Long timeFrom, Long timeTo, Integer maxCount) {

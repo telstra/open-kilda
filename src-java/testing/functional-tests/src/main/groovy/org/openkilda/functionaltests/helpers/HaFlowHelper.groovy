@@ -10,7 +10,6 @@ import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.FlowStatus
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.BaseFlowEndpointV2
@@ -314,11 +313,8 @@ class HaFlowHelper {
         sprintf("autotest HA-Flow: %s", faker.shakespeare()."${methods[random.nextInt(methods.size())]}"())
     }
 
-    HaFlowHistory getHistory (String id) {
-        return new HaFlowHistory (northboundV2.getHaFlowHistory(id))
-    }
 
-    HaFlowHistory getHistory (String id, Long timeFrom, Long timeTo){
+    HaFlowHistory getHistory (String id, Long timeFrom = null, Long timeTo = null){
         return new HaFlowHistory (northboundV2.getHaFlowHistory(id, timeFrom, timeTo))
     }
 
