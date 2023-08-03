@@ -1,19 +1,14 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithConflictExpectedError
-import org.openkilda.functionaltests.error.haflow.HaFlowNotUpdatedExpectedError
-import spock.lang.Ignore
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
-import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.haflow.HaFlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.HaFlowHelper
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint
@@ -66,9 +61,11 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         def switchTripletAfterUpdate = topologyHelper.getSwitchTriplet(update.getSharedEndpoint().getSwitchId(),
                 update.getSubFlows().get(0).getEndpoint().getSwitchId(),
                 update.getSubFlows().get(1).getEndpoint().getSwitchId())
-        if (switchTripletAfterUpdate.isHaTraffExamAvailable()) {
-            assert haFlowHelper.getTraffExam(haFlow).run().hasTraffic()
-        }
+
+        //https://github.com/telstra/open-kilda/issues/5304
+//        if (switchTripletAfterUpdate.isHaTraffExamAvailable()) {
+//            assert haFlowHelper.getTraffExam(haFlow).run().hasTraffic()
+//        }
 
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
