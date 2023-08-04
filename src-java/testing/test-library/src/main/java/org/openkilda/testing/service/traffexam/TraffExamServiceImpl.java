@@ -15,10 +15,14 @@
 
 package org.openkilda.testing.service.traffexam;
 
+import static java.util.stream.Collectors.toList;
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen;
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGenConfig;
 import org.openkilda.testing.service.traffexam.model.Address;
+import org.openkilda.testing.service.traffexam.model.AddressListResponse;
 import org.openkilda.testing.service.traffexam.model.AddressResponse;
 import org.openkilda.testing.service.traffexam.model.AddressStats;
 import org.openkilda.testing.service.traffexam.model.ArpData;
@@ -52,6 +56,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Scope;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -64,6 +69,7 @@ import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.InputMismatchException;
 import java.util.LinkedList;
 import java.util.List;
@@ -352,15 +358,35 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     }
 
     private Address assignAddress(Host host, Address payload) {
-        AddressResponse response = restTemplate.postForObject(
-                makeHostUri(host).path("address").build(), payload,
-                AddressResponse.class);
-
+        AddressResponse response;
+        try {
+            response = restTemplate.postForObject(
+                    makeHostUri(host).path("address").build(), payload,
+                    AddressResponse.class);
+        } catch (HttpClientErrorException exception) {
+            if (exception.getStatusCode() == BAD_REQUEST
+                    && exception.getMessage().contains("collision with existing object")) {
+                getAddresses(host).forEach(this::releaseAddress);
+                response = restTemplate.postForObject(
+                    makeHostUri(host).path("address").build(), payload,
+                    AddressResponse.class);
+            } else {
+                throw exception;
+            }
+        }
         Address address = response.address;
         address.setHost(host);
         suppliedAddresses.put(address.getId(), address);
 
         return address;
+    }
+
+    private List<Address> getAddresses(Host host) {
+        return Arrays.stream(restTemplate.getForObject(makeHostUri(host).path("address").build(),
+                AddressListResponse.class)
+                .addresses)
+                .peek(address -> address.setHost(host))
+                .collect(toList());
     }
 
     @Override
