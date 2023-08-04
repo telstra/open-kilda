@@ -17,23 +17,26 @@
 set -eu ${DEBUG:+-x}
 
 PATH=${PATH}:/opt/storm/bin
+CPU_CORES=$(grep -c 'processor' /proc/cpuinfo)
+THREAD_COUNT=$(( CPU_CORES * 3 / 4 )) # use 75 % of all CPUS to do not have high system load
+THREAD_COUNT=$(( THREAD_COUNT > 0 ? THREAD_COUNT : 1 ))
 
 cd /app
 
 case ${WFM_TOPOLOGIES_MODE:-} in
 
   blue)
-    make kill-all-blue
-    exec make deploy-all-blue
+    make -j"$THREAD_COUNT" kill-all-blue
+    exec make -j"$THREAD_COUNT" deploy-all-blue
     ;;
 
   green)
-    make kill-all-green
-    exec make deploy-all-green
+    make -j"$THREAD_COUNT" kill-all-green
+    exec make -j"$THREAD_COUNT" deploy-all-green
     ;;
 
   *)
-    make kill-all
-    exec make deploy-all
+    make -j"$THREAD_COUNT" kill-all
+    exec make -j"$THREAD_COUNT" deploy-all
     ;;
 esac

@@ -16,6 +16,7 @@
 ARG base_image=kilda/storm:latest
 FROM ${base_image}
 
+ENV PACKAGE zookeeper-3.4.9
 ENV DEBIAN_FRONTEND noninteractive
 
 RUN \
@@ -23,6 +24,16 @@ RUN \
         install \
             kafka && \
     echo "PATH=$PATH:/opt/storm/bin" >> ~/.bashrc
+
+# Installing zookeeper client
+
+WORKDIR /tmp/
+RUN wget -q https://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/$PACKAGE.tar.gz
+RUN wget -q https://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/$PACKAGE.tar.gz.md5
+RUN md5sum -c $PACKAGE.tar.gz.md5
+RUN tar -xzf $PACKAGE.tar.gz --directory /opt/
+RUN ln -s /opt/$PACKAGE /opt/zookeeper
+RUN rm -rfv /tmp/*
 
 WORKDIR /app
 ADD wfm/app /app

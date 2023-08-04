@@ -28,12 +28,52 @@ TOPOLOGY_DEFINITION=${5:-"/app/${TOPOLOGY_NAME}-storm-topology/topology-definiti
 TOPOLOGY_JAR=$(ls -1 /app/${TOPOLOGY_NAME}-storm-topology/libs/ | grep -v "\-original" | head -1)
 COMMA_SEPARATED_DEPENDENCY_LIST=""
 
-for DEPENDENCY_JAR in $(ls -1 /app/${TOPOLOGY_NAME}-storm-topology/dependency-jars/);
-do
-    COMMA_SEPARATED_DEPENDENCY_LIST="${COMMA_SEPARATED_DEPENDENCY_LIST:+$COMMA_SEPARATED_DEPENDENCY_LIST,}/app/${TOPOLOGY_NAME}-storm-topology/dependency-jars/${DEPENDENCY_JAR}"
-done
+DEPENDENCY_JAR_DIR="/app/${TOPOLOGY_NAME}-storm-topology/dependency-jars/"
+if [ -d "$DEPENDENCY_JAR_DIR" ]
+then
+    for DEPENDENCY_JAR in $(ls -1 "$DEPENDENCY_JAR_DIR");
+    do
+        COMMA_SEPARATED_DEPENDENCY_LIST="${COMMA_SEPARATED_DEPENDENCY_LIST:+$COMMA_SEPARATED_DEPENDENCY_LIST,}${DEPENDENCY_JAR}${DEPENDENCY_JAR}"
+    done
+fi
 
 MAIN_CLASS=$(grep 'Main-Class' /app/${TOPOLOGY_NAME}-storm-topology/build.gradle  | awk -F ':' '{ print $2}' | awk -F "'" '{ print $2 }')
+
+get_zookeeper_node_value () {
+    ZOO_LOG4J_PROP="OFF,ROLLINGFILE" /opt/zookeeper/bin/zkCli.sh -server zookeeper get "$1" 2>/dev/null | tail -1
+}
+
+is_number () {
+    [ "$1" -eq "$1" ] 2>/dev/null
+}
+
+get_state () {
+    get_zookeeper_node_value "/kilda/$1/blue/state"
+}
+
+get_validated_state () {
+    state=$(get_state "$1")
+    if is_number "$state"
+    then
+      echo "$state"
+    else
+      echo "unknown_state"
+    fi
+}
+
+get_expected_state () {
+    get_zookeeper_node_value "/kilda/$1/blue/expected_state"
+}
+
+get_validated_expected_state () {
+    expected_state=$(get_expected_state "$1")
+    if is_number "$expected_state"
+    then
+      echo "$expected_state"
+    else
+      echo "unknown_expected_state" # must not be equal to invalid value of get_state_as_number
+    fi
+}
 
 "${STORM}" \
     jar /app/${TOPOLOGY_NAME}-storm-topology/libs/${TOPOLOGY_JAR} \
@@ -44,3 +84,26 @@ MAIN_CLASS=$(grep 'Main-Class' /app/${TOPOLOGY_NAME}-storm-topology/build.gradle
     --topology-config ${TOPOLOGY_CONFIG} \
     --topology-definition ${TOPOLOGY_DEFINITION}
 
+# Waiting till topology will be initialized
+state=$(get_validated_state "${TOPOLOGY_NAME}")
+expected_state=$(get_validated_expected_state "${TOPOLOGY_NAME}")
+echo "Current state of topology ${TOPOLOGY_NAME} is '$state'. Expected state is '$expected_state'"
+
+attempt=1
+max_attempts=30
+while [[ $state != "$expected_state" && $attempt -le $max_attempts ]]
+do
+  echo "Waiting till ${TOPOLOGY_NAME} topology state '$state' become equal to '$expected_state'. Attempt $attempt/$max_attempts"
+  attempt=$(( attempt + 1 ))
+  sleep 5
+  state=$(get_validated_state "${TOPOLOGY_NAME}")
+  expected_state=$(get_validated_expected_state "${TOPOLOGY_NAME}")
+done
+
+if [ "$state" == "$expected_state" ]
+then
+  echo "Topology ${TOPOLOGY_NAME} is in expected state $expected_state"
+else
+  echo "ERROR: Topology ${TOPOLOGY_NAME} state is $state but expected state is $expected_state"
+  exit 1
+fi
