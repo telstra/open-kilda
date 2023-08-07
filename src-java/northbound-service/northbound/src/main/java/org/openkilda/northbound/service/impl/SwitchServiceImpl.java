@@ -530,8 +530,10 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         GetFlowsPerPortForSwitchRequest data = new GetFlowsPerPortForSwitchRequest(switchId, ports);
         CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId);
 
-        return messagingChannel.sendAndGet(nbworkerTopic, message)
-                            .thenApply(GetFlowsPerPortForSwitchResponse.class::cast)
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
+                            .thenApply(response -> GetFlowsPerPortForSwitchResponse.unite(
+                                    response.stream().map(GetFlowsPerPortForSwitchResponse.class::cast)
+                                            .collect(Collectors.toList())))
                             .thenApply(switchMapper::toSwitchFlowsPerPortResponseV2Api);
     }
 

@@ -342,8 +342,8 @@ public class SwitchOperationsBolt extends PersistenceOperationsBolt implements I
 
     private List<GetFlowsPerPortForSwitchResponse> getSwitchFlows(GetFlowsPerPortForSwitchRequest request) {
         try {
-            return Collections.singletonList(
-                    switchOperationsService.getSwitchFlows(request.getSwitchId(), request.getPorts()));
+            return switchOperationsService.getSwitchFlows(request.getSwitchId(), request.getPorts())
+                    .split(kafkaChunkSize);
         } catch (SwitchNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(),
                     "Could not get flows for non-existent switch");
