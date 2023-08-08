@@ -31,8 +31,8 @@ import org.openkilda.model.history.FlowEvent;
 import org.openkilda.model.history.FlowEventAction;
 import org.openkilda.model.history.FlowEventDump;
 
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -87,7 +87,7 @@ public class HistoryMapperTest {
 
     public static FlowEventDump flowEventDump;
 
-    @BeforeClass
+    @BeforeAll
     public static void initializeData() {
         action = new FlowEventAction();
         action.setTimestamp(TIMESTAMP);

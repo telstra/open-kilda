@@ -15,13 +15,11 @@
 
 package org.openkilda.wfm.topology.flowhs.service.yflow;
 
-import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -57,13 +55,14 @@ import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowUpdateHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowUpdateService;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatcher;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -71,7 +70,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     private static final int METER_ALLOCATION_RETRIES_LIMIT = 3;
     private static final String SUB_FLOW_ID_1 = "test_sub_flow_id_1";
@@ -89,15 +88,15 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     @Mock
     private FlowGenericCarrier yFlowUpdateHubCarrier;
 
-    @Before
+    @BeforeEach
     public void init() {
-        doAnswer(buildSpeakerRequestAnswer())
+        lenient().doAnswer(buildSpeakerRequestAnswer())
                 .when(flowCreateHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
-        doAnswer(buildSpeakerRequestAnswer())
+        lenient().doAnswer(buildSpeakerRequestAnswer())
                 .when(flowUpdateHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
-        doAnswer(buildSpeakerRequestAnswer())
+        lenient().doAnswer(buildSpeakerRequestAnswer())
                 .when(yFlowCreateHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
-        doAnswer(buildSpeakerRequestAnswer())
+        lenient().doAnswer(buildSpeakerRequestAnswer())
                 .when(yFlowUpdateHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
     }
 
@@ -120,13 +119,13 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
         verifyAffinity(request.getYFlowId());
         YFlow flow = getYFlow(request.getYFlowId());
-        assertEquals(2000L, flow.getMaximumBandwidth());
+        Assertions.assertEquals(2000L, flow.getMaximumBandwidth());
         Set<SwitchId> expectedEndpointSwitchIds = Stream.of(SWITCH_NEW_FIRST_EP, SWITCH_NEW_SECOND_EP)
                 .collect(Collectors.toSet());
         Set<SwitchId> actualEndpointSwitchIds = flow.getSubFlows().stream()
                 .map(YSubFlow::getEndpointSwitchId)
                 .collect(Collectors.toSet());
-        assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
+        Assertions.assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
     }
 
     @Test
@@ -154,13 +153,13 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
         verifyAffinity(request.getYFlowId());
         YFlow flow = getYFlow(request.getYFlowId());
-        assertEquals(2000L, flow.getMaximumBandwidth());
+        Assertions.assertEquals(2000L, flow.getMaximumBandwidth());
         Set<SwitchId> expectedEndpointSwitchIds = Stream.of(SWITCH_NEW_FIRST_EP, SWITCH_NEW_SECOND_EP)
                 .collect(Collectors.toSet());
         Set<SwitchId> actualEndpointSwitchIds = flow.getSubFlows().stream()
                 .map(YSubFlow::getEndpointSwitchId)
                 .collect(Collectors.toSet());
-        assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
+        Assertions.assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
     }
 
     @Test
@@ -184,13 +183,13 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
 
         YFlow flow = getYFlow(request.getYFlowId());
-        assertEquals(1000L, flow.getMaximumBandwidth());
+        Assertions.assertEquals(1000L, flow.getMaximumBandwidth());
         Set<SwitchId> expectedEndpointSwitchIds = Stream.of(SWITCH_FIRST_EP, SWITCH_SECOND_EP)
                 .collect(Collectors.toSet());
         Set<SwitchId> actualEndpointSwitchIds = flow.getSubFlows().stream()
                 .map(YSubFlow::getEndpointSwitchId)
                 .collect(Collectors.toSet());
-        assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
+        Assertions.assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
     }
 
     @Test
@@ -214,13 +213,13 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
 
         YFlow flow = getYFlow(request.getYFlowId());
-        assertEquals(1000L, flow.getMaximumBandwidth());
+        Assertions.assertEquals(1000L, flow.getMaximumBandwidth());
         Set<SwitchId> expectedEndpointSwitchIds = Stream.of(SWITCH_FIRST_EP, SWITCH_SECOND_EP)
                 .collect(Collectors.toSet());
         Set<SwitchId> actualEndpointSwitchIds = flow.getSubFlows().stream()
                 .map(YSubFlow::getEndpointSwitchId)
                 .collect(Collectors.toSet());
-        assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
+        Assertions.assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
     }
 
     @Test
@@ -235,7 +234,7 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         preparePathComputationForUpdate(SUB_FLOW_ID_1, buildNewFirstSubFlowPathPair(), buildFirstSubFlowPathPair());
         preparePathComputationForUpdate(SUB_FLOW_ID_2, buildNewSecondSubFlowPathPair(), buildSecondSubFlowPathPair());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_NEW_FIRST_EP, SWITCH_NEW_SECOND_EP, SWITCH_TRANSIT);
-        doThrow(new ResourceAllocationException(injectedErrorMessage))
+        lenient().doThrow(new ResourceAllocationException(injectedErrorMessage))
                 .when(flowResourcesManager).allocateMeter(eq(Y_FLOW_ID), eq(SWITCH_TRANSIT));
 
         // when
@@ -246,13 +245,13 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
                 .allocateMeter(eq(Y_FLOW_ID), eq(SWITCH_TRANSIT));
 
         YFlow flow = getYFlow(request.getYFlowId());
-        assertEquals(1000L, flow.getMaximumBandwidth());
+        Assertions.assertEquals(1000L, flow.getMaximumBandwidth());
         Set<SwitchId> expectedEndpointSwitchIds = Stream.of(SWITCH_FIRST_EP, SWITCH_SECOND_EP)
                 .collect(Collectors.toSet());
         Set<SwitchId> actualEndpointSwitchIds = flow.getSubFlows().stream()
                 .map(YSubFlow::getEndpointSwitchId)
                 .collect(Collectors.toSet());
-        assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
+        Assertions.assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
     }
 
     @Test
@@ -279,13 +278,13 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         // then
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
         YFlow flow = getYFlow(request.getYFlowId());
-        assertEquals(1000L, flow.getMaximumBandwidth());
+        Assertions.assertEquals(1000L, flow.getMaximumBandwidth());
         Set<SwitchId> expectedEndpointSwitchIds = Stream.of(SWITCH_FIRST_EP, SWITCH_SECOND_EP)
                 .collect(Collectors.toSet());
         Set<SwitchId> actualEndpointSwitchIds = flow.getSubFlows().stream()
                 .map(YSubFlow::getEndpointSwitchId)
                 .collect(Collectors.toSet());
-        assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
+        Assertions.assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
     }
 
     @Test
@@ -312,13 +311,13 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         // then
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
         YFlow flow = getYFlow(request.getYFlowId());
-        assertEquals(1000L, flow.getMaximumBandwidth());
+        Assertions.assertEquals(1000L, flow.getMaximumBandwidth());
         Set<SwitchId> expectedEndpointSwitchIds = Stream.of(SWITCH_FIRST_EP, SWITCH_SECOND_EP)
                 .collect(Collectors.toSet());
         Set<SwitchId> actualEndpointSwitchIds = flow.getSubFlows().stream()
                 .map(YSubFlow::getEndpointSwitchId)
                 .collect(Collectors.toSet());
-        assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
+        Assertions.assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
     }
 
     @Test
@@ -354,13 +353,13 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         verifyNorthboundSuccessResponse(yFlowUpdateHubCarrier, YFlowResponse.class);
         verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
         YFlow flow = getYFlow(request.getYFlowId());
-        assertEquals(2000L, flow.getMaximumBandwidth());
+        Assertions.assertEquals(2000L, flow.getMaximumBandwidth());
         Set<SwitchId> expectedEndpointSwitchIds = Stream.of(SWITCH_NEW_FIRST_EP, SWITCH_NEW_SECOND_EP)
                 .collect(Collectors.toSet());
         Set<SwitchId> actualEndpointSwitchIds = flow.getSubFlows().stream()
                 .map(YSubFlow::getEndpointSwitchId)
                 .collect(Collectors.toSet());
-        assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
+        Assertions.assertEquals(expectedEndpointSwitchIds, actualEndpointSwitchIds);
     }
 
     private YFlowRequest createYFlow() throws UnroutableFlowException, RecoverableException, DuplicateKeyException {
@@ -503,7 +502,7 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     protected YFlow verifyYFlowStatus(String yFlowId, FlowStatus expectedStatus,
                                       FlowStatus expectedFirstSubFlowStatus, FlowStatus expectedSecondSubFlowStatus) {
         YFlow flow = getYFlow(yFlowId);
-        assertEquals(expectedStatus, flow.getStatus());
+        Assertions.assertEquals(expectedStatus, flow.getStatus());
 
         Set<FlowStatus> expectedSubFlowStatuses = Stream.of(expectedFirstSubFlowStatus, expectedSecondSubFlowStatus)
                 .collect(Collectors.toSet());
@@ -512,7 +511,7 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
                 .map(Flow::getStatus)
                 .collect(Collectors.toSet());
 
-        assertEquals(expectedSubFlowStatuses, actualSubFlowStatuses);
+        Assertions.assertEquals(expectedSubFlowStatuses, actualSubFlowStatuses);
 
         return flow;
     }
@@ -583,7 +582,7 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
 
     private void preparePathComputationForUpdate(String flowId, GetPathsResult pathPair, GetPathsResult pathPair2)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId), any(), anyBoolean()))
+        lenient().when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId), any(), anyBoolean()))
                 .thenReturn(pathPair).thenReturn(pathPair2);
     }
 
@@ -609,9 +608,9 @@ public class YFlowUpdateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
                         .anyMatch(pathSegment -> transit == null
                                 || pathSegment.getSrcSwitchId().equals(transit)
                                 || pathSegment.getDestSwitchId().equals(transit));
-        when(pathComputer.getIntersectionPoint(any(),
-                ArgumentMatchers.argThat(pathArgumentMatcher),
-                ArgumentMatchers.argThat(pathArgumentMatcher)))
+        lenient().when(pathComputer.getIntersectionPoint(any(),
+                        ArgumentMatchers.argThat(pathArgumentMatcher),
+                        ArgumentMatchers.argThat(pathArgumentMatcher)))
                 .thenReturn(yPoint);
     }
 

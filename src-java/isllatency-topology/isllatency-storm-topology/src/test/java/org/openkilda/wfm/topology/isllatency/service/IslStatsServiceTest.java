@@ -16,9 +16,6 @@
 package org.openkilda.wfm.topology.isllatency.service;
 
 import static java.lang.Thread.sleep;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
@@ -37,8 +34,9 @@ import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.isllatency.carriers.IslStatsCarrier;
 import org.openkilda.wfm.topology.isllatency.model.LatencyRecord;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
@@ -59,7 +57,7 @@ public class IslStatsServiceTest {
     private InOrder inOrderCarrier;
     private IslStatsService islStatsService;
 
-    @Before
+    @BeforeEach
     public void setup() {
         carrier = mock(IslStatsCarrier.class);
         inOrderCarrier = inOrder(carrier);
@@ -68,15 +66,15 @@ public class IslStatsServiceTest {
 
     @Test
     public void isRecordStillValidTest() {
-        assertFalse(islStatsService.isRecordStillValid(new LatencyRecord(1, 0)));
+        Assertions.assertFalse(islStatsService.isRecordStillValid(new LatencyRecord(1, 0)));
 
         long expiredTimestamp = Instant.now().minusSeconds(LATENCY_TIMEOUT * 2).toEpochMilli();
-        assertFalse(islStatsService.isRecordStillValid(new LatencyRecord(1, expiredTimestamp)));
+        Assertions.assertFalse(islStatsService.isRecordStillValid(new LatencyRecord(1, expiredTimestamp)));
 
-        assertTrue(islStatsService.isRecordStillValid(new LatencyRecord(1, System.currentTimeMillis())));
+        Assertions.assertTrue(islStatsService.isRecordStillValid(new LatencyRecord(1, System.currentTimeMillis())));
 
         long freshTimestamp = Instant.now().plusSeconds(LATENCY_TIMEOUT * 2).toEpochMilli();
-        assertTrue(islStatsService.isRecordStillValid(new LatencyRecord(1, freshTimestamp)));
+        Assertions.assertTrue(islStatsService.isRecordStillValid(new LatencyRecord(1, freshTimestamp)));
     }
 
     @Test
@@ -429,12 +427,12 @@ public class IslStatsServiceTest {
 
     private void assertLatencyRecords(
             List<LatencyRecord> expected, List<Long> actualLatency, List<Long> actualTimestamp) {
-        assertEquals(expected.size(), actualLatency.size());
-        assertEquals(expected.size(), actualTimestamp.size());
+        Assertions.assertEquals(expected.size(), actualLatency.size());
+        Assertions.assertEquals(expected.size(), actualTimestamp.size());
 
         for (int i = 0; i < expected.size(); i++) {
-            assertEquals(expected.get(i).getLatency(), (long) actualLatency.get(i));
-            assertEquals(expected.get(i).getTimestamp(), (long) actualTimestamp.get(i));
+            Assertions.assertEquals(expected.get(i).getLatency(), (long) actualLatency.get(i));
+            Assertions.assertEquals(expected.get(i).getTimestamp(), (long) actualTimestamp.get(i));
         }
     }
 

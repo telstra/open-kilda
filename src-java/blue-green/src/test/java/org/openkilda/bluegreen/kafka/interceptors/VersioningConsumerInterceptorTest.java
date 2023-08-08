@@ -32,8 +32,8 @@ import com.google.common.collect.Lists;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.util.HashMap;
@@ -63,7 +63,7 @@ public class VersioningConsumerInterceptorTest {
         ConsumerRecords<String, String> result = interceptor.onConsume(records);
 
         // interceptor with unset version skips all records
-        Assert.assertEquals(0, result.count());
+        Assertions.assertEquals(0, result.count());
     }
 
     @Test
@@ -74,10 +74,10 @@ public class VersioningConsumerInterceptorTest {
         ConsumerRecords<String, String> result = interceptor.onConsume(records);
 
         // interceptor will remove record with unset version and record with wrong version
-        Assert.assertEquals(2, result.count());
+        Assertions.assertEquals(2, result.count());
         Set<String> values = getRecordValues(result);
-        Assert.assertTrue(values.contains(VALUE_2));
-        Assert.assertTrue(values.contains(VALUE_3));
+        Assertions.assertTrue(values.contains(VALUE_2));
+        Assertions.assertTrue(values.contains(VALUE_3));
     }
 
     @Test
@@ -97,32 +97,39 @@ public class VersioningConsumerInterceptorTest {
         ConsumerRecords<String, String> result = interceptor.onConsume(records);
 
         // interceptor will skip record because it has 2 headers, but must has one
-        Assert.assertEquals(0, result.count());
+        Assertions.assertEquals(0, result.count());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void missedConnectionStringTest() {
-        VersioningConsumerInterceptor<String, String> interceptor = createInterceptor();
-        interceptor.configure(new HashMap<>());
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            VersioningConsumerInterceptor<String, String> interceptor = createInterceptor();
+            interceptor.configure(new HashMap<>());
+        });
+
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void missedRunIdTest() {
-        Map<String, String> config = new HashMap<>();
-        config.put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, "test");
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            Map<String, String> config = new HashMap<>();
+            config.put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, "test");
 
-        VersioningConsumerInterceptor<String, String> interceptor = createInterceptor();
-        interceptor.configure(config);
+            VersioningConsumerInterceptor<String, String> interceptor = createInterceptor();
+            interceptor.configure(config);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void missedComponentNameTest() {
-        Map<String, String> config = new HashMap<>();
-        config.put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, "test");
-        config.put(CONSUMER_RUN_ID_PROPERTY, "run_id");
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            Map<String, String> config = new HashMap<>();
+            config.put(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, "test");
+            config.put(CONSUMER_RUN_ID_PROPERTY, "run_id");
 
-        VersioningConsumerInterceptor<String, String> interceptor = createInterceptor();
-        interceptor.configure(config);
+            VersioningConsumerInterceptor<String, String> interceptor = createInterceptor();
+            interceptor.configure(config);
+        });
     }
 
     @Test

@@ -17,9 +17,6 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
-import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -45,8 +42,9 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 
 import com.google.common.collect.ImmutableList;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -65,7 +63,7 @@ public class FlowPathBuilderTest {
 
     private FlowPathBuilder builder;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         SwitchRepository switchRepository = mock(SwitchRepository.class);
         SwitchPropertiesRepository switchPropertiesRepository = mock(SwitchPropertiesRepository.class);
@@ -97,7 +95,7 @@ public class FlowPathBuilderTest {
                 .pathId(new PathId("test_path_id"))
                 .build();
 
-        assertTrue(builder.isSamePath(path, flowPath));
+        Assertions.assertTrue(builder.isSamePath(path, flowPath));
     }
 
     @Test
@@ -114,7 +112,7 @@ public class FlowPathBuilderTest {
                 .pathId(new PathId("test_path_id"))
                 .build();
 
-        assertFalse(builder.isSamePath(path, flowPath));
+        Assertions.assertFalse(builder.isSamePath(path, flowPath));
     }
 
     @Test
@@ -133,7 +131,7 @@ public class FlowPathBuilderTest {
                 .segments(singletonList(buildPathSegment(flowPathId, SWITCH_1, 1, SWITCH_2, 2)))
                 .build();
 
-        assertTrue(builder.isSamePath(path, flowPath));
+        Assertions.assertTrue(builder.isSamePath(path, flowPath));
     }
 
     @Test
@@ -154,7 +152,7 @@ public class FlowPathBuilderTest {
                         .srcSwitch(SWITCH_1).srcPort(2).destSwitch(SWITCH_2).destPort(3).build()))
                 .build();
 
-        assertFalse(builder.isSamePath(path, flowPath));
+        Assertions.assertFalse(builder.isSamePath(path, flowPath));
     }
 
     @Test
@@ -178,7 +176,7 @@ public class FlowPathBuilderTest {
                                 .srcSwitch(SWITCH_3).srcPort(1).destSwitch(SWITCH_2).destPort(2).build()))
                 .build();
 
-        assertTrue(builder.isSamePath(path, flowPath));
+        Assertions.assertTrue(builder.isSamePath(path, flowPath));
     }
 
     @Test
@@ -200,10 +198,10 @@ public class FlowPathBuilderTest {
 
         FlowPath flowPath = builder.buildFlowPath(flow, pathResources, path, cookie, false, flow.getFlowId());
 
-        assertEquals(pathId, flowPath.getPathId());
-        assertEquals(meterId, flowPath.getMeterId());
-        assertEquals(cookie, flowPath.getCookie());
-        assertEquals(0, flowPath.getSegments().size());
+        Assertions.assertEquals(pathId, flowPath.getPathId());
+        Assertions.assertEquals(meterId, flowPath.getMeterId());
+        Assertions.assertEquals(cookie, flowPath.getCookie());
+        Assertions.assertEquals(0, flowPath.getSegments().size());
     }
 
     @Test
@@ -225,12 +223,12 @@ public class FlowPathBuilderTest {
 
         FlowPath flowPath = builder.buildFlowPath(flow, pathResources, path, cookie, false, flow.getFlowId());
 
-        assertEquals(SWITCH_ID_1, flowPath.getSrcSwitchId());
-        assertEquals(SWITCH_ID_2, flowPath.getDestSwitchId());
-        assertEquals(pathId, flowPath.getPathId());
-        assertEquals(meterId, flowPath.getMeterId());
-        assertEquals(cookie, flowPath.getCookie());
-        assertEquals(1, flowPath.getSegments().size());
+        Assertions.assertEquals(SWITCH_ID_1, flowPath.getSrcSwitchId());
+        Assertions.assertEquals(SWITCH_ID_2, flowPath.getDestSwitchId());
+        Assertions.assertEquals(pathId, flowPath.getPathId());
+        Assertions.assertEquals(meterId, flowPath.getMeterId());
+        Assertions.assertEquals(cookie, flowPath.getCookie());
+        Assertions.assertEquals(1, flowPath.getSegments().size());
     }
 
     @Test
@@ -252,12 +250,12 @@ public class FlowPathBuilderTest {
 
         FlowPath flowPath = builder.buildFlowPath(flow, pathResources, path, cookie, false, flow.getFlowId());
 
-        assertEquals(SWITCH_ID_1, flowPath.getSrcSwitchId());
-        assertEquals(SWITCH_ID_2, flowPath.getDestSwitchId());
-        assertEquals(PATH_ID_1, flowPath.getPathId());
-        assertEquals(meterId, flowPath.getMeterId());
-        assertEquals(cookie, flowPath.getCookie());
-        assertEquals(2, flowPath.getSegments().size());
+        Assertions.assertEquals(SWITCH_ID_1, flowPath.getSrcSwitchId());
+        Assertions.assertEquals(SWITCH_ID_2, flowPath.getDestSwitchId());
+        Assertions.assertEquals(PATH_ID_1, flowPath.getPathId());
+        Assertions.assertEquals(meterId, flowPath.getMeterId());
+        Assertions.assertEquals(cookie, flowPath.getCookie());
+        Assertions.assertEquals(2, flowPath.getSegments().size());
     }
 
     @Test
@@ -276,7 +274,7 @@ public class FlowPathBuilderTest {
                 .segments(ImmutableList.of(buildPathSegment(PATH_ID_1, SWITCH_1, 1, SWITCH_2, 2)))
                 .build();
 
-        assertTrue(builder.arePathsOverlapped(path, flowPath));
+        Assertions.assertTrue(builder.arePathsOverlapped(path, flowPath));
     }
 
     @Test
@@ -295,7 +293,7 @@ public class FlowPathBuilderTest {
                 .segments(ImmutableList.of(buildPathSegment(PATH_ID_1, SWITCH_1, 7, SWITCH_2, 8)))
                 .build();
 
-        assertFalse(builder.arePathsOverlapped(path, flowPath));
+        Assertions.assertFalse(builder.arePathsOverlapped(path, flowPath));
     }
 
     @Test
@@ -320,7 +318,7 @@ public class FlowPathBuilderTest {
 
         HaFlowPath haFlowPath = HaFlowPath.builder().sharedSwitch(SWITCH_1).haPathId(PATH_ID_1).build();
         haFlowPath.setSubPaths(singletonList(subPath));
-        assertTrue(builder.arePathsOverlapped(haPath, haFlowPath));
+        Assertions.assertTrue(builder.arePathsOverlapped(haPath, haFlowPath));
     }
 
     @Test
@@ -346,7 +344,7 @@ public class FlowPathBuilderTest {
         HaFlowPath haFlowPath = HaFlowPath.builder().sharedSwitch(SWITCH_1).haPathId(PATH_ID_1).build();
         haFlowPath.setSubPaths(singletonList(subPath));
 
-        assertFalse(builder.arePathsOverlapped(haPath, haFlowPath));
+        Assertions.assertFalse(builder.arePathsOverlapped(haPath, haFlowPath));
     }
 
     private static Flow buildFlow(Switch srcSwitch, Switch dstSwitch) {

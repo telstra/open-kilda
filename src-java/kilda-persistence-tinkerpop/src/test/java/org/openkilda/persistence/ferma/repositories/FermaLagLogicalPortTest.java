@@ -15,9 +15,9 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.PhysicalPort;
@@ -28,8 +28,8 @@ import org.openkilda.persistence.repositories.PhysicalPortRepository;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,7 +49,7 @@ public class FermaLagLogicalPortTest extends InMemoryGraphBasedTest {
     LagLogicalPortRepository lagLogicalPortRepository;
     PhysicalPortRepository physicalPortRepository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         lagLogicalPortRepository = repositoryFactory.createLagLogicalPortRepository();
         physicalPortRepository = repositoryFactory.createPhysicalPortRepository();

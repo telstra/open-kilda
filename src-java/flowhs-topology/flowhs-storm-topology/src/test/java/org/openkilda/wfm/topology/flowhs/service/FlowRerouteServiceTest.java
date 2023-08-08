@@ -18,18 +18,14 @@ package org.openkilda.wfm.topology.flowhs.service;
 import static java.util.stream.Collectors.toSet;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -59,21 +55,21 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest> {
     private static final int PATH_ALLOCATION_RETRIES_LIMIT = 10;
     private static final int PATH_ALLOCATION_RETRY_DELAY = 0;
@@ -84,9 +80,9 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
 
     private String currentRequestKey = dummyRequestKey;
 
-    @Before
+    @BeforeEach
     public void setUp() {
-        doAnswer(buildSpeakerRequestAnswer()).when(carrier).sendSpeakerRequest(any(FlowSegmentRequest.class));
+        lenient().doAnswer(buildSpeakerRequestAnswer()).when(carrier).sendSpeakerRequest(any(FlowSegmentRequest.class));
 
         // must be done before first service create attempt, because repository objects are cached inside FSM actions
         setupFlowRepositorySpy();
@@ -145,7 +141,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
 
         doThrow(new ResourceAllocationException(injectedErrorMessage))
                 .when(flowResourcesManager).allocateFlowResources(makeFlowArgumentMatch(origin.getFlowId()),
-                any(), any());
+                        any(), any());
 
         FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false,
                 false, Collections.emptySet(), null, false);
@@ -336,7 +332,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
                 any(String.class));
     }
 
-    @Ignore("FIXME: need to replace mocking of updateStatus with another approach")
+    @Disabled("FIXME: need to replace mocking of updateStatus with another approach")
     @Test
     public void shouldFailRerouteOnSwapPathsError()
             throws RecoverableException, UnroutableFlowException, UnknownKeyException {
@@ -346,7 +342,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
         FlowPathRepository flowPathRepository = setupFlowPathRepositorySpy();
         doThrow(new RuntimeException(injectedErrorMessage))
                 .when(flowPathRepository).updateStatus(eq(origin.getForwardPathId()),
-                eq(FlowPathStatus.IN_PROGRESS));
+                        eq(FlowPathStatus.IN_PROGRESS));
 
         FlowRerouteService service = makeService();
         FlowRerouteRequest request = new FlowRerouteRequest(origin.getFlowId(), false,
@@ -451,8 +447,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
 
         doThrow(new RuntimeException(injectedErrorMessage))
                 .when(flowResourcesManager).deallocatePathResources(argThat(
-                hasProperty("forward",
-                        hasProperty("pathId", equalTo(origin.getForwardPathId())))));
+                        hasProperty("forward",
+                                hasProperty("pathId", equalTo(origin.getForwardPathId())))));
 
         FlowSegmentRequest speakerRequest;
         while ((speakerRequest = requests.poll()) != null) {
@@ -529,8 +525,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
         verifyPathReplace(origin, result);
 
         FlowPath forwardPath = result.getForwardPath();
-        Assert.assertNotNull(forwardPath);
-        Assert.assertEquals(1, forwardPath.getSegments().size());  // second request is dropped
+        Assertions.assertNotNull(forwardPath);
+        Assertions.assertEquals(1, forwardPath.getSegments().size());  // second request is dropped
 
         verify(carrier).sendRerouteResultStatus(eq(origin.getFlowId()),
                 argThat(hasProperty("message", equalTo("Reroute is in progress"))),
@@ -607,8 +603,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
         verifyPathReplace(origin, result);
-        assertEquals(LATENCY, result.getPathComputationStrategy());
-        assertNull(result.getTargetPathComputationStrategy());
+        Assertions.assertEquals(LATENCY, result.getPathComputationStrategy());
+        Assertions.assertNull(result.getTargetPathComputationStrategy());
     }
 
     @Test
@@ -650,8 +646,8 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.DEGRADED);
         verifyPathReplace(origin, result);
-        assertEquals(MAX_LATENCY, result.getPathComputationStrategy());
-        assertNull(result.getTargetPathComputationStrategy());
+        Assertions.assertEquals(MAX_LATENCY, result.getPathComputationStrategy());
+        Assertions.assertNull(result.getTargetPathComputationStrategy());
     }
 
     @Test
@@ -677,9 +673,9 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
 
     private IslEndpoint extractIslEndpoint(Flow flow) {
         FlowPath forwardPath = flow.getForwardPath();
-        assertNotNull(forwardPath);
+        Assertions.assertNotNull(forwardPath);
         List<PathSegment> forwardSegments = forwardPath.getSegments();
-        assertFalse(forwardSegments.isEmpty());
+        Assertions.assertFalse(forwardSegments.isEmpty());
         PathSegment firstSegment = forwardSegments.get(0);
 
         return new IslEndpoint(firstSegment.getSrcSwitchId(), firstSegment.getSrcPort());
@@ -693,7 +689,7 @@ public class FlowRerouteServiceTest extends AbstractFlowTest<FlowSegmentRequest>
 
     private void preparePathComputation(String flowId, GetPathsResult pathPair)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any(), anyBoolean())).thenReturn(pathPair);
+        lenient().when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any(), anyBoolean())).thenReturn(pathPair);
     }
 
     @Override

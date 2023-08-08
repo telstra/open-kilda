@@ -16,9 +16,9 @@
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.validation;
 
 import static java.util.Collections.emptyList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -41,8 +41,9 @@ import org.openkilda.wfm.error.IllegalFlowStateException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 
 import com.google.common.collect.Sets;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -63,7 +64,7 @@ public class HaFlowValidationServiceTest extends HaFlowValidationTestBase {
     static HaFlowPath forwardPath = mock(HaFlowPath.class);
     static HaFlowPath reversePath = mock(HaFlowPath.class);
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpOnce() {
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         PersistenceManager persistenceManager = mock(PersistenceManager.class);
@@ -107,21 +108,20 @@ public class HaFlowValidationServiceTest extends HaFlowValidationTestBase {
                 Collections.singletonList(getGroupDumpResponse(filterGroupSpeakerData(floodLightSpeakerData))),
                 Collections.emptySet());
 
-        assertTrue("Must be true since this must be a valid flow", haFlowValidationResponse.isAsExpected());
-        assertEquals("The number of validation results and the number of sub flows must be equal", 2,
-                haFlowValidationResponse.getSubFlowValidationResults().size());
-        assertEquals("The number of rules for the reverse flow must be equal", 6,
-                haFlowValidationResponse.getSubFlowValidationResults().get(0)
-                        .getFlowRulesTotal().intValue());
-        assertEquals("The number of rules in total must be equal", 15,
-                haFlowValidationResponse.getSubFlowValidationResults().get(0)
-                        .getSwitchRulesTotal().intValue());
+        Assertions.assertTrue(haFlowValidationResponse.isAsExpected(),
+                "Must be true since this must be a valid flow");
+        assertEquals(2, haFlowValidationResponse.getSubFlowValidationResults().size(),
+                "The number of validation results and the number of sub flows must be equal");
+        assertEquals(6, haFlowValidationResponse.getSubFlowValidationResults().get(0)
+                .getFlowRulesTotal().intValue(), "The number of rules for the reverse flow must be equal");
+        assertEquals(15, haFlowValidationResponse.getSubFlowValidationResults().get(0)
+                .getSwitchRulesTotal().intValue(), "The number of rules in total must be equal");
 
-        assertEquals("The number of rules for the reverse flow must be equal", 9,
-                haFlowValidationResponse.getSubFlowValidationResults().get(1)
-                        .getFlowRulesTotal().intValue());
-        assertEquals("The number of rules in total must be equal", 15,
-                haFlowValidationResponse.getSubFlowValidationResults().get(1).getSwitchRulesTotal().intValue());
+        assertEquals(9, haFlowValidationResponse.getSubFlowValidationResults().get(1)
+                .getFlowRulesTotal().intValue(), "The number of rules for the reverse flow must be equal");
+        assertEquals(15,
+                haFlowValidationResponse.getSubFlowValidationResults().get(1).getSwitchRulesTotal().intValue(),
+                "The number of rules in total must be equal");
     }
 
     @Test
@@ -141,51 +141,52 @@ public class HaFlowValidationServiceTest extends HaFlowValidationTestBase {
                 Collections.singletonList(getGroupDumpResponse(filterGroupSpeakerData(floodLightSpeakerData))),
                 Collections.emptySet());
 
-        assertFalse("This must be false since the forward flow is not valid",
-                haFlowValidationResponse.isAsExpected());
-        assertFalse("This must be false since the forward flow is not valid",
-                haFlowValidationResponse.getSubFlowValidationResults().get(1).getAsExpected());
-        assertEquals("The number of rules in total must be equal", 12,
-                haFlowValidationResponse.getSubFlowValidationResults().get(1)
-                        .getSwitchRulesTotal().intValue());
-        assertEquals("The number of rules for the forward flow must be equal", 9,
-                haFlowValidationResponse.getSubFlowValidationResults().get(1)
-                        .getFlowRulesTotal().intValue());
-        assertEquals("The number of meters must be", 1,
-                haFlowValidationResponse.getSubFlowValidationResults().get(1)
-                        .getSwitchMetersTotal().intValue());
-        assertEquals("There must be 'all' keyword for the rule that is exist only in RuleManager and"
-                + " not in FloodLight", "all", haFlowValidationResponse.getSubFlowValidationResults().get(1)
-                .getDiscrepancies().get(0).getField());
-        assertEquals("There must be 'all' keyword for the rule that is exist only in RuleManager and"
-                + " not in FloodLight", "all", haFlowValidationResponse.getSubFlowValidationResults().get(1)
-                .getDiscrepancies().get(1).getField());
-        assertEquals("There must be 'all' keyword for the rule that is exist only in RuleManager and"
-                + " not in FloodLight", "all", haFlowValidationResponse.getSubFlowValidationResults().get(1)
-                .getDiscrepancies().get(2).getField());
-        assertEquals("There must be the 'outPort' discrepancy", "outPort",
-                haFlowValidationResponse.getSubFlowValidationResults().get(1)
-                        .getDiscrepancies().get(3).getField());
-        assertEquals("There must be the 'outVlan' discrepancy", "outVlan",
-                haFlowValidationResponse.getSubFlowValidationResults().get(1)
-                        .getDiscrepancies().get(4).getField());
+        assertFalse(haFlowValidationResponse.isAsExpected(),
+                "This must be false since the forward flow is not valid");
+        assertFalse(haFlowValidationResponse.getSubFlowValidationResults().get(1).getAsExpected(),
+                "This must be false since the forward flow is not valid");
+        assertEquals(12, haFlowValidationResponse.getSubFlowValidationResults().get(1)
+                .getSwitchRulesTotal().intValue(), "The number of rules in total must be equal");
+        assertEquals(9, haFlowValidationResponse.getSubFlowValidationResults().get(1)
+                .getFlowRulesTotal().intValue(), "The number of rules for the forward flow must be equal");
+        assertEquals(1, haFlowValidationResponse.getSubFlowValidationResults().get(1)
+                .getSwitchMetersTotal().intValue(), "The number of meters must be");
+        assertEquals("all", haFlowValidationResponse.getSubFlowValidationResults().get(1)
+                        .getDiscrepancies().get(0).getField(),
+                "There must be 'all' keyword for the rule that is exist only in RuleManager and"
+                        + " not in FloodLight");
+        assertEquals("all", haFlowValidationResponse.getSubFlowValidationResults().get(1)
+                        .getDiscrepancies().get(1).getField(),
+                "There must be 'all' keyword for the rule that is exist only in RuleManager and"
+                        + " not in FloodLight");
+        assertEquals("all", haFlowValidationResponse.getSubFlowValidationResults().get(1)
+                        .getDiscrepancies().get(2).getField(),
+                "There must be 'all' keyword for the rule that is exist only in RuleManager and"
+                        + " not in FloodLight");
+        assertEquals("outPort", haFlowValidationResponse.getSubFlowValidationResults().get(1)
+                .getDiscrepancies().get(3).getField(), "There must be the 'outPort' discrepancy");
+        assertEquals("outVlan", haFlowValidationResponse.getSubFlowValidationResults().get(1)
+                .getDiscrepancies().get(4).getField(), "There must be the 'outVlan' discrepancy");
     }
 
-    @Test(expected = FlowNotFoundException.class)
-    public void validateCheckFlowStatusAndGetFlowUsingNotExistingFlow()
-            throws FlowNotFoundException, IllegalFlowStateException {
-        service.findValidHaFlowById("test");
+    @Test
+    public void validateCheckFlowStatusAndGetFlowUsingNotExistingFlow() {
+        assertThrows(FlowNotFoundException.class, () -> {
+            service.findValidHaFlowById("test");
+        });
     }
 
-    @Test(expected = IllegalFlowStateException.class)
-    public void validateCheckFlowStatusAndGetFlowWithDownStatus()
-            throws FlowNotFoundException, IllegalFlowStateException {
-        when(haFlow.getStatus()).thenReturn(FlowStatus.DOWN);
-        service.findValidHaFlowById(HA_FLOW_ID_1);
+    @Test
+    public void validateCheckFlowStatusAndGetFlowWithDownStatus() {
+        assertThrows(IllegalFlowStateException.class, () -> {
+            when(haFlow.getStatus()).thenReturn(FlowStatus.DOWN);
+            service.findValidHaFlowById(HA_FLOW_ID_1);
+        });
     }
 
-    @Test(expected = FlowNotFoundException.class)
-    public void validateFlowUsingNotExistingFlow() throws FlowNotFoundException, SwitchNotFoundException {
-        service.validateFlow("test", emptyList(), emptyList(), emptyList(), Sets.newHashSet());
+    @Test
+    public void validateFlowUsingNotExistingFlow() {
+        assertThrows(FlowNotFoundException.class, () ->
+                service.validateFlow("test", emptyList(), emptyList(), emptyList(), Sets.newHashSet()));
     }
 }

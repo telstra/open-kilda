@@ -15,12 +15,10 @@
 
 package org.openkilda.messaging.info.event;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import org.openkilda.model.SwitchId;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class IslInfoDataTest {
 
@@ -31,7 +29,7 @@ public class IslInfoDataTest {
         PathNode destination = new PathNode(switchId, 2, 1);
         IslInfoData isl = new IslInfoData(source, destination, IslChangeType.DISCOVERED, false);
 
-        assertTrue(isl.isSelfLooped());
+        Assertions.assertTrue(isl.isSelfLooped());
     }
 
     @Test
@@ -42,6 +40,6 @@ public class IslInfoDataTest {
         PathNode destination = new PathNode(dstSwitch, 2, 1);
         IslInfoData isl = new IslInfoData(source, destination, IslChangeType.DISCOVERED, false);
 
-        assertFalse(isl.isSelfLooped());
+        Assertions.assertFalse(isl.isSelfLooped());
     }
 }

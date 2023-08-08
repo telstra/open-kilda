@@ -18,9 +18,6 @@ package org.openkilda.wfm.topology.ping;
 import static java.lang.String.format;
 import static org.apache.storm.utils.Utils.sleep;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildHaFlowPath;
 import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildHaSubFlow;
 import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildPath;
@@ -71,12 +68,12 @@ import com.google.common.collect.Lists;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
 import org.hamcrest.Matchers;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -140,7 +137,7 @@ public class PingTopologyTest extends AbstractStormTest {
     private Switch switch3;
     private Switch switch4;
 
-    @BeforeClass
+    @BeforeAll
     public static void setupOnce() throws Exception {
         Properties configOverlay = getZooKeeperProperties(FLOW_PING_TOPOLOGY_TEST_ZOOKEEPER_PORT, ROOT_NODE);
         configOverlay.putAll(getKafkaProperties(FLOW_PING_TOPOLOGY_TEST_KAFKA_PORT));
@@ -185,7 +182,7 @@ public class PingTopologyTest extends AbstractStormTest {
         sleep(TOPOLOGY_START_TIMEOUT);
     }
 
-    @AfterClass
+    @AfterAll
     public static void teardownOnce() throws Exception {
         speakerConsumer.wakeup();
         speakerConsumer.join();
@@ -196,7 +193,7 @@ public class PingTopologyTest extends AbstractStormTest {
         AbstractStormTest.stopZooKafkaAndStorm();
     }
 
-    @After
+    @AfterEach
     public void teardown() {
         persistenceManager.getInMemoryImplementation().purgeData();
         speakerConsumer.clear();
@@ -204,7 +201,7 @@ public class PingTopologyTest extends AbstractStormTest {
         otsdbConsumer.clear();
     }
 
-    @Before
+    @BeforeEach
     public void setup() {
         switch1 = createTestSwitch(SWITCH_ID_1);
         switch2 = createTestSwitch(SWITCH_ID_2);
@@ -311,7 +308,7 @@ public class PingTopologyTest extends AbstractStormTest {
         HaFlowPingResponse response = (HaFlowPingResponse) infoMessage.getData();
         Assertions.assertEquals(expectedResponse, response);
 
-        assertTrue(speakerConsumer.isEmpty());
+        Assertions.assertTrue(speakerConsumer.isEmpty());
     }
 
     @Test
@@ -329,7 +326,7 @@ public class PingTopologyTest extends AbstractStormTest {
         HaFlowPingResponse response = (HaFlowPingResponse) infoMessage.getData();
         Assertions.assertEquals(expectedResponse, response);
 
-        assertTrue(speakerConsumer.isEmpty());
+        Assertions.assertTrue(speakerConsumer.isEmpty());
     }
 
     @Test
@@ -372,7 +369,7 @@ public class PingTopologyTest extends AbstractStormTest {
         HaFlowPingResponse response = (HaFlowPingResponse) infoMessage.getData();
         Assertions.assertEquals(expectedResponse, response);
 
-        assertTrue(speakerConsumer.isEmpty());
+        Assertions.assertTrue(speakerConsumer.isEmpty());
     }
 
     @Test
@@ -391,7 +388,7 @@ public class PingTopologyTest extends AbstractStormTest {
         HaFlowPingResponse response = (HaFlowPingResponse) infoMessage.getData();
         Assertions.assertEquals(expectedResponse, response);
 
-        assertTrue(speakerConsumer.isEmpty());
+        Assertions.assertTrue(speakerConsumer.isEmpty());
     }
 
     @Test
@@ -449,7 +446,7 @@ public class PingTopologyTest extends AbstractStormTest {
                 .filter(datapoint -> datapoint.getTags().get("status").equals("error"))
                 .count();
 
-        assertEquals(2, errorCounter);
+        Assertions.assertEquals(2, errorCounter);
 
         haFlowRepository.remove(HA_FLOW_ID_1);
         disableHaFlowAndAssert();
@@ -465,7 +462,7 @@ public class PingTopologyTest extends AbstractStormTest {
             sleep(1000);
         }
 
-        assertTrue(speakerConsumer.isEmpty());
+        Assertions.assertTrue(speakerConsumer.isEmpty());
     }
 
     private void createCompleteHaFlow() {
@@ -594,7 +591,7 @@ public class PingTopologyTest extends AbstractStormTest {
         try {
             request = Utils.MAPPER.writeValueAsString(object);
         } catch (JsonProcessingException e) {
-            fail("Unexpected error: " + e.getMessage());
+            Assertions.fail("Unexpected error: " + e.getMessage());
         }
         kProducer.pushMessageAsync(topic, request);
     }

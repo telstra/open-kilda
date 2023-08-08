@@ -22,8 +22,8 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
@@ -46,11 +46,11 @@ public class FlowStatusResponseTest {
             + "\"clazz\":\"org.openkilda.messaging.info.InfoMessage\","
             + "\"destination\":\"NORTHBOUND\","
             + "\"payload\":{"
-            +     "\"clazz\":\"org.openkilda.messaging.info.flow.FlowStatusResponse\","
-            +     "\"payload\":{"
-            +         "\"flowid\":\"FLOW\","
-            +         "\"status\":\"UP\"},"
-            +     "\"timestamp\":1520474258050},"
+            + "\"clazz\":\"org.openkilda.messaging.info.flow.FlowStatusResponse\","
+            + "\"payload\":{"
+            + "\"flowid\":\"FLOW\","
+            + "\"status\":\"UP\"},"
+            + "\"timestamp\":1520474258050},"
             + "\"timestamp\":10,"
             + "\"correlation_id\":\"CORRELATION\"}";
 
@@ -67,10 +67,10 @@ public class FlowStatusResponseTest {
         FlowStatusResponse fsrJson = (FlowStatusResponse) fromJson.getData();
         FlowStatusResponse fsrObj = (FlowStatusResponse) msg.getData();
 
-        Assert.assertEquals(fsrJson.getPayload().getId(), fsrObj.getPayload().getId());
-        Assert.assertEquals(fsrJson.getPayload().getStatus(), fsrObj.getPayload().getStatus());
-        Assert.assertEquals(fsrJson.getPayload().getStatus(), FlowState.UP);
-        Assert.assertEquals(fromJson.getCorrelationId(), msg.getCorrelationId());
+        Assertions.assertEquals(fsrJson.getPayload().getId(), fsrObj.getPayload().getId());
+        Assertions.assertEquals(fsrJson.getPayload().getStatus(), fsrObj.getPayload().getStatus());
+        Assertions.assertEquals(fsrJson.getPayload().getStatus(), FlowState.UP);
+        Assertions.assertEquals(fromJson.getCorrelationId(), msg.getCorrelationId());
 
 
         System.out.println("JSON: " + MAPPER.writeValueAsString(msg));

@@ -16,10 +16,8 @@
 package org.openkilda.wfm.share.service;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.floodlight.api.request.EgressFlowSegmentRequest;
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
@@ -52,9 +50,9 @@ import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import com.fasterxml.uuid.Generators;
 import com.fasterxml.uuid.NoArgGenerator;
 import com.google.common.collect.ImmutableList;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Iterator;
 import java.util.List;
@@ -78,7 +76,7 @@ public class SpeakerFlowSegmentRequestBuilderTest extends InMemoryGraphBasedTest
     private SpeakerFlowSegmentRequestBuilder target;
     private TransitVlanRepository vlanRepository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         FlowResourcesManager resourcesManager = new FlowResourcesManager(persistenceManager,
                 configurationProvider.getConfiguration(FlowResourcesConfig.class));
@@ -190,15 +188,15 @@ public class SpeakerFlowSegmentRequestBuilderTest extends InMemoryGraphBasedTest
             // search command for flow source side
             if (SWITCH_1.equals(entry.getSwitchId())) {
                 haveMatch = true;
-                Assert.assertTrue(entry instanceof IngressFlowSegmentRequestFactory);
+                Assertions.assertTrue(entry instanceof IngressFlowSegmentRequestFactory);
 
                 IngressFlowSegmentRequestFactory segment = (IngressFlowSegmentRequestFactory) entry;
                 IngressFlowSegmentRequest request = segment.makeInstallRequest(commandIdGenerator.generate());
-                Assert.assertEquals(goal.getSrcVlan(), request.getEndpoint().getOuterVlanId());
+                assertEquals(goal.getSrcVlan(), request.getEndpoint().getOuterVlanId());
             }
         }
 
-        Assert.assertTrue(haveMatch);
+        Assertions.assertTrue(haveMatch);
     }
 
     private void commonIngressCommandTest(int bandwidth) {
@@ -243,8 +241,7 @@ public class SpeakerFlowSegmentRequestBuilderTest extends InMemoryGraphBasedTest
 
     private IngressFlowSegmentRequest verifyCommonIngressRequest(
             Flow flow, FlowPath path, FlowSegmentRequest rawRequest) {
-        assertThat(
-                "Should be egress segment request", rawRequest, instanceOf(IngressFlowSegmentRequest.class));
+        assertThat("Should be egress segment request", rawRequest, instanceOf(IngressFlowSegmentRequest.class));
         IngressFlowSegmentRequest request = (IngressFlowSegmentRequest) rawRequest;
 
         assertEquals(flow.getFlowId(), request.getFlowId());
@@ -255,7 +252,7 @@ public class SpeakerFlowSegmentRequestBuilderTest extends InMemoryGraphBasedTest
             MeterConfig config = new MeterConfig(path.getMeterId(), flow.getBandwidth());
             assertEquals(config, request.getMeterConfig());
         } else {
-            assertNull(request.getMeterConfig());
+            Assertions.assertNull(request.getMeterConfig());
         }
 
         verifyVlanEncapsulation(flow, path, request.getEncapsulation());
@@ -275,8 +272,7 @@ public class SpeakerFlowSegmentRequestBuilderTest extends InMemoryGraphBasedTest
 
     private TransitFlowSegmentRequest verifyCommonTransitRequest(
             Flow flow, FlowPath path, SwitchId datapath, FlowSegmentRequest rawRequest) {
-        assertThat(
-                "Should be egress segment request", rawRequest, instanceOf(TransitFlowSegmentRequest.class));
+        assertThat("Should be egress segment request", rawRequest, instanceOf(TransitFlowSegmentRequest.class));
         TransitFlowSegmentRequest request = (TransitFlowSegmentRequest) rawRequest;
 
         assertEquals(flow.getFlowId(), request.getFlowId());
@@ -293,8 +289,8 @@ public class SpeakerFlowSegmentRequestBuilderTest extends InMemoryGraphBasedTest
             }
         }
 
-        assertNotNull(ingress);
-        assertNotNull(egress);
+        Assertions.assertNotNull(ingress);
+        Assertions.assertNotNull(egress);
 
         assertEquals(ingress.getDestPort(), (int) request.getIngressIslPort());
         assertEquals(egress.getSrcPort(), (int) request.getEgressIslPort());
@@ -331,8 +327,7 @@ public class SpeakerFlowSegmentRequestBuilderTest extends InMemoryGraphBasedTest
 
     private EgressFlowSegmentRequest verifyCommonEgressRequest(
             Flow flow, FlowPath path, FlowSegmentRequest rawRequest) {
-        assertThat(
-                "Should be egress segment request", rawRequest, instanceOf(EgressFlowSegmentRequest.class));
+        assertThat("Should be egress segment request", rawRequest, instanceOf(EgressFlowSegmentRequest.class));
         EgressFlowSegmentRequest request = (EgressFlowSegmentRequest) rawRequest;
 
         assertEquals(flow.getFlowId(), request.getFlowId());
@@ -349,11 +344,9 @@ public class SpeakerFlowSegmentRequestBuilderTest extends InMemoryGraphBasedTest
         FlowPath path = Objects.requireNonNull(flow.getForwardPath());
         OneSwitchFlowRequest request = verifyCommonOneSwitchRequest(flow, path, rawRequest);
 
-        assertEquals(
-                new FlowEndpoint(flow.getSrcSwitchId(), flow.getSrcPort(), flow.getSrcVlan()),
+        assertEquals(new FlowEndpoint(flow.getSrcSwitchId(), flow.getSrcPort(), flow.getSrcVlan()),
                 request.getEndpoint());
-        assertEquals(
-                new FlowEndpoint(flow.getDestSwitchId(), flow.getDestPort(), flow.getDestVlan()),
+        assertEquals(new FlowEndpoint(flow.getDestSwitchId(), flow.getDestPort(), flow.getDestVlan()),
                 request.getEgressEndpoint());
     }
 
@@ -361,18 +354,15 @@ public class SpeakerFlowSegmentRequestBuilderTest extends InMemoryGraphBasedTest
         FlowPath path = Objects.requireNonNull(flow.getReversePath());
         OneSwitchFlowRequest request = verifyCommonOneSwitchRequest(flow, path, rawRequest);
 
-        assertEquals(
-                new FlowEndpoint(flow.getDestSwitchId(), flow.getDestPort(), flow.getDestVlan()),
+        assertEquals(new FlowEndpoint(flow.getDestSwitchId(), flow.getDestPort(), flow.getDestVlan()),
                 request.getEndpoint());
-        assertEquals(
-                new FlowEndpoint(flow.getSrcSwitchId(), flow.getSrcPort(), flow.getSrcVlan()),
+        assertEquals(new FlowEndpoint(flow.getSrcSwitchId(), flow.getSrcPort(), flow.getSrcVlan()),
                 request.getEgressEndpoint());
     }
 
     private OneSwitchFlowRequest verifyCommonOneSwitchRequest(
             Flow flow, FlowPath path, FlowSegmentRequest rawRequest) {
-        assertThat(
-                "Should be one switch flow request", rawRequest, instanceOf(OneSwitchFlowRequest.class));
+        assertThat("Should be one switch flow request", rawRequest, instanceOf(OneSwitchFlowRequest.class));
         OneSwitchFlowRequest request = (OneSwitchFlowRequest) rawRequest;
 
         assertEquals(flow.getFlowId(), request.getFlowId());

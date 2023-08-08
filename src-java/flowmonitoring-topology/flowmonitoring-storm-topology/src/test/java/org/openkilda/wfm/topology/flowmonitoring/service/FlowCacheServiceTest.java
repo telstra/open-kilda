@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.flowmonitoring.service;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -50,11 +50,11 @@ import org.openkilda.wfm.topology.flowmonitoring.model.Link;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -65,7 +65,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
     private static final Duration FLOW_RTT_STATS_EXPIRATION_TIME = Duration.ofSeconds(3);
 
@@ -93,7 +93,7 @@ public class FlowCacheServiceTest extends InMemoryGraphBasedTest {
     @Mock
     private Clock clock;
 
-    @Before
+    @BeforeEach
     public void setup() {
         dummyFactory = new PersistenceDummyEntityFactory(persistenceManager);
 

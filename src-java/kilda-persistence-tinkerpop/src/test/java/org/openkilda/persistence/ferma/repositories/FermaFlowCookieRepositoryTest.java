@@ -15,14 +15,15 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
-import static org.junit.Assert.assertEquals;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.model.FlowCookie;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -35,7 +36,7 @@ public class FermaFlowCookieRepositoryTest extends InMemoryGraphBasedTest {
 
     FlowCookieRepository flowCookieRepository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         flowCookieRepository = repositoryFactory.createFlowCookieRepository();
     }

@@ -15,15 +15,14 @@
 
 package org.openkilda.wfm.topology.flowhs.mapper;
 
-import static org.junit.Assert.assertEquals;
-
 import org.openkilda.messaging.command.flow.FlowMirrorPointCreateRequest;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlowMirrorPoint;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class RequestedFlowMirrorPointMapperTest {
 
@@ -53,10 +52,10 @@ public class RequestedFlowMirrorPointMapperTest {
 
         RequestedFlowMirrorPoint flowMirrorPoint = RequestedFlowMirrorPointMapper.INSTANCE.map(request);
 
-        assertEquals(request.getFlowId(), flowMirrorPoint.getFlowId());
-        assertEquals(request.getMirrorPointId(), flowMirrorPoint.getMirrorPointId());
-        assertEquals(MIRROR_POINT_DIRECTION, flowMirrorPoint.getMirrorPointDirection());
-        assertEquals(request.getMirrorPointSwitchId(), flowMirrorPoint.getMirrorPointSwitchId());
-        assertEquals(request.getSinkEndpoint(), flowMirrorPoint.getSinkEndpoint());
+        Assertions.assertEquals(request.getFlowId(), flowMirrorPoint.getFlowId());
+        Assertions.assertEquals(request.getMirrorPointId(), flowMirrorPoint.getMirrorPointId());
+        Assertions.assertEquals(MIRROR_POINT_DIRECTION, flowMirrorPoint.getMirrorPointDirection());
+        Assertions.assertEquals(request.getMirrorPointSwitchId(), flowMirrorPoint.getMirrorPointSwitchId());
+        Assertions.assertEquals(request.getSinkEndpoint(), flowMirrorPoint.getSinkEndpoint());
     }
 }

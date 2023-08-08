@@ -18,7 +18,6 @@ package org.openkilda.wfm.topology.flowhs.service;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
@@ -45,12 +44,12 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -58,12 +57,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class FlowCreateServiceTest extends AbstractFlowTest<FlowSegmentRequest> {
     @Mock
     private FlowGenericCarrier carrier;
 
-    @Before
+    @BeforeEach
     public void init() {
         doAnswer(buildSpeakerRequestAnswer()).when(carrier).sendSpeakerRequest(any(FlowSegmentRequest.class));
     }
@@ -112,7 +111,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
                 .build();
         preparePathComputation(request.getFlowId(), make3SwitchesPathPair());
         Flow result = testHappyPath(request, "successful_flow_create");
-        Assert.assertTrue(result.isPinned());
+        Assertions.assertTrue(result.isPinned());
     }
 
     @Test
@@ -129,7 +128,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
                 .thenReturn(make3SwitchesPathPair());
 
         Flow result = testHappyPath(request, "successful_flow_create");
-        Assert.assertTrue(result.isAllocateProtectedPath());
+        Assertions.assertTrue(result.isAllocateProtectedPath());
         verifyFlowPathStatus(result.getProtectedForwardPath(), FlowPathStatus.ACTIVE, "protected-forward");
         verifyFlowPathStatus(result.getProtectedReversePath(), FlowPathStatus.ACTIVE, "protected-reverse");
     }
@@ -205,12 +204,12 @@ public class FlowCreateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
             }
         }
 
-        assertEquals("All installed rules should be deleted", installCommands, deleteCommands);
+        Assertions.assertEquals(installCommands, deleteCommands, "All installed rules should be deleted");
 
         Flow result = verifyFlowStatus(flowRequest.getFlowId(), FlowStatus.DOWN);
         // TODO(surabujin): do we really want to create flow without paths?
-        Assert.assertNull(result.getForwardPath());
-        Assert.assertNull(result.getReversePath());
+        Assertions.assertNull(result.getForwardPath());
+        Assertions.assertNull(result.getReversePath());
     }
 
     @Test
@@ -254,10 +253,10 @@ public class FlowCreateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
             }
         }
 
-        assertEquals("All installed rules should be deleted", installCommands, deleteCommands);
+        Assertions.assertEquals(installCommands, deleteCommands, "All installed rules should be deleted");
         Flow result = verifyFlowStatus(flowRequest.getFlowId(), FlowStatus.DOWN);
-        Assert.assertNull(result.getForwardPath());
-        Assert.assertNull(result.getReversePath());
+        Assertions.assertNull(result.getForwardPath());
+        Assertions.assertNull(result.getReversePath());
     }
 
     @Test
@@ -338,7 +337,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
             }
         }
 
-        Assert.assertFalse(producedErrors.isEmpty());
+        Assertions.assertFalse(producedErrors.isEmpty());
         for (Map.Entry<UUID, Integer> entry : seenCounter.entrySet()) {
             if (!producedErrors.contains(entry.getKey())) {
                 continue;
@@ -346,9 +345,9 @@ public class FlowCreateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
 
             Integer counter = entry.getValue();
             if (mustRetry) {
-                Assert.assertEquals(retriesLimit + 1, (int) counter);
+                Assertions.assertEquals(retriesLimit + 1, (int) counter);
             } else {
-                Assert.assertEquals(1, (int) counter);
+                Assertions.assertEquals(1, (int) counter);
             }
         }
 
@@ -386,7 +385,7 @@ public class FlowCreateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
         while ((request = requests.poll()) != null) {
             UUID commandId = request.getCommandId();
             Integer remaining = remainingRetries.getOrDefault(commandId, retriesLimit + 1);
-            Assert.assertTrue(0 < remaining);
+            Assertions.assertTrue(0 < remaining);
             try {
                 if (request instanceof EgressFlowSegmentInstallRequest) {
                     remainingRetries.put(commandId, remaining - 1);

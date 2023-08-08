@@ -15,13 +15,12 @@
 
 package org.openkilda.messaging.command.flow;
 
-import static org.junit.Assert.assertEquals;
-
 import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class YFlowPingRequestTest {
     StringSerializer serializer = new StringSerializer();
@@ -35,6 +34,6 @@ public class YFlowPingRequestTest {
         CommandMessage decodedWrapper = (CommandMessage) serializer.deserialize();
         CommandData decoded = decodedWrapper.getData();
 
-        assertEquals(origin, decoded);
+        Assertions.assertEquals(origin, decoded);
     }
 }

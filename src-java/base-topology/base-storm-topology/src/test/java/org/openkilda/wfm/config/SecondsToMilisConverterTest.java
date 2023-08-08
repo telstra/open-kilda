@@ -15,15 +15,14 @@
 
 package org.openkilda.wfm.config;
 
-import static org.junit.Assert.assertEquals;
-
 import com.google.common.collect.ImmutableMap;
 import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Converter;
 import com.sabre.oss.conf4j.annotation.Key;
 import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
 import com.sabre.oss.conf4j.source.MapConfigurationSource;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class SecondsToMilisConverterTest {
 
@@ -38,7 +37,7 @@ public class SecondsToMilisConverterTest {
         TestConfig config = factory.createConfiguration(TestConfig.class, source);
 
         // then
-        assertEquals(10000, config.getTestProperty());
+        Assertions.assertEquals(10000, config.getTestProperty());
     }
 
     @Configuration

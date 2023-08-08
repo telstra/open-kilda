@@ -20,8 +20,9 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.Assert.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -51,9 +52,8 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 
 import com.google.common.collect.Lists;
 import org.hamcrest.MatcherAssert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -94,7 +94,7 @@ public class ProtectedPathFinderTest {
 
     private AvailableNetworkFactory availableNetworkFactory;
 
-    @Before
+    @BeforeEach
     public void setup() {
         MockitoAnnotations.initMocks(this);
 
@@ -169,7 +169,7 @@ public class ProtectedPathFinderTest {
         PathComputer pathComputer = new InMemoryPathComputer(
                 availableNetworkFactory, new BestWeightAndShortestPathFinder(200), config);
 
-        Exception exception = Assertions.assertThrows(UnroutableFlowException.class, () -> {
+        Exception exception = assertThrows(UnroutableFlowException.class, () -> {
             pathComputer.getPath(flow, Collections.emptyList(), true);
         });
         MatcherAssert.assertThat(exception.getMessage(),
@@ -239,7 +239,7 @@ public class ProtectedPathFinderTest {
         PathComputer pathComputer = new InMemoryPathComputer(
                 availableNetworkFactory, new BestWeightAndShortestPathFinder(200), config);
 
-        Exception exception = Assertions.assertThrows(UnroutableFlowException.class, () -> {
+        Exception exception = assertThrows(UnroutableFlowException.class, () -> {
             pathComputer.getPath(flow, Collections.emptyList(), true);
         });
         MatcherAssert.assertThat(exception.getMessage(),
@@ -515,7 +515,7 @@ public class ProtectedPathFinderTest {
         PathComputer pathComputer = new InMemoryPathComputer(
                 availableNetworkFactory, new BestWeightAndShortestPathFinder(200), config);
 
-        Exception exception = Assertions.assertThrows(UnroutableFlowException.class, () -> {
+        Exception exception = assertThrows(UnroutableFlowException.class, () -> {
             pathComputer.getPath(flow, Collections.emptyList(), true);
         });
         MatcherAssert.assertThat(exception.getMessage(),

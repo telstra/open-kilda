@@ -30,8 +30,8 @@ import org.openkilda.model.MeterId;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class RuleInfoEntryV2Test {
 
@@ -60,6 +60,6 @@ public class RuleInfoEntryV2Test {
         String json = mapper.writeValueAsString(origin);
 
         RuleInfoEntryV2 reconstructed = mapper.readValue(json, RuleInfoEntryV2.class);
-        Assert.assertEquals(origin, reconstructed);
+        Assertions.assertEquals(origin, reconstructed);
     }
 }

@@ -16,10 +16,11 @@
 package org.openkilda.wfm.topology.flowhs.service;
 
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -39,24 +40,24 @@ import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 
 import org.hamcrest.Matchers;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.hamcrest.MockitoHamcrest;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class FlowDeleteServiceTest extends AbstractFlowTest<FlowSegmentRequest> {
     private static final int SPEAKER_COMMAND_RETRIES_LIMIT = 3;
 
     @Mock
     private FlowGenericCarrier carrier;
 
-    @Before
+    @BeforeEach
     public void setUp() {
-        doAnswer(buildSpeakerRequestAnswer()).when(carrier).sendSpeakerRequest(any(FlowSegmentRequest.class));
+        lenient().doAnswer(buildSpeakerRequestAnswer()).when(carrier).sendSpeakerRequest(any(FlowSegmentRequest.class));
 
         // must be done before first service create attempt, because repository objects are cached inside FSM actions
         setupFlowRepositorySpy();
@@ -69,7 +70,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
 
         // make sure flow is missing
         FlowRepository repository = persistenceManager.getRepositoryFactory().createFlowRepository();
-        Assert.assertFalse(repository.findById(flowId).isPresent());
+        assertFalse(repository.findById(flowId).isPresent());
 
         makeService().handleRequest(dummyRequestKey, commandContext, flowId);
 
@@ -183,7 +184,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
             throws DuplicateKeyException, UnknownKeyException {
         Flow target = makeFlow();
         FlowPath forwardPath = target.getForwardPath();
-        Assert.assertNotNull(forwardPath);
+        Assertions.assertNotNull(forwardPath);
 
         FlowPathRepository repository = setupFlowPathRepositorySpy();
         doThrow(new RuntimeException(injectedErrorMessage))
@@ -208,7 +209,7 @@ public class FlowDeleteServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
             throws DuplicateKeyException, UnknownKeyException {
         Flow target = makeFlow();
         FlowPath forwardPath = target.getForwardPath();
-        Assert.assertNotNull(forwardPath);
+        Assertions.assertNotNull(forwardPath);
 
         doThrow(new RuntimeException(injectedErrorMessage))
                 .when(flowResourcesManager)
@@ -287,12 +288,11 @@ public class FlowDeleteServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
         FlowRepository flowRepository = repositoryFactory.createFlowRepository();
         FlowPathRepository flowPathRepository = repositoryFactory.createFlowPathRepository();
 
-        Assert.assertFalse(flowRepository.findById(flow.getFlowId()).isPresent());
+        assertFalse(flowRepository.findById(flow.getFlowId()).isPresent());
 
         for (FlowPath path : flow.getPaths()) {
-            Assert.assertFalse(
-                    String.format("Flow path %s still exists", path.getPathId()),
-                    flowPathRepository.findById(path.getPathId()).isPresent());
+            assertFalse(flowPathRepository.findById(path.getPathId()).isPresent(),
+                    String.format("Flow path %s still exists", path.getPathId()));
         }
 
         // TODO(surabujin): maybe we should make more deep scanning for flow related resources and nested objects

@@ -33,10 +33,10 @@ import org.apache.storm.generated.Bolt;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.testing.MockedSources;
 import org.apache.storm.tuple.Values;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
@@ -59,20 +59,20 @@ public class OpenTsdbTopologyTest extends StableAbstractStormTest {
     private static ClientAndServer mockServer;
     private static final HttpRequest REQUEST = HttpRequest.request().withMethod("POST").withPath("/api/put");
 
-    @BeforeClass
+    @BeforeAll
     public static void setupOnce() throws Exception {
         StableAbstractStormTest.startCompleteTopology();
 
         mockServer = startClientAndServer(OPENTSDB_PORT);
     }
 
-    @Before
+    @BeforeEach
     public void init() {
         mockServer.when(REQUEST)
                 .respond(HttpResponse.response().withStatusCode(200));
     }
 
-    @After
+    @AfterEach
     public void cleanup() {
         mockServer.reset();
     }

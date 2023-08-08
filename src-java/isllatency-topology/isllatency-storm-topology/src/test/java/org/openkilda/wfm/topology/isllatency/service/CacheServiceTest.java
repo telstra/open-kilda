@@ -36,8 +36,8 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.isllatency.carriers.CacheCarrier;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class CacheServiceTest extends InMemoryGraphBasedTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
@@ -52,7 +52,7 @@ public class CacheServiceTest extends InMemoryGraphBasedTest {
     private IslRepository islRepository;
     private CacheService cacheService;
 
-    @Before
+    @BeforeEach
     public void setup() {
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
         islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
@@ -67,7 +67,7 @@ public class CacheServiceTest extends InMemoryGraphBasedTest {
         cacheService = new CacheService(carrier, persistenceManager.getRepositoryFactory());
     }
 
-    @Test()
+    @Test
     public void handleGetDataFromCacheTest() {
         IslRoundTripLatency forward = new IslRoundTripLatency(SWITCH_ID_1, PORT_1, 1, 0L);
         IslRoundTripLatency reverse = new IslRoundTripLatency(SWITCH_ID_2, PORT_2, 1, 0L);
@@ -76,12 +76,12 @@ public class CacheServiceTest extends InMemoryGraphBasedTest {
         checkHandleGetDataFromCache(reverse, SWITCH_ID_1, PORT_1);
     }
 
-    @Test()
+    @Test
     public void handleGetDataFromCacheNotFromInitCacheActiveTest() {
         testGetDataFromCacheNotFromInitCache(ACTIVE);
     }
 
-    @Test()
+    @Test
     public void handleGetDataFromCacheNotFromInitCacheInactiveTest() {
         testGetDataFromCacheNotFromInitCache(INACTIVE);
     }
@@ -100,19 +100,19 @@ public class CacheServiceTest extends InMemoryGraphBasedTest {
         checkHandleGetDataFromCache(reverse, SWITCH_ID_1, srcPort);
     }
 
-    @Test()
+    @Test
     public void handleGetDataFromCacheNonExistentSwitchTest() {
         IslRoundTripLatency nonExistent = new IslRoundTripLatency(new SwitchId(999), PORT_1, 1, 0L);
         checkHandleGetDataFromCacheDidNotCallEmitCacheData(nonExistent);
     }
 
-    @Test()
+    @Test
     public void handleGetDataFromCacheNonExistentIslTest() {
         IslRoundTripLatency nonExistent = new IslRoundTripLatency(SWITCH_ID_1, 999, 1, 0L);
         checkHandleGetDataFromCacheDidNotCallEmitCacheData(nonExistent);
     }
 
-    @Test()
+    @Test
     public void handleUpdateCacheInactiveTest() {
         IslStatusUpdateNotification notification =
                 new IslStatusUpdateNotification(SWITCH_ID_1, PORT_1, SWITCH_ID_2, PORT_2, INACTIVE);
@@ -129,12 +129,12 @@ public class CacheServiceTest extends InMemoryGraphBasedTest {
         checkHandleGetDataFromCache(reverse, SWITCH_ID_1, PORT_1);
     }
 
-    @Test()
+    @Test
     public void handleUpdateCacheMovedTest() {
         testHandleUpdateCache(MOVED);
     }
 
-    @Test()
+    @Test
     public void handleGetDataFromCacheMovedTest() {
         testGetDataFromCache(MOVED);
     }

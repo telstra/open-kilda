@@ -18,8 +18,8 @@ package org.openkilda.messaging.model;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class LinkPropsMaskTest {
 
@@ -34,6 +34,6 @@ public class LinkPropsMaskTest {
         String json = mapper.writeValueAsString(origin);
 
         LinkPropsMask reconstructed = mapper.readValue(json, LinkPropsMask.class);
-        Assert.assertEquals(origin, reconstructed);
+        Assertions.assertEquals(origin, reconstructed);
     }
 }

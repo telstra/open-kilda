@@ -15,16 +15,17 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.history.PortEvent;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.history.PortEventRepository;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -37,7 +38,7 @@ public class FermaPortEventRepositoryTest extends InMemoryGraphBasedTest {
 
     PortEventRepository repository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         repository = repositoryFactory.createPortEventRepository();
     }

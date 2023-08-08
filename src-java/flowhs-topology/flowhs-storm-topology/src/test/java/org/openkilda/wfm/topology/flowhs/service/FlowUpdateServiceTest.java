@@ -17,18 +17,14 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasProperty;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -63,19 +59,19 @@ import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.exception.UnknownKeyException;
 
 import com.google.common.collect.Sets;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class FlowUpdateServiceTest extends AbstractFlowTest<FlowSegmentRequest> {
     private static final int PATH_ALLOCATION_RETRIES_LIMIT = 10;
     private static final int PATH_ALLOCATION_RETRY_DELAY = 0;
@@ -84,9 +80,9 @@ public class FlowUpdateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
     @Mock
     private FlowUpdateHubCarrier carrier;
 
-    @Before
+    @BeforeEach
     public void setUp() {
-        doAnswer(buildSpeakerRequestAnswer()).when(carrier).sendSpeakerRequest(any(FlowSegmentRequest.class));
+        lenient().doAnswer(buildSpeakerRequestAnswer()).when(carrier).sendSpeakerRequest(any(FlowSegmentRequest.class));
 
         // must be done before first service create attempt, because repository objects are cached inside FSM actions
         setupFlowRepositorySpy();
@@ -107,7 +103,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
                 .build();
 
         Flow result = testExpectedFailure(request, origin, ErrorType.NOT_FOUND);
-        Assert.assertEquals(origin.getBandwidth(), result.getBandwidth());
+        Assertions.assertEquals(origin.getBandwidth(), result.getBandwidth());
 
         verify(pathComputer, times(11))
                 .getPath(makeFlowArgumentMatch(origin.getFlowId()), any(), anyBoolean());
@@ -157,7 +153,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
 
         doThrow(new ResourceAllocationException(injectedErrorMessage))
                 .when(flowResourcesManager).allocateFlowResources(makeFlowArgumentMatch(origin.getFlowId()),
-                any(), any());
+                        any(), any());
 
         FlowRequest request = makeRequest()
                 .flowId(origin.getFlowId())
@@ -352,7 +348,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
         verifyNoPathReplace(origin, result);
     }
 
-    @Ignore("FIXME: need to replace mocking of updateStatus with another approach")
+    @Disabled("FIXME: need to replace mocking of updateStatus with another approach")
     @Test
     public void shouldFailUpdateOnSwapPathsError()
             throws RecoverableException, UnroutableFlowException, DuplicateKeyException, UnknownKeyException {
@@ -366,7 +362,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
         FlowPathRepository flowPathRepository = setupFlowPathRepositorySpy();
         doThrow(new RuntimeException(injectedErrorMessage))
                 .when(flowPathRepository).updateStatus(eq(origin.getForwardPathId()),
-                eq(FlowPathStatus.IN_PROGRESS));
+                        eq(FlowPathStatus.IN_PROGRESS));
 
         FlowUpdateService service = makeService();
         service.handleUpdateRequest(dummyRequestKey, commandContext, request);
@@ -587,8 +583,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
         }
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
-        assertTrue(result.isLooped());
-        assertEquals(request.getSwitchId(), result.getLoopSwitchId());
+        Assertions.assertTrue(result.isLooped());
+        Assertions.assertEquals(request.getSwitchId(), result.getLoopSwitchId());
     }
 
     @Test
@@ -642,8 +638,8 @@ public class FlowUpdateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
         }
 
         Flow result = verifyFlowStatus(origin.getFlowId(), FlowStatus.UP);
-        assertFalse(result.isLooped());
-        assertNull(result.getLoopSwitchId());
+        Assertions.assertFalse(result.isLooped());
+        Assertions.assertNull(result.getLoopSwitchId());
     }
 
     @Test
@@ -714,7 +710,7 @@ public class FlowUpdateServiceTest extends AbstractFlowTest<FlowSegmentRequest> 
 
     private void preparePathComputation(String flowId, GetPathsResult pathPair)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any(), anyBoolean())).thenReturn(pathPair);
+        lenient().when(pathComputer.getPath(makeFlowArgumentMatch(flowId), any(), anyBoolean())).thenReturn(pathPair);
     }
 
     private FlowUpdateService makeService() {

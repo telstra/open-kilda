@@ -15,11 +15,10 @@
 
 package org.openkilda.wfm.topology.stats.bolts;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -51,16 +50,17 @@ import org.apache.storm.task.TopologyContext;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class SpeakerStatsRequesterBoltTest {
 
     @Mock
@@ -80,7 +80,7 @@ public class SpeakerStatsRequesterBoltTest {
     @Mock
     private Tuple startTuple;
 
-    @Before
+    @BeforeEach
     public void setup() {
         when(topologyContext.getThisTaskId()).thenReturn(1);
         when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
@@ -90,7 +90,7 @@ public class SpeakerStatsRequesterBoltTest {
         when(input.getFields()).thenReturn(new Fields());
         when(input.getValueByField(FIELD_ID_CONTEXT)).thenReturn("123");
         when(startTuple.getSourceComponent()).thenReturn(ZooKeeperSpout.SPOUT_ID);
-        when(startTuple.getValueByField(FIELD_ID_LIFECYCLE_EVENT))
+        lenient().when(startTuple.getValueByField(FIELD_ID_LIFECYCLE_EVENT))
                 .thenReturn(LifecycleEvent.builder().signal(Signal.START).build());
         when(startTuple.getFields()).thenReturn(new Fields());
 
@@ -175,10 +175,10 @@ public class SpeakerStatsRequesterBoltTest {
         verify(output, times(1)).emit(eq(GRPC_REQUEST_STREAM), any(Tuple.class), values.capture());
 
         Values capturedValues = values.getValue();
-        assertTrue(capturedValues.get(0) instanceof CommandMessage);
+        Assertions.assertTrue(capturedValues.get(0) instanceof CommandMessage);
         CommandMessage commandMessage = (CommandMessage) capturedValues.get(0);
-        assertTrue(commandMessage.getData() instanceof GetPacketInOutStatsRequest);
+        Assertions.assertTrue(commandMessage.getData() instanceof GetPacketInOutStatsRequest);
         GetPacketInOutStatsRequest request = (GetPacketInOutStatsRequest) commandMessage.getData();
-        assertEquals(address, request.getAddress());
+        Assertions.assertEquals(address, request.getAddress());
     }
 }

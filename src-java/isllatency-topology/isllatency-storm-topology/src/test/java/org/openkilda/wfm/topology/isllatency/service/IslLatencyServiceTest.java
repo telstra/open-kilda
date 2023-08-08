@@ -15,9 +15,10 @@
 
 package org.openkilda.wfm.topology.isllatency.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.messaging.info.event.IslOneWayLatency;
 import org.openkilda.messaging.info.event.IslRoundTripLatency;
@@ -34,8 +35,9 @@ import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.topology.isllatency.model.IslKey;
 import org.openkilda.wfm.topology.isllatency.model.LatencyRecord;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.LinkedList;
@@ -60,7 +62,7 @@ public class IslLatencyServiceTest extends InMemoryGraphBasedTest {
     private IslRepository islRepository;
     private IslLatencyService islLatencyService;
 
-    @Before
+    @BeforeEach
     public void setup() {
         islLatencyService = new IslLatencyService(
                 persistenceManager.getTransactionManager(), persistenceManager.getRepositoryFactory(),
@@ -74,19 +76,25 @@ public class IslLatencyServiceTest extends InMemoryGraphBasedTest {
         createIsl(firstSwitch, PORT_1, secondSwitch, PORT_2, INITIAL_LATENCY);
     }
 
-    @Test(expected = IslNotFoundException.class)
-    public void updateIslLatencyNonExistentSrcEndpointTest() throws IslNotFoundException, SwitchNotFoundException {
-        islLatencyService.updateIslLatency(NON_EXISTENT_SWITCH_ID, PORT_1, SWITCH_ID_2, PORT_2, 0);
+    @Test
+    public void updateIslLatencyNonExistentSrcEndpointTest() {
+        Assertions.assertThrows(IslNotFoundException.class, () -> {
+            islLatencyService.updateIslLatency(NON_EXISTENT_SWITCH_ID, PORT_1, SWITCH_ID_2, PORT_2, 0);
+        });
     }
 
-    @Test(expected = IslNotFoundException.class)
-    public void updateIslLatencyNonExistentDstEndpointTest() throws IslNotFoundException, SwitchNotFoundException {
-        islLatencyService.updateIslLatency(SWITCH_ID_1, PORT_1, NON_EXISTENT_SWITCH_ID, PORT_2, 0);
+    @Test
+    public void updateIslLatencyNonExistentDstEndpointTest() {
+        Assertions.assertThrows(IslNotFoundException.class, () -> {
+            islLatencyService.updateIslLatency(SWITCH_ID_1, PORT_1, NON_EXISTENT_SWITCH_ID, PORT_2, 0);
+        });
     }
 
-    @Test(expected = IslNotFoundException.class)
-    public void updateIslLatencyNonExistentIslTest() throws IslNotFoundException, SwitchNotFoundException {
-        islLatencyService.updateIslLatency(SWITCH_ID_1, NON_EXISTENT_PORT, SWITCH_ID_2, NON_EXISTENT_PORT, 0);
+    @Test
+    public void updateIslLatencyNonExistentIslTest() {
+        Assertions.assertThrows(IslNotFoundException.class, () -> {
+            islLatencyService.updateIslLatency(SWITCH_ID_1, NON_EXISTENT_PORT, SWITCH_ID_2, NON_EXISTENT_PORT, 0);
+        });
     }
 
     @Test
