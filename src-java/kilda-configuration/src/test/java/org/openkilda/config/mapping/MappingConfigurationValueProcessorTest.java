@@ -29,8 +29,8 @@ import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
 import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
 import com.sabre.oss.conf4j.source.MapConfigurationSource;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class MappingConfigurationValueProcessorTest {
     private static final String TEST_VALUE = "test_value";
@@ -40,7 +40,7 @@ public class MappingConfigurationValueProcessorTest {
     private JdkProxyStaticConfigurationFactory factory;
     private MappingStrategy mappingStrategy;
 
-    @Before
+    @BeforeEach
     public void setupFactoryWithMappingStrategy() {
         factory = new JdkProxyStaticConfigurationFactory();
 

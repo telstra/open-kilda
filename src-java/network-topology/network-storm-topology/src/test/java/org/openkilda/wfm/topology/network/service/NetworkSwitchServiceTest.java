@@ -20,7 +20,7 @@ import static java.util.Collections.singletonList;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -74,12 +74,12 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.net.Inet4Address;
 import java.net.InetSocketAddress;
@@ -90,7 +90,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class NetworkSwitchServiceTest {
     private static final int BFD_LOGICAL_PORT_OFFSET = 1000;
     private static final int BFD_LOGICAL_PORT_MAX_NUMBER = 1999;
@@ -165,7 +165,7 @@ public class NetworkSwitchServiceTest {
     public NetworkSwitchServiceTest() throws UnknownHostException {
     }
 
-    @Before
+    @BeforeEach
     public void setup() {
         resetMocks();
     }
@@ -174,36 +174,36 @@ public class NetworkSwitchServiceTest {
         reset(carrier);
 
         reset(persistenceManager);
-        when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
-        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        lenient().when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
+        lenient().when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
         reset(transactionManager);
 
-        when(transactionManager.getDefaultRetryPolicy())
+        lenient().when(transactionManager.getDefaultRetryPolicy())
                 .thenReturn(new RetryPolicy<>().withMaxRetries(2));
-        doAnswer(invocation -> {
-            RetryPolicy<?> retryPolicy = invocation.getArgument(0);
-            TransactionCallbackWithoutResult<?> tr = invocation.getArgument(1);
-            Failsafe.with(retryPolicy)
-                    .run(tr::doInTransaction);
-            return null;
-        }).when(transactionManager)
+        lenient()
+                .doAnswer(invocation -> {
+                    RetryPolicy<?> retryPolicy = invocation.getArgument(0);
+                    TransactionCallbackWithoutResult<?> tr = invocation.getArgument(1);
+                    Failsafe.with(retryPolicy).run(tr::doInTransaction);
+                    return null;
+                }).when(transactionManager)
                 .doInTransaction(any(RetryPolicy.class), any(TransactionCallbackWithoutResult.class));
 
         reset(switchRepository, switchPropertiesRepository);
 
-        doAnswer(invocation -> invocation.getArgument(0)).when(switchRepository).add(any());
+        lenient().doAnswer(invocation -> invocation.getArgument(0)).when(switchRepository).add(any());
 
-        when(kildaConfigurationRepository.getOrDefault()).thenReturn(KildaConfiguration.DEFAULTS);
-        when(featureTogglesRepository.getOrDefault()).thenReturn(KildaFeatureToggles.DEFAULTS);
+        lenient().when(kildaConfigurationRepository.getOrDefault()).thenReturn(KildaConfiguration.DEFAULTS);
+        lenient().when(featureTogglesRepository.getOrDefault()).thenReturn(KildaFeatureToggles.DEFAULTS);
 
         reset(repositoryFactory);
-        when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
-        when(repositoryFactory.createSwitchConnectRepository()).thenReturn(switchConnectRepository);
-        when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
-        when(repositoryFactory.createKildaConfigurationRepository()).thenReturn(kildaConfigurationRepository);
-        when(repositoryFactory.createSpeakerRepository()).thenReturn(speakerRepository);
-        when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
+        lenient().when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
+        lenient().when(repositoryFactory.createSwitchConnectRepository()).thenReturn(switchConnectRepository);
+        lenient().when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
+        lenient().when(repositoryFactory.createKildaConfigurationRepository()).thenReturn(kildaConfigurationRepository);
+        lenient().when(repositoryFactory.createSpeakerRepository()).thenReturn(speakerRepository);
+        lenient().when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
     }
 
     @Test

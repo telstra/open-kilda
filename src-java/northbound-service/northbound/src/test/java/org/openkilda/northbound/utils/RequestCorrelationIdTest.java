@@ -17,12 +17,12 @@ package org.openkilda.northbound.utils;
 
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsNot.not;
-import static org.junit.Assert.assertThat;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 
 import org.openkilda.northbound.utils.RequestCorrelationId.RequestCorrelationClosable;
 
-import org.junit.Test;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
@@ -39,9 +39,9 @@ public class RequestCorrelationIdTest {
                 .create(String.format("test-%s", UUID.randomUUID()))) {
 
             //then
-            assertThat(RequestCorrelationId.getId(), not(equalTo(before)));
+            MatcherAssert.assertThat(RequestCorrelationId.getId(), not(equalTo(before)));
         }
 
-        assertThat(RequestCorrelationId.getId(), equalTo(DEFAULT_CORRELATION_ID));
+        MatcherAssert.assertThat(RequestCorrelationId.getId(), equalTo(DEFAULT_CORRELATION_ID));
     }
 }

@@ -15,8 +15,8 @@
 
 package org.openkilda.northbound.converter;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.SubFlowPartialUpdateDto;
@@ -52,16 +52,16 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.time.Instant;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 public class YFlowMapperTest {
     public static final String ERROR_MESSAGE = "Error";
     public static final String Y_FLOW_ID = "y_flow_id";

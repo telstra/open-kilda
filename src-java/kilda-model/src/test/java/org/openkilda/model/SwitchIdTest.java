@@ -16,41 +16,36 @@
 package org.openkilda.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
 
 public class SwitchIdTest {
 
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
-
     @Test
     public void colonSeparatedBytesIllegalArgumentExceptionNegativeOffset() {
-        thrown.expect(IllegalArgumentException.class);
-        thrown.expectMessage(String.format(
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> new SwitchId("00").colonSeparatedBytes(new char[]{'t', 'e', 's', 't'}, -1));
+        assertEquals(thrown.getMessage(), String.format(
                 "Illegal offset value %d (expect offset > 0 and offset %% 2 == 0 and offset < hex.length)", -1));
 
-        new SwitchId("00").colonSeparatedBytes(new char[]{'t', 'e', 's', 't'}, -1);
     }
 
     @Test
     public void colonSeparatedBytesIllegalArgumentExceptionOddOffset() {
-        thrown.expect(IllegalArgumentException.class);
-        thrown.expectMessage(String.format(
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> new SwitchId("00").colonSeparatedBytes(new char[]{'t', 'e', 's', 't'}, 3));
+        assertEquals(thrown.getMessage(), String.format(
                 "Illegal offset value %d (expect offset > 0 and offset %% 2 == 0 and offset < hex.length)", 3));
 
-        new SwitchId("00").colonSeparatedBytes(new char[]{'t', 'e', 's', 't'}, 3);
     }
 
     @Test
     public void colonSeparatedBytesIllegalArgumentExceptionMoreThenHexLength() {
-        thrown.expect(IllegalArgumentException.class);
-        thrown.expectMessage(String.format(
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> new SwitchId("00").colonSeparatedBytes(new char[]{'t', 'e', 's', 't'}, 6));
+        assertEquals(thrown.getMessage(), String.format(
                 "Illegal offset value %d (expect offset > 0 and offset %% 2 == 0 and offset < hex.length)", 6));
-
-        new SwitchId("00").colonSeparatedBytes(new char[]{'t', 'e', 's', 't'}, 6);
     }
 
     @Test

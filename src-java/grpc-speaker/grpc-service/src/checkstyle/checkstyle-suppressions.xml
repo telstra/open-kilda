@@ -5,4 +5,5 @@
 
 <suppressions>
     <suppress files="src/main/java/org/openkilda/grpc/speaker/GrpcSpeaker.java" checks="HideUtilityClassConstructor"/>
+    <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="JavadocMethod" />
 </suppressions>

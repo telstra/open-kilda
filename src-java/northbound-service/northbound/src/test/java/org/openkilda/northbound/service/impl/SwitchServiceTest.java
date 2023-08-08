@@ -18,7 +18,8 @@ package org.openkilda.northbound.service.impl;
 import static java.util.Collections.singletonList;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openkilda.messaging.model.ValidationFilter.FLOW_INFO;
 import static org.openkilda.messaging.model.ValidationFilter.GROUPS;
 import static org.openkilda.messaging.model.ValidationFilter.LOGICAL_PORTS;
@@ -46,20 +47,20 @@ import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.util.concurrent.ExecutionException;
 
-@RunWith(SpringJUnit4ClassRunner.class)
+@ExtendWith(SpringExtension.class)
 public class SwitchServiceTest {
 
     public static final SwitchId SWITCH_ID = new SwitchId(1);
@@ -69,7 +70,7 @@ public class SwitchServiceTest {
     @Autowired
     private MessageExchanger messageExchanger;
 
-    @Before
+    @BeforeEach
     public void reset() {
         messageExchanger.resetMockedResponses();
     }
@@ -124,53 +125,67 @@ public class SwitchServiceTest {
         assertThat(rules.getRemoved(), is(singletonList(excessRule)));
     }
 
-    @Test(expected = MessageException.class)
+    @Test
     public void errorWhileParsingIncludeStringV2ValidationParameters() {
-        String correlationId = createCorrelationId("invalid-include");
-        messageExchanger.mockResponse(correlationId, null);
-        switchService.validateSwitch(SWITCH_ID, "meter|groups", "flow_info");
+        assertThrows(MessageException.class, () -> {
+            String correlationId = createCorrelationId("invalid-include");
+            messageExchanger.mockResponse(correlationId, null);
+            switchService.validateSwitch(SWITCH_ID, "meter|groups", "flow_info");
+        });
     }
 
-    @Test(expected = MessageException.class)
+    @Test
     public void errorWhileParsingExcludeStringV2ValidationParameters() {
-        String correlationId = createCorrelationId("invalid-exclude");
-        messageExchanger.mockResponse(correlationId, null);
-        switchService.validateSwitch(SWITCH_ID, "meters|groups", "flo_info");
+        assertThrows(MessageException.class, () -> {
+            String correlationId = createCorrelationId("invalid-exclude");
+            messageExchanger.mockResponse(correlationId, null);
+            switchService.validateSwitch(SWITCH_ID, "meters|groups", "flo_info");
+        });
     }
 
-    @Test(expected = MessageException.class)
+    @Test
     public void errorWhileParsingExcludeStringWithIncludeValuesV2ValidationParameters() {
-        String correlationId = createCorrelationId("invalid-exclude");
-        messageExchanger.mockResponse(correlationId, null);
-        switchService.validateSwitch(SWITCH_ID, "meters|groups", "meters");
+        assertThrows(MessageException.class, () -> {
+            String correlationId = createCorrelationId("invalid-exclude");
+            messageExchanger.mockResponse(correlationId, null);
+            switchService.validateSwitch(SWITCH_ID, "meters|groups", "meters");
+        });
     }
 
-    @Test(expected = MessageException.class)
+    @Test
     public void errorWhileParsingExcludeStringWithIncludeValuesAndEmptyIncludeV2ValidationParameters() {
-        String correlationId = createCorrelationId("invalid-exclude");
-        messageExchanger.mockResponse(correlationId, null);
-        switchService.validateSwitch(SWITCH_ID, null, "meters");
+        assertThrows(MessageException.class, () -> {
+            String correlationId = createCorrelationId("invalid-exclude");
+            messageExchanger.mockResponse(correlationId, null);
+            switchService.validateSwitch(SWITCH_ID, null, "meters");
+        });
     }
 
-    @Test(expected = MessageException.class)
+    @Test
     public void errorWhileParsingIncludeStringWithExcludeValuesV2ValidationParameters() {
-        String correlationId = createCorrelationId("invalid-exclude");
-        messageExchanger.mockResponse(correlationId, null);
-        switchService.validateSwitch(SWITCH_ID, "flow_info", null);
+        assertThrows(MessageException.class, () -> {
+            String correlationId = createCorrelationId("invalid-exclude");
+            messageExchanger.mockResponse(correlationId, null);
+            switchService.validateSwitch(SWITCH_ID, "flow_info", null);
+        });
     }
 
-    @Test(expected = MessageException.class)
+    @Test
     public void errorWhileV1filterToIncludeV2ValidationParameters() {
-        String correlationId = createCorrelationId("invalid-exclude");
-        messageExchanger.mockResponse(correlationId, null);
-        switchService.validateSwitch(SWITCH_ID, "meter_flow_info", null);
+        assertThrows(MessageException.class, () -> {
+            String correlationId = createCorrelationId("invalid-exclude");
+            messageExchanger.mockResponse(correlationId, null);
+            switchService.validateSwitch(SWITCH_ID, "meter_flow_info", null);
+        });
     }
 
-    @Test(expected = MessageException.class)
+    @Test
     public void errorWhileV1filterToExcludeV2ValidationParameters() {
-        String correlationId = createCorrelationId("invalid-exclude");
-        messageExchanger.mockResponse(correlationId, null);
-        switchService.validateSwitch(SWITCH_ID, null, "meter_flow_info");
+        assertThrows(MessageException.class, () -> {
+            String correlationId = createCorrelationId("invalid-exclude");
+            messageExchanger.mockResponse(correlationId, null);
+            switchService.validateSwitch(SWITCH_ID, null, "meter_flow_info");
+        });
     }
 
     @Test

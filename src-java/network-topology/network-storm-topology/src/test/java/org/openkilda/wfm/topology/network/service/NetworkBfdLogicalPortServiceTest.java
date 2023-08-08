@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.network.service;
 
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
@@ -34,16 +35,15 @@ import org.openkilda.wfm.topology.network.error.ControllerNotFoundException;
 import org.openkilda.wfm.topology.network.model.BfdSessionData;
 import org.openkilda.wfm.topology.network.utils.SwitchOnlineStatusMonitor;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class NetworkBfdLogicalPortServiceTest {
     private static final int LOGICAL_PORT_OFFSET = 200;
 
@@ -61,7 +61,7 @@ public class NetworkBfdLogicalPortServiceTest {
 
     private SwitchOnlineStatusMonitor switchOnlineStatusMonitor;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         switchOnlineStatusMonitor = new SwitchOnlineStatusMonitor();
     }
@@ -122,7 +122,7 @@ public class NetworkBfdLogicalPortServiceTest {
 
         try {
             service.disable(physical);
-            Assert.fail("Expect controller not found exception");
+            fail("Expect controller not found exception");
         } catch (ControllerNotFoundException e) {
             // expected
         }

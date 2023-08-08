@@ -28,22 +28,22 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.model.Endpoint;
 
 import lombok.Data;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class PollIntegrationTest {
     private static final Integer taskId = 0;
 
     @Mock
     IDecisionMakerCarrier carrier;
 
-    @Before
+    @BeforeEach
     public void setup() {
         reset(carrier);
     }
@@ -79,7 +79,7 @@ public class PollIntegrationTest {
         NetworkWatcherService watcherService = new NetworkWatcherService(
                 integrationCarrier, 100, taskId);
         NetworkDecisionMakerService decisionMakerService = new NetworkDecisionMakerService(carrier,
-                                                                                           200, 100);
+                200, 100);
 
         integrationCarrier.configure(watcherService, watchListService, decisionMakerService);
         integrationCarrier.setWatcherCarrier(watcherCarrier);
@@ -93,8 +93,8 @@ public class PollIntegrationTest {
         verify(watcherCarrier).sendDiscovery(discoveryRequestCatcher.capture());
 
         DiscoverIslCommandData request = discoveryRequestCatcher.getValue();
-        Assert.assertEquals(endpoint.getDatapath(), request.getSwitchId());
-        Assert.assertEquals(endpoint.getPortNumber(), request.getPortNumber());
+        Assertions.assertEquals(endpoint.getDatapath(), request.getSwitchId());
+        Assertions.assertEquals(endpoint.getPortNumber(), request.getPortNumber());
 
         IslInfoData expectedDiscoveryEvent = IslInfoData.builder().latency(latency)
                 .source(new PathNode(new SwitchId(1), 1, 0))
@@ -123,7 +123,7 @@ public class PollIntegrationTest {
         NetworkWatcherService watcherService = new NetworkWatcherService(
                 integrationCarrier, 100, taskId);
         NetworkDecisionMakerService decisionMakerService = new NetworkDecisionMakerService(carrier,
-                                                                                           200, 100);
+                200, 100);
 
         integrationCarrier.configure(watcherService, watchListService, decisionMakerService);
 

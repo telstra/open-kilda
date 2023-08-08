@@ -16,7 +16,6 @@
 package org.openkilda.wfm.topology.network.service;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -31,20 +30,21 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.model.Endpoint;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class NetworkWatcherServiceTest {
     private final Integer taskId = 0;
 
     @Mock
     IWatcherCarrier carrier;
 
-    @Before
+    @BeforeEach
     public void setup() {
         reset(carrier);
     }
@@ -58,8 +58,8 @@ public class NetworkWatcherServiceTest {
         w.addWatch(Endpoint.of(new SwitchId(2), 1), 2);
         w.addWatch(Endpoint.of(new SwitchId(2), 2), 3);
 
-        assertThat(w.getConfirmedPackets().size(), is(0));
-        assertThat(w.getTimeouts().size(), is(3));
+        MatcherAssert.assertThat(w.getConfirmedPackets().size(), is(0));
+        MatcherAssert.assertThat(w.getTimeouts().size(), is(3));
 
         verify(carrier, times(5)).sendDiscovery(any(DiscoverIslCommandData.class));
     }
@@ -78,9 +78,9 @@ public class NetworkWatcherServiceTest {
         w.confirmation(Endpoint.of(new SwitchId(1), 2), 1);
         w.confirmation(Endpoint.of(new SwitchId(2), 1), 2);
 
-        assertThat(w.getConfirmedPackets().size(), is(2));
-        assertThat(w.getTimeouts().size(), is(5));
-        assertThat(w.getDiscoveryPackets().size(), is(3));
+        MatcherAssert.assertThat(w.getConfirmedPackets().size(), is(2));
+        MatcherAssert.assertThat(w.getTimeouts().size(), is(5));
+        MatcherAssert.assertThat(w.getDiscoveryPackets().size(), is(3));
 
         w.removeWatch(Endpoint.of(new SwitchId(1), 2));
         w.removeWatch(Endpoint.of(new SwitchId(2), 2));
@@ -88,11 +88,11 @@ public class NetworkWatcherServiceTest {
         verify(carrier).clearDiscovery(Endpoint.of(new SwitchId(1), 2));
         verify(carrier).clearDiscovery(Endpoint.of(new SwitchId(2), 2));
 
-        assertThat(w.getConfirmedPackets().size(), is(1));
-        assertThat(w.getDiscoveryPackets().size(), is(2));
+        MatcherAssert.assertThat(w.getConfirmedPackets().size(), is(1));
+        MatcherAssert.assertThat(w.getDiscoveryPackets().size(), is(2));
 
         w.tick(100);
-        assertThat(w.getTimeouts().size(), is(0));
+        MatcherAssert.assertThat(w.getTimeouts().size(), is(0));
     }
 
     @Test
@@ -104,24 +104,24 @@ public class NetworkWatcherServiceTest {
         w.addWatch(Endpoint.of(new SwitchId(2), 1), 2);
         w.addWatch(Endpoint.of(new SwitchId(2), 2), 3);
 
-        assertThat(w.getConfirmedPackets().size(), is(0));
-        assertThat(w.getTimeouts().size(), is(3));
+        MatcherAssert.assertThat(w.getConfirmedPackets().size(), is(0));
+        MatcherAssert.assertThat(w.getTimeouts().size(), is(3));
         verify(carrier, times(5)).sendDiscovery(any(DiscoverIslCommandData.class));
 
         w.confirmation(Endpoint.of(new SwitchId(1), 1), 0);
         w.confirmation(Endpoint.of(new SwitchId(2), 1), 2);
 
-        assertThat(w.getConfirmedPackets().size(), is(2));
+        MatcherAssert.assertThat(w.getConfirmedPackets().size(), is(2));
 
         w.tick(100);
 
-        assertThat(w.getConfirmedPackets().size(), is(0));
+        MatcherAssert.assertThat(w.getConfirmedPackets().size(), is(0));
 
         verify(carrier).discoveryFailed(eq(Endpoint.of(new SwitchId(1), 1)), eq(0L), anyLong());
         verify(carrier).discoveryFailed(eq(Endpoint.of(new SwitchId(2), 1)), eq(2L), anyLong());
         verify(carrier, times(2)).discoveryFailed(any(Endpoint.class), anyLong(), anyLong());
 
-        assertThat(w.getTimeouts().size(), is(0));
+        MatcherAssert.assertThat(w.getTimeouts().size(), is(0));
     }
 
     @Test
@@ -133,13 +133,13 @@ public class NetworkWatcherServiceTest {
         w.addWatch(Endpoint.of(new SwitchId(2), 1), 2);
         w.addWatch(Endpoint.of(new SwitchId(2), 2), 3);
 
-        assertThat(w.getConfirmedPackets().size(), is(0));
-        assertThat(w.getTimeouts().size(), is(3));
+        MatcherAssert.assertThat(w.getConfirmedPackets().size(), is(0));
+        MatcherAssert.assertThat(w.getTimeouts().size(), is(3));
         verify(carrier, times(5)).sendDiscovery(any(DiscoverIslCommandData.class));
 
         w.confirmation(Endpoint.of(new SwitchId(1), 1), 0);
         w.confirmation(Endpoint.of(new SwitchId(2), 1), 2);
-        assertThat(w.getConfirmedPackets().size(), is(2));
+        MatcherAssert.assertThat(w.getConfirmedPackets().size(), is(2));
 
         PathNode source = new PathNode(new SwitchId(1), 1, 0);
         PathNode destination = new PathNode(new SwitchId(2), 1, 0);
@@ -151,16 +151,16 @@ public class NetworkWatcherServiceTest {
 
         w.tick(100);
 
-        assertThat(w.getConfirmedPackets().size(), is(0));
+        MatcherAssert.assertThat(w.getConfirmedPackets().size(), is(0));
 
         verify(carrier).oneWayDiscoveryReceived(eq(new Endpoint(islAlphaBeta.getSource())), eq(0L), eq(islAlphaBeta),
-                                          anyLong());
+                anyLong());
         verify(carrier).oneWayDiscoveryReceived(eq(new Endpoint(islBetaAlpha.getSource())), eq(2L), eq(islBetaAlpha),
-                                          anyLong());
+                anyLong());
         verify(carrier, times(2))
                 .oneWayDiscoveryReceived(any(Endpoint.class), anyLong(), any(IslInfoData.class), anyLong());
 
-        assertThat(w.getTimeouts().size(), is(0));
+        MatcherAssert.assertThat(w.getTimeouts().size(), is(0));
     }
 
     @Test
@@ -183,7 +183,7 @@ public class NetworkWatcherServiceTest {
         verify(carrier).oneWayDiscoveryReceived(eq(new Endpoint(source)), eq(0L), eq(islAlphaBeta), anyLong());
         verify(carrier, never()).discoveryFailed(eq(new Endpoint(source)), anyLong(), anyLong());
 
-        assertThat(w.getConfirmedPackets().size(), is(0));
+        MatcherAssert.assertThat(w.getConfirmedPackets().size(), is(0));
     }
 
     private NetworkWatcherService makeService() {

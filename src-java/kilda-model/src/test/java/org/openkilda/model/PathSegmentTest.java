@@ -15,13 +15,14 @@
 
 package org.openkilda.model;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +40,7 @@ public class PathSegmentTest {
 
     private Flow flow;
 
-    @Before
+    @BeforeEach
     public void setup() {
         flow = Flow.builder().flowId(FLOW_ID).srcSwitch(SWITCH_A)
                 .destSwitch(SWITCH_B).pinned(true).build();
@@ -77,9 +78,10 @@ public class PathSegmentTest {
     }
 
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testContainsNodeInvalidInput() {
-        flow.getForwardPath().getSegments().get(0).containsNode(null, 1);
+        assertThrows(IllegalArgumentException.class,
+                () -> flow.getForwardPath().getSegments().get(0).containsNode(null, 1));
     }
 
     @Test

@@ -39,17 +39,17 @@ import org.openkilda.wfm.topology.network.model.BfdStatusUpdate;
 import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashMap;
 import java.util.Map;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class NetworkUniIslServiceTest {
     private final Map<SwitchId, Switch> switchCache = new HashMap<>();
 
@@ -58,7 +58,7 @@ public class NetworkUniIslServiceTest {
     @Mock
     private IUniIslCarrier carrier;
 
-    @Before
+    @BeforeEach
     public void setup() {
         resetMocks();
     }
@@ -412,7 +412,7 @@ public class NetworkUniIslServiceTest {
         service.uniIslDiscovery(endpointAlpha1, IslMapper.INSTANCE.map(normalIsl));
 
         verify(carrier).notifyIslUp(endpointAlpha1, new IslReference(endpointAlpha1, endpointBeta3),
-                                    new IslDataHolder(normalIsl));
+                new IslDataHolder(normalIsl));
         verify(carrier).exhaustedPollModeUpdateRequest(endpointAlpha1, false);
         verifyNoMoreInteractions(carrier);
 
@@ -449,7 +449,7 @@ public class NetworkUniIslServiceTest {
 
         final IslReference reference = new IslReference(endpointAlpha1, endpointBeta3);
         verify(carrier).notifyIslUp(endpointAlpha1, reference,
-                                    new IslDataHolder(normalIsl));
+                new IslDataHolder(normalIsl));
         verify(carrier).exhaustedPollModeUpdateRequest(endpointAlpha1, false);
         verifyNoMoreInteractions(carrier);
         reset(carrier);
@@ -573,7 +573,7 @@ public class NetworkUniIslServiceTest {
         service.uniIslDiscovery(endpointA, IslMapper.INSTANCE.map(link));
 
         verify(carrier).notifyIslUp(endpointA, new IslReference(endpointA, endpointZ),
-                                    new IslDataHolder(link));
+                new IslDataHolder(link));
         verify(carrier).exhaustedPollModeUpdateRequest(endpointA, false);
         verifyNoMoreInteractions(carrier);
         reset(carrier);

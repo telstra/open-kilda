@@ -15,7 +15,7 @@
 
 package org.openkilda.northbound.controller.v1;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import static org.openkilda.messaging.Utils.EXTRA_AUTH;
 import static org.openkilda.messaging.Utils.MAPPER;
@@ -32,13 +32,13 @@ import org.openkilda.northbound.controller.TestConfig;
 import org.openkilda.northbound.utils.RequestCorrelationFilter;
 import org.openkilda.northbound.utils.RequestCorrelationInspectorFilter;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -48,7 +48,7 @@ import org.springframework.web.context.WebApplicationContext;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-@RunWith(SpringJUnit4ClassRunner.class)
+@ExtendWith(SpringExtension.class)
 @WebAppConfiguration
 @ContextConfiguration(classes = TestConfig.class)
 public class SwitchControllerTest {
@@ -62,7 +62,7 @@ public class SwitchControllerTest {
     @Autowired
     private WebApplicationContext webApplicationContext;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
                 .addFilters(new RequestCorrelationInspectorFilter(), new RequestCorrelationFilter())
@@ -76,9 +76,9 @@ public class SwitchControllerTest {
         // given TestMessageMock as kafka topic mocks
         // when
         MvcResult mvcResult = mockMvc.perform(delete("/v1/switches/{switch-id}/rules", TEST_SWITCH_ID)
-                .header(CORRELATION_ID, testCorrelationId())
-                .header(EXTRA_AUTH, System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(119))
-                .contentType(APPLICATION_JSON_VALUE))
+                        .header(CORRELATION_ID, testCorrelationId())
+                        .header(EXTRA_AUTH, System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(119))
+                        .contentType(APPLICATION_JSON_VALUE))
                 .andReturn();
 
         // then
@@ -96,8 +96,8 @@ public class SwitchControllerTest {
         // given TestMessageMock as kafka topic mocks
         // when
         mockMvc.perform(delete("/v1/switches/{switch-id}/rules", TEST_SWITCH_ID)
-                .header(CORRELATION_ID, testCorrelationId())
-                .contentType(APPLICATION_JSON_VALUE))
+                        .header(CORRELATION_ID, testCorrelationId())
+                        .contentType(APPLICATION_JSON_VALUE))
                 // then
                 .andExpect(status().isUnauthorized());
     }

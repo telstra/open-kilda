@@ -15,6 +15,11 @@
 
 package org.openkilda.wfm.topology.network.controller.bfd;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.openkilda.messaging.floodlight.response.BfdSessionResponse;
 import org.openkilda.messaging.model.NoviBfdSession;
 import org.openkilda.messaging.model.NoviBfdSession.Errors;
@@ -22,15 +27,14 @@ import org.openkilda.messaging.model.SwitchReference;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.network.controller.bfd.BfdSessionAction.ActionResult;
 
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.net.Inet4Address;
 import java.net.UnknownHostException;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class BfdSessionActionTest {
     private NoviBfdSession payload = NoviBfdSession.builder()
             .target(new SwitchReference(new SwitchId(1), Inet4Address.getByName("192.168.1.1")))
@@ -54,34 +58,34 @@ public class BfdSessionActionTest {
 
         // invalid
         BfdSessionResponse response = new BfdSessionResponse(payload, null);
-        Assert.assertFalse(action.consumeSpeakerResponse(requestKey + "+invalid", response).isPresent());
+        assertFalse(action.consumeSpeakerResponse(requestKey + "+invalid", response).isPresent());
 
         // valid
         ActionResult result = action.consumeSpeakerResponse(requestKey, new BfdSessionResponse(payload, null))
                 .orElseThrow(() -> new AssertionError("Action must produce result"));
-        Assert.assertTrue(result.isSuccess());
+        assertTrue(result.isSuccess());
 
         // extra result
         ActionResult result2 = action
                 .consumeSpeakerResponse(requestKey, new BfdSessionResponse(payload, Errors.NOVI_BFD_UNKNOWN_ERROR))
                 .orElseThrow(() -> new AssertionError("Action must produce result"));
-        Assert.assertTrue(result2.isSuccess()); // because extra result was ignored
+        assertTrue(result2.isSuccess()); // because extra result was ignored
     }
 
     @Test
     public void errorResponse() {
         ActionResult result = makeWithResponse(new BfdSessionResponse(payload, Errors.SWITCH_RESPONSE_ERROR));
 
-        Assert.assertEquals(Errors.SWITCH_RESPONSE_ERROR, result.getErrorCode());
-        Assert.assertFalse(result.isSuccess());
+        assertEquals(Errors.SWITCH_RESPONSE_ERROR, result.getErrorCode());
+        assertFalse(result.isSuccess());
     }
 
     @Test
     public void timeoutResponse() {
         ActionResult result = makeWithResponse(null);
 
-        Assert.assertNull(result.getErrorCode());
-        Assert.assertFalse(result.isSuccess());
+        assertNull(result.getErrorCode());
+        assertFalse(result.isSuccess());
     }
 
     @Test
@@ -90,11 +94,11 @@ public class BfdSessionActionTest {
 
         result = makeWithResponse(
                 new BfdSessionResponse(payload, Errors.NOVI_BFD_DISCRIMINATOR_NOT_FOUND_ERROR), false);
-        Assert.assertFalse(result.isSuccess());
+        assertFalse(result.isSuccess());
 
         result = makeWithResponse(
                 new BfdSessionResponse(payload, Errors.NOVI_BFD_DISCRIMINATOR_NOT_FOUND_ERROR), true);
-        Assert.assertTrue(result.isSuccess());
+        assertTrue(result.isSuccess());
     }
 
     private ActionResult makeWithResponse(BfdSessionResponse response) {

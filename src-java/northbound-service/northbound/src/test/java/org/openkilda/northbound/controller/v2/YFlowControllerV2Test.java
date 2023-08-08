@@ -24,19 +24,19 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpoint;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 @WebMvcTest(controllers = YFlowControllerV2.class)
 @WebAppConfiguration
 @ContextConfiguration(classes = TestConfig.class)
@@ -63,7 +63,7 @@ public class YFlowControllerV2Test {
                 .andExpect(status().isOk());
     }
 
-    @Ignore
+    @Disabled
     @Test
     @WithMockUser(username = TestConfig.USERNAME, password = TestConfig.PASSWORD, roles = TestConfig.ROLE)
     public void shouldReturnsStatus400WhenEncapsulationTypeNull() throws Exception {
@@ -80,7 +80,7 @@ public class YFlowControllerV2Test {
                 .andExpect(status().isBadRequest());
     }
 
-    @Ignore
+    @Disabled
     @Test
     @WithMockUser(username = TestConfig.USERNAME, password = TestConfig.PASSWORD, roles = TestConfig.ROLE)
     public void shouldReturnsStatus400WhenPathComputationStrategyNull() throws Exception {
