@@ -78,7 +78,7 @@ public class HaFlowCreateService extends FlowProcessingService<HaFlowCreateFsm, 
     /**
      * Handles request for ha-flow creation.
      *
-     * @param key     command identifier.
+     * @param key command identifier.
      * @param request request data.
      */
     public void handleRequest(
