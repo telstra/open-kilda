@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology.switchmanager.mappers;
 
-import static org.junit.Assert.assertEquals;
-
 import org.openkilda.messaging.info.switches.v2.GroupInfoEntryV2;
 import org.openkilda.messaging.info.switches.v2.GroupsValidationEntryV2;
 import org.openkilda.messaging.info.switches.v2.LogicalPortInfoEntryV2;
@@ -62,8 +60,9 @@ import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateMetersResultV2;
 import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateRulesResultV2;
 
 import com.google.common.collect.Lists;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -234,7 +233,7 @@ public class ValidationMapperTest {
     private static ValidateMetersResultV2 metersResult;
     private static ValidateLogicalPortsResultV2 logicalPortsResult;
 
-    @BeforeClass
+    @BeforeAll
     public static void initializeData() {
         missingGroups.add(GroupEntryConverter.INSTANCE.toGroupEntry(initializeGroupSpeakerData(new SwitchId(1))));
         properGroups.add(GroupEntryConverter.INSTANCE.toGroupEntry(initializeGroupSpeakerData(new SwitchId(2))));
@@ -298,27 +297,27 @@ public class ValidationMapperTest {
         SwitchValidationResponseV2 response = ValidationMapper.INSTANCE.toSwitchResponse(context);
 
         GroupsValidationEntryV2 groupsEntry = response.getGroups();
-        assertEquals(missingGroups, groupsEntry.getMissing());
-        assertEquals(properGroups, groupsEntry.getProper());
-        assertEquals(excessGroups, groupsEntry.getExcess());
-        assertEquals(misconfiguredGroups, groupsEntry.getMisconfigured());
+        Assertions.assertEquals(missingGroups, groupsEntry.getMissing());
+        Assertions.assertEquals(properGroups, groupsEntry.getProper());
+        Assertions.assertEquals(excessGroups, groupsEntry.getExcess());
+        Assertions.assertEquals(misconfiguredGroups, groupsEntry.getMisconfigured());
 
         RulesValidationEntryV2 rulesEntry = response.getRules();
-        assertEquals(missingRules, rulesEntry.getMissing());
-        assertEquals(properRules, rulesEntry.getProper());
-        assertEquals(excessRules, rulesEntry.getExcess());
-        assertEquals(misconfiguredRules, rulesEntry.getMisconfigured());
+        Assertions.assertEquals(missingRules, rulesEntry.getMissing());
+        Assertions.assertEquals(properRules, rulesEntry.getProper());
+        Assertions.assertEquals(excessRules, rulesEntry.getExcess());
+        Assertions.assertEquals(misconfiguredRules, rulesEntry.getMisconfigured());
 
         LogicalPortsValidationEntryV2 portsEntry = response.getLogicalPorts();
-        assertEquals(missingPorts, portsEntry.getMissing());
-        assertEquals(properPorts, portsEntry.getProper());
-        assertEquals(excessPorts, portsEntry.getExcess());
-        assertEquals(misconfiguredPorts, portsEntry.getMisconfigured());
+        Assertions.assertEquals(missingPorts, portsEntry.getMissing());
+        Assertions.assertEquals(properPorts, portsEntry.getProper());
+        Assertions.assertEquals(excessPorts, portsEntry.getExcess());
+        Assertions.assertEquals(misconfiguredPorts, portsEntry.getMisconfigured());
 
         MetersValidationEntryV2 metersEntry = response.getMeters();
-        assertEquals(missingMeters, metersEntry.getMissing());
-        assertEquals(properMeters, metersEntry.getProper());
-        assertEquals(excessMeters, metersEntry.getExcess());
-        assertEquals(misconfiguredMeters, metersEntry.getMisconfigured());
+        Assertions.assertEquals(missingMeters, metersEntry.getMissing());
+        Assertions.assertEquals(properMeters, metersEntry.getProper());
+        Assertions.assertEquals(excessMeters, metersEntry.getExcess());
+        Assertions.assertEquals(misconfiguredMeters, metersEntry.getMisconfigured());
     }
 }

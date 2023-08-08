@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.switchmanager.mappers;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.wfm.topology.switchmanager.mappers.LogicalPortMapper.INSTANCE;
 
 import org.openkilda.messaging.info.switches.v2.LogicalPortInfoEntryV2;
@@ -25,7 +25,7 @@ import org.openkilda.model.LagLogicalPort;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.Lists;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class LogicalPortMapperTest {
     public static SwitchId SWITCH_ID = new SwitchId(1);

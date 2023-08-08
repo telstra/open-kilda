@@ -20,8 +20,8 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.Sets;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class CreateLagPortRequestTest {
     StringSerializer serializer = new StringSerializer();
@@ -35,7 +35,7 @@ public class CreateLagPortRequestTest {
         CommandMessage reconstructedMessage = (CommandMessage) serializer.deserialize();
         CreateLagPortRequest reconstructed = (CreateLagPortRequest) reconstructedMessage.getData();
 
-        Assert.assertEquals(origin, reconstructed);
+        Assertions.assertEquals(origin, reconstructed);
     }
 
     public static CreateLagPortRequest makeRequest() {
