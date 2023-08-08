@@ -15,8 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.flow.loop;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
 import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
@@ -49,7 +47,8 @@ import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,7 +65,7 @@ public class FlowLoopTransitRuleGeneratorTest {
     public static final Switch SWITCH_1 = buildSwitch(SWITCH_ID_1, Sets.newHashSet(
             RESET_COUNTS_FLAG, NOVIFLOW_PUSH_POP_VXLAN));
     public static final Switch SWITCH_2 = buildSwitch(SWITCH_ID_2, Sets.newHashSet(
-            RESET_COUNTS_FLAG, NOVIFLOW_PUSH_POP_VXLAN));   
+            RESET_COUNTS_FLAG, NOVIFLOW_PUSH_POP_VXLAN));
     public static final Switch SWITCH_3 = buildSwitch(SWITCH_ID_3, Sets.newHashSet(
             RESET_COUNTS_FLAG, NOVIFLOW_PUSH_POP_VXLAN));
     public static final int VLAN = 5;
@@ -158,7 +157,7 @@ public class FlowLoopTransitRuleGeneratorTest {
                 .multiTable(true)
                 .encapsulation(VLAN_ENCAPSULATION)
                 .build();
-        assertEquals(0, generator.generateCommands(SWITCH_1).size());
+        Assertions.assertEquals(0, generator.generateCommands(SWITCH_1).size());
     }
 
     @Test
@@ -173,21 +172,21 @@ public class FlowLoopTransitRuleGeneratorTest {
                 .multiTable(true)
                 .encapsulation(VLAN_ENCAPSULATION)
                 .build();
-        assertEquals(0, generator.generateCommands(SWITCH_1).size());
+        Assertions.assertEquals(0, generator.generateCommands(SWITCH_1).size());
     }
 
     private void assertTransitCommands(List<SpeakerData> commands, OfTable table,
                                        FlowTransitEncapsulation encapsulation) {
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
-        assertEquals(SWITCH_2.getSwitchId(), flowCommandData.getSwitchId());
-        assertEquals(SWITCH_2.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertEquals(SWITCH_2.getSwitchId(), flowCommandData.getSwitchId());
+        Assertions.assertEquals(SWITCH_2.getOfVersion(), flowCommandData.getOfVersion().toString());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(LOOP_COOKIE, flowCommandData.getCookie());
-        assertEquals(table, flowCommandData.getTable());
-        assertEquals(Priority.LOOP_FLOW_PRIORITY, flowCommandData.getPriority());
+        Assertions.assertEquals(LOOP_COOKIE, flowCommandData.getCookie());
+        Assertions.assertEquals(table, flowCommandData.getTable());
+        Assertions.assertEquals(Priority.LOOP_FLOW_PRIORITY, flowCommandData.getPriority());
 
         Set<FieldMatch> expectedMatch;
         List<Action> expectedApplyActions = new ArrayList<>();
@@ -202,8 +201,8 @@ public class FlowLoopTransitRuleGeneratorTest {
 
         expectedApplyActions.add(new PortOutAction(new PortNumber(SpecialPortType.IN_PORT)));
         Instructions expectedInstructions = Instructions.builder().applyActions(expectedApplyActions).build();
-        assertEquals(expectedInstructions, flowCommandData.getInstructions());
-        assertTrue(flowCommandData.getFlags().isEmpty());
+        Assertions.assertEquals(expectedInstructions, flowCommandData.getInstructions());
+        Assertions.assertTrue(flowCommandData.getFlags().isEmpty());
     }
 
     private Set<FieldMatch> buildExpectedVlanMatch(int port, int vlanId) {

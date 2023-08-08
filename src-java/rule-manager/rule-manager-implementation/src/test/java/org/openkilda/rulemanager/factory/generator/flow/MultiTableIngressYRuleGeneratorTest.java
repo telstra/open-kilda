@@ -16,8 +16,6 @@
 package org.openkilda.rulemanager.factory.generator.flow;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.METERS;
@@ -65,8 +63,9 @@ import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.rulemanager.utils.RoutingMetadata;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -133,7 +132,7 @@ public class MultiTableIngressYRuleGeneratorTest {
     public static final UUID SHARED_METER_UUID = UUID.fromString("dc8b54d3-3f25-4c5b-9d90-5f59d2836bc2");
 
 
-    @Before
+    @BeforeEach
     public void setup() {
         config = mock(RuleManagerConfig.class);
         when(config.getFlowMeterBurstCoefficient()).thenReturn(BURST_COEFFICIENT);
@@ -148,7 +147,7 @@ public class MultiTableIngressYRuleGeneratorTest {
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -160,7 +159,7 @@ public class MultiTableIngressYRuleGeneratorTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -172,7 +171,7 @@ public class MultiTableIngressYRuleGeneratorTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -180,7 +179,7 @@ public class MultiTableIngressYRuleGeneratorTest {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, TRANSIT_VLAN_ID);
         MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(TRANSIT_VLAN_ID, FEATURES);
-        assertTrue(transformActions.isEmpty());
+        Assertions.assertTrue(transformActions.isEmpty());
     }
 
 
@@ -190,7 +189,7 @@ public class MultiTableIngressYRuleGeneratorTest {
         MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES);
         List<Action> expectedActions = newArrayList(new PopVlanAction(), buildPushVxlan());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -199,7 +198,7 @@ public class MultiTableIngressYRuleGeneratorTest {
         MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(buildPushVxlan());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -208,7 +207,7 @@ public class MultiTableIngressYRuleGeneratorTest {
         MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(buildPushVxlan());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -221,7 +220,7 @@ public class MultiTableIngressYRuleGeneratorTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -232,7 +231,7 @@ public class MultiTableIngressYRuleGeneratorTest {
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -241,7 +240,7 @@ public class MultiTableIngressYRuleGeneratorTest {
         MultiTableIngressYRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES);
         List<Action> expectedActions = newArrayList(new PopVlanAction());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -255,7 +254,7 @@ public class MultiTableIngressYRuleGeneratorTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -267,7 +266,7 @@ public class MultiTableIngressYRuleGeneratorTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -276,7 +275,7 @@ public class MultiTableIngressYRuleGeneratorTest {
         MultiTableIngressYRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList();
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -290,7 +289,7 @@ public class MultiTableIngressYRuleGeneratorTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -302,7 +301,7 @@ public class MultiTableIngressYRuleGeneratorTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -311,7 +310,7 @@ public class MultiTableIngressYRuleGeneratorTest {
         MultiTableIngressYRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList();
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -359,11 +358,11 @@ public class MultiTableIngressYRuleGeneratorTest {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
 
         FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
         MeterSpeakerData meterCommand = (MeterSpeakerData) commands.get(1);
-        assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
+        Assertions.assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_1.getFeatures());
@@ -390,11 +389,11 @@ public class MultiTableIngressYRuleGeneratorTest {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION, overlapping);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
 
         FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
         MeterSpeakerData meterCommand = (MeterSpeakerData) commands.get(1);
-        assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
+        Assertions.assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_1.getFeatures());
@@ -421,11 +420,11 @@ public class MultiTableIngressYRuleGeneratorTest {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION, overlapping);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
 
         FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
         MeterSpeakerData meterCommand = (MeterSpeakerData) commands.get(1);
-        assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
+        Assertions.assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_1.getFeatures());
@@ -453,10 +452,10 @@ public class MultiTableIngressYRuleGeneratorTest {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         MultiTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION, overlapping, false);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
-        assertEquals(newArrayList(SHARED_METER_UUID), new ArrayList<>(ingressCommand.getDependsOn()));
+        Assertions.assertEquals(newArrayList(SHARED_METER_UUID), new ArrayList<>(ingressCommand.getDependsOn()));
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_1.getFeatures());
@@ -482,7 +481,7 @@ public class MultiTableIngressYRuleGeneratorTest {
                 FlowSideAdapter.makeIngressAdapter(oneSwitchFlow, ONE_SWITCH_PATH));
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
 
-        MultiTableIngressYRuleGenerator generator =  MultiTableIngressYRuleGenerator.builder()
+        MultiTableIngressYRuleGenerator generator = MultiTableIngressYRuleGenerator.builder()
                 .config(config)
                 .flowPath(PATH)
                 .flow(flow)
@@ -494,10 +493,10 @@ public class MultiTableIngressYRuleGeneratorTest {
                 .build();
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
-        assertTrue(ingressCommand.getDependsOn().isEmpty());
+        Assertions.assertTrue(ingressCommand.getDependsOn().isEmpty());
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_1.getFeatures());
@@ -520,12 +519,12 @@ public class MultiTableIngressYRuleGeneratorTest {
     private void assertIngressCommand(
             FlowSpeakerData command, int expectedPriority, Set<FieldMatch> expectedMatch,
             List<Action> expectedApplyActions, MeterId expectedMeter, OfMetadata expectedMetadata) {
-        assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
-        assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
+        Assertions.assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
+        Assertions.assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
 
-        assertEquals(COOKIE, command.getCookie());
-        assertEquals(OfTable.INGRESS, command.getTable());
-        assertEquals(expectedPriority, command.getPriority());
+        Assertions.assertEquals(COOKIE, command.getCookie());
+        Assertions.assertEquals(OfTable.INGRESS, command.getTable());
+        Assertions.assertEquals(expectedPriority, command.getPriority());
 
         assertEqualsMatch(expectedMatch, command.getMatch());
 
@@ -535,18 +534,18 @@ public class MultiTableIngressYRuleGeneratorTest {
                 .goToMeter(expectedMeter)
                 .writeMetadata(expectedMetadata)
                 .build();
-        assertEquals(expectedInstructions, command.getInstructions());
-        assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
+        Assertions.assertEquals(expectedInstructions, command.getInstructions());
+        Assertions.assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
     }
 
     private void assertMeterCommand(MeterSpeakerData command) {
-        assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
-        assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
-        assertEquals(SHARED_METER_ID, command.getMeterId());
-        assertEquals(Sets.newHashSet(MeterFlag.BURST, MeterFlag.KBPS, MeterFlag.STATS), command.getFlags());
-        assertEquals(BANDWIDTH, command.getRate());
-        assertEquals((long) (BANDWIDTH * BURST_COEFFICIENT), command.getBurst());
-        assertTrue(command.getDependsOn().isEmpty());
+        Assertions.assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
+        Assertions.assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
+        Assertions.assertEquals(SHARED_METER_ID, command.getMeterId());
+        Assertions.assertEquals(Sets.newHashSet(MeterFlag.BURST, MeterFlag.KBPS, MeterFlag.STATS), command.getFlags());
+        Assertions.assertEquals(BANDWIDTH, command.getRate());
+        Assertions.assertEquals((long) (BANDWIDTH * BURST_COEFFICIENT), command.getBurst());
+        Assertions.assertTrue(command.getDependsOn().isEmpty());
 
     }
 

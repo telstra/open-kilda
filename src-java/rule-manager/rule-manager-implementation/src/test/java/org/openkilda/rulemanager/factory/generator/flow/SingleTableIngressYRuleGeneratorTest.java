@@ -16,8 +16,6 @@
 package org.openkilda.rulemanager.factory.generator.flow;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.METERS;
@@ -62,8 +60,9 @@ import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -128,8 +127,7 @@ public class SingleTableIngressYRuleGeneratorTest {
     public static final UUID SHARED_METER_UUID = UUID.fromString("dc8b54d3-3f25-4c5b-9d90-5f59d2836bc2");
 
 
-
-    @Before
+    @BeforeEach
     public void setup() {
         config = mock(RuleManagerConfig.class);
         when(config.getFlowMeterBurstCoefficient()).thenReturn(BURST_COEFFICIENT);
@@ -144,7 +142,7 @@ public class SingleTableIngressYRuleGeneratorTest {
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -156,7 +154,7 @@ public class SingleTableIngressYRuleGeneratorTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -164,7 +162,7 @@ public class SingleTableIngressYRuleGeneratorTest {
         Flow flow = buildFlow(PATH, TRANSIT_VLAN_ID, 0);
         SingleTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(TRANSIT_VLAN_ID, FEATURES);
-        assertTrue(transformActions.isEmpty());
+        Assertions.assertTrue(transformActions.isEmpty());
     }
 
     @Test
@@ -173,7 +171,7 @@ public class SingleTableIngressYRuleGeneratorTest {
         SingleTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(OUTER_VLAN_ID_1, FEATURES);
         List<Action> expectedActions = newArrayList(new PopVlanAction(), buildPushVxlan());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -182,7 +180,7 @@ public class SingleTableIngressYRuleGeneratorTest {
         SingleTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(buildPushVxlan());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -193,7 +191,7 @@ public class SingleTableIngressYRuleGeneratorTest {
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -202,7 +200,7 @@ public class SingleTableIngressYRuleGeneratorTest {
         SingleTableIngressYRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(OUTER_VLAN_ID_1, FEATURES);
         List<Action> expectedActions = newArrayList(new PopVlanAction());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -214,7 +212,7 @@ public class SingleTableIngressYRuleGeneratorTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -223,7 +221,7 @@ public class SingleTableIngressYRuleGeneratorTest {
         SingleTableIngressYRuleGenerator generator = buildGenerator(ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList();
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -254,11 +252,11 @@ public class SingleTableIngressYRuleGeneratorTest {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
         SingleTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
 
         FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
         MeterSpeakerData meterCommand = (MeterSpeakerData) commands.get(1);
-        assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
+        Assertions.assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
 
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
@@ -279,10 +277,10 @@ public class SingleTableIngressYRuleGeneratorTest {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
         SingleTableIngressYRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION, false);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
-        assertEquals(newArrayList(SHARED_METER_UUID), new ArrayList<>(ingressCommand.getDependsOn()));
+        Assertions.assertEquals(newArrayList(SHARED_METER_UUID), new ArrayList<>(ingressCommand.getDependsOn()));
 
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
@@ -312,10 +310,10 @@ public class SingleTableIngressYRuleGeneratorTest {
                 .build();
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
-        assertTrue(ingressCommand.getDependsOn().isEmpty());
+        Assertions.assertTrue(ingressCommand.getDependsOn().isEmpty());
 
         Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
@@ -333,30 +331,30 @@ public class SingleTableIngressYRuleGeneratorTest {
     private void assertIngressCommand(
             FlowSpeakerData command, int expectedPriority, Set<FieldMatch> expectedMatch,
             List<Action> expectedApplyActions, MeterId expectedMeter) {
-        assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
-        assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
+        Assertions.assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
+        Assertions.assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
 
-        assertEquals(COOKIE, command.getCookie());
-        assertEquals(OfTable.INPUT, command.getTable());
-        assertEquals(expectedPriority, command.getPriority());
+        Assertions.assertEquals(COOKIE, command.getCookie());
+        Assertions.assertEquals(OfTable.INPUT, command.getTable());
+        Assertions.assertEquals(expectedPriority, command.getPriority());
         assertEqualsMatch(expectedMatch, command.getMatch());
 
         Instructions expectedInstructions = Instructions.builder()
                 .applyActions(expectedApplyActions)
                 .goToMeter(expectedMeter)
                 .build();
-        assertEquals(expectedInstructions, command.getInstructions());
-        assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
+        Assertions.assertEquals(expectedInstructions, command.getInstructions());
+        Assertions.assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
     }
 
     private void assertMeterCommand(MeterSpeakerData command) {
-        assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
-        assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
-        assertEquals(SHARED_METER_ID, command.getMeterId());
-        assertEquals(Sets.newHashSet(MeterFlag.BURST, MeterFlag.KBPS, MeterFlag.STATS), command.getFlags());
-        assertEquals(BANDWIDTH, command.getRate());
-        assertEquals((long) (BANDWIDTH * BURST_COEFFICIENT), command.getBurst());
-        assertTrue(command.getDependsOn().isEmpty());
+        Assertions.assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
+        Assertions.assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
+        Assertions.assertEquals(SHARED_METER_ID, command.getMeterId());
+        Assertions.assertEquals(Sets.newHashSet(MeterFlag.BURST, MeterFlag.KBPS, MeterFlag.STATS), command.getFlags());
+        Assertions.assertEquals(BANDWIDTH, command.getRate());
+        Assertions.assertEquals((long) (BANDWIDTH * BURST_COEFFICIENT), command.getBurst());
+        Assertions.assertTrue(command.getDependsOn().isEmpty());
 
     }
 

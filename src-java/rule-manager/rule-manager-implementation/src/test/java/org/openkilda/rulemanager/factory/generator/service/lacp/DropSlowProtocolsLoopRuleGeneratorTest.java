@@ -15,8 +15,7 @@
 
 package org.openkilda.rulemanager.factory.generator.service.lacp;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.rulemanager.Constants.Priority.DROP_LOOP_SLOW_PROTOCOLS_PRIORITY;
 import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
@@ -35,8 +34,9 @@ import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.List;
@@ -45,7 +45,7 @@ import java.util.Set;
 public class DropSlowProtocolsLoopRuleGeneratorTest {
     private DropSlowProtocolsLoopRuleGenerator generator;
 
-    @Before
+    @BeforeEach
     public void setup() {
         generator = DropSlowProtocolsLoopRuleGenerator.builder().build();
     }
@@ -60,7 +60,7 @@ public class DropSlowProtocolsLoopRuleGeneratorTest {
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
         assertEquals(new ServiceCookie(ServiceCookieTag.DROP_SLOW_PROTOCOLS_LOOP_COOKIE), flowCommandData.getCookie());
         assertEquals(OfTable.INPUT, flowCommandData.getTable());

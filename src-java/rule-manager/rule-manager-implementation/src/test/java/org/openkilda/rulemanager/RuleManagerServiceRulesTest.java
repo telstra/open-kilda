@@ -16,8 +16,8 @@
 package org.openkilda.rulemanager;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.METERS;
@@ -82,8 +82,8 @@ import org.openkilda.rulemanager.factory.generator.service.server42.Server42IslR
 import org.openkilda.rulemanager.factory.generator.service.server42.Server42IslRttTurningRuleGenerator;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -137,7 +137,7 @@ public class RuleManagerServiceRulesTest {
                     .build()))
             .build();
 
-    @Before
+    @BeforeEach
     public void setup() {
         RuleManagerConfig config = mock(RuleManagerConfig.class);
         when(config.getBroadcastRateLimit()).thenReturn(200);

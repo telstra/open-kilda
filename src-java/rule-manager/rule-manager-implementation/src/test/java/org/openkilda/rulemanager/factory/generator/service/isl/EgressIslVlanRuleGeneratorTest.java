@@ -15,9 +15,9 @@
 
 package org.openkilda.rulemanager.factory.generator.service.isl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.rulemanager.Constants.Priority.ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
 import static org.openkilda.rulemanager.Utils.getCommand;
@@ -33,8 +33,8 @@ import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.match.FieldMatch;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.List;
@@ -45,7 +45,7 @@ public class EgressIslVlanRuleGeneratorTest {
 
     private EgressIslVlanRuleGenerator generator;
 
-    @Before
+    @BeforeEach
     public void setup() {
         generator = EgressIslVlanRuleGenerator.builder()
                 .islPort(ISL_PORT)

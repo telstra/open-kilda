@@ -15,9 +15,8 @@
 
 package org.openkilda.rulemanager.factory.generator.service.isl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
 import static org.openkilda.rulemanager.Constants.Priority.ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE;
 import static org.openkilda.rulemanager.Constants.STUB_VXLAN_UDP_SRC;
@@ -40,8 +39,9 @@ import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.List;
@@ -53,7 +53,7 @@ public class TransitIslVxlanRuleGeneratorTest {
 
     private TransitIslVxlanRuleGenerator generator;
 
-    @Before
+    @BeforeEach
     public void setup() {
         generator = TransitIslVxlanRuleGenerator.builder()
                 .islPort(ISL_PORT)
@@ -108,7 +108,7 @@ public class TransitIslVxlanRuleGeneratorTest {
 
         FieldMatch ethTypeMatch = getMatchByField(Field.ETH_TYPE, match);
         assertEquals(EthType.IPv4, ethTypeMatch.getValue());
-        assertFalse(ethTypeMatch.isMasked());
+        Assertions.assertFalse(ethTypeMatch.isMasked());
 
         Instructions instructions = flowCommandData.getInstructions();
         assertEquals(OfTable.TRANSIT, instructions.getGoToTable());
@@ -125,22 +125,22 @@ public class TransitIslVxlanRuleGeneratorTest {
     private void checkMatch(Set<FieldMatch> match) {
         FieldMatch ethTypeMatch = getMatchByField(Field.ETH_TYPE, match);
         assertEquals(EthType.IPv4, ethTypeMatch.getValue());
-        assertFalse(ethTypeMatch.isMasked());
+        Assertions.assertFalse(ethTypeMatch.isMasked());
 
         FieldMatch ipProtoMatch = getMatchByField(Field.IP_PROTO, match);
         assertEquals(IpProto.UDP, ipProtoMatch.getValue());
-        assertFalse(ipProtoMatch.isMasked());
+        Assertions.assertFalse(ipProtoMatch.isMasked());
 
         FieldMatch inPortMatch = getMatchByField(Field.IN_PORT, match);
         assertEquals(ISL_PORT, inPortMatch.getValue());
-        assertFalse(inPortMatch.isMasked());
+        Assertions.assertFalse(inPortMatch.isMasked());
 
         FieldMatch udpSrcMatch = getMatchByField(Field.UDP_SRC, match);
         assertEquals(STUB_VXLAN_UDP_SRC, udpSrcMatch.getValue());
-        assertFalse(udpSrcMatch.isMasked());
+        Assertions.assertFalse(udpSrcMatch.isMasked());
 
         FieldMatch udpDstMatch = getMatchByField(Field.UDP_DST, match);
         assertEquals(VXLAN_UDP_DST, udpDstMatch.getValue());
-        assertFalse(udpDstMatch.isMasked());
+        Assertions.assertFalse(udpDstMatch.isMasked());
     }
 }
