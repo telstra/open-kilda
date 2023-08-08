@@ -2,7 +2,7 @@
 
 ## Goal 
 
-The goal of this document is to describe how kilda works with virtual ISLs. 
+The goal of this document is to describe how OpenKilda works with virtual ISLs. 
 
 ## Description
 

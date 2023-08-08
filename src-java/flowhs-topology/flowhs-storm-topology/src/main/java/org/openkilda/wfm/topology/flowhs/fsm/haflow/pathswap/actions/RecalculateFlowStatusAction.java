@@ -70,6 +70,7 @@ public class RecalculateFlowStatusAction extends
             if (status != haFlow.getStatus()) {
                 dashboardLogger.onHaFlowStatusUpdate(haFlowId, status);
                 haFlow.setStatus(status);
+                haFlow.recalculateHaSubFlowStatuses();
             }
             return status;
         });

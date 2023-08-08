@@ -26,4 +26,6 @@ public interface MessageSender {
     void emitPathSwapCommand(String correlationId, String flowId, String reason);
 
     void emitYFlowPathSwapCommand(String correlationId, String yFlowId, String reason);
+
+    void emitHaFlowPathSwapCommand(String correlationId, String haFlowId, String reason);
 }

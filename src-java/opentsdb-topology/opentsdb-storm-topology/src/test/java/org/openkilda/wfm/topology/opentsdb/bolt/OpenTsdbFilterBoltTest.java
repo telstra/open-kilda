@@ -22,7 +22,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
@@ -33,7 +32,7 @@ import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.wfm.topology.opentsdb.bolts.OpenTSDBFilterBolt;
+import org.openkilda.wfm.topology.opentsdb.bolts.OpenTsdbFilterBolt;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.tuple.Tuple;
@@ -49,18 +48,17 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(MockitoJUnitRunner.class)
-public class OpenTSDBFilterBoltTest {
+public class OpenTsdbFilterBoltTest {
 
     private static final String METRIC = "METRIC";
     private static final long TIMESTAMP = System.currentTimeMillis();
     private static final Integer VALUE = 123;
 
     @InjectMocks
-    private OpenTSDBFilterBolt target = new OpenTSDBFilterBolt();
+    private OpenTsdbFilterBolt target = new OpenTsdbFilterBolt();
 
     @Mock
     private OutputCollector outputCollector;
@@ -75,7 +73,7 @@ public class OpenTSDBFilterBoltTest {
     public void init() {
         Mockito.reset(outputCollector, tuple);
 
-        when(outputCollector.emit(anyList())).thenReturn(Collections.emptyList());
+        when(outputCollector.emit(any(Tuple.class), anyList())).thenReturn(Collections.emptyList());
     }
 
     @Test
@@ -85,15 +83,12 @@ public class OpenTSDBFilterBoltTest {
         target.prepare(Collections.emptyMap(), null, outputCollector);
         target.execute(tuple);
 
-        verify(outputCollector).emit(argumentCaptor.capture());
+        verify(outputCollector).emit(eq(tuple), argumentCaptor.capture());
         verify(outputCollector).ack(any(Tuple.class));
         List<Object> captured = argumentCaptor.getValue();
         assertNotNull(captured);
-        assertThat(captured.size(), is(4));
-        assertEquals(METRIC, captured.get(0));
-        assertEquals(TIMESTAMP, captured.get(1));
-        assertEquals(VALUE, captured.get(2));
-        assertTrue(((Map) captured.get(3)).isEmpty());
+        assertThat(captured.size(), is(1));
+        assertEquals(tuple.getValueByField("datapoint"), captured.get(0));
     }
 
     @Test
@@ -104,7 +99,7 @@ public class OpenTSDBFilterBoltTest {
         target.execute(tuple);
         target.execute(tuple);
 
-        verify(outputCollector, times(1)).emit(argumentCaptor.capture());
+        verify(outputCollector, times(1)).emit(eq(tuple), argumentCaptor.capture());
         verify(outputCollector, times(2)).ack(any(Tuple.class));
     }
 
@@ -118,7 +113,7 @@ public class OpenTSDBFilterBoltTest {
         mockTuple(TIMESTAMP + TimeUnit.MINUTES.toMillis(10) - 1);
         target.execute(tuple);
 
-        verify(outputCollector, times(1)).emit(argumentCaptor.capture());
+        verify(outputCollector, times(1)).emit(eq(tuple), argumentCaptor.capture());
         verify(outputCollector, times(2)).ack(any(Tuple.class));
     }
 
@@ -132,7 +127,7 @@ public class OpenTSDBFilterBoltTest {
         mockTuple(TIMESTAMP + TimeUnit.MINUTES.toMillis(10) + 1);
         target.execute(tuple);
 
-        verify(outputCollector, times(2)).emit(argumentCaptor.capture());
+        verify(outputCollector, times(2)).emit(eq(tuple), argumentCaptor.capture());
         verify(outputCollector, times(2)).ack(any(Tuple.class));
     }
 
@@ -154,7 +149,7 @@ public class OpenTSDBFilterBoltTest {
         target.execute(tuple);
 
         // then
-        verify(outputCollector, times(2)).emit(argumentCaptor.capture());
+        verify(outputCollector, times(2)).emit(eq(tuple), argumentCaptor.capture());
         verify(outputCollector, times(2)).ack(any(Tuple.class));
     }
 
@@ -187,7 +182,7 @@ public class OpenTSDBFilterBoltTest {
         target.execute(tuple);
 
         // then
-        verify(outputCollector, times(3)).emit(argumentCaptor.capture());
+        verify(outputCollector, times(3)).emit(eq(tuple), argumentCaptor.capture());
         verify(outputCollector, times(4)).ack(any(Tuple.class));
     }
 

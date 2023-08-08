@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.139.0 (07/08/2023)
+
+### Features:
+-  [#5257](https://github.com/telstra/open-kilda/pull/5257) open-kilda-5255 GUI: Add inner vlans into Edit flow page (Issue: [#5255](https://github.com/telstra/open-kilda/issues/5255)) [**gui**]
+-  [#5225](https://github.com/telstra/open-kilda/pull/5225) HA flows Part 16: Add auto reroute (Issues: [#5061](https://github.com/telstra/open-kilda/issues/5061) [#5238](https://github.com/telstra/open-kilda/issues/5238))
+
+### Bug Fixes:
+-  [#5299](https://github.com/telstra/open-kilda/pull/5299) modify topology.tmpl to not include the VictoriaMetrics (Issue: [#5306](https://github.com/telstra/open-kilda/issues/5306))
+-  [#5331](https://github.com/telstra/open-kilda/pull/5331) Fixed incorrect bolt names in opentsdb topology config file
+
+### Improvements:
+-  [#5251](https://github.com/telstra/open-kilda/pull/5251) Docs improvements and clean up (Issue: [#5247](https://github.com/telstra/open-kilda/issues/5247)) [**docs**]
+-  [#5254](https://github.com/telstra/open-kilda/pull/5254) open-kilda-5226 Remove `yFlow.shared.*` Opentsdb metrics (Issue: [#5226](https://github.com/telstra/open-kilda/issues/5226))
+-  [#5259](https://github.com/telstra/open-kilda/pull/5259) open-kilda-5258 Unite SpeakerWorkerForDumpsBolt for flow/yflow/haflow… (Issue: [#5258](https://github.com/telstra/open-kilda/issues/5258))
+-  [#4940](https://github.com/telstra/open-kilda/pull/4940) Able to write stats data in multiple OpenTSDB databases (Issue: [#4925](https://github.com/telstra/open-kilda/issues/4925))
+-  [#5261](https://github.com/telstra/open-kilda/pull/5261) [TEST] Fix negative scenario tests running on HW environment only (Issue: [#5228](https://github.com/telstra/open-kilda/issues/5228)) [**tests**]
+-  [#5325](https://github.com/telstra/open-kilda/pull/5325) fix: modify topology.tmpl to not include the VictoriaMetrics when no victoriametrics exists
+-  [#5236](https://github.com/telstra/open-kilda/pull/5236) #5141: [TEST] Excess rules when update flow with stats VLANs (Issue: [#5141](https://github.com/telstra/open-kilda/issues/5141)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.138.0...v1.139.0).
+
+### Affected Components:
+otsdb
+
+---
+
 ## v1.138.0 (06/07/2023)
 
 ### Bug Fixes:

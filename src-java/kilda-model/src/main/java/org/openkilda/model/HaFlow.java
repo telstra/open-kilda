@@ -51,9 +51,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -344,6 +346,21 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
     }
 
     /**
+     * Gets all sub paths of HA-flow.
+     * This method can return not only primary and protected sub paths.
+     * For example during update/reroute operations HA-flow can temporally have more sub paths.
+     */
+    public Collection<FlowPath> getSubPaths() {
+        return getPaths().stream()
+                .filter(Objects::nonNull)
+                .map(HaFlowPath::getSubPaths)
+                .filter(Objects::nonNull)
+                .flatMap(Collection::stream)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Gets sub path byt its path ID.
      */
     public Optional<FlowPath> getSubPath(PathId pathId) {
@@ -465,25 +482,77 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
                 getDiverseGroupId());
     }
 
+    private FlowPathStatus computePathsStatus(Collection<HaFlowPath> paths) {
+        return paths.stream()
+                .flatMap(path -> path.getSubPaths().stream())
+                .filter(Objects::nonNull)
+                .map(FlowPath::getStatus)
+                .max(FlowPathStatus::compareTo)
+                .orElse(null);
+    }
+
     /**
      * Computes the HA-flow status based on sub-flow statuses.
      */
     public FlowStatus computeStatus() {
-        FlowStatus haFlowStatus = null;
-        for (HaSubFlow subFlow : getHaSubFlows()) {
-            FlowStatus subFlowStatus = subFlow.getStatus();
-            if (subFlowStatus == FlowStatus.IN_PROGRESS) {
-                haFlowStatus = FlowStatus.IN_PROGRESS;
-                break;
-            }
-            if (haFlowStatus == null) {
-                haFlowStatus = subFlowStatus;
-            } else if (haFlowStatus == FlowStatus.DOWN && subFlowStatus != FlowStatus.DOWN
-                    || haFlowStatus == FlowStatus.UP && subFlowStatus != FlowStatus.UP) {
-                haFlowStatus = FlowStatus.DEGRADED;
+        FlowPathStatus mainPathsStatus = computePathsStatus(getPrimaryPaths());
+
+        if (isAllocateProtectedPath()
+                && !FlowPathStatus.ACTIVE.equals(computePathsStatus(getProtectedPaths()))
+                && FlowPathStatus.ACTIVE.equals(mainPathsStatus)) {
+            return FlowStatus.DEGRADED;
+        }
+        if (mainPathsStatus == null) {
+            return FlowStatus.DOWN;
+        }
+        return FlowStatus.convertFromPathStatus(mainPathsStatus);
+    }
+
+    /**
+     * Recalculates and set statuses of HA-sub flows based on paths statuses if current statuses are not in progress.
+     */
+    public void recalculateHaSubFlowStatusesSafe() {
+        Map<String, Set<FlowPathStatus>> subFlowStatuses = groupSubPathStatusesBySubFlowIds();
+        for (HaSubFlow haSubFlow : getHaSubFlows()) {
+            if (haSubFlow.getStatus() != FlowStatus.IN_PROGRESS) {
+                recalculateHaSubFlowStatus(haSubFlow, subFlowStatuses);
             }
         }
-        return haFlowStatus;
+    }
+
+    /**
+     * Recalculates and set statuses of HA-sub flows based on paths statuses.
+     */
+    public void recalculateHaSubFlowStatuses() {
+        Map<String, Set<FlowPathStatus>> subFlowStatuses = groupSubPathStatusesBySubFlowIds();
+        for (HaSubFlow haSubFlow : getHaSubFlows()) {
+            recalculateHaSubFlowStatus(haSubFlow, subFlowStatuses);
+        }
+    }
+
+    private void recalculateHaSubFlowStatus(HaSubFlow haSubFlow, Map<String, Set<FlowPathStatus>> subFlowStatuses) {
+        FlowPathStatus pathStatus = null;
+        if (subFlowStatuses.containsKey(haSubFlow.getHaSubFlowId())) {
+            pathStatus = subFlowStatuses.get(haSubFlow.getHaSubFlowId()).stream()
+                    .max(FlowPathStatus::compareTo)
+                    .orElse(null);
+        }
+        if (pathStatus == null) {
+            pathStatus = FlowPathStatus.INACTIVE;
+        }
+        haSubFlow.setStatus(FlowStatus.convertFromPathStatus(pathStatus));
+    }
+
+    private Map<String, Set<FlowPathStatus>> groupSubPathStatusesBySubFlowIds() {
+        Map<String, Set<FlowPathStatus>> subFlowStatuses = new HashMap<>();
+
+        for (HaFlowPath usedPath : getUsedPaths()) {
+            for (FlowPath subPath : usedPath.getSubPaths()) {
+                subFlowStatuses.computeIfAbsent(subPath.getHaSubFlowId(), s -> new HashSet<>())
+                        .add(subPath.getStatus());
+            }
+        }
+        return subFlowStatuses;
     }
 
     /**

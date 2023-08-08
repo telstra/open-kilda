@@ -270,7 +270,7 @@ public class RerouteQueueService {
             switch (throttlingData.getFlowType()) {
                 case Y_FLOW:
                     YFlowRerouteRequest yFlowRequest = new YFlowRerouteRequest(flowId, throttlingData.getAffectedIsl(),
-                            throttlingData.isForce(), throttlingData.getReason(), throttlingData.isIgnoreBandwidth());
+                            throttlingData.getReason(), throttlingData.isIgnoreBandwidth());
                     carrier.sendRerouteRequest(throttlingData.getCorrelationId(), yFlowRequest);
                     break;
                 

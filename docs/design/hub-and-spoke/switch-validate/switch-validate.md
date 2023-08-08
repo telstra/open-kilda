@@ -6,7 +6,7 @@
 
 ## FSM for validation switch rules and meters
 
-Here is a FSM diagram that helps to understand main steps of validation switch rules and meters.
+Here is an FSM diagram that helps to understand main steps of validation switch rules and meters.
 ![Switch validation fsm](switch-validate-fsm.png "Switch validation fsm diagram")
 
 ### For more details about hub&spoke and look into [examples](https://github.com/telstra/open-kilda/blob/develop/docs/design/hub-and-spoke/v7/README.md)
@@ -595,8 +595,7 @@ Response payload
 }
 ```
 
-All other targets can be selected in same way i.e `include=meters` for meters, `include=rules` and
-so on.
+All other targets can be selected in same way i.e. `include=meters` for meters, `include=rules` and so on.
 
 You can combine several flags in one query e.g. to get full info only about groups and meters use query
 params `groups` and `meters`.
@@ -719,8 +718,7 @@ You can combine it with `include=groups|logical_ports|meters|rules` in query e.g
 
 Ex 1. `GET https://{host}/v2/switches/{switch_id}/validate?exclude=flow_info&include=groups|meters`
 
-In this case response will show you only group and meter info (without flow info) and omit other
-validated fields.
+In this case response will show you only group and meter info (without flow info) and omit other validated fields.
 
 Response payload
 

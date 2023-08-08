@@ -13,6 +13,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths
 import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult
@@ -26,7 +27,7 @@ import spock.lang.Narrative
 import spock.lang.Shared
 
 @Narrative("Verify that on-demand HA-haFlow reroute operations are performed accurately.")
-class IntentionalRerouteSpec extends HealthCheckSpecification {
+class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     HaFlowHelper haFlowHelper
@@ -67,6 +68,16 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
 
         northboundV2.getHaFlowPaths(haFlow.haFlowId) == currentPathResponse
 
+        and: "And involved switches pass validation"
+        withPool {
+            haFlowHelper.getInvolvedSwitches(currentPathResponse).eachParallel { SwitchId switchId ->
+                assert northboundV2.validateSwitch(switchId).isAsExpected()
+            }
+        }
+
+        and: "HA-flow pass validation"
+        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
+
         cleanup: "Remove the HA-flow, restore the bandwidth on ISLs, reset costs"
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
         withPool {
@@ -89,6 +100,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
 
         def currentPathDto = northboundV2.getHaFlowPaths(haFlow.haFlowId)
         def currentPaths = currentPathDto.subFlowPaths.collect {PathHelper.convert(it.forward)}
+        def oldInvolvedSwitchIds = haFlowHelper.getInvolvedSwitches(currentPathDto)
 
         when: "Make one of the alternative paths to be the most preferable among all others"
         def preferableAltSubPath1 = swT.pathsEp1.find {!currentPaths.contains(it)}
@@ -131,6 +143,17 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         def unitedNewPath = getPathsResponse.subFlowPaths.collectMany {PathHelper.convert(it.forward)}
         pathHelper.getInvolvedIsls(unitedNewPath).contains(thinIsl)
 
+        and: "And involved switches pass validation"
+        def allInvolvedSwitchIds = oldInvolvedSwitchIds + haFlowHelper.getInvolvedSwitches(getPathsResponse)
+        withPool {
+            allInvolvedSwitchIds.eachParallel { SwitchId switchId ->
+                assert northboundV2.validateSwitch(switchId).isAsExpected()
+            }
+        }
+
+        and: "HA-flow pass validation"
+        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
+
         and: "'Thin' ISL has 0 available bandwidth left"
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
 
@@ -151,7 +174,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         haFlowHelper.addHaFlow(haFlow)
         def currentPathResponse = northboundV2.getHaFlowPaths(haFlow.haFlowId)
         def currentPaths = currentPathResponse.subFlowPaths.collect {PathHelper.convert(it.forward)}
-
+        def oldInvolvedSwitchIds = haFlowHelper.getInvolvedSwitches(currentPathResponse)
 
         when: "Make the current path less preferable than alternatives"
         def alternativePaths = (swT.pathsEp1 + swT.pathsEp2).findAll { !currentPaths.contains(it) }
@@ -179,6 +202,17 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         def updatedPaths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
         updatedPaths.subFlowPaths.toSorted { it.flowId }.forward
                 != currentPathResponse.subFlowPaths.toSorted {it.flowId}.forward
+
+        and: "And involved switches pass validation"
+        def allInvolvedSwitchIds = oldInvolvedSwitchIds + haFlowHelper.getInvolvedSwitches(updatedPaths)
+        withPool {
+            allInvolvedSwitchIds.eachParallel { SwitchId switchId ->
+                assert northboundV2.validateSwitch(switchId).isAsExpected()
+            }
+        }
+
+        and: "HA-flow pass validation"
+        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
 
         and: "Available bandwidth was not changed while rerouting due to ignoreBandwidth=true"
         def allLinks = northbound.getAllLinks()

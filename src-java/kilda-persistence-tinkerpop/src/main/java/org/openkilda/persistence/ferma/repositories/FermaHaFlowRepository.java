@@ -27,14 +27,17 @@ import org.openkilda.persistence.ferma.frames.HaFlowFrame;
 import org.openkilda.persistence.ferma.frames.HaFlowPathFrame;
 import org.openkilda.persistence.ferma.frames.HaSubFlowFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
+import org.openkilda.persistence.ferma.frames.converters.FlowStatusConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.HaSubFlowRepository;
 import org.openkilda.persistence.tx.TransactionManager;
+import org.openkilda.persistence.tx.TransactionRequired;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tinkerpop.gremlin.process.traversal.P;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 
 import java.util.ArrayList;
@@ -124,6 +127,19 @@ public class FermaHaFlowRepository extends FermaGenericRepository<HaFlow, HaFlow
     }
 
     @Override
+    public Collection<HaFlow> findInactive() {
+        String downStatus = FlowStatusConverter.INSTANCE.toGraphProperty(FlowStatus.DOWN);
+        String degradedStatus = FlowStatusConverter.INSTANCE.toGraphProperty(FlowStatus.DEGRADED);
+
+        return framedGraph().traverse(g -> g.V()
+                        .hasLabel(HaFlowFrame.FRAME_LABEL)
+                        .has(HaFlowFrame.STATUS_PROPERTY, P.within(downStatus, degradedStatus)))
+                .toListExplicit(HaFlowFrame.class).stream()
+                .map(HaFlow::new)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public Collection<String> findHaFlowIdsByDiverseGroupId(String diverseGroupId) {
         return findFlowsIdByGroupId(HaFlowFrame.DIVERSE_GROUP_ID_PROPERTY, diverseGroupId);
     }
@@ -188,6 +204,19 @@ public class FermaHaFlowRepository extends FermaGenericRepository<HaFlow, HaFlow
                             haFlowFrame.setStatus(flowStatus);
                             haFlowFrame.setStatusInfo(flowStatusInfo);
                         }));
+    }
+
+    /**
+     * HA-flow in "IN_PROGRESS" status can be switched to other status only inside flow CRUD handlers topology.
+     * All other components must use this method, which guarantee safety such HA-flows status.
+     */
+    @Override
+    @TransactionRequired
+    public void updateStatusSafe(HaFlow haFlow, FlowStatus status, String statusInfo) {
+        if (haFlow.getStatus() != FlowStatus.IN_PROGRESS) {
+            haFlow.setStatus(status);
+            haFlow.setStatusInfo(statusInfo);
+        }
     }
 
     @Override

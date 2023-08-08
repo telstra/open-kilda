@@ -2,19 +2,20 @@
 
 ## Concepts / objects model
 Introducing a new OpenKilda entity - Y-flow. It is defined by 3 network endpoints. One "shared" endpoint is defined by
-`switch + port + outer-vlan + inner-vlan-A + inner-vlan-B`. Two other endpoints are defined by `switch + port + vlan` (can match or can
-differ from `inner-vlan-A/B`). We can name these 3 endpoints as Z-end (the shared endpoint), A-end (the first leaf), B-end (the second
-leaf).
+`switch + port + outer-vlan + inner-vlan-A + inner-vlan-B`. Two other endpoints are defined by `switch + port + vlan` 
+(can match or can differ from `inner-vlan-A/B`). We can name these 3 endpoints as Z-end (the shared endpoint), A-end 
+(the first leaf), B-end (the second leaf).
 
-Y-flow is a composite entity. It consists of 2 OpenKilda flows ("sub-flows"). They are almost identical to the existing Kilda flows, but they can
-share ingress/egress endpoint and allocated bandwidth. There's also a Y-point which indicates where Y-flow split.
+Y-flow is a composite entity. It consists of 2 OpenKilda flows ("sub-flows"). They are almost identical to the existing 
+OpenKilda flows, but they can share ingress/egress endpoint and allocated bandwidth. There's also a Y-point which 
+indicates where Y-flow split.
 
 ```
 Z-end <===> Y-point <===> A-end
                     <===> B-end
 ```
 
-For traffic control purpose, such as bandwidth limit, each leaf endpoint (A-end, B-end) has an installed dedicated meter  
+For traffic control purposes, such as bandwidth limit, each leaf endpoint (A-end, B-end) has an installed dedicated meter  
 to control traffic from leaf side. Z-end has a single meter to limit both sub-flows as there is only one input.
 Y-point has a similar meter to control summary A-end + B-end traffic.
 
@@ -39,7 +40,7 @@ OpenKilda marks all sub-flows to remove and remove them one by one.
 If OpenKilda detects (via a network event or flow monitoring) a failure of any sub-flow, a complete Y-flow "reroute" procedure must be triggered:
 reroute the failed sub-flows, recalculate the Y-point, and reinstall Y-flow meters.
 
-Sub-flows of a Y-flow are rerouted in the same way as the usual OpenKilda flows. After rerouting any component of a Y-flow,
+Sub-flows of a Y-flow are rerouted in the same way as the usual OpenKilda flows. After re-routing any component of a Y-flow,
 Y-flow's status must be recalculated.
 
 ### Sync / validate

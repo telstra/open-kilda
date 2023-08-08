@@ -35,6 +35,8 @@ public interface HaFlowRepository extends Repository<HaFlow> {
 
     Collection<HaFlow> findWithPeriodicPingsEnabled();
 
+    Collection<HaFlow> findInactive();
+
     Collection<String> findHaFlowIdsByDiverseGroupId(String diverseGroupId);
 
     Collection<String> findHaFlowIdsByAffinityGroupId(String affinityGroupId);
@@ -46,6 +48,8 @@ public interface HaFlowRepository extends Repository<HaFlow> {
     void updateStatus(String haFlowId, FlowStatus flowStatus);
 
     void updateStatus(String haFlowId, FlowStatus flowStatus, String flowStatusInfo);
+
+    void updateStatusSafe(HaFlow haFlow, FlowStatus status, String statusInfo);
 
     void updateAffinityFlowGroupId(@NonNull String haFlowId, String affinityGroupId);
 

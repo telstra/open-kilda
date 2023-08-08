@@ -72,6 +72,6 @@ public class RerouteSubFlowsAction extends HistoryRecordingAction<YFlowRerouteFs
         stateMachine.notifyEventListeners(listener ->
                 listener.onSubFlowProcessingStart(yFlowId, subFlowId));
         CommandContext flowContext = stateMachine.getCommandContext().fork(subFlowId);
-        flowRerouteService.startFlowRerouting(rerouteRequest, flowContext, yFlowId, stateMachine.isForceReroute());
+        flowRerouteService.startFlowRerouting(rerouteRequest, flowContext, yFlowId);
     }
 }
