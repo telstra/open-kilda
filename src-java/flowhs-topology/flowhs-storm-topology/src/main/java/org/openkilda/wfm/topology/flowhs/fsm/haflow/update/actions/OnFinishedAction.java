@@ -31,6 +31,8 @@ import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.stream.Collectors;
+
 @Slf4j
 public class OnFinishedAction extends HistoryRecordingAction<HaFlowUpdateFsm, State, Event, HaFlowUpdateContext> {
     public static final String DEGRADED_FAIL_REASON = "Not all paths meet the SLA";
@@ -67,12 +69,12 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowUpdateFsm, St
 
     private void updateFlowMonitoring(HaFlowUpdateFsm stateMachine) {
         HaFlow original = stateMachine.getOriginalHaFlow();
-        HaFlow target = HaFlowMapper.INSTANCE.toHaFlow(stateMachine.getTargetHaFlow());
+        HaFlow target = mapToTargetHaFlow(stateMachine.getTargetHaFlow());
 
         for (HaSubFlow originalSubFlow : original.getHaSubFlows()) {
             HaSubFlow targetSubFlow = target.getHaSubFlowOrThrowException(originalSubFlow.getHaSubFlowId());
             boolean originalNotSingle = !originalSubFlow.isOneSwitch();
-            boolean targetNotSingle = !targetSubFlow.isOneSwitch();
+            boolean targetNotSingle = !targetSubFlow.isOneSwitch(target.getSharedSwitchId());
             boolean srcUpdated = isSrcUpdated(original, target);
             boolean dstUpdated = isDstUpdated(originalSubFlow, targetSubFlow);
 
@@ -86,7 +88,7 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowUpdateFsm, St
             // setup new if it is not single
             //TODO: Review logic during https://github.com/telstra/open-kilda/issues/5208
             if (targetNotSingle && (srcUpdated || dstUpdated)) {
-                stateMachine.getCarrier().sendActivateFlowMonitoring(null);
+                //stateMachine.getCarrier().sendActivateFlowMonitoring(null);
             }
         }
     }
@@ -103,5 +105,13 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowUpdateFsm, St
                 && originalSubFlow.getEndpointPort() == targetSubFlow.getEndpointPort()
                 && originalSubFlow.getEndpointVlan() == targetSubFlow.getEndpointVlan()
                 && originalSubFlow.getEndpointInnerVlan() == targetSubFlow.getEndpointInnerVlan());
+    }
+
+    private HaFlow mapToTargetHaFlow(HaFlowRequest targetHaFlowRequest) {
+        HaFlow target = HaFlowMapper.INSTANCE.toHaFlow(targetHaFlowRequest);
+        target.setHaSubFlows(targetHaFlowRequest.getSubFlows().stream()
+                .map(HaFlowMapper.INSTANCE::toSubFlow)
+                .collect(Collectors.toSet()));
+        return target;
     }
 }
