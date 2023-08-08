@@ -25,8 +25,8 @@ import org.openkilda.floodlight.model.EffectiveIds;
 import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -144,7 +144,7 @@ abstract class IngressCommandInstallTest extends IngressCommandTest {
     private void verifyNoMeterCall(OFFlowAdd request) {
         for (OFInstruction instructiuon : request.getInstructions()) {
             if (instructiuon instanceof OFInstructionMeter) {
-                Assert.fail("Found unexpected meter call");
+                Assertions.fail("Found unexpected meter call");
             } else if (instructiuon instanceof OFInstructionApplyActions) {
                 verifyNoMeterCall(((OFInstructionApplyActions) instructiuon).getActions());
             } else if (instructiuon instanceof OFInstructionWriteActions) {
@@ -156,7 +156,7 @@ abstract class IngressCommandInstallTest extends IngressCommandTest {
     private void verifyNoMeterCall(List<OFAction> actions) {
         for (OFAction entry : actions) {
             if (entry instanceof OFActionMeter) {
-                Assert.fail("Found unexpected meter call");
+                Assertions.fail("Found unexpected meter call");
             }
         }
     }

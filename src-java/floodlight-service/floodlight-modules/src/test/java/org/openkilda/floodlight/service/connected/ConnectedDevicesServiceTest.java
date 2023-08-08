@@ -15,9 +15,7 @@
 
 package org.openkilda.floodlight.service.connected;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.floodlight.service.connected.ConnectedDevicesService.ArpPacketData;
 import org.openkilda.floodlight.service.connected.ConnectedDevicesService.LldpPacketData;
@@ -26,16 +24,17 @@ import org.openkilda.floodlight.test.standard.PacketTestBase;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.PacketParsingException;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.types.EthType;
 
 public class ConnectedDevicesServiceTest extends PacketTestBase {
-    private byte[] srcAndDstMacAddresses = new byte[] {
+    private byte[] srcAndDstMacAddresses = new byte[]{
             0x1, (byte) 0x80, (byte) 0xC2, 0x0, 0x0, 0xE,           // src mac address
             0x10, 0x4E, (byte) 0xF1, (byte) 0xF9, 0x6D, (byte) 0xFA // dst mac address
     };
 
-    private byte[] arpPacket = new byte[] {
+    private byte[] arpPacket = new byte[]{
             0x00, 0x01,                         // hardware type (Ethernet)
             0x08, 0x00,                         // protocol type (IPv4)
             0x06,                               // hardware length (6)
@@ -55,8 +54,8 @@ public class ConnectedDevicesServiceTest extends PacketTestBase {
                 ethTypeToByteArray(EthType.LLDP), LldpPacketTest.packet);
 
         LldpPacketData data = service.deserializeLldp(ethernet, null, 0);
-        assertNotNull(data);
-        assertTrue(data.getVlans().isEmpty());
+        Assertions.assertNotNull(data);
+        Assertions.assertTrue(data.getVlans().isEmpty());
         assertEquals(LldpPacketTest.buildLldpPacket(LldpPacketTest.packet), data.getLldpPacket());
     }
 
@@ -68,7 +67,7 @@ public class ConnectedDevicesServiceTest extends PacketTestBase {
                 ethTypeToByteArray(EthType.LLDP), LldpPacketTest.packet);
 
         LldpPacketData data = service.deserializeLldp(ethernet, null, 0);
-        assertNotNull(data);
+        Assertions.assertNotNull(data);
         assertEquals(1, data.getVlans().size());
         assertEquals(Integer.valueOf(vlan), data.getVlans().get(0));
         assertEquals(LldpPacketTest.buildLldpPacket(LldpPacketTest.packet), data.getLldpPacket());
@@ -84,7 +83,7 @@ public class ConnectedDevicesServiceTest extends PacketTestBase {
                 ethTypeToByteArray(EthType.LLDP), LldpPacketTest.packet);
 
         LldpPacketData data = service.deserializeLldp(ethernet, null, 0);
-        assertNotNull(data);
+        Assertions.assertNotNull(data);
         assertEquals(2, data.getVlans().size());
         assertEquals(Integer.valueOf(outerVlan), data.getVlans().get(0));
         assertEquals(Integer.valueOf(innerVlan), data.getVlans().get(1));
@@ -103,7 +102,7 @@ public class ConnectedDevicesServiceTest extends PacketTestBase {
                 ethTypeToByteArray(EthType.LLDP), LldpPacketTest.packet);
 
         LldpPacketData data = service.deserializeLldp(ethernet, null, 0);
-        assertNotNull(data);
+        Assertions.assertNotNull(data);
         assertEquals(3, data.getVlans().size());
         assertEquals(Integer.valueOf(vlan1), data.getVlans().get(0));
         assertEquals(Integer.valueOf(vlan2), data.getVlans().get(1));
@@ -117,8 +116,8 @@ public class ConnectedDevicesServiceTest extends PacketTestBase {
         Ethernet ethernet = buildEthernet(srcAndDstMacAddresses, ethTypeToByteArray(EthType.ARP), arpPacket);
 
         ArpPacketData data = service.deserializeArp(ethernet, null, 0);
-        assertNotNull(data);
-        assertTrue(data.getVlans().isEmpty());
+        Assertions.assertNotNull(data);
+        Assertions.assertTrue(data.getVlans().isEmpty());
         assertEquals(buildArpPacket(arpPacket), data.getArp());
     }
 
@@ -130,7 +129,7 @@ public class ConnectedDevicesServiceTest extends PacketTestBase {
                 ethTypeToByteArray(EthType.ARP), arpPacket);
 
         ArpPacketData data = service.deserializeArp(ethernet, null, 0);
-        assertNotNull(data);
+        Assertions.assertNotNull(data);
         assertEquals(1, data.getVlans().size());
         assertEquals(Integer.valueOf(vlan), data.getVlans().get(0));
         assertEquals(buildArpPacket(arpPacket), data.getArp());
@@ -146,7 +145,7 @@ public class ConnectedDevicesServiceTest extends PacketTestBase {
                 ethTypeToByteArray(EthType.ARP), arpPacket);
 
         ArpPacketData data = service.deserializeArp(ethernet, null, 0);
-        assertNotNull(data);
+        Assertions.assertNotNull(data);
         assertEquals(2, data.getVlans().size());
         assertEquals(Integer.valueOf(outerVlan), data.getVlans().get(0));
         assertEquals(Integer.valueOf(innerVlan), data.getVlans().get(1));
@@ -165,7 +164,7 @@ public class ConnectedDevicesServiceTest extends PacketTestBase {
                 ethTypeToByteArray(EthType.ARP), arpPacket);
 
         ArpPacketData data = service.deserializeArp(ethernet, null, 0);
-        assertNotNull(data);
+        Assertions.assertNotNull(data);
         assertEquals(3, data.getVlans().size());
         assertEquals(Integer.valueOf(vlan1), data.getVlans().get(0));
         assertEquals(Integer.valueOf(vlan2), data.getVlans().get(1));

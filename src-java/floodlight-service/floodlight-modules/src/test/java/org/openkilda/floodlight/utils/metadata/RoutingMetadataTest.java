@@ -15,10 +15,11 @@
 
 package org.openkilda.floodlight.utils.metadata;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openkilda.floodlight.utils.metadata.MetadataBase.TYPE_FIELD;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
 
@@ -34,17 +35,21 @@ public class RoutingMetadataTest extends MetadataBaseTest {
         for (int port = 0; port <= 4095; port++) {
             RoutingMetadata metadata = RoutingMetadata.builder().inputPort(port).build(new HashSet<>());
             long withoutType = ~TYPE_FIELD.getMask() & metadata.getValue().getValue();
-            assertEquals(port, withoutType >> offset);
+            Assertions.assertEquals(port, withoutType >> offset);
         }
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testNegativePortMetadata() {
-        RoutingMetadata.builder().inputPort(-1).build(new HashSet<>());
+        assertThrows(IllegalArgumentException.class, () -> {
+            RoutingMetadata.builder().inputPort(-1).build(new HashSet<>());
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testBigPortMetadata() {
-        RoutingMetadata.builder().inputPort((int) (RoutingMetadata.MAX_INPUT_PORT + 1)).build(new HashSet<>());
+        assertThrows(IllegalArgumentException.class, () -> {
+            RoutingMetadata.builder().inputPort((int) (RoutingMetadata.MAX_INPUT_PORT + 1)).build(new HashSet<>());
+        });
     }
 }

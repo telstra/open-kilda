@@ -25,7 +25,7 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.MeterConfig;
 
 import lombok.Getter;
-import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
 
 import java.util.HashSet;
 import java.util.UUID;
@@ -71,9 +71,9 @@ public class OneSwitchFlowRemoveCommandTest extends IngressCommandRemoveTest {
 
             realFlowModFactory = getFlowModFactory();
             if (metadata.isMultiTable()) {
-                Assert.assertTrue(realFlowModFactory instanceof OneSwitchFlowRemoveMultiTableFlowModFactory);
+                Assertions.assertTrue(realFlowModFactory instanceof OneSwitchFlowRemoveMultiTableFlowModFactory);
             } else {
-                Assert.assertTrue(realFlowModFactory instanceof OneSwitchFlowRemoveSingleTableFlowModFactory);
+                Assertions.assertTrue(realFlowModFactory instanceof OneSwitchFlowRemoveSingleTableFlowModFactory);
             }
 
             setFlowModFactory(flowModFactoryMock);

@@ -15,8 +15,8 @@
 
 package org.openkilda.floodlight.converter;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.floodlight.converter.rulemanager.OfInstructionsConverter;
 import org.openkilda.model.GroupId;
@@ -40,7 +40,7 @@ import org.openkilda.rulemanager.action.SwapFieldAction;
 import org.openkilda.rulemanager.action.noviflow.CopyFieldAction;
 import org.openkilda.rulemanager.action.noviflow.OpenFlowOxms;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;

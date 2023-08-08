@@ -15,9 +15,8 @@
 
 package org.openkilda.messaging.command.flow;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openkilda.messaging.command.Constants.flowName;
 import static org.openkilda.messaging.command.Constants.inputPort;
 import static org.openkilda.messaging.command.Constants.outputPort;
@@ -25,7 +24,8 @@ import static org.openkilda.messaging.command.Constants.switchId;
 import static org.openkilda.messaging.command.Constants.transitEncapsulationId;
 import static org.openkilda.messaging.command.Constants.transitEncapsulationType;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
@@ -37,8 +37,8 @@ public class InstallTransitFlowTest {
     @Test
     public void toStringTest() throws Exception {
         String flowString = flow.toString();
-        assertNotNull(flowString);
-        assertFalse(flowString.isEmpty());
+        Assertions.assertNotNull(flowString);
+        Assertions.assertFalse(flowString.isEmpty());
     }
 
     @Test
@@ -52,18 +52,24 @@ public class InstallTransitFlowTest {
         assertEquals(transitEncapsulationId, flow.getTransitEncapsulationId().intValue());
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void setNullTransitEncapsulationId() throws Exception {
-        flow.setTransitEncapsulationId(null);
+    @Test
+    public void setNullTransitEncapsulationId() {
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setTransitEncapsulationId(null);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void setZeroTransitEncapsulationId() throws Exception {
-        flow.setTransitEncapsulationId(0);
+    @Test
+    public void setZeroTransitEncapsulationId() {
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setTransitEncapsulationId(0);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void setTooBigTransitEncapsulationId() throws Exception {
-        flow.setTransitEncapsulationId(4096);
+    @Test
+    public void setTooBigTransitEncapsulationId() {
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setTransitEncapsulationId(4096);
+        });
     }
 }

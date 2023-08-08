@@ -18,7 +18,7 @@ package org.openkilda.messaging.floodlight.response;
 import org.openkilda.messaging.floodlight.BfdSessionAbstractTest;
 import org.openkilda.messaging.model.NoviBfdSession;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class BfdSessionResponseTest extends BfdSessionAbstractTest {
     @Test

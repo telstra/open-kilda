@@ -19,12 +19,12 @@ import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.Ping.Errors;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class PingRequestCommandWriteFailTest extends PingRequestCommandAbstractTest {
     @Override
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
 

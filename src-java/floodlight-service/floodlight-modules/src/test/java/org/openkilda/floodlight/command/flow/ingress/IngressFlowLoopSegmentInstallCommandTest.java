@@ -20,9 +20,7 @@ import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.mock;
 import static org.easymock.EasyMock.replay;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.INGRESS_TABLE_ID;
 import static org.openkilda.floodlight.switchmanager.SwitchManager.INPUT_TABLE_ID;
 import static org.openkilda.model.SwitchFeature.HALF_SIZE_METADATA;
@@ -49,7 +47,8 @@ import com.google.common.collect.Sets;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.internal.OFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFActionType;
 import org.projectfloodlight.openflow.protocol.OFFlowMod;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
@@ -110,7 +109,7 @@ public class IngressFlowLoopSegmentInstallCommandTest {
 
         assertCommon(mod, INGRESS_TABLE_ID);
         assertEquals(2, stream(mod.getMatch().getMatchFields().spliterator(), false).count());
-        assertNull(mod.getMatch().get(MatchField.VLAN_VID));
+        Assertions.assertNull(mod.getMatch().get(MatchField.VLAN_VID));
         assertMetadata(mod.getMatch(), VLAN_1);
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
@@ -195,7 +194,7 @@ public class IngressFlowLoopSegmentInstallCommandTest {
     private void assertSetField(OFAction action, Class<? extends OFOxm> type, Object value) {
         assertEquals(OFActionType.SET_FIELD, action.getType());
         OFActionSetField setFiledAction = (OFActionSetField) action;
-        assertTrue(type.isInstance(setFiledAction.getField()));
+        Assertions.assertTrue(type.isInstance(setFiledAction.getField()));
         assertEquals(value, setFiledAction.getField().getValue());
     }
 

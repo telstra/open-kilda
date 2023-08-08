@@ -15,16 +15,18 @@
 
 package org.openkilda.floodlight.utils;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.openkilda.model.SwitchFeature;
 
 import net.floodlightcontroller.core.IOFSwitch;
 import org.easymock.EasyMock;
 import org.easymock.EasyMockSupport;
 import org.easymock.Mock;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsEntry;
@@ -51,7 +53,7 @@ public class OfFlowPresenceVerifierTest extends EasyMockSupport {
     @Mock
     private IOfFlowDumpProducer dumpProducer;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         injectMocks(this);
 
@@ -59,7 +61,7 @@ public class OfFlowPresenceVerifierTest extends EasyMockSupport {
         EasyMock.expect(dumpProducer.getSwId()).andStubReturn(swId);
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         verifyAll();
     }
@@ -67,14 +69,14 @@ public class OfFlowPresenceVerifierTest extends EasyMockSupport {
     @Test
     public void inaccurateSetFieldVlanVidActionNegative() {
         OfFlowPresenceVerifier presenceVerifier = testInaccurateSetFieldVlanVidAction(Collections.emptySet());
-        Assert.assertFalse(presenceVerifier.getMissing().isEmpty());
+        assertFalse(presenceVerifier.getMissing().isEmpty());
     }
 
     @Test
     public void inaccurateSetFieldVlanVidActionPositive() {
         OfFlowPresenceVerifier presenceVerifier = testInaccurateSetFieldVlanVidAction(Collections.singleton(
                 SwitchFeature.INACCURATE_SET_VLAN_VID_ACTION));
-        Assert.assertTrue(presenceVerifier.getMissing().isEmpty());
+        assertTrue(presenceVerifier.getMissing().isEmpty());
     }
 
     public OfFlowPresenceVerifier testInaccurateSetFieldVlanVidAction(Set<SwitchFeature> switchFeatures) {
@@ -111,7 +113,7 @@ public class OfFlowPresenceVerifierTest extends EasyMockSupport {
         OfFlowPresenceVerifier presenceVerifier = new OfFlowPresenceVerifier(
                 dumpProducer, Collections.singletonList(expected), switchFeatures);
 
-        Assert.assertTrue(presenceVerifier.getFinish().isDone());
+        assertTrue(presenceVerifier.getFinish().isDone());
         return presenceVerifier;
     }
 }

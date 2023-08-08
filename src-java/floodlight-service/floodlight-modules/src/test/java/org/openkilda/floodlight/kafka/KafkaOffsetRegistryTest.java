@@ -17,22 +17,19 @@ package org.openkilda.floodlight.kafka;
 
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.mock;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.openkilda.floodlight.kafka.Consumer.KafkaOffsetRegistry;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.easymock.EasyMock;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class KafkaOffsetRegistryTest {
-    @Rule
-    public ExpectedException expectedException = ExpectedException.none();
 
     @Test
     public void shouldNotCommitRightOnAdd() {
@@ -99,12 +96,9 @@ public class KafkaOffsetRegistryTest {
         ConsumerRecord<String, String> record = new ConsumerRecord<>("test", 1, 10, "key", "value");
         registry.addAndCommit(record);
 
-        expectedException.expect(IllegalArgumentException.class);
-
-        // when
-        ConsumerRecord<String, String> outdated = new ConsumerRecord<>("test", 1, 1, "key2", "value2");
-        registry.addAndCommit(outdated);
-
-        // then an IllegalArgumentException is thrown
+        assertThrows(IllegalArgumentException.class, () -> {
+            ConsumerRecord<String, String> outdated = new ConsumerRecord<>("test", 1, 1, "key2", "value2");
+            registry.addAndCommit(outdated);
+        });
     }
 }

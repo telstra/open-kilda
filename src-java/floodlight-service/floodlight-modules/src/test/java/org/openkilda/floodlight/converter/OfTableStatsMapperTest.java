@@ -15,11 +15,11 @@
 
 package org.openkilda.floodlight.converter;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.messaging.info.stats.TableStatsEntry;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFTableStatsEntry;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
 import org.projectfloodlight.openflow.types.TableId;

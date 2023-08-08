@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.converter.rulemanager;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.model.GroupId;
 import org.openkilda.model.SwitchId;
@@ -29,7 +29,7 @@ import org.openkilda.rulemanager.group.WatchGroup;
 import org.openkilda.rulemanager.group.WatchPort;
 
 import com.google.common.collect.Sets;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFBucket;
 import org.projectfloodlight.openflow.protocol.OFGroupDelete;
 import org.projectfloodlight.openflow.protocol.OFGroupDescStatsEntry;

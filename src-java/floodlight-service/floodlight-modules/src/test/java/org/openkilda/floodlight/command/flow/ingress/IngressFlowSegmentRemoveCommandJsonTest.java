@@ -20,13 +20,13 @@ import org.openkilda.floodlight.api.request.factory.IngressFlowSegmentRequestFac
 import org.openkilda.floodlight.command.SpeakerCommand;
 import org.openkilda.floodlight.command.SpeakerCommandReport;
 
-import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
 
 public class IngressFlowSegmentRemoveCommandJsonTest extends IngressFlowSegmentCommandJsonTest {
     @Override
     protected void verify(IngressFlowSegmentRequest request,
                           SpeakerCommand<? extends SpeakerCommandReport> rawCommand) {
-        Assert.assertTrue(rawCommand instanceof IngressFlowSegmentRemoveCommand);
+        Assertions.assertTrue(rawCommand instanceof IngressFlowSegmentRemoveCommand);
         verifyPayload(request, (IngressFlowSegmentCommand) rawCommand);
     }
 

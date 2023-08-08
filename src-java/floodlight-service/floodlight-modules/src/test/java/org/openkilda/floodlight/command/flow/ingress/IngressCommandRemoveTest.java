@@ -21,7 +21,7 @@ import org.openkilda.floodlight.error.SwitchOperationException;
 import org.openkilda.floodlight.error.UnsupportedSwitchOperationException;
 import org.openkilda.floodlight.model.EffectiveIds;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 
 import java.util.concurrent.CompletableFuture;

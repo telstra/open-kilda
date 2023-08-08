@@ -26,8 +26,8 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowTransitEncapsulation;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 
 import java.util.concurrent.CompletableFuture;
@@ -37,7 +37,7 @@ abstract class TransitFlowSegmentCommandTest extends AbstractSpeakerCommandTest 
             50, FlowEncapsulationType.TRANSIT_VLAN);
 
     @Override
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
 
