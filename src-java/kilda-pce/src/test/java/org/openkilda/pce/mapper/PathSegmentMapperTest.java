@@ -24,7 +24,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.pce.Path.Segment;
 
 import com.google.common.collect.Sets;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.List;
