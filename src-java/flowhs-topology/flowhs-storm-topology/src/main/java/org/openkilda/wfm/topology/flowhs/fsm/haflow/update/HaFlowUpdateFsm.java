@@ -32,6 +32,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HandleNotDeal
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HandleNotRemovedPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HandleNotRevertedResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.NotifyHaFlowMonitorAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.NotifyHaFlowStatsOnNewPathsAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.NotifyHaFlowStatsOnRemovedPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.OnReceivedInstallResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.OnReceivedRemoveResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.OnReceivedRevertResponseAction;
@@ -46,8 +48,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.CompleteFlowP
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.CompleteFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.InstallIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.InstallNonIngressRulesAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.NotifyHaFlowStatsOnNewPathsAction;
-import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.NotifyHaFlowStatsOnRemovedPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.OnFinishedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.OnFinishedWithErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.PostResourceAllocationAction;
