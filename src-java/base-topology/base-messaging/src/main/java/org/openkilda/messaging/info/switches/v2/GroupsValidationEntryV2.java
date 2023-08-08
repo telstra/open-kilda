@@ -15,6 +15,7 @@
 
 package org.openkilda.messaging.info.switches.v2;
 
+import static org.openkilda.messaging.Utils.getNonNullEntries;
 import static org.openkilda.messaging.Utils.getSize;
 import static org.openkilda.messaging.Utils.joinBooleans;
 import static org.openkilda.messaging.Utils.joinLists;
@@ -28,7 +29,6 @@ import lombok.Data;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Data
@@ -47,9 +47,7 @@ public class GroupsValidationEntryV2 implements Serializable {
             return null;
         }
 
-        List<GroupsValidationEntryV2> nonNullList = entryList.stream()
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        List<GroupsValidationEntryV2> nonNullList = getNonNullEntries(entryList);
 
         if (nonNullList.isEmpty()) {
             return null;
