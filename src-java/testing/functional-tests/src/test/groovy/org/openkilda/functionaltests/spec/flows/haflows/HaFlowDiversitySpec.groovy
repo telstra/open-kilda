@@ -16,7 +16,7 @@ import spock.lang.Narrative
 import spock.lang.Shared
 
 @Slf4j
-@Narrative("Verify the ability to create diverse ha-flows in the system.")
+@Narrative("Verify the ability to create diverse HA-Flows in the system.")
 class HaFlowDiversitySpec extends HealthCheckSpecification {
     @Autowired
     @Shared
@@ -29,7 +29,7 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
     HaPathHelper haPathHelper
 
     @Tidy
-    def "Able to create diverse ha-flows"() {
+    def "Able to create diverse HA-Flows"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Switches with three not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.findAll {
@@ -42,27 +42,27 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         }.shuffled().first()
         assumeTrue(swT != null, "Unable to find suitable switches")
 
-        when: "Create three ha-flows with diversity enabled"
+        when: "Create three HA-Flows with diversity enabled"
         def haFlowRequest1 = haFlowHelper.randomHaFlow(swT)
         def haFlow1 = haFlowHelper.addHaFlow(haFlowRequest1)
-        def haFlowRequest2 = haFlowHelper.randomHaFlow(swT, [haFlowRequest1])
+        def haFlowRequest2 = haFlowHelper.randomHaFlow(swT, false, [haFlowRequest1])
                 .tap { it.diverseFlowId = haFlow1.haFlowId }
         def haFlow2 = haFlowHelper.addHaFlow(haFlowRequest2)
-        def haFlowRequest3 = haFlowHelper.randomHaFlow(swT, [haFlowRequest1, haFlowRequest2])
+        def haFlowRequest3 = haFlowHelper.randomHaFlow(swT, false, [haFlowRequest1, haFlowRequest2])
                 .tap { it.diverseFlowId = haFlow2.haFlowId }
         def haFlow3 = haFlowHelper.addHaFlow(haFlowRequest3)
 
-        then: "HaFlow create response contains info about diverse haFlow"
+        then: "Ha-Flow create response contains info about diverse haFlow"
         !haFlow1.diverseWithHaFlows
         haFlow2.diverseWithHaFlows == [haFlow1.haFlowId] as Set
         haFlow3.diverseWithHaFlows.sort() == [haFlow1.haFlowId, haFlow2.haFlowId].sort()
 
-        and: "All ha-flows have diverse ha-flow IDs in response"
+        and: "All HA-Flows have diverse HA-Flow IDs in response"
         northboundV2.getHaFlow(haFlow1.haFlowId).diverseWithHaFlows.sort() == [haFlow2.haFlowId, haFlow3.haFlowId].sort()
         northboundV2.getHaFlow(haFlow2.haFlowId).diverseWithHaFlows.sort() == [haFlow1.haFlowId, haFlow3.haFlowId].sort()
         northboundV2.getHaFlow(haFlow3.haFlowId).diverseWithHaFlows.sort() == [haFlow1.haFlowId, haFlow2.haFlowId].sort()
 
-        and: "All ha-flows have different paths"
+        and: "All HA-Flows have different paths"
         def haFlow1Path, haFlow2Path, haFlow3Path
         withPool {
             (haFlow1Path, haFlow2Path, haFlow3Path) = [haFlow1, haFlow2, haFlow3].collectParallel {
@@ -79,7 +79,7 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         and: "Ha-flow passes flow validation"
         //TODO add validation when https://github.com/telstra/open-kilda/issues/5153 will be implemented
 
-        when: "Delete ha-flows"
+        when: "Delete HA-Flows"
         [haFlow1, haFlow2, haFlow3].each { it && haFlowHelper.deleteHaFlow(it.haFlowId) }
         def haFlowsAreDeleted = true
 
@@ -91,7 +91,7 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "Able to create ha-flow diverse with common flow"() {
+    def "Able to create HA-Flow diverse with common flow"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Switches with two not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.find {
@@ -101,7 +101,7 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         }
         assumeTrue(swT != null, "Unable to find suitable switches")
 
-        when: "Create an ha-flow without diversity"
+        when: "Create an HA-Flow without diversity"
         def haFlowRequest1 = haFlowHelper.randomHaFlow(swT)
         def haFlow1 = haFlowHelper.addHaFlow(haFlowRequest1)
 
@@ -110,7 +110,7 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
                 .tap { diverseFlowId = haFlow1.getHaFlowId() }
         def flow = flowHelperV2.addFlow(flowRequest)
 
-        and: "Create an ha-flow diverse with simple flow"
+        and: "Create an HA-Flow diverse with simple flow"
         def haFlowRequest2 = haFlowHelper.randomHaFlow(swT)
                 .tap { it.diverseFlowId = flow.flowId }
         def haFlow2 = haFlowHelper.addHaFlow(haFlowRequest2)
@@ -126,7 +126,7 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         haFlow2.diverseWithFlows == [flow.flowId] as Set
         !haFlow2.diverseWithYFlows
 
-        when: "Get flow and ha-flows"
+        when: "Get flow and HA-Flows"
         def getHaFlow1 = northboundV2.getHaFlow(haFlow1.haFlowId)
         def getHaFlow2 = northboundV2.getHaFlow(haFlow2.haFlowId)
         def getFlow = northboundV2.getFlow(flow.flowId)
@@ -149,7 +149,7 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    def "Able to create ha-flow diverse with y-flow"() {
+    def "Able to create HA-Flow diverse with y-flow"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Switches with three not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.find {
@@ -161,13 +161,13 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         }
         assumeTrue(swT != null, "Unable to find suitable switches")
 
-        when: "Create three ha-flows with diversity enabled"
+        when: "Create three HA-Flows with diversity enabled"
         def haFlowRequest1 = haFlowHelper.randomHaFlow(swT)
         def haFlow1 = haFlowHelper.addHaFlow(haFlowRequest1)
         def yFlowRequest1 = yFlowHelper.randomYFlow(swT, false)
                 .tap { it.diverseFlowId = haFlow1.haFlowId }
         def yFlow = yFlowHelper.addYFlow(yFlowRequest1)
-        def haFlowRequest2 = haFlowHelper.randomHaFlow(swT, [haFlowRequest1])
+        def haFlowRequest2 = haFlowHelper.randomHaFlow(swT, false, [haFlowRequest1])
                 .tap { it.diverseFlowId = yFlow.getYFlowId() }
         def haFlow2 = haFlowHelper.addHaFlow(haFlowRequest2)
 
@@ -182,7 +182,7 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         !haFlow2.diverseWithFlows
         haFlow2.diverseWithYFlows == [yFlow.getYFlowId()] as Set
 
-        when: "Get y-flow and ha-flows"
+        when: "Get y-flow and HA-Flows"
         def getHaFlow1 = northboundV2.getHaFlow(haFlow1.haFlowId)
         def getHaFlow2 = northboundV2.getHaFlow(haFlow2.haFlowId)
         def getYFlow = northboundV2.getYFlow(yFlow.getYFlowId())

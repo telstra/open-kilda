@@ -104,6 +104,14 @@ class TopologyHelper {
         return includeReverse ? result.collectMany { [it, it.reversed] } : result
     }
 
+    SwitchTriplet getSwitchTriplet(SwitchId shared, SwitchId ep1, SwitchId ep2) {
+        return getSwitchTriplets(true, true).find {
+            it.shared.getDpId() == shared
+        && it.ep1.getDpId() == ep1
+        && it.ep2.getDpId() == ep2
+        }
+    }
+
     List<SwitchTriplet> getAllNotNeighbouringSwitchTriplets(boolean includeReverse = false) {
         return getSwitchTriplets(includeReverse).findAll {
             it.shared != it.ep1 && it.ep1 != it.ep2 && it.ep2 != it.shared &&
