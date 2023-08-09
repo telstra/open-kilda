@@ -41,6 +41,7 @@ import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.SendRequests;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.meter.SwitchMeterEntries;
 import org.openkilda.messaging.info.meter.SwitchMeterUnsupported;
@@ -124,6 +125,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -169,6 +171,9 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
     @Value("#{kafkaTopicsConfig.getTopoSwitchManagerNbTopic()}")
     private String switchManagerTopic;
+
+    @Value("#{kafkaTopicsConfig.getTopoIslLatencyTopic()}")
+    private String islLatencyTopic;
 
     @Autowired
     public SwitchServiceImpl(MessagingChannel messagingChannel) {
@@ -727,6 +732,18 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         return messagingChannel.sendAndGet(switchManagerTopic, request)
                 .thenApply(org.openkilda.messaging.swmanager.response.LagPortResponse.class::cast)
                 .thenApply(lagPortMapper::map);
+    }
+
+    @Override
+        public CompletableFuture<LagPortResponse> sendMes(int count) {
+        log.info("API request: sending " + count);
+
+        SendRequests data = new SendRequests(count);
+        InfoMessage request = new InfoMessage(data, System.currentTimeMillis(), RequestCorrelationId.getId());
+        messagingChannel.sendAndGet(islLatencyTopic, request);
+        CompletableFuture<LagPortResponse> result = new CompletableFuture<>();
+        result.complete(new LagPortResponse(1, new ArrayList<>(), true));
+        return result;
     }
 
     private Boolean toPortAdminDown(PortStatus status) {

@@ -135,6 +135,7 @@ public class IslLatencyTopology extends AbstractTopology<IslLatencyTopologyConfi
 
         IslStatsBolt islStatsBolt = new IslStatsBolt(topologyConfig.getMetricPrefix(), latencyTimeout);
         declareBolt(builder, islStatsBolt, ISL_STATS_BOLT_ID)
+                .shuffleGrouping(ROUTER_BOLT_ID, StreamType.REQ.toString())
                 .fieldsGrouping(ONE_WAY_MANIPULATION_BOLT_ID, StreamType.LATENCY.toString(), ISL_GROUPING_FIELDS)
                 .fieldsGrouping(CACHE_BOLT_ID, StreamType.LATENCY.toString(), ISL_GROUPING_FIELDS)
                 .fieldsGrouping(ISL_STATUS_UPDATE_BOLT_ID, StreamType.ISL_STATUS.toString(), ISL_GROUPING_FIELDS);

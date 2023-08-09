@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.isllatency.bolts;
 
+import static org.openkilda.wfm.share.bolt.KafkaEncoder.FIELD_ID_KEY;
 import static org.openkilda.wfm.share.utils.TimestampHelper.noviflowTimestamp;
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ISL_GROUPING_FIELD;
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.LATENCY_DATA_FIELD;
@@ -24,12 +25,14 @@ import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PA
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
+import org.openkilda.messaging.info.SendRequests;
 import org.openkilda.messaging.info.event.IslOneWayLatency;
 import org.openkilda.messaging.info.event.IslRoundTripLatency;
 import org.openkilda.messaging.info.stats.IslRttStatsData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.bolt.KafkaEncoder;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.model.IslReference;
 import org.openkilda.wfm.share.zk.ZkStreams;
@@ -62,6 +65,8 @@ public class RouterBolt extends AbstractBolt {
                     handleRoundTripLatency(input, (IslRoundTripLatency) data);
                 } else if (data instanceof IslRttStatsData) {
                     handleRoundTripLatency(input, (IslRttStatsData) data);
+                } else if (data instanceof SendRequests) {
+                    getOutput().emit(StreamType.REQ.toString(), input, new Values(message.getCorrelationId(), data));
                 } else {
                     unhandledInput(input);
                 }
@@ -98,6 +103,7 @@ public class RouterBolt extends AbstractBolt {
     @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         Fields oneWayLatencyFields = new Fields(ISL_GROUPING_FIELD, LATENCY_DATA_FIELD, FIELD_ID_CONTEXT);
+        declarer.declareStream(StreamType.REQ.toString(), new Fields(FIELD_ID_KEY, KafkaEncoder.FIELD_ID_PAYLOAD));
         declarer.declareStream(StreamType.ONE_WAY_MANIPULATION.toString(), oneWayLatencyFields);
         declarer.declareStream(StreamType.CACHE.toString(),
                 new Fields(SWITCH_KEY_FIELD, LATENCY_DATA_FIELD, FIELD_ID_CONTEXT));

@@ -245,6 +245,17 @@ public class SwitchControllerV2 extends BaseController {
     }
 
     /**
+     * Delete LAG logical port.
+     */
+    @ApiOperation(value = "Delete LAG logical port", response = LagPortResponse.class)
+    @GetMapping(value = "/send/{count}")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<LagPortResponse> deleteLagPort(
+            @PathVariable("count") int count) {
+        return switchService.sendMes(count);
+    }
+
+    /**
      * Validate the rules, groups, lags and the meters installed on the switch against the flows in the database.
      *
      * @param includeString validated fields to include in response
