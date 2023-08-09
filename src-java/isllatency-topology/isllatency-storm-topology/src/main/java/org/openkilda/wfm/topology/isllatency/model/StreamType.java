@@ -16,5 +16,5 @@
 package org.openkilda.wfm.topology.isllatency.model;
 
 public enum StreamType {
-    CACHE, LATENCY, ISL_STATUS, ONE_WAY_MANIPULATION
+    CACHE, LATENCY, ISL_STATUS, ONE_WAY_MANIPULATION, REQ
 }

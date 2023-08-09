@@ -80,6 +80,9 @@ public class OpenTsdbFilterBolt extends BaseRichBolt {
         }
 
         Datapoint datapoint = (Datapoint) tuple.getValueByField("datapoint");
+        if (datapoint.getValue().longValue() % 10_000 == 0) {
+            LOGGER.error("OTSDBTEST got datapoint number " + datapoint.getValue());
+        }
         if (isUpdateRequired(datapoint)) {
             addDatapoint(datapoint);
 

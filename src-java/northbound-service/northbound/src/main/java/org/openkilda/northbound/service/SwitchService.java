@@ -330,4 +330,6 @@ public interface SwitchService {
             SwitchId switchId, int logicalPortNumber, LagPortRequest payload);
 
     CompletableFuture<LagPortResponse> deleteLagPort(SwitchId switchId, int logicalPortNumber);
+
+    CompletableFuture<LagPortResponse> sendMes(int count);
 }

@@ -21,16 +21,19 @@ import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ISL_STATU
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ISL_STATUS_UPDATE_BOLT_ID;
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.LATENCY_DATA_FIELD;
 import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ONE_WAY_MANIPULATION_BOLT_ID;
+import static org.openkilda.wfm.topology.isllatency.IslLatencyTopology.ROUTER_BOLT_ID;
 
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.SendRequests;
 import org.openkilda.messaging.info.event.IslOneWayLatency;
 import org.openkilda.messaging.info.event.IslRoundTripLatency;
 import org.openkilda.messaging.info.event.IslStatusUpdateNotification;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.share.bolt.KafkaEncoder;
 import org.openkilda.wfm.share.model.Endpoint;
 import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.isllatency.carriers.IslStatsCarrier;
@@ -87,9 +90,21 @@ public class IslStatsBolt extends AbstractBolt implements IslStatsCarrier {
         return tsdbTuple(metricFormatter.format(LATENCY_METRIC_NAME), timestamp, latency, tags);
     }
 
+    private void handleCount(Tuple input) throws PipelineException, JsonProcessingException {
+        SendRequests data = pullValue(input, KafkaEncoder.FIELD_ID_PAYLOAD, SendRequests.class);
+        log.error("OTSDBTEST generating and sending messages " + data.getCount());
+        for (int i = 0; i < data.getCount(); i++) {
+            List<Object> message = buildTsdbTuple(new SwitchId(i + 1), i, new SwitchId(i + 2), i, i, i, "my_test");
+            emit(getCurrentTuple(), message);
+        }
+        log.error("OTSDBTEST messages were sent " + data.getCount());
+    }
+
     @Override
     protected void handleInput(Tuple input) throws Exception {
-        if (ISL_STATUS_UPDATE_BOLT_ID.equals(input.getSourceComponent())) {
+        if (ROUTER_BOLT_ID.equals(input.getSourceComponent())) {
+            handleCount(input);
+        } else if (ISL_STATUS_UPDATE_BOLT_ID.equals(input.getSourceComponent())) {
             handleStatusUpdate(input);
         } else if (ONE_WAY_MANIPULATION_BOLT_ID.equals(input.getSourceComponent())
                 || CACHE_BOLT_ID.equals(input.getSourceComponent())) {
