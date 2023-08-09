@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,13 +13,10 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.otsdb.model;
+package org.openkilda.testing.service.tsdb.model;
 
-public enum Aggregator {
-    MIN, MAX, SUM, AVG, MULT, DEV;
+public interface StatsMetric {
+    String getValue();
 
-    @Override
-    public String toString() {
-        return this.name().toLowerCase();
-    }
+    String getPrefix();
 }

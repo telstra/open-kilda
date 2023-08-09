@@ -1,34 +1,31 @@
 package org.openkilda.functionaltests.model.stats
 
-
 import org.openkilda.functionaltests.helpers.StatsHelper
 import org.openkilda.testing.service.tsdb.model.StatsResult
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
-
 @Component
-class YFlowStats {
+class SystemStats {
     private static StatsHelper statsHelper
     private List<StatsResult> stats
     private String metricPrefix
 
     @Autowired
-    YFlowStats(StatsHelper statsHelper){
-        YFlowStats.statsHelper = statsHelper
+    SystemStats(StatsHelper statsHelper){
+        SystemStats.statsHelper = statsHelper
     }
 
-    static YFlowStats of(String yFlowId){
-        return new YFlowStats(yFlowId)
+    static SystemStats of(SystemStatsMetric metric){
+        return new SystemStats(metric)
     }
 
-    YFlowStats(String yFlowId) {
+    SystemStats(SystemStatsMetric metric) {
         this.metricPrefix = statsHelper.getMetricPrefix()
-        this.stats = statsHelper.getTsdb().queryDataPointsForLastFiveMinutes(YFlowStatsMetric.values() as List,
-        "y_flow_id", yFlowId)
+        this.stats = statsHelper.getTsdb().queryDataPointsForLastMinutes([metric], "switchid", "*", 10)
     }
 
-    StatsResult get(YFlowStatsMetric metric) {
-        return this.stats.find {it.metric.equals(metricPrefix + metric.getValue())}
+    StatsResult get(String ruleCookieIdInHex) {
+        return stats.find {it.tags.get("cookieHex").equals(ruleCookieIdInHex)}
     }
 }

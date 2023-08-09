@@ -1,12 +1,22 @@
 package org.openkilda.functionaltests.spec.server42
 
+import org.openkilda.functionaltests.model.stats.FlowStats
+import org.openkilda.functionaltests.model.stats.Origin
+import org.springframework.beans.factory.annotation.Autowired
+
 import static groovyx.gpars.GParsPool.withPool
+import static java.util.concurrent.TimeUnit.SECONDS
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
+import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
+import static org.openkilda.functionaltests.model.stats.Origin.FLOW_MONITORING
+import static org.openkilda.functionaltests.model.stats.Origin.SERVER_42
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
@@ -56,15 +66,15 @@ switch timestamps, thus we may see no stats in otsdb if time on switch is incorr
 @Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
 class Server42FlowRttSpec extends HealthCheckSpecification {
     @Shared
-    @Value('${opentsdb.metric.prefix}')
-    String metricPrefix
+    @Autowired
+    FlowStats flowStats
 
     @Shared
     @Value('${flow.sla.check.interval.seconds}')
     Integer flowSlaCheckIntervalSeconds
 
     @Tidy
-    def "Create a #data.flowDescription flow with server42 Rtt feature and check datapoints in opentsdb"() {
+    def "Create a #data.flowDescription flow with server42 Rtt feature and check datapoints in tsdb"() {
         given: "Two active switches, src has server42 connected"
         def server42switches = topology.getActiveServer42Switches();
         assumeTrue((server42switches.size() > 0), "Unable to find active server42")
@@ -88,11 +98,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         then: "Check if stats for forward are available"
         def statsData = null
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            statsData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward",
-                     origin   : "server42"]).dps
-            assert statsData && !statsData.empty
+            flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValues()
         }
 
         cleanup: "Revert system to original state"
@@ -195,24 +201,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Check if stats for forward are available"
+        and: "Check if stats for forward and reverse flows are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            def statsData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward",
-                     origin   : "server42"]).dps
-            assert statsData && !statsData.empty
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValues()
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValues()
         }
-
-        and: "Check if stats for reverse are available"
-        //https://github.com/telstra/open-kilda/issues/4678
-//        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-//            def statsData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-//                    [flowid   : reversedFlow.flowId,
-//                     direction: "reverse",
-//                     origin   : "server42"]).dps
-//            assert statsData && !statsData.empty
-//        }
 
         cleanup: "Revert system to original state"
         revertToOrigin([flow, reversedFlow], flowRttFeatureStartState, initialSwitchRtt)
@@ -236,7 +229,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def initialSwitchRtt = [switchPair.src, switchPair.dst].collectEntries { [it, changeFlowRttSwitch(it, false)] }
 
         and: "Flow for forward metric is created"
-        def checkpointTime = new Date()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
@@ -259,104 +251,63 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         when: "Wait for several seconds"
-        TimeUnit.SECONDS.sleep(statsWaitSeconds)
+        SECONDS.sleep(statsWaitSeconds)
 
         then: "Expect no flow rtt stats for forward flow"
-        otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-                [flowid   : flow.flowId,
-                 direction: "forward",
-                 origin   : "server42"]).dps.isEmpty()
+        flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42) == null
 
         and: "Expect no flow rtt stats for reversed flow"
-        otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-                [flowid   : reversedFlow.flowId,
-                 direction: "reverse",
-                 origin   : "server42"]).dps.isEmpty()
+        flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42) == null
 
         when: "Enable global rtt toggle"
         changeFlowRttToggle(true)
 
         and: "Wait for several seconds"
-        checkpointTime = new Date()
-        TimeUnit.SECONDS.sleep(statsWaitSeconds)
+        def checkpointTime = new Date().getTime()
+        SECONDS.sleep(statsWaitSeconds)
 
         then: "Expect no flow rtt stats for forward flow"
-        otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-                [flowid   : flow.flowId,
-                 direction: "forward",
-                 origin   : "server42"]).dps.isEmpty()
+        flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42) == null
 
         and: "Expect no flow rtt stats for reversed flow"
-        otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-                [flowid   : reversedFlow.flowId,
-                 direction: "reverse",
-                 origin   : "server42"]).dps.isEmpty()
+        flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42) == null
 
         when: "Enable switch rtt toggle on src and dst"
         changeFlowRttSwitch(switchPair.src, true)
         changeFlowRttSwitch(switchPair.dst, true)
-        checkpointTime = new Date()
+        checkpointTime = new Date().getTime()
 
-        then: "Stats for forward flow are available"
+        then: "Stats for forward and reverse flow are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            def statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward",
-                     origin   : "server42"]).dps
-            assert statsData && !statsData.empty
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+            //https://github.com/telstra/open-kilda/issues/4678
+            //assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
         }
-
-        and: "Stats for reversed flow are available"
-        //https://github.com/telstra/open-kilda/issues/4678
-//        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-//            def statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-//                    [flowid   : reversedFlow.flowId,
-//                     direction: "reverse",
-//                     origin   : "server42"]).dps
-//            assert statsData && !statsData.empty
-//        }
 
         when: "Disable switch rtt toggle on dst (still enabled on src)"
         changeFlowRttSwitch(switchPair.dst, false)
-        checkpointTime = new Date()
+        checkpointTime = new Date().getTime()
 
-        then: "Stats for forward flow are available"
-        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            def statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward",
-                     origin   : "server42"]).dps
-            assert statsData && !statsData.empty
+        then: "Stats for forward and reverse flow are available"
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET, 1) {
+            def stats = flowStats.rttOf(flow.getFlowId())
+            assert stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+            //https://github.com/telstra/open-kilda/issues/4678
+            //assert stats.get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
         }
-
-        and: "Stats for reversed flow are available"
-        //https://github.com/telstra/open-kilda/issues/4678
-//        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-//            def statsData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-//                    [flowid   : reversedFlow.flowId,
-//                     direction: "reverse",
-//                     origin   : "server42"]).dps
-//            assert statsData && !statsData.empty
-//        }
 
         when: "Disable global toggle"
         changeFlowRttToggle(false)
 
         and: "Wait for several seconds"
-        checkpointTime = new Date()
-        TimeUnit.SECONDS.sleep(statsWaitSeconds)
+        checkpointTime = new Date().getTime()
+        SECONDS.sleep(statsWaitSeconds)
 
         then: "Expect no flow rtt stats for forward flow"
-        otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-                [flowid   : flow.flowId,
-                 direction: "forward",
-                 origin   : "server42"]).dps.isEmpty()
+        !flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValuesAfter(checkpointTime)
 
         and: "Expect no flow rtt stats for reversed flow"
-        otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-                [flowid   : reversedFlow.flowId,
-                 direction: "reverse",
-                 origin   : "server42"]).dps.isEmpty()
+        !flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE).hasNonZeroValuesAfter(checkpointTime)
 
         cleanup: "Revert system to original state"
         revertToOrigin([flow, reversedFlow], flowRttFeatureStartState, initialSwitchRtt)
@@ -395,39 +346,23 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "Stats for both directions are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            def fwData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward",
-                     origin   : "server42"]).dps
-            assert fwData && !fwData.empty
-            //https://github.com/telstra/open-kilda/issues/4678
-//            def reverseData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-//                    [flowid   : flow.flowId,
-//                     direction: "reverse",
-//                     origin   : "server42"]).dps
-//            assert reverseData && !reverseData.empty
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValues()
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE).hasNonZeroValues()
         }
 
         when: "Disable flow rtt on dst switch"
         changeFlowRttSwitch(switchPair.dst, false)
         sleep(1000)
-        checkpointTime = new Date()
+        checkpointTime = new Date().getTime()
 
         then: "Stats are available in forward direction"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            def fwData = otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward",
-                     origin   : "server42"]).dps
-            assert fwData && !fwData.empty
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValuesAfter(checkpointTime)
+
         }
 
         and: "Stats are not available in reverse direction"
-        //https://github.com/telstra/open-kilda/issues/4678
-//        otsdb.query(checkpointTime, metricPrefix + "flow.rtt",
-//                [flowid   : flow.flowId,
-//                 direction: "reverse",
-//                 origin   : "server42"]).dps.isEmpty()
+        !flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE).hasNonZeroValuesAfter(checkpointTime)
 
         cleanup: "Revert system to original state"
         revertToOrigin([flow], flowRttFeatureStartState, initialSwitchRtt)
@@ -452,15 +387,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward",
-                     origin   : "server42"]).dps.size() > 0
-            //https://github.com/telstra/open-kilda/issues/4678
-//            assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-//                    [flowid   : flow.flowId,
-//                     direction: "reverse",
-//                     origin   : "server42"]).dps.size() > 0
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValues()
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE).hasNonZeroValues()
         }
 
         when: "Delete ingress server42 rule related to the flow on the src switch"
@@ -473,6 +401,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_DELETION_TIME) {
             assert northbound.validateSwitch(switchPair.src.dpId).rules.missing == [cookieToDelete]
         }
+        def timeWhenMissingRuleIsDetected = new Date().getTime()
 
         and: "Flow is valid and UP"
         northbound.validateFlow(flow.flowId).each { validationInfo ->
@@ -488,29 +417,12 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         northbound.getFlowStatus(flow.flowId).status == FlowState.UP
 
         and: "server42 stats for forward direction are not increased"
+        !flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
+
         and: "server42 stats for reverse direction are increased"
-        TimeUnit.SECONDS.sleep(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET)
-        def statsDataForward = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                [flowid   : flow.flowId,
-                 direction: "forward",
-                 origin   : "server42"]).dps
-        //https://github.com/telstra/open-kilda/issues/4678
-//        def statsDataReverse = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-//                [flowid   : flow.flowId,
-//                 direction: "reverse",
-//                 origin   : "server42"]).dps
-//        def newStatsDataReverse
-//        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-//            newStatsDataReverse = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-//                    [flowid   : flow.flowId,
-//                     direction: "reverse",
-//                     origin   : "server42"]).dps
-//            assert newStatsDataReverse.size() > statsDataReverse.size()
-//        }
-        otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                [flowid   : flow.flowId,
-                 direction: "forward",
-                 origin   : "server42"]).dps.size() == statsDataForward.size()
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET) {
+            flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
+        }
 
         when: "Synchronize the flow"
         with(northbound.synchronizeFlow(flow.flowId)) { !it.rerouted }
@@ -522,17 +434,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                 new Cookie(it.cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INGRESS
             }*.cookie.size() == 1
         }
+        def timeWhenMissingRuleIsReinstalled = new Date().getTime()
 
         then: "server42 stats for forward direction are available again"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET, 1) {
-            assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward",
-                     origin   : "server42"]).dps.size() > statsDataForward.size()
-//            assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-//                    [flowid   : flow.flowId,
-//                     direction: "reverse",
-//                     origin   : "server42"]).dps.size() > newStatsDataReverse.size()
+            flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValuesAfter(timeWhenMissingRuleIsReinstalled)
         }
 
         cleanup: "Revert system to original state"
@@ -570,14 +476,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         //make sure stats for the flow1 in forward directions are available and not available for the flow2
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow1.flowId,
-                     direction: "forward",
-                     origin   : "server42"]).dps.isEmpty()
-            assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow2.flowId,
-                     direction: "forward",
-                     origin   : "server42"]).dps.isEmpty()
+            assert flowStats.rttOf(flow1.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValues()
+            assert flowStats.rttOf(flow2.getFlowId()).get(FLOW_RTT, FORWARD) == null
         }
 
         when: "Try to swap src endpoints for two flows"
@@ -588,6 +488,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def response = northbound.swapFlowEndpoint(
                 new SwapFlowPayload(flow1.flowId, flow1Src, flow1Dst),
                 new SwapFlowPayload(flow2.flowId, flow2Src, flow2Dst))
+        def timeWhenEndpointWereSwapped = new Date().getTime()
 
         then: "Endpoints are successfully swapped"
         with(response) {
@@ -618,26 +519,12 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "server42 stats are available for the flow2 in the forward direction"
-        //TODO(andriidovhan) it should be reworked,
-        // STATS_FROM_SERVER42_LOGGING_TIMEOUT is just a random number that was decided to be used as timeout,
-        // it has no real application and we should not rely on it here
-        TimeUnit.SECONDS.sleep(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET)
-        def flow1Stat = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                [flowid   : flow1.flowId,
-                 direction: "forward",
-                 origin   : "server42"]).dps
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow2.flowId,
-                     direction: "forward",
-                     origin   : "server42"]).dps.isEmpty()
+            assert flowStats.rttOf(flow2.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValues()
         }
 
         and: "server42 stats are not available any more for the flow1 in the forward direction"
-        otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                [flowid   : flow1.flowId,
-                 direction: "forward",
-                 origin   : "server42"]).dps.size() == flow1Stat.size()
+        !flowStats.rttOf(flow1.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValuesAfter(timeWhenEndpointWereSwapped)
 
         cleanup:
         flow1 && flowHelperV2.deleteFlow(flow1.flowId)
@@ -669,29 +556,14 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Stats from server42 only for forward direction are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward",
-                     origin   : "server42"]).dps.isEmpty()
-            otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "reverse",
-                     origin   : "server42"]).dps.isEmpty()
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42) == null
         }
 
         and: "Stats from flow monitoring feature for reverse direction only are available"
         Wrappers.wait(flowSlaCheckIntervalSeconds * 3, 1) {
-            def flMonitoringReverseData = otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "reverse",
-                     origin   : "flow-monitoring"]).dps
-            def statsSince = new Date(System.currentTimeMillis() - (int) (flowSlaCheckIntervalSeconds * 1.2 * 1000))
-            def flMonitoringForwardData = otsdb.query(statsSince, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward",
-                     origin   : "flow-monitoring"]).dps
-            assert flMonitoringReverseData.size() >= 1
-            assert flMonitoringForwardData.isEmpty()
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING) == null
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, FLOW_MONITORING).hasNonZeroValues()
         }
 
         when: "Disable server42FlowRtt on the src switch"
@@ -699,10 +571,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Stats from flow monitoring feature for forward direction are available"
         Wrappers.wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET * 2, 1) {
-            otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward",
-                     origin   : "flow-monitoring"]).dps.size() >= 1
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
 
         cleanup: "Revert system to original state"
@@ -747,19 +616,12 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
             }
         }
         flowHelperV2.partialUpdate(flow.flowId, updateRequest)
-        def flowUpdateTime = new Date()
+        def flowUpdateTime = new Date().getTime()
 
         then: "Check if stats for forward/reverse directions are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET, 1) {
-            assert !otsdb.query(flowUpdateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward",
-                     origin   : "server42"]).dps.isEmpty()
-            //https://github.com/telstra/open-kilda/issues/4678
-//            assert !otsdb.query(flowUpdateTime, metricPrefix + "flow.rtt",
-//                    [flowid   : flow.flowId,
-//                     direction: "reverse",
-//                     origin   : "server42"]).dps.isEmpty()
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValuesAfter(flowUpdateTime)
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE).hasNonZeroValuesAfter(flowUpdateTime)
         }
 
         and: "Flow is valid"
@@ -847,14 +709,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Flow rtt stats are not available due to incorrect s42 port on the src switch"
         Wrappers.timedLoop(STATS_FROM_SERVER42_LOGGING_TIMEOUT / 2) {
-            assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward",
-                     origin   : "server42"]).dps.isEmpty()
-            assert otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "reverse",
-                     origin   : "server42"]).dps.isEmpty()
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD) == null
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE) == null
         }
 
         when: "Set correct config for the server42 on the src switch"
@@ -884,12 +740,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "Flow rtt stats are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward"]).dps.isEmpty()
-            assert !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "reverse"]).dps.isEmpty()
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValues()
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE).hasNonZeroValues()
         }
 
         cleanup:
@@ -933,15 +785,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Stats from server42 for forward/reverse directions are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-                    [flowid   : flow.flowId,
-                     direction: "forward",
-                     origin   : "server42"]).dps.isEmpty()
-            //https://github.com/telstra/open-kilda/issues/4678
-//            assert !otsdb.query(flowCreateTime, metricPrefix + "flow.rtt",
-//                    [flowid   : flow.flowId,
-//                     direction: "reverse",
-//                     origin   : "server42"]).dps.isEmpty()
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValues()
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE).hasNonZeroValues()
         }
 
         cleanup: "Revert system to original state"

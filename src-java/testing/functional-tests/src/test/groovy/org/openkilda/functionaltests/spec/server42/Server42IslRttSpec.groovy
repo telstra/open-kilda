@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.server42
 
+import org.openkilda.functionaltests.model.stats.IslStats
+import org.springframework.beans.factory.annotation.Autowired
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.Assertions.assertThat
@@ -10,6 +13,8 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.stats.IslStatsMetric.ISL_RTT
+import static org.openkilda.functionaltests.model.stats.Origin.SERVER_42
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
@@ -43,8 +48,8 @@ import spock.lang.Shared
 @Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
 class Server42IslRttSpec extends HealthCheckSpecification {
     @Shared
-    @Value('${opentsdb.metric.prefix}')
-    String metricPrefix
+    @Autowired
+    IslStats islStats
 
     @Shared
     @Value('${latency.update.interval}')
@@ -702,25 +707,16 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     }
 
     void checkIslRttStats(Isl isl, Date checkpointTime, Boolean statExist) {
-        def stats = otsdb.query(checkpointTime, metricPrefix + "isl.rtt",
-                [src_switch: isl.srcSwitch.dpId.toOtsdFormat(),
-                 src_port  : String.valueOf(isl.srcPort),
-                 dst_switch: isl.dstSwitch.dpId.toOtsdFormat(),
-                 dst_port  : String.valueOf(isl.dstPort),
-                 origin    : "server42"]).dps
-        assert statExist ? !stats.isEmpty() : stats.isEmpty()
+        def stats = islStats.of(isl).get(ISL_RTT, SERVER_42)
+        assert statExist ? stats.hasNonZeroValuesAfter(checkpointTime.getTime())
+                : stats == null || !stats.hasNonZeroValuesAfter(checkpointTime.getTime())
     }
 
     void verifyLatencyValueIsCorrect(Isl isl) {
         def t = new Date()
         t.setSeconds(t.getSeconds() - 600) //kilda_latency_update_time_range: 600
-        def stats = otsdb.query(t, new Date(), metricPrefix + "isl.rtt",
-                [src_switch: isl.srcSwitch.dpId.toOtsdFormat(),
-                 src_port  : String.valueOf(isl.srcPort),
-                 dst_switch: isl.dstSwitch.dpId.toOtsdFormat(),
-                 dst_port  : String.valueOf(isl.dstPort),
-                 origin    : "server42"]).dps
-        def expected = stats*.getValue().average()
+        def stats = islStats.of(isl).get(ISL_RTT).getDataPoints()
+        def expected = stats.values().average()
         def actual = northbound.getLink(isl).latency
         assert Math.abs(expected - actual) <= expected * 0.25
     }
