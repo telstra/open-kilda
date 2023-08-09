@@ -45,12 +45,14 @@ public class OpenTsdbFilterBolt extends BaseRichBolt {
 
     private Map<DatapointKey, Datapoint> storage = new HashMap<>();
     private OutputCollector collector;
+    private int count = 0;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
+        this.count = 0;
     }
-    
+
     @Override
     public Map<String, Object> getComponentConfiguration() {
         Config conf = new Config();
@@ -60,7 +62,7 @@ public class OpenTsdbFilterBolt extends BaseRichBolt {
 
     @Override
     public void execute(Tuple tuple) {
-        
+
         if (isTickTuple(tuple)) {
             // opentsdb using current epoch time (date +%s) in seconds
             long now  = System.currentTimeMillis();
@@ -73,17 +75,19 @@ public class OpenTsdbFilterBolt extends BaseRichBolt {
             collector.ack(tuple);
             return;
         }
-        
+
         if (!tuple.contains("datapoint")) { //TODO: Should make sure tuple comes from correct bolt, ie not TickTuple
             collector.ack(tuple);
             return;
         }
 
         Datapoint datapoint = (Datapoint) tuple.getValueByField("datapoint");
-        if (datapoint.getValue().longValue() % 10_000 == 0) {
-            LOGGER.error("OTSDBTEST got datapoint number " + datapoint.getValue());
-        }
-        if (isUpdateRequired(datapoint)) {
+        if (datapoint.getValue().longValue() == 12345) {
+            if (count % 10_000 == 0) {
+                LOGGER.error("OTSDBTEST got datapoint number " + count);
+            }
+            count++;
+        } else if (isUpdateRequired(datapoint)) {
             addDatapoint(datapoint);
 
             LOGGER.debug("emit datapoint: {}", datapoint);
@@ -127,11 +131,11 @@ public class OpenTsdbFilterBolt extends BaseRichBolt {
         }
         return update;
     }
-    
+
     private boolean isTickTuple(Tuple tuple) {
         String sourceComponent = tuple.getSourceComponent();
         String sourceStreamId = tuple.getSourceStreamId();
-        
+
         return Constants.SYSTEM_COMPONENT_ID.equals(sourceComponent)
                 && Constants.SYSTEM_TICK_STREAM_ID.equals(sourceStreamId);
     }

@@ -94,7 +94,7 @@ public class IslStatsBolt extends AbstractBolt implements IslStatsCarrier {
         SendRequests data = pullValue(input, KafkaEncoder.FIELD_ID_PAYLOAD, SendRequests.class);
         log.error("OTSDBTEST generating and sending messages " + data.getCount());
         for (int i = 0; i < data.getCount(); i++) {
-            List<Object> message = buildTsdbTuple(new SwitchId(i + 1), i, new SwitchId(i + 2), i, i, i, "my_test");
+            List<Object> message = buildTsdbTuple(new SwitchId(i + 1), i, new SwitchId(i + 2), i, 12345, i, "my_test");
             emit(getCurrentTuple(), message);
         }
         log.error("OTSDBTEST messages were sent " + data.getCount());
