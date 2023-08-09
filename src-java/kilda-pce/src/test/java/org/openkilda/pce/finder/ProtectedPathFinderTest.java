@@ -22,7 +22,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -174,10 +178,14 @@ public class ProtectedPathFinderTest {
         });
         MatcherAssert.assertThat(exception.getMessage(),
                 containsString(FailReasonType.HARD_DIVERSITY_PENALTIES.toString()));
+
+        GetPathsResult getPathsResult = pathComputer.getProtectedPath(flow, Collections.emptyList());
+        assertFalse(getPathsResult.getFailReasons().isEmpty());
+        assertTrue(getPathsResult.getFailReasons().containsKey(FailReasonType.UNROUTABLE_FLOW));
     }
 
     @Test
-    public void shouldNotFindAnyProtectedPath() throws RecoverableException, UnroutableFlowException {
+    public void shouldNotFindAnyProtectedPath() throws RecoverableException {
         // Topology:
         //      D----E
         //      |    |
@@ -244,6 +252,10 @@ public class ProtectedPathFinderTest {
         });
         MatcherAssert.assertThat(exception.getMessage(),
                 containsString(FailReasonType.HARD_DIVERSITY_PENALTIES.toString()));
+
+        GetPathsResult getPathsResult = pathComputer.getProtectedPath(flow, Collections.emptyList());
+        assertFalse(getPathsResult.getFailReasons().isEmpty());
+        assertTrue(getPathsResult.getFailReasons().containsKey(FailReasonType.UNROUTABLE_FLOW));
     }
 
     @Test
@@ -338,6 +350,10 @@ public class ProtectedPathFinderTest {
                 () -> assertThat(lastReverseSegment.getSrcSwitchId(), equalTo(switchD.getSwitchId())),
                 () -> assertThat(lastReverseSegment.getDestSwitchId(), equalTo(switchA.getSwitchId()))
         );
+
+        GetPathsResult getPathsResult = pathComputer.getProtectedPath(flow, Collections.emptyList());
+        assertNull(getPathsResult.getFailReasons());
+        assertNotNull(getPathsResult.getForward());
     }
 
     @Test

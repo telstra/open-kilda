@@ -17,53 +17,38 @@ package org.openkilda.messaging.payload.network;
 
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
-import lombok.Value;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.Setter;
+import lombok.experimental.FieldDefaults;
+import lombok.experimental.SuperBuilder;
 
 import java.time.Duration;
 import java.util.List;
 
-@Value
-@Builder
+@Data
+@SuperBuilder
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
+@AllArgsConstructor
+@FieldDefaults(level = AccessLevel.PACKAGE)
+@Setter(value = AccessLevel.PRIVATE)
 public class PathDto {
-    @JsonProperty("bandwidth")
-    private Long bandwidth;
+    Long bandwidth;
+    Long latency;
+    Long latencyNs;
+    Long latencyMs;
+    List<PathNodePayload> nodes;
+    Boolean isBackupPath;
+    ProtectedPathPayload protectedPath;
 
-    @JsonProperty("latency")
-    private Long latency;
-
-    @JsonProperty("latency_ns")
-    private Long latencyNs;
-
-    @JsonProperty("latency_ms")
-    private Long latencyMs;
-
-    @JsonProperty("nodes")
-    private List<PathNodePayload> nodes;
-
-    @JsonProperty("is_backup_path")
-    private Boolean isBackupPath;
-
-    public PathDto(Long bandwidth, Duration latency, List<PathNodePayload> nodes, Boolean isBackupPath) {
-        this(bandwidth, latency.toNanos(), latency.toNanos(), latency.toMillis(), nodes, isBackupPath);
-    }
-
-    @JsonCreator
-    public PathDto(@JsonProperty("bandwidth") Long bandwidth,
-                   @JsonProperty("latency") Long latency,
-                   @JsonProperty("latency_ns") Long latencyNs,
-                   @JsonProperty("latency_ms") Long latencyMs,
-                   @JsonProperty("nodes") List<PathNodePayload> nodes,
-                   @JsonProperty("is_backup_path") Boolean isBackupPath) {
-        this.bandwidth = bandwidth;
-        this.latency = latency;
-        this.latencyNs = latencyNs;
-        this.latencyMs = latencyMs;
-        this.nodes = nodes;
-        this.isBackupPath = isBackupPath;
+    public PathDto(Long bandwidth, Duration latency, List<PathNodePayload> nodes, Boolean isBackupPath,
+                   ProtectedPathPayload protectedPath) {
+        this(bandwidth, latency.toNanos(), latency.toNanos(), latency.toMillis(), nodes, isBackupPath,
+                protectedPath);
     }
 }
