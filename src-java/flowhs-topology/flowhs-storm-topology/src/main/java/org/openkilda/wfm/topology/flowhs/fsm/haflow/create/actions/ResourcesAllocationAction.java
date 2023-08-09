@@ -56,6 +56,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathBuilder;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -123,8 +125,11 @@ public class ResourcesAllocationAction extends
             stateMachine.setPathsBeenAllocated(true);
 
             HaFlow resultHaFlow = getHaFlow(haFlowId);
-            //TODO save history
-            //saveHistory(stateMachine, resultHaFlow);
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("HA-flow has been created")
+                    .withHaFlowDumpAfter(resultHaFlow));
+
             stateMachine.fireNext(context);
 
             // Notify about successful allocation.

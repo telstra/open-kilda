@@ -30,6 +30,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteContext
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -71,7 +73,7 @@ public class RevertPathsSwapAction extends
             log.debug("Swapping back the primary forward path {} with {}",
                     haFlow.getForwardPathId(), oldPrimaryForwardPathId != null ? oldPrimaryForwardPathId : NO_PATH);
             haFlow.setForwardPathId(oldPrimaryForwardPathId);
-            saveHistory(stateMachine, haFlow.getHaFlowId(), oldPrimaryForwardPathId);
+            saveHistory(stateMachine, oldPrimaryForwardPathId);
         }
 
         if (getReversePathId(stateMachine.getNewPrimaryPathIds()) != null) {
@@ -83,7 +85,7 @@ public class RevertPathsSwapAction extends
                     haFlow.getReversePathId(), oldPrimaryReversePathId != null ? oldPrimaryReversePathId : NO_PATH);
 
             haFlow.setReversePathId(oldPrimaryReversePathId);
-            saveHistory(stateMachine, haFlow.getHaFlowId(), oldPrimaryReversePathId);
+            saveHistory(stateMachine, oldPrimaryReversePathId);
         }
     }
 
@@ -101,7 +103,7 @@ public class RevertPathsSwapAction extends
                     haFlow.getProtectedForwardPathId(), oldForwardPathId != null ? oldForwardPathId : NO_PATH);
 
             haFlow.setProtectedForwardPathId(oldForwardPathId);
-            saveHistory(stateMachine, haFlow.getHaFlowId(), oldForwardPathId);
+            saveHistory(stateMachine, oldForwardPathId);
         }
 
         if (getReversePathId(stateMachine.getNewProtectedPathIds()) != null) {
@@ -112,7 +114,7 @@ public class RevertPathsSwapAction extends
             log.debug("Swapping back the protected reverse path {} with {}",
                     haFlow.getProtectedReversePathId(), oldReversePathId != null ? oldReversePathId : NO_PATH);
             haFlow.setProtectedReversePathId(oldReversePathId);
-            saveHistory(stateMachine, haFlow.getHaFlowId(), oldReversePathId);
+            saveHistory(stateMachine, oldReversePathId);
         }
     }
 
@@ -138,9 +140,14 @@ public class RevertPathsSwapAction extends
         }
     }
 
-    private void saveHistory(HaFlowRerouteFsm stateMachine, String haFlowId, PathId pathId) {
+    private void saveHistory(HaFlowRerouteFsm stateMachine, PathId pathId) {
         String pathName = pathId == null ? NO_PATH : format("the path %s", pathId);
-        stateMachine.saveActionToHistory("Ha-flow was reverted to old paths",
-                format("The ha-flow %s was updated with %s", haFlowId, pathName));
+
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction("Ha-flow has been reverted to old paths")
+                .withDescription(format("The HA-flow %s has been updated with %s",
+                        stateMachine.getHaFlowId(), pathName))
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
 }

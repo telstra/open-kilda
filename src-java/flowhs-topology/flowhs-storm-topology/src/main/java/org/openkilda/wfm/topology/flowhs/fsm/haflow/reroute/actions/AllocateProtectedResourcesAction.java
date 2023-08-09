@@ -122,7 +122,7 @@ public class AllocateProtectedResourcesAction extends
                         stateMachine.isIgnoreBandwidth());
                 log.debug("New protected paths have been created: {}", createdPaths);
 
-                saveAllocationActionWithDumpsToHistory(stateMachine, haFlow, PATHS_TYPE, createdPaths);
+                saveAllocationActionToHistory(stateMachine, haFlow, PATHS_TYPE, createdPaths);
             }
         } else {
             stateMachine.saveActionToHistory("Found the same protected path. Skipped creating of it");

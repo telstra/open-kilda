@@ -43,7 +43,6 @@ import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.messaging.payload.flow.FlowStatusDetails;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
-import org.openkilda.messaging.payload.history.FlowStatusTimestampsEntry;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto;
@@ -52,7 +51,6 @@ import org.openkilda.northbound.dto.v1.flows.PingOutput;
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput;
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
-import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatus;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2;
@@ -389,9 +387,6 @@ public abstract class FlowMapper {
     @Mapping(target = "flowId", source = "payload.flowId")
     @Mapping(target = "switchId", source = "payload.loopSwitchId")
     public abstract FlowLoopResponse toFlowLoopResponse(FlowResponse response);
-
-    @Mapping(target = "timestamp", source = "statusChangeTimestamp")
-    public abstract FlowHistoryStatus toFlowHistoryStatus(FlowStatusTimestampsEntry entry);
 
     public abstract FlowMirrorPointCreateRequest toFlowMirrorPointCreateRequest(String flowId,
                                                                                 FlowMirrorPointPayload payload);

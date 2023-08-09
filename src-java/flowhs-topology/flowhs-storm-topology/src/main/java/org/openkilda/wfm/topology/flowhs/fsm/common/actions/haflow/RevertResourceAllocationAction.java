@@ -15,12 +15,17 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow;
 
+import static java.lang.String.format;
+
 import org.openkilda.model.HaFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
+import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
@@ -55,9 +60,12 @@ public class RevertResourceAllocationAction<T extends HaFlowPathSwappingFsm<T, S
                     saveHistory(stateMachine, haFlow, resources);
                 });
 
-        removeFlowPaths(stateMachine.getNewPrimaryPathIds());
-        removeFlowPaths(stateMachine.getNewProtectedPathIds());
-        removeRejectedPaths(stateMachine.getRejectedSubPathsIds(), stateMachine.getRejectedHaPathsIds());
+        HistoryUpdateCarrier carrier = stateMachine.getCarrier();
+        String correlationId = stateMachine.getCommandContext().getCorrelationId();
+        removeFlowPaths(stateMachine.getNewPrimaryPathIds(), carrier, correlationId);
+        removeFlowPaths(stateMachine.getNewProtectedPathIds(), carrier, correlationId);
+        removeRejectedPaths(stateMachine.getRejectedSubPathsIds(), stateMachine.getRejectedHaPathsIds(),
+                carrier, correlationId);
 
         stateMachine.setNewPrimaryResources(null);
         stateMachine.setNewPrimaryPathIds(null);
@@ -66,7 +74,14 @@ public class RevertResourceAllocationAction<T extends HaFlowPathSwappingFsm<T, S
     }
 
     private void saveHistory(T stateMachine, HaFlow haFlow, HaFlowResources resources) {
-        // TODO save history https://github.com/telstra/open-kilda/issues/5169
-        // example org.openkilda.wfm.topology.flowhs.fsm.update.actions.RevertResourceAllocationAction
+        String correlationId = stateMachine.getCommandContext().getCorrelationId();
+
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(correlationId)
+                .withAction("HA-flow resources have been de-allocated")
+                .withDescription(format("The following resources for HA-flow %s have been de-allocated: %s",
+                            haFlow.getHaFlowId(), resources))
+                .withHaFlowId(haFlow.getHaFlowId())
+                .withHaFlowDumpAfter(haFlow));
     }
 }

@@ -29,6 +29,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapConte
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -59,8 +61,10 @@ public class RevertNewRulesAction extends HaFlowRuleManagerProcessingAction<
         installOldRules(stateMachine, haFlow, overlappingPathIds);
         removeNewRules(stateMachine, haFlow, overlappingPathIds);
 
-        stateMachine.saveActionToHistory(
-                "Commands for removing new rules and re-installing original ingress rule have been sent");
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction("Commands for removing new rules and re-installing original ingress rule have been sent")
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
 
     private void installOldRules(HaFlowPathSwapFsm stateMachine, HaFlow haFlow, Set<PathId> overlappingPathIds) {

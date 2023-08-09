@@ -24,6 +24,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -43,9 +45,13 @@ public class DeallocateResourcesAction extends
         stateMachine.getHaFlowResources().forEach(resources -> {
             transactionManager.doInTransaction(() ->
                     resourcesManager.deallocateHaFlowResources(resources));
-            stateMachine.saveActionToHistory("Flow resources were deallocated",
-                    format("The ha-flow resources for %s / %s were deallocated",
-                            resources.getForward().getPathId(), resources.getReverse().getPathId()));
+
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getHaFlowId())
+                    .withAction("Flow resources have been deallocated")
+                    .withDescription(format("The ha-flow resources for %s / %s have been deallocated",
+                            resources.getForward().getPathId(), resources.getReverse().getPathId()))
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         });
     }
 }

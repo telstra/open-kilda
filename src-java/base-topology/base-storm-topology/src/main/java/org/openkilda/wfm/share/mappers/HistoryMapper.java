@@ -39,8 +39,8 @@ import org.openkilda.model.history.FlowEventDump;
 import org.openkilda.model.history.FlowStatusView;
 import org.openkilda.model.history.PortEvent;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
+import org.openkilda.wfm.share.history.model.DumpType;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
-import org.openkilda.wfm.share.history.model.FlowDumpData.DumpType;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.PortEventData;
@@ -95,7 +95,7 @@ public abstract class HistoryMapper {
     public abstract FlowEventDump map(FlowDumpData dump);
 
     /**
-     * Note: you have to additionally set {@link org.openkilda.wfm.share.history.model.FlowDumpData.DumpType}
+     * Note: you have to additionally set {@link DumpType}
      * to the dump data.
      */
     public FlowDumpData map(Flow flow, FlowPath forward, FlowPath reverse, DumpType dumpType) {
@@ -106,7 +106,7 @@ public abstract class HistoryMapper {
     }
 
     /**
-     * Note: you have to additionally set {@link org.openkilda.wfm.share.history.model.FlowDumpData.DumpType}
+     * Note: you have to additionally set {@link DumpType}
      * to the dump data.
      */
     public FlowDumpData map(Flow flow, FlowResources resources, DumpType dumpType) {
@@ -202,7 +202,7 @@ public abstract class HistoryMapper {
     protected abstract FlowDumpPayload generatedMap(FlowEventDump dump);
 
     /**
-     * Note: you have to additionally set {@link org.openkilda.wfm.share.history.model.FlowDumpData.DumpType}
+     * Note: you have to additionally set {@link DumpType}
      * to the dump data.
      */
     @Mapping(source = "flow.srcSwitch.switchId", target = "sourceSwitch")

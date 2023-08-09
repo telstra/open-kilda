@@ -19,6 +19,9 @@ import org.openkilda.persistence.PersistenceArea;
 import org.openkilda.persistence.repositories.history.FlowEventActionRepository;
 import org.openkilda.persistence.repositories.history.FlowEventDumpRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventActionRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventDumpRepository;
+import org.openkilda.persistence.repositories.history.HaFlowEventRepository;
 import org.openkilda.persistence.repositories.history.PortEventRepository;
 
 import java.util.Arrays;
@@ -69,6 +72,10 @@ public final class RepositoryAreaBinding {
         binding.put(FlowEventDumpRepository.class, PersistenceArea.HISTORY);
         binding.put(FlowEventRepository.class, PersistenceArea.HISTORY);
         binding.put(PortEventRepository.class, PersistenceArea.HISTORY);
+
+        binding.put(HaFlowEventActionRepository.class, PersistenceArea.HISTORY);
+        binding.put(HaFlowEventDumpRepository.class, PersistenceArea.HISTORY);
+        binding.put(HaFlowEventRepository.class, PersistenceArea.HISTORY);
     }
 
     public PersistenceArea lookup(Repository<?> repository) {

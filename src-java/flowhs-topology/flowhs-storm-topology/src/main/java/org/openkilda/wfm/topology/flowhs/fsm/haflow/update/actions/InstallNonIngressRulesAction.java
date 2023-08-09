@@ -22,6 +22,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,14 +41,20 @@ public class InstallNonIngressRulesAction
         stateMachine.clearPendingAndRetriedAndFailedCommands();
 
         if (stateMachine.getNonIngressCommands().isEmpty()) {
-            stateMachine.saveActionToHistory("No need to install non ingress rules");
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getHaFlowId())
+                    .withAction("No need to install non ingress rules")
+                    .withHaFlowId(stateMachine.getHaFlowId()));
             stateMachine.fire(Event.RULES_INSTALLED);
         } else {
             stateMachine.getNonIngressCommands().values().forEach(request -> {
                 stateMachine.getCarrier().sendSpeakerRequest(request);
                 stateMachine.addPendingCommand(request.getCommandId(), request.getSwitchId());
             });
-            stateMachine.saveActionToHistory("Commands for installing non ingress ha-flow rules have been sent");
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getHaFlowId())
+                    .withAction("Commands for installing non-ingress HA-flow rules have been sent")
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         }
     }
 }

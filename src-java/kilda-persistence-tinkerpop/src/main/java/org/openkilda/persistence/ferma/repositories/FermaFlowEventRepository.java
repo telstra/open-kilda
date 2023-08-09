@@ -84,7 +84,7 @@ public class FermaFlowEventRepository extends FermaGenericRepository<FlowEvent, 
                         P.lte(InstantLongConverter.INSTANCE.toGraphProperty(timeTo)));
             }
             return traversal
-                    .order().by(FlowEventFrame.TIMESTAMP_PROPERTY, Order.decr)
+                    .order().by(FlowEventFrame.TIMESTAMP_PROPERTY, Order.desc)
                     .limit(maxCount);
         }).toListExplicit(FlowEventFrame.class).stream()
                 .sorted(Comparator.comparing(FlowEventFrame::getTimestamp))

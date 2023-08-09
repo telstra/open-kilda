@@ -20,13 +20,13 @@ import org.openkilda.model.history.FlowEventAction;
 import org.openkilda.model.history.FlowEventDump;
 import org.openkilda.persistence.hibernate.entities.EntityBase;
 import org.openkilda.persistence.hibernate.entities.JsonPayloadBase;
+import org.openkilda.persistence.hibernate.utils.UniqueKeyUtil;
 
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Delegate;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.hibernate.annotations.Type;
 
 import java.time.Instant;
@@ -87,7 +87,7 @@ public class HibernateFlowEvent extends EntityBase implements FlowEventData {
     }
 
     public void setTaskId(String value) {
-        taskIdUniqueKey = makeTaskIdUniqueKey(value);
+        taskIdUniqueKey = UniqueKeyUtil.makeTaskIdUniqueKey(value);
         taskId = value;
     }
 
@@ -127,10 +127,6 @@ public class HibernateFlowEvent extends EntityBase implements FlowEventData {
     public void addDump(HibernateFlowEventDump entry) {
         dumps.add(entry);
         entry.setEvent(this);
-    }
-
-    public static String makeTaskIdUniqueKey(String value) {
-        return String.format("%s:%x:sha256", DigestUtils.sha256Hex(value), value.length());
     }
 
     @Getter

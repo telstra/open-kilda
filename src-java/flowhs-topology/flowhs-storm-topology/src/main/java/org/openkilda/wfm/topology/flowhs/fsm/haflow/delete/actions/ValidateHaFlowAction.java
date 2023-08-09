@@ -24,7 +24,7 @@ import org.openkilda.model.HaFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.share.history.model.FlowEventData;
+import org.openkilda.wfm.share.history.model.HaFlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
@@ -32,6 +32,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -75,12 +76,18 @@ public class ValidateHaFlowAction extends
             return haFlow;
         });
 
-        stateMachine.saveNewEventToHistory("HA-flow was validated successfully", FlowEventData.Event.DELETE);
+        HaFlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
+                .haFlowId(stateMachine.getHaFlowId())
+                .action("HA-flow was validated successfully")
+                .taskId(stateMachine.getCommandContext().getCorrelationId())
+                .event(HaFlowEventData.Event.DELETE)
+                .build());
+
         return Optional.of(buildResponseMessage(resultHaFlow, stateMachine.getCommandContext()));
     }
 
     @Override
     protected String getGenericErrorMessage() {
-        return "Could not delete ha-flow";
+        return "Could not delete HA-flow";
     }
 }

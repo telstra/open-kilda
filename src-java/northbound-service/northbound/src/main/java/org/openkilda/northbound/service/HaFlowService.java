@@ -15,6 +15,7 @@
 
 package org.openkilda.northbound.service;
 
+import org.openkilda.messaging.payload.history.HaFlowHistoryEntry;
 import org.openkilda.northbound.dto.v2.haflows.HaFlow;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowDump;
@@ -32,7 +33,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * HaFlowService is for processing of HA-flow operations.
  */
-public interface HaFlowService {
+public interface HaFlowService extends FlowHistoryAware<HaFlowHistoryEntry> {
     CompletableFuture<HaFlow> createHaFlow(HaFlowCreatePayload createPayload);
 
     CompletableFuture<HaFlowDump> dumpHaFlows();

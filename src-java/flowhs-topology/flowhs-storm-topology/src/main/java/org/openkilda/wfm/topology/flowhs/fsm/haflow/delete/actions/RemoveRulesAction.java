@@ -36,6 +36,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -93,7 +95,10 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
                 commands, stateMachine.getCommandContext());
 
         if (deleteRequests.isEmpty()) {
-            stateMachine.saveActionToHistory("No requests to remove ha-flow rules");
+            HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                    .withTaskId(stateMachine.getHaFlowId())
+                    .withAction("Remove HA-flow rules has been invoked, but there are no delete requests")
+                    .withHaFlowId(stateMachine.getHaFlowId()));
             stateMachine.fire(Event.RULES_REMOVED);
         } else {
             // emitting
@@ -103,7 +108,10 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
                 stateMachine.addPendingCommand(request.getCommandId(), request.getSwitchId());
             });
 
-            stateMachine.saveActionToHistory("Commands for removing ha-flow rules have been sent");
+            HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                    .withTaskId(stateMachine.getHaFlowId())
+                    .withAction("Commands for removing ha-flow rules have been sent")
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         }
     }
 
