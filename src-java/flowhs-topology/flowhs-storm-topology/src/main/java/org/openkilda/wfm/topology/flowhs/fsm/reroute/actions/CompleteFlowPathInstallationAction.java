@@ -47,6 +47,7 @@ public class CompleteFlowPathInstallationAction extends
             FlowPathStatus primaryPathStatus;
             if (stateMachine.isIgnoreBandwidth() || stateMachine.isBackUpPrimaryPathComputationWayUsed()) {
                 primaryPathStatus = FlowPathStatus.DEGRADED;
+                stateMachine.setErrorReason("The primary path status is " + FlowPathStatus.DEGRADED);
             } else {
                 primaryPathStatus = FlowPathStatus.ACTIVE;
             }
@@ -67,6 +68,7 @@ public class CompleteFlowPathInstallationAction extends
             FlowPathStatus protectedPathStatus;
             if (stateMachine.isIgnoreBandwidth() || stateMachine.isBackUpProtectedPathComputationWayUsed()) {
                 protectedPathStatus = FlowPathStatus.DEGRADED;
+                stateMachine.setErrorReason("The protected path status is " + FlowPathStatus.DEGRADED);
             } else {
                 protectedPathStatus = FlowPathStatus.ACTIVE;
             }
