@@ -45,10 +45,12 @@ public class OpenTsdbFilterBolt extends BaseRichBolt {
 
     private Map<DatapointKey, Datapoint> storage = new HashMap<>();
     private OutputCollector collector;
+    private int count = 0;
 
     @Override
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         this.collector = collector;
+        this.count = 0;
     }
     
     @Override
@@ -80,16 +82,20 @@ public class OpenTsdbFilterBolt extends BaseRichBolt {
         }
 
         Datapoint datapoint = (Datapoint) tuple.getValueByField("datapoint");
-        if (datapoint.getValue().longValue() % 10_000 == 0) {
-            LOGGER.error("OTSDBTEST got datapoint number " + datapoint.getValue());
-        }
-        if (isUpdateRequired(datapoint)) {
-            addDatapoint(datapoint);
-
-            LOGGER.debug("emit datapoint: {}", datapoint);
-            collector.emit(tuple, makeDefaultTuple(datapoint));
+        if (datapoint.getValue().longValue() == 12345) {
+            if (count % 10_000 == 0) {
+                LOGGER.error("OTSDBTEST got datapoint number " + count);
+            }
+            count++;
         } else {
-            LOGGER.debug("skip datapoint: {}", datapoint);
+            if (isUpdateRequired(datapoint)) {
+                addDatapoint(datapoint);
+
+                LOGGER.debug("emit datapoint: {}", datapoint);
+                collector.emit(tuple, makeDefaultTuple(datapoint));
+            } else {
+                LOGGER.debug("skip datapoint: {}", datapoint);
+            }
         }
 
         collector.ack(tuple);
