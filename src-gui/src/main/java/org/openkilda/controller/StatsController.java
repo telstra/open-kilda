@@ -89,8 +89,8 @@ public class StatsController {
     /**
      * Gets the isl stats.
      *
-     * @param startDate the start date
-     * @param endDate the end date
+     * @param startDate  the start date
+     * @param endDate    the end date
      * @param downsample the downsample
      * @return the flow stats
      */
@@ -114,10 +114,10 @@ public class StatsController {
     /**
      * Gets the port stats.
      *
-     * @param switchid the switchid
-     * @param port the port
-     * @param startDate the start date
-     * @param endDate the end date
+     * @param switchid   the switchid
+     * @param port       the port
+     * @param startDate  the start date
+     * @param endDate    the end date
      * @param downsample the downsample
      * @return the port stats
      */
@@ -138,9 +138,9 @@ public class StatsController {
     /**
      * Gets the flow stats.
      *
-     * @param flowid the flowid
-     * @param startDate the start date
-     * @param endDate the end date
+     * @param flowid     the flowid
+     * @param startDate  the start date
+     * @param endDate    the end date
      * @param downsample the downsample
      * @return the flow stats
      */
@@ -227,14 +227,14 @@ public class StatsController {
     /**
      * Gets the switch isl loss packet stats.
      *
-     * @param srcSwitch the src switch
-     * @param srcPort the src port
-     * @param dstSwitch the dst switch
-     * @param dstPort the dst port
-     * @param startDate the start date
-     * @param endDate the end date
+     * @param srcSwitch  the src switch
+     * @param srcPort    the src port
+     * @param dstSwitch  the dst switch
+     * @param dstPort    the dst port
+     * @param startDate  the start date
+     * @param endDate    the end date
      * @param downsample the downsample
-     * @param metric the metric
+     * @param metric     the metric
      * @return the isl loss packet stats
      */
     @RequestMapping(value =
@@ -256,11 +256,11 @@ public class StatsController {
     /**
      * Gets the flow loss packet stats.
      *
-     * @param flowid the flowid
-     * @param startDate the start date
-     * @param endDate the end date
+     * @param flowid     the flowid
+     * @param startDate  the start date
+     * @param endDate    the end date
      * @param downsample the downsample
-     * @param direction the direction
+     * @param direction  the direction
      * @return the flow loss packet stats
      */
     @RequestMapping(value = "flow/losspackets/{flowid}/{startDate}/{endDate}/{downsample}/{direction}",
@@ -295,9 +295,9 @@ public class StatsController {
     /**
      * Gets the switch ports stats.
      *
-     * @param switchid the switchid
-     * @param startDate the start date
-     * @param endDate the end date
+     * @param switchid   the switchid
+     * @param startDate  the start date
+     * @param endDate    the end date
      * @param downsample the downsample
      * @return the switch ports stats
      */
@@ -317,12 +317,12 @@ public class StatsController {
     /**
      * Gets the meter stats.
      *
-     * @param flowid the flowid
-     * @param startDate the start date
-     * @param endDate the end date
+     * @param flowid     the flowid
+     * @param startDate  the start date
+     * @param endDate    the end date
      * @param downsample the downsample
-     * @param direction the direction
-     * @param metric the metric
+     * @param direction  the direction
+     * @param metric     the metric
      * @return the meter stats
      */
     @RequestMapping(value = "meter/{flowid}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
