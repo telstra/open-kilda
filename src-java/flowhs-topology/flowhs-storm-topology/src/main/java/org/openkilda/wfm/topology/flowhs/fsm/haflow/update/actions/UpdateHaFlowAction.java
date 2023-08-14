@@ -26,7 +26,6 @@ import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.error.FlowNotFoundException;
-import org.openkilda.wfm.share.history.model.HaFlowEventData;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
@@ -58,7 +57,6 @@ public class UpdateHaFlowAction extends
             HaFlow haFlow = getHaFlow(haFlowId);
 
             log.debug("Updating the flow {} with properties: {}", haFlowId, targetHaFlow);
-            saveNewEventInHistory(stateMachine, haFlow);
 
             // Complete target ha-flow in FSM with values from original ha-flow
             stateMachine.setTargetHaFlow(updateFlow(haFlow, targetHaFlow));
@@ -129,14 +127,5 @@ public class UpdateHaFlowAction extends
 
     protected String getGenericErrorMessage() {
         return "Couldn't update HA-flow";
-    }
-
-    private void saveNewEventInHistory(HaFlowUpdateFsm stateMachine, HaFlow haFlow) {
-        HaFlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .action("Update HA-flow")
-                .event(HaFlowEventData.Event.UPDATE)
-                .haFlowId(stateMachine.getHaFlowId())
-                .build());
     }
 }
