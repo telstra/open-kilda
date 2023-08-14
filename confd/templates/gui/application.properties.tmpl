@@ -39,6 +39,8 @@ nb.base.url={{ getv "/kilda_northbound_endpoint" }}:{{ getv "/kilda_northbound_r
 opentsdb.base.url=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
 opentsdb.metric.prefix = {{ getv "/kilda_opentsdb_metric_prefix" }}
 
+#VICTORIA METRICS Base URL and metric prefix
+victoria.base.url=http://{{ getv "/kilda_victoriametrics_host" }}:{{ getv "/kilda_victoriametrics_gui_port" }}/prometheus
 
 #Kilda username and password
 kilda.username = {{ getv "/kilda_northbound_username" }}

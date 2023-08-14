@@ -1,9 +1,9 @@
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
-import { Observable, Subject, BehaviorSubject } from 'rxjs';
-import { catchError } from 'rxjs/operators';
-import * as moment from 'moment';
+import { Injectable } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import { environment } from "../../../environments/environment";
+import { Observable, Subject, BehaviorSubject } from "rxjs";
+import {FlowMetricTsdb} from '../data-models/flowMetricTsdb';
+import {VictoriaData} from '../data-models/flowMetricVictoria';
 
 
 @Injectable({
@@ -11,12 +11,8 @@ import * as moment from 'moment';
 })
 export class DygraphService {
   numOperator: number;
-
-  private flowPathGraphSource = new Subject<any>(); /*  */
   private flowGraphSource = new Subject<any>();
   private meterGraphSource = new Subject<any>();
-
-
 
   private metrices = [
     'bits:Bits/sec',
@@ -29,8 +25,6 @@ export class DygraphService {
     'overerror:Overruns',
     'crcerror:CRC Errors'
   ];
-
-  flowPathGraph = this.flowPathGraphSource.asObservable();
   flowGraph = this.flowGraphSource.asObservable();
   meterGraph = this.meterGraphSource.asObservable();
 
@@ -120,12 +114,7 @@ export class DygraphService {
     }
 
   }
-
-  changeFlowPathGraphData(pathGraphData) {
-    this.flowPathGraphSource.next(pathGraphData);
-  }
-
-  changeMeterGraphData(graphData) {
+  changeMeterGraphData(graphData){
     this.meterGraphSource.next(graphData);
   }
 
@@ -185,31 +174,90 @@ export class DygraphService {
     ];
   }
 
-  constructGraphData(data, jsonResponse, startDate, endDate, timezone) {
+  constructVictoriaGraphData(victoriaDataArr: VictoriaData[], startDate: string, endDate: string, timezone: string) {
     this.numOperator = 0;
-    let metric1 = '';
-    let metric2 = '';
-    const direction1 = '';
-    const direction2 = '';
-    let labels = ['Time', 'X', 'Y'];
-    const graphData = [];
-    if (typeof startDate !== 'undefined' && startDate != null) {
-      const dat = new Date(startDate);
-      let startTime = dat.getTime();
-      const usedDate = new Date();
+    let fwdMetricDirectionLbl: string;
+    let rvsMetricDirectionlbl: string;
+    let labels: string[];
+    const graphData: any[] = [];
 
-      if (typeof timezone !== 'undefined' && timezone == 'UTC') {
-        startTime = startTime - (usedDate.getTimezoneOffset() * 60 * 1000);
-      }
-      const arr = [new Date(startTime)];
-      if (data && data.length) {
-        for (let i = 0; i < data.length; i++) {
-          arr.push(null);
+    const addNullsToArray = (array: any[], count: number) => {
+      const nulls = new Array(count).fill(null);
+      return [...array, ...nulls];
+    };
+
+    // Handle start date
+    const startTime = this.parseDate(startDate, timezone === 'UTC' ? new Date().getTimezoneOffset() : 0);
+    if (startTime !== null) {
+      graphData.push([startTime, ...addNullsToArray([], victoriaDataArr.length || 2)]);
+    }
+
+    const fwdTimeToValueMap = victoriaDataArr[0] && victoriaDataArr[0].timeToValue ? victoriaDataArr[0].timeToValue : {};
+    const fwdTimeStamps = Object.keys(fwdTimeToValueMap);
+    const rvsTimeToValueMap = victoriaDataArr[1] && victoriaDataArr[1].timeToValue ? victoriaDataArr[1].timeToValue : {};
+    const rvsTimeStamps = Object.keys(rvsTimeToValueMap);
+    fwdMetricDirectionLbl = victoriaDataArr[0] &&  victoriaDataArr[0].tags.direction
+        ? `${victoriaDataArr[0].metric}(${victoriaDataArr[0].tags.direction})` : victoriaDataArr[0] ? victoriaDataArr[0].metric : '';
+    rvsMetricDirectionlbl = victoriaDataArr[1] && victoriaDataArr[1].tags.direction
+        ? `${victoriaDataArr[1].metric}(${victoriaDataArr[1].tags.direction})` : victoriaDataArr[1] ? victoriaDataArr[1].metric : '';
+
+    const timeStamps = [...fwdTimeStamps, ...rvsTimeStamps].filter((v, i, a) => a.indexOf(v) === i).sort();
+
+    if (timeStamps.length <= 0) {
+      fwdMetricDirectionLbl = 'F';
+      rvsMetricDirectionlbl = 'R';
+    } else {
+      for (const timeStamp of timeStamps) {
+        this.numOperator = parseInt(timeStamp, 10);
+        let fwdValue = fwdTimeToValueMap[timeStamp] !== undefined ? fwdTimeToValueMap[timeStamp] : null;
+        let rvsValue = rvsTimeToValueMap[timeStamp] !== undefined ? rvsTimeToValueMap[timeStamp] : null;
+
+        if (fwdValue !== null && fwdValue < 0) {
+          fwdValue = 0;
         }
-      } else {
-        arr.push(null); arr.push(null);
+
+        if (rvsValue !== null && rvsValue < 0) {
+          rvsValue = 0;
+        }
+
+        const tmpArr = [new Date(this.numOperator * 1000), fwdValue];
+
+        if (rvsTimeStamps.length > 0) {
+          tmpArr.push(rvsValue);
+        }
+
+        graphData.push(tmpArr);
+        this.numOperator++;
       }
-      graphData.push(arr);
+    }
+
+    labels = [ 'Time', fwdMetricDirectionLbl, rvsMetricDirectionlbl ];
+
+    // Handle end date
+    const endTime = this.parseDate(endDate, timezone === 'UTC' ? graphData[graphData.length - 1][0].getTimezoneOffset() : 0);
+    if (endTime !== null) {
+      graphData.push([endTime, ...addNullsToArray([], victoriaDataArr.length || 2)]);
+    }
+
+    return { data: graphData, labels: labels };
+  }
+
+  constructGraphData(data: FlowMetricTsdb[], jsonResponse: boolean, startDate: string, endDate: string, timezone: string) {
+    this.numOperator = 0;
+    let metric1: string;
+    let metric2: string;
+    let labels: string[];
+    const graphData: any[] = [];
+
+    const addNullsToArray = (array: any[], count: number) => {
+      const nulls = new Array(count).fill(null);
+      return [...array, ...nulls];
+    };
+
+    // Handle start date
+    const startTime = this.parseDate(startDate, timezone === 'UTC' ? new Date().getTimezoneOffset() : 0);
+    if (startTime !== null) {
+      graphData.push([startTime, ...addNullsToArray([], data.length || 2)]);
     }
 
     if (!jsonResponse) {
@@ -223,112 +271,81 @@ export class DygraphService {
         rDps = Object.keys(rDpsObject);
         metric2 = data[1].metric;
 
-        if (data[1].tags.direction) {
-          metric2 = data[1].metric + '(' + data[1].tags.direction + ')';
-        }
-        if (data[0].tags.direction) {
-          metric1 = data[0].metric + '(' + data[0].tags.direction + ')';
-        }
-      }
+      const graphDps = [...fDps, ...rDps].filter((v, i, a) => a.indexOf(v) === i).sort();
 
-      fDps = Object.keys(fDpsObject);
-      let graphDps = fDps.concat(rDps);
-      graphDps.sort();
-      graphDps = graphDps.filter((v, i, a) => a.indexOf(v) === i);
-
-      if (graphDps.length <= 0 ) {
+      if (graphDps.length <= 0) {
         metric1 = 'F';
         metric2 = 'R';
       } else {
+        for (const i of graphDps) {
+          this.numOperator = parseInt(i, 10);
+          let fDpsValue = fDpsObject[i] !== undefined ? fDpsObject[i] : null;
+          let rDpsValue = rDpsObject[i] !== undefined ? rDpsObject[i] : null;
 
-        for (let index = 0; index < graphDps.length; index++) {
-          const i = graphDps[index];
-          this.numOperator = parseInt(i);
-          if (fDpsObject[i] == null || typeof fDpsObject[i] == 'undefined') {
-            fDpsObject[i] = null;
-          } else if (fDpsObject[i] < 0) {
-            fDpsObject[i] = 0;
+          if (fDpsValue !== null && fDpsValue < 0) {
+            fDpsValue = 0;
           }
 
-          const temparr = [];
-          temparr[0] = new Date(Number(this.numOperator * 1000));
-          temparr[1] = fDpsObject[i];
-          if (data.length == 2) {
-            if (rDpsObject[i] == null || typeof rDpsObject[i] == 'undefined') {
-              rDpsObject[i] = null;
-            } else if (rDpsObject[i] < 0) {
-              rDpsObject[i] = 0;
-            }
-            temparr[2] = rDpsObject[i];
+          if (rDpsValue !== null && rDpsValue < 0) {
+            rDpsValue = 0;
           }
+
+          const temparr = [new Date(this.numOperator * 1000), fDpsValue];
+
+          if (rDps.length > 0) {
+            temparr.push(rDpsValue);
+          }
+
           graphData.push(temparr);
           this.numOperator++;
         }
       }
-      if (metric1 && metric2) {
-        labels = ['Time', metric1, metric2];
-      } else if (metric1) {
-        labels = ['Time', metric1];
-      } else {
-        labels = ['Time', metric2];
-      }
+
+      labels = [ 'Time', metric1, metric2 ];
     } else {
       metric1 = 'F';
       metric2 = 'R';
-      labels = ['Time', metric1, metric2];
+      labels = [ 'Time', metric1, metric2 ];
     }
 
-    if (typeof endDate !== 'undefined' && endDate != null) {
-      const dat = new Date(endDate);
-      let lastTime = dat.getTime();
-      const usedDate =
-        graphData && graphData.length
-          ? new Date(graphData[graphData.length - 1][0])
-          : new Date();
-      if (typeof timezone !== 'undefined' && timezone == 'UTC') {
-        lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
-      }
-      const arr = [new Date(lastTime)];
-      if (data && data.length) {
-        for (let i = 0; i < data.length; i++) {
-          arr.push(null);
-        }
-      } else {
-        arr.push(null); arr.push(null);
-      }
-      graphData.push(arr);
+    // Handle end date
+    const endTime = this.parseDate(endDate, timezone === 'UTC' ? graphData[graphData.length - 1][0].getTimezoneOffset() : 0);
+    if (endTime !== null) {
+      graphData.push([endTime, ...addNullsToArray([], data.length || 2)]);
     }
+
     return { data: graphData, labels: labels };
   }
 
 
+
   getColorCode(j, arr) {
-    const chars = '0123456789ABCDE'.split('');
-    let hex = '#';
-    for (let i = 0; i < 6; i++) {
+    var chars = "0123456789ABCDE".split("");
+    var hex = "#";
+    for (var i = 0; i < 6; i++) {
       hex += chars[Math.floor(Math.random() * 14)];
     }
-    const colorCode = hex;
+    var colorCode = hex;
     if (arr.indexOf(colorCode) < 0) {
       return colorCode;
     } else {
       this.getColorCode(j, arr);
     }
   }
-  getCookieBasedData(data, type) {
-    const constructedData = {};
-    for (let i = 0; i < data.length; i++) {
-       const cookieId = data[i].tags && data[i].tags['cookie'] ? data[i].tags['cookie'] : null;
-       if (cookieId) {
-         const keyArray = Object.keys(constructedData);
-         if (keyArray.indexOf(cookieId) > -1) {
+  getCookieBasedData(data,type) {
+    var constructedData = {};
+    for(var i=0; i < data.length; i++){
+       var cookieId = data[i].tags && data[i].tags['cookie'] ? data[i].tags['cookie']: null;
+       if(cookieId){
+         var keyArray = Object.keys(constructedData);
+         if(keyArray.indexOf(cookieId) > -1){
            constructedData[cookieId].push(data[i]);
-         } else {
-           if (type == 'forward' && cookieId.charAt(0) == '4') {
-             constructedData[cookieId] = [];
+         }else{
+           if(type == 'forward' && cookieId.charAt(0) == '4'){
+             constructedData[cookieId]=[];
              constructedData[cookieId].push(data[i]);
-           } else if (type == 'reverse' && cookieId.charAt(0) == '2' ) {
-             constructedData[cookieId] = [];
+           }else if(type == 'reverse' && cookieId.charAt(0) == '2' ){
+             constructedData[cookieId]=[];
              constructedData[cookieId].push(data[i]);
            }
          }
@@ -338,14 +355,14 @@ export class DygraphService {
      return constructedData;
   }
 
-  getCookieDataforFlowStats(data, type) {
-    const constructedData = [];
-    for (let i = 0; i < data.length; i++) {
-       const cookieId = data[i].tags && data[i].tags['cookie'] ? data[i].tags['cookie'] : null;
-       if (cookieId) {
-           if (type == 'forward' && cookieId.charAt(0) == '4') {
+  getCookieDataforFlowStats(data,type) {
+    var constructedData = [];
+    for(var i=0; i < data.length; i++){
+       var cookieId = data[i].tags && data[i].tags['cookie'] ? data[i].tags['cookie']: null;
+       if(cookieId){
+           if(type == 'forward' && cookieId.charAt(0) == '4'){
              constructedData.push(data[i]);
-           } else if (type == 'reverse' && cookieId.charAt(0) == '2' ) {
+           }else if(type == 'reverse' && cookieId.charAt(0) == '2' ){
              constructedData.push(data[i]);
            }
         }
@@ -353,26 +370,120 @@ export class DygraphService {
      return constructedData;
   }
 
-  computeMeterGraphData(data, startDate, endDate, timezone) {
-    const maxtrixArray = [];
+  private parseDate(date: string, offset: number): Date | null {
+    if (date !== undefined && date !== null) {
+      const parsedDate = new Date(date);
+      const time = parsedDate.getTime() - (offset * 60 * 1000);
+      return new Date(time);
+    }
+    return null;
+  }
+
+  constructVictoriaMeterGraphData(victoriaDataArr: VictoriaData[], startDate, endDate, timezone) {
+    let arr;
+    const graphData = [];
     const labels = ['Date'];
     const color = [];
     const meterChecked = {};
-    if (typeof startDate !== 'undefined' && startDate != null) {
-      const dat = new Date(startDate);
-      let startTime = dat.getTime();
-      const usedDate = new Date();
-      if (typeof timezone !== 'undefined' && timezone == 'UTC') {
-        startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
+
+    const startTime = this.parseDate(startDate, timezone === 'UTC' ? new Date().getTimezoneOffset() : 0);
+    if (startTime !== null) {
+      arr = [new Date(startTime)];
+      if (victoriaDataArr && victoriaDataArr.length) {
+        for (let j = 0; j < victoriaDataArr.length; j++) {
+          arr.push(null);
+        }
       }
-      const arr = [new Date(startTime)];
+      graphData.push(arr);
+    }
+
+    /** process graph data */
+
+    if (victoriaDataArr) {
+      if (victoriaDataArr.length > 0) {
+
+        /**getting all unique dps timestamps */
+        let timestampArray = [];
+        const dpsArray= [];
+        for (let j = 0; j < victoriaDataArr.length; j++) {
+          const dataValues = typeof victoriaDataArr[j] !== 'undefined' ? victoriaDataArr[j].timeToValue : null;
+
+          let metric = typeof victoriaDataArr[j] !== 'undefined' ? victoriaDataArr[j].metric : '';
+          metric = metric + '(switchid=' + victoriaDataArr[j].tags.switchid + ', meterid=' + victoriaDataArr[j].tags['meterid'] + ')';
+          labels.push(metric);
+          let colorCode = this.getColorCode(j, color);
+          if (meterChecked && typeof(meterChecked[victoriaDataArr[j].tags['meterid']]) !== 'undefined'
+              && typeof(meterChecked[victoriaDataArr[j].tags['meterid']][victoriaDataArr[j].tags.switchid]) !== 'undefined') {
+            colorCode = meterChecked[victoriaDataArr[j].tags['meterid']][victoriaDataArr[j].tags.switchid];
+            color.push(colorCode);
+          } else {
+            if (meterChecked && typeof(meterChecked[victoriaDataArr[j].tags['meterid']]) !== 'undefined') {
+              meterChecked[victoriaDataArr[j].tags['meterid']][victoriaDataArr[j].tags.switchid] = colorCode;
+              color.push(colorCode);
+            } else {
+              meterChecked[victoriaDataArr[j].tags['meterid']] = [];
+              meterChecked[victoriaDataArr[j].tags['meterid']][victoriaDataArr[j].tags.switchid] = colorCode;
+              color.push(colorCode);
+            }
+
+          }
+          if (dataValues) {
+            timestampArray = timestampArray.concat(Object.keys(dataValues));
+            dpsArray.push(dataValues);
+          }
+
+        }
+
+        timestampArray = Array.from(new Set(timestampArray)); /**Extracting unique timestamps */
+        timestampArray.sort();
+
+        for (let m = 0; m < timestampArray.length; m++) {
+          const row =[];
+          for (let n = 0; n < dpsArray.length; n++) {
+            if (typeof dpsArray[n][timestampArray[m]] != 'undefined') {
+              row.push(dpsArray[n][timestampArray[m]]);
+            } else {
+              row.push(null);
+            }
+          }
+          row.unshift(new Date(Number(parseInt(timestampArray[m], 10) * 1000)));
+          graphData.push(row);
+        }
+      }
+    }
+
+    const endTime = this.parseDate(endDate, timezone === 'UTC' ? graphData[graphData.length - 1][0].getTimezoneOffset() : 0);
+    if (endTime !== null) {
+      arr = [new Date(endTime)];
+      if (victoriaDataArr && victoriaDataArr.length) {
+        for (let j = 0; j < victoriaDataArr.length; j++) {
+          arr.push(null);
+        }
+      }
+      graphData.push(arr);
+    }
+
+    return { labels: labels, data: graphData, color: color };
+  }
+
+  constructMeterGraphData(data: FlowMetricTsdb[], startDate, endDate, timezone) {
+    let arr;
+    const graphData = [];
+    const labels = ['Date'];
+    const color = [];
+    const meterChecked = {};
+
+    const startTime = this.parseDate(startDate, timezone === 'UTC' ? new Date().getTimezoneOffset() : 0);
+    if (startTime !== null) {
+      arr = [new Date(startTime)];
       if (data && data.length) {
         for (let j = 0; j < data.length; j++) {
           arr.push(null);
         }
       }
-      maxtrixArray.push(arr);
+      graphData.push(arr);
     }
+
     /** process graph data */
 
     if (data) {
@@ -385,35 +496,35 @@ export class DygraphService {
           const dataValues = typeof data[j] !== 'undefined' ? data[j].dps : null;
 
           let metric = typeof data[j] !== 'undefined' ? data[j].metric : '';
-            metric = metric + '(switchid=' + data[j].tags.switchid + ', meterid=' + data[j].tags['meterid'] + ')';
-            labels.push(metric);
-            let colorCode = this.getColorCode(j, color);
-            if (meterChecked && typeof(meterChecked[data[j].tags['meterid']]) != 'undefined' && typeof(meterChecked[data[j].tags['meterid']][data[j].tags.switchid]) != 'undefined') {
-              colorCode = meterChecked[data[j].tags['meterid']][data[j].tags.switchid];
+          metric = metric + '(switchid=' + data[j].tags.switchid + ', meterid=' + data[j].tags['meterid'] + ')';
+          labels.push(metric);
+          let colorCode = this.getColorCode(j, color);
+          if (meterChecked && typeof(meterChecked[data[j].tags['meterid']]) != 'undefined' && typeof(meterChecked[data[j].tags['meterid']][data[j].tags.switchid]) != 'undefined') {
+            colorCode = meterChecked[data[j].tags['meterid']][data[j].tags.switchid];
+            color.push(colorCode);
+          } else {
+            if (meterChecked && typeof(meterChecked[data[j].tags['meterid']]) != 'undefined') {
+              meterChecked[data[j].tags['meterid']][data[j].tags.switchid] = colorCode;
               color.push(colorCode);
             } else {
-              if (meterChecked && typeof(meterChecked[data[j].tags['meterid']]) != 'undefined') {
-                meterChecked[data[j].tags['meterid']][data[j].tags.switchid] = colorCode;
-                color.push(colorCode);
-              } else {
-                meterChecked[data[j].tags['meterid']] = [];
-                meterChecked[data[j].tags['meterid']][data[j].tags.switchid] = colorCode;
-                color.push(colorCode);
-              }
+              meterChecked[data[j].tags['meterid']] = [];
+              meterChecked[data[j].tags['meterid']][data[j].tags.switchid] = colorCode;
+              color.push(colorCode);
+            }
 
-            }
-            if (dataValues) {
-              timestampArray = timestampArray.concat(Object.keys(dataValues));
-              dpsArray.push(dataValues);
-            }
+          }
+          if (dataValues) {
+            timestampArray = timestampArray.concat(Object.keys(dataValues));
+            dpsArray.push(dataValues);
+          }
 
         }
 
         timestampArray = Array.from(new Set(timestampArray)); /**Extracting unique timestamps */
         timestampArray.sort();
 
-        for (let m = 0; m < timestampArray.length; m++) {
-          const row = [];
+        for (let m = 0; m< timestampArray.length; m++) {
+          const row =[];
           for (let n = 0; n < dpsArray.length; n++) {
             if (typeof dpsArray[n][timestampArray[m]] != 'undefined') {
               row.push(dpsArray[n][timestampArray[m]]);
@@ -421,34 +532,24 @@ export class DygraphService {
               row.push(null);
             }
           }
-          row.unshift(new Date(Number(parseInt(timestampArray[m]) * 1000)));
-          maxtrixArray.push(row);
+          row.unshift(new Date(Number(parseInt(timestampArray[m], 10) * 1000)));
+          graphData.push(row);
         }
       }
     }
 
-
-    if (typeof endDate !== 'undefined' && endDate != null) {
-      const dat = new Date(endDate);
-      let lastTime = dat.getTime();
-      const usedDate =
-      maxtrixArray && maxtrixArray.length
-          ? new Date(maxtrixArray[maxtrixArray.length - 1][0])
-          : new Date();
-      if (typeof timezone !== 'undefined' && timezone == 'UTC') {
-        lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
-      }
-      const arr = [new Date(lastTime)];
+    const endTime = this.parseDate(endDate, timezone === 'UTC' ? graphData[graphData.length - 1][0].getTimezoneOffset() : 0);
+    if (endTime !== null) {
+      arr = [new Date(endTime)];
       if (data && data.length) {
         for (let j = 0; j < data.length; j++) {
           arr.push(null);
         }
       }
-
-      maxtrixArray.push(arr);
+      graphData.push(arr);
     }
 
-    return { labels: labels, data: maxtrixArray, color: color };
+    return { labels: labels, data: graphData, color: color };
   }
   computeFlowPathGraphData(data, startDate, endDate, type, timezone, loadfromcookie) {
     const maxtrixArray = [];
