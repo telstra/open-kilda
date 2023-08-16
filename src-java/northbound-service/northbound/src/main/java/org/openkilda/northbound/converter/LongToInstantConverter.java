@@ -26,7 +26,16 @@ public final class LongToInstantConverter {
 
     /**
      * Converts Linux epoch seconds or milliseconds to an Instant object.
-     * @param timeAsLong non-null value that represents a Linux epoch time in seconds or milliseconds
+     * <p>
+     * When the input has 10 digits in magnitude (so log base 10 of this number is less than 10),
+     * we assume that this is epoch time in seconds, e.g. 1692183083
+     * When the input has more than 10 digits in magnitude (so log base 10 of this number is greater
+     * than 10), we assume that this is epoch time in milliseconds, e.g. 1692183083123. </p>
+     * <p>
+     * For the inputs 1692183083 and 1692183083000, this method produces equal Instant representations.
+     * </p>
+     * It is assumed that the input time will be some point in 21st century.
+     * @param timeAsLong non-null value that represents Linux epoch time in seconds or milliseconds
      * @return an Instant object
      */
     public static Instant convert(Long timeAsLong) {
