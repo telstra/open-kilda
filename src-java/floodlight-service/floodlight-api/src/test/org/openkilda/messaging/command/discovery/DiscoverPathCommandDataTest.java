@@ -15,15 +15,12 @@
 
 package org.openkilda.messaging.command.discovery;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.messaging.command.Constants.inputPort;
 import static org.openkilda.messaging.command.Constants.switchId;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 
-import org.openkilda.messaging.command.discovery.DiscoverPathCommandData;
-
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class DiscoverPathCommandDataTest {
     @Test
@@ -31,8 +28,8 @@ public class DiscoverPathCommandDataTest {
         final DiscoverPathCommandData data = new DiscoverPathCommandData();
         data.setSrcPortNo(inputPort);
         String dataString = data.toString();
-        assertNotNull(dataString);
-        assertFalse(dataString.isEmpty());
+        Assertions.assertNotNull(dataString);
+        Assertions.assertFalse(dataString.isEmpty());
     }
 
     @Test

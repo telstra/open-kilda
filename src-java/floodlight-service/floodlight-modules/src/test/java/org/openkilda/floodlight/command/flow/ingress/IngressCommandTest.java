@@ -27,9 +27,9 @@ import org.openkilda.model.MeterConfig;
 import org.openkilda.model.cookie.Cookie;
 
 import org.easymock.EasyMock;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -37,14 +37,14 @@ abstract class IngressCommandTest extends AbstractSpeakerCommandTest {
     protected static IngressFlowModFactory flowModFactoryMock = EasyMock.createStrictMock(IngressFlowModFactory.class);
 
     @Override
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
         EasyMock.reset(flowModFactoryMock);
     }
 
     @Override
-    @After
+    @AfterEach
     public void tearDown() {
         EasyMock.verify(flowModFactoryMock);
         super.tearDown();
@@ -102,8 +102,8 @@ abstract class IngressCommandTest extends AbstractSpeakerCommandTest {
     }
 
     private IngressFlowModFactory extractFlowModFactory(IngressFlowSegmentBase command) {
-        if (! (command instanceof IFlowModFactoryOverride)) {
-            Assert.fail();
+        if (!(command instanceof IFlowModFactoryOverride)) {
+            Assertions.fail();
         }
         return ((IFlowModFactoryOverride) command).getRealFlowModFactory();
     }

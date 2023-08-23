@@ -17,12 +17,12 @@ package org.openkilda.persistence.ferma.repositories;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static java.util.Arrays.asList;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildHaFlow;
 import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildHaFlowPath;
 import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildHaSubFlow;
@@ -57,8 +57,8 @@ import org.openkilda.persistence.repositories.YFlowRepository;
 
 import com.google.common.collect.Sets;
 import org.hamcrest.Matchers;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -101,7 +101,7 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
     Switch switchC;
     Flow flow;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         flowRepository = repositoryFactory.createFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
@@ -460,7 +460,7 @@ public class FermaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         assertTrue(pathIds.contains(flowA.getForwardPathId()));
         assertTrue(pathIds.contains(flowA.getReversePathId()));
     }
-    
+
     @Test
     public void findPathIdsByFlowDiverseGroupIdTest() {
         Flow flowA = createFlow(TEST_FLOW_ID_1, switchA, switchB, GROUP_1, null);

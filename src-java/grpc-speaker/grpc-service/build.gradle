@@ -60,7 +60,7 @@ dependencies {
         exclude module: 'commons-logging'
     }
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
     testImplementation 'io.grpc:grpc-testing'
 
     implementation 'org.mapstruct:mapstruct'
@@ -83,3 +83,7 @@ bootJar {
 }
 
 bootJar.dependsOn generateVersionTxt
+
+test {
+    useJUnitPlatform()
+}

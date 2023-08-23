@@ -16,9 +16,6 @@
 package org.openkilda.rulemanager.factory.generator.flow.haflow;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.openkilda.model.cookie.CookieBase.CookieType.MULTI_TABLE_INGRESS_RULES;
 import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
 import static org.openkilda.rulemanager.Utils.getCommand;
@@ -61,7 +58,8 @@ import org.openkilda.rulemanager.utils.RoutingMetadata;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -82,7 +80,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES);
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -93,7 +91,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         List<Action> expectedActions = newArrayList(
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -104,7 +102,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         List<Action> expectedActions = newArrayList(
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -112,7 +110,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         HaFlow haFlow = buildHaFlow(FORWARD_PATH, OUTER_VLAN_ID_1, TRANSIT_VLAN_ID);
         IngressHaRuleGenerator generator = buildMeterlessGenerator(FORWARD_PATH, haFlow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(TRANSIT_VLAN_ID, FEATURES);
-        assertTrue(transformActions.isEmpty());
+        Assertions.assertTrue(transformActions.isEmpty());
     }
 
     @Test
@@ -121,7 +119,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         IngressHaRuleGenerator generator = buildMeterlessGenerator(FORWARD_PATH, haFlow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES);
         List<Action> expectedActions = newArrayList(new PopVlanAction(), buildPushVxlan());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -130,7 +128,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         IngressHaRuleGenerator generator = buildMeterlessGenerator(FORWARD_PATH, haFlow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(buildPushVxlan());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -139,15 +137,17 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         IngressHaRuleGenerator generator = buildMeterlessGenerator(FORWARD_PATH, haFlow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(buildPushVxlan());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void unableToBuildIngressRulesForForwardOneSwitchPathTest() {
-        FlowPath oneSwitchForward = buildSubPath(SWITCH_1, SWITCH_1, FORWARD_COOKIE, HA_SUB_FLOW);
-        HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchForward, haFlow, VLAN_ENCAPSULATION);
-        generator.generateCommands(SWITCH_1);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            FlowPath oneSwitchForward = buildSubPath(SWITCH_1, SWITCH_1, FORWARD_COOKIE, HA_SUB_FLOW);
+            HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+            IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchForward, haFlow, VLAN_ENCAPSULATION);
+            generator.generateCommands(SWITCH_1);
+        });
     }
 
     @Test
@@ -161,7 +161,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_1).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -173,7 +173,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_1).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -183,7 +183,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchReverse, haFlow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES);
         List<Action> expectedActions = newArrayList(new PopVlanAction());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -199,7 +199,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_1).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -213,7 +213,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_1).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -224,7 +224,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchReverse, haFlow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList();
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -240,7 +240,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_1).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -254,7 +254,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_1).build()
         );
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -265,7 +265,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchReverse, haFlow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList();
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -275,7 +275,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 haflow.getHaSubFlows().iterator().next());
         IngressHaRuleGenerator generator = buildMeterlessGenerator(oneSwitchReverse, haflow, VLAN_ENCAPSULATION);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
 
         FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
         FlowSpeakerData inputCustomerCommand = (FlowSpeakerData) commands.get(1);
@@ -301,13 +301,13 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         IngressHaRuleGenerator generator = buildGenerator(subPath, haFlow, VLAN_ENCAPSULATION, true,
                 METER_ID, null, true, new HashSet<>());
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(4, commands.size());
+        Assertions.assertEquals(4, commands.size());
 
         FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
         FlowSpeakerData preIngressCommand = (FlowSpeakerData) commands.get(1);
         FlowSpeakerData inputCustomerCommand = (FlowSpeakerData) commands.get(2);
         MeterSpeakerData meterCommand = (MeterSpeakerData) commands.get(3);
-        assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
+        Assertions.assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
 
         Set<FieldMatch> expectedPreIngressMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
@@ -318,7 +318,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         RoutingMetadata preIngressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_1.getFeatures());
         assertPreIngressCommand(preIngressCommand, SWITCH_2, preIngressCookie, Priority.FLOW_PRIORITY,
-                expectedPreIngressMatch,  newArrayList(new PopVlanAction()), mapMetadata(preIngressMetadata));
+                expectedPreIngressMatch, newArrayList(new PopVlanAction()), mapMetadata(preIngressMetadata));
 
         assertInputCustomerCommand(inputCustomerCommand, SWITCH_2,
                 new PortColourCookie(MULTI_TABLE_INGRESS_RULES, PORT_NUMBER_1),
@@ -355,7 +355,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         IngressHaRuleGenerator generator = buildGenerator(subPath, haFlow, VLAN_ENCAPSULATION, false, null, null,
                 false, overlapping);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
 
@@ -388,12 +388,12 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         IngressHaRuleGenerator generator = buildGenerator(subPath, haFlow, VLAN_ENCAPSULATION, true, METER_ID, null,
                 true, overlapping);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(3, commands.size());
+        Assertions.assertEquals(3, commands.size());
 
         FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
         FlowSpeakerData preIngressCommand = (FlowSpeakerData) commands.get(1);
         MeterSpeakerData meterCommand = (MeterSpeakerData) commands.get(2);
-        assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
+        Assertions.assertEquals(newArrayList(meterCommand.getUuid()), new ArrayList<>(ingressCommand.getDependsOn()));
 
         RoutingMetadata ingressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_2.getFeatures());
@@ -432,12 +432,12 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 METER_COMMAND_UUID, true, Sets.newHashSet(FlowSideAdapter.makeIngressAdapter(haFlow, subPath)));
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
         MeterSpeakerData meterCommand = getCommand(MeterSpeakerData.class, commands);
 
-        assertEquals(METER_ID, flowCommand.getInstructions().getGoToMeter());
-        assertEquals(Lists.newArrayList(METER_COMMAND_UUID), flowCommand.getDependsOn());
+        Assertions.assertEquals(METER_ID, flowCommand.getInstructions().getGoToMeter());
+        Assertions.assertEquals(newArrayList(METER_COMMAND_UUID), flowCommand.getDependsOn());
         assertMeterCommand(SWITCH_2, METER_COMMAND_UUID, meterCommand);
     }
 
@@ -449,11 +449,11 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 METER_COMMAND_UUID, false, Sets.newHashSet(FlowSideAdapter.makeIngressAdapter(haFlow, subPath)));
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
 
-        assertEquals(METER_ID, flowCommand.getInstructions().getGoToMeter());
-        assertEquals(Lists.newArrayList(METER_COMMAND_UUID), flowCommand.getDependsOn());
+        Assertions.assertEquals(METER_ID, flowCommand.getInstructions().getGoToMeter());
+        Assertions.assertEquals(newArrayList(METER_COMMAND_UUID), flowCommand.getDependsOn());
     }
 
     @Test
@@ -464,10 +464,10 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 METER_COMMAND_UUID, true, Sets.newHashSet(FlowSideAdapter.makeIngressAdapter(haFlow, subPath)));
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
-        assertNull(flowCommand.getInstructions().getGoToMeter());
-        assertTrue(flowCommand.getDependsOn().isEmpty());
+        Assertions.assertNull(flowCommand.getInstructions().getGoToMeter());
+        Assertions.assertTrue(flowCommand.getDependsOn().isEmpty());
     }
 
     @Test
@@ -477,22 +477,22 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 METER_COMMAND_UUID, true, Sets.newHashSet(FlowSideAdapter.makeIngressAdapter(haFlow, FORWARD_PATH)));
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
-        assertNull(flowCommand.getInstructions().getGoToMeter());
-        assertTrue(flowCommand.getDependsOn().isEmpty());
+        Assertions.assertNull(flowCommand.getInstructions().getGoToMeter());
+        Assertions.assertTrue(flowCommand.getDependsOn().isEmpty());
     }
 
     private void assertIngressCommand(
-            FlowSpeakerData command, Switch expectedSwitch, FlowSegmentCookie expectedCookie,  int expectedPriority,
+            FlowSpeakerData command, Switch expectedSwitch, FlowSegmentCookie expectedCookie, int expectedPriority,
             Set<FieldMatch> expectedMatch, List<Action> expectedApplyActions, MeterId expectedMeter,
             UUID expectedMeterUuid) {
-        assertEquals(expectedSwitch.getSwitchId(), command.getSwitchId());
-        assertEquals(expectedSwitch.getOfVersion(), command.getOfVersion().toString());
+        Assertions.assertEquals(expectedSwitch.getSwitchId(), command.getSwitchId());
+        Assertions.assertEquals(expectedSwitch.getOfVersion(), command.getOfVersion().toString());
 
-        assertEquals(expectedCookie, command.getCookie());
-        assertEquals(OfTable.INGRESS, command.getTable());
-        assertEquals(expectedPriority, command.getPriority());
+        Assertions.assertEquals(expectedCookie, command.getCookie());
+        Assertions.assertEquals(OfTable.INGRESS, command.getTable());
+        Assertions.assertEquals(expectedPriority, command.getPriority());
 
         assertEqualsMatch(expectedMatch, command.getMatch());
 
@@ -502,25 +502,25 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 .goToMeter(expectedMeter)
                 .writeMetadata(null)
                 .build();
-        assertEquals(expectedInstructions, command.getInstructions());
-        assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
+        Assertions.assertEquals(expectedInstructions, command.getInstructions());
+        Assertions.assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
 
         List<UUID> expectedDependencies = new ArrayList<>();
         if (expectedMeterUuid != null) {
             expectedDependencies.add(expectedMeterUuid);
         }
-        assertEquals(expectedDependencies, command.getDependsOn());
+        Assertions.assertEquals(expectedDependencies, command.getDependsOn());
     }
 
     private void assertPreIngressCommand(
             FlowSpeakerData command, Switch expectedSwitch, CookieBase cookie, int expectedPriority,
             Set<FieldMatch> expectedMatch, List<Action> expectedApplyActions, OfMetadata expectedMetadata) {
-        assertEquals(expectedSwitch.getSwitchId(), command.getSwitchId());
-        assertEquals(expectedSwitch.getOfVersion(), command.getOfVersion().toString());
-        assertEquals(cookie, command.getCookie());
-        assertEquals(OfTable.PRE_INGRESS, command.getTable());
-        assertEquals(expectedPriority, command.getPriority());
-        assertTrue(command.getDependsOn().isEmpty());
+        Assertions.assertEquals(expectedSwitch.getSwitchId(), command.getSwitchId());
+        Assertions.assertEquals(expectedSwitch.getOfVersion(), command.getOfVersion().toString());
+        Assertions.assertEquals(cookie, command.getCookie());
+        Assertions.assertEquals(OfTable.PRE_INGRESS, command.getTable());
+        Assertions.assertEquals(expectedPriority, command.getPriority());
+        Assertions.assertTrue(command.getDependsOn().isEmpty());
 
         assertEqualsMatch(expectedMatch, command.getMatch());
 
@@ -529,41 +529,41 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 .applyActions(expectedApplyActions)
                 .goToTable(OfTable.INGRESS)
                 .build();
-        assertEquals(expectedInstructions, command.getInstructions());
-        assertTrue(command.getFlags().isEmpty());
+        Assertions.assertEquals(expectedInstructions, command.getInstructions());
+        Assertions.assertTrue(command.getFlags().isEmpty());
     }
 
     private void assertInputCustomerCommand(
             FlowSpeakerData command, Switch expectedSwitch, CookieBase cookie, Set<FieldMatch> expectedMatch) {
-        assertEquals(expectedSwitch.getSwitchId(), command.getSwitchId());
-        assertEquals(expectedSwitch.getOfVersion(), command.getOfVersion().toString());
-        assertEquals(cookie, command.getCookie());
-        assertEquals(OfTable.INPUT, command.getTable());
-        assertEquals(Priority.INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE, command.getPriority());
-        assertTrue(command.getDependsOn().isEmpty());
+        Assertions.assertEquals(expectedSwitch.getSwitchId(), command.getSwitchId());
+        Assertions.assertEquals(expectedSwitch.getOfVersion(), command.getOfVersion().toString());
+        Assertions.assertEquals(cookie, command.getCookie());
+        Assertions.assertEquals(OfTable.INPUT, command.getTable());
+        Assertions.assertEquals(Priority.INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE, command.getPriority());
+        Assertions.assertTrue(command.getDependsOn().isEmpty());
 
         assertEqualsMatch(expectedMatch, command.getMatch());
 
         Instructions expectedInstructions = Instructions.builder()
                 .goToTable(OfTable.PRE_INGRESS)
                 .build();
-        assertEquals(expectedInstructions, command.getInstructions());
-        assertTrue(command.getFlags().isEmpty());
+        Assertions.assertEquals(expectedInstructions, command.getInstructions());
+        Assertions.assertTrue(command.getFlags().isEmpty());
     }
 
     private void assertMeterCommand(Switch expectedSwitch, UUID expectedUuid, MeterSpeakerData command) {
         assertMeterCommand(expectedSwitch, command);
-        assertEquals(expectedUuid, command.getUuid());
+        Assertions.assertEquals(expectedUuid, command.getUuid());
     }
 
     private void assertMeterCommand(Switch expectedSwitch, MeterSpeakerData command) {
-        assertEquals(expectedSwitch.getSwitchId(), command.getSwitchId());
-        assertEquals(expectedSwitch.getOfVersion(), command.getOfVersion().toString());
-        assertEquals(METER_ID, command.getMeterId());
-        assertEquals(Sets.newHashSet(MeterFlag.BURST, MeterFlag.KBPS, MeterFlag.STATS), command.getFlags());
-        assertEquals(BANDWIDTH, command.getRate());
-        assertEquals(Math.round(BANDWIDTH * BURST_COEFFICIENT), command.getBurst());
-        assertTrue(command.getDependsOn().isEmpty());
+        Assertions.assertEquals(expectedSwitch.getSwitchId(), command.getSwitchId());
+        Assertions.assertEquals(expectedSwitch.getOfVersion(), command.getOfVersion().toString());
+        Assertions.assertEquals(METER_ID, command.getMeterId());
+        Assertions.assertEquals(Sets.newHashSet(MeterFlag.BURST, MeterFlag.KBPS, MeterFlag.STATS), command.getFlags());
+        Assertions.assertEquals(BANDWIDTH, command.getRate());
+        Assertions.assertEquals(Math.round(BANDWIDTH * BURST_COEFFICIENT), command.getBurst());
+        Assertions.assertTrue(command.getDependsOn().isEmpty());
 
     }
 

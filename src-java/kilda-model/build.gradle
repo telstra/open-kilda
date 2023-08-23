@@ -11,9 +11,13 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+}
+
+test {
+    useJUnitPlatform()
 }

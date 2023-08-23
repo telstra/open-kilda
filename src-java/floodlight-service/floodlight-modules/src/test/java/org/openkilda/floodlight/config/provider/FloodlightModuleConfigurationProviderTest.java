@@ -16,14 +16,14 @@
 package org.openkilda.floodlight.config.provider;
 
 import static org.easymock.EasyMock.niceMock;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.floodlight.KafkaChannelConfig;
 import org.openkilda.floodlight.config.EnvironmentFloodlightConfig;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.IFloodlightModule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class FloodlightModuleConfigurationProviderTest {
     private static final String TEST_BOOTSTRAP_SERVERS = "test_server";

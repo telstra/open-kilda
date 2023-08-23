@@ -15,25 +15,25 @@
 
 package org.openkilda.floodlight.service.lacp;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.floodlight.shared.packet.Lacp;
 import org.openkilda.floodlight.test.standard.PacketTestBase;
 
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.PacketParsingException;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.types.MacAddress;
 
 public class LacpTest extends PacketTestBase {
-    private final byte[] srcAndDstMacAddresses = new byte[] {
+    private final byte[] srcAndDstMacAddresses = new byte[]{
             0x1, (byte) 0x80, (byte) 0xC2, 0x0, 0x0, 0xE,           // src mac address
             0x10, 0x4E, (byte) 0xF1, (byte) 0xF9, 0x6D, (byte) 0xFA // dst mac address
     };
 
-    private final byte[] lacpPacket = new byte[] {
+    private final byte[] lacpPacket = new byte[]{
             0x01,                                      // LACP version
             0x01,                                      // TLV type: actor
             0x14,                                      // TLV length
@@ -71,7 +71,7 @@ public class LacpTest extends PacketTestBase {
     public void deserializeLacpTest() throws PacketParsingException {
         Lacp lacp = buildLacpPacket(lacpPacket);
         assertLacp(lacp);
-        Assert.assertArrayEquals(lacpPacket, lacp.serialize());
+        Assertions.assertArrayEquals(lacpPacket, lacp.serialize());
     }
 
     @Test
@@ -85,7 +85,7 @@ public class LacpTest extends PacketTestBase {
     @Test
     public void serializeEthWithLacpTest() {
         Ethernet ethernet = buildEthernet(srcAndDstMacAddresses,
-                ethTypeToByteArray(EthType.SLOW_PROTOCOLS), new byte[] {0x01}, lacpPacket);
+                ethTypeToByteArray(EthType.SLOW_PROTOCOLS), new byte[]{0x01}, lacpPacket);
 
         Lacp lacp = service.deserializeLacp(ethernet, null, 0);
         assertLacp(lacp);

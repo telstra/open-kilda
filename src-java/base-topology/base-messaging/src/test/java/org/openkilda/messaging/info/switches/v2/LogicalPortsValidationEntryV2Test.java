@@ -16,11 +16,11 @@
 package org.openkilda.messaging.info.switches.v2;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.junit.Assert.assertEquals;
 
 import org.openkilda.messaging.info.switches.LogicalPortType;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,9 +37,9 @@ public class LogicalPortsValidationEntryV2Test {
                 .proper(new ArrayList<>())
                 .build();
         List<LogicalPortsValidationEntryV2> list = entry.split(4, 4);
-        assertEquals("Method split should return the list with the length of 1", 1, list.size());
+        Assertions.assertEquals(1, list.size(), "Method split should return the list with the length of 1");
         LogicalPortsValidationEntryV2 united = LogicalPortsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -54,9 +54,9 @@ public class LogicalPortsValidationEntryV2Test {
                 .proper(new ArrayList<>())
                 .build();
         List<LogicalPortsValidationEntryV2> list = entry.split(4, 4);
-        assertEquals("Method split should return the list with the length of 1", 1, list.size());
+        Assertions.assertEquals(1, list.size(), "Method split should return the list with the length of 1");
         LogicalPortsValidationEntryV2 united = LogicalPortsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -69,9 +69,9 @@ public class LogicalPortsValidationEntryV2Test {
                 .proper(null)
                 .build();
         List<LogicalPortsValidationEntryV2> list = entry.split(4, 4);
-        assertEquals("Method split should return the list with the length of 1", 1, list.size());
+        Assertions.assertEquals(1, list.size(), "Method split should return the list with the length of 1");
         LogicalPortsValidationEntryV2 united = LogicalPortsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -84,9 +84,9 @@ public class LogicalPortsValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredLogicalPortsInfo(4, 1))
                 .build();
         List<LogicalPortsValidationEntryV2> list = entry.split(4, 4);
-        assertEquals("Method split should return the list with the length of 1", 1, list.size());
+        Assertions.assertEquals(1, list.size(), "Method split should return the list with the length of 1");
         LogicalPortsValidationEntryV2 united = LogicalPortsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -99,9 +99,9 @@ public class LogicalPortsValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredLogicalPortsInfo(4, 1))
                 .build();
         List<LogicalPortsValidationEntryV2> list = entry.split(1, 1);
-        assertEquals("Method split should return the list with the length of 4", 4, list.size());
+        Assertions.assertEquals(4, list.size(), "Method split should return the list with the length of 4");
         LogicalPortsValidationEntryV2 united = LogicalPortsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -114,9 +114,9 @@ public class LogicalPortsValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredLogicalPortsInfo(4, 4))
                 .build();
         List<LogicalPortsValidationEntryV2> list = entry.split(2, 3);
-        assertEquals("Method split should return the list with the length of 4", 4, list.size());
+        Assertions.assertEquals(4, list.size(), "Method split should return the list with the length of 4");
         LogicalPortsValidationEntryV2 united = LogicalPortsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -129,9 +129,9 @@ public class LogicalPortsValidationEntryV2Test {
                 .misconfigured(new ArrayList<>())
                 .build();
         List<LogicalPortsValidationEntryV2> list = entry.split(2, 2);
-        assertEquals("Method split should return the list with the length of 3", 3, list.size());
+        Assertions.assertEquals(3, list.size(), "Method split should return the list with the length of 3");
         LogicalPortsValidationEntryV2 united = LogicalPortsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -144,9 +144,9 @@ public class LogicalPortsValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredLogicalPortsInfo(4, 4))
                 .build();
         List<LogicalPortsValidationEntryV2> list = entry.split(100, 200);
-        assertEquals("Method split should return the list with the length of 1", 1, list.size());
+        Assertions.assertEquals(1, list.size(), "Method split should return the list with the length of 1");
         LogicalPortsValidationEntryV2 united = LogicalPortsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -159,9 +159,9 @@ public class LogicalPortsValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredLogicalPortsInfo(3000, 800))
                 .build();
         List<LogicalPortsValidationEntryV2> list = entry.split(100, 200);
-        assertEquals("Method split should return the list with the length of 14", 14, list.size());
+        Assertions.assertEquals(14, list.size(), "Method split should return the list with the length of 14");
         LogicalPortsValidationEntryV2 united = LogicalPortsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -175,9 +175,9 @@ public class LogicalPortsValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredLogicalPortsInfo(3000, 800))
                 .build();
         List<LogicalPortsValidationEntryV2> list = entry.split(100, 200);
-        assertEquals("Method split should return the list with the length of 14", 14, list.size());
+        Assertions.assertEquals(14, list.size(), "Method split should return the list with the length of 14");
         LogicalPortsValidationEntryV2 united = LogicalPortsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -190,9 +190,9 @@ public class LogicalPortsValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredLogicalPortsInfo(3000, 800))
                 .build();
         List<LogicalPortsValidationEntryV2> list = entry.split(1, 1);
-        assertEquals("Method split should return the list with the length of 2600", 2600, list.size());
+        Assertions.assertEquals(2600, list.size(), "Method split should return the list with the length of 2600");
         LogicalPortsValidationEntryV2 united = LogicalPortsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     static List<LogicalPortInfoEntryV2> buildLogicalPortsInfo(int idBase, int count) {

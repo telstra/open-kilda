@@ -15,8 +15,9 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.openkilda.model.FlowMeter;
 import org.openkilda.model.MeterId;
@@ -26,9 +27,9 @@ import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowMeterRepository;
 
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -43,7 +44,7 @@ public class FermaFlowMeterRepositoryTest extends InMemoryGraphBasedTest {
 
     Switch theSwitch;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         flowMeterRepository = repositoryFactory.createFlowMeterRepository();
 
@@ -61,12 +62,15 @@ public class FermaFlowMeterRepositoryTest extends InMemoryGraphBasedTest {
         assertEquals(TEST_FLOW_ID, foundMeter.getFlowId());
     }
 
-    @Ignore("InMemoryGraph doesn't enforce constraint")
-    @Test(expected = PersistenceException.class)
+    @Disabled("InMemoryGraph doesn't enforce constraint")
+    @Test
     public void shouldNotGetMoreThanOneMetersForPath() {
-        createFlowMeter(1, new PathId(TEST_PATH_ID));
-        createFlowMeter(2, new PathId(TEST_PATH_ID));
-        flowMeterRepository.findByPathId(new PathId(TEST_PATH_ID));
+        assertThrows(PersistenceException.class, () -> {
+
+            createFlowMeter(1, new PathId(TEST_PATH_ID));
+            createFlowMeter(2, new PathId(TEST_PATH_ID));
+            flowMeterRepository.findByPathId(new PathId(TEST_PATH_ID));
+        });
     }
 
     @Test

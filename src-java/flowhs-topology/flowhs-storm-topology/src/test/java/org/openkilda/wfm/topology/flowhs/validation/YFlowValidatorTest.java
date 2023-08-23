@@ -41,8 +41,9 @@ import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.YFlowRepository;
 
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -57,7 +58,7 @@ public class YFlowValidatorTest {
 
     public static YFlowValidator yFlowValidator;
 
-    @BeforeClass
+    @BeforeAll
     public static void setup() {
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createFlowRepository()).thenReturn(mock(FlowRepository.class));
@@ -94,18 +95,19 @@ public class YFlowValidatorTest {
         when(physicalPortRepository.findBySwitchIdAndPortNumber(any(), anyInt())).thenReturn(Optional.empty());
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfNoSubFlowsProvided()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        YFlowRequest request = YFlowRequest.builder()
-                .yFlowId("test")
-                .sharedEndpoint(FlowEndpoint.builder()
-                        .switchId(SWITCH_ID_1)
-                        .portNumber(PORT_1)
-                        .build())
-                .subFlows(emptyList())
-                .build();
-        yFlowValidator.validate(request);
+    @Test
+    public void failIfNoSubFlowsProvided() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            YFlowRequest request = YFlowRequest.builder()
+                    .yFlowId("test")
+                    .sharedEndpoint(FlowEndpoint.builder()
+                            .switchId(SWITCH_ID_1)
+                            .portNumber(PORT_1)
+                            .build())
+                    .subFlows(emptyList())
+                    .build();
+            yFlowValidator.validate(request);
+        });
     }
 
     @Test
@@ -195,34 +197,35 @@ public class YFlowValidatorTest {
         yFlowValidator.validate(request);
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfNegativeBandwidthProvided()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        YFlowRequest request = YFlowRequest.builder()
-                .yFlowId("test")
-                .maximumBandwidth(-1)
-                .sharedEndpoint(FlowEndpoint.builder()
-                        .switchId(SWITCH_ID_1)
-                        .portNumber(PORT_1)
-                        .build())
-                .subFlows(Arrays.asList(SubFlowDto.builder()
-                                .flowId("test_1")
-                                .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(1, 0))
-                                .endpoint(FlowEndpoint.builder()
-                                        .switchId(SWITCH_ID_2)
-                                        .portNumber(PORT_2)
-                                        .build())
-                                .build(),
-                        SubFlowDto.builder()
-                                .flowId("test_2")
-                                .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(2, 0))
-                                .endpoint(FlowEndpoint.builder()
-                                        .switchId(SWITCH_ID_3)
-                                        .portNumber(PORT_3)
-                                        .build())
-                                .build()))
-                .build();
-        yFlowValidator.validate(request);
+    @Test
+    public void failIfNegativeBandwidthProvided() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            YFlowRequest request = YFlowRequest.builder()
+                    .yFlowId("test")
+                    .maximumBandwidth(-1)
+                    .sharedEndpoint(FlowEndpoint.builder()
+                            .switchId(SWITCH_ID_1)
+                            .portNumber(PORT_1)
+                            .build())
+                    .subFlows(Arrays.asList(SubFlowDto.builder()
+                                    .flowId("test_1")
+                                    .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(1, 0))
+                                    .endpoint(FlowEndpoint.builder()
+                                            .switchId(SWITCH_ID_2)
+                                            .portNumber(PORT_2)
+                                            .build())
+                                    .build(),
+                            SubFlowDto.builder()
+                                    .flowId("test_2")
+                                    .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(2, 0))
+                                    .endpoint(FlowEndpoint.builder()
+                                            .switchId(SWITCH_ID_3)
+                                            .portNumber(PORT_3)
+                                            .build())
+                                    .build()))
+                    .build();
+            yFlowValidator.validate(request);
+        });
     }
 
     private YFlowRequest getTestRequestWithMaxLatencyAndMaxLatencyTier2(Long maxLatency, Long maxLatencyTier2) {
@@ -253,18 +256,20 @@ public class YFlowValidatorTest {
                 .build();
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfMaxLatencyTier2HigherThanMaxLatency()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        YFlowRequest request = getTestRequestWithMaxLatencyAndMaxLatencyTier2((long) 1000, (long) 500);
-        yFlowValidator.validate(request);
+    @Test
+    public void failIfMaxLatencyTier2HigherThanMaxLatency() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            YFlowRequest request = getTestRequestWithMaxLatencyAndMaxLatencyTier2((long) 1000, (long) 500);
+            yFlowValidator.validate(request);
+        });
     }
 
-    @Test (expected = InvalidFlowException.class)
-    public void failIfMaxLatencyTier2butMaxLatencyIsNull()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        YFlowRequest request = getTestRequestWithMaxLatencyAndMaxLatencyTier2(null, (long) 500);
-        yFlowValidator.validate(request);
+    @Test
+    public void failIfMaxLatencyTier2butMaxLatencyIsNull() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            YFlowRequest request = getTestRequestWithMaxLatencyAndMaxLatencyTier2(null, (long) 500);
+            yFlowValidator.validate(request);
+        });
     }
 
     @Test
@@ -281,109 +286,113 @@ public class YFlowValidatorTest {
         yFlowValidator.validate(request);
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfNoSharedEndpointProvided()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        YFlowRequest request = YFlowRequest.builder()
-                .yFlowId("test")
-                .subFlows(Arrays.asList(SubFlowDto.builder()
-                                .flowId("test_1")
-                                .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(1, 0))
-                                .endpoint(FlowEndpoint.builder()
-                                        .switchId(SWITCH_ID_2)
-                                        .portNumber(PORT_2)
-                                        .build())
-                                .build(),
-                        SubFlowDto.builder()
-                                .flowId("test_2")
-                                .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(2, 0))
-                                .endpoint(FlowEndpoint.builder()
-                                        .switchId(SWITCH_ID_3)
-                                        .portNumber(PORT_3)
-                                        .build())
-                                .build()))
-                .build();
-        yFlowValidator.validate(request);
+    @Test
+    public void failIfNoSharedEndpointProvided() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            YFlowRequest request = YFlowRequest.builder()
+                    .yFlowId("test")
+                    .subFlows(Arrays.asList(SubFlowDto.builder()
+                                    .flowId("test_1")
+                                    .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(1, 0))
+                                    .endpoint(FlowEndpoint.builder()
+                                            .switchId(SWITCH_ID_2)
+                                            .portNumber(PORT_2)
+                                            .build())
+                                    .build(),
+                            SubFlowDto.builder()
+                                    .flowId("test_2")
+                                    .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(2, 0))
+                                    .endpoint(FlowEndpoint.builder()
+                                            .switchId(SWITCH_ID_3)
+                                            .portNumber(PORT_3)
+                                            .build())
+                                    .build()))
+                    .build();
+            yFlowValidator.validate(request);
+        });
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfSubFlowHasNoSharedEndpointProvided()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        YFlowRequest request = YFlowRequest.builder()
-                .yFlowId("test")
-                .sharedEndpoint(FlowEndpoint.builder()
-                        .switchId(SWITCH_ID_1)
-                        .portNumber(PORT_1)
-                        .build())
-                .subFlows(Arrays.asList(SubFlowDto.builder()
-                                .flowId("test_1")
-                                .endpoint(FlowEndpoint.builder()
-                                        .switchId(SWITCH_ID_2)
-                                        .portNumber(PORT_2)
-                                        .build())
-                                .build(),
-                        SubFlowDto.builder()
-                                .flowId("test_2")
-                                .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(2, 0))
-                                .endpoint(FlowEndpoint.builder()
-                                        .switchId(SWITCH_ID_3)
-                                        .portNumber(PORT_3)
-                                        .build())
-                                .build()))
-                .build();
-        yFlowValidator.validate(request);
+    @Test
+    public void failIfSubFlowHasNoSharedEndpointProvided() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            YFlowRequest request = YFlowRequest.builder()
+                    .yFlowId("test")
+                    .sharedEndpoint(FlowEndpoint.builder()
+                            .switchId(SWITCH_ID_1)
+                            .portNumber(PORT_1)
+                            .build())
+                    .subFlows(Arrays.asList(SubFlowDto.builder()
+                                    .flowId("test_1")
+                                    .endpoint(FlowEndpoint.builder()
+                                            .switchId(SWITCH_ID_2)
+                                            .portNumber(PORT_2)
+                                            .build())
+                                    .build(),
+                            SubFlowDto.builder()
+                                    .flowId("test_2")
+                                    .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(2, 0))
+                                    .endpoint(FlowEndpoint.builder()
+                                            .switchId(SWITCH_ID_3)
+                                            .portNumber(PORT_3)
+                                            .build())
+                                    .build()))
+                    .build();
+            yFlowValidator.validate(request);
+        });
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfSubFlowHasNoEndpointProvided()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        YFlowRequest request = YFlowRequest.builder()
-                .yFlowId("test")
-                .sharedEndpoint(FlowEndpoint.builder()
-                        .switchId(SWITCH_ID_1)
-                        .portNumber(PORT_1)
-                        .build())
-                .subFlows(Arrays.asList(SubFlowDto.builder()
-                                .flowId("test_1")
-                                .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(1, 0))
-                                .build(),
-                        SubFlowDto.builder()
-                                .flowId("test_2")
-                                .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(2, 0))
-                                .endpoint(FlowEndpoint.builder()
-                                        .switchId(SWITCH_ID_3)
-                                        .portNumber(PORT_3)
-                                        .build())
-                                .build()))
-                .build();
-        yFlowValidator.validate(request);
+    @Test
+    public void failIfSubFlowHasNoEndpointProvided() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            YFlowRequest request = YFlowRequest.builder()
+                    .yFlowId("test")
+                    .sharedEndpoint(FlowEndpoint.builder()
+                            .switchId(SWITCH_ID_1)
+                            .portNumber(PORT_1)
+                            .build())
+                    .subFlows(Arrays.asList(SubFlowDto.builder()
+                                    .flowId("test_1")
+                                    .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(1, 0))
+                                    .build(),
+                            SubFlowDto.builder()
+                                    .flowId("test_2")
+                                    .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(2, 0))
+                                    .endpoint(FlowEndpoint.builder()
+                                            .switchId(SWITCH_ID_3)
+                                            .portNumber(PORT_3)
+                                            .build())
+                                    .build()))
+                    .build();
+            yFlowValidator.validate(request);
+        });
     }
 
-    @Test(expected = InvalidFlowException.class)
-    public void failIfSubFlowHasNoId()
-            throws InvalidFlowException, UnavailableFlowEndpointException {
-        YFlowRequest request = YFlowRequest.builder()
-                .yFlowId("test")
-                .sharedEndpoint(FlowEndpoint.builder()
-                        .switchId(SWITCH_ID_1)
-                        .portNumber(PORT_1)
-                        .build())
-                .subFlows(Arrays.asList(SubFlowDto.builder()
-                                .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(1, 0))
-                                .endpoint(FlowEndpoint.builder()
-                                        .switchId(SWITCH_ID_2)
-                                        .portNumber(PORT_2)
-                                        .build())
-                                .build(),
-                        SubFlowDto.builder()
-                                .flowId("test_2")
-                                .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(2, 0))
-                                .endpoint(FlowEndpoint.builder()
-                                        .switchId(SWITCH_ID_3)
-                                        .portNumber(PORT_3)
-                                        .build())
-                                .build()))
-                .build();
-        yFlowValidator.validate(request);
+    @Test
+    public void failIfSubFlowHasNoId() {
+        Assertions.assertThrows(InvalidFlowException.class, () -> {
+            YFlowRequest request = YFlowRequest.builder()
+                    .yFlowId("test")
+                    .sharedEndpoint(FlowEndpoint.builder()
+                            .switchId(SWITCH_ID_1)
+                            .portNumber(PORT_1)
+                            .build())
+                    .subFlows(Arrays.asList(SubFlowDto.builder()
+                                    .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(1, 0))
+                                    .endpoint(FlowEndpoint.builder()
+                                            .switchId(SWITCH_ID_2)
+                                            .portNumber(PORT_2)
+                                            .build())
+                                    .build(),
+                            SubFlowDto.builder()
+                                    .flowId("test_2")
+                                    .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(2, 0))
+                                    .endpoint(FlowEndpoint.builder()
+                                            .switchId(SWITCH_ID_3)
+                                            .portNumber(PORT_3)
+                                            .build())
+                                    .build()))
+                    .build();
+            yFlowValidator.validate(request);
+        });
     }
 }

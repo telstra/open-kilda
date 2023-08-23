@@ -16,10 +16,10 @@
 package org.openkilda.wfm.topology.flowhs.service.haflow;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
@@ -47,8 +47,8 @@ import org.openkilda.wfm.topology.flowhs.service.AbstractHaFlowTest;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 
 import java.time.Instant;
@@ -94,7 +94,7 @@ public class HaFlowUpdateServiceTest extends AbstractHaFlowTest<FlowSegmentReque
     private FlowGenericCarrier carrier;
     HaFlowUpdateService service;
 
-    @Before
+    @BeforeEach
     public void init() {
         carrier = mock(FlowGenericCarrier.class);
         service = new HaFlowUpdateService(carrier, persistenceManager, pathComputer, flowResourcesManager,
@@ -163,8 +163,10 @@ public class HaFlowUpdateServiceTest extends AbstractHaFlowTest<FlowSegmentReque
 
         assertFalse(service.isFullUpdateRequired(buildPatch(MAX_LATENCY, MAX_LATENCY_1, null), haFlow));
         assertTrue(service.isFullUpdateRequired(buildPatch(MAX_LATENCY, MAX_LATENCY_2, null), haFlow));
-        assertFalse(service.isFullUpdateRequired(buildPatch(MAX_LATENCY, null, MAX_LATENCY_TIER_2_1), haFlow));
-        assertTrue(service.isFullUpdateRequired(buildPatch(MAX_LATENCY, null, MAX_LATENCY_TIER_2_2), haFlow));
+        assertFalse(service.isFullUpdateRequired(
+                buildPatch(MAX_LATENCY, null, MAX_LATENCY_TIER_2_1), haFlow));
+        assertTrue(service.isFullUpdateRequired(
+                buildPatch(MAX_LATENCY, null, MAX_LATENCY_TIER_2_2), haFlow));
         assertFalse(service.isFullUpdateRequired(buildPatch(MAX_LATENCY, MAX_LATENCY_1, MAX_LATENCY_TIER_2_1), haFlow));
         assertTrue(service.isFullUpdateRequired(buildPatch(MAX_LATENCY, MAX_LATENCY_2, MAX_LATENCY_TIER_2_2), haFlow));
     }
@@ -364,8 +366,7 @@ public class HaFlowUpdateServiceTest extends AbstractHaFlowTest<FlowSegmentReque
         assertEquals(PATCH_REQUEST.getPriority(), haFlowRequest.getPriority());
         assertEquals(PATCH_REQUEST.getStrictBandwidth(), haFlowRequest.isStrictBandwidth());
         assertEquals(PATCH_REQUEST.getDescription(), haFlowRequest.getDescription());
-        assertEquals(PATCH_REQUEST.getSharedEndpoint().getSwitchId(),
-                haFlowRequest.getSharedEndpoint().getSwitchId());
+        assertEquals(PATCH_REQUEST.getSharedEndpoint().getSwitchId(), haFlowRequest.getSharedEndpoint().getSwitchId());
         assertEquals(PATCH_REQUEST.getSharedEndpoint().getPortNumber(),
                 haFlowRequest.getSharedEndpoint().getPortNumber());
         assertEquals(PATCH_REQUEST.getSharedEndpoint().getVlanId().intValue(),

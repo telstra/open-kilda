@@ -16,8 +16,6 @@
 package org.openkilda.wfm.share.mappers;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -38,7 +36,8 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 
 import com.google.common.collect.Lists;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
 import java.util.List;
@@ -109,15 +108,15 @@ public class FlowMapperTest {
 
         FlowPairDto<FlowDto, FlowDto> pair = new FlowPairDto<>(forwardFlow, reverseFlow);
         Flow p = FlowMapper.INSTANCE.map(pair, () -> KildaConfiguration.DEFAULTS);
-        assertEquals(p.getFlowId(), pair.getLeft().getFlowId());
+        Assertions.assertEquals(p.getFlowId(), pair.getLeft().getFlowId());
         assertDetectConnectedDevices(forwardFlow.getDetectConnectedDevices(), p.getDetectConnectedDevices());
     }
 
     private void assertDetectConnectedDevices(DetectConnectedDevicesDto expected, DetectConnectedDevices actual) {
-        assertEquals(expected.isSrcLldp(), actual.isSrcLldp());
-        assertEquals(expected.isSrcArp(), actual.isSrcArp());
-        assertEquals(expected.isDstLldp(), actual.isDstLldp());
-        assertEquals(expected.isDstArp(), actual.isDstArp());
+        Assertions.assertEquals(expected.isSrcLldp(), actual.isSrcLldp());
+        Assertions.assertEquals(expected.isSrcArp(), actual.isSrcArp());
+        Assertions.assertEquals(expected.isDstLldp(), actual.isDstLldp());
+        Assertions.assertEquals(expected.isDstArp(), actual.isDstArp());
     }
 
     @Test
@@ -126,9 +125,9 @@ public class FlowMapperTest {
 
         FlowDto flowDto = FlowMapper.INSTANCE.map(flow);
 
-        assertNotNull(flowDto.getFlowStatusDetails());
-        assertEquals(FlowPathStatus.ACTIVE, flowDto.getFlowStatusDetails().getMainFlowPathStatus());
-        assertEquals(FlowPathStatus.INACTIVE, flowDto.getFlowStatusDetails().getProtectedFlowPathStatus());
+        Assertions.assertNotNull(flowDto.getFlowStatusDetails());
+        Assertions.assertEquals(FlowPathStatus.ACTIVE, flowDto.getFlowStatusDetails().getMainFlowPathStatus());
+        Assertions.assertEquals(FlowPathStatus.INACTIVE, flowDto.getFlowStatusDetails().getProtectedFlowPathStatus());
         assertDetectConnectedDevices(flowDto.getDetectConnectedDevices(), flow.getDetectConnectedDevices());
     }
 
@@ -139,15 +138,15 @@ public class FlowMapperTest {
         FlowDto flowDto = FlowMapper.INSTANCE.map(
                 flow, new HashSet<>(), new HashSet<>(), new HashSet<>(), buildFlowMirrorPathList());
 
-        assertNotNull(flowDto.getMirrorPointStatuses());
-        assertEquals(2, flowDto.getMirrorPointStatuses().size());
+        Assertions.assertNotNull(flowDto.getMirrorPointStatuses());
+        Assertions.assertEquals(2, flowDto.getMirrorPointStatuses().size());
 
-        assertEquals(MIRROR_PATH_ID_A.getId(), flowDto.getMirrorPointStatuses().get(0).getMirrorPointId());
-        assertEquals(FLOW_PATH_STATUS_A.toString().toLowerCase(),
+        Assertions.assertEquals(MIRROR_PATH_ID_A.getId(), flowDto.getMirrorPointStatuses().get(0).getMirrorPointId());
+        Assertions.assertEquals(FLOW_PATH_STATUS_A.toString().toLowerCase(),
                 flowDto.getMirrorPointStatuses().get(0).getStatus());
 
-        assertEquals(MIRROR_PATH_ID_B.getId(), flowDto.getMirrorPointStatuses().get(1).getMirrorPointId());
-        assertEquals(FLOW_PATH_STATUS_B.toString().toLowerCase(),
+        Assertions.assertEquals(MIRROR_PATH_ID_B.getId(), flowDto.getMirrorPointStatuses().get(1).getMirrorPointId());
+        Assertions.assertEquals(FLOW_PATH_STATUS_B.toString().toLowerCase(),
                 flowDto.getMirrorPointStatuses().get(1).getStatus());
     }
 

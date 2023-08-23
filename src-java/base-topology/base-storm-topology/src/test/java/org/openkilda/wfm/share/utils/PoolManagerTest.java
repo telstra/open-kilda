@@ -15,15 +15,18 @@
 
 package org.openkilda.wfm.share.utils;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import org.openkilda.wfm.share.flow.resources.ResourceNotAvailableException;
 import org.openkilda.wfm.share.utils.PoolManager.PoolConfig;
 
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class PoolManagerTest {
     @Test
     public void testSequentialAllocation() {
@@ -32,12 +35,12 @@ public class PoolManagerTest {
         PoolConfig config = newConfig();
         PoolManager<Long> poolManager = newPoolManager(config, adapter);
 
-        Assert.assertEquals(0L, (long) poolManager.allocate(this::dummyAllocate));
+        assertEquals(0L, (long) poolManager.allocate(this::dummyAllocate));
         for (int idx = 1; idx <= config.getIdMaximum(); idx++) {
-            Assert.assertEquals(idx, (long) poolManager.allocate(this::dummyAllocate));
+            assertEquals(idx, (long) poolManager.allocate(this::dummyAllocate));
         }
 
-        Assert.assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
+        assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
     }
 
     @Test
@@ -45,16 +48,16 @@ public class PoolManagerTest {
         PoolConfig config = newConfig();
         InMemorySetPoolEntityAdapter adapter = new InMemorySetPoolEntityAdapter();
         long chunkSize = (config.getIdMaximum() - config.getIdMinimum()) / config.getChunksCount();
-        Assert.assertTrue(1 < config.getChunksCount());
-        Assert.assertTrue(1 < chunkSize);
+        Assertions.assertTrue(1 < config.getChunksCount());
+        Assertions.assertTrue(1 < chunkSize);
 
         for (long idx = config.getIdMinimum() + 1; idx < chunkSize + 1; idx++) {
             adapter.allocateSpecificId(idx);
         }
 
         PoolManager<Long> poolManager = newPoolManager(config, adapter);
-        Assert.assertEquals(config.getIdMinimum(), (long) poolManager.allocate(this::dummyAllocate));
-        Assert.assertEquals(chunkSize + 1, (long) poolManager.allocate(this::dummyAllocate));
+        assertEquals(config.getIdMinimum(), (long) poolManager.allocate(this::dummyAllocate));
+        assertEquals(chunkSize + 1, (long) poolManager.allocate(this::dummyAllocate));
     }
 
     @Test
@@ -62,20 +65,20 @@ public class PoolManagerTest {
         PoolConfig config = newConfig();
         InMemorySetPoolEntityAdapter adapter = new InMemorySetPoolEntityAdapter();
         long chunkSize = (config.getIdMaximum() - config.getIdMinimum()) / config.getChunksCount();
-        Assert.assertTrue(1 < config.getChunksCount());
-        Assert.assertTrue(1 < chunkSize);
+        Assertions.assertTrue(1 < config.getChunksCount());
+        Assertions.assertTrue(1 < chunkSize);
 
         for (long idx = config.getIdMinimum(); idx <= config.getIdMaximum(); idx++) {
             adapter.allocateSpecificId(idx);
         }
 
         PoolManager<Long> poolManager = newPoolManager(config, adapter);
-        Assert.assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
+        assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
 
         adapter.release(config.getIdMinimum() + 1);
-        Assert.assertEquals(config.getIdMinimum() + 1, (long) poolManager.allocate(this::dummyAllocate));
+        assertEquals(config.getIdMinimum() + 1, (long) poolManager.allocate(this::dummyAllocate));
 
-        Assert.assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
+        assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
     }
 
     @Test
@@ -93,9 +96,9 @@ public class PoolManagerTest {
         PoolManager<Long> poolManager = newPoolManager(config, adapter);
         for (long idx = 0; idx <= config.getChunksCount(); idx++) {
             Long entry = poolManager.allocate(this::dummyAllocate);
-            Assert.assertEquals(idx * chunkSize, (long) entry);
+            assertEquals(idx * chunkSize, (long) entry);
         }
-        Assert.assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
+        assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
     }
 
     @Test
@@ -113,10 +116,10 @@ public class PoolManagerTest {
         PoolManager<Long> poolManager = newPoolManager(config, adapter);
         for (long idx = 0; idx < config.getChunksCount() - 1; idx++) {
             Long entry = poolManager.allocate(this::dummyAllocate);
-            Assert.assertEquals((idx + 1) * chunkSize - 1, (long) entry);
+            assertEquals((idx + 1) * chunkSize - 1, (long) entry);
         }
-        Assert.assertEquals(config.getIdMaximum(), (long) poolManager.allocate(this::dummyAllocate));
-        Assert.assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
+        assertEquals(config.getIdMaximum(), (long) poolManager.allocate(this::dummyAllocate));
+        assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
     }
 
     @Test
@@ -125,9 +128,9 @@ public class PoolManagerTest {
         InMemorySetPoolEntityAdapter adapter = new InMemorySetPoolEntityAdapter();
         PoolManager<Long> poolManager = newPoolManager(config, adapter);
         for (int idx = 0; idx <= config.getIdMaximum(); idx++) {
-            Assert.assertEquals(idx, (long) poolManager.allocate(this::dummyAllocate));
+            assertEquals(idx, (long) poolManager.allocate(this::dummyAllocate));
         }
-        Assert.assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
+        assertThrows(ResourceNotAvailableException.class, () -> poolManager.allocate(this::dummyAllocate));
     }
 
     private Long dummyAllocate(Long entityId) {

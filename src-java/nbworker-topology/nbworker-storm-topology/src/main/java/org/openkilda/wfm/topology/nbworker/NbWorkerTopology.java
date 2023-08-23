@@ -156,7 +156,8 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
                 .fieldsGrouping(FlowMeterModifyHubBolt.ID, StreamType.METER_MODIFY_WORKER.toString(), FIELDS_KEY)
                 .directGrouping(CoordinatorBolt.ID);
 
-        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(persistenceManager);
+        SwitchOperationsBolt switchesBolt = new SwitchOperationsBolt(
+                persistenceManager, topologyConfig.getChunkedMessagesChunkSize());
         declareBolt(tb, switchesBolt, SWITCHES_BOLT_NAME)
                 .shuffleGrouping(ROUTER_BOLT_NAME, StreamType.SWITCH.toString());
 

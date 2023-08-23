@@ -16,14 +16,13 @@
 package org.openkilda.config;
 
 import static java.util.Collections.emptyMap;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Key;
 import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
 import com.sabre.oss.conf4j.source.MapConfigurationSource;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class DefaultConfigurationTest {
     private JdkProxyStaticConfigurationFactory factory = new JdkProxyStaticConfigurationFactory();
@@ -37,7 +36,7 @@ public class DefaultConfigurationTest {
         KafkaTopicsConfig kafkaTopicsConfig = factory.createConfiguration(KafkaTopicsConfig.class, source);
 
         // then
-        assertEquals("kilda.ctrl", kafkaTopicsConfig.getCtrlTopic());
+        Assertions.assertEquals("kilda.ctrl", kafkaTopicsConfig.getCtrlTopic());
     }
 
     @Test
@@ -49,7 +48,7 @@ public class DefaultConfigurationTest {
         TestConfig testConfig = factory.createConfiguration(TestConfig.class, source);
 
         // then
-        assertNull(testConfig.getTestProperty());
+        Assertions.assertNull(testConfig.getTestProperty());
     }
 
     @Configuration

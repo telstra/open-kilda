@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology.utils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -29,7 +27,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.Optional;
@@ -52,7 +51,7 @@ public class LoggerContextInitializerTest {
         Optional<CommandContext> result = LoggerContextInitializer.extract(tuple);
 
         //then
-        assertEquals(correlationId, result.get().getCorrelationId());
+        Assertions.assertEquals(correlationId, result.get().getCorrelationId());
     }
 
     @Test
@@ -71,7 +70,7 @@ public class LoggerContextInitializerTest {
         Optional<CommandContext> result = LoggerContextInitializer.extract(tuple);
 
         //then
-        assertEquals(correlationId, result.get().getCorrelationId());
+        Assertions.assertEquals(correlationId, result.get().getCorrelationId());
     }
 
     @Test
@@ -86,6 +85,6 @@ public class LoggerContextInitializerTest {
         Optional<CommandContext> result = LoggerContextInitializer.extract(tuple);
 
         //then
-        assertFalse(result.isPresent());
+        Assertions.assertFalse(result.isPresent());
     }
 }

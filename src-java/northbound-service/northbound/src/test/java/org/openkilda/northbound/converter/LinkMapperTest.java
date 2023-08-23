@@ -15,10 +15,6 @@
 
 package org.openkilda.northbound.converter;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import org.openkilda.messaging.info.event.IslChangeType;
 import org.openkilda.messaging.info.event.IslInfoData;
 import org.openkilda.messaging.info.event.PathNode;
@@ -27,14 +23,15 @@ import org.openkilda.northbound.dto.v1.links.LinkDto;
 import org.openkilda.northbound.dto.v1.links.LinkStatus;
 import org.openkilda.northbound.dto.v1.links.PathDto;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 public class LinkMapperTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId(1);
     private static final SwitchId SWITCH_ID_2 = new SwitchId(2);
@@ -82,28 +79,28 @@ public class LinkMapperTest {
 
         LinkDto response = linkMapper.mapResponse(islInfoData);
 
-        assertEquals(2, response.getPath().size());
+        Assertions.assertEquals(2, response.getPath().size());
         assertPathNode(source, response.getPath().get(0));
         assertPathNode(destination, response.getPath().get(1));
 
-        assertEquals(LATENCY, response.getLatency());
-        assertEquals(SPEED, response.getSpeed());
-        assertEquals(AVAILABLE_BANDWIDTH, response.getAvailableBandwidth());
-        assertEquals(MAX_BANDWIDTH, response.getMaxBandwidth());
-        assertEquals(DEFAULT_MAX_BANDWIDTH, response.getDefaultMaxBandwidth());
-        assertEquals(LinkStatus.DISCOVERED, response.getState());
-        assertEquals(LinkStatus.FAILED, response.getActualState());
-        assertEquals(LinkStatus.MOVED, response.getRoundTripStatus());
-        assertEquals(COST, response.getCost());
-        assertFalse(response.isUnderMaintenance());
-        assertTrue(response.isEnableBfd());
-        assertEquals(BFD_SESSION_STATUS, response.getBfdSessionStatus());
-        assertEquals(DESCRIPTION, response.getDescription());
+        Assertions.assertEquals(LATENCY, response.getLatency());
+        Assertions.assertEquals(SPEED, response.getSpeed());
+        Assertions.assertEquals(AVAILABLE_BANDWIDTH, response.getAvailableBandwidth());
+        Assertions.assertEquals(MAX_BANDWIDTH, response.getMaxBandwidth());
+        Assertions.assertEquals(DEFAULT_MAX_BANDWIDTH, response.getDefaultMaxBandwidth());
+        Assertions.assertEquals(LinkStatus.DISCOVERED, response.getState());
+        Assertions.assertEquals(LinkStatus.FAILED, response.getActualState());
+        Assertions.assertEquals(LinkStatus.MOVED, response.getRoundTripStatus());
+        Assertions.assertEquals(COST, response.getCost());
+        Assertions.assertFalse(response.isUnderMaintenance());
+        Assertions.assertTrue(response.isEnableBfd());
+        Assertions.assertEquals(BFD_SESSION_STATUS, response.getBfdSessionStatus());
+        Assertions.assertEquals(DESCRIPTION, response.getDescription());
     }
 
     private void assertPathNode(PathNode expected, PathDto actual) {
-        assertEquals(expected.getSwitchId().toString(), actual.getSwitchId());
-        assertEquals(expected.getPortNo(), actual.getPortNo());
+        Assertions.assertEquals(expected.getSwitchId().toString(), actual.getSwitchId());
+        Assertions.assertEquals(expected.getPortNo(), actual.getPortNo());
     }
 
     @TestConfiguration

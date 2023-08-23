@@ -128,6 +128,10 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
         return getEndpointSwitchId().equals(getHaFlow().getSharedSwitchId());
     }
 
+    public boolean isOneSwitch(SwitchId sharedSwitchId) {
+        return getEndpointSwitchId().equals(sharedSwitchId);
+    }
+
     /**
      * Defines persistable data of the sub-flow.
      */

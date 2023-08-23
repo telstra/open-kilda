@@ -25,15 +25,15 @@ import org.openkilda.messaging.nbtopology.request.LinkPropsPut;
 import org.openkilda.messaging.nbtopology.request.LinkPropsPutTest;
 import org.openkilda.messaging.nbtopology.request.LinkPropsRequest;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class LinkPropsResponseTest {
     StringSerializer serializer = new StringSerializer();
 
     @Test
     public void serializeLoop() throws Exception {
-        LinkPropsRequest[] requestsBatch = new LinkPropsRequest[] {
+        LinkPropsRequest[] requestsBatch = new LinkPropsRequest[]{
                 makePutRequest(),
                 makeDropRequest()};
 
@@ -45,7 +45,7 @@ public class LinkPropsResponseTest {
 
             InfoMessage reconstructedWrapper = (InfoMessage) serializer.deserialize();
             LinkPropsResponse reconstructed = (LinkPropsResponse) reconstructedWrapper.getData();
-            Assert.assertEquals(origin, reconstructed);
+            Assertions.assertEquals(origin, reconstructed);
         }
     }
 

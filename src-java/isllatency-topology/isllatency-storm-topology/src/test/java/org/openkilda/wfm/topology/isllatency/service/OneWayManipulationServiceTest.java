@@ -15,7 +15,6 @@
 
 package org.openkilda.wfm.topology.isllatency.service;
 
-import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -27,8 +26,9 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.topology.isllatency.carriers.OneWayLatencyManipulationCarrier;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 public class OneWayManipulationServiceTest {
@@ -41,23 +41,23 @@ public class OneWayManipulationServiceTest {
     private OneWayLatencyManipulationCarrier carrier;
     private OneWayLatencyManipulationService oneWayLatencyManipulationService;
 
-    @Before
+    @BeforeEach
     public void setup() {
         carrier = mock(OneWayLatencyManipulationCarrier.class);
         oneWayLatencyManipulationService = new OneWayLatencyManipulationService(carrier);
     }
 
-    @Test()
+    @Test
     public void handleOneWayLatencyNegativeLatencyTest() throws PipelineException {
         runHandleOneWayLatencyTest(-1, ONE_MILLISECOND_IN_NANOSECONDS);
     }
 
-    @Test()
+    @Test
     public void handleOneWayLatencyZeroLatencyTest() throws PipelineException {
         runHandleOneWayLatencyTest(0, ONE_MILLISECOND_IN_NANOSECONDS);
     }
 
-    @Test()
+    @Test
     public void handleOneWayLatencyPositiveLatencyTest() throws PipelineException {
         runHandleOneWayLatencyTest(12, 12 * ONE_WAY_LATENCY_MULTIPLIER);
     }
@@ -72,11 +72,11 @@ public class OneWayManipulationServiceTest {
     }
 
     private void assertIslOneWayLatency(long expectedLatency, IslOneWayLatency actual) {
-        assertEquals(SWITCH_ID_1, actual.getSrcSwitchId());
-        assertEquals(PORT_1, actual.getSrcPortNo());
-        assertEquals(SWITCH_ID_2, actual.getDstSwitchId());
-        assertEquals(PORT_2, actual.getDstPortNo());
-        assertEquals(expectedLatency, actual.getLatency());
+        Assertions.assertEquals(SWITCH_ID_1, actual.getSrcSwitchId());
+        Assertions.assertEquals(PORT_1, actual.getSrcPortNo());
+        Assertions.assertEquals(SWITCH_ID_2, actual.getDstSwitchId());
+        Assertions.assertEquals(PORT_2, actual.getDstPortNo());
+        Assertions.assertEquals(expectedLatency, actual.getLatency());
     }
 
     private IslOneWayLatency createIslOneWayLatency(long latency) {

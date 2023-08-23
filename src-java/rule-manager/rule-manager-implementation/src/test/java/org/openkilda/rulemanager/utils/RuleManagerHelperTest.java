@@ -17,8 +17,9 @@ package org.openkilda.rulemanager.utils;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.rulemanager.utils.RuleManagerHelper.checkCircularDependencies;
 import static org.openkilda.rulemanager.utils.RuleManagerHelper.groupCommandsByDependenciesAndSort;
 import static org.openkilda.rulemanager.utils.RuleManagerHelper.removeDuplicateCommands;
@@ -62,7 +63,7 @@ import org.openkilda.rulemanager.group.WatchPort;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -165,34 +166,42 @@ public class RuleManagerHelperTest {
         // if there are no exceptions - test passed
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void checkCircularDependenciesUnknownDependsOnTest() {
-        FlowSpeakerData command = buildFullFlowSpeakerCommandData(METER_ID_1, UUID.randomUUID());
-        checkCircularDependencies(newArrayList(command));
+        assertThrows(IllegalStateException.class, () -> {
+            FlowSpeakerData command = buildFullFlowSpeakerCommandData(METER_ID_1, UUID.randomUUID());
+            checkCircularDependencies(newArrayList(command));
+        });
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void checkCircularDependenciesLoopTest() {
-        FlowSpeakerData command = buildFullFlowSpeakerCommandData(METER_ID_1, null);
-        command.getDependsOn().add(command.getUuid());
-        checkCircularDependencies(newArrayList(command));
+        assertThrows(IllegalStateException.class, () -> {
+            FlowSpeakerData command = buildFullFlowSpeakerCommandData(METER_ID_1, null);
+            command.getDependsOn().add(command.getUuid());
+            checkCircularDependencies(newArrayList(command));
+        });
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void checkCircularDependenciesCycle3Test() {
-        FlowSpeakerData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
-        FlowSpeakerData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
-        FlowSpeakerData command3 = buildFullFlowSpeakerCommandData(METER_ID_2, command2.getUuid());
-        command1.getDependsOn().add(command3.getUuid());
-        checkCircularDependencies(newArrayList(command1, command2, command3));
+        assertThrows(IllegalStateException.class, () -> {
+            FlowSpeakerData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
+            FlowSpeakerData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
+            FlowSpeakerData command3 = buildFullFlowSpeakerCommandData(METER_ID_2, command2.getUuid());
+            command1.getDependsOn().add(command3.getUuid());
+            checkCircularDependencies(newArrayList(command1, command2, command3));
+        });
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void checkCircularDependenciesCycle2Test() {
-        FlowSpeakerData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
-        FlowSpeakerData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
-        command1.getDependsOn().add(command2.getUuid());
-        checkCircularDependencies(newArrayList(command1, command2));
+        assertThrows(IllegalStateException.class, () -> {
+            FlowSpeakerData command1 = buildFullFlowSpeakerCommandData(METER_ID_1, null);
+            FlowSpeakerData command2 = buildFullFlowSpeakerCommandData(METER_ID_1, command1.getUuid());
+            command1.getDependsOn().add(command2.getUuid());
+            checkCircularDependencies(newArrayList(command1, command2));
+        });
     }
 
     @Test

@@ -16,11 +16,11 @@
 package org.openkilda.rulemanager;
 
 import static com.google.common.collect.Sets.newHashSet;
-import static org.junit.Assert.assertEquals;
 
 import org.openkilda.rulemanager.match.FieldMatch;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class FlowSpeakerCommandDataTest {
     @Test
@@ -30,7 +30,7 @@ public class FlowSpeakerCommandDataTest {
                         FieldMatch.builder().field(Field.VLAN_VID).value(1).build(),
                         FieldMatch.builder().field(Field.VLAN_VID).value(2).build()))
                 .build();
-        assertEquals(1, command.getMatch().size());
+        Assertions.assertEquals(1, command.getMatch().size());
     }
 
     @Test
@@ -40,7 +40,7 @@ public class FlowSpeakerCommandDataTest {
                         FieldMatch.builder().field(Field.VLAN_VID).value(1).build(),
                         FieldMatch.builder().field(Field.VLAN_VID).value(1).build()))
                 .build();
-        assertEquals(1, command.getMatch().size());
+        Assertions.assertEquals(1, command.getMatch().size());
     }
 
     @Test
@@ -50,6 +50,6 @@ public class FlowSpeakerCommandDataTest {
                         FieldMatch.builder().field(Field.VLAN_VID).value(1).build(),
                         FieldMatch.builder().field(Field.IN_PORT).value(1).build()))
                 .build();
-        assertEquals(2, command.getMatch().size());
+        Assertions.assertEquals(2, command.getMatch().size());
     }
 }

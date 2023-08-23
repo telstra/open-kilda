@@ -24,13 +24,15 @@ import org.openkilda.messaging.payload.network.PathDto;
 import org.openkilda.northbound.dto.v2.flows.PathValidateResponse;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = ProtectedPathMapper.class)
 public interface PathMapper {
 
-    default PathDto mapToPath(Path data) {
-        return new PathDto(data.getBandwidth(), data.getLatency(), data.getNodes(), data.getIsBackupPath());
-    }
+    @Mapping(target = "latency", expression = "java(data.getLatency().toNanos())")
+    @Mapping(target = "latencyNs", expression = "java(data.getLatency().toNanos())")
+    @Mapping(target = "latencyMs", expression = "java(data.getLatency().toMillis())")
+    PathDto mapToPathDto(Path data);
 
     GroupFlowPathPayload mapGroupFlowPathPayload(FlowPathDto data);
 

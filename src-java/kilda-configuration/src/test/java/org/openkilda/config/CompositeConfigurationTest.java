@@ -15,15 +15,14 @@
 
 package org.openkilda.config;
 
-import static org.junit.Assert.assertEquals;
-
 import com.google.common.collect.ImmutableMap;
 import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.IgnoreKey;
 import com.sabre.oss.conf4j.annotation.Key;
 import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
 import com.sabre.oss.conf4j.source.MapConfigurationSource;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class CompositeConfigurationTest {
     private JdkProxyStaticConfigurationFactory factory = new JdkProxyStaticConfigurationFactory();
@@ -37,7 +36,7 @@ public class CompositeConfigurationTest {
         TestCompositeConfig testCompositeConfig = factory.createConfiguration(TestCompositeConfig.class, source);
 
         // then
-        assertEquals(10, testCompositeConfig.getTestProperty());
+        Assertions.assertEquals(10, testCompositeConfig.getTestProperty());
     }
 
     @Configuration

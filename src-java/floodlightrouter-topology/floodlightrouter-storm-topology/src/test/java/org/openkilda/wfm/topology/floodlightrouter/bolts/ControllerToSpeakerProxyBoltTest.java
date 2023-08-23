@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.floodlightrouter.bolts;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -48,13 +48,13 @@ import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.TupleImpl;
 import org.apache.storm.tuple.Values;
 import org.apache.storm.utils.Utils;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -62,7 +62,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class ControllerToSpeakerProxyBoltTest {
     private static final int TASK_ID_SPOUT = 0;
     private static final int SWITCH_MONITOR_BOLT = 1;
@@ -90,12 +90,12 @@ public class ControllerToSpeakerProxyBoltTest {
 
     private final Map<String, String> topologyConfig = Collections.emptyMap();
 
-    @BeforeClass
+    @BeforeAll
     public static void initPersistenceManager() {
         InMemoryGraphPersistenceManager.newInstance().install();
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         Set<String> regions = new HashSet<>();
         regions.add(REGION_ONE);

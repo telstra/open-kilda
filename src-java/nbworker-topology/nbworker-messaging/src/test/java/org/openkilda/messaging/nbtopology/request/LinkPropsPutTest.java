@@ -21,8 +21,8 @@ import org.openkilda.messaging.model.LinkPropsDto;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.model.SwitchId;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 
@@ -39,7 +39,7 @@ public class LinkPropsPutTest {
         CommandMessage result = (CommandMessage) serializer.deserialize();
         LinkPropsPut reconstructed = (LinkPropsPut) result.getData();
 
-        Assert.assertEquals(origin, reconstructed);
+        Assertions.assertEquals(origin, reconstructed);
     }
 
     /**

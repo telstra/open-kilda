@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.service.yflow;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 
@@ -40,17 +40,17 @@ import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathSwapHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathSwapService;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class YFlowPathSwapServiceTest extends AbstractYFlowTest<SpeakerRequest> {
 
     @Mock
@@ -58,7 +58,7 @@ public class YFlowPathSwapServiceTest extends AbstractYFlowTest<SpeakerRequest> 
     @Mock
     private FlowGenericCarrier yFlowPathSwapHubCarrier;
 
-    @Before
+    @BeforeEach
     public void init() {
         doAnswer(buildSpeakerRequestAnswer())
                 .when(flowPathSwapHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));

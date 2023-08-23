@@ -16,8 +16,6 @@
 package org.openkilda.rulemanager.factory.generator.service.lacp;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.METERS;
@@ -47,8 +45,9 @@ import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,7 +58,7 @@ public class LacpReplyRuleGeneratorTest {
     public static final int LOGICAL_PORT = 1234;
     private static RuleManagerConfig config;
 
-    @BeforeClass
+    @BeforeAll
     public static void init() {
         config = mock(RuleManagerConfig.class);
         when(config.getLacpPacketSize()).thenReturn(150);
@@ -73,21 +72,21 @@ public class LacpReplyRuleGeneratorTest {
         Switch sw = buildSwitch("OF_13", Sets.newHashSet(METERS, PKTPS_FLAG));
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
 
         assertLacpReplyFlow(sw, flowCommandData, newArrayList(meterCommandData.getUuid()));
 
-        assertEquals(sw.getSwitchId(), meterCommandData.getSwitchId());
-        assertEquals(MeterId.LACP_REPLY_METER_ID, meterCommandData.getMeterId());
-        assertEquals(config.getLacpRateLimit(), meterCommandData.getRate());
-        assertEquals(config.getLacpMeterBurstSizeInPackets(), meterCommandData.getBurst());
-        assertEquals(3, meterCommandData.getFlags().size());
-        assertTrue(Sets.newHashSet(MeterFlag.BURST, MeterFlag.STATS, MeterFlag.PKTPS)
+        Assertions.assertEquals(sw.getSwitchId(), meterCommandData.getSwitchId());
+        Assertions.assertEquals(MeterId.LACP_REPLY_METER_ID, meterCommandData.getMeterId());
+        Assertions.assertEquals(config.getLacpRateLimit(), meterCommandData.getRate());
+        Assertions.assertEquals(config.getLacpMeterBurstSizeInPackets(), meterCommandData.getBurst());
+        Assertions.assertEquals(3, meterCommandData.getFlags().size());
+        Assertions.assertTrue(Sets.newHashSet(MeterFlag.BURST, MeterFlag.STATS, MeterFlag.PKTPS)
                 .containsAll(meterCommandData.getFlags()));
-        assertTrue(meterCommandData.getDependsOn().isEmpty());
+        Assertions.assertTrue(meterCommandData.getDependsOn().isEmpty());
     }
 
     @Test
@@ -96,26 +95,27 @@ public class LacpReplyRuleGeneratorTest {
         Switch sw = buildSwitch("OF_13", Sets.newHashSet(METERS, PKTPS_FLAG));
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         assertLacpReplyFlow(sw, flowCommandData, newArrayList());
     }
 
     private static void assertLacpReplyFlow(Switch sw, FlowSpeakerData flowCommandData, List<UUID> expectedDependsOn) {
-        assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
-        assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertEquals(expectedDependsOn, new ArrayList<>(flowCommandData.getDependsOn()));
+        Assertions.assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
+        Assertions.assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
+        Assertions.assertEquals(expectedDependsOn, new ArrayList<>(flowCommandData.getDependsOn()));
 
-        assertEquals(new PortColourCookie(CookieType.LACP_REPLY_INPUT, LOGICAL_PORT), flowCommandData.getCookie());
-        assertEquals(OfTable.INPUT, flowCommandData.getTable());
-        assertEquals(LACP_RULE_PRIORITY, flowCommandData.getPriority());
+        Assertions.assertEquals(new PortColourCookie(CookieType.LACP_REPLY_INPUT, LOGICAL_PORT),
+                flowCommandData.getCookie());
+        Assertions.assertEquals(OfTable.INPUT, flowCommandData.getTable());
+        Assertions.assertEquals(LACP_RULE_PRIORITY, flowCommandData.getPriority());
 
         Instructions expectedInstructions = Instructions.builder()
                 .goToMeter(MeterId.LACP_REPLY_METER_ID)
                 .applyActions(newArrayList(new PortOutAction(new PortNumber(SpecialPortType.CONTROLLER))))
                 .build();
-        assertEquals(expectedInstructions, flowCommandData.getInstructions());
+        Assertions.assertEquals(expectedInstructions, flowCommandData.getInstructions());
 
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.IN_PORT).value(LOGICAL_PORT).build(),

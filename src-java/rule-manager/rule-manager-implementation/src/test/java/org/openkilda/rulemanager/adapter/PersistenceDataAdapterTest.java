@@ -16,8 +16,6 @@
 package org.openkilda.rulemanager.adapter;
 
 import static java.util.Collections.singleton;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -49,18 +47,19 @@ import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.persistence.repositories.VxlanRepository;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class PersistenceDataAdapterTest {
 
     @Mock
@@ -83,7 +82,7 @@ public class PersistenceDataAdapterTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId(1);
     private static final SwitchId SWITCH_ID_2 = new SwitchId(2);
 
-    @Before
+    @BeforeEach
     public void setup() {
         RepositoryFactory repositoryFactory = mock(RepositoryFactory.class);
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
@@ -116,8 +115,8 @@ public class PersistenceDataAdapterTest {
 
         Map<PathId, FlowPath> actual = adapter.getCommonFlowPaths();
 
-        assertEquals(1, actual.size());
-        assertEquals(flowPath, actual.get(pathId));
+        Assertions.assertEquals(1, actual.size());
+        Assertions.assertEquals(flowPath, actual.get(pathId));
 
         adapter.getCommonFlowPaths();
 
@@ -146,7 +145,7 @@ public class PersistenceDataAdapterTest {
 
         Flow actual = adapter.getFlow(pathId);
 
-        assertEquals(flow, actual);
+        Assertions.assertEquals(flow, actual);
 
         adapter.getFlow(new PathId("test"));
 
@@ -169,8 +168,8 @@ public class PersistenceDataAdapterTest {
                 .persistenceManager(persistenceManager)
                 .build();
 
-        assertEquals(sw1, adapter.getSwitch(SWITCH_ID_1));
-        assertEquals(sw2, adapter.getSwitch(SWITCH_ID_2));
+        Assertions.assertEquals(sw1, adapter.getSwitch(SWITCH_ID_1));
+        Assertions.assertEquals(sw2, adapter.getSwitch(SWITCH_ID_2));
 
         verify(switchRepository).findByIds(switchIds);
         verifyNoMoreInteractions(switchRepository);
@@ -193,8 +192,8 @@ public class PersistenceDataAdapterTest {
                 .persistenceManager(persistenceManager)
                 .build();
 
-        assertEquals(switchProperties1, adapter.getSwitchProperties(SWITCH_ID_1));
-        assertEquals(switchProperties2, adapter.getSwitchProperties(SWITCH_ID_2));
+        Assertions.assertEquals(switchProperties1, adapter.getSwitchProperties(SWITCH_ID_1));
+        Assertions.assertEquals(switchProperties2, adapter.getSwitchProperties(SWITCH_ID_2));
 
         verify(switchPropertiesRepository).findBySwitchIds(switchIds);
         verifyNoMoreInteractions(switchPropertiesRepository);
@@ -220,8 +219,8 @@ public class PersistenceDataAdapterTest {
                 .keepMultitableForFlow(true)
                 .build();
 
-        assertTrue(adapter.getSwitchProperties(SWITCH_ID_1).isMultiTable());
-        assertTrue(adapter.getSwitchProperties(SWITCH_ID_2).isMultiTable());
+        Assertions.assertTrue(adapter.getSwitchProperties(SWITCH_ID_1).isMultiTable());
+        Assertions.assertTrue(adapter.getSwitchProperties(SWITCH_ID_2).isMultiTable());
     }
 
     @Test
@@ -242,8 +241,8 @@ public class PersistenceDataAdapterTest {
 
         FlowTransitEncapsulation actual = adapter.getTransitEncapsulation(pathId, null);
 
-        assertEquals(FlowEncapsulationType.TRANSIT_VLAN, actual.getType());
-        assertEquals(transitVlan.getVlan(), actual.getId().intValue());
+        Assertions.assertEquals(FlowEncapsulationType.TRANSIT_VLAN, actual.getType());
+        Assertions.assertEquals(transitVlan.getVlan(), actual.getId().intValue());
 
         adapter.getTransitEncapsulation(pathId, null);
 
@@ -270,8 +269,8 @@ public class PersistenceDataAdapterTest {
 
         FlowTransitEncapsulation actual = adapter.getTransitEncapsulation(pathId, null);
 
-        assertEquals(FlowEncapsulationType.VXLAN, actual.getType());
-        assertEquals(vxlan.getVni(), actual.getId().intValue());
+        Assertions.assertEquals(FlowEncapsulationType.VXLAN, actual.getType());
+        Assertions.assertEquals(vxlan.getVni(), actual.getId().intValue());
 
         adapter.getTransitEncapsulation(pathId, null);
 
@@ -300,7 +299,7 @@ public class PersistenceDataAdapterTest {
 
         YFlow actual = adapter.getYFlow(pathId);
 
-        assertEquals(yFlow, actual);
+        Assertions.assertEquals(yFlow, actual);
 
         adapter.getYFlow(new PathId("test"));
 

@@ -15,10 +15,9 @@
 
 package org.openkilda.messaging.info.switches.v2;
 
-import static org.junit.Assert.assertEquals;
-
 import com.google.common.collect.Lists;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,9 +34,9 @@ public class MetersValidationEntryV2Test {
                 .proper(new ArrayList<>())
                 .build();
         List<MetersValidationEntryV2> list = entry.split(4, 4);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -50,9 +49,9 @@ public class MetersValidationEntryV2Test {
                 .proper(null)
                 .build();
         List<MetersValidationEntryV2> list = entry.split(4, 4);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -65,9 +64,9 @@ public class MetersValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredMetersInfo(4, 1))
                 .build();
         List<MetersValidationEntryV2> list = entry.split(4, 4);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -80,9 +79,9 @@ public class MetersValidationEntryV2Test {
                 .misconfigured(new ArrayList<>())
                 .build();
         List<MetersValidationEntryV2> list = entry.split(2, 2);
-        assertEquals(3, list.size());
+        Assertions.assertEquals(3, list.size());
         MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -95,9 +94,9 @@ public class MetersValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredMetersInfo(4, 1))
                 .build();
         List<MetersValidationEntryV2> list = entry.split(1, 1);
-        assertEquals(4, list.size());
+        Assertions.assertEquals(4, list.size());
         MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -110,9 +109,9 @@ public class MetersValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredMetersInfo(4, 4))
                 .build();
         List<MetersValidationEntryV2> list = entry.split(2, 3);
-        assertEquals(4, list.size());
+        Assertions.assertEquals(4, list.size());
         MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -125,9 +124,9 @@ public class MetersValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredMetersInfo(4, 4))
                 .build();
         List<MetersValidationEntryV2> list = entry.split(100, 200);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -140,9 +139,9 @@ public class MetersValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredMetersInfo(3000, 800))
                 .build();
         List<MetersValidationEntryV2> list = entry.split(100, 200);
-        assertEquals(14, list.size());
+        Assertions.assertEquals(14, list.size());
         MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -155,9 +154,9 @@ public class MetersValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredMetersInfo(3000, 800))
                 .build();
         List<MetersValidationEntryV2> list = entry.split(1, 1);
-        assertEquals(2600, list.size());
+        Assertions.assertEquals(2600, list.size());
         MetersValidationEntryV2 united = MetersValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     static List<MeterInfoEntryV2> buildMetersInfo(int idBase, int count) {

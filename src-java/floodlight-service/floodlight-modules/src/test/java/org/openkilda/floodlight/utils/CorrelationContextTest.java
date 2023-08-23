@@ -2,14 +2,14 @@ package org.openkilda.floodlight.utils;
 
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.hamcrest.core.IsNot.not;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertThat;
 import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 
 import org.openkilda.floodlight.utils.CorrelationContext.CorrelationContextClosable;
 
-import org.junit.Ignore;
-import org.junit.Test;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
@@ -26,13 +26,13 @@ public class CorrelationContextTest {
                 .create(String.format("test-%s", UUID.randomUUID()))) {
 
             //then
-            assertThat(CorrelationContext.getId(), not(equalTo(before)));
+            MatcherAssert.assertThat(CorrelationContext.getId(), not(equalTo(before)));
         }
 
-        assertThat(CorrelationContext.getId(), equalTo(before));
+        MatcherAssert.assertThat(CorrelationContext.getId(), equalTo(before));
     }
 
-    @Ignore("Fix applying aspects to test classes")
+    @Disabled("Fix applying aspects to test classes")
     @Test
     @NewCorrelationContextRequired
     public void shouldInitializeCorrelationId() {
@@ -40,6 +40,6 @@ public class CorrelationContextTest {
         String correlationId = CorrelationContext.getId();
 
         //then
-        assertNotEquals(DEFAULT_CORRELATION_ID, correlationId);
+        Assertions.assertNotEquals(DEFAULT_CORRELATION_ID, correlationId);
     }
 }

@@ -21,7 +21,9 @@ public enum FailReasonType {
     LATENCY_LIMIT("Latency limit"),
     MAX_WEIGHT_EXCEEDED("Max weight exceeded"),
     HARD_DIVERSITY_PENALTIES("There is no non-overlapped protected path"),
-    MAX_BANDWIDTH("Failed to find path with requested bandwidth");
+    MAX_BANDWIDTH("Failed to find path with requested bandwidth"),
+    PERSISTENCE_ERROR("Cannot fetch required data from the persistence layer."),
+    UNROUTABLE_FLOW("Unroutable flow exception occurred.");
 
     private final String value;
 

@@ -15,9 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
@@ -40,7 +37,8 @@ import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.factory.RuleGenerator;
 import org.openkilda.rulemanager.match.FieldMatch;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Set;
@@ -61,16 +59,16 @@ public abstract class ConnectedDevicesRuleGeneratorTest {
         sw = buildSwitch("OF_13", expectedFeatures);
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertEquals(2, commands.size());
-        commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
-        commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
+        Assertions.assertEquals(2, commands.size());
+        commands.forEach(c -> Assertions.assertEquals(sw.getSwitchId(), c.getSwitchId()));
+        commands.forEach(c -> Assertions.assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
 
-        assertEquals(1, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
-        assertTrue(meterCommandData.getDependsOn().isEmpty());
+        Assertions.assertEquals(1, flowCommandData.getDependsOn().size());
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        Assertions.assertTrue(meterCommandData.getDependsOn().isEmpty());
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -88,16 +86,16 @@ public abstract class ConnectedDevicesRuleGeneratorTest {
         sw = buildSwitch("OF_15", expectedFeatures);
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertEquals(2, commands.size());
-        commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
-        commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
+        Assertions.assertEquals(2, commands.size());
+        commands.forEach(c -> Assertions.assertEquals(sw.getSwitchId(), c.getSwitchId()));
+        commands.forEach(c -> Assertions.assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
 
-        assertEquals(1, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
-        assertTrue(meterCommandData.getDependsOn().isEmpty());
+        Assertions.assertEquals(1, flowCommandData.getDependsOn().size());
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        Assertions.assertTrue(meterCommandData.getDependsOn().isEmpty());
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -117,13 +115,13 @@ public abstract class ConnectedDevicesRuleGeneratorTest {
         sw = buildSwitch("OF_13", expectedFeatures);
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertEquals(1, commands.size());
-        commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
-        commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
+        Assertions.assertEquals(1, commands.size());
+        commands.forEach(c -> Assertions.assertEquals(sw.getSwitchId(), c.getSwitchId()));
+        commands.forEach(c -> Assertions.assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
 
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -139,16 +137,16 @@ public abstract class ConnectedDevicesRuleGeneratorTest {
         sw = buildSwitch("OF_13", expectedFeatures);
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertEquals(2, commands.size());
-        commands.forEach(c -> assertEquals(sw.getSwitchId(), c.getSwitchId()));
-        commands.forEach(c -> assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
+        Assertions.assertEquals(2, commands.size());
+        commands.forEach(c -> Assertions.assertEquals(sw.getSwitchId(), c.getSwitchId()));
+        commands.forEach(c -> Assertions.assertEquals(sw.getOfVersion(), c.getOfVersion().toString()));
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
 
-        assertEquals(1, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
-        assertTrue(meterCommandData.getDependsOn().isEmpty());
+        Assertions.assertEquals(1, flowCommandData.getDependsOn().size());
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        Assertions.assertTrue(meterCommandData.getDependsOn().isEmpty());
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -162,40 +160,40 @@ public abstract class ConnectedDevicesRuleGeneratorTest {
     }
 
     protected void checkFlowCommandBaseProperties(FlowSpeakerData flowCommandData) {
-        assertEquals(cookie, flowCommandData.getCookie());
-        assertEquals(table, flowCommandData.getTable());
-        assertEquals(priority, flowCommandData.getPriority());
+        Assertions.assertEquals(cookie, flowCommandData.getCookie());
+        Assertions.assertEquals(table, flowCommandData.getTable());
+        Assertions.assertEquals(priority, flowCommandData.getPriority());
     }
 
     protected abstract void checkMatch(Set<FieldMatch> match);
 
     protected void checkInstructions(Instructions instructions, MeterId meterId) {
-        assertEquals(1, instructions.getApplyActions().size());
+        Assertions.assertEquals(1, instructions.getApplyActions().size());
         Action action = instructions.getApplyActions().get(0);
-        assertTrue(action instanceof PortOutAction);
+        Assertions.assertTrue(action instanceof PortOutAction);
         PortOutAction portOutAction = (PortOutAction) action;
-        assertEquals(SpecialPortType.CONTROLLER, portOutAction.getPortNumber().getPortType());
+        Assertions.assertEquals(SpecialPortType.CONTROLLER, portOutAction.getPortNumber().getPortType());
 
-        assertNull(instructions.getWriteActions());
-        assertEquals(instructions.getGoToMeter(), meterId);
-        assertNull(instructions.getGoToTable());
+        Assertions.assertNull(instructions.getWriteActions());
+        Assertions.assertEquals(instructions.getGoToMeter(), meterId);
+        Assertions.assertNull(instructions.getGoToTable());
     }
 
     protected void checkInstructionsOf15(Instructions instructions, MeterId meterId) {
-        assertEquals(2, instructions.getApplyActions().size());
+        Assertions.assertEquals(2, instructions.getApplyActions().size());
         Action first = instructions.getApplyActions().get(0);
-        assertTrue(first instanceof PortOutAction);
+        Assertions.assertTrue(first instanceof PortOutAction);
         PortOutAction portOutAction = (PortOutAction) first;
-        assertEquals(SpecialPortType.CONTROLLER, portOutAction.getPortNumber().getPortType());
+        Assertions.assertEquals(SpecialPortType.CONTROLLER, portOutAction.getPortNumber().getPortType());
 
         Action second = instructions.getApplyActions().get(1);
-        assertTrue(second instanceof MeterAction);
+        Assertions.assertTrue(second instanceof MeterAction);
         MeterAction meterAction = (MeterAction) second;
-        assertEquals(meterId, meterAction.getMeterId());
+        Assertions.assertEquals(meterId, meterAction.getMeterId());
 
-        assertNull(instructions.getWriteActions());
-        assertNull(instructions.getGoToMeter());
-        assertNull(instructions.getGoToTable());
+        Assertions.assertNull(instructions.getWriteActions());
+        Assertions.assertNull(instructions.getGoToMeter());
+        Assertions.assertNull(instructions.getGoToTable());
     }
 
     protected abstract void checkMeterCommand(MeterSpeakerData meterCommandData);

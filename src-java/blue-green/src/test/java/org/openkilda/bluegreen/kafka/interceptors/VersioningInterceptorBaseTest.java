@@ -17,8 +17,8 @@ package org.openkilda.bluegreen.kafka.interceptors;
 
 import static org.openkilda.bluegreen.kafka.interceptors.VersioningInterceptorBase.VERSION_IS_NOT_SET_LOG_TIMEOUT;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -29,14 +29,14 @@ public class VersioningInterceptorBaseTest {
     public void timeoutInitializationTest() {
         VersioningInterceptorBase interceptorBase = new TestClass();
         // initial value of timestamp is 0, so timeout is passed
-        Assert.assertTrue(interceptorBase.isVersionTimeoutPassed());
+        Assertions.assertTrue(interceptorBase.isVersionTimeoutPassed());
     }
 
     @Test
     public void timeoutIsNotPassedTest() {
         VersioningInterceptorBase interceptorBase = new TestClass();
         interceptorBase.versionIsNotSetTimestamp = Instant.now();
-        Assert.assertFalse(interceptorBase.isVersionTimeoutPassed());
+        Assertions.assertFalse(interceptorBase.isVersionTimeoutPassed());
     }
 
     @Test
@@ -44,7 +44,7 @@ public class VersioningInterceptorBaseTest {
         VersioningInterceptorBase interceptorBase = new TestClass();
         interceptorBase.versionIsNotSetTimestamp = Instant.now()
                 .minus(VERSION_IS_NOT_SET_LOG_TIMEOUT * 2, ChronoUnit.SECONDS);
-        Assert.assertTrue(interceptorBase.isVersionTimeoutPassed());
+        Assertions.assertTrue(interceptorBase.isVersionTimeoutPassed());
     }
 
     // needed to create an instance of abstract class VersioningInterceptorBase

@@ -17,7 +17,7 @@ package org.openkilda.northbound.converter;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.messaging.command.haflow.HaFlowDto;
 import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
@@ -53,18 +53,18 @@ import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowUpdatePayload;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 public class HaFlowMapperTest {
     private static final String HA_FLOW_ID = "ha_flow_id";
     private static final String SUB_FLOW_1_NAME = "flow_1";

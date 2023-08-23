@@ -18,8 +18,8 @@ package org.openkilda.persistence.repositories;
 import org.openkilda.model.Speaker;
 import org.openkilda.persistence.PersistenceArea;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.io.Serializable;
 import java.util.Optional;
@@ -27,14 +27,17 @@ import java.util.Optional;
 public class RepositoryAreaBindingTest {
     @Test
     public void testLookup() {
-        Assert.assertEquals(PersistenceArea.COMMON, RepositoryAreaBinding.INSTANCE.lookup(SpeakerRepository.class));
-        Assert.assertEquals(
-                PersistenceArea.COMMON, RepositoryAreaBinding.INSTANCE.lookup(DummySpeakerRepository.class));
+        Assertions.assertEquals(PersistenceArea.COMMON,
+                RepositoryAreaBinding.INSTANCE.lookup(SpeakerRepository.class));
+        Assertions.assertEquals(PersistenceArea.COMMON,
+                RepositoryAreaBinding.INSTANCE.lookup(DummySpeakerRepository.class));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testLookupFailure() {
-        RepositoryAreaBinding.INSTANCE.lookup(DummyRepositoryBase.class);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            RepositoryAreaBinding.INSTANCE.lookup(DummyRepositoryBase.class);
+        });
     }
 
     private static class DummyRepositoryBase implements Serializable {

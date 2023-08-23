@@ -18,8 +18,8 @@ package org.openkilda.wfm.share.mappers;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.collection.IsIterableContainingInAnyOrder.containsInAnyOrder;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
@@ -31,7 +31,7 @@ import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -168,8 +168,8 @@ public class RequestedFlowMapperTest {
         assertTrue(flow.isAllocateProtectedPath());
         assertTrue(flow.isIgnoreBandwidth());
         assertTrue(flow.isPeriodicPings());
-        assertEquals(new DetectConnectedDevices(true, true, true, true, true, true, true, true),
-                flow.getDetectConnectedDevices());
+        assertEquals(new DetectConnectedDevices(true, true, true, true, true,
+                true, true, true), flow.getDetectConnectedDevices());
         assertThat(flow.getVlanStatistics(), containsInAnyOrder(STATISTICS.toArray()));
     }
 }

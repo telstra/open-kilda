@@ -26,8 +26,8 @@ import org.openkilda.wfm.topology.ping.model.GroupId;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 
 import com.google.common.collect.Lists;
-import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
@@ -59,28 +59,28 @@ public class OnDemandResultManagerTest {
 
     private List<PingContext> generatePingContexts() {
         return Lists.newArrayList(PingContext.builder()
-                .haFlowId(HA_FLOW_ID)
-                .haSubFlowId(SUB_FLOW_1_NAME)
-                .direction(FlowDirection.FORWARD)
-                .meters(new PingMeters(1L, 2L, 3L))
-                .build(),
-        PingContext.builder()
-                .haFlowId(HA_FLOW_ID)
-                .haSubFlowId(SUB_FLOW_1_NAME)
-                .direction(FlowDirection.REVERSE)
-                .meters(new PingMeters(1L, 2L, 3L))
-                .build(),
-        PingContext.builder()
-                .haFlowId(HA_FLOW_ID)
-                .haSubFlowId(SUB_FLOW_2_NAME)
-                .direction(FlowDirection.FORWARD)
-                .meters(new PingMeters(1L, 2L, 3L))
-                .build(),
-        PingContext.builder()
-                .haFlowId(HA_FLOW_ID)
-                .haSubFlowId(SUB_FLOW_2_NAME)
-                .direction(FlowDirection.REVERSE)
-                .meters(new PingMeters(1L, 2L, 3L))
-                .build());
+                        .haFlowId(HA_FLOW_ID)
+                        .haSubFlowId(SUB_FLOW_1_NAME)
+                        .direction(FlowDirection.FORWARD)
+                        .meters(new PingMeters(1L, 2L, 3L))
+                        .build(),
+                PingContext.builder()
+                        .haFlowId(HA_FLOW_ID)
+                        .haSubFlowId(SUB_FLOW_1_NAME)
+                        .direction(FlowDirection.REVERSE)
+                        .meters(new PingMeters(1L, 2L, 3L))
+                        .build(),
+                PingContext.builder()
+                        .haFlowId(HA_FLOW_ID)
+                        .haSubFlowId(SUB_FLOW_2_NAME)
+                        .direction(FlowDirection.FORWARD)
+                        .meters(new PingMeters(1L, 2L, 3L))
+                        .build(),
+                PingContext.builder()
+                        .haFlowId(HA_FLOW_ID)
+                        .haSubFlowId(SUB_FLOW_2_NAME)
+                        .direction(FlowDirection.REVERSE)
+                        .meters(new PingMeters(1L, 2L, 3L))
+                        .build());
     }
 }

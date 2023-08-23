@@ -1,5 +1,16 @@
 package org.openkilda.functionaltests.helpers
 
+import com.google.common.collect.ImmutableList
+import org.openkilda.functionaltests.helpers.model.traffic.ha.HaFlowBidirectionalExam
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.service.traffexam.model.Bandwidth
+import org.openkilda.testing.service.traffexam.model.Exam
+import org.openkilda.testing.service.traffexam.model.Host
+import org.openkilda.testing.service.traffexam.model.TimeLimit
+import org.openkilda.testing.service.traffexam.model.Vlan
+
+import javax.inject.Provider
+
 import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -55,6 +66,8 @@ class HaFlowHelper {
     HaPathHelper haPathHelper
     @Autowired
     FlowHelperV2 flowHelperV2
+    @Autowired
+    Provider<TraffExamService> traffExamProvider
 
     def random = new Random()
     def faker = new Faker()
@@ -68,17 +81,17 @@ class HaFlowHelper {
      * @param secondSwitch the endpoint of the second sub-flow
      */
     HaFlowCreatePayload randomHaFlow(
-            Switch sharedSwitch, Switch firstSwitch, Switch secondSwitch, List<HaFlowCreatePayload> existingFlows = []) {
+            Switch sharedSwitch, Switch firstSwitch, Switch secondSwitch, boolean useTraffgenPorts = true, List<HaFlowCreatePayload> existingFlows = []) {
         List<SwitchPortVlan> busyEndpoints = getBusyEndpoints(existingFlows)
         def se = HaFlowSharedEndpoint.builder()
                 .switchId(sharedSwitch.dpId)
-                .portNumber(randomEndpointPort(sharedSwitch, busyEndpoints))
+                .portNumber(randomEndpointPort(sharedSwitch, useTraffgenPorts, busyEndpoints))
                 .vlanId(randomVlan([]))
                 .build()
         def subFlows = [firstSwitch, secondSwitch].collect { sw ->
             busyEndpoints << new SwitchPortVlan(se.switchId, se.portNumber, se.vlanId)
             def ep = HaSubFlowCreatePayload.builder()
-                    .endpoint(randomEndpoint(sw, busyEndpoints))
+                    .endpoint(randomEndpoint(sw, useTraffgenPorts, busyEndpoints))
                     .build()
             busyEndpoints << new SwitchPortVlan(ep.endpoint.switchId, ep.endpoint.portNumber, ep.endpoint.vlanId)
             ep
@@ -97,8 +110,8 @@ class HaFlowHelper {
                 .build()
     }
 
-    HaFlowCreatePayload randomHaFlow(SwitchTriplet swT, List<HaFlowCreatePayload> existingFlows = []) {
-        randomHaFlow(swT.shared, swT.ep1, swT.ep2, existingFlows)
+    HaFlowCreatePayload randomHaFlow(SwitchTriplet swT, boolean useTraffgenPorts = true, List<HaFlowCreatePayload> existingFlows = []) {
+        randomHaFlow(swT.shared, swT.ep1, swT.ep2, useTraffgenPorts, existingFlows)
     }
 
     /**
@@ -201,12 +214,12 @@ class HaFlowHelper {
     /**
      * Checks if status of HA-flow and statuses of HA-sub flows are equal to expected
      */
-    static void assertHaFlowAndSubFlowStatuses(HaFlow haFlow, FlowState expectedStatus) {
+    void assertHaFlowAndSubFlowStatuses(HaFlow haFlow, FlowState expectedStatus) {
         assert haFlow
         assert haFlow.status == expectedStatus.toString()
-        for (HaSubFlow subFlow : haFlow.subFlows ) {
-            assert subFlow.status == expectedStatus.toString()
-        }
+                && haFlow.getSubFlows().get(0).status == expectedStatus.toString()
+                && haFlow.getSubFlows().get(1).status == expectedStatus.toString(),
+                "Flow: ${haFlow}\nPaths: ${northboundV2.getHaFlowPaths(haFlow.getHaFlowId())}"
     }
 
     /**
@@ -285,27 +298,97 @@ class HaFlowHelper {
         }
     }
 
+    HaFlowBidirectionalExam getTraffExam(HaFlow flow, long bandwidth = 0, Long duration = 5) {
+        def traffExam = traffExamProvider.get()
+        def subFlow1 = flow.getSubFlows().get(0);
+        def subFlow2 = flow.getSubFlows().get(1);
+        Optional<TopologyDefinition.TraffGen> shared = Optional.ofNullable(topology.getTraffGen(
+                flow.getSharedEndpoint().getSwitchId()));
+        Optional<TopologyDefinition.TraffGen> ep1 = Optional.ofNullable(topology.getTraffGen(
+                subFlow1.getEndpoint().getSwitchId()));
+        Optional<TopologyDefinition.TraffGen> ep2 = Optional.ofNullable(topology.getTraffGen(
+                subFlow2.getEndpoint().getSwitchId()));
+        assert [shared, ep1, ep2].every {it.isPresent()}
+        List<Vlan> srcVlanId = ImmutableList.of(new Vlan(flow.getSharedEndpoint().getVlanId()),
+                new Vlan(flow.getSharedEndpoint().getInnerVlanId()));
+        List<Vlan> dstVlanIds1 = ImmutableList.of(new Vlan(subFlow1.getEndpoint().getVlanId()),
+                new Vlan(subFlow1.getEndpoint().getInnerVlanId()));
+        List<Vlan> dstVlanIds2 = ImmutableList.of(new Vlan(subFlow2.getEndpoint().getVlanId()),
+                new Vlan(subFlow2.getEndpoint().getInnerVlanId()));
+        //noinspection ConstantConditions
+        Host sourceHost = traffExam.hostByName(shared.get().getName());
+        Host destHost1 = traffExam.hostByName(ep1.get().getName());
+        Host destHost2 = traffExam.hostByName(ep2.get().getName());
+        def bandwidthLimit = new Bandwidth(bandwidth)
+        if (!bandwidth) {
+            bandwidthLimit = new Bandwidth(flow.strictBandwidth && flow.getMaximumBandwidth() ?
+                flow.getMaximumBandwidth() : 0)
+        }
+        def examBuilder = Exam.builder()
+                .flow(null)
+                .bandwidthLimit(bandwidthLimit)
+                .burstPkt(200)
+                .timeLimitSeconds(duration != null ? new TimeLimit(duration) : null)
+        Exam forward1 = examBuilder
+                .source(sourceHost)
+                .sourceVlans(srcVlanId)
+                .dest(destHost1)
+                .destVlans(dstVlanIds1)
+                .build();
+        Exam forward2 = examBuilder
+                .source(sourceHost)
+                .sourceVlans(srcVlanId)
+                .dest(destHost2)
+                .destVlans(dstVlanIds2)
+                .build();
+        Exam reverse1 = examBuilder
+                .source(destHost1)
+                .sourceVlans(dstVlanIds1)
+                .dest(sourceHost)
+                .destVlans(srcVlanId)
+                .build();
+        Exam reverse2 = examBuilder
+                .source(destHost2)
+                .sourceVlans(dstVlanIds2)
+                .dest(sourceHost)
+                .destVlans(srcVlanId)
+                .build();
+        return new HaFlowBidirectionalExam(traffExam, forward1, reverse1, forward2, reverse2);
+    }
+
     SwitchId getYPoint(HaFlow haFlow) {
         def sharedForwardPath = northboundV2.getHaFlowPaths(haFlow.getHaFlowId()).getSharedPath().getForward()
-        return sharedForwardPath == null ? sharedForwardPath.last().getSwitchId() :
+        return sharedForwardPath != null ? sharedForwardPath.last().getSwitchId() :
                 haFlow.getSharedEndpoint().getSwitchId()
     }
 
     /**
      * Returns an endpoint with randomly chosen port & vlan.
      */
-    private FlowEndpointV2 randomEndpoint(Switch sw, List<SwitchPortVlan> busyEps) {
+    private FlowEndpointV2 randomEndpoint(Switch sw, boolean useTraffgenPorts = true, List<SwitchPortVlan> busyEps) {
         return new FlowEndpointV2(
-                sw.dpId, randomEndpointPort(sw, busyEps), randomVlan(),
+                sw.dpId, randomEndpointPort(sw,useTraffgenPorts, busyEps), randomVlan(),
                 new DetectConnectedDevicesV2(false, false))
     }
 
     /**
      * Returns a randomly chosen endpoint port for ha-flow.
      */
-    private int randomEndpointPort(Switch sw, List<SwitchPortVlan> busyEps) {
+    private int randomEndpointPort(Switch sw, boolean useTraffgenPorts = true, List<SwitchPortVlan> busyEps) {
         def allowedPorts = topology.getAllowedPortsForSwitch(sw) - busyEps.findAll { it.sw == sw.dpId }*.port
-        allowedPorts[random.nextInt(allowedPorts.size())]
+        def port = allowedPorts[random.nextInt(allowedPorts.size())]
+        if (useTraffgenPorts) {
+            List<Integer> tgPorts = sw.traffGens*.switchPort.findAll { allowedPorts.contains(it) }
+            if (tgPorts) {
+                port = tgPorts[0]
+            } else {
+                tgPorts = sw.traffGens*.switchPort.findAll { topology.getAllowedPortsForSwitch(sw).contains(it) }
+                if (tgPorts) {
+                    port = tgPorts[0]
+                }
+            }
+        }
+        return port
     }
 
     private String generateDescription() {

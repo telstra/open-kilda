@@ -17,8 +17,6 @@ package org.openkilda.rulemanager.factory.generator.flow.loop;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
 import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
@@ -46,7 +44,8 @@ import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.rulemanager.utils.RoutingMetadata;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
 import java.util.List;
@@ -138,7 +137,7 @@ public class FlowLoopIngressRuleGeneratorTest {
         Flow flow = buildFlow(PATH, 0, 0, 0, 0);
         flow.setLoopSwitchId(null);
         List<SpeakerData> commands = buildGenerator(flow, false).generateCommands(SWITCH_1);
-        assertEquals(0, commands.size());
+        Assertions.assertEquals(0, commands.size());
     }
 
     private FieldMatch buildMetadataMatch(int outerVlan) {
@@ -148,22 +147,22 @@ public class FlowLoopIngressRuleGeneratorTest {
 
     private void assertIngressCommands(List<SpeakerData> commands, OfTable table, int priority,
                                        Set<FieldMatch> expectedMatch, List<Action> expectedApplyActions) {
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
-        assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
-        assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
+        Assertions.assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(LOOP_COOKIE, flowCommandData.getCookie());
-        assertEquals(table, flowCommandData.getTable());
-        assertEquals(priority, flowCommandData.getPriority());
+        Assertions.assertEquals(LOOP_COOKIE, flowCommandData.getCookie());
+        Assertions.assertEquals(table, flowCommandData.getTable());
+        Assertions.assertEquals(priority, flowCommandData.getPriority());
 
         assertEqualsMatch(expectedMatch, flowCommandData.getMatch());
 
         Instructions expectedInstructions = Instructions.builder().applyActions(expectedApplyActions).build();
-        assertEquals(expectedInstructions, flowCommandData.getInstructions());
-        assertTrue(flowCommandData.getFlags().isEmpty());
+        Assertions.assertEquals(expectedInstructions, flowCommandData.getInstructions());
+        Assertions.assertTrue(flowCommandData.getFlags().isEmpty());
     }
 
     private Flow buildFlow(FlowPath path, int srcOuterVlan, int srcInnerVlan, int dstOuterVlan, int dstInnerVlan) {

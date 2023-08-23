@@ -15,10 +15,15 @@
 
 package org.openkilda.wfm.topology.network.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -45,30 +50,29 @@ import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.utils.EndpointStatusMonitor;
 import org.openkilda.wfm.topology.network.utils.SwitchOnlineStatusMonitor;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.Optional;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class NetworkBfdSessionServiceTest {
     private static final int BFD_LOGICAL_PORT_OFFSET = 200;
 
     private final Endpoint alphaEndpoint = Endpoint.of(new SwitchId(1), 1);
     private final Endpoint alphaLogicalEndpoint = Endpoint.of(alphaEndpoint.getDatapath(),
-                                                              alphaEndpoint.getPortNumber() + BFD_LOGICAL_PORT_OFFSET);
+            alphaEndpoint.getPortNumber() + BFD_LOGICAL_PORT_OFFSET);
     private final Endpoint betaEndpoint = Endpoint.of(new SwitchId(2), 2);
     private final Endpoint betaLogicalEndpoint = Endpoint.of(betaEndpoint.getDatapath(),
-                                                             betaEndpoint.getPortNumber() + BFD_LOGICAL_PORT_OFFSET);
+            betaEndpoint.getPortNumber() + BFD_LOGICAL_PORT_OFFSET);
 
     private final Endpoint gammaEndpoint = Endpoint.of(new SwitchId(3), 3);
 
@@ -118,7 +122,7 @@ public class NetworkBfdSessionServiceTest {
 
     private NetworkBfdSessionService service;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         RepositoryFactory repositoryFactory = Mockito.mock(RepositoryFactory.class);
 
@@ -172,9 +176,9 @@ public class NetworkBfdSessionServiceTest {
         verify(bfdSessionRepository).add(bfdSessionCreateArgument.capture());
 
         BfdSession bfdSessionDb = bfdSessionCreateArgument.getValue();
-        Assert.assertNotNull(bfdSessionDb.getDiscriminator());
-        Assert.assertNull(bfdSessionDb.getInterval());
-        Assert.assertEquals(Short.valueOf((short) 0), bfdSessionDb.getMultiplier());
+        assertNotNull(bfdSessionDb.getDiscriminator());
+        assertNull(bfdSessionDb.getInterval());
+        assertEquals(Short.valueOf((short) 0), bfdSessionDb.getMultiplier());
 
         // speaker response
         when(bfdSessionRepository.findBySwitchIdAndPort(
@@ -187,24 +191,24 @@ public class NetworkBfdSessionServiceTest {
         verify(bfdSessionRepository).add(bfdSessionCreateArgument.capture());
         bfdSessionDb = bfdSessionCreateArgument.getValue();
 
-        Assert.assertEquals(alphaLogicalEndpoint.getDatapath(), bfdSessionDb.getSwitchId());
-        Assert.assertEquals((Integer) alphaLogicalEndpoint.getPortNumber(), bfdSessionDb.getPort());
-        Assert.assertNotNull(bfdSessionDb.getDiscriminator());
+        assertEquals(alphaLogicalEndpoint.getDatapath(), bfdSessionDb.getSwitchId());
+        assertEquals((Integer) alphaLogicalEndpoint.getPortNumber(), bfdSessionDb.getPort());
+        assertNotNull(bfdSessionDb.getDiscriminator());
 
         ArgumentCaptor<NoviBfdSession> bfdSessionCreateSpeakerArgument = ArgumentCaptor.forClass(NoviBfdSession.class);
         verify(carrier).sendWorkerBfdSessionCreateRequest(bfdSessionCreateSpeakerArgument.capture());
 
         NoviBfdSession speakerBfdSetup = bfdSessionCreateSpeakerArgument.getValue();
-        Assert.assertEquals(alphaEndpoint.getDatapath(), speakerBfdSetup.getTarget().getDatapath());
-        Assert.assertEquals(InetAddress.getByName(alphaAddress), speakerBfdSetup.getTarget().getInetAddress());
-        Assert.assertEquals(betaEndpoint.getDatapath(), speakerBfdSetup.getRemote().getDatapath());
-        Assert.assertEquals(InetAddress.getByName(betaAddress), speakerBfdSetup.getRemote().getInetAddress());
-        Assert.assertEquals(alphaEndpoint.getPortNumber(), speakerBfdSetup.getPhysicalPortNumber());
-        Assert.assertEquals(alphaLogicalEndpoint.getPortNumber(), speakerBfdSetup.getLogicalPortNumber());
-        Assert.assertEquals(bfdSessionDb.getDiscriminator(), (Integer) speakerBfdSetup.getDiscriminator());
-        Assert.assertEquals(genericBfdProperties.getInterval(), bfdSessionDb.getInterval());
-        Assert.assertEquals(Short.valueOf(genericBfdProperties.getMultiplier()), bfdSessionDb.getMultiplier());
-        Assert.assertTrue(speakerBfdSetup.isKeepOverDisconnect());
+        assertEquals(alphaEndpoint.getDatapath(), speakerBfdSetup.getTarget().getDatapath());
+        assertEquals(InetAddress.getByName(alphaAddress), speakerBfdSetup.getTarget().getInetAddress());
+        assertEquals(betaEndpoint.getDatapath(), speakerBfdSetup.getRemote().getDatapath());
+        assertEquals(InetAddress.getByName(betaAddress), speakerBfdSetup.getRemote().getInetAddress());
+        assertEquals(alphaEndpoint.getPortNumber(), speakerBfdSetup.getPhysicalPortNumber());
+        assertEquals(alphaLogicalEndpoint.getPortNumber(), speakerBfdSetup.getLogicalPortNumber());
+        assertEquals(bfdSessionDb.getDiscriminator(), (Integer) speakerBfdSetup.getDiscriminator());
+        assertEquals(genericBfdProperties.getInterval(), bfdSessionDb.getInterval());
+        assertEquals(Short.valueOf(genericBfdProperties.getMultiplier()), bfdSessionDb.getMultiplier());
+        assertTrue(speakerBfdSetup.isKeepOverDisconnect());
 
         verify(carrier).bfdUpNotification(alphaEndpoint);
 
@@ -224,7 +228,7 @@ public class NetworkBfdSessionServiceTest {
         verify(carrier).sendWorkerBfdSessionDeleteRequest(bfdSessionRemoveSpeakerArgument.capture());
 
         NoviBfdSession speakerBfdRemove = bfdSessionRemoveSpeakerArgument.getValue();
-        Assert.assertEquals(speakerBfdSetup, speakerBfdRemove);
+        assertEquals(speakerBfdSetup, speakerBfdRemove);
 
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(bfdSessionRepository);
@@ -234,7 +238,7 @@ public class NetworkBfdSessionServiceTest {
         // remove confirmation
 
         when(bfdSessionRepository.findBySwitchIdAndPort(alphaLogicalEndpoint.getDatapath(),
-                                                        alphaLogicalEndpoint.getPortNumber()))
+                alphaLogicalEndpoint.getPortNumber()))
                 .thenReturn(Optional.of(bfdSessionDb));
 
         BfdSessionResponse speakerResponse = new BfdSessionResponse(speakerBfdRemove, null);
@@ -417,7 +421,7 @@ public class NetworkBfdSessionServiceTest {
         // ensure we react on enable requests
         verify(carrier).sendWorkerBfdSessionCreateRequest(argThat(
                 argument -> argument.getTarget().getDatapath().equals(alphaLogicalEndpoint.getDatapath())
-                && argument.getRemote().getDatapath().equals(betaEndpoint.getDatapath())));
+                        && argument.getRemote().getDatapath().equals(betaEndpoint.getDatapath())));
         verifyNoMoreInteractions(carrier);
     }
 
@@ -481,7 +485,7 @@ public class NetworkBfdSessionServiceTest {
 
         service.speakerResponse(alphaLogicalEndpoint, requestKey + "2",
                 new BfdSessionResponse(removeBfdSessionArgument.getValue(),
-                                                       NoviBfdSession.Errors.NOVI_BFD_DISCRIMINATOR_NOT_FOUND_ERROR));
+                        NoviBfdSession.Errors.NOVI_BFD_DISCRIMINATOR_NOT_FOUND_ERROR));
         verify(carrier).sessionRotateRequest(alphaLogicalEndpoint, false);
         verify(carrier).sessionCompleteNotification(alphaEndpoint);
         verifyNoMoreInteractions(carrier);
@@ -519,8 +523,8 @@ public class NetworkBfdSessionServiceTest {
         verify(carrier).sendWorkerBfdSessionCreateRequest(speakerBfdRequestArgument.capture());
         speakerBfdSession = speakerBfdRequestArgument.getValue();
 
-        Assert.assertEquals(update.getInterval().toMillis(), speakerBfdSession.getIntervalMs());
-        Assert.assertEquals(update.getMultiplier(), speakerBfdSession.getMultiplier());
+        assertEquals(update.getInterval().toMillis(), speakerBfdSession.getIntervalMs());
+        assertEquals(update.getMultiplier(), speakerBfdSession.getMultiplier());
 
         verify(carrier).sessionRotateRequest(alphaLogicalEndpoint, false);
         verifyNoMoreInteractions(carrier);
@@ -546,8 +550,8 @@ public class NetworkBfdSessionServiceTest {
         verifyNoMoreInteractions(carrier);
         resetCarrier();
 
-        Assert.assertEquals(update.getInterval(), dbView.getInterval());
-        Assert.assertEquals(update.getMultiplier(), BfdProperties.normalizeMultiplier(dbView.getMultiplier()));
+        assertEquals(update.getInterval(), dbView.getInterval());
+        assertEquals(update.getMultiplier(), BfdProperties.normalizeMultiplier(dbView.getMultiplier()));
 
         // active
         // ensure we are reaction on link status update
@@ -619,7 +623,7 @@ public class NetworkBfdSessionServiceTest {
         switchOnlineStatusMonitor.update(alphaLogicalEndpoint.getDatapath(), true);
 
         when(bfdSessionRepository.findBySwitchIdAndPort(alphaLogicalEndpoint.getDatapath(),
-                                                        alphaLogicalEndpoint.getPortNumber()))
+                alphaLogicalEndpoint.getPortNumber()))
                 .thenReturn(Optional.of(initialBfdSession));
         mockSwitchLookup(alphaSwitch);
         mockSwitchLookup(betaSwitch);
@@ -676,7 +680,7 @@ public class NetworkBfdSessionServiceTest {
     }
 
     private void setupCarrier() {
-        doAnswer(invocation -> {
+        lenient().doAnswer(invocation -> {
             Endpoint logical = invocation.getArgument(0);
             boolean error = invocation.getArgument(1);
             service.rotate(logical, error);

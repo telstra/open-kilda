@@ -5,6 +5,7 @@
 
 <suppressions>
     <suppress files="src/main/.*\.java$" checks="JavadocMethod"/>
+    <suppress files="src/test/.*Test\.java$" checks="JavadocMethod" />
     <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance"/>
 </suppressions>
 

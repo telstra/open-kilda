@@ -15,7 +15,8 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.openkilda.model.BfdSession;
 import org.openkilda.model.SwitchId;
@@ -23,9 +24,10 @@ import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.BfdSessionRepository;
 
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
 
@@ -37,7 +39,7 @@ public class FermaBfdSessionRepositoryTest extends InMemoryGraphBasedTest {
 
     BfdSessionRepository repository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         repository = repositoryFactory.createBfdSessionRepository();
     }
@@ -69,13 +71,14 @@ public class FermaBfdSessionRepositoryTest extends InMemoryGraphBasedTest {
         assertEquals(0, repository.findAll().size());
     }
 
-    @Ignore("Need to fix: in-memory persistence doesn't impose constraints")
-    @Test(expected = ConstraintViolationException.class)
+    @Disabled("Need to fix: in-memory persistence doesn't impose constraints")
+    @Test
     public void discriminatorConflict() {
-        createBfdSession();
-
-        BfdSession bfdSession2 = createBfdSession();
-        bfdSession2.setPort(TEST_PORT + 1);
+        Assertions.assertThrows(ConstraintViolationException.class, () -> {
+            createBfdSession();
+            BfdSession bfdSession2 = createBfdSession();
+            bfdSession2.setPort(TEST_PORT + 1);
+        });
     }
 
     private int getDiscriminator(SwitchId switchId, int port, int randomDiscriminator)
@@ -91,17 +94,19 @@ public class FermaBfdSessionRepositoryTest extends InMemoryGraphBasedTest {
         return bfdSession.getDiscriminator();
     }
 
-    @Ignore("Need to fix: in-memory persistence doesn't impose constraints")
-    @Test(expected = ConstraintViolationException.class)
+    @Disabled("Need to fix: in-memory persistence doesn't impose constraints")
+    @Test
     public void createUseCaseTest() {
+        assertThrows(ConstraintViolationException.class, () -> {
 
-        assertEquals(TEST_DISCRIMINATOR, getDiscriminator(TEST_SWITCH_ID, TEST_PORT, TEST_DISCRIMINATOR));
+            assertEquals(TEST_DISCRIMINATOR, getDiscriminator(TEST_SWITCH_ID, TEST_PORT, TEST_DISCRIMINATOR));
 
-        assertEquals(TEST_DISCRIMINATOR, getDiscriminator(TEST_SWITCH_ID, TEST_PORT, TEST_DISCRIMINATOR));
+            assertEquals(TEST_DISCRIMINATOR, getDiscriminator(TEST_SWITCH_ID, TEST_PORT, TEST_DISCRIMINATOR));
 
-        assertEquals(1, repository.findAll().size());
+            assertEquals(1, repository.findAll().size());
 
-        assertEquals(TEST_DISCRIMINATOR, getDiscriminator(TEST_SWITCH_ID, TEST_PORT + 1, TEST_DISCRIMINATOR));
+            assertEquals(TEST_DISCRIMINATOR, getDiscriminator(TEST_SWITCH_ID, TEST_PORT + 1, TEST_DISCRIMINATOR));
+        });
     }
 
     private void freeDiscriminator(SwitchId switchId, int port) {

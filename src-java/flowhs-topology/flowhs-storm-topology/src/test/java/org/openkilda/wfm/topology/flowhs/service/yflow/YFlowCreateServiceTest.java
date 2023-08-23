@@ -18,8 +18,8 @@ package org.openkilda.wfm.topology.flowhs.service.yflow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -48,16 +48,16 @@ import org.openkilda.wfm.topology.flowhs.service.FlowCreateService;
 import org.openkilda.wfm.topology.flowhs.service.FlowDeleteService;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatcher;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class YFlowCreateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     private static final int METER_ALLOCATION_RETRIES_LIMIT = 3;
 
@@ -68,13 +68,13 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     @Mock
     private FlowGenericCarrier yFlowCreateHubCarrier;
 
-    @Before
+    @BeforeEach
     public void init() {
-        doAnswer(buildSpeakerRequestAnswer())
+        lenient().doAnswer(buildSpeakerRequestAnswer())
                 .when(flowCreateHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
-        doAnswer(buildSpeakerRequestAnswer())
+        lenient().doAnswer(buildSpeakerRequestAnswer())
                 .when(flowDeleteHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
-        doAnswer(buildSpeakerRequestAnswer())
+        lenient().doAnswer(buildSpeakerRequestAnswer())
                 .when(yFlowCreateHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
     }
 
@@ -230,7 +230,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         preparePathComputation("test_flow_1", buildFirstSubFlowPathPair());
         preparePathComputation("test_flow_2", buildSecondSubFlowPathPair());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_TRANSIT);
-        doThrow(new ResourceAllocationException(injectedErrorMessage))
+        lenient().doThrow(new ResourceAllocationException(injectedErrorMessage))
                 .when(flowResourcesManager).allocateMeter(eq(request.getYFlowId()), eq(SWITCH_TRANSIT));
 
         // when
@@ -286,7 +286,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         verifyYFlowIsAbsent(request.getYFlowId());
     }
 
-    @Ignore("TODO: implement meter validation")
+    @Disabled("TODO: implement meter validation")
     @Test
     public void shouldFailOnUnsuccessfulValidation()
             throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
@@ -310,7 +310,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         verifyYFlowIsAbsent(request.getYFlowId());
     }
 
-    @Ignore("TODO: implement meter validation")
+    @Disabled("TODO: implement meter validation")
     @Test
     public void shouldFailOnTimeoutDuringMeterValidation()
             throws RecoverableException, UnroutableFlowException, DuplicateKeyException {
@@ -451,7 +451,7 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
 
     private void preparePathComputation(String flowId, GetPathsResult pathPair)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId))).thenReturn(pathPair);
+        lenient().when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId))).thenReturn(pathPair);
     }
 
     private void preparePathComputation(String flowId, GetPathsResult pathPair, GetPathsResult pathPair2)
@@ -483,9 +483,9 @@ public class YFlowCreateServiceTest extends AbstractYFlowTest<SpeakerRequest> {
                         .anyMatch(pathSegment -> transit == null
                                 || pathSegment.getSrcSwitchId().equals(transit)
                                 || pathSegment.getDestSwitchId().equals(transit));
-        when(pathComputer.getIntersectionPoint(any(),
-                ArgumentMatchers.argThat(pathArgumentMatcher),
-                ArgumentMatchers.argThat(pathArgumentMatcher)))
+        lenient().when(pathComputer.getIntersectionPoint(any(),
+                        ArgumentMatchers.argThat(pathArgumentMatcher),
+                        ArgumentMatchers.argThat(pathArgumentMatcher)))
                 .thenReturn(yPoint);
     }
 

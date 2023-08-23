@@ -15,12 +15,13 @@
 
 package org.openkilda.wfm.topology.flowhs.service.haflow.history;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.history.model.HaFlowDumpData;
@@ -29,8 +30,8 @@ import org.openkilda.wfm.share.history.model.HaFlowEventData.Event;
 import org.openkilda.wfm.share.history.model.HaFlowEventData.Initiator;
 import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -45,7 +46,7 @@ public class HaFlowHistoryServiceTest {
     public static final String HA_FLOW_ID = "HA-flow ID";
     private FakeCarrier fakeCarrier;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         fakeCarrier = new FakeCarrier();
     }

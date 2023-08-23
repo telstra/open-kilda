@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.reroute.service;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.openkilda.messaging.command.flow.FlowRerouteRequest.createManualFlowRerouteRequest;
 
@@ -23,7 +23,7 @@ import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.wfm.topology.reroute.bolts.OperationQueueCarrier;
 import org.openkilda.wfm.topology.reroute.service.OperationQueueService.FlowQueueData;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 

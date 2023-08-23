@@ -17,8 +17,8 @@ package org.openkilda.wfm.topology.network.service;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -49,18 +49,18 @@ import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.OnlineStatus;
 import org.openkilda.wfm.topology.network.model.PortDataHolder;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.internal.verification.Times;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.Logger;
 
 import java.time.Instant;
 import java.util.Optional;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class NetworkPortServiceTest {
     private static final long MAX_SPEED = 10000000;
     private static final long CURRENT_SPEED = 99999;
@@ -91,7 +91,7 @@ public class NetworkPortServiceTest {
 
     private final SwitchId alphaDatapath = new SwitchId(1);
 
-    @Before
+    @BeforeEach
     public void setup() {
         resetMocks();
     }
@@ -101,9 +101,9 @@ public class NetworkPortServiceTest {
         reset(dashboardLogger);
 
         reset(persistenceManager);
-        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
-        when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
-        doAnswer(invocation -> {
+        lenient().when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        lenient().when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
+        lenient().doAnswer(invocation -> {
             TransactionCallbackWithoutResult tr = invocation.getArgument(0);
             tr.doInTransaction();
             return null;
@@ -111,15 +111,15 @@ public class NetworkPortServiceTest {
 
         reset(portPropertiesRepository);
         reset(portRepository);
-        doAnswer(invocation -> invocation.getArgument(0))
+        lenient().doAnswer(invocation -> invocation.getArgument(0))
                 .when(portPropertiesRepository).add(any());
 
         reset(switchRepository);
         reset(repositoryFactory);
 
-        when(repositoryFactory.createPortPropertiesRepository()).thenReturn(portPropertiesRepository);
-        when(repositoryFactory.createPortRepository()).thenReturn(portRepository);
-        when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
+        lenient().when(repositoryFactory.createPortPropertiesRepository()).thenReturn(portPropertiesRepository);
+        lenient().when(repositoryFactory.createPortRepository()).thenReturn(portRepository);
+        lenient().when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
     }
 
     @Test
@@ -527,7 +527,7 @@ public class NetworkPortServiceTest {
                         .port(endpoint.getPortNumber())
                         .discoveryEnabled(false)
                         .build()));
-        when(switchRepository.findById(alphaDatapath))
+        lenient().when(switchRepository.findById(alphaDatapath))
                 .thenReturn(Optional.of(entry));
     }
 

@@ -36,13 +36,14 @@ import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 
 import com.google.common.base.Suppliers;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class BaseResourceAllocationActionTest extends InMemoryGraphBasedTest {
     private IslRepository islRepositorySpy;
 
@@ -55,30 +56,33 @@ public class BaseResourceAllocationActionTest extends InMemoryGraphBasedTest {
     @Mock
     FlowOperationsDashboardLogger dashboardLogger;
 
-    @Test(expected = ResourceAllocationException.class)
+    @Test
     public void updateAvailableBandwidthFailsOnOverProvisionTest() throws ResourceAllocationException {
-        islRepositorySpy = spy(persistenceManager.getRepositoryFactory().createIslRepository());
-        when(repositoryFactory.createIslRepository()).thenReturn(islRepositorySpy);
+        Assertions.assertThrows(ResourceAllocationException.class, () -> {
+            islRepositorySpy = spy(persistenceManager.getRepositoryFactory().createIslRepository());
+            when(repositoryFactory.createIslRepository()).thenReturn(islRepositorySpy);
 
-        doReturn(-1L).when(islRepositorySpy).updateAvailableBandwidth(any(), anyInt(), any(), anyInt());
+            doReturn(-1L).when(islRepositorySpy).updateAvailableBandwidth(any(), anyInt(), any(), anyInt());
 
-        BaseResourceAllocationAction action = mock(BaseResourceAllocationAction.class,
-                Mockito.withSettings()
-                        .useConstructor(persistenceManager, 3, 3, 3, pathComputer, resourcesManager, dashboardLogger)
-                        .defaultAnswer(Mockito.CALLS_REAL_METHODS));
+            BaseResourceAllocationAction action = mock(BaseResourceAllocationAction.class,
+                    Mockito.withSettings()
+                            .useConstructor(persistenceManager, 3, 3, 3,
+                                    pathComputer, resourcesManager, dashboardLogger)
+                            .defaultAnswer(Mockito.CALLS_REAL_METHODS));
 
-        PathSegment segment = PathSegment.builder()
-                .pathId(new PathId(""))
-                .srcSwitch(Switch.builder().switchId(new SwitchId(1)).build())
-                .srcPort(1)
-                .destSwitch(Switch.builder().switchId(new SwitchId(2)).build())
-                .destPort(2)
-                .build();
+            PathSegment segment = PathSegment.builder()
+                    .pathId(new PathId(""))
+                    .srcSwitch(Switch.builder().switchId(new SwitchId(1)).build())
+                    .srcPort(1)
+                    .destSwitch(Switch.builder().switchId(new SwitchId(2)).build())
+                    .destPort(2)
+                    .build();
 
-        action.createPathSegments(singletonList(segment), Suppliers.ofInstance(emptyMap()));
+            action.createPathSegments(singletonList(segment), Suppliers.ofInstance(emptyMap()));
+        });
     }
 
-    @Test()
+    @Test
     public void updateAvailableBandwidthNoOverProvisionTest() throws ResourceAllocationException {
         islRepositorySpy = spy(persistenceManager.getRepositoryFactory().createIslRepository());
         when(repositoryFactory.createIslRepository()).thenReturn(islRepositorySpy);

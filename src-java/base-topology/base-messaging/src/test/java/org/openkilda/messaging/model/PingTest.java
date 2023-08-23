@@ -20,8 +20,8 @@ import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.SwitchId;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
@@ -41,9 +41,7 @@ public class PingTest {
         serializer.serialize(origin);
         Ping decoded = (Ping) serializer.deserialize();
 
-        Assert.assertEquals(
-                String.format("%s object have been mangled in serialisation/deserialization loop",
-                        origin.getClass().getName()),
-                origin, decoded);
+        Assertions.assertEquals(origin, decoded, String.format("%s object have been mangled in"
+                + " serialisation/deserialization loop", origin.getClass().getName()));
     }
 }

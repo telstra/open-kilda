@@ -17,8 +17,8 @@ package org.openkilda.wfm.topology.ping.bolt;
 
 import org.openkilda.messaging.model.PingReport;
 import org.openkilda.messaging.model.PingReport.State;
-import org.openkilda.model.Flow;
 import org.openkilda.wfm.error.PipelineException;
+import org.openkilda.wfm.topology.ping.model.CacheExpirationRequest;
 import org.openkilda.wfm.topology.ping.model.FlowObserver;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 import org.openkilda.wfm.topology.ping.model.PingObserver;
@@ -100,11 +100,11 @@ public class FailReporter extends Abstract {
     }
 
     private void handleCacheExpiration(Tuple input) throws PipelineException {
-        Flow ref = pullFlow(input);
-        FlowObserver status = flowsStatusMap.get(ref.getFlowId());
-        if (status != null) {
-            status.remove(ref.getForwardPath().getCookie().getValue());
-            status.remove(ref.getReversePath().getCookie().getValue());
+        CacheExpirationRequest request = pullCacheExpirationRequest(input);
+        FlowObserver flowObserver = flowsStatusMap.get(request.getFlowId());
+        if (flowObserver != null) {
+            flowObserver.remove(request.getForwardCookie());
+            flowObserver.remove(request.getReverseCookie());
         }
     }
 
@@ -138,8 +138,8 @@ public class FailReporter extends Abstract {
         getOutput().emit(input, output);
     }
 
-    private Flow pullFlow(Tuple input) throws PipelineException {
-        return pullValue(input, FlowFetcher.FIELD_FLOW_REF, Flow.class);
+    private CacheExpirationRequest pullCacheExpirationRequest(Tuple input) throws PipelineException {
+        return pullValue(input, FlowFetcher.FIELD_FLOW_REF, CacheExpirationRequest.class);
     }
 
     @Override

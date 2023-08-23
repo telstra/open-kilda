@@ -24,18 +24,18 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.server42.messaging.FlowDirection;
 import org.openkilda.wfm.topology.flowmonitoring.model.Link;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class CalculateFlowLatencyServiceTest {
 
     private static final String FLOW_ID = "flow-id";
@@ -57,7 +57,7 @@ public class CalculateFlowLatencyServiceTest {
     private FlowCacheBoltCarrier carrier;
     private CalculateFlowLatencyService service;
 
-    @Before
+    @BeforeEach
     public void setup() {
         service = new CalculateFlowLatencyService(carrier);
     }

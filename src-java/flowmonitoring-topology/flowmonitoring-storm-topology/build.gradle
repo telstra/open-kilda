@@ -29,7 +29,7 @@ dependencies {
     testImplementation('org.apache.storm:storm-core')
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
     testImplementation 'org.mockito:mockito-junit-jupiter'
     testImplementation 'org.hamcrest:hamcrest-library'
     testRuntimeOnly 'org.hibernate.validator:hibernate-validator'
@@ -65,4 +65,8 @@ shadowJar {
 
 artifacts {
     archives shadowJar
+}
+
+test {
+    useJUnitPlatform()
 }

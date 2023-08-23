@@ -15,8 +15,7 @@
 
 package org.openkilda.wfm.topology.switchmanager.mappers;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2;
 import org.openkilda.messaging.info.switches.v2.action.SetFieldActionEntry;
@@ -34,8 +33,9 @@ import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Lists;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -78,7 +78,7 @@ public class RuleEntryConverterTest {
     public static Instructions instructions;
     public static FlowSpeakerData data;
 
-    @BeforeClass
+    @BeforeAll
     public static void initializeData() {
 
         applyActions.add(SET_FIELD_ACTION);
@@ -126,7 +126,7 @@ public class RuleEntryConverterTest {
         data.getMatch().forEach(match -> {
             String fieldName = match.getField().name();
 
-            assertNotNull(entryMatchField.get(fieldName));
+            Assertions.assertNotNull(entryMatchField.get(fieldName));
             assertEquals(match.getValue(), entryMatchField.get(fieldName).getValue().intValue());
             assertEquals(match.getMask().intValue(), entryMatchField.get(fieldName).getMask().intValue());
         });
@@ -139,16 +139,14 @@ public class RuleEntryConverterTest {
         assertEquals(OF_METADATA.getMask(), instructions.getWriteMetadata().getMask().longValue());
 
         //actions
-        assertEquals(applyActions.get(0).getType().name(),
-                ((SetFieldActionEntry) instructions.getApplyActions().get(0)).getActionType());
+        assertEquals(applyActions.get(0).getType().name(), instructions.getApplyActions().get(0).getActionType());
         assertEquals(((SetFieldAction) applyActions.get(0)).getField().name(),
                 ((SetFieldActionEntry) instructions.getApplyActions().get(0)).getField());
         assertEquals(((SetFieldAction) applyActions.get(0)).getValue(),
                 ((SetFieldActionEntry) instructions.getApplyActions().get(0)).getValue());
 
         ArrayList<Action> writeActionsList = Lists.newArrayList(writeActions);
-        assertEquals(writeActionsList.get(0).getType().name(),
-                ((SetFieldActionEntry) instructions.getApplyActions().get(0)).getActionType());
+        assertEquals(writeActionsList.get(0).getType().name(), instructions.getApplyActions().get(0).getActionType());
         assertEquals(((SetFieldAction) writeActionsList.get(0)).getField().name(),
                 ((SetFieldActionEntry) instructions.getApplyActions().get(0)).getField());
         assertEquals(((SetFieldAction) writeActionsList.get(0)).getValue(),

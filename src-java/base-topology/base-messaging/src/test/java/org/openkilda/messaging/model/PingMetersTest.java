@@ -17,18 +17,18 @@ package org.openkilda.messaging.model;
 
 import org.openkilda.messaging.ObjectSerializer;
 
-import java.io.IOException;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-import org.junit.Assert;
-import org.junit.Test;
+import java.io.IOException;
 
 public class PingMetersTest {
     ObjectSerializer serializer;
-	
-	public PingMetersTest() throws IOException {
-		serializer = new ObjectSerializer();
-	}
-	
+
+    public PingMetersTest() throws IOException {
+        serializer = new ObjectSerializer();
+    }
+
     @Test
     public void serializeLoop() throws Exception {
         PingMeters origin = new PingMeters(1L, 2L, 3L);
@@ -36,9 +36,7 @@ public class PingMetersTest {
         serializer.serialize(origin);
         PingMeters decoded = (PingMeters) serializer.deserialize();
 
-        Assert.assertEquals(
-                String.format("%s object have been mangled in serialisation/deserialization loop",
-                        origin.getClass().getName()),
-                origin, decoded);
+        Assertions.assertEquals(origin, decoded, String.format("%s object have been mangled"
+                + " in serialisation/deserialization loop", origin.getClass().getName()));
     }
 }

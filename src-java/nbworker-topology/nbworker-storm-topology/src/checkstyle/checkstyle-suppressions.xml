@@ -7,4 +7,5 @@
     <suppress files="src/main/.*Fsm\.java$" checks="JavadocMethod" />
     <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
     <suppress files="src/main/java/org/openkilda/wfm/topology/nbworker/NbWorkerTopology.java" lines="104" checks="JavadocMethod"/>
+    <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="JavadocMethod" />
 </suppressions>

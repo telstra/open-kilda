@@ -16,9 +16,9 @@
 package org.openkilda.wfm.share.mappers;
 
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertNotNull;
-import static junit.framework.TestCase.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.messaging.payload.history.HaFlowDumpPayload;
 import org.openkilda.messaging.payload.history.HaFlowHistoryEntry;
@@ -54,7 +54,7 @@ import org.openkilda.wfm.share.history.model.HaFlowPathDump;
 import org.openkilda.wfm.share.history.model.HaSubFlowDump;
 
 import com.google.common.collect.Lists;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.ZoneOffset;

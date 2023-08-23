@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.service.yflow;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.floodlight.api.request.SpeakerRequest;
@@ -34,24 +34,24 @@ import org.openkilda.wfm.topology.flowhs.service.AbstractYFlowTest;
 import org.openkilda.wfm.topology.flowhs.service.FlowDeleteService;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class YFlowDeleteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     @Mock
     private FlowGenericCarrier flowDeleteHubCarrier;
     @Mock
     private FlowGenericCarrier yFlowDeleteHubCarrier;
 
-    @Before
+    @BeforeEach
     public void init() {
-        doAnswer(buildSpeakerRequestAnswer())
+        lenient().doAnswer(buildSpeakerRequestAnswer())
                 .when(flowDeleteHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
-        doAnswer(buildSpeakerRequestAnswer())
+        lenient().doAnswer(buildSpeakerRequestAnswer())
                 .when(yFlowDeleteHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
     }
 

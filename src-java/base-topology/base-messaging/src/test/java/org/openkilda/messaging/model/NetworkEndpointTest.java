@@ -19,8 +19,8 @@ import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.Utils;
 import org.openkilda.model.SwitchId;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
@@ -44,6 +44,6 @@ public class NetworkEndpointTest {
         serializer.serialize(origin);
 
         NetworkEndpoint reconstructed = (NetworkEndpoint) serializer.deserialize();
-        Assert.assertEquals(origin, reconstructed);
+        Assertions.assertEquals(origin, reconstructed);
     }
 }

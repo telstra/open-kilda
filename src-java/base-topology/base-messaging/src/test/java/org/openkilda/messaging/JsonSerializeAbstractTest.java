@@ -20,11 +20,11 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 
-import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
 
 public abstract class JsonSerializeAbstractTest {
-	StringSerializer serializer = new StringSerializer();
-	
+    StringSerializer serializer = new StringSerializer();
+
     protected void commandSerializeLoop(CommandData origin) throws Exception {
         CommandMessage wrapper = new CommandMessage(origin, 0, "serialize-loop");
         serializer.serialize(wrapper);
@@ -44,9 +44,7 @@ public abstract class JsonSerializeAbstractTest {
     }
 
     protected void validate(MessageData origin, MessageData decoded) {
-        Assert.assertEquals(
-                String.format("%s object have been mangled in serialisation/deserialization loop",
-                        origin.getClass().getName()),
-                origin, decoded);
+        Assertions.assertEquals(origin, decoded, String.format("%s object have been mangled in "
+                + "serialisation/deserialization loop", origin.getClass().getName()));
     }
 }

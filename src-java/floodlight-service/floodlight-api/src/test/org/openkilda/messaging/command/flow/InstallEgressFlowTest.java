@@ -15,9 +15,10 @@
 
 package org.openkilda.messaging.command.flow;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openkilda.messaging.command.Constants.flowName;
 import static org.openkilda.messaging.command.Constants.inputPort;
 import static org.openkilda.messaging.command.Constants.outputPort;
@@ -29,7 +30,7 @@ import static org.openkilda.messaging.command.Constants.transitEncapsulationType
 
 import org.openkilda.model.OutputVlanType;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
@@ -62,38 +63,50 @@ public class InstallEgressFlowTest {
         assertEquals(outputVlanType, flow.getOutputVlanType());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setNullOutputVlanType() {
-        flow.setOutputVlanType(null);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setOutputVlanType(null);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setInvalidOutputVlanType() {
-        flow.setOutputVlanType(null);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setOutputVlanType(null);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setIncorrectNoneOutputVlanType() {
-        flow.setOutputVlanId(outputVlanId);
-        flow.setOutputVlanType(OutputVlanType.NONE);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setOutputVlanId(outputVlanId);
+            flow.setOutputVlanType(OutputVlanType.NONE);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setIncorrectPopOutputVlanType() {
-        flow.setOutputVlanId(outputVlanId);
-        flow.setOutputVlanType(OutputVlanType.POP);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setOutputVlanId(outputVlanId);
+            flow.setOutputVlanType(OutputVlanType.POP);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setIncorrectPushOutputVlanType() {
-        flow.setOutputVlanId(0);
-        flow.setOutputVlanType(OutputVlanType.PUSH);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setOutputVlanId(0);
+            flow.setOutputVlanType(OutputVlanType.PUSH);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setIncorrectReplaceOutputVlanType() {
-        flow.setOutputVlanId(null);
-        flow.setOutputVlanType(OutputVlanType.REPLACE);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setOutputVlanId(null);
+            flow.setOutputVlanType(OutputVlanType.REPLACE);
+        });
     }
 
     @Test
@@ -114,13 +127,17 @@ public class InstallEgressFlowTest {
         assertEquals(0, flow.getOutputVlanId().intValue());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setNegativeOutputVlanId() {
-        flow.setOutputVlanId(-1);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setOutputVlanId(-1);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setTooBigOutputVlanId() {
-        flow.setOutputVlanId(4096);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setOutputVlanId(4096);
+        });
     }
 }

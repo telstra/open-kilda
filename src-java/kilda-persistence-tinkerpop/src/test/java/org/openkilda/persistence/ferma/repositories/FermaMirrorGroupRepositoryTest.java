@@ -15,8 +15,9 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.GroupId;
 import org.openkilda.model.MirrorDirection;
@@ -28,9 +29,9 @@ import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.MirrorGroupRepository;
 
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 
@@ -44,7 +45,7 @@ public class FermaMirrorGroupRepositoryTest extends InMemoryGraphBasedTest {
 
     Switch theSwitch;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         mirrorGroupRepository = repositoryFactory.createMirrorGroupRepository();
 
@@ -62,12 +63,14 @@ public class FermaMirrorGroupRepositoryTest extends InMemoryGraphBasedTest {
         assertEquals(TEST_FLOW_ID, foundMirrorGroup.getFlowId());
     }
 
-    @Ignore("InMemoryGraph doesn't enforce constraint")
-    @Test(expected = PersistenceException.class)
+    @Disabled("InMemoryGraph doesn't enforce constraint")
+    @Test
     public void shouldNotGetMoreThanOneMirrorGroupsForPath() {
-        createMirrorGroup(1, new PathId(TEST_PATH_ID));
-        createMirrorGroup(2, new PathId(TEST_PATH_ID));
-        mirrorGroupRepository.findByPathId(new PathId(TEST_PATH_ID));
+        assertThrows(PersistenceException.class, () -> {
+            createMirrorGroup(1, new PathId(TEST_PATH_ID));
+            createMirrorGroup(2, new PathId(TEST_PATH_ID));
+            mirrorGroupRepository.findByPathId(new PathId(TEST_PATH_ID));
+        });
     }
 
     @Test

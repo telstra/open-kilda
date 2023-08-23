@@ -15,25 +15,29 @@
 
 package org.openkilda.model.bitops;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class BitFieldTest {
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void ensureNoEmptyMasks() {
-        new BitField(0);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            new BitField(0);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void ensureNoGapsInMask() {
-        new BitField(5);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            new BitField(5);
+        });
     }
 
     @Test
     public void verifyOffset() {
         BitField field = new BitField(6);
 
-        Assert.assertEquals(1, field.getOffset());
-        Assert.assertEquals(6, field.getMask());
+        Assertions.assertEquals(1, field.getOffset());
+        Assertions.assertEquals(6, field.getMask());
     }
 }

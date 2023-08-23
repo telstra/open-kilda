@@ -15,9 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.openkilda.model.cookie.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE;
 import static org.openkilda.rulemanager.Constants.Priority.MINIMAL_POSITIVE_PRIORITY;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
@@ -30,7 +27,8 @@ import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.SpeakerData;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.List;
@@ -47,23 +45,23 @@ public class TablePassThroughDefaultRuleGeneratorTest {
                 .build();
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
-        assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
-        assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
+        Assertions.assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(new Cookie(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE), flowCommandData.getCookie());
-        assertEquals(OfTable.EGRESS, flowCommandData.getTable());
-        assertEquals(MINIMAL_POSITIVE_PRIORITY, flowCommandData.getPriority());
+        Assertions.assertEquals(new Cookie(MULTITABLE_EGRESS_PASS_THROUGH_COOKIE), flowCommandData.getCookie());
+        Assertions.assertEquals(OfTable.EGRESS, flowCommandData.getTable());
+        Assertions.assertEquals(MINIMAL_POSITIVE_PRIORITY, flowCommandData.getPriority());
 
-        assertTrue(flowCommandData.getMatch().isEmpty());
+        Assertions.assertTrue(flowCommandData.getMatch().isEmpty());
 
         Instructions instructions = flowCommandData.getInstructions();
-        assertNull(instructions.getApplyActions());
-        assertNull(instructions.getWriteActions());
-        assertNull(instructions.getGoToMeter());
-        assertEquals(OfTable.TRANSIT, instructions.getGoToTable());
+        Assertions.assertNull(instructions.getApplyActions());
+        Assertions.assertNull(instructions.getWriteActions());
+        Assertions.assertNull(instructions.getGoToMeter());
+        Assertions.assertEquals(OfTable.TRANSIT, instructions.getGoToTable());
     }
 }

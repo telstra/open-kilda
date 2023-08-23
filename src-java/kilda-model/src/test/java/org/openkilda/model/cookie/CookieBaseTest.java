@@ -17,7 +17,7 @@ package org.openkilda.model.cookie;
 
 import org.openkilda.model.bitops.BitField;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class CookieBaseTest extends GenericCookieTest {
     @Test

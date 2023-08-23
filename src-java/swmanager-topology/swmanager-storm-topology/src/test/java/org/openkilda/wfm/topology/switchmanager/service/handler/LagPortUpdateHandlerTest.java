@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.switchmanager.service.handler;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import org.openkilda.messaging.MessageCookie;
 import org.openkilda.messaging.command.grpc.CreateOrUpdateLogicalPortRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -33,17 +35,17 @@ import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashSet;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class LagPortUpdateHandlerTest {
     @Mock
     private SwitchManagerCarrier carrier;
@@ -80,7 +82,7 @@ public class LagPortUpdateHandlerTest {
                         request.isLacpReply())));
         Mockito.verifyNoMoreInteractions(carrier);
 
-        Assert.assertTrue(subject.isCompleted());
+        Assertions.assertTrue(subject.isCompleted());
     }
 
     @Test
@@ -104,7 +106,7 @@ public class LagPortUpdateHandlerTest {
                 Mockito.eq(requestKey), Mockito.eq(error.getErrorType()), Mockito.anyString(), Mockito.anyString());
         Mockito.verifyNoMoreInteractions(carrier);
 
-        Assert.assertTrue(subject.isCompleted());
+        Assertions.assertTrue(subject.isCompleted());
     }
 
     @Test
@@ -128,7 +130,7 @@ public class LagPortUpdateHandlerTest {
                 Mockito.anyString(), Mockito.anyString());
         Mockito.verifyNoMoreInteractions(carrier);
 
-        Assert.assertTrue(subject.isCompleted());
+        Assertions.assertTrue(subject.isCompleted());
     }
 
     @Test
@@ -140,7 +142,7 @@ public class LagPortUpdateHandlerTest {
 
         Mockito.when(operationService.getSwitchIpAddress(request.getSwitchId())).thenThrow(
                 new SwitchNotFoundException(request.getSwitchId()));
-        Assert.assertThrows(SwitchManagerException.class, subject::start);
+        assertThrows(SwitchManagerException.class, subject::start);
     }
 
     private MessageCookie verifyStartHandler(
@@ -158,8 +160,8 @@ public class LagPortUpdateHandlerTest {
 
         // DB update and GRPC request
         subject.start();
-        Assert.assertFalse(subject.isCompleted());
-        Assert.assertEquals(existingTargets, subject.rollbackData);
+        Assertions.assertFalse(subject.isCompleted());
+        Assertions.assertEquals(existingTargets, subject.rollbackData);
 
         Mockito.verify(operationService).getSwitchIpAddress(Mockito.eq(request.getSwitchId()));
         Mockito.verify(operationService).updateLagPort(

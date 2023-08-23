@@ -1,36 +1,54 @@
 package org.openkilda.functionaltests.helpers.model
 
 import groovy.transform.EqualsAndHashCode
+import groovy.transform.builder.Builder
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.service.northbound.payloads.PathDto
+import org.openkilda.testing.service.northbound.payloads.ProtectedPathPayload
 
 /* This class represent any kind of flow path and is intended to help compare/manipulate paths
 (presented as lists of nodes), received from different endpoints in the same manner.
-To add the new way to represent the path, just add the one into PathFactory.get() method
-Usage example:
-def nodesFromRerouteResponse = haFlowHelper.reroute(haFlowId).getSharedPath().getNodes()
-def nodesFromPathsResponse = haPathHelper.get(haFlowId).getSharedPath().getForward()
-assert pathFactory.get(nodesFromRerouteResponse) == pathFactory.get(nodesFromPathsResponse)
-
 This class has to replace *PathHelper in future
  */
 @EqualsAndHashCode(excludes = "topologyDefinition")
+@Builder
 class Path {
-    List<FlowPathV2.PathNodeV2> nodes
+    PathNodes nodes
     TopologyDefinition topologyDefinition
+    Long bandwidth;
+    Long latency;
+    Long latencyNs;
+    Long latencyMs;
+    Boolean isBackupPath;
+    Path protectedPath;
 
-    Path(List<FlowPathV2.PathNodeV2> nodes, TopologyDefinition topologyDefinition) {
-        if (nodes.size() % 2 != 0) {
-            throw new IllegalArgumentException("Path should have even amount of nodes")
-        }
-        this.nodes = nodes
+    Path(PathDto pathDto, TopologyDefinition topologyDefinition) {
+        this.nodes = new PathNodes(pathDto.nodes)
         this.topologyDefinition = topologyDefinition
+        this.bandwidth = pathDto.bandwidth
+        this.latency = pathDto.latency
+        this.latencyNs = pathDto.latencyNs
+        this.latencyMs = pathDto.latencyMs
+        this.isBackupPath = pathDto.isBackupPath
+        def protectedPath = pathDto.getProtectedPath()
+        this.protectedPath = protectedPath ? new Path(pathDto.getProtectedPath(), topologyDefinition) : null
+    }
+
+    Path(ProtectedPathPayload pathDto, TopologyDefinition topologyDefinition) {
+        this.nodes = new PathNodes(pathDto.nodes)
+        this.topologyDefinition = topologyDefinition
+        this.bandwidth = pathDto.bandwidth
+        this.latency = pathDto.latency
+        this.latencyNs = pathDto.latencyNs
+        this.latencyMs = pathDto.latencyMs
+        this.isBackupPath = pathDto.isBackupPath
     }
 
     List<Isl> getInvolvedIsls() {
         def isls = topologyDefinition.getIsls() + topologyDefinition.getIsls().collect { it.reversed }
-        nodes.collate(2).collect { List<FlowPathV2.PathNodeV2> pathNodes ->
+        nodes.getNodes().collate(2).collect { List<FlowPathV2.PathNodeV2> pathNodes ->
             isls.find {
                 it.srcSwitch.dpId == pathNodes[0].switchId &&
                         it.srcPort == pathNodes[0].portNo &&
@@ -41,5 +59,13 @@ class Path {
         /* TODO: add 'heavy' method to convert path to ISLs, which takes ISLs from Database, not from topology
         Such a method would be able to return ISLs which are not originated from topology, but were added in
         test runtime (e.g. by 're-plugging cable') */
+    }
+
+    boolean canBeProtectedFor(Path otherPath) {
+        return otherPath && getInvolvedIsls().intersect(otherPath.getInvolvedIsls()).isEmpty()
+    }
+
+    boolean hasProtectedPathWithLatencyAbove(Long latencyMs) {
+        return protectedPath && protectedPath.getLatencyMs() > latencyMs
     }
 }

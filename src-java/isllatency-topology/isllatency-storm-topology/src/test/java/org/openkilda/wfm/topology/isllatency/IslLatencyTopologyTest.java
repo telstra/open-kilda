@@ -17,8 +17,6 @@ package org.openkilda.wfm.topology.isllatency;
 
 import static java.lang.String.format;
 import static java.lang.Thread.sleep;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.openkilda.wfm.config.KafkaConfig.ISL_LATENCY_TOPOLOGY_TEST_KAFKA_PORT;
 import static org.openkilda.wfm.config.ZookeeperConfig.ISL_LATENCY_TOPOLOGY_TEST_ZOOKEEPER_PORT;
 import static org.openkilda.wfm.topology.isllatency.bolts.IslStatsBolt.LATENCY_METRIC_NAME;
@@ -48,10 +46,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.Properties;
@@ -81,7 +80,7 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
     private static SwitchRepository switchRepository;
     private static IslRepository islRepository;
 
-    @BeforeClass
+    @BeforeAll
     public static void setupOnce() throws Exception {
         Properties configOverlay = getZooKeeperProperties(ISL_LATENCY_TOPOLOGY_TEST_ZOOKEEPER_PORT, ROOT_NODE);
         configOverlay.putAll(getKafkaProperties(ISL_LATENCY_TOPOLOGY_TEST_KAFKA_PORT));
@@ -115,7 +114,7 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         sleep(TOPOLOGY_START_TIMEOUT);
     }
 
-    @AfterClass
+    @AfterAll
     public static void teardownOnce() throws Exception {
         otsdbConsumer.wakeup();
         otsdbConsumer.join();
@@ -123,7 +122,7 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
         AbstractStormTest.stopZooKafkaAndStorm();
     }
 
-    @Before
+    @BeforeEach
     public void setup() {
         otsdbConsumer.clear();
 
@@ -153,29 +152,29 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
 
         // we have no round trip latency so we have to use one way latency for the database, but not for OpenTSDB
         pushMessage(firstOneWayLatency);
-        assertTrue(otsdbConsumer.isEmpty());
-        assertEquals(latency1 * ONE_WAY_LATENCY_MULTIPLIER, getIslLatency(FORWARD_ISL));
+        Assertions.assertTrue(otsdbConsumer.isEmpty());
+        Assertions.assertEquals(latency1 * ONE_WAY_LATENCY_MULTIPLIER, getIslLatency(FORWARD_ISL));
 
         // we got round trip latency so we will use it for metric and database
         long timestamp2 = pushMessage(firstRoundTripLatency);
         assertMetric(FORWARD_ISL, latency2, timestamp2);
-        assertEquals(latency2, getIslLatency(FORWARD_ISL));
+        Assertions.assertEquals(latency2, getIslLatency(FORWARD_ISL));
 
         // we got one way latency but bolts already has data with RTL latency. one way latency will be ignored
         pushMessage(secondOneWayLatency);
-        assertTrue(otsdbConsumer.isEmpty());
-        assertEquals(latency2, getIslLatency(FORWARD_ISL));
+        Assertions.assertTrue(otsdbConsumer.isEmpty());
+        Assertions.assertEquals(latency2, getIslLatency(FORWARD_ISL));
 
         // we got new round trip latency and it will be used for metric
         long timestamp4 = pushMessage(secondRoundTripLatency);
         assertMetric(FORWARD_ISL, latency4, timestamp4);
         // but not for database, because of big update time interval
-        assertEquals(latency2, getIslLatency(FORWARD_ISL));
+        Assertions.assertEquals(latency2, getIslLatency(FORWARD_ISL));
 
         // we got one way latency for reverse isl, but we already has RTL for forward ISL and we can use it
         long timestamp5 = pushMessage(reverseOneWayLatency);
         assertMetric(REVERSE_ISL, latency4, timestamp5);
-        assertEquals((latency2 + latency4) / 2, getIslLatency(REVERSE_ISL));
+        Assertions.assertEquals((latency2 + latency4) / 2, getIslLatency(REVERSE_ISL));
     }
 
     private long pushMessage(InfoData infoData) throws JsonProcessingException {
@@ -190,13 +189,13 @@ public class IslLatencyTopologyTest extends AbstractStormTest {
     private void assertMetric(IslKey isl, long expectedLatency, Long expectedTimestamp) {
         Datapoint datapoint = pollDataPoint();
 
-        assertEquals(isl.getSrcSwitchId().toOtsdFormat(), datapoint.getTags().get("src_switch"));
-        assertEquals(String.valueOf(isl.getSrcPort()), datapoint.getTags().get("src_port"));
-        assertEquals(isl.getDstSwitchId().toOtsdFormat(), datapoint.getTags().get("dst_switch"));
-        assertEquals(String.valueOf(isl.getDstPort()), datapoint.getTags().get("dst_port"));
-        assertEquals(expectedTimestamp, datapoint.getTime());
-        assertEquals(METRIC_PREFIX + LATENCY_METRIC_NAME, datapoint.getMetric());
-        assertEquals(expectedLatency, datapoint.getValue().longValue());
+        Assertions.assertEquals(isl.getSrcSwitchId().toOtsdFormat(), datapoint.getTags().get("src_switch"));
+        Assertions.assertEquals(String.valueOf(isl.getSrcPort()), datapoint.getTags().get("src_port"));
+        Assertions.assertEquals(isl.getDstSwitchId().toOtsdFormat(), datapoint.getTags().get("dst_switch"));
+        Assertions.assertEquals(String.valueOf(isl.getDstPort()), datapoint.getTags().get("dst_port"));
+        Assertions.assertEquals(expectedTimestamp, datapoint.getTime());
+        Assertions.assertEquals(METRIC_PREFIX + LATENCY_METRIC_NAME, datapoint.getMetric());
+        Assertions.assertEquals(expectedLatency, datapoint.getValue().longValue());
     }
 
     private Datapoint pollDataPoint() {

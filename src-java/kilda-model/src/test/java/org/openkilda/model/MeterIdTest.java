@@ -15,10 +15,12 @@
 
 package org.openkilda.model;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import org.openkilda.model.cookie.Cookie;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class MeterIdTest {
 
@@ -26,12 +28,13 @@ public class MeterIdTest {
     public void createMeterIdForValidDefaultRuleTest() {
         for (long id = MeterId.MIN_SYSTEM_RULE_METER_ID; id <= MeterId.MAX_SYSTEM_RULE_METER_ID; id++) {
             long cookie = Cookie.createCookieForDefaultRule(id).getValue();
-            Assert.assertEquals(id, MeterId.createMeterIdForDefaultRule(cookie).getValue());
+            assertEquals(id, MeterId.createMeterIdForDefaultRule(cookie).getValue());
         }
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void createMeterIdForInvalidDefaultRuleTest() {
-        MeterId.createMeterIdForDefaultRule(0x0000000000000123L);
+        assertThrows(IllegalArgumentException.class,
+                () -> MeterId.createMeterIdForDefaultRule(0x0000000000000123L));
     }
 }

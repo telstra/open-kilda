@@ -15,14 +15,13 @@
 
 package org.openkilda.wfm.topology.flowhs.service.yflow;
 
-import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -59,20 +58,21 @@ import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteService;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentMatcher;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     private static final int METER_ALLOCATION_RETRIES_LIMIT = 3;
 
@@ -87,11 +87,11 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     @Mock
     private YFlowRerouteHubCarrier yFlowRerouteHubCarrier;
 
-    @Before
+    @BeforeEach
     public void init() {
         doAnswer(buildSpeakerRequestAnswer())
                 .when(flowCreateHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
-        doAnswer(buildSpeakerRequestAnswer())
+        lenient().doAnswer(buildSpeakerRequestAnswer())
                 .when(flowRerouteHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
         doAnswer(buildSpeakerRequestAnswer())
                 .when(yFlowCreateHubCarrier).sendSpeakerRequest(any(SpeakerRequest.class));
@@ -201,7 +201,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         preparePathComputationForReroute("test_flow_1", buildFirstSubFlowPathPairWithNewTransit());
         preparePathComputationForReroute("test_flow_2", buildSecondSubFlowPathPairWithNewTransit());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_NEW_TRANSIT);
-        doThrow(new ResourceAllocationException(injectedErrorMessage))
+        lenient().doThrow(new ResourceAllocationException(injectedErrorMessage))
                 .when(flowResourcesManager).allocateMeter(eq("test_successful_yflow"), eq(SWITCH_NEW_TRANSIT));
 
         // when
@@ -461,7 +461,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     protected YFlow verifyYFlowStatus(String yFlowId, FlowStatus expectedStatus,
                                       FlowStatus expectedFirstSubFlowStatus, FlowStatus expectedSecondSubFlowStatus) {
         YFlow flow = getYFlow(yFlowId);
-        assertEquals(expectedStatus, flow.getStatus());
+        Assertions.assertEquals(expectedStatus, flow.getStatus());
 
         Set<FlowStatus> expectedSubFlowStatuses = Stream.of(expectedFirstSubFlowStatus, expectedSecondSubFlowStatus)
                 .collect(Collectors.toSet());
@@ -470,7 +470,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
                 .map(Flow::getStatus)
                 .collect(Collectors.toSet());
 
-        assertEquals(expectedSubFlowStatuses, actualSubFlowStatuses);
+        Assertions.assertEquals(expectedSubFlowStatuses, actualSubFlowStatuses);
 
         return flow;
     }
@@ -532,7 +532,8 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
 
     private void preparePathComputationForReroute(String flowId, GetPathsResult pathPair)
             throws RecoverableException, UnroutableFlowException {
-        when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId), any(), anyBoolean())).thenReturn(pathPair);
+        lenient().when(pathComputer.getPath(buildFlowIdArgumentMatch(flowId), any(), anyBoolean()))
+                .thenReturn(pathPair);
     }
 
     private void preparePathComputationForReroute(String flowId, GetPathsResult pathPair, GetPathsResult pathPair2)

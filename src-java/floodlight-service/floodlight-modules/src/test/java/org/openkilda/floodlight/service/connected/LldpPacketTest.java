@@ -15,7 +15,6 @@
 
 package org.openkilda.floodlight.service.connected;
 
-import static org.junit.Assert.assertEquals;
 import static org.openkilda.floodlight.service.connected.LldpPacket.IPV4_DESCRIPTION;
 import static org.openkilda.floodlight.service.connected.LldpPacket.LOCALLY_ASSIGNED_DESCRIPTION;
 import static org.openkilda.floodlight.service.connected.LldpPacket.MAC_DESCRIPTION;
@@ -26,7 +25,8 @@ import static org.openkilda.floodlight.service.connected.LldpPacket.addDescripti
 
 import net.floodlightcontroller.packet.LLDP;
 import net.floodlightcontroller.packet.LLDPTLV;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class LldpPacketTest {
     public static final byte[] packet = new byte[]{
@@ -62,30 +62,34 @@ public class LldpPacketTest {
     @Test
     public void errorReporting() {
         LldpPacket lldpPacket = buildLldpPacket(packet);
-        assertEquals(addDescription(MAC_DESCRIPTION, "ae:59:21:13:41:36"), lldpPacket.getParsedChassisId());
-        assertEquals(addDescription(MAC_DESCRIPTION, "e2:4c:63:33:f3:eb"), lldpPacket.getParsedPortId());
-        assertEquals(120, (int) lldpPacket.getParsedTtl());
-        assertEquals(addDescription(IPV4_DESCRIPTION, "172.17.0.2"), lldpPacket.getParsedManagementAddress());
-        assertEquals("tg1-eth0", lldpPacket.getParsedPortDescription());
-        assertEquals("trafgen02.lon", lldpPacket.getParsedSystemName());
-        assertEquals("Ubuntu 18.10 Linux 4.18.0-10-generic #11-Ubuntu SMP Thu Oct 11 15:13:55 UTC 2018 x86_64",
+        Assertions.assertEquals(addDescription(MAC_DESCRIPTION, "ae:59:21:13:41:36"),
+                lldpPacket.getParsedChassisId());
+        Assertions.assertEquals(addDescription(MAC_DESCRIPTION, "e2:4c:63:33:f3:eb"),
+                lldpPacket.getParsedPortId());
+        Assertions.assertEquals(120, (int) lldpPacket.getParsedTtl());
+        Assertions.assertEquals(addDescription(IPV4_DESCRIPTION, "172.17.0.2"),
+                lldpPacket.getParsedManagementAddress());
+        Assertions.assertEquals("tg1-eth0", lldpPacket.getParsedPortDescription());
+        Assertions.assertEquals("trafgen02.lon", lldpPacket.getParsedSystemName());
+        Assertions.assertEquals(
+                "Ubuntu 18.10 Linux 4.18.0-10-generic #11-Ubuntu SMP Thu Oct 11 15:13:55 UTC 2018 x86_64",
                 lldpPacket.getParsedSystemDescription());
     }
 
     @Test
     public void portLocallyAssigmentTest() {
         LLDPTLV portTvl = new LLDPTLV().setType((byte) 0x03).setLength((short) 3)
-                .setValue(new byte[] {PORT_ID_SUBTYPE_LOCALLY_ASSIGNED, 0x33, 0x33});
+                .setValue(new byte[]{PORT_ID_SUBTYPE_LOCALLY_ASSIGNED, 0x33, 0x33});
         LldpPacket lldpPacket = LldpPacket.builder().portId(portTvl).build();
-        assertEquals(addDescription(LOCALLY_ASSIGNED_DESCRIPTION, "33"), lldpPacket.getParsedPortId());
+        Assertions.assertEquals(addDescription(LOCALLY_ASSIGNED_DESCRIPTION, "33"), lldpPacket.getParsedPortId());
     }
 
     @Test
     public void portMacTest() {
         LLDPTLV portTvl = new LLDPTLV().setType(PORT_ID_LLDPTV_TYPE).setLength((short) 7)
-                .setValue(new byte[] {PORT_ID_SUBTYPE_MAC, 0x01, (byte) 0x80, (byte) 0xc2, 0x00, 0x00, 0x0e});
+                .setValue(new byte[]{PORT_ID_SUBTYPE_MAC, 0x01, (byte) 0x80, (byte) 0xc2, 0x00, 0x00, 0x0e});
         LldpPacket lldpPacket = LldpPacket.builder().portId(portTvl).build();
-        assertEquals(addDescription(MAC_DESCRIPTION, "01:80:c2:00:00:0e"), lldpPacket.getParsedPortId());
+        Assertions.assertEquals(addDescription(MAC_DESCRIPTION, "01:80:c2:00:00:0e"), lldpPacket.getParsedPortId());
     }
 
     static LldpPacket buildLldpPacket(byte[] packet) {

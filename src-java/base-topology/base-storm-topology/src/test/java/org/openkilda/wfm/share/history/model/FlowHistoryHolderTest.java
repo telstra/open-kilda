@@ -15,9 +15,9 @@
 
 package org.openkilda.wfm.share.history.model;
 
-import static junit.framework.TestCase.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.info.InfoMessage;
@@ -30,7 +30,7 @@ import org.openkilda.wfm.kafka.MessageSerializer;
 import org.openkilda.wfm.share.history.model.HaFlowEventData.Event;
 import org.openkilda.wfm.share.history.model.HaFlowEventData.Initiator;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 

@@ -15,14 +15,14 @@
 
 package org.openkilda.persistence.ferma.frames.converters;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.history.HaFlowEventDump.HaSubFlowDump;
 import org.openkilda.model.history.HaFlowEventDump.HaSubFlowDumpWrapper;
 
 import com.google.common.collect.Lists;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;

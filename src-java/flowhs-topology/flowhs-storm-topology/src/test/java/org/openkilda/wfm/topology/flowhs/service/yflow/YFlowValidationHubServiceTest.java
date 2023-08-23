@@ -17,13 +17,11 @@ package org.openkilda.wfm.topology.flowhs.service.yflow;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.openkilda.wfm.topology.flowhs.fsm.validation.SwitchFlowEntriesBuilder.BURST_COEFFICIENT;
@@ -59,19 +57,20 @@ import org.openkilda.wfm.topology.flowhs.service.FlowValidationHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowValidationHubService;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class YFlowValidationHubServiceTest extends AbstractYFlowTest<Pair<String, CommandData>> {
     @Mock
     private FlowValidationHubCarrier flowValidationHubCarrier;
@@ -79,18 +78,18 @@ public class YFlowValidationHubServiceTest extends AbstractYFlowTest<Pair<String
     private YFlowValidationHubCarrier yFlowValidationHubCarrier;
     private static RuleManagerConfig ruleManagerConfig;
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpOnce() {
         ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
     }
 
-    @Before
+    @BeforeEach
     public void init() {
-        doAnswer(invocation ->
-                requests.offer(Pair.of(invocation.getArgument(0), invocation.getArgument(1))))
+        lenient().doAnswer(invocation ->
+                        requests.offer(Pair.of(invocation.getArgument(0), invocation.getArgument(1))))
                 .when(flowValidationHubCarrier).sendSpeakerRequest(any(String.class), any(CommandData.class));
-        doAnswer(invocation ->
-                requests.offer(Pair.of(invocation.getArgument(0), invocation.getArgument(1))))
+        lenient().doAnswer(invocation ->
+                        requests.offer(Pair.of(invocation.getArgument(0), invocation.getArgument(1))))
                 .when(yFlowValidationHubCarrier).sendSpeakerRequest(any(String.class), any(CommandData.class));
     }
 
@@ -161,8 +160,10 @@ public class YFlowValidationHubServiceTest extends AbstractYFlowTest<Pair<String
         assertTrue(response.getYFlowValidationResult().isAsExpected());
         response.getSubFlowValidationResults()
                 .forEach(result ->
-                        assertTrue(result.getFlowId().equals(failedFlow.getFlowId()) || result.getAsExpected()));
-        assertEquals(1, response.getSubFlowValidationResults().stream().filter(r -> !r.getAsExpected()).count());
+                        assertTrue(result.getFlowId().equals(failedFlow.getFlowId())
+                                || result.getAsExpected()));
+        assertEquals(1, response.getSubFlowValidationResults().stream()
+                .filter(r -> !r.getAsExpected()).count());
     }
 
     private void handleSpeakerRequests(YFlowValidationHubService service, String yFlowFsmKey,
@@ -193,7 +194,7 @@ public class YFlowValidationHubServiceTest extends AbstractYFlowTest<Pair<String
                         .groupSpeakerData(foundGroupEntries != null ? new ArrayList<>(foundGroupEntries) : emptyList())
                         .build();
             } else {
-                fail();
+                Assertions.fail();
             }
 
             String flowId = pair.getKey();
@@ -223,7 +224,7 @@ public class YFlowValidationHubServiceTest extends AbstractYFlowTest<Pair<String
         verify(carrierMock, times(1)).sendNorthboundResponse(responseCaptor.capture());
 
         Message rawResponse = responseCaptor.getValue();
-        assertNotNull(rawResponse);
+        Assertions.assertNotNull(rawResponse);
         assertTrue(rawResponse instanceof InfoMessage);
 
         InfoData rawPayload = ((InfoMessage) rawResponse).getData();

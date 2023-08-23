@@ -15,10 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.cookie.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE;
@@ -37,8 +33,9 @@ import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.match.FieldMatch;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.List;
@@ -49,7 +46,7 @@ public class DropDiscoveryLoopRuleGeneratorTest {
 
     private DropDiscoveryLoopRuleGenerator generator;
 
-    @Before
+    @BeforeEach
     public void setup() {
         config = mock(RuleManagerConfig.class);
         when(config.getDiscoveryBcastPacketDst()).thenReturn("00:26:E1:FF:FF:FF");
@@ -64,30 +61,30 @@ public class DropDiscoveryLoopRuleGeneratorTest {
         Switch sw = buildSwitch("OF_13", Collections.emptySet());
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
-        assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
-        assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
+        Assertions.assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(new Cookie(DROP_VERIFICATION_LOOP_RULE_COOKIE), flowCommandData.getCookie());
-        assertEquals(OfTable.INPUT, flowCommandData.getTable());
-        assertEquals(DROP_DISCOVERY_LOOP_RULE_PRIORITY, flowCommandData.getPriority());
+        Assertions.assertEquals(new Cookie(DROP_VERIFICATION_LOOP_RULE_COOKIE), flowCommandData.getCookie());
+        Assertions.assertEquals(OfTable.INPUT, flowCommandData.getTable());
+        Assertions.assertEquals(DROP_DISCOVERY_LOOP_RULE_PRIORITY, flowCommandData.getPriority());
 
         FieldMatch ethDstMatch = getMatchByField(Field.ETH_DST, flowCommandData.getMatch());
-        assertEquals(new SwitchId(config.getDiscoveryBcastPacketDst()).toLong(), ethDstMatch.getValue());
-        assertFalse(ethDstMatch.isMasked());
+        Assertions.assertEquals(new SwitchId(config.getDiscoveryBcastPacketDst()).toLong(), ethDstMatch.getValue());
+        Assertions.assertFalse(ethDstMatch.isMasked());
 
         FieldMatch ethSrcMatch = getMatchByField(Field.ETH_SRC, flowCommandData.getMatch());
-        assertEquals(sw.getSwitchId().toLong(), ethSrcMatch.getValue());
-        assertFalse(ethSrcMatch.isMasked());
+        Assertions.assertEquals(sw.getSwitchId().toLong(), ethSrcMatch.getValue());
+        Assertions.assertFalse(ethSrcMatch.isMasked());
 
-        assertNull(flowCommandData.getInstructions().getApplyActions());
-        assertNull(flowCommandData.getInstructions().getGoToMeter());
-        assertNull(flowCommandData.getInstructions().getGoToTable());
-        assertNull(flowCommandData.getInstructions().getWriteMetadata());
-        assertNull(flowCommandData.getInstructions().getWriteActions());
+        Assertions.assertNull(flowCommandData.getInstructions().getApplyActions());
+        Assertions.assertNull(flowCommandData.getInstructions().getGoToMeter());
+        Assertions.assertNull(flowCommandData.getInstructions().getGoToTable());
+        Assertions.assertNull(flowCommandData.getInstructions().getWriteMetadata());
+        Assertions.assertNull(flowCommandData.getInstructions().getWriteActions());
     }
 
     @Test
@@ -95,6 +92,6 @@ public class DropDiscoveryLoopRuleGeneratorTest {
         Switch sw = buildSwitch("OF_12", Collections.emptySet());
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertTrue(commands.isEmpty());
+        Assertions.assertTrue(commands.isEmpty());
     }
 }

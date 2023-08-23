@@ -15,10 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.service.yflow;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.messaging.command.yflow.SubFlowsResponse;
@@ -28,8 +25,9 @@ import org.openkilda.messaging.command.yflow.YFlowResponse;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.topology.flowhs.service.AbstractYFlowTest;
 
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.List;
@@ -37,7 +35,7 @@ import java.util.List;
 public class YFlowReadServiceTest extends AbstractYFlowTest<FlowSegmentRequest> {
     private static YFlowReadService yFlowReadService;
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpOnce() {
         yFlowReadService = new YFlowReadService(persistenceManager, 0, Duration.ofMillis(1));
     }
@@ -52,7 +50,7 @@ public class YFlowReadServiceTest extends AbstractYFlowTest<FlowSegmentRequest> 
         // then
         assertEquals(1, yFlows.size());
         YFlowDto yFlow = yFlows.get(0).getYFlow();
-        assertNotNull(yFlow);
+        Assertions.assertNotNull(yFlow);
         assertEquals(yFlowId, yFlow.getYFlowId());
         assertEquals(2, yFlow.getSubFlows().size());
     }
@@ -72,16 +70,17 @@ public class YFlowReadServiceTest extends AbstractYFlowTest<FlowSegmentRequest> 
         YFlowResponse yFlowResponse = yFlowReadService.getYFlow(yFlowId);
         // then
         YFlowDto yFlow = yFlowResponse.getYFlow();
-        assertNotNull(yFlow);
+        Assertions.assertNotNull(yFlow);
         assertEquals(2, yFlow.getSubFlows().size());
     }
 
-    @Test(expected = FlowNotFoundException.class)
-    public void failFetchingForUnknownYFlowId() throws FlowNotFoundException {
-        String yFlowId = "unknown_y_flow";
+    @Test
+    public void failFetchingForUnknownYFlowId() {
+        Assertions.assertThrows(FlowNotFoundException.class, () -> {
+            String yFlowId = "unknown_y_flow";
 
-        yFlowReadService.getYFlow(yFlowId);
-        fail();
+            yFlowReadService.getYFlow(yFlowId);
+        });
     }
 
     @Test
@@ -95,12 +94,14 @@ public class YFlowReadServiceTest extends AbstractYFlowTest<FlowSegmentRequest> 
         assertEquals(2, yFlowResponse.getFlows().size());
     }
 
-    @Test(expected = FlowNotFoundException.class)
-    public void failFetchingSubFlowsForUnknownYFlowId() throws FlowNotFoundException {
-        String yFlowId = "unknown_y_flow";
+    @Test
+    public void failFetchingSubFlowsForUnknownYFlowId() {
+        Assertions.assertThrows(FlowNotFoundException.class, () -> {
+            String yFlowId = "unknown_y_flow";
 
-        yFlowReadService.getYFlowSubFlows(yFlowId);
-        fail();
+            yFlowReadService.getYFlowSubFlows(yFlowId);
+        });
+
     }
 
     @Test
@@ -116,15 +117,17 @@ public class YFlowReadServiceTest extends AbstractYFlowTest<FlowSegmentRequest> 
         assertEquals(SWITCH_SHARED, yFlowResponse.getSharedPath().getForwardPath().get(0).getSwitchId());
         assertEquals(2, yFlowResponse.getSubFlowPaths().size());
         // No protected paths
-        assertNull(yFlowResponse.getSharedPath().getProtectedPath());
+        Assertions.assertNull(yFlowResponse.getSharedPath().getProtectedPath());
     }
 
-    @Test(expected = FlowNotFoundException.class)
-    public void failFetchingPathsForUnknownYFlowId() throws FlowNotFoundException {
-        String yFlowId = "unknown_y_flow";
+    @Test
+    public void failFetchingPathsForUnknownYFlowId() {
+        Assertions.assertThrows(FlowNotFoundException.class, () -> {
+            String yFlowId = "unknown_y_flow";
 
-        yFlowReadService.getYFlowPaths(yFlowId);
-        fail();
+            yFlowReadService.getYFlowPaths(yFlowId);
+        });
+
     }
 
     @Test
@@ -136,7 +139,7 @@ public class YFlowReadServiceTest extends AbstractYFlowTest<FlowSegmentRequest> 
         YFlowResponse yFlowResponse = yFlowReadService.getYFlow(yFlowId);
         // then
         YFlowDto yFlow = yFlowResponse.getYFlow();
-        assertNotNull(yFlow);
+        Assertions.assertNotNull(yFlow);
         assertEquals(2, yFlow.getSubFlows().size());
 
         // and when
@@ -150,7 +153,7 @@ public class YFlowReadServiceTest extends AbstractYFlowTest<FlowSegmentRequest> 
         // The protected paths
         assertEquals(2, yFlowPathsResponse.getSharedPath().getProtectedPath().getForwardPath().size());
         assertEquals(2, yFlowPathsResponse.getSharedPath().getProtectedPath().getReversePath().size());
-        assertEquals(SWITCH_SHARED,
-                yFlowPathsResponse.getSharedPath().getProtectedPath().getForwardPath().get(0).getSwitchId());
+        assertEquals(SWITCH_SHARED, yFlowPathsResponse.getSharedPath().getProtectedPath().getForwardPath()
+                .get(0).getSwitchId());
     }
 }

@@ -23,7 +23,7 @@ import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.cookie.Cookie;
 
 import com.google.common.collect.ImmutableList;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;

@@ -88,13 +88,14 @@ kilda_network_switch_offline_generation_lag: 3
 kilda_opentsdb_timeout: 30
 kilda_opentsdb_num_spouts: 1
 kilda_opentsdb_num_opentsdbfilterbolt: 1
-kilda_opentsdb_num_opentsdbbolt: 1
-kilda_opentsdb_workers_opentsdbolt: 1
+kilda_opentsdb_num_output_bolt: 1
+kilda_opentsdb_tasks_output_bolt: 1
 kilda_opentsdb_num_datapointparserbolt: 1
 kilda_opentsdb_workers_datapointparserbolt: 1
 kilda_opentsdb_batch_size: 50
 kilda_opentsdb_flush_interval: 1
 kilda_opentsdb_workers: 1
+kilda_opentsdb_parallelism: 2
 kilda_opentsdb_metric_prefix: "kilda."
 
 kilda_statistics_interval: 60
@@ -262,5 +263,6 @@ kilda_flow_latency_sla_threshold_percent: 0.05
 
 kilda_swmanager_of_commands_batch_size: 500
 kilda_swmanager_kafka_chunked_messages_size: 500
+kilda_nbworker_kafka_chunked_messages_size: 500
 
 #ovs_vxlan: true

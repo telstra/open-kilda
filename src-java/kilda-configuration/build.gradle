@@ -11,8 +11,12 @@ dependencies {
     implementation 'javax.validation:validation-api'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
     testImplementation 'org.mockito:mockito-junit-jupiter'
     testRuntimeOnly 'org.hibernate.validator:hibernate-validator'
     testRuntimeOnly 'org.glassfish:javax.el'
+}
+
+test {
+    useJUnitPlatform()
 }

@@ -24,7 +24,7 @@ import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.cookie.Cookie;
 
 import com.google.common.collect.ImmutableList;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.EthType;
@@ -47,8 +47,8 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setPriority(EgressFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setCookie(U64.of(command.getCookie().getValue()))
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
-                                  .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
-                                  .build())
+                        .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
+                        .build())
                 .setInstructions(ImmutableList.of(
                         of.instructions().applyActions(ImmutableList.of(
                                 of.actions().popVlan(),
@@ -69,8 +69,8 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setPriority(EgressFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setCookie(U64.of(command.getCookie().getValue()))
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
-                                  .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
-                                  .build())
+                        .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
+                        .build())
                 .setInstructions(ImmutableList.of(
                         of.instructions().applyActions(ImmutableList.of(
                                 OfAdapter.INSTANCE.setVlanIdAction(of, command.getEndpoint().getOuterVlanId()),
@@ -91,8 +91,8 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setPriority(EgressFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setCookie(U64.of(command.getCookie().getValue()))
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
-                                  .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
-                                  .build())
+                        .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
+                        .build())
                 .setInstructions(ImmutableList.of(
                         of.instructions().applyActions(ImmutableList.of(
                                 of.actions().popVlan(),
@@ -113,8 +113,8 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setPriority(EgressFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setCookie(U64.of(command.getCookie().getValue()))
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
-                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
-                         .build())
+                        .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
+                        .build())
                 .setInstructions(ImmutableList.of(
                         of.instructions().applyActions(ImmutableList.of(
                                 OfAdapter.INSTANCE.setVlanIdAction(of, command.getEndpoint().getOuterVlanId()),
@@ -241,8 +241,8 @@ public class EgressFlowSegmentInstallCommandTest extends EgressFlowSegmentComman
                 .setPriority(EgressFlowSegmentInstallCommand.FLOW_PRIORITY)
                 .setCookie(U64.of(command.getCookie().getValue()))
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
-                         .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
-                         .build())
+                        .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
+                        .build())
                 .setInstructions(ImmutableList.of(
                         of.instructions().applyActions(ImmutableList.of(
                                 OfAdapter.INSTANCE.setVlanIdAction(of, command.getEndpoint().getOuterVlanId()),

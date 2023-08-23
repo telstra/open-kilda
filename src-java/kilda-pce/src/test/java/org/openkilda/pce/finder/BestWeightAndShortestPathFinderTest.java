@@ -18,11 +18,10 @@ package org.openkilda.pce.finder;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.endsWith;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.UnroutableFlowException;
@@ -37,7 +36,7 @@ import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -82,11 +81,11 @@ public class BestWeightAndShortestPathFinderTest {
         Pair<List<Edge>, List<Edge>> pairPath =
                 pathFinder.findPathWithMinWeight(network, SWITCH_ID_1, SWITCH_ID_4, WEIGHT_FUNCTION).getFoundPath();
         List<Edge> fpath = pairPath.getLeft();
-        assertThat(fpath, Matchers.hasSize(2));
+        MatcherAssert.assertThat(fpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_2, fpath.get(1).getSrcSwitch().getSwitchId());
 
         List<Edge> rpath = pairPath.getRight();
-        assertThat(rpath, Matchers.hasSize(2));
+        MatcherAssert.assertThat(rpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_2, rpath.get(0).getDestSwitch().getSwitchId());
     }
 
@@ -99,11 +98,11 @@ public class BestWeightAndShortestPathFinderTest {
         Pair<List<Edge>, List<Edge>> pairPath =
                 pathFinder.findPathWithMinWeight(network, SWITCH_ID_4, SWITCH_ID_1, WEIGHT_FUNCTION).getFoundPath();
         List<Edge> fpath = pairPath.getLeft();
-        assertThat(fpath, Matchers.hasSize(2));
+        MatcherAssert.assertThat(fpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_2, fpath.get(1).getSrcSwitch().getSwitchId());
 
         List<Edge> rpath = pairPath.getRight();
-        assertThat(rpath, Matchers.hasSize(2));
+        MatcherAssert.assertThat(rpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_2, rpath.get(0).getDestSwitch().getSwitchId());
     }
 
@@ -115,11 +114,11 @@ public class BestWeightAndShortestPathFinderTest {
         Pair<List<Edge>, List<Edge>> pairPath =
                 pathFinder.findPathWithMinWeight(network, SWITCH_ID_1, SWITCH_ID_4, WEIGHT_FUNCTION).getFoundPath();
         List<Edge> fpath = pairPath.getLeft();
-        assertThat(fpath, Matchers.hasSize(4));
+        MatcherAssert.assertThat(fpath, Matchers.hasSize(4));
         assertEquals(SWITCH_ID_5, fpath.get(3).getSrcSwitch().getSwitchId());
 
         List<Edge> rpath = pairPath.getRight();
-        assertThat(rpath, Matchers.hasSize(4));
+        MatcherAssert.assertThat(rpath, Matchers.hasSize(4));
         assertEquals(SWITCH_ID_5, rpath.get(0).getDestSwitch().getSwitchId());
     }
 
@@ -131,11 +130,11 @@ public class BestWeightAndShortestPathFinderTest {
         Pair<List<Edge>, List<Edge>> pairPath =
                 pathFinder.findPathWithMinWeight(network, SWITCH_ID_1, SWITCH_ID_5, WEIGHT_FUNCTION).getFoundPath();
         List<Edge> fpath = pairPath.getLeft();
-        assertThat(fpath, Matchers.hasSize(3));
+        MatcherAssert.assertThat(fpath, Matchers.hasSize(3));
         assertEquals(SWITCH_ID_3, fpath.get(2).getSrcSwitch().getSwitchId());
 
         List<Edge> rpath = pairPath.getRight();
-        assertThat(rpath, Matchers.hasSize(3));
+        MatcherAssert.assertThat(rpath, Matchers.hasSize(3));
         assertEquals(SWITCH_ID_3, rpath.get(0).getDestSwitch().getSwitchId());
     }
 
@@ -148,11 +147,11 @@ public class BestWeightAndShortestPathFinderTest {
                 pathFinder.findPathWithWeightCloseToMaxWeight(network, SWITCH_ID_1, SWITCH_ID_3, WEIGHT_FUNCTION,
                         Long.MAX_VALUE, Long.MAX_VALUE).getFoundPath();
         List<Edge> fpath = pairPath.getLeft();
-        assertThat(fpath, Matchers.hasSize(2));
+        MatcherAssert.assertThat(fpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_2, fpath.get(1).getSrcSwitch().getSwitchId());
 
         List<Edge> rpath = pairPath.getRight();
-        assertThat(rpath, Matchers.hasSize(2));
+        MatcherAssert.assertThat(rpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_2, rpath.get(0).getDestSwitch().getSwitchId());
     }
 
@@ -166,11 +165,11 @@ public class BestWeightAndShortestPathFinderTest {
                 pathFinder.findPathWithWeightCloseToMaxWeight(network, SWITCH_ID_3, SWITCH_ID_1, WEIGHT_FUNCTION,
                         Long.MAX_VALUE, Long.MAX_VALUE).getFoundPath();
         List<Edge> fpath = pairPath.getLeft();
-        assertThat(fpath, Matchers.hasSize(2));
+        MatcherAssert.assertThat(fpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_2, fpath.get(1).getSrcSwitch().getSwitchId());
 
         List<Edge> rpath = pairPath.getRight();
-        assertThat(rpath, Matchers.hasSize(2));
+        MatcherAssert.assertThat(rpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_2, rpath.get(0).getDestSwitch().getSwitchId());
     }
 
@@ -183,11 +182,11 @@ public class BestWeightAndShortestPathFinderTest {
                 pathFinder.findPathWithWeightCloseToMaxWeight(network, SWITCH_ID_1, SWITCH_ID_3, WEIGHT_FUNCTION,
                         Long.MAX_VALUE, Long.MAX_VALUE).getFoundPath();
         List<Edge> fpath = pairPath.getLeft();
-        assertThat(fpath, Matchers.hasSize(4));
+        MatcherAssert.assertThat(fpath, Matchers.hasSize(4));
         assertEquals(SWITCH_ID_5, fpath.get(3).getSrcSwitch().getSwitchId());
 
         List<Edge> rpath = pairPath.getRight();
-        assertThat(rpath, Matchers.hasSize(4));
+        MatcherAssert.assertThat(rpath, Matchers.hasSize(4));
         assertEquals(SWITCH_ID_5, rpath.get(0).getDestSwitch().getSwitchId());
     }
 
@@ -200,11 +199,11 @@ public class BestWeightAndShortestPathFinderTest {
                 pathFinder.findPathWithWeightCloseToMaxWeight(network, SWITCH_ID_1, SWITCH_ID_5, WEIGHT_FUNCTION,
                         Long.MAX_VALUE, Long.MAX_VALUE).getFoundPath();
         List<Edge> fpath = pairPath.getLeft();
-        assertThat(fpath, Matchers.hasSize(3));
+        MatcherAssert.assertThat(fpath, Matchers.hasSize(3));
         assertEquals(SWITCH_ID_4, fpath.get(2).getSrcSwitch().getSwitchId());
 
         List<Edge> rpath = pairPath.getRight();
-        assertThat(rpath, Matchers.hasSize(3));
+        MatcherAssert.assertThat(rpath, Matchers.hasSize(3));
         assertEquals(SWITCH_ID_4, rpath.get(0).getDestSwitch().getSwitchId());
     }
 
@@ -266,12 +265,12 @@ public class BestWeightAndShortestPathFinderTest {
         Pair<List<Edge>, List<Edge>> pairPath =
                 pathFinder.findPathWithMinWeight(network, SWITCH_ID_E, SWITCH_ID_F, WEIGHT_FUNCTION).getFoundPath();
         List<Edge> fpath = pairPath.getLeft();
-        assertThat(fpath, Matchers.hasSize(2));
+        MatcherAssert.assertThat(fpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_E, fpath.get(0).getSrcSwitch().getSwitchId());
         assertEquals(SWITCH_ID_F, fpath.get(1).getDestSwitch().getSwitchId());
 
         List<Edge> rpath = pairPath.getRight();
-        assertThat(rpath, Matchers.hasSize(2));
+        MatcherAssert.assertThat(rpath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_F, rpath.get(0).getSrcSwitch().getSwitchId());
         assertEquals(SWITCH_ID_E, rpath.get(1).getDestSwitch().getSwitchId());
     }
@@ -309,8 +308,8 @@ public class BestWeightAndShortestPathFinderTest {
 
         //then: system picks 200 path
         List<SwitchId> forwardSwitches = getInvolvedSwitches(pairPath.getLeft());
-        assertThat(forwardSwitches, equalTo(Arrays.asList(SWITCH_ID_1, SWITCH_ID_3, SWITCH_ID_5)));
-        assertThat(getInvolvedSwitches(pairPath.getRight()), equalTo(Lists.reverse(forwardSwitches)));
+        MatcherAssert.assertThat(forwardSwitches, equalTo(Arrays.asList(SWITCH_ID_1, SWITCH_ID_3, SWITCH_ID_5)));
+        MatcherAssert.assertThat(getInvolvedSwitches(pairPath.getRight()), equalTo(Lists.reverse(forwardSwitches)));
 
         return pathResult;
     }
@@ -349,8 +348,8 @@ public class BestWeightAndShortestPathFinderTest {
 
         //then: system picks 198 path
         List<SwitchId> forwardSwitches = getInvolvedSwitches(pairPath.getLeft());
-        assertThat(forwardSwitches, equalTo(Arrays.asList(SWITCH_ID_1, SWITCH_ID_2, SWITCH_ID_5)));
-        assertThat(getInvolvedSwitches(pairPath.getRight()), equalTo(Lists.reverse(forwardSwitches)));
+        MatcherAssert.assertThat(forwardSwitches, equalTo(Arrays.asList(SWITCH_ID_1, SWITCH_ID_2, SWITCH_ID_5)));
+        MatcherAssert.assertThat(getInvolvedSwitches(pairPath.getRight()), equalTo(Lists.reverse(forwardSwitches)));
 
         return pathResult;
     }
@@ -392,8 +391,8 @@ public class BestWeightAndShortestPathFinderTest {
         Pair<List<Edge>, List<Edge>> pairPath = pathResult.getFoundPath();
         //then: pick path1, because its reverse cost is 102 which is the closest to 103
         //system skips path2 even though its forward cost is 101, which is closer to 103 than 100 (path1 forward)
-        assertThat(pairPath.getLeft().get(0).getSrcPort(), equalTo(1));
-        assertThat(pairPath.getRight().get(0).getSrcPort(), equalTo(1));
+        MatcherAssert.assertThat(pairPath.getLeft().get(0).getSrcPort(), equalTo(1));
+        MatcherAssert.assertThat(pairPath.getRight().get(0).getSrcPort(), equalTo(1));
 
         return pathResult;
     }
@@ -415,8 +414,8 @@ public class BestWeightAndShortestPathFinderTest {
                 pathFinder.findPathWithMinWeight(network, SWITCH_ID_1, SWITCH_ID_2, WEIGHT_FUNCTION).getFoundPath();
         //then: pick path2, because its forward cost is 100 which is less than forward 101 of path1
         //system ignores that path1 reverse cost is actually the best of all (99), since it only uses forward
-        assertThat(pairPath.getLeft().get(0).getSrcPort(), equalTo(2));
-        assertThat(pairPath.getRight().get(0).getSrcPort(), equalTo(2));
+        MatcherAssert.assertThat(pairPath.getLeft().get(0).getSrcPort(), equalTo(2));
+        MatcherAssert.assertThat(pairPath.getRight().get(0).getSrcPort(), equalTo(2));
     }
 
     /**
@@ -437,25 +436,30 @@ public class BestWeightAndShortestPathFinderTest {
         //then: no path found
     }
 
-    @Test(expected = UnroutableFlowException.class)
-    public void failToFindASwitch() throws UnroutableFlowException {
-        AvailableNetwork network = buildTestNetwork();
+    @Test
+    public void failToFindASwitch() {
+        assertThrows(UnroutableFlowException.class, () -> {
+            AvailableNetwork network = buildTestNetwork();
 
-        SwitchId srcDpid = new SwitchId("00:00:00:00:00:00:00:ff");
+            SwitchId srcDpid = new SwitchId("00:00:00:00:00:00:00:ff");
 
-        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(ALLOWED_DEPTH);
-        pathFinder.findPathWithMinWeight(network, srcDpid, SWITCH_ID_F, WEIGHT_FUNCTION);
+            BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(ALLOWED_DEPTH);
+            pathFinder.findPathWithMinWeight(network, srcDpid, SWITCH_ID_F, WEIGHT_FUNCTION);
+        });
+
     }
 
-    @Test(expected = UnroutableFlowException.class)
-    public void failToFindASwitchMaxWeightStrategy() throws UnroutableFlowException {
-        AvailableNetwork network = buildTestNetwork();
+    @Test
+    public void failToFindASwitchMaxWeightStrategy() {
+        assertThrows(UnroutableFlowException.class, () -> {
+            AvailableNetwork network = buildTestNetwork();
 
-        SwitchId srcDpid = new SwitchId("00:00:00:00:00:00:00:ff");
+            SwitchId srcDpid = new SwitchId("00:00:00:00:00:00:00:ff");
 
-        BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(ALLOWED_DEPTH);
-        pathFinder.findPathWithWeightCloseToMaxWeight(network, srcDpid, SWITCH_ID_F, WEIGHT_FUNCTION,
-                Long.MAX_VALUE, Long.MAX_VALUE);
+            BestWeightAndShortestPathFinder pathFinder = new BestWeightAndShortestPathFinder(ALLOWED_DEPTH);
+            pathFinder.findPathWithWeightCloseToMaxWeight(network, srcDpid, SWITCH_ID_F, WEIGHT_FUNCTION,
+                    Long.MAX_VALUE, Long.MAX_VALUE);
+        });
     }
 
     @Test
@@ -480,7 +484,8 @@ public class BestWeightAndShortestPathFinderTest {
         Pair<List<Edge>, List<Edge>> paths =
                 pathFinder.findPathWithMinWeight(network, SWITCH_ID_D, SWITCH_ID_F, WEIGHT_FUNCTION).getFoundPath();
 
-        assertEquals(Arrays.asList(SWITCH_ID_D, SWITCH_ID_A, SWITCH_ID_F), getSwitchIdsFlowPath(paths.getLeft()));
+        assertEquals(Arrays.asList(SWITCH_ID_D, SWITCH_ID_A, SWITCH_ID_F),
+                getSwitchIdsFlowPath(paths.getLeft()));
     }
 
     @Test
@@ -512,8 +517,8 @@ public class BestWeightAndShortestPathFinderTest {
 
         //then: system picks 198 path (since 200 path is no longer '200' due to diversity weight rise)
         List<SwitchId> forwardSwitches = getInvolvedSwitches(pairPath.getLeft());
-        assertThat(forwardSwitches, equalTo(Arrays.asList(SWITCH_ID_1, SWITCH_ID_2, SWITCH_ID_5)));
-        assertThat(getInvolvedSwitches(pairPath.getRight()), equalTo(Lists.reverse(forwardSwitches)));
+        MatcherAssert.assertThat(forwardSwitches, equalTo(Arrays.asList(SWITCH_ID_1, SWITCH_ID_2, SWITCH_ID_5)));
+        MatcherAssert.assertThat(getInvolvedSwitches(pairPath.getRight()), equalTo(Lists.reverse(forwardSwitches)));
 
         return pathResult;
     }
@@ -610,12 +615,12 @@ public class BestWeightAndShortestPathFinderTest {
         Pair<List<Edge>, List<Edge>> paths = pathResult.getFoundPath();
 
         List<Edge> fpath = paths.getLeft();
-        assertThat(fpath, Matchers.hasSize(3));
+        MatcherAssert.assertThat(fpath, Matchers.hasSize(3));
         assertEquals(SWITCH_ID_1, fpath.get(0).getSrcSwitch().getSwitchId());
         assertEquals(SWITCH_ID_3, fpath.get(2).getSrcSwitch().getSwitchId());
 
         List<Edge> rpath = paths.getRight();
-        assertThat(rpath, Matchers.hasSize(3));
+        MatcherAssert.assertThat(rpath, Matchers.hasSize(3));
         assertEquals(SWITCH_ID_5, fpath.get(2).getDestSwitch().getSwitchId());
         assertEquals(SWITCH_ID_3, rpath.get(0).getDestSwitch().getSwitchId());
 
@@ -777,12 +782,12 @@ public class BestWeightAndShortestPathFinderTest {
         Pair<List<Edge>, List<Edge>> pairPath =
                 pathFinder.findPathWithMinWeight(network, SWITCH_ID_A, SWITCH_ID_B, WEIGHT_FUNCTION).getFoundPath();
         List<Edge> forwardPath = pairPath.getLeft();
-        assertThat(forwardPath, Matchers.hasSize(1));
+        MatcherAssert.assertThat(forwardPath, Matchers.hasSize(1));
         assertEquals(SWITCH_ID_A, forwardPath.get(0).getSrcSwitch().getSwitchId());
         assertEquals(SWITCH_ID_B, forwardPath.get(0).getDestSwitch().getSwitchId());
 
         List<Edge> reversePath = pairPath.getRight();
-        assertThat(reversePath, Matchers.hasSize(1));
+        MatcherAssert.assertThat(reversePath, Matchers.hasSize(1));
         assertEquals(SWITCH_ID_B, reversePath.get(0).getSrcSwitch().getSwitchId());
         assertEquals(SWITCH_ID_A, reversePath.get(0).getDestSwitch().getSwitchId());
 
@@ -791,14 +796,14 @@ public class BestWeightAndShortestPathFinderTest {
 
         pairPath = pathFinder.findPathWithMinWeight(network, SWITCH_ID_A, SWITCH_ID_B, WEIGHT_FUNCTION).getFoundPath();
         forwardPath = pairPath.getLeft();
-        assertThat(forwardPath, Matchers.hasSize(2));
+        MatcherAssert.assertThat(forwardPath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_A, forwardPath.get(0).getSrcSwitch().getSwitchId());
         assertEquals(SWITCH_ID_C, forwardPath.get(0).getDestSwitch().getSwitchId());
         assertEquals(SWITCH_ID_C, forwardPath.get(1).getSrcSwitch().getSwitchId());
         assertEquals(SWITCH_ID_B, forwardPath.get(1).getDestSwitch().getSwitchId());
 
         reversePath = pairPath.getRight();
-        assertThat(reversePath, Matchers.hasSize(2));
+        MatcherAssert.assertThat(reversePath, Matchers.hasSize(2));
         assertEquals(SWITCH_ID_B, reversePath.get(0).getSrcSwitch().getSwitchId());
         assertEquals(SWITCH_ID_C, reversePath.get(0).getDestSwitch().getSwitchId());
         assertEquals(SWITCH_ID_C, reversePath.get(1).getSrcSwitch().getSwitchId());
@@ -809,7 +814,7 @@ public class BestWeightAndShortestPathFinderTest {
 
         pairPath = pathFinder.findPathWithMinWeight(network, SWITCH_ID_A, SWITCH_ID_B, WEIGHT_FUNCTION).getFoundPath();
         forwardPath = pairPath.getLeft();
-        assertThat(forwardPath, Matchers.hasSize(3));
+        MatcherAssert.assertThat(forwardPath, Matchers.hasSize(3));
         assertEquals(SWITCH_ID_A, forwardPath.get(0).getSrcSwitch().getSwitchId());
         assertEquals(SWITCH_ID_D, forwardPath.get(0).getDestSwitch().getSwitchId());
         assertEquals(SWITCH_ID_D, forwardPath.get(1).getSrcSwitch().getSwitchId());
@@ -818,7 +823,7 @@ public class BestWeightAndShortestPathFinderTest {
         assertEquals(SWITCH_ID_B, forwardPath.get(2).getDestSwitch().getSwitchId());
 
         reversePath = pairPath.getRight();
-        assertThat(reversePath, Matchers.hasSize(3));
+        MatcherAssert.assertThat(reversePath, Matchers.hasSize(3));
         assertEquals(SWITCH_ID_B, reversePath.get(0).getSrcSwitch().getSwitchId());
         assertEquals(SWITCH_ID_E, reversePath.get(0).getDestSwitch().getSwitchId());
         assertEquals(SWITCH_ID_E, reversePath.get(1).getSrcSwitch().getSwitchId());

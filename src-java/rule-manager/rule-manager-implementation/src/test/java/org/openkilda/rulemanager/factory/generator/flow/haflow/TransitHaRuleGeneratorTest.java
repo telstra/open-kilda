@@ -15,9 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.flow.haflow;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
 import static org.openkilda.rulemanager.Utils.getCommand;
 
@@ -40,7 +37,8 @@ import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Set;
@@ -66,16 +64,16 @@ public class TransitHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
     private void assertTransitCommands(
             List<SpeakerData> commands, FlowTransitEncapsulation expectedEncapsulation,
             FlowSegmentCookie expectedCookie) {
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
-        assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
-        assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
+        Assertions.assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(expectedCookie, flowCommandData.getCookie());
-        assertEquals(OfTable.TRANSIT, flowCommandData.getTable());
-        assertEquals(Priority.FLOW_PRIORITY, flowCommandData.getPriority());
+        Assertions.assertEquals(expectedCookie, flowCommandData.getCookie());
+        Assertions.assertEquals(OfTable.TRANSIT, flowCommandData.getTable());
+        Assertions.assertEquals(Priority.FLOW_PRIORITY, flowCommandData.getPriority());
 
         Set<FieldMatch> expectedMatch;
         if (expectedEncapsulation.getType().equals(FlowEncapsulationType.TRANSIT_VLAN)) {
@@ -88,8 +86,8 @@ public class TransitHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         Instructions expectedInstructions = Instructions.builder()
                 .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(PORT_NUMBER_2))))
                 .build();
-        assertEquals(expectedInstructions, flowCommandData.getInstructions());
-        assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());
+        Assertions.assertEquals(expectedInstructions, flowCommandData.getInstructions());
+        Assertions.assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());
     }
 
     @Test
@@ -107,7 +105,7 @@ public class TransitHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 .outPort(PORT_NUMBER_2)
                 .encapsulation(VLAN_ENCAPSULATION)
                 .build();
-        assertEquals(0, generator.generateCommands(SWITCH_1).size());
+        Assertions.assertEquals(0, generator.generateCommands(SWITCH_1).size());
     }
 
     @Test
@@ -116,21 +114,21 @@ public class TransitHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 METER_COMMAND_UUID, true);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
         MeterSpeakerData meterCommand = getCommand(MeterSpeakerData.class, commands);
 
-        assertEquals(METER_ID, flowCommand.getInstructions().getGoToMeter());
-        assertEquals(Lists.newArrayList(METER_COMMAND_UUID), flowCommand.getDependsOn());
+        Assertions.assertEquals(METER_ID, flowCommand.getInstructions().getGoToMeter());
+        Assertions.assertEquals(Lists.newArrayList(METER_COMMAND_UUID), flowCommand.getDependsOn());
 
-        assertEquals(METER_ID, meterCommand.getMeterId());
-        assertEquals(METER_COMMAND_UUID, meterCommand.getUuid());
-        assertEquals(MeteredRuleGenerator.FLOW_METER_STATS, meterCommand.getFlags());
-        assertEquals(BANDWIDTH, meterCommand.getRate());
-        assertEquals(Math.round(BANDWIDTH * BURST_COEFFICIENT), meterCommand.getBurst());
-        assertEquals(0, meterCommand.getDependsOn().size());
-        assertEquals(SWITCH_2.getSwitchId(), meterCommand.getSwitchId());
-        assertEquals(SWITCH_2.getOfVersion(), meterCommand.getOfVersion().toString());
+        Assertions.assertEquals(METER_ID, meterCommand.getMeterId());
+        Assertions.assertEquals(METER_COMMAND_UUID, meterCommand.getUuid());
+        Assertions.assertEquals(MeteredRuleGenerator.FLOW_METER_STATS, meterCommand.getFlags());
+        Assertions.assertEquals(BANDWIDTH, meterCommand.getRate());
+        Assertions.assertEquals(Math.round(BANDWIDTH * BURST_COEFFICIENT), meterCommand.getBurst());
+        Assertions.assertEquals(0, meterCommand.getDependsOn().size());
+        Assertions.assertEquals(SWITCH_2.getSwitchId(), meterCommand.getSwitchId());
+        Assertions.assertEquals(SWITCH_2.getOfVersion(), meterCommand.getOfVersion().toString());
     }
 
     @Test
@@ -139,11 +137,11 @@ public class TransitHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
                 VLAN_ENCAPSULATION, true, METER_ID, METER_COMMAND_UUID, false);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
 
-        assertEquals(METER_ID, flowCommand.getInstructions().getGoToMeter());
-        assertEquals(Lists.newArrayList(METER_COMMAND_UUID), flowCommand.getDependsOn());
+        Assertions.assertEquals(METER_ID, flowCommand.getInstructions().getGoToMeter());
+        Assertions.assertEquals(Lists.newArrayList(METER_COMMAND_UUID), flowCommand.getDependsOn());
     }
 
     @Test
@@ -151,10 +149,10 @@ public class TransitHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         TransitHaRuleGenerator generator = buildGenerator(VLAN_ENCAPSULATION, true, null, METER_COMMAND_UUID, true);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
-        assertNull(flowCommand.getInstructions().getGoToMeter());
-        assertTrue(flowCommand.getDependsOn().isEmpty());
+        Assertions.assertNull(flowCommand.getInstructions().getGoToMeter());
+        Assertions.assertTrue(flowCommand.getDependsOn().isEmpty());
     }
 
     @Test
@@ -162,10 +160,10 @@ public class TransitHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         TransitHaRuleGenerator generator = buildGenerator(VLAN_ENCAPSULATION, true, METER_ID, METER_COMMAND_UUID, true);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
-        assertNull(flowCommand.getInstructions().getGoToMeter());
-        assertTrue(flowCommand.getDependsOn().isEmpty());
+        Assertions.assertNull(flowCommand.getInstructions().getGoToMeter());
+        Assertions.assertTrue(flowCommand.getDependsOn().isEmpty());
     }
 
     private TransitHaRuleGenerator buildMeterlessGenerator(

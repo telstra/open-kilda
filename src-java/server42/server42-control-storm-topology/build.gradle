@@ -29,8 +29,6 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor'
     testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
     testImplementation 'org.hamcrest:hamcrest-library'
     testImplementation 'org.mockito:mockito-junit-jupiter'
     testRuntimeOnly 'org.hibernate.validator:hibernate-validator'

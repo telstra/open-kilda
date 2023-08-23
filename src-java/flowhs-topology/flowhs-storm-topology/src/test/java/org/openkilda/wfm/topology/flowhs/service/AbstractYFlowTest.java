@@ -18,9 +18,6 @@ package org.openkilda.wfm.topology.flowhs.service;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -77,9 +74,9 @@ import com.google.common.collect.ImmutableList;
 import lombok.SneakyThrows;
 import net.jodah.failsafe.function.CheckedConsumer;
 import org.hamcrest.Matchers;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.hamcrest.MockitoHamcrest;
@@ -174,7 +171,7 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
 
     protected final Queue<T> requests = new ArrayDeque<>();
 
-    @Before
+    @BeforeEach
     public void before() {
         dummyFactory = new PersistenceDummyEntityFactory(persistenceManager);
 
@@ -204,7 +201,7 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
         }
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         if (yFlowRepositorySpy != null) {
             reset(yFlowRepositorySpy);
@@ -287,15 +284,15 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
 
     protected YFlow verifyYFlowStatus(String yFlowId, FlowStatus expectedStatus) {
         YFlow flow = getYFlow(yFlowId);
-        assertEquals(expectedStatus, flow.getStatus());
+        Assertions.assertEquals(expectedStatus, flow.getStatus());
         return flow;
     }
 
     protected void verifyYFlowAndSubFlowStatus(String yFlowId, FlowStatus expectedStatus) {
         YFlow flow = getYFlow(yFlowId);
-        assertEquals(expectedStatus, flow.getStatus());
+        Assertions.assertEquals(expectedStatus, flow.getStatus());
         flow.getSubFlows().forEach(subFlow -> {
-            assertEquals(expectedStatus, subFlow.getFlow().getStatus());
+            Assertions.assertEquals(expectedStatus, subFlow.getFlow().getStatus());
         });
     }
 
@@ -305,18 +302,18 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
                 .map(YSubFlow::getFlow)
                 .map(Flow::getAffinityGroupId)
                 .collect(Collectors.toSet());
-        assertEquals(1, affinityGroups.size());
+        Assertions.assertEquals(1, affinityGroups.size());
 
         String affinityGroupId = affinityGroups.iterator().next();
         Set<String> subFlowIds = flow.getSubFlows().stream()
                 .map(YSubFlow::getSubFlowId)
                 .collect(Collectors.toSet());
-        assertTrue(subFlowIds.contains(affinityGroupId));
+        Assertions.assertTrue(subFlowIds.contains(affinityGroupId));
     }
 
     protected void verifyYFlowIsAbsent(String yFlowId) {
         YFlowRepository repository = persistenceManager.getRepositoryFactory().createYFlowRepository();
-        assertFalse(repository.findById(yFlowId).isPresent());
+        Assertions.assertFalse(repository.findById(yFlowId).isPresent());
     }
 
     protected YFlow getYFlow(String yFlowId) {
@@ -337,11 +334,11 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
         verify(carrierMock, times(times)).sendNorthboundResponse(responseCaptor.capture());
 
         Message rawResponse = responseCaptor.getValue();
-        Assert.assertNotNull(rawResponse);
-        Assert.assertTrue(rawResponse instanceof InfoMessage);
+        Assertions.assertNotNull(rawResponse);
+        Assertions.assertTrue(rawResponse instanceof InfoMessage);
 
         InfoData rawPayload = ((InfoMessage) rawResponse).getData();
-        Assert.assertTrue(expectedPayloadType.isInstance(rawPayload));
+        Assertions.assertTrue(expectedPayloadType.isInstance(rawPayload));
     }
 
     protected void verifyNorthboundErrorResponse(NorthboundResponseCarrier carrier, ErrorType expectedErrorType) {
@@ -349,11 +346,11 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
         verify(carrier).sendNorthboundResponse(responseCaptor.capture());
 
         Message rawResponse = responseCaptor.getValue();
-        Assert.assertNotNull(rawResponse);
-        Assert.assertTrue(rawResponse instanceof ErrorMessage);
+        Assertions.assertNotNull(rawResponse);
+        Assertions.assertTrue(rawResponse instanceof ErrorMessage);
         ErrorMessage response = (ErrorMessage) rawResponse;
 
-        Assert.assertSame(expectedErrorType, response.getData().getErrorType());
+        Assertions.assertSame(expectedErrorType, response.getData().getErrorType());
     }
 
     protected void verifyNoNorthboundResponse(NorthboundResponseCarrier carrier) {
