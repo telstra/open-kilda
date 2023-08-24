@@ -137,7 +137,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldUpdateLinkUnderMaintenanceFlag() throws SwitchNotFoundException {
+    public void updateLinkUnderMaintenanceFlag() throws SwitchNotFoundException {
         createSwitch(TEST_SWITCH_ID);
 
         switchOperationsService.updateSwitchUnderMaintenanceFlag(TEST_SWITCH_ID, true);
@@ -150,7 +150,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldDeletePortPropertiesWhenDeletingSwitch() throws SwitchNotFoundException {
+    public void deletePortPropertiesWhenDeletingSwitch() throws SwitchNotFoundException {
         Switch sw = createSwitch(TEST_SWITCH_ID);
         PortProperties portProperties = PortProperties.builder().switchObj(sw).port(7).discoveryEnabled(false).build();
         portPropertiesRepository.add(portProperties);
@@ -161,7 +161,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldValidateSupportedEncapsulationTypeWhenUpdatingSwitchProperties() {
+    public void validateSupportedEncapsulationTypeWhenUpdatingSwitchProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             Switch sw = createSwitch(TEST_SWITCH_ID);
             createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), false, false, false);
@@ -171,7 +171,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldValidateMultiTableFlagWhenUpdatingSwitchProperties() {
+    public void validateMultiTableFlagWhenUpdatingSwitchProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             Switch sw = createSwitch(TEST_SWITCH_ID);
             createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, true, false);
@@ -188,7 +188,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldValidateFlowWithLldpFlagWhenUpdatingSwitchProperties() {
+    public void validateFlowWithLldpFlagWhenUpdatingSwitchProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
             Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
@@ -217,7 +217,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldValidateMultiTableFlagWhenUpdatingSwitchPropertiesWithArp() {
+    public void validateMultiTableFlagWhenUpdatingSwitchPropertiesWithArp() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             Switch sw = createSwitch(TEST_SWITCH_ID);
             createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, true);
@@ -234,7 +234,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldValidateFlowWithArpFlagWhenUpdatingSwitchProperties() {
+    public void validateFlowWithArpFlagWhenUpdatingSwitchProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
             Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
@@ -263,7 +263,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldDisableSwitchLldpForFlow() {
+    public void disableSwitchLldpForFlow() {
         Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
         Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
 
@@ -313,7 +313,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldEnableSwitchLldpForFlow() {
+    public void enableSwitchLldpForFlow() {
         Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
         Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
 
@@ -363,7 +363,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldUpdateServer42FlowRttSwitchProperties() {
+    public void updateServer42FlowRttSwitchProperties() {
         Switch sw = createSwitch(TEST_SWITCH_ID);
         createServer42SwitchProperties(sw, false, SERVER_42_PORT_1, SERVER_42_VLAN_1, SERVER_42_MAC_ADDRESS_1);
 
@@ -387,7 +387,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldValidateServer42VlanWhenEnableFlowRttInSwitchProperties() {
+    public void validateServer42VlanWhenEnableFlowRttInSwitchProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             // user can't enable server42FlowRtt and do not specify server42Vlan
             SwitchPropertiesDto properties = new SwitchPropertiesDto();
@@ -400,7 +400,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldValidateServer42PortWhenEnableFlowRttInSwitchProperties() {
+    public void validateServer42PortWhenEnableFlowRttInSwitchProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             // user can't enable server42FlowRtt and do not specify server42Port
             SwitchPropertiesDto properties = new SwitchPropertiesDto();
@@ -413,7 +413,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldValidateServer42MacAddressWhenEnableFlowRttInSwitchProperties() {
+    public void validateServer42MacAddressWhenEnableFlowRttInSwitchProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             // user can't enable server42FlowRtt and do not specify server42MacAddress
             SwitchPropertiesDto properties = new SwitchPropertiesDto();
@@ -426,7 +426,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldValidateFlowMirrorPointsWhenUpdatingSwitchLldpProperties() {
+    public void validateFlowMirrorPointsWhenUpdatingSwitchLldpProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             Switch mirrorSwitch = createSwitch(TEST_SWITCH_ID);
 
@@ -460,7 +460,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldValidateFlowMirrorPointsWhenUpdatingSwitchArpProperties() {
+    public void validateFlowMirrorPointsWhenUpdatingSwitchArpProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             Switch mirrorSwitch = createSwitch(TEST_SWITCH_ID);
 
@@ -494,7 +494,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldValidateFlowWhenUpdatingServer42PortSwitchProperties() {
+    public void validateFlowWhenUpdatingServer42PortSwitchProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
             Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
@@ -522,7 +522,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldValidateFlowMirrorPathWhenUpdatingServer42PortSwitchProperties() {
+    public void validateFlowMirrorPathWhenUpdatingServer42PortSwitchProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             Switch firstSwitch = createSwitch(TEST_SWITCH_ID);
             Switch secondSwitch = createSwitch(TEST_SWITCH_ID_2);
@@ -548,7 +548,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldUpdateServer42IslRttSwitchProperties() {
+    public void updateServer42IslRttSwitchProperties() {
         Switch sw = createSwitch(TEST_SWITCH_ID);
         SwitchProperties switchProperties = SwitchProperties.builder()
                 .switchObj(sw)
@@ -567,6 +567,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         update.setServer42Port(SERVER_42_PORT_2);
         update.setServer42Vlan(SERVER_42_VLAN_2);
         update.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
+        update.setMultiTable(true);
 
         switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
         Optional<SwitchProperties> updated = switchPropertiesRepository.findBySwitchId(TEST_SWITCH_ID);
@@ -579,7 +580,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldUpdateServer42IslRttSwitchPropertiesToAuto() {
+    public void updateServer42IslRttSwitchPropertiesToAuto() {
         Switch sw = createSwitch(TEST_SWITCH_ID);
         SwitchProperties switchProperties = SwitchProperties.builder()
                 .switchObj(sw)
@@ -598,6 +599,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         update.setServer42Port(SERVER_42_PORT_2);
         update.setServer42Vlan(SERVER_42_VLAN_2);
         update.setServer42MacAddress(SERVER_42_MAC_ADDRESS_2);
+        update.setMultiTable(true);
 
         switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update);
         Optional<SwitchProperties> updated = switchPropertiesRepository.findBySwitchId(TEST_SWITCH_ID);
@@ -610,7 +612,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldValidateServer42VlanWhenEnableIslRttInSwitchProperties() {
+    public void validateServer42VlanWhenEnableIslRttInSwitchProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             // user can't enable server42FlowRtt and do not specify server42Vlan
             SwitchPropertiesDto properties = new SwitchPropertiesDto();
@@ -623,7 +625,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldValidateServer42PortWhenEnableIslRttInSwitchProperties() {
+    public void validateServer42PortWhenEnableIslRttInSwitchProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             // user can't enable server42FlowRtt and do not specify server42Port
             SwitchPropertiesDto properties = new SwitchPropertiesDto();
@@ -636,7 +638,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldValidateServer42MacAddressWhenEnableIslRttInSwitchProperties() {
+    public void validateServer42MacAddressWhenEnableIslRttInSwitchProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             // user can't enable server42FlowRtt and do not specify server42MacAddress
             SwitchPropertiesDto properties = new SwitchPropertiesDto();
@@ -649,7 +651,26 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldPatchSwitch() throws SwitchNotFoundException {
+    public void disableMultiTableMode() {
+        Switch sw = createSwitch(TEST_SWITCH_ID);
+        SwitchProperties switchProperties = SwitchProperties.builder()
+                .switchObj(sw)
+                .supportedTransitEncapsulation(Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN))
+                .multiTable(true)
+                .build();
+        switchPropertiesRepository.add(switchProperties);
+
+        SwitchPropertiesDto update = new SwitchPropertiesDto();
+        update.setSupportedTransitEncapsulation(SUPPORTED_TRANSIT_ENCAPSULATION);
+        update.setMultiTable(false);
+        IllegalSwitchPropertiesException thrown = assertThrows(IllegalSwitchPropertiesException.class,
+                () -> switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, update));
+        assertEquals("Single table mode was deprecated and it is not supported anymore. "
+                + "The only valid value for switch property 'multi_table' is 'true'.", thrown.getMessage());
+    }
+
+    @Test
+    public void patchSwitch() throws SwitchNotFoundException {
         createSwitch(TEST_SWITCH_ID);
 
         SwitchPatch switchPatch =
@@ -666,7 +687,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldSetNullPopWhenPopIsEmptyString() throws SwitchNotFoundException {
+    public void setNullPopWhenPopIsEmptyString() throws SwitchNotFoundException {
         createSwitch(TEST_SWITCH_ID);
 
         SwitchPatch switchPatch = new SwitchPatch("", null);
@@ -677,7 +698,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldReturnLagPorts() throws SwitchNotFoundException {
+    public void returnLagPorts() throws SwitchNotFoundException {
         createSwitch(TEST_SWITCH_ID);
 
         LagLogicalPort lagLogicalPort = new LagLogicalPort(TEST_SWITCH_ID, LAG_LOGICAL_PORT,
@@ -696,7 +717,6 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     @Test
     public void shouldThrowExceptionDuringGettingLagPorts() {
         assertThrows(SwitchNotFoundException.class, () -> switchOperationsService.getSwitchLagPorts(TEST_SWITCH_ID));
-
     }
 
     private void runInvalidServer42PropsTest(SwitchPropertiesDto invalidProperties) {
@@ -724,7 +744,8 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         switchPropertiesRepository.add(switchProperties);
     }
 
-    private void createSwitchProperties(Switch sw, Set<FlowEncapsulationType> transitEncapsulation, boolean multiTable,
+    private void createSwitchProperties(Switch sw, Set<FlowEncapsulationType> transitEncapsulation,
+                                        boolean multiTable,
                                         boolean switchLldp, boolean switchArp) {
         SwitchProperties switchProperties = SwitchProperties.builder()
                 .switchObj(sw)
@@ -737,10 +758,14 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     private Switch createSwitch(SwitchId switchId) {
+        return createSwitch(switchId, Sets.newHashSet(SwitchFeature.MULTI_TABLE));
+    }
+
+    private Switch createSwitch(SwitchId switchId, Set<SwitchFeature> features) {
         Switch sw = Switch.builder()
                 .switchId(switchId)
                 .status(SwitchStatus.ACTIVE)
-                .features(Sets.newHashSet(SwitchFeature.MULTI_TABLE))
+                .features(features)
                 .build();
         switchRepository.add(sw);
         return sw;
