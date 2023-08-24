@@ -10,7 +10,8 @@ description = 'Connected Devices Storm Topology'
 dependencies {
     implementation project(':base-storm-topology')
     implementation project(':blue-green')
-    runtimeOnly project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
+    // runtimeClasspath because 'releaseArtifacts' shouldn't go for tests.
+    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     runtimeOnly project(':kilda-persistence-orientdb')
     runtimeOnly project(':kilda-persistence-hibernate')

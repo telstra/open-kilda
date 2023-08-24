@@ -40,7 +40,7 @@ public class Transaction {
      */
     public void activate(ImplementationTransactionAdapter<?> effective) throws Exception {
         if (isRootTransaction(effective)) {
-            log.debug(
+            log.trace(
                     "Going to open transaction for {} area in {}",
                     effective.getImplementationType(), Thread.currentThread().getName());
             effective.open();
@@ -64,7 +64,7 @@ public class Transaction {
 
         boolean canCommit = !fail && success;
         String closeAction = canCommit ? "commit" : "rollback";
-        log.debug(
+        log.trace(
                 "Going to {} transaction for {} area in {}",
                 closeAction, implementationTransactionAdapter.getImplementationType(),
                 Thread.currentThread().getName());

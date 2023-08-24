@@ -38,7 +38,7 @@ public class HibernateTransactionAdapter extends ImplementationTransactionAdapte
         session = getSessionFactory().openSession();
         ManagedSessionContext.bind(session);
 
-        log.debug("Open new hibernate transaction in thread {}", Thread.currentThread().getName());
+        log.trace("Open new hibernate transaction in thread {}", Thread.currentThread().getName());
         session.beginTransaction();
     }
 

@@ -9,7 +9,8 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 description = 'Port State Storm Topology'
 dependencies {
     implementation project(':base-storm-topology')
-    runtimeOnly project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
+    // runtimeClasspath because 'releaseArtifacts' shouldn't go for tests.
+    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     implementation project(':kilda-reporting')
     implementation project(':network-messaging')
     implementation project(':nbworker-messaging')
