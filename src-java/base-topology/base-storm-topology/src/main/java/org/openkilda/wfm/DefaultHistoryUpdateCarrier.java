@@ -15,10 +15,10 @@
 
 package org.openkilda.wfm;
 
-import lombok.NonNull;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 
+import lombok.NonNull;
 import org.apache.storm.tuple.Values;
 
 /**
