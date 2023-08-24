@@ -21,8 +21,8 @@ import org.openkilda.messaging.model.LinkPropsMask;
 import org.openkilda.messaging.model.NetworkEndpointMask;
 import org.openkilda.model.SwitchId;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class LinkPropsDropTest {
     StringSerializer serializer = new StringSerializer();
@@ -36,7 +36,7 @@ public class LinkPropsDropTest {
         CommandMessage reconstructedWrapper = (CommandMessage) serializer.deserialize();
         LinkPropsDrop reconstructed = (LinkPropsDrop) reconstructedWrapper.getData();
 
-        Assert.assertEquals(origin, reconstructed);
+        Assertions.assertEquals(origin, reconstructed);
     }
 
     /**

@@ -16,9 +16,9 @@
 package org.openkilda.persistence.ferma.repositories;
 
 import static com.google.common.collect.Sets.newHashSet;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -40,8 +40,8 @@ import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.YFlowRepository;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.Optional;
@@ -65,7 +65,7 @@ public class FermaYFlowRepositoryTest extends InMemoryGraphBasedTest {
     Switch switch2;
     Switch switch3;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         flowRepository = repositoryFactory.createFlowRepository();
         yFlowRepository = repositoryFactory.createYFlowRepository();

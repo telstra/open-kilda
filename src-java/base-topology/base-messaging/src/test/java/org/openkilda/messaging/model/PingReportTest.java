@@ -18,28 +18,26 @@ package org.openkilda.messaging.model;
 import org.openkilda.messaging.ObjectSerializer;
 import org.openkilda.messaging.model.PingReport.State;
 
-import java.io.IOException;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-import org.junit.Assert;
-import org.junit.Test;
+import java.io.IOException;
 
 public class PingReportTest {
     ObjectSerializer serializer;
-	
-	public PingReportTest() throws IOException {
-		serializer = new ObjectSerializer();
-	}	
 
-	@Test
+    public PingReportTest() throws IOException {
+        serializer = new ObjectSerializer();
+    }
+
+    @Test
     public void serializeLoop() throws Exception {
         PingReport origin = new PingReport("flowId-" + getClass().getSimpleName(), State.OPERATIONAL);
 
         serializer.serialize(origin);
         PingReport decoded = (PingReport) serializer.deserialize();
 
-        Assert.assertEquals(
-                String.format("%s object have been mangled in serialisation/deserialization loop",
-                        origin.getClass().getName()),
-                origin, decoded);
+        Assertions.assertEquals(origin, decoded, String.format("%s object have been mangled in"
+                + " serialisation/deserialization loop", origin.getClass().getName()));
     }
 }

@@ -57,7 +57,7 @@ dependencies {
     testRuntimeOnly 'ch.qos.logback:logback-core:1.2.3'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
     testImplementation 'org.easymock:easymock:4.3'
     testImplementation 'org.hamcrest:hamcrest-library'
     testImplementation 'io.netty:netty-all'
@@ -81,4 +81,8 @@ build.dependsOn generateVersionTxt
 jar {
     // Omit version in the jar file name. This is for Docker image build purpose.
     archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
+}
+
+test {
+    useJUnitPlatform()
 }

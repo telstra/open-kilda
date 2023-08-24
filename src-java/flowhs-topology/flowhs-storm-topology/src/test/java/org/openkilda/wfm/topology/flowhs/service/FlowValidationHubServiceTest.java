@@ -15,9 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageData;
@@ -45,8 +43,9 @@ import org.openkilda.wfm.topology.flowhs.fsm.validation.FlowValidationTestBase;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Set;
@@ -58,7 +57,7 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
     private static RuleManagerConfig ruleManagerConfig;
     private FlowValidationHubService flowValidationHubService;
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpOnce() {
         FlowValidationTestBase.setUpOnce();
         ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
@@ -70,18 +69,18 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
         FlowValidationHubCarrier carrier = new FlowValidationHubCarrier() {
             @Override
             public void sendSpeakerRequest(String flowId, CommandData commandData) {
-                assertTrue(commandData instanceof DumpRulesForFlowHsRequest
+                Assertions.assertTrue(commandData instanceof DumpRulesForFlowHsRequest
                         || commandData instanceof DumpMetersForFlowHsRequest
                         || commandData instanceof DumpGroupsForFlowHsRequest);
 
                 List<SwitchId> switchIds =
                         Lists.newArrayList(TEST_SWITCH_ID_A, TEST_SWITCH_ID_B, TEST_SWITCH_ID_C, TEST_SWITCH_ID_E);
                 if (commandData instanceof DumpRulesForFlowHsRequest) {
-                    assertTrue(switchIds.contains(((DumpRulesForFlowHsRequest) commandData).getSwitchId()));
+                    Assertions.assertTrue(switchIds.contains(((DumpRulesForFlowHsRequest) commandData).getSwitchId()));
                 } else if (commandData instanceof DumpMetersForFlowHsRequest) {
-                    assertTrue(switchIds.contains(((DumpMetersForFlowHsRequest) commandData).getSwitchId()));
+                    Assertions.assertTrue(switchIds.contains(((DumpMetersForFlowHsRequest) commandData).getSwitchId()));
                 } else {
-                    assertTrue(switchIds.contains(((DumpGroupsForFlowHsRequest) commandData).getSwitchId()));
+                    Assertions.assertTrue(switchIds.contains(((DumpGroupsForFlowHsRequest) commandData).getSwitchId()));
                 }
             }
 
@@ -101,7 +100,7 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
 
             @Override
             public void sendNorthboundResponse(Message message) {
-                fail();
+                Assertions.fail();
             }
 
             @Override
@@ -136,24 +135,24 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
         FlowValidationHubCarrier carrier = new FlowValidationHubCarrier() {
             @Override
             public void sendSpeakerRequest(String flowId, CommandData commandData) {
-                assertTrue(commandData instanceof DumpRulesForFlowHsRequest
+                Assertions.assertTrue(commandData instanceof DumpRulesForFlowHsRequest
                         || commandData instanceof DumpMetersForFlowHsRequest
                         || commandData instanceof DumpGroupsForFlowHsRequest);
 
                 List<SwitchId> switchIds =
                         Lists.newArrayList(TEST_SWITCH_ID_A, TEST_SWITCH_ID_B, TEST_SWITCH_ID_C, TEST_SWITCH_ID_E);
                 if (commandData instanceof DumpRulesForFlowHsRequest) {
-                    assertTrue(switchIds.contains(((DumpRulesForFlowHsRequest) commandData).getSwitchId()));
+                    Assertions.assertTrue(switchIds.contains(((DumpRulesForFlowHsRequest) commandData).getSwitchId()));
                 } else if (commandData instanceof DumpMetersForFlowHsRequest) {
-                    assertTrue(switchIds.contains(((DumpMetersForFlowHsRequest) commandData).getSwitchId()));
+                    Assertions.assertTrue(switchIds.contains(((DumpMetersForFlowHsRequest) commandData).getSwitchId()));
                 } else {
-                    assertTrue(switchIds.contains(((DumpGroupsForFlowHsRequest) commandData).getSwitchId()));
+                    Assertions.assertTrue(switchIds.contains(((DumpGroupsForFlowHsRequest) commandData).getSwitchId()));
                 }
             }
 
             @Override
             public void sendNorthboundResponse(List<? extends InfoData> message) {
-                fail();
+                Assertions.fail();
             }
 
             @Override
@@ -185,24 +184,24 @@ public class FlowValidationHubServiceTest extends FlowValidationTestBase {
         FlowValidationHubCarrier carrier = new FlowValidationHubCarrier() {
             @Override
             public void sendSpeakerRequest(String flowId, CommandData commandData) {
-                assertTrue(commandData instanceof DumpRulesForFlowHsRequest
+                Assertions.assertTrue(commandData instanceof DumpRulesForFlowHsRequest
                         || commandData instanceof DumpMetersForFlowHsRequest
                         || commandData instanceof DumpGroupsForFlowHsRequest);
 
                 List<SwitchId> switchIds =
                         Lists.newArrayList(TEST_SWITCH_ID_A, TEST_SWITCH_ID_B, TEST_SWITCH_ID_C, TEST_SWITCH_ID_E);
                 if (commandData instanceof DumpRulesForFlowHsRequest) {
-                    assertTrue(switchIds.contains(((DumpRulesForFlowHsRequest) commandData).getSwitchId()));
+                    Assertions.assertTrue(switchIds.contains(((DumpRulesForFlowHsRequest) commandData).getSwitchId()));
                 } else if (commandData instanceof DumpMetersForFlowHsRequest) {
-                    assertTrue(switchIds.contains(((DumpMetersForFlowHsRequest) commandData).getSwitchId()));
+                    Assertions.assertTrue(switchIds.contains(((DumpMetersForFlowHsRequest) commandData).getSwitchId()));
                 } else {
-                    assertTrue(switchIds.contains(((DumpGroupsForFlowHsRequest) commandData).getSwitchId()));
+                    Assertions.assertTrue(switchIds.contains(((DumpGroupsForFlowHsRequest) commandData).getSwitchId()));
                 }
             }
 
             @Override
             public void sendNorthboundResponse(List<? extends InfoData> message) {
-                fail();
+                Assertions.fail();
             }
 
             @Override

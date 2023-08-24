@@ -16,8 +16,7 @@
 package org.openkilda.rulemanager.factory.generator.flow.mirror;
 
 import static com.google.common.collect.Sets.newHashSet;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
 import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
@@ -66,7 +65,8 @@ import org.openkilda.rulemanager.group.WatchPort;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Lists;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -121,7 +121,7 @@ public class EgressMirrorRuleGeneratorTest {
                 groupCommand.getUuid());
         assertGroupCommand(groupCommand);
     }
-    
+
     @Test
     public void buildVlanMultiTableOuterVlanEgressMirrorRuleTest() {
         FlowPath path = buildPathWithMirror(true);
@@ -132,7 +132,7 @@ public class EgressMirrorRuleGeneratorTest {
         assertEquals(2, commands.size());
         FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
         GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
-        
+
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new GroupAction(GROUP_ID));
@@ -360,7 +360,7 @@ public class EgressMirrorRuleGeneratorTest {
 
     @Test
     public void oneSwitchFlowEgressMirrorRuleTest() {
-        FlowPath path =  FlowPath.builder()
+        FlowPath path = FlowPath.builder()
                 .pathId(PATH_ID)
                 .srcSwitch(SWITCH_1)
                 .destSwitch(SWITCH_1)
@@ -372,7 +372,7 @@ public class EgressMirrorRuleGeneratorTest {
 
     @Test
     public void pathWithoutSegmentsFlowEgressMirrorRuleTest() {
-        FlowPath path =  FlowPath.builder()
+        FlowPath path = FlowPath.builder()
                 .pathId(PATH_ID)
                 .srcSwitch(SWITCH_1)
                 .destSwitch(SWITCH_2)
@@ -422,7 +422,7 @@ public class EgressMirrorRuleGeneratorTest {
 
         Instructions expectedInstructions = Instructions.builder().applyActions(expectedApplyActions).build();
         assertEquals(expectedInstructions, command.getInstructions());
-        assertTrue(command.getFlags().isEmpty());
+        Assertions.assertTrue(command.getFlags().isEmpty());
     }
 
     private void assertGroupCommand(GroupSpeakerData command) {
@@ -430,7 +430,7 @@ public class EgressMirrorRuleGeneratorTest {
         assertEquals(SWITCH_2.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_2.getOfVersion(), command.getOfVersion().toString());
         assertEquals(GroupType.ALL, command.getType());
-        assertTrue(command.getDependsOn().isEmpty());
+        Assertions.assertTrue(command.getDependsOn().isEmpty());
 
         assertEquals(2, command.getBuckets().size());
         Bucket flowBucket = command.getBuckets().get(0);
@@ -522,11 +522,11 @@ public class EgressMirrorRuleGeneratorTest {
                         .build())
                 .build();
         mirrorPoints.addPaths(FlowMirrorPath.builder()
-                        .mirrorSwitch(SWITCH_2)
-                        .egressSwitch(SWITCH_2)
-                        .pathId(PATH_ID)
-                        .egressPort(MIRROR_PORT)
-                        .egressOuterVlan(MIRROR_VLAN)
+                .mirrorSwitch(SWITCH_2)
+                .egressSwitch(SWITCH_2)
+                .pathId(PATH_ID)
+                .egressPort(MIRROR_PORT)
+                .egressOuterVlan(MIRROR_VLAN)
                 .build());
         return mirrorPoints;
     }

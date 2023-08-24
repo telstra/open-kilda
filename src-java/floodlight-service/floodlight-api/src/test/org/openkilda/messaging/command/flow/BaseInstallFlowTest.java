@@ -15,7 +15,8 @@
 
 package org.openkilda.messaging.command.flow;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openkilda.messaging.command.Constants.flowName;
 import static org.openkilda.messaging.command.Constants.inputPort;
 import static org.openkilda.messaging.command.Constants.outputPort;
@@ -23,7 +24,7 @@ import static org.openkilda.messaging.command.Constants.switchId;
 
 import org.openkilda.model.SwitchId;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
@@ -75,38 +76,52 @@ public class BaseInstallFlowTest {
         assertEquals(outputPort, flow.getOutputPort().intValue());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setNullFlowName() {
-        flow.setId(null);
+        assertThrows(IllegalArgumentException.class,()->{
+            flow.setId(null);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setNullSwitchId() {
-        flow.setSwitchId(null);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setSwitchId(null);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setIncorrectSwitchId() {
-        flow.setSwitchId(new SwitchId(""));
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setSwitchId(new SwitchId(""));
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setNullInputPort() {
-        flow.setInputPort(null);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setInputPort(null);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setNullOutputPort() {
-        flow.setOutputPort(null);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setOutputPort(null);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setNegativeInputPort() {
-        flow.setInputPort(-1);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setInputPort(-1);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setNegativeOutputPort() {
-        flow.setOutputPort(-1);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setOutputPort(-1);
+        });
     }
 }

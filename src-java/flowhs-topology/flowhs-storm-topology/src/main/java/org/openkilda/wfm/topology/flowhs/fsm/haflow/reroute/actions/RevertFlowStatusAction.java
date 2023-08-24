@@ -24,6 +24,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteContext
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -44,7 +46,11 @@ public class RevertFlowStatusAction extends
             String flowStatusInfo = FlowStatus.DEGRADED.equals(originalFlowStatus)
                     ? stateMachine.getErrorReason() : stateMachine.getOriginalHaFlow().getStatusInfo();
             haFlowRepository.updateStatus(haFlowId, originalFlowStatus, flowStatusInfo);
-            stateMachine.saveActionToHistory(format("The HA-flow status was reverted to %s", originalFlowStatus));
+
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction(format("The HA-flow status has been reverted to %s", originalFlowStatus))
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         }
     }
 }

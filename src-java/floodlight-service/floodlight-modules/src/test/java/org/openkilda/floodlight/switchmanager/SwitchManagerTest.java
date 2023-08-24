@@ -29,10 +29,11 @@ import static org.easymock.EasyMock.mock;
 import static org.easymock.EasyMock.replay;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.cookie.Cookie.DROP_RULE_COOKIE;
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE;
@@ -64,8 +65,8 @@ import net.floodlightcontroller.restserver.IRestApiService;
 import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMock;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFBarrierReply;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
 import org.projectfloodlight.openflow.protocol.OFFactory;
@@ -103,7 +104,7 @@ public class SwitchManagerTest {
     private DatapathId dpid;
     private OFFactory ofFactory = new OFFactoryVer13();
 
-    @Before
+    @BeforeEach
     public void setUp() throws FloodlightModuleException {
         ofSwitchService = createMock(IOFSwitchService.class);
         IRestApiService restApiService = createMock(IRestApiService.class);
@@ -209,9 +210,11 @@ public class SwitchManagerTest {
         assertEquals(meterMod.getMeterId(), meterId);
     }
 
-    @Test(expected = InvalidMeterIdException.class)
+    @Test
     public void deleteMeterWithInvalidId() throws SwitchOperationException {
-        switchManager.deleteMeter(dpid, -1);
+        assertThrows(InvalidMeterIdException.class, () -> {
+            switchManager.deleteMeter(dpid, -1);
+        });
     }
 
     @Test

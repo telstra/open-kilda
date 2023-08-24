@@ -16,7 +16,6 @@
 package org.openkilda.messaging.info.switches.v2;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.junit.Assert.assertEquals;
 
 import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2.FieldMatch;
 import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2.Instructions;
@@ -24,7 +23,8 @@ import org.openkilda.messaging.info.switches.v2.RuleInfoEntryV2.WriteMetadata;
 import org.openkilda.messaging.info.switches.v2.action.PopVlanActionEntry;
 import org.openkilda.messaging.info.switches.v2.action.PortOutActionEntry;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,9 +43,9 @@ public class RulesValidationEntryV2Test {
                 .proper(new ArrayList<>())
                 .build();
         List<RulesValidationEntryV2> list = entry.split(4, 4);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -58,9 +58,9 @@ public class RulesValidationEntryV2Test {
                 .proper(null)
                 .build();
         List<RulesValidationEntryV2> list = entry.split(4, 4);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -73,9 +73,9 @@ public class RulesValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredRulesInfo(4, 1))
                 .build();
         List<RulesValidationEntryV2> list = entry.split(4, 4);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -88,9 +88,9 @@ public class RulesValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredRulesInfo(4, 1))
                 .build();
         List<RulesValidationEntryV2> list = entry.split(1, 1);
-        assertEquals(4, list.size());
+        Assertions.assertEquals(4, list.size());
         RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -103,9 +103,9 @@ public class RulesValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredRulesInfo(4, 4))
                 .build();
         List<RulesValidationEntryV2> list = entry.split(2, 3);
-        assertEquals(4, list.size());
+        Assertions.assertEquals(4, list.size());
         RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -118,9 +118,9 @@ public class RulesValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredRulesInfo(4, 4))
                 .build();
         List<RulesValidationEntryV2> list = entry.split(100, 200);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -133,9 +133,9 @@ public class RulesValidationEntryV2Test {
                 .misconfigured(new ArrayList<>())
                 .build();
         List<RulesValidationEntryV2> list = entry.split(2, 2);
-        assertEquals(3, list.size());
+        Assertions.assertEquals(3, list.size());
         RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -148,9 +148,9 @@ public class RulesValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredRulesInfo(3000, 800))
                 .build();
         List<RulesValidationEntryV2> list = entry.split(100, 200);
-        assertEquals(14, list.size());
+        Assertions.assertEquals(14, list.size());
         RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -163,9 +163,9 @@ public class RulesValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredRulesInfo(3000, 800))
                 .build();
         List<RulesValidationEntryV2> list = entry.split(1, 1);
-        assertEquals(2600, list.size());
+        Assertions.assertEquals(2600, list.size());
         RulesValidationEntryV2 united = RulesValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     static List<RuleInfoEntryV2> buildRulesInfo(int idBase, int count) {

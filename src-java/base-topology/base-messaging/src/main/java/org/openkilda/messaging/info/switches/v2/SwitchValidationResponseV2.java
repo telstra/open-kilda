@@ -15,9 +15,12 @@
 
 package org.openkilda.messaging.info.switches.v2;
 
+import static org.openkilda.messaging.Utils.getNonNullEntries;
+
 import org.openkilda.messaging.Chunkable;
 import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.split.SplitIterator;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
@@ -27,7 +30,6 @@ import lombok.Value;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Value
@@ -44,68 +46,41 @@ public class SwitchValidationResponseV2 extends InfoData implements Chunkable<Sw
     @Override
     public List<SwitchValidationResponseV2> split(int chunkSize) {
         List<SwitchValidationResponseV2> result = new ArrayList<>();
-        SwitchValidationResponseV2Builder current = SwitchValidationResponseV2.builder().asExpected(asExpected);
-        boolean addCurrent = true;
-        int currentSize = chunkSize;
+        SplitIterator<SwitchValidationResponseV2, SwitchValidationResponseV2Builder> iterator = new SplitIterator<>(
+                chunkSize, chunkSize, SwitchValidationResponseV2Builder::build,
+                () -> SwitchValidationResponseV2.builder().asExpected(asExpected));
 
         if (groups != null) {
-            for (GroupsValidationEntryV2 group : groups.split(currentSize, chunkSize)) {
-                current.groups(group);
-                currentSize -= group.size();
-                addCurrent = true;
-                if (currentSize == 0) {
-                    result.add(current.build());
-                    currentSize = chunkSize;
-                    current = SwitchValidationResponseV2.builder().asExpected(asExpected);
-                    addCurrent = false;
-                }
+            for (GroupsValidationEntryV2 group : groups.split(iterator.getRemainingChunkSize(), chunkSize)) {
+                iterator.getCurrentBuilder().groups(group);
+                iterator.next(group.size()).ifPresent(result::add);
             }
         }
 
         if (logicalPorts != null) {
-            for (LogicalPortsValidationEntryV2 logicalPort : logicalPorts.split(currentSize, chunkSize)) {
-                current.logicalPorts(logicalPort);
-                currentSize -= logicalPort.size();
-                addCurrent = true;
-                if (currentSize == 0) {
-                    result.add(current.build());
-                    currentSize = chunkSize;
-                    current = SwitchValidationResponseV2.builder().asExpected(asExpected);
-                    addCurrent = false;
-                }
+            for (LogicalPortsValidationEntryV2 logicalPort : logicalPorts.split(
+                    iterator.getRemainingChunkSize(), chunkSize)) {
+                iterator.getCurrentBuilder().logicalPorts(logicalPort);
+                iterator.next(logicalPort.size()).ifPresent(result::add);
             }
         }
 
         if (meters != null) {
-            for (MetersValidationEntryV2 meter : meters.split(currentSize, chunkSize)) {
-                current.meters(meter);
-                currentSize -= meter.size();
-                addCurrent = true;
-                if (currentSize == 0) {
-                    result.add(current.build());
-                    currentSize = chunkSize;
-                    current = SwitchValidationResponseV2.builder().asExpected(asExpected);
-                    addCurrent = false;
-                }
+            for (MetersValidationEntryV2 meter : meters.split(iterator.getRemainingChunkSize(), chunkSize)) {
+                iterator.getCurrentBuilder().meters(meter);
+                iterator.next(meter.size()).ifPresent(result::add);
             }
         }
 
         if (rules != null) {
-            for (RulesValidationEntryV2 rule : rules.split(currentSize, chunkSize)) {
-                current.rules(rule);
-                currentSize -= rule.size();
-                addCurrent = true;
-                if (currentSize == 0) {
-                    result.add(current.build());
-                    currentSize = chunkSize;
-                    current = SwitchValidationResponseV2.builder().asExpected(asExpected);
-                    addCurrent = false;
-                }
+            for (RulesValidationEntryV2 rule : rules.split(iterator.getRemainingChunkSize(), chunkSize)) {
+                iterator.getCurrentBuilder().rules(rule);
+                iterator.next(rule.size()).ifPresent(result::add);
             }
         }
 
-        if (addCurrent) {
-            result.add(current.build());
+        if (iterator.isAddCurrent()) {
+            result.add(iterator.getCurrentBuilder().build());
         }
 
         return result;
@@ -118,9 +93,7 @@ public class SwitchValidationResponseV2 extends InfoData implements Chunkable<Sw
         if (dataList == null) {
             return null;
         }
-        List<SwitchValidationResponseV2> nonNullData = dataList.stream()
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        List<SwitchValidationResponseV2> nonNullData = getNonNullEntries(dataList);
         if (nonNullData.isEmpty()) {
             return null;
         }

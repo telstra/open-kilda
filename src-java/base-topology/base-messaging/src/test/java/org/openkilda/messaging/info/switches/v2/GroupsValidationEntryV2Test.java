@@ -15,12 +15,11 @@
 
 package org.openkilda.messaging.info.switches.v2;
 
-import static org.junit.Assert.assertEquals;
-
 import org.openkilda.messaging.info.switches.v2.GroupInfoEntryV2.BucketEntry;
 
 import com.google.common.collect.Lists;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,9 +36,9 @@ public class GroupsValidationEntryV2Test {
                 .proper(new ArrayList<>())
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(4, 4);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -52,9 +51,9 @@ public class GroupsValidationEntryV2Test {
                 .proper(null)
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(4, 4);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -67,9 +66,9 @@ public class GroupsValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredGroupsInfo(4, 1))
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(4, 4);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -82,9 +81,9 @@ public class GroupsValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredGroupsInfo(4, 1))
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(1, 1);
-        assertEquals(4, list.size());
+        Assertions.assertEquals(4, list.size());
         GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -97,9 +96,9 @@ public class GroupsValidationEntryV2Test {
                 .misconfigured(new ArrayList<>())
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(2, 2);
-        assertEquals(3, list.size());
+        Assertions.assertEquals(3, list.size());
         GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -112,9 +111,9 @@ public class GroupsValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredGroupsInfo(4, 4))
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(2, 3);
-        assertEquals(4, list.size());
+        Assertions.assertEquals(4, list.size());
         GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -127,9 +126,9 @@ public class GroupsValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredGroupsInfo(4, 4))
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(100, 200);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -142,9 +141,9 @@ public class GroupsValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredGroupsInfo(3000, 800))
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(100, 200);
-        assertEquals(14, list.size());
+        Assertions.assertEquals(14, list.size());
         GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     @Test
@@ -157,9 +156,9 @@ public class GroupsValidationEntryV2Test {
                 .misconfigured(buildMisconfiguredGroupsInfo(3000, 800))
                 .build();
         List<GroupsValidationEntryV2> list = entry.split(1, 1);
-        assertEquals(2600, list.size());
+        Assertions.assertEquals(2600, list.size());
         GroupsValidationEntryV2 united = GroupsValidationEntryV2.join(list);
-        assertEquals(entry, united);
+        Assertions.assertEquals(entry, united);
     }
 
     static List<GroupInfoEntryV2> buildGroupsInfo(int idBase, int count) {

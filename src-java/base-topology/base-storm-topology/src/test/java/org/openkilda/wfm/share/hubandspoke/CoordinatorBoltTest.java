@@ -16,8 +16,6 @@
 package org.openkilda.wfm.share.hubandspoke;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.reset;
@@ -26,16 +24,18 @@ import static org.mockito.Mockito.when;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class CoordinatorBoltTest {
 
     private CoordinatorBolt target = new CoordinatorBolt();
@@ -46,7 +46,7 @@ public class CoordinatorBoltTest {
     @Mock
     private TopologyContext topologyContext;
 
-    @Before
+    @BeforeEach
     public void setup() {
         when(topologyContext.getThisTaskId()).thenReturn(1);
 
@@ -63,11 +63,11 @@ public class CoordinatorBoltTest {
         final int taskId = 101;
         target.registerCallback(key, context, timeout, taskId);
 
-        assertThat(target.getCallbacks().size(), is(1));
-        assertThat(target.getTimeouts().size(), is(1));
+        MatcherAssert.assertThat(target.getCallbacks().size(), is(1));
+        MatcherAssert.assertThat(target.getTimeouts().size(), is(1));
 
         target.cancelCallback(key);
-        assertTrue(target.getCallbacks().isEmpty());
+        Assertions.assertTrue(target.getCallbacks().isEmpty());
     }
 
     @Test
@@ -79,7 +79,7 @@ public class CoordinatorBoltTest {
         final int secondTask = 102;
         target.registerCallback("request2", "some context", timeout, secondTask);
 
-        assertThat(target.getCallbacks().size(), is(2));
+        MatcherAssert.assertThat(target.getCallbacks().size(), is(2));
 
         // check that we have stored timeouts for out tasks
         Set<String> tasks = target.getTimeouts()
@@ -87,7 +87,7 @@ public class CoordinatorBoltTest {
                 .stream()
                 .flatMap(Set::stream)
                 .collect(Collectors.toSet());
-        assertThat(tasks.size(), is(2));
+        MatcherAssert.assertThat(tasks.size(), is(2));
 
         long afterTimeout = System.currentTimeMillis() + timeout + 1L;
         target.tick(afterTimeout);

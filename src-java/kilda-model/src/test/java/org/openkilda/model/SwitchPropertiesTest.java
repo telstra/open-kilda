@@ -15,13 +15,14 @@
 
 package org.openkilda.model;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.openkilda.model.SwitchProperties.RttState;
 
 import com.google.common.collect.Sets;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -30,15 +31,17 @@ import java.util.stream.Collectors;
 
 public class SwitchPropertiesTest {
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void validatePropRaiseTest() {
-        Switch sw = Switch.builder()
-                .switchId(new SwitchId(1))
-                .build();
-        SwitchProperties sp = SwitchProperties.builder()
-                .switchObj(sw)
-                .build();
-        sp.validateProp(SwitchFeature.BFD);
+        assertThrows(IllegalArgumentException.class, () -> {
+            Switch sw = Switch.builder()
+                    .switchId(new SwitchId(1))
+                    .build();
+            SwitchProperties sp = SwitchProperties.builder()
+                    .switchObj(sw)
+                    .build();
+            sp.validateProp(SwitchFeature.BFD);
+        });
     }
 
     @Test
@@ -52,31 +55,35 @@ public class SwitchPropertiesTest {
         SwitchProperties sp = SwitchProperties.builder()
                 .switchObj(sw)
                 .build();
-        assertTrue(sp.validateProp(SwitchFeature.MULTI_TABLE));
+        Assertions.assertTrue(sp.validateProp(SwitchFeature.MULTI_TABLE));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setUnsupportedMultiTableFlagTest() {
-        Switch sw = Switch.builder()
-                .switchId(new SwitchId(1))
-                .build();
-        SwitchProperties sp = SwitchProperties.builder()
-                .switchObj(sw)
-                .build();
-        sp.setMultiTable(true);
+        assertThrows(IllegalArgumentException.class, () -> {
+            Switch sw = Switch.builder()
+                    .switchId(new SwitchId(1))
+                    .build();
+            SwitchProperties sp = SwitchProperties.builder()
+                    .switchObj(sw)
+                    .build();
+            sp.setMultiTable(true);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setUnsupportedTransitEncapsulationTest() {
-        Switch sw = Switch.builder()
-                .switchId(new SwitchId(1))
-                .build();
-        SwitchProperties sp = SwitchProperties.builder()
-                .switchObj(sw)
-                .build();
-        Set<FlowEncapsulationType> flowEncapsulationTypes = new HashSet<>();
-        flowEncapsulationTypes.add(FlowEncapsulationType.VXLAN);
-        sp.setSupportedTransitEncapsulation(flowEncapsulationTypes);
+        assertThrows(IllegalArgumentException.class, () -> {
+            Switch sw = Switch.builder()
+                    .switchId(new SwitchId(1))
+                    .build();
+            SwitchProperties sp = SwitchProperties.builder()
+                    .switchObj(sw)
+                    .build();
+            Set<FlowEncapsulationType> flowEncapsulationTypes = new HashSet<>();
+            flowEncapsulationTypes.add(FlowEncapsulationType.VXLAN);
+            sp.setSupportedTransitEncapsulation(flowEncapsulationTypes);
+        });
     }
 
     @Test
@@ -95,7 +102,7 @@ public class SwitchPropertiesTest {
                 .server42Vlan(2)
                 .server42MacAddress(new MacAddress("00:00:00:00:00:01"))
                 .build();
-        assertTrue(sp.hasServer42IslRttEnabled());
+        Assertions.assertTrue(sp.hasServer42IslRttEnabled());
     }
 
     @Test
@@ -112,7 +119,7 @@ public class SwitchPropertiesTest {
                 .server42Vlan(2)
                 .server42MacAddress(new MacAddress("00:00:00:00:00:01"))
                 .build();
-        assertFalse(sp.hasServer42IslRttEnabled());
+        Assertions.assertFalse(sp.hasServer42IslRttEnabled());
     }
 
     @Test
@@ -129,7 +136,7 @@ public class SwitchPropertiesTest {
                 .server42Vlan(2)
                 .server42MacAddress(new MacAddress("00:00:00:00:00:01"))
                 .build();
-        assertTrue(sp.hasServer42IslRttEnabled());
+        Assertions.assertTrue(sp.hasServer42IslRttEnabled());
     }
 
     @Test
@@ -145,14 +152,14 @@ public class SwitchPropertiesTest {
                 .switchObj(sw)
                 .server42IslRtt(RttState.AUTO)
                 .build();
-        assertFalse(sp1.hasServer42IslRttEnabled());
+        Assertions.assertFalse(sp1.hasServer42IslRttEnabled());
 
         SwitchProperties sp2 = SwitchProperties.builder()
                 .switchObj(sw)
                 .server42IslRtt(RttState.AUTO)
                 .server42Port(1)
                 .build();
-        assertFalse(sp2.hasServer42IslRttEnabled());
+        Assertions.assertFalse(sp2.hasServer42IslRttEnabled());
 
         SwitchProperties sp3 = SwitchProperties.builder()
                 .switchObj(sw)
@@ -160,7 +167,7 @@ public class SwitchPropertiesTest {
                 .server42Port(1)
                 .server42MacAddress(new MacAddress("00:00:00:00:00:01"))
                 .build();
-        assertFalse(sp3.hasServer42IslRttEnabled());
+        Assertions.assertFalse(sp3.hasServer42IslRttEnabled());
 
         SwitchProperties sp4 = SwitchProperties.builder()
                 .switchObj(sw)
@@ -168,7 +175,7 @@ public class SwitchPropertiesTest {
                 .server42Port(1)
                 .server42Vlan(2)
                 .build();
-        assertFalse(sp4.hasServer42IslRttEnabled());
+        Assertions.assertFalse(sp4.hasServer42IslRttEnabled());
     }
 
     @Test
@@ -182,14 +189,14 @@ public class SwitchPropertiesTest {
                 .switchObj(sw)
                 .server42IslRtt(RttState.ENABLED)
                 .build();
-        assertFalse(sp1.hasServer42IslRttEnabled());
+        Assertions.assertFalse(sp1.hasServer42IslRttEnabled());
 
         SwitchProperties sp2 = SwitchProperties.builder()
                 .switchObj(sw)
                 .server42IslRtt(RttState.ENABLED)
                 .server42Port(1)
                 .build();
-        assertFalse(sp2.hasServer42IslRttEnabled());
+        Assertions.assertFalse(sp2.hasServer42IslRttEnabled());
 
         SwitchProperties sp3 = SwitchProperties.builder()
                 .switchObj(sw)
@@ -197,7 +204,7 @@ public class SwitchPropertiesTest {
                 .server42Port(1)
                 .server42MacAddress(new MacAddress("00:00:00:00:00:01"))
                 .build();
-        assertFalse(sp3.hasServer42IslRttEnabled());
+        Assertions.assertFalse(sp3.hasServer42IslRttEnabled());
 
         SwitchProperties sp4 = SwitchProperties.builder()
                 .switchObj(sw)
@@ -205,6 +212,6 @@ public class SwitchPropertiesTest {
                 .server42Port(1)
                 .server42Vlan(2)
                 .build();
-        assertFalse(sp4.hasServer42IslRttEnabled());
+        Assertions.assertFalse(sp4.hasServer42IslRttEnabled());
     }
 }

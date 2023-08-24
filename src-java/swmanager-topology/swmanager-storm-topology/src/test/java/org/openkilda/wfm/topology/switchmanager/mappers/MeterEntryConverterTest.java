@@ -23,8 +23,8 @@ import org.openkilda.model.MeterId;
 import org.openkilda.rulemanager.MeterFlag;
 import org.openkilda.rulemanager.MeterSpeakerData;
 
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -38,7 +38,7 @@ public class MeterEntryConverterTest {
 
     public static Set<MeterFlag> flags = new HashSet<>();
 
-    @BeforeClass
+    @BeforeAll
     public static void initializeData() {
         flags.add(MeterFlag.BURST);
 

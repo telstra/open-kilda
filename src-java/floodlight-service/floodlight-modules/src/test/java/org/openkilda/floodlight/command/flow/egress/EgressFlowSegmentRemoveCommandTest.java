@@ -22,7 +22,7 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.cookie.Cookie;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFFlowDeleteStrict;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.OFPort;
@@ -43,8 +43,8 @@ public class EgressFlowSegmentRemoveCommandTest extends EgressFlowSegmentCommand
                 .setCookie(U64.of(command.getCookie().getValue()))
                 .setCookieMask(U64.NO_MASK)
                 .setMatch(OfAdapter.INSTANCE.matchVlanId(of, of.buildMatch(), command.getEncapsulation().getId())
-                                  .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
-                                  .build())
+                        .setExact(MatchField.IN_PORT, OFPort.of(command.getIngressIslPort()))
+                        .build())
                 .build();
         verifyOfMessageEquals(expected, getWriteRecord(0).getRequest());
     }

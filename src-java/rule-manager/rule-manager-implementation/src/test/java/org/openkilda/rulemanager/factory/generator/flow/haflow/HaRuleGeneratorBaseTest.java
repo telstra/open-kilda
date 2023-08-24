@@ -47,7 +47,7 @@ import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -113,7 +113,7 @@ public class HaRuleGeneratorBaseTest {
 
     RuleManagerConfig config;
 
-    @Before
+    @BeforeEach
     public void setup() {
         config = mock(RuleManagerConfig.class);
         when(config.getFlowMeterBurstCoefficient()).thenReturn(BURST_COEFFICIENT);

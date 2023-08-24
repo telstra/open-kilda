@@ -15,8 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.service.server42;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_SWAP_FIELD;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST;
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE;
@@ -49,8 +47,9 @@ import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Set;
@@ -58,7 +57,7 @@ import java.util.Set;
 public class Server42FlowRttVxlanTurningRuleGeneratorTest {
     private Server42FlowRttVxlanTurningRuleGenerator generator;
 
-    @Before
+    @BeforeEach
     public void setup() {
         generator = new Server42FlowRttVxlanTurningRuleGenerator();
     }
@@ -78,16 +77,16 @@ public class Server42FlowRttVxlanTurningRuleGeneratorTest {
     private void testOutputRule(Switch sw, ActionType expectedSwapFieldType) {
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
-        assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
-        assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
+        Assertions.assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(new Cookie(SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE), flowCommandData.getCookie());
-        assertEquals(OfTable.INPUT, flowCommandData.getTable());
-        assertEquals(SERVER_42_FLOW_RTT_VXLAN_TURNING_PRIORITY, flowCommandData.getPriority());
+        Assertions.assertEquals(new Cookie(SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE), flowCommandData.getCookie());
+        Assertions.assertEquals(OfTable.INPUT, flowCommandData.getTable());
+        Assertions.assertEquals(SERVER_42_FLOW_RTT_VXLAN_TURNING_PRIORITY, flowCommandData.getPriority());
 
         Set<FieldMatch> expectedMatch = Sets.newHashSet(
                 FieldMatch.builder().field(Field.ETH_DST).value(sw.getSwitchId().toMacAddressAsLong()).build(),
@@ -95,7 +94,7 @@ public class Server42FlowRttVxlanTurningRuleGeneratorTest {
                 FieldMatch.builder().field(Field.IP_PROTO).value(IpProto.UDP).build(),
                 FieldMatch.builder().field(Field.UDP_SRC).value(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT).build(),
                 FieldMatch.builder().field(Field.UDP_DST).value(VXLAN_UDP_DST).build());
-        assertEquals(expectedMatch, flowCommandData.getMatch());
+        Assertions.assertEquals(expectedMatch, flowCommandData.getMatch());
 
         List<Action> expectedApplyActions = Lists.newArrayList(
                 SetFieldAction.builder().field(Field.UDP_SRC).value(SERVER_42_FLOW_RTT_REVERSE_UDP_VXLAN_PORT).build(),
@@ -110,6 +109,6 @@ public class Server42FlowRttVxlanTurningRuleGeneratorTest {
                 new PortOutAction(new PortNumber(SpecialPortType.IN_PORT)));
 
         Instructions expectedInstructions = Instructions.builder().applyActions(expectedApplyActions).build();
-        assertEquals(expectedInstructions, flowCommandData.getInstructions());
+        Assertions.assertEquals(expectedInstructions, flowCommandData.getInstructions());
     }
 }

@@ -15,16 +15,16 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.PathId;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -37,7 +37,7 @@ public class FermaTransitVlanRepositoryTest extends InMemoryGraphBasedTest {
 
     TransitVlanRepository transitVlanRepository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         transitVlanRepository = repositoryFactory.createTransitVlanRepository();
     }

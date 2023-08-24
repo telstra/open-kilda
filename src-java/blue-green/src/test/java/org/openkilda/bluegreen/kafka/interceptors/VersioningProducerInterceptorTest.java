@@ -15,6 +15,8 @@
 
 package org.openkilda.bluegreen.kafka.interceptors;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.times;
@@ -31,8 +33,8 @@ import org.openkilda.bluegreen.ZkWatchDog;
 import com.google.common.collect.Lists;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.util.HashMap;
@@ -54,7 +56,7 @@ public class VersioningProducerInterceptorTest {
         ProducerRecord<String, String> result = interceptor.onSend(record);
 
         // version inside interceptor is not set. Interceptor must not add version header and remove old version headers
-        Assert.assertFalse(result.headers().headers(MESSAGE_VERSION_HEADER).iterator().hasNext());
+        Assertions.assertFalse(result.headers().headers(MESSAGE_VERSION_HEADER).iterator().hasNext());
     }
 
     @Test
@@ -66,8 +68,8 @@ public class VersioningProducerInterceptorTest {
         ProducerRecord<String, String> result = interceptor.onSend(record);
 
         List<Header> versionHeaders = Lists.newArrayList(result.headers().headers(MESSAGE_VERSION_HEADER));
-        Assert.assertEquals(1, versionHeaders.size());
-        Assert.assertEquals(VERSION_1, new String(versionHeaders.get(0).value()));
+        assertEquals(1, versionHeaders.size());
+        assertEquals(VERSION_1, new String(versionHeaders.get(0).value()));
     }
 
     @Test
@@ -82,33 +84,40 @@ public class VersioningProducerInterceptorTest {
 
         // record had version1 header, but it was replaced with version2
         List<Header> versionHeaders = Lists.newArrayList(result.headers().headers(MESSAGE_VERSION_HEADER));
-        Assert.assertEquals(1, versionHeaders.size());
-        Assert.assertEquals(VERSION_2, new String(versionHeaders.get(0).value()));
+        assertEquals(1, versionHeaders.size());
+        assertEquals(VERSION_2, new String(versionHeaders.get(0).value()));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void missedConnectionStringTest() {
-        VersioningProducerInterceptor<String, String> interceptor = createInterceptor();
-        interceptor.configure(new HashMap<>());
+        assertThrows(IllegalArgumentException.class, () -> {
+            VersioningProducerInterceptor<String, String> interceptor = createInterceptor();
+            interceptor.configure(new HashMap<>());
+        });
+
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void missedRunIdTest() {
-        Map<String, String> config = new HashMap<>();
-        config.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, "test");
+        assertThrows(IllegalArgumentException.class, () -> {
+            Map<String, String> config = new HashMap<>();
+            config.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, "test");
 
-        VersioningProducerInterceptor<String, String> interceptor = createInterceptor();
-        interceptor.configure(config);
+            VersioningProducerInterceptor<String, String> interceptor = createInterceptor();
+            interceptor.configure(config);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void missedComponentNameTest() {
-        Map<String, String> config = new HashMap<>();
-        config.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, "test");
-        config.put(PRODUCER_RUN_ID_PROPERTY, "run_id");
+        assertThrows(IllegalArgumentException.class, () -> {
+            Map<String, String> config = new HashMap<>();
+            config.put(PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, "test");
+            config.put(PRODUCER_RUN_ID_PROPERTY, "run_id");
 
-        VersioningProducerInterceptor<String, String> interceptor = createInterceptor();
-        interceptor.configure(config);
+            VersioningProducerInterceptor<String, String> interceptor = createInterceptor();
+            interceptor.configure(config);
+        });
     }
 
     @Test

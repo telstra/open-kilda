@@ -15,10 +15,7 @@
 
 package org.openkilda.rulemanager.factory.generator.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
@@ -64,8 +61,9 @@ import org.openkilda.rulemanager.group.GroupType;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Set;
@@ -77,7 +75,7 @@ public class BroadCastDiscoveryRuleGeneratorTest {
     private BroadCastDiscoveryRuleGenerator generator;
     private Switch sw;
 
-    @Before
+    @BeforeEach
     public void setup() {
         config = mock(RuleManagerConfig.class);
         when(config.getBroadcastRateLimit()).thenReturn(200);
@@ -104,8 +102,8 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         GroupSpeakerData groupCommandData = getCommand(GroupSpeakerData.class, commands);
 
         assertEquals(2, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
-        assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -139,8 +137,8 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         GroupSpeakerData groupCommandData = getCommand(GroupSpeakerData.class, commands);
 
         assertEquals(2, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
-        assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -154,13 +152,13 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         Instructions instructions = flowCommandData.getInstructions();
         assertEquals(2, instructions.getApplyActions().size());
         Action first = instructions.getApplyActions().get(0);
-        assertTrue(first instanceof MeterAction);
+        Assertions.assertTrue(first instanceof MeterAction);
         MeterAction meterAction = (MeterAction) first;
         assertEquals(meterCommandData.getMeterId(), meterAction.getMeterId());
         checkGroupAction(instructions.getApplyActions().get(1), groupCommandData.getGroupId());
-        assertNull(instructions.getWriteActions());
-        assertNull(instructions.getGoToMeter());
-        assertNull(instructions.getGoToTable());
+        Assertions.assertNull(instructions.getWriteActions());
+        Assertions.assertNull(instructions.getGoToMeter());
+        Assertions.assertNull(instructions.getGoToTable());
 
         // Check meter command
         checkMeterCommand(meterCommandData);
@@ -183,7 +181,7 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
 
         assertEquals(1, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -196,12 +194,12 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         Instructions instructions = flowCommandData.getInstructions();
         assertEquals(1, instructions.getApplyActions().size());
         Action first = instructions.getApplyActions().get(0);
-        assertTrue(first instanceof PortOutAction);
+        Assertions.assertTrue(first instanceof PortOutAction);
         PortOutAction portOutAction = (PortOutAction) first;
         assertEquals(SpecialPortType.CONTROLLER, portOutAction.getPortNumber().getPortType());
-        assertNull(instructions.getWriteActions());
+        Assertions.assertNull(instructions.getWriteActions());
         assertEquals(meterCommandData.getMeterId(), instructions.getGoToMeter());
-        assertNull(instructions.getGoToTable());
+        Assertions.assertNull(instructions.getGoToTable());
 
         // Check meter command
         checkMeterCommand(meterCommandData);
@@ -221,7 +219,7 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         GroupSpeakerData groupCommandData = getCommand(GroupSpeakerData.class, commands);
 
         assertEquals(1, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -236,9 +234,9 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         Action action = instructions.getApplyActions().get(0);
         checkGroupAction(action, groupCommandData.getGroupId());
 
-        assertNull(instructions.getWriteActions());
-        assertNull(instructions.getGoToMeter());
-        assertNull(instructions.getGoToTable());
+        Assertions.assertNull(instructions.getWriteActions());
+        Assertions.assertNull(instructions.getGoToMeter());
+        Assertions.assertNull(instructions.getGoToTable());
 
         // Check group command
         checkGroupCommand(groupCommandData);
@@ -255,7 +253,7 @@ public class BroadCastDiscoveryRuleGeneratorTest {
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
 
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -269,12 +267,12 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         Instructions instructions = flowCommandData.getInstructions();
         assertEquals(1, instructions.getApplyActions().size());
         Action first = instructions.getApplyActions().get(0);
-        assertTrue(first instanceof PortOutAction);
+        Assertions.assertTrue(first instanceof PortOutAction);
         PortOutAction portOutAction = (PortOutAction) first;
         assertEquals(SpecialPortType.CONTROLLER, portOutAction.getPortNumber().getPortType());
-        assertNull(instructions.getWriteActions());
-        assertNull(instructions.getGoToMeter());
-        assertNull(instructions.getGoToTable());
+        Assertions.assertNull(instructions.getWriteActions());
+        Assertions.assertNull(instructions.getGoToMeter());
+        Assertions.assertNull(instructions.getGoToTable());
     }
 
     @Test
@@ -291,8 +289,8 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         GroupSpeakerData groupCommandData = getCommand(GroupSpeakerData.class, commands);
 
         assertEquals(2, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
-        assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -326,8 +324,8 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         GroupSpeakerData groupCommandData = getCommand(GroupSpeakerData.class, commands);
 
         assertEquals(2, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
-        assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(groupCommandData.getUuid()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -348,7 +346,7 @@ public class BroadCastDiscoveryRuleGeneratorTest {
                 config.getDiscoPacketSize());
         assertEquals(expectedBurst, meterCommandData.getBurst());
         assertEquals(3, meterCommandData.getFlags().size());
-        assertTrue(Sets.newHashSet(MeterFlag.BURST, MeterFlag.STATS, MeterFlag.KBPS)
+        Assertions.assertTrue(Sets.newHashSet(MeterFlag.BURST, MeterFlag.STATS, MeterFlag.KBPS)
                 .containsAll(meterCommandData.getFlags()));
 
         // Check group command
@@ -364,22 +362,22 @@ public class BroadCastDiscoveryRuleGeneratorTest {
     private void checkEthDstMatch(Set<FieldMatch> match) {
         FieldMatch ethDstMatch = getMatchByField(Field.ETH_DST, match);
         assertEquals(new SwitchId(config.getDiscoveryBcastPacketDst()).toLong(), ethDstMatch.getValue());
-        assertTrue(ethDstMatch.isMasked());
+        Assertions.assertTrue(ethDstMatch.isMasked());
         assertEquals(Mask.NO_MASK, ethDstMatch.getMask().longValue());
     }
 
     private void checkUpdDstMatch(Set<FieldMatch> match) {
         FieldMatch ipProtoMatch = getMatchByField(Field.IP_PROTO, match);
         assertEquals(IpProto.UDP, ipProtoMatch.getValue());
-        assertFalse(ipProtoMatch.isMasked());
+        Assertions.assertFalse(ipProtoMatch.isMasked());
 
         FieldMatch ethTypeMatch = getMatchByField(Field.ETH_TYPE, match);
         assertEquals(EthType.IPv4, ethTypeMatch.getValue());
-        assertFalse(ethTypeMatch.isMasked());
+        Assertions.assertFalse(ethTypeMatch.isMasked());
 
         FieldMatch updDestMatch = getMatchByField(Field.UDP_DST, match);
         assertEquals(DISCOVERY_PACKET_UDP_PORT, updDestMatch.getValue());
-        assertFalse(updDestMatch.isMasked());
+        Assertions.assertFalse(updDestMatch.isMasked());
     }
 
     private void checkGroupInstructions(Instructions instructions, MeterId meterId, GroupId groupId) {
@@ -387,13 +385,13 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         Action action = instructions.getApplyActions().get(0);
         checkGroupAction(action, groupId);
 
-        assertNull(instructions.getWriteActions());
+        Assertions.assertNull(instructions.getWriteActions());
         assertEquals(instructions.getGoToMeter(), meterId);
-        assertNull(instructions.getGoToTable());
+        Assertions.assertNull(instructions.getGoToTable());
     }
 
     private void checkGroupAction(Action action, GroupId groupId) {
-        assertTrue(action instanceof GroupAction);
+        Assertions.assertTrue(action instanceof GroupAction);
         GroupAction groupAction = (GroupAction) action;
         assertEquals(groupAction.getGroupId(), groupId);
     }
@@ -403,7 +401,7 @@ public class BroadCastDiscoveryRuleGeneratorTest {
         assertEquals(config.getBroadcastRateLimit(), meterCommandData.getRate());
         assertEquals(config.getSystemMeterBurstSizeInPackets(), meterCommandData.getBurst());
         assertEquals(3, meterCommandData.getFlags().size());
-        assertTrue(Sets.newHashSet(MeterFlag.BURST, MeterFlag.STATS, MeterFlag.PKTPS)
+        Assertions.assertTrue(Sets.newHashSet(MeterFlag.BURST, MeterFlag.STATS, MeterFlag.PKTPS)
                 .containsAll(meterCommandData.getFlags()));
     }
 

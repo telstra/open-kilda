@@ -1,6 +1,44 @@
 # Changelog
 
-## v1.139.0 (07/08/2023)
+## v1.140.0 (17/08/2023)
+
+### Features:
+-  [#5324](https://github.com/telstra/open-kilda/pull/5324) HA-flow history: Add ability to save and read history, add usages in HA-flow actions. (Issue: [#5169](https://github.com/telstra/open-kilda/issues/5169)) [**northbound**]
+-  [#5263](https://github.com/telstra/open-kilda/pull/5263) Feature/show protected paths
+
+### Bug Fixes:
+-  [#5262](https://github.com/telstra/open-kilda/pull/5262) Fix issue with HA-Flow update (Issue: [#5249](https://github.com/telstra/open-kilda/issues/5249))
+-  [#5290](https://github.com/telstra/open-kilda/pull/5290) Correct the message in the ValidateFlowAction (Issue: [#5289](https://github.com/telstra/open-kilda/issues/5289))
+-  [#5243](https://github.com/telstra/open-kilda/pull/5243) fix: add ping haflow compatibility in FailReporter (Issue: [#5239](https://github.com/telstra/open-kilda/issues/5239)) [**storm-topologies**]
+-  [#5309](https://github.com/telstra/open-kilda/pull/5309) Add an error reason when setting a degraded status on paths (Issue: [#4049](https://github.com/telstra/open-kilda/issues/4049))
+
+### Improvements:
+-  [#5312](https://github.com/telstra/open-kilda/pull/5312) update spring gui repository (Issue: [#5311](https://github.com/telstra/open-kilda/issues/5311)) [**gui**]
+-  [#5316](https://github.com/telstra/open-kilda/pull/5316) Run unit tests on pushes in develop, master and release-* branches
+-  [#5260](https://github.com/telstra/open-kilda/pull/5260) [PART 1] Migrate all unit tests from JUnit4 to JUnit5 #5242 (Issues: [#5242](https://github.com/telstra/open-kilda/issues/5242) [#5242](https://github.com/telstra/open-kilda/issues/5242))
+-  [#5326](https://github.com/telstra/open-kilda/pull/5326) Split connected devices messages
+-  [#5265](https://github.com/telstra/open-kilda/pull/5265) [PART 2] Improvement/5242 migrate junit4 to junit5 v2 (Issue: [#5242](https://github.com/telstra/open-kilda/issues/5242))
+-  [#5266](https://github.com/telstra/open-kilda/pull/5266) [PART 3] Improvement/5242 migrate junit4 to junit5 v3
+-  [#5332](https://github.com/telstra/open-kilda/pull/5332) 5308: [TEST] Don't fail test on traffgen address conflict [**tests**]
+-  [#5333](https://github.com/telstra/open-kilda/pull/5333) Split GetFlowsPerPortForSwitchResponse because they can be too big for Kafka
+-  [#5271](https://github.com/telstra/open-kilda/pull/5271) #5097: [TEST] Add protected to avaiilable paths API (Issue: [#5097](https://github.com/telstra/open-kilda/issues/5097)) [**tests**]
+-  [#5220](https://github.com/telstra/open-kilda/pull/5220) [TEST] Add simple traffexam for HA-Flows [**tests**]
+-  [#5286](https://github.com/telstra/open-kilda/pull/5286) [PART 4] open-kilda-5242 Migrate all unit tests from JUnit4 to JUnit5 v4 (Issue: [#5242](https://github.com/telstra/open-kilda/issues/5242))
+-  [#5287](https://github.com/telstra/open-kilda/pull/5287) [PART 5] open-kilda-5242 Migrate all unit tests from JUnit4 to JUnit5 v5
+-  [#5297](https://github.com/telstra/open-kilda/pull/5297) [TEST] Fix failing SwapEndpointSpec tests [**tests**]
+-  [#5298](https://github.com/telstra/open-kilda/pull/5298) [TEST] Make MFL Stats tests tidy [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.139.0...v1.140.0).
+
+### Affected Components:
+history, ping, nb
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
+## v1.139.0 (08/08/2023)
 
 ### Features:
 -  [#5257](https://github.com/telstra/open-kilda/pull/5257) open-kilda-5255 GUI: Add inner vlans into Edit flow page (Issue: [#5255](https://github.com/telstra/open-kilda/issues/5255)) [**gui**]

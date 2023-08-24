@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.switchmanager.service;
 
 import static java.lang.String.format;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.swmanager.request.UpdateLagPortRequest;
@@ -28,16 +29,16 @@ import org.openkilda.wfm.topology.switchmanager.service.configs.LagPortOperation
 import org.openkilda.wfm.topology.switchmanager.service.handler.LagPortUpdateHandler;
 
 import com.google.common.collect.Sets;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Set;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class UpdateLagPortServiceTest {
     @Mock
     private SwitchManagerCarrier carrier;
@@ -54,18 +55,18 @@ public class UpdateLagPortServiceTest {
         UpdateLagPortService subject = new UpdateLagPortService(carrier, operationService);
 
         String requestKey = "test-key";
-        Assert.assertFalse(subject.activeHandlers.containsKey(requestKey));
+        Assertions.assertFalse(subject.activeHandlers.containsKey(requestKey));
 
         UpdateLagPortRequest request = new UpdateLagPortRequest(
                 new SwitchId(1), (int) config.getPoolConfig().getIdMinimum(), Sets.newHashSet(1, 2, 3), true);
         subject.update(requestKey, request);
         LagPortUpdateHandler origin = subject.activeHandlers.get(requestKey);
-        Assert.assertNotNull(origin);
+        Assertions.assertNotNull(origin);
 
         UpdateLagPortRequest request2 = new UpdateLagPortRequest(
                 new SwitchId(2), (int) config.getPoolConfig().getIdMinimum(), Sets.newHashSet(1, 2, 3), true);
-        Assert.assertThrows(InconsistentDataException.class, () -> subject.update(requestKey, request2));
-        Assert.assertSame(origin, subject.activeHandlers.get(requestKey));
+        assertThrows(InconsistentDataException.class, () -> subject.update(requestKey, request2));
+        Assertions.assertSame(origin, subject.activeHandlers.get(requestKey));
     }
 
     @Test
@@ -82,7 +83,7 @@ public class UpdateLagPortServiceTest {
         subject.update(requestKey, request);
         Mockito.verify(carrier).errorResponse(
                 Mockito.eq(requestKey), Mockito.eq(ErrorType.NOT_FOUND), Mockito.anyString(), Mockito.anyString());
-        Assert.assertFalse(subject.activeHandlers.containsKey(requestKey));
+        Assertions.assertFalse(subject.activeHandlers.containsKey(requestKey));
     }
 
     @Test
@@ -103,7 +104,7 @@ public class UpdateLagPortServiceTest {
         subject.update(requestKey, request);
         Mockito.verify(carrier).errorResponse(
                 Mockito.eq(requestKey), Mockito.eq(ErrorType.DATA_INVALID), Mockito.anyString(), Mockito.anyString());
-        Assert.assertFalse(subject.activeHandlers.containsKey(requestKey));
+        Assertions.assertFalse(subject.activeHandlers.containsKey(requestKey));
     }
 
     private LagPortOperationConfig newConfig() {

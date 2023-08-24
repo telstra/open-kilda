@@ -15,22 +15,21 @@
 
 package org.openkilda.persistence.ferma.frames.converters;
 
-import static org.junit.Assert.assertEquals;
-
 import org.openkilda.model.FlowEncapsulationType;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class FlowEncapsulationTypeConverterTest {
     @Test
     public void shouldConvertToGraphProperty() {
-        assertEquals("TRANSIT_VLAN",
+        Assertions.assertEquals("TRANSIT_VLAN",
                 FlowEncapsulationTypeConverter.INSTANCE.toGraphProperty(FlowEncapsulationType.TRANSIT_VLAN));
     }
 
     @Test
     public void shouldConvertToEntity() {
-        assertEquals(FlowEncapsulationType.TRANSIT_VLAN,
+        Assertions.assertEquals(FlowEncapsulationType.TRANSIT_VLAN,
                 FlowEncapsulationTypeConverter.INSTANCE.toEntityAttribute("TRANSIT_VLAN"));
     }
 }

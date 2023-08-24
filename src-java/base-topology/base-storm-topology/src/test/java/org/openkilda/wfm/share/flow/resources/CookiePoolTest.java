@@ -16,17 +16,18 @@
 package org.openkilda.wfm.share.flow.resources;
 
 import static java.lang.String.format;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.FlowCookie;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowCookieRepository;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -40,7 +41,7 @@ public class CookiePoolTest extends InMemoryGraphBasedTest {
     private CookiePool cookiePool;
     private FlowCookieRepository flowCookieRepository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         cookiePool = new CookiePool(persistenceManager, MIN_COOKIE, MAX_COOKIE, 1);
         flowCookieRepository = persistenceManager.getRepositoryFactory().createFlowCookieRepository();
@@ -58,12 +59,14 @@ public class CookiePoolTest extends InMemoryGraphBasedTest {
         });
     }
 
-    @Test(expected = ResourceNotAvailableException.class)
+    @Test
     public void cookiePoolFullTest() {
-        transactionManager.doInTransaction(() -> {
-            for (long i = MIN_COOKIE; i <= MAX_COOKIE + 1; i++) {
-                assertTrue(cookiePool.allocate(format("flow_%d", i)) > 0);
-            }
+        Assertions.assertThrows(ResourceNotAvailableException.class, () -> {
+            transactionManager.doInTransaction(() -> {
+                for (long i = MIN_COOKIE; i <= MAX_COOKIE + 1; i++) {
+                    assertTrue(cookiePool.allocate(format("flow_%d", i)) > 0);
+                }
+            });
         });
     }
 

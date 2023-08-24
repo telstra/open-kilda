@@ -19,12 +19,12 @@ import static com.google.common.collect.Lists.newArrayList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.Collections.singletonList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -72,18 +72,19 @@ import org.openkilda.wfm.topology.switchmanager.service.impl.ValidationServiceIm
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.Optional;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class SwitchValidateServiceTest {
     private static final SwitchId SWITCH_ID = new SwitchId(0x0000000000000001L);
     private static final SwitchId SWITCH_ID_MISSING = new SwitchId(0x0000000000000002L);
@@ -111,15 +112,15 @@ public class SwitchValidateServiceTest {
     private FlowSpeakerData flowSpeakerData;
     private MeterSpeakerData meterSpeakerData;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         RepositoryFactory repositoryFactory = Mockito.mock(RepositoryFactory.class);
         SwitchRepository switchRepository = Mockito.mock(SwitchRepository.class);
-        when(switchRepository.findById(eq(SWITCH_ID))).thenReturn(Optional.of(SWITCH_1));
-        when(switchRepository.findById(eq(LAG_SWITCH_ID))).thenReturn(Optional.of(SWITCH_2));
-        when(switchRepository.findById(eq(SWITCH_ID_MISSING))).thenReturn(Optional.empty());
-        when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
-        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        lenient().when(switchRepository.findById(eq(SWITCH_ID))).thenReturn(Optional.of(SWITCH_1));
+        lenient().when(switchRepository.findById(eq(LAG_SWITCH_ID))).thenReturn(Optional.of(SWITCH_2));
+        lenient().when(switchRepository.findById(eq(SWITCH_ID_MISSING))).thenReturn(Optional.empty());
+        lenient().when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
+        lenient().when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
         service = new SwitchValidateService(carrier, persistenceManager, validationService);
 
@@ -151,10 +152,10 @@ public class SwitchValidateServiceTest {
                 .cookie(flowSpeakerData.getCookie().getValue())
                 .build();
 
-        when(validationService.validateRules(any(), any(), any(), anyBoolean()))
+        lenient().when(validationService.validateRules(any(), any(), any(), anyBoolean()))
                 .thenReturn(new ValidateRulesResultV2(false, newArrayList(ruleEntry), emptyList(),
                         emptyList(), emptyList()));
-        when(validationService.validateMeters(any(), any(), any(), anyBoolean(), anyBoolean()))
+        lenient().when(validationService.validateMeters(any(), any(), any(), anyBoolean(), anyBoolean()))
                 .thenReturn(new ValidateMetersResultV2(false, emptyList(), emptyList(), emptyList(),
                         emptyList()));
     }
@@ -259,7 +260,7 @@ public class SwitchValidateServiceTest {
         SwitchValidationResponseV2 response = (SwitchValidationResponseV2) responseCaptor.getValue();
         assertEquals(flowSpeakerData.getCookie().getValue(),
                 newArrayList(response.getRules().getMissing()).get(0).getCookie().longValue());
-        assertNull(response.getMeters());
+        Assertions.assertNull(response.getMeters());
 
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
@@ -284,7 +285,7 @@ public class SwitchValidateServiceTest {
         SwitchValidationResponseV2 response = (SwitchValidationResponseV2) responseCaptor.getValue();
         assertEquals(flowSpeakerData.getCookie().getValue(),
                 newArrayList(response.getRules().getMissing()).get(0).getCookie().longValue());
-        assertNull(response.getMeters());
+        Assertions.assertNull(response.getMeters());
 
         verifyNoMoreInteractions(carrier);
         verifyNoMoreInteractions(validationService);
@@ -354,11 +355,13 @@ public class SwitchValidateServiceTest {
         verifyNoMoreInteractions(validationService);
     }
 
-    @Test(expected = MessageDispatchException.class)
-    public void doNothingWhenFsmNotFound() throws UnexpectedInputException, MessageDispatchException {
-        service.dispatchWorkerMessage(
-                new FlowDumpResponse(singletonList(flowSpeakerData), flowSpeakerData.getSwitchId()),
-                new MessageCookie(KEY));
+    @Test
+    public void doNothingWhenFsmNotFound() {
+        Assertions.assertThrows(MessageDispatchException.class, () -> {
+            service.dispatchWorkerMessage(
+                    new FlowDumpResponse(singletonList(flowSpeakerData), flowSpeakerData.getSwitchId()),
+                    new MessageCookie(KEY));
+        });
     }
 
     @Test

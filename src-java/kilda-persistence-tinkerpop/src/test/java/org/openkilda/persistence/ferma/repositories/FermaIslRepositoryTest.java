@@ -16,9 +16,10 @@
 package org.openkilda.persistence.ferma.repositories;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -45,11 +46,10 @@ import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import com.google.common.collect.Lists;
-import junit.framework.AssertionFailedError;
 import org.hamcrest.Matchers;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -73,7 +73,7 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
     Switch switchB;
     Switch switchC;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         islRepository = repositoryFactory.createIslRepository();
         switchRepository = repositoryFactory.createSwitchRepository();
@@ -334,8 +334,8 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
         Flow flow = createFlowWithPath(0, 0);
         PathId pathId = flow.getPaths().stream()
                 .filter(path -> path.getSegments().get(0).getSrcPort() == isl.getSrcPort())
-                .findAny().map(FlowPath::getPathId).orElseThrow(AssertionFailedError::new);
-
+                .findAny().map(FlowPath::getPathId).orElseThrow(null);
+        assertNotNull(pathId);
         List<IslImmutableView> foundIsls = Lists.newArrayList(
                 islRepository.findActiveByPathAndBandwidthAndEncapsulationType(
                         pathId, 100, FlowEncapsulationType.TRANSIT_VLAN));
@@ -354,7 +354,7 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
         assertThat(foundIsls, Matchers.hasSize(0));
     }
 
-    @Ignore("Need to fix merging of bandwidth values.")
+    @Disabled("Need to fix merging of bandwidth values.")
     @Test
     public void shouldGetUsedBandwidth() {
         createFlowWithPath(59, 99);
@@ -523,46 +523,35 @@ public class FermaIslRepositoryTest extends InMemoryGraphBasedTest {
         Isl isl = createIsl(switchA, 1, switchB, 2, IslStatus.ACTIVE, 100L);
         isl.setMaxBandwidth(100L);
 
-        try {
+
+        assertThrows(PersistenceException.class, () -> {
             createPathWithSegment(TEST_FLOW_ID + "_1", switchA, 1, switchB, 3, 33L);
             islRepository.updateAvailableBandwidth(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 3);
-            fail();
-        } catch (PersistenceException ex) {
-            // expected
-        }
+        });
 
         Isl islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
         assertEquals(100, islAfter.getAvailableBandwidth());
 
-        try {
+        assertThrows(PersistenceException.class, () -> {
             createPathWithSegment(TEST_FLOW_ID + "_2", switchA, 2, switchB, 2, 33L);
             islRepository.updateAvailableBandwidth(TEST_SWITCH_A_ID, 2, TEST_SWITCH_B_ID, 2);
-            fail();
-        } catch (PersistenceException ex) {
-            // expected
-        }
+        });
 
         islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
         assertEquals(100, islAfter.getAvailableBandwidth());
 
-        try {
+        assertThrows(PersistenceException.class, () -> {
             createPathWithSegment(TEST_FLOW_ID + "_3", switchC, 1, switchB, 2, 33L);
             islRepository.updateAvailableBandwidth(TEST_SWITCH_C_ID, 1, TEST_SWITCH_B_ID, 2);
-            fail();
-        } catch (PersistenceException ex) {
-            // expected
-        }
+        });
 
         islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
         assertEquals(100, islAfter.getAvailableBandwidth());
 
-        try {
+        assertThrows(PersistenceException.class, () -> {
             createPathWithSegment(TEST_FLOW_ID + "_4", switchA, 1, switchC, 2, 33L);
             islRepository.updateAvailableBandwidth(TEST_SWITCH_A_ID, 1, TEST_SWITCH_C_ID, 2);
-            fail();
-        } catch (PersistenceException ex) {
-            // expected
-        }
+        });
 
         islAfter = islRepository.findByEndpoints(TEST_SWITCH_A_ID, 1, TEST_SWITCH_B_ID, 2).get();
         assertEquals(100, islAfter.getAvailableBandwidth());

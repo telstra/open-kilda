@@ -15,7 +15,7 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.model.LinkPropsDto;
@@ -28,37 +28,32 @@ import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
 import org.apache.storm.task.TopologyContext;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class LinkOperationsBoltTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId("00:00:00:00:00:00:00:01");
     private static final SwitchId SWITCH_ID_2 = new SwitchId("00:00:00:00:00:00:00:02");
-
-    @ClassRule
-    public static TemporaryFolder fsData = new TemporaryFolder();
 
     private static InMemoryGraphPersistenceManager persistenceManager;
 
     @Mock
     private TopologyContext topologyContext;
 
-    @BeforeClass
+    @BeforeAll
     public static void initPersistenceManager() {
         persistenceManager = InMemoryGraphPersistenceManager.newInstance();
         persistenceManager.install();
     }
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         persistenceManager.getInMemoryImplementation().purgeData();
 

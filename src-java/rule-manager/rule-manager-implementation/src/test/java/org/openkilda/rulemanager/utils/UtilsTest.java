@@ -16,9 +16,10 @@
 package org.openkilda.rulemanager.utils;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
@@ -41,7 +42,7 @@ import org.openkilda.rulemanager.action.ActionType;
 import org.openkilda.rulemanager.action.PushVxlanAction;
 
 import com.google.common.collect.Sets;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class UtilsTest {
     public static final PathId PATH_ID = new PathId("path_id");
@@ -87,15 +88,17 @@ public class UtilsTest {
         assertEquals(PORT_NUMBER_2, Utils.getOutPort(PATH, null).getPortNumber());
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void multiSwitchPathWithoutSegmentsOutPortTest() {
-        FlowPath path = FlowPath.builder()
-                .pathId(PATH_ID)
-                .srcSwitch(SWITCH_1)
-                .destSwitch(SWITCH_2)
-                .segments(newArrayList())
-                .build();
-        Utils.getOutPort(path, null);
+        assertThrows(IllegalStateException.class, () -> {
+            FlowPath path = FlowPath.builder()
+                    .pathId(PATH_ID)
+                    .srcSwitch(SWITCH_1)
+                    .destSwitch(SWITCH_2)
+                    .segments(newArrayList())
+                    .build();
+            Utils.getOutPort(path, null);
+        });
     }
 
     @Test
@@ -118,9 +121,10 @@ public class UtilsTest {
         assertPushVxlan(ActionType.PUSH_VXLAN_OVS, pushVxlan);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void buildInvalidPushVxlanTest() {
-        Utils.buildPushVxlan(VNI, SWITCH_ID_1, SWITCH_ID_2, VXLAN_UDP_SRC, Sets.newHashSet());
+        assertThrows(IllegalArgumentException.class,
+                () -> Utils.buildPushVxlan(VNI, SWITCH_ID_1, SWITCH_ID_2, VXLAN_UDP_SRC, Sets.newHashSet()));
     }
 
     private void assertPushVxlan(ActionType actionType, PushVxlanAction pushVxlanAction) {

@@ -15,14 +15,14 @@
 
 package org.openkilda.floodlight.converter;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.messaging.info.stats.PortStatsData;
 import org.openkilda.messaging.info.stats.PortStatsEntry;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.Lists;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFPortStatsEntry;
 import org.projectfloodlight.openflow.protocol.OFPortStatsProp;
 import org.projectfloodlight.openflow.protocol.OFPortStatsReply;
@@ -118,13 +118,13 @@ public class OfPortStatsMapperTest {
 
     private OFPortStatsEntry.Builder prebuildPortStatsEntry(OFPortStatsEntry.Builder builder) {
         return builder.setPortNo(OFPort.CONTROLLER)
-                      .setRxPackets(U64.of(rxPackets))
-                      .setTxPackets(U64.of(txPackets))
-                      .setRxBytes(U64.of(rxBytes))
-                      .setTxBytes(U64.of(txBytes))
-                      .setRxDropped(U64.of(rxDropped))
-                      .setTxDropped(U64.of(txDropped))
-                      .setRxErrors(U64.of(rxErrors))
-                      .setTxErrors(U64.of(txErrors));
+                .setRxPackets(U64.of(rxPackets))
+                .setTxPackets(U64.of(txPackets))
+                .setRxBytes(U64.of(rxBytes))
+                .setTxBytes(U64.of(txBytes))
+                .setRxDropped(U64.of(rxDropped))
+                .setTxDropped(U64.of(txDropped))
+                .setRxErrors(U64.of(rxErrors))
+                .setTxErrors(U64.of(txErrors));
     }
 }

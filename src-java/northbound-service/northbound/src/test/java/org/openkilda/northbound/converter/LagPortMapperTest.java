@@ -15,23 +15,22 @@
 
 package org.openkilda.northbound.converter;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.messaging.nbtopology.response.LagPortDto;
 import org.openkilda.messaging.swmanager.response.LagPortResponse;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 public class LagPortMapperTest {
     public static final int LOGICAL_PORT_NUMBER_1 = 2021;
     public static final int PHYSICAL_PORT_NUMBER_1 = 1;
@@ -49,7 +48,7 @@ public class LagPortMapperTest {
         assertEquals(LOGICAL_PORT_NUMBER_1, dto.getLogicalPortNumber());
         assertEquals(PHYSICAL_PORT_NUMBER_1, dto.getPortNumbers().get(0).intValue());
         assertEquals(PHYSICAL_PORT_NUMBER_2, dto.getPortNumbers().get(1).intValue());
-        assertTrue(dto.isLacpReply());
+        Assertions.assertTrue(dto.isLacpReply());
     }
 
     @Test
@@ -61,7 +60,7 @@ public class LagPortMapperTest {
         assertEquals(LOGICAL_PORT_NUMBER_1, dto.getLogicalPortNumber());
         assertEquals(PHYSICAL_PORT_NUMBER_1, dto.getPortNumbers().get(0).intValue());
         assertEquals(PHYSICAL_PORT_NUMBER_2, dto.getPortNumbers().get(1).intValue());
-        assertFalse(dto.isLacpReply());
+        Assertions.assertFalse(dto.isLacpReply());
     }
 
     @TestConfiguration

@@ -29,6 +29,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapConte
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -68,7 +70,7 @@ public class InstallIngressRulesAction extends
                         stateMachine.addPendingCommand(request.getCommandId(), request.getSwitchId());
                         stateMachine.getCarrier().sendSpeakerRequest(request);
                     });
-            stateMachine.saveActionToHistory("Commands for installing ingress rules have been sent");
+            saveActionToHistory(stateMachine);
         }
     }
 
@@ -78,5 +80,12 @@ public class InstallIngressRulesAction extends
         pathIds.addAll(haPath.getSubPathIds());
         DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false);
         return ruleManager.buildRulesHaFlowPath(haPath, false, false, true, false, dataAdapter);
+    }
+
+    private void saveActionToHistory(HaFlowPathSwapFsm stateMachine) {
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction("Commands for installing ingress rules have been sent")
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
 }

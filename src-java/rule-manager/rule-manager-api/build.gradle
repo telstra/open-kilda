@@ -22,5 +22,9 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
+}
+
+test {
+    useJUnitPlatform()
 }

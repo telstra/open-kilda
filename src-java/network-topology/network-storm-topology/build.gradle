@@ -38,7 +38,7 @@ dependencies {
     testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
     testImplementation 'org.mockito:mockito-junit-jupiter'
     testImplementation 'org.hamcrest:hamcrest-library'
     testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
@@ -66,4 +66,8 @@ shadowJar {
 
 artifacts {
     archives shadowJar
+}
+
+test {
+    useJUnitPlatform()
 }

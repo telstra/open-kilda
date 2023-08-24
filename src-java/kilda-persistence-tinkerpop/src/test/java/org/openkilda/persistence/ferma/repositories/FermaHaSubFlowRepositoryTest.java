@@ -15,9 +15,9 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.persistence.ferma.repositories.FermaModelUtils.buildHaSubFlow;
 
 import org.openkilda.model.FlowStatus;
@@ -30,8 +30,8 @@ import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.HaSubFlowRepository;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.Map;
@@ -47,7 +47,7 @@ public class FermaHaSubFlowRepositoryTest extends InMemoryGraphBasedTest {
     Switch switch3;
     private HaFlow haFlow;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         haSubFlowRepository = repositoryFactory.createHaSubFlowRepository();
         switch1 = createTestSwitch(SWITCH_ID_1.getId());

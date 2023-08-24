@@ -29,7 +29,7 @@ import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.MeterConfig;
 import org.openkilda.model.SwitchId;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;

@@ -17,6 +17,7 @@ package org.openkilda.wfm.share.history.model;
 
 import org.openkilda.messaging.info.InfoData;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
@@ -25,9 +26,18 @@ import lombok.Value;
 @Builder
 @EqualsAndHashCode(callSuper = false)
 public class FlowHistoryHolder extends InfoData {
-    private final String taskId;
+    String taskId;
 
-    private final FlowDumpData flowDumpData;
-    private final FlowHistoryData flowHistoryData;
-    private final FlowEventData flowEventData;
+    FlowDumpData flowDumpData;
+    FlowHistoryData flowHistoryData;
+    FlowEventData flowEventData;
+
+    HaFlowDumpData haFlowDumpData;
+    HaFlowHistoryData haFlowHistoryData;
+    HaFlowEventData haFlowEventData;
+
+    @JsonIgnore
+    public boolean isHaFlowHistory() {
+        return haFlowDumpData != null || haFlowHistoryData != null || haFlowEventData != null;
+    }
 }

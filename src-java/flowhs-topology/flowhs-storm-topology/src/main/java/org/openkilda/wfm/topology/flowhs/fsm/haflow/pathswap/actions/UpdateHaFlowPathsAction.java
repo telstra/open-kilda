@@ -24,6 +24,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapConte
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -50,7 +52,7 @@ public class UpdateHaFlowPathsAction extends
             return foundHaFlow;
         });
 
-        stateMachine.saveActionToHistory("The HA-flow paths were updated");
+        saveActionToHistory(stateMachine);
         CommandContext commandContext = stateMachine.getCommandContext();
         return Optional.of(buildResponseMessage(haFlow, commandContext));
     }
@@ -58,5 +60,12 @@ public class UpdateHaFlowPathsAction extends
     @Override
     protected String getGenericErrorMessage() {
         return "Could not swap HA-flow paths";
+    }
+
+    private void saveActionToHistory(HaFlowPathSwapFsm stateMachine) {
+        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction("The HA-flow paths were updated")
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
 }

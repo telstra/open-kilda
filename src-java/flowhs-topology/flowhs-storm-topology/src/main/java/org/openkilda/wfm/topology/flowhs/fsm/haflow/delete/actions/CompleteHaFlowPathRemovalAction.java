@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.actions;
 
+import static java.lang.String.format;
+
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
@@ -30,6 +32,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
 import org.openkilda.wfm.topology.flowhs.model.Segment;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -71,9 +75,13 @@ public class CompleteHaFlowPathRemovalAction extends
 
         for (PathId haFlowPathId : pathIds) {
             haFlowPathRepository.remove(haFlowPathId);
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("HA-flow path has been removed")
+                    .withDescription(format("The following HA-path has been removed: %s", haFlowPathId))
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         }
         updateIslsForSegments(removedSegments);
-        // TODO save info about removed paths into history https://github.com/telstra/open-kilda/issues/5169
     }
 
     private void updateIslsForSegments(List<PathSegment> pathSegments) {

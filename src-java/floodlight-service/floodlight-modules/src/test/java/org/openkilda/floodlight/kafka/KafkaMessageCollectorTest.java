@@ -15,15 +15,15 @@
 
 package org.openkilda.floodlight.kafka;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Created by jonv on 20/3/17.
  */
 public class KafkaMessageCollectorTest {
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
 
     }

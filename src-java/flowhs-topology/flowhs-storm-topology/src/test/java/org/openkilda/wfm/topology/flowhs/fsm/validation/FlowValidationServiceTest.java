@@ -16,8 +16,8 @@
 package org.openkilda.wfm.topology.flowhs.fsm.validation;
 
 import static java.util.Collections.emptyList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.openkilda.messaging.info.flow.FlowDumpResponse;
 import org.openkilda.messaging.info.flow.FlowValidationResponse;
@@ -30,8 +30,9 @@ import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 
 import com.google.common.collect.Sets;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Set;
@@ -41,7 +42,7 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
     private static FlowValidationService service;
 
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpOnce() {
         FlowValidationTestBase.setUpOnce();
         RuleManagerConfig ruleManagerConfig = configurationProvider.getConfiguration(RuleManagerConfig.class);
@@ -109,28 +110,28 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
         List<String> forwardDiscrepancies = result.get(0).getDiscrepancies().stream()
                 .map(PathDiscrepancyEntity::getField)
                 .collect(Collectors.toList());
-        assertTrue(forwardDiscrepancies.contains("all"));
-        assertTrue(forwardDiscrepancies.contains(isTransitVlan ? "inVlan" : "tunnelId"));
-        assertTrue(forwardDiscrepancies.contains("outVlan"));
+        Assertions.assertTrue(forwardDiscrepancies.contains("all"));
+        Assertions.assertTrue(forwardDiscrepancies.contains(isTransitVlan ? "inVlan" : "tunnelId"));
+        Assertions.assertTrue(forwardDiscrepancies.contains("outVlan"));
 
         List<String> reverseDiscrepancies = result.get(1).getDiscrepancies().stream()
                 .map(PathDiscrepancyEntity::getField)
                 .collect(Collectors.toList());
-        assertTrue(reverseDiscrepancies.contains("inPort"));
-        assertTrue(reverseDiscrepancies.contains("outPort"));
-        assertTrue(reverseDiscrepancies.contains("meterId"));
+        Assertions.assertTrue(reverseDiscrepancies.contains("inPort"));
+        Assertions.assertTrue(reverseDiscrepancies.contains("outPort"));
+        Assertions.assertTrue(reverseDiscrepancies.contains("meterId"));
 
         List<String> protectedForwardDiscrepancies = result.get(2).getDiscrepancies().stream()
                 .map(PathDiscrepancyEntity::getField)
                 .collect(Collectors.toList());
-        assertTrue(protectedForwardDiscrepancies.contains(isTransitVlan ? "inVlan" : "tunnelId"));
-        assertTrue(protectedForwardDiscrepancies.contains("outVlan"));
+        Assertions.assertTrue(protectedForwardDiscrepancies.contains(isTransitVlan ? "inVlan" : "tunnelId"));
+        Assertions.assertTrue(protectedForwardDiscrepancies.contains("outVlan"));
 
         List<String> protectedReverseDiscrepancies = result.get(3).getDiscrepancies().stream()
                 .map(PathDiscrepancyEntity::getField)
                 .collect(Collectors.toList());
-        assertTrue(protectedReverseDiscrepancies.contains("outPort"));
-        assertTrue(protectedReverseDiscrepancies.contains("inPort"));
+        Assertions.assertTrue(protectedReverseDiscrepancies.contains("outPort"));
+        Assertions.assertTrue(protectedReverseDiscrepancies.contains("inPort"));
     }
 
     @Test
@@ -148,9 +149,10 @@ public class FlowValidationServiceTest extends FlowValidationTestBase {
         assertEquals(0, result.get(1).getDiscrepancies().size());
     }
 
-    @Test(expected = FlowNotFoundException.class)
-    public void validateFlowUsingNotExistingFlow() throws FlowNotFoundException, SwitchNotFoundException {
-        service.validateFlow("test", emptyList(), emptyList(), emptyList(), Sets.newHashSet());
+    @Test
+    public void validateFlowUsingNotExistingFlow() {
+        assertThrows(FlowNotFoundException.class, () ->
+                service.validateFlow("test", emptyList(), emptyList(), emptyList(), Sets.newHashSet()));
     }
 
     @Test

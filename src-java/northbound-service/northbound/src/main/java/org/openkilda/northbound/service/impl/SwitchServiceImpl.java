@@ -530,8 +530,10 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         GetFlowsPerPortForSwitchRequest data = new GetFlowsPerPortForSwitchRequest(switchId, ports);
         CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId);
 
-        return messagingChannel.sendAndGet(nbworkerTopic, message)
-                            .thenApply(GetFlowsPerPortForSwitchResponse.class::cast)
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
+                            .thenApply(response -> GetFlowsPerPortForSwitchResponse.unite(
+                                    response.stream().map(GetFlowsPerPortForSwitchResponse.class::cast)
+                                            .collect(Collectors.toList())))
                             .thenApply(switchMapper::toSwitchFlowsPerPortResponseV2Api);
     }
 
@@ -639,8 +641,12 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         CommandMessage message = new CommandMessage(
                 request, System.currentTimeMillis(), RequestCorrelationId.getId(), Destination.WFM);
 
-        return messagingChannel.sendAndGet(nbworkerTopic, message)
-                .thenApply(org.openkilda.messaging.nbtopology.response.SwitchConnectedDevicesResponse.class::cast)
+        return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
+                .thenApply(response -> org.openkilda.messaging.nbtopology.response.SwitchConnectedDevicesResponse.unite(
+                        response.stream()
+                                .map(org.openkilda.messaging.nbtopology.response.SwitchConnectedDevicesResponse
+                                        .class::cast)
+                                .collect(Collectors.toList())))
                 .thenApply(connectedDeviceMapper::map);
     }
 

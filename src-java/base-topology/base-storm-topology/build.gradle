@@ -89,7 +89,8 @@ dependencies {
     api 'io.micrometer:micrometer-core:1.10.5'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params'
     testImplementation 'org.mockito:mockito-junit-jupiter'
     testImplementation 'org.hamcrest:hamcrest-library'
     testImplementation 'org.apache.curator:curator-test'
@@ -137,4 +138,8 @@ artifacts {
 
 buildAndCopyArtifacts {
     from("${project.buildDir}/resources/releaseResources/topology.properties") { into "${project.name}/resources" }
+}
+
+test {
+    useJUnitPlatform()
 }

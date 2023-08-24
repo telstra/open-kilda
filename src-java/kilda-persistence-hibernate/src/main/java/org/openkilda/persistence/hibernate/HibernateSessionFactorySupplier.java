@@ -19,6 +19,9 @@ import org.openkilda.persistence.hibernate.entities.EntityBase;
 import org.openkilda.persistence.hibernate.entities.history.HibernateFlowEvent;
 import org.openkilda.persistence.hibernate.entities.history.HibernateFlowEventAction;
 import org.openkilda.persistence.hibernate.entities.history.HibernateFlowEventDump;
+import org.openkilda.persistence.hibernate.entities.history.HibernateHaFlowEvent;
+import org.openkilda.persistence.hibernate.entities.history.HibernateHaFlowEventAction;
+import org.openkilda.persistence.hibernate.entities.history.HibernateHaFlowEventDump;
 import org.openkilda.persistence.hibernate.entities.history.HibernatePortEvent;
 
 import lombok.extern.slf4j.Slf4j;
@@ -82,6 +85,10 @@ public class HibernateSessionFactorySupplier implements Supplier<SessionFactory>
         sources.addAnnotatedClass(HibernateFlowEventAction.class);
         sources.addAnnotatedClass(HibernateFlowEventDump.class);
         sources.addAnnotatedClass(HibernatePortEvent.class);
+
+        sources.addAnnotatedClass(HibernateHaFlowEvent.class);
+        sources.addAnnotatedClass(HibernateHaFlowEventAction.class);
+        sources.addAnnotatedClass(HibernateHaFlowEventDump.class);
 
         MetadataBuilder metadataBuilder = sources.getMetadataBuilder();
         Metadata metadata = metadataBuilder.build();

@@ -26,15 +26,15 @@ import org.openkilda.stubs.ManualClock;
 import org.openkilda.wfm.topology.floodlightrouter.model.RegionMappingAdd;
 
 import com.google.common.collect.ImmutableSet;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.util.Set;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class ControllerToSpeakerProxyServiceTest {
     private static final String REGION_STATS = "stats";
     private static final String REGION_MANAGEMENT = "management";

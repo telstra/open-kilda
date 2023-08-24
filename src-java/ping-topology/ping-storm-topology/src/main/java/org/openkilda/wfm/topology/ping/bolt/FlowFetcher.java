@@ -44,14 +44,13 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.topology.ping.model.CacheExpirationRequest;
+import org.openkilda.wfm.topology.ping.model.FlowWithTransitEncapsulation;
 import org.openkilda.wfm.topology.ping.model.GroupId;
 import org.openkilda.wfm.topology.ping.model.PingContext;
 import org.openkilda.wfm.topology.ping.model.PingContext.Kinds;
 
 import com.google.common.annotations.VisibleForTesting;
-import lombok.AllArgsConstructor;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
@@ -205,7 +204,7 @@ public class FlowFetcher extends Abstract {
                     .group(new GroupId(DIRECTION_COUNT_PER_FLOW))
                     .kind(Kinds.PERIODIC)
                     .flow(flow.getFlow())
-                    .yFlowId(flow.yFlowId)
+                    .yFlowId(flow.getYFlowId())
                     .transitEncapsulation(flow.getTransitEncapsulation())
                     .build();
             emit(input, pingContext, commandContext);
@@ -427,7 +426,7 @@ public class FlowFetcher extends Abstract {
         OutputCollector collector = getOutput();
         flowsSet.removeAll(flows);
         for (FlowWithTransitEncapsulation flow : flowsSet) {
-            Values output = new Values(flow.getFlow(), commandContext);
+            Values output = new Values(new CacheExpirationRequest(flow), commandContext);
             collector.emit(STREAM_EXPIRE_CACHE_ID, input, output);
         }
     }
@@ -482,13 +481,4 @@ public class FlowFetcher extends Abstract {
         }
     }
 
-    @Value
-    @AllArgsConstructor
-    @EqualsAndHashCode(exclude = {"transitEncapsulation"})
-    private static class FlowWithTransitEncapsulation {
-        Flow flow;
-        String yFlowId;
-        HaFlow haFlow;
-        FlowTransitEncapsulation transitEncapsulation;
-    }
 }

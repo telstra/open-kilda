@@ -15,10 +15,15 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertTrue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 import static org.openkilda.model.PathComputationStrategy.COST;
@@ -48,9 +53,9 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.List;
@@ -74,7 +79,7 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
     private static PathsService pathsService;
 
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpOnce() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
@@ -87,7 +92,7 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         pathsService = new PathsService(repositoryFactory, pathComputerConfig);
     }
 
-    @Before
+    @BeforeEach
     public void init() {
         /* Topology:
          *
@@ -207,7 +212,7 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
     @Test
     public void findNPathsByTransitVlanAndNullMaxLatency()
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
-        // as max latency param is null LATENCY starategy will be used instead. It means all 500 paths will be returned
+        // as max latency param is null LATENCY strategy will be used instead. It means all 500 paths will be returned
         List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN, MAX_LATENCY, null,
                 null, MAX_PATH_COUNT);
         assertTransitVlanAndLatencyPaths(paths);
@@ -238,39 +243,43 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         assertThat(paths.size(), equalTo(maxPathCount));
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void checkMaxPathCountWhenFindNPaths()
-            throws UnroutableFlowException, SwitchNotFoundException, RecoverableException {
-        int maxPathCount = -1;
-        pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, VXLAN, COST, null, null, maxPathCount);
+    @Test
+    public void checkMaxPathCountWhenFindNPaths() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            int maxPathCount = -1;
+            pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, VXLAN, COST, null, null, maxPathCount);
+        });
+
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void checkForZeroMaxPathCountWhenFindNPaths()
-            throws UnroutableFlowException, SwitchNotFoundException, RecoverableException {
-        int maxPathCount = 0;
-        pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, VXLAN, COST, null, null, maxPathCount);
+    @Test
+    public void checkForZeroMaxPathCountWhenFindNPaths() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            int maxPathCount = 0;
+            pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, VXLAN, COST, null, null, maxPathCount);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void findNPathsByVxlanSrcWithoutVxlanSupport()
-            throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
-        pathsService.getPaths(SWITCH_ID_3, SWITCH_ID_2, VXLAN, COST, null, null, MAX_PATH_COUNT);
+    @Test
+    public void findNPathsByVxlanSrcWithoutVxlanSupport() {
+        assertThrows(IllegalArgumentException.class, () ->
+                pathsService.getPaths(SWITCH_ID_3, SWITCH_ID_2, VXLAN, COST,
+                        null, null, MAX_PATH_COUNT));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void findNPathsByVxlanDstWithoutVxlanSupport()
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
-        pathsService.getPaths(SWITCH_ID_2, SWITCH_ID_3, VXLAN, COST, null, null, MAX_PATH_COUNT);
+        assertThrows(IllegalArgumentException.class, () ->
+                pathsService.getPaths(SWITCH_ID_2, SWITCH_ID_3, VXLAN, COST, null, null, MAX_PATH_COUNT)
+        );
     }
 
     @Test
     public void findNPathsByTransitVlanAndDefaultStrategy()
             throws SwitchNotFoundException, RecoverableException, UnroutableFlowException {
         // set LATENCY as default path computations strategy
-        kildaConfigurationRepository.find().ifPresent(config -> {
-            config.setPathComputationStrategy(LATENCY);
-        });
+        kildaConfigurationRepository.find().ifPresent(config -> config.setPathComputationStrategy(LATENCY));
         // find N paths without strategy
         List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, TRANSIT_VLAN,
                 null, null, null, MAX_PATH_COUNT);
@@ -288,6 +297,47 @@ public class PathsServiceTest extends InMemoryGraphBasedTest {
         List<PathsInfoData> paths = pathsService.getPaths(SWITCH_ID_1, SWITCH_ID_2, null, COST,
                 null, null, MAX_PATH_COUNT);
         assertVxlanAndCostPathes(paths);
+    }
+
+    @Test
+    public void whenTwoPathsExist_findPathsWithProtectedPath()
+            throws UnroutableFlowException, SwitchNotFoundException, RecoverableException {
+        kildaConfigurationRepository.find().ifPresent(config -> config.setFlowEncapsulationType(VXLAN));
+
+        List<PathsInfoData> paths = pathsService.getPathsWithProtectedPath(
+                SWITCH_ID_1, SWITCH_ID_2, VXLAN, COST, Duration.ofMillis(10L), Duration.ofMillis(11L), 1);
+
+        assertFalse(paths.isEmpty());
+        assertNotNull(paths.get(0).getPath());
+        assertNotNull(paths.get(0).getPath().getProtectedPath());
+        assertNotEquals(paths.get(0).getPath(), paths.get(0).getPath().getProtectedPath());
+    }
+
+    @Test
+    public void whenTooLowLatencyRequested_andMaxLatencyStrategy_noPathsWithProtectedTest()
+            throws UnroutableFlowException, SwitchNotFoundException, RecoverableException {
+        kildaConfigurationRepository.find().ifPresent(config -> config.setFlowEncapsulationType(VXLAN));
+
+        List<PathsInfoData> paths = pathsService.getPathsWithProtectedPath(
+                SWITCH_ID_1, SWITCH_ID_2, VXLAN, MAX_LATENCY,
+                Duration.ofNanos(18901L), Duration.ofMillis(0L), 5);
+
+        assertFalse(paths.isEmpty(), "There must be at least one path.");
+        assertNull(paths.get(0).getPath().getProtectedPath(),
+                "Found path must not have a protected path in this test topology");
+    }
+
+    @Test
+    public void whenOnlySwitchesInRequest_returnsPathsWithProtectedTest() throws UnroutableFlowException,
+            SwitchNotFoundException, RecoverableException {
+        kildaConfigurationRepository.find().ifPresent(config -> config.setFlowEncapsulationType(VXLAN));
+        kildaConfigurationRepository.find().ifPresent(config -> config.setPathComputationStrategy(COST));
+
+        List<PathsInfoData> paths = pathsService.getPathsWithProtectedPath(
+                SWITCH_ID_1, SWITCH_ID_2, null, COST,
+                null, null, 500);
+
+        assertFalse(paths.isEmpty(), "There must be at least one path.");
     }
 
     private void assertMaxLatencyPaths(List<PathsInfoData> paths, Duration maxLatency, long expectedCount,

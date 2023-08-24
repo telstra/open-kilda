@@ -15,8 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.METERS;
@@ -52,8 +50,9 @@ import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Set;
@@ -90,7 +89,7 @@ public class TransitYRuleGeneratorTest {
 
     RuleManagerConfig config;
 
-    @Before
+    @BeforeEach
     public void setup() {
         config = mock(RuleManagerConfig.class);
         when(config.getFlowMeterBurstCoefficient()).thenReturn(BURST_COEFFICIENT);
@@ -212,20 +211,20 @@ public class TransitYRuleGeneratorTest {
 
     private void assertTransitCommand(List<SpeakerData> commands, OfTable table,
                                       FlowTransitEncapsulation encapsulation, MeterId sharedMeterId) {
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
-        assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
-        assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
+        Assertions.assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
+        Assertions.assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
 
         if (sharedMeterId != null) {
-            assertTrue(flowCommandData.getDependsOn().contains(SHARED_METER_UUID));
+            Assertions.assertTrue(flowCommandData.getDependsOn().contains(SHARED_METER_UUID));
         } else {
-            assertTrue(flowCommandData.getDependsOn().isEmpty());
+            Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
         }
 
-        assertEquals(COOKIE, flowCommandData.getCookie());
-        assertEquals(table, flowCommandData.getTable());
-        assertEquals(Priority.Y_FLOW_PRIORITY, flowCommandData.getPriority());
+        Assertions.assertEquals(COOKIE, flowCommandData.getCookie());
+        Assertions.assertEquals(table, flowCommandData.getTable());
+        Assertions.assertEquals(Priority.Y_FLOW_PRIORITY, flowCommandData.getPriority());
 
 
         Set<FieldMatch> expectedMatch;
@@ -240,23 +239,23 @@ public class TransitYRuleGeneratorTest {
                 .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(PORT_NUMBER_2))))
                 .goToMeter(sharedMeterId)
                 .build();
-        assertEquals(expectedInstructions, flowCommandData.getInstructions());
-        assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());
+        Assertions.assertEquals(expectedInstructions, flowCommandData.getInstructions());
+        Assertions.assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());
     }
 
     private void assertTransitCommands(List<SpeakerData> commands, OfTable table,
                                        FlowTransitEncapsulation encapsulation) {
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
         MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
-        assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
-        assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        Assertions.assertEquals(SWITCH_1.getSwitchId(), flowCommandData.getSwitchId());
+        Assertions.assertEquals(SWITCH_1.getOfVersion(), flowCommandData.getOfVersion().toString());
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
 
-        assertEquals(COOKIE, flowCommandData.getCookie());
-        assertEquals(table, flowCommandData.getTable());
-        assertEquals(Priority.Y_FLOW_PRIORITY, flowCommandData.getPriority());
+        Assertions.assertEquals(COOKIE, flowCommandData.getCookie());
+        Assertions.assertEquals(table, flowCommandData.getTable());
+        Assertions.assertEquals(Priority.Y_FLOW_PRIORITY, flowCommandData.getPriority());
 
 
         Set<FieldMatch> expectedMatch;
@@ -271,8 +270,8 @@ public class TransitYRuleGeneratorTest {
                 .applyActions(Lists.newArrayList(new PortOutAction(new PortNumber(PORT_NUMBER_2))))
                 .goToMeter(SHARED_METER_ID)
                 .build();
-        assertEquals(expectedInstructions, flowCommandData.getInstructions());
-        assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());
+        Assertions.assertEquals(expectedInstructions, flowCommandData.getInstructions());
+        Assertions.assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), flowCommandData.getFlags());
     }
 
     private Set<FieldMatch> buildExpectedVlanMatch(int port, int vlanId) {
@@ -309,6 +308,6 @@ public class TransitYRuleGeneratorTest {
                 .config(config)
                 .externalMeterCommandUuid(UUID.randomUUID())
                 .build();
-        assertEquals(0, generator.generateCommands(SWITCH_1).size());
+        Assertions.assertEquals(0, generator.generateCommands(SWITCH_1).size());
     }
 }

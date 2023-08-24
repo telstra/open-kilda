@@ -16,7 +16,6 @@
 package org.openkilda.rulemanager.factory.generator.flow.haflow;
 
 import static com.google.common.collect.Sets.newHashSet;
-import static org.junit.Assert.assertEquals;
 import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
 import static org.openkilda.rulemanager.Utils.getCommand;
 
@@ -56,7 +55,8 @@ import org.openkilda.rulemanager.group.WatchPort;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Lists;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -79,7 +79,7 @@ public class YPointForwardTransitHaRuleGeneratorTest extends HaRuleGeneratorBase
                 SWITCH_2, SWITCH_3, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
         GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
@@ -97,7 +97,7 @@ public class YPointForwardTransitHaRuleGeneratorTest extends HaRuleGeneratorBase
                 SWITCH_2, SWITCH_3, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
         GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
@@ -122,7 +122,7 @@ public class YPointForwardTransitHaRuleGeneratorTest extends HaRuleGeneratorBase
                 SWITCH_2, SWITCH_3, OUTER_VLAN_ID_1, 0);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
         GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
@@ -142,7 +142,7 @@ public class YPointForwardTransitHaRuleGeneratorTest extends HaRuleGeneratorBase
                 SWITCH_2, SWITCH_3, 0, 0);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
         GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
@@ -163,7 +163,7 @@ public class YPointForwardTransitHaRuleGeneratorTest extends HaRuleGeneratorBase
                 SWITCH_2, SWITCH_3, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
         GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
@@ -185,7 +185,7 @@ public class YPointForwardTransitHaRuleGeneratorTest extends HaRuleGeneratorBase
                 SWITCH_2, SWITCH_3, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
         GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
@@ -216,7 +216,7 @@ public class YPointForwardTransitHaRuleGeneratorTest extends HaRuleGeneratorBase
                 SWITCH_2, SWITCH_3, OUTER_VLAN_ID_2, 0);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
         GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
@@ -240,7 +240,7 @@ public class YPointForwardTransitHaRuleGeneratorTest extends HaRuleGeneratorBase
                 SWITCH_2, SWITCH_3, 0, 0);
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(2, commands.size());
+        Assertions.assertEquals(2, commands.size());
         FlowSpeakerData flowCommand = getCommand(FlowSpeakerData.class, commands);
         GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
@@ -256,35 +256,45 @@ public class YPointForwardTransitHaRuleGeneratorTest extends HaRuleGeneratorBase
         assertGroup(groupCommand, SWITCH_2, firstExpectedActions, secondExpectedActions);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void nullSubPathsTest() {
-        buildGenerator(null).generateCommands(SWITCH_1);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            buildGenerator(null).generateCommands(SWITCH_1);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void emptySubPathsTest() {
-        buildGenerator(new ArrayList<>()).generateCommands(SWITCH_1);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            buildGenerator(new ArrayList<>()).generateCommands(SWITCH_1);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void equalDestinationSubPathsTest() {
-        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, FORWARD_COOKIE, null);
-        FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_1, SWITCH_2, FORWARD_COOKIE_2, null);
-        buildGenerator(Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, FORWARD_COOKIE, null);
+            FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_1, SWITCH_2, FORWARD_COOKIE_2, null);
+            buildGenerator(Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void oneSwitchSubPathsTest() {
-        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, FORWARD_COOKIE, null);
-        FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_3, SWITCH_3, FORWARD_COOKIE_2, null);
-        buildGenerator(Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, FORWARD_COOKIE, null);
+            FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_3, SWITCH_3, FORWARD_COOKIE_2, null);
+            buildGenerator(Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void reverseSubPathTest() {
-        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, REVERSE_COOKIE, null);
-        FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_1, SWITCH_3, FORWARD_COOKIE_2, null);
-        buildGenerator(Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_1, SWITCH_2, REVERSE_COOKIE, null);
+            FlowPath subPath2 = buildSubPath(PATH_ID_2, SWITCH_1, SWITCH_3, FORWARD_COOKIE_2, null);
+            buildGenerator(Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2);
+        });
     }
 
     private static Set<FieldMatch> buildExpectedVlanMatch() {
@@ -304,34 +314,34 @@ public class YPointForwardTransitHaRuleGeneratorTest extends HaRuleGeneratorBase
 
     private void assertGroup(GroupSpeakerData group, Switch expectedSwitch, Set<Action> firstBucketActions,
                              Set<Action> secondBucketActions) {
-        assertEquals(GROUP_ID, group.getGroupId());
-        assertEquals(expectedSwitch.getSwitchId(), group.getSwitchId());
-        assertEquals(expectedSwitch.getOfVersion(), group.getOfVersion().toString());
-        assertEquals(GroupType.ALL, group.getType());
-        assertEquals(0, group.getDependsOn().size());
-        assertEquals(2, group.getBuckets().size());
+        Assertions.assertEquals(GROUP_ID, group.getGroupId());
+        Assertions.assertEquals(expectedSwitch.getSwitchId(), group.getSwitchId());
+        Assertions.assertEquals(expectedSwitch.getOfVersion(), group.getOfVersion().toString());
+        Assertions.assertEquals(GroupType.ALL, group.getType());
+        Assertions.assertEquals(0, group.getDependsOn().size());
+        Assertions.assertEquals(2, group.getBuckets().size());
         for (Bucket bucket : group.getBuckets()) {
-            assertEquals(WatchGroup.ANY, bucket.getWatchGroup());
-            assertEquals(WatchPort.ANY, bucket.getWatchPort());
+            Assertions.assertEquals(WatchGroup.ANY, bucket.getWatchGroup());
+            Assertions.assertEquals(WatchPort.ANY, bucket.getWatchPort());
         }
-        assertEquals(firstBucketActions, group.getBuckets().get(0).getWriteActions());
-        assertEquals(secondBucketActions, group.getBuckets().get(1).getWriteActions());
+        Assertions.assertEquals(firstBucketActions, group.getBuckets().get(0).getWriteActions());
+        Assertions.assertEquals(secondBucketActions, group.getBuckets().get(1).getWriteActions());
     }
 
     private void assertCommand(
             FlowSpeakerData command, Switch expectedSwitch, Set<FieldMatch> expectedMatch,
             List<Action> expectedApplyActions, UUID expectedGroupUuid) {
-        assertEquals(expectedSwitch.getSwitchId(), command.getSwitchId());
-        assertEquals(expectedSwitch.getOfVersion(), command.getOfVersion().toString());
-        assertEquals(HA_FLOW_PATH.getCookie(), command.getCookie());
-        assertEquals(OfTable.TRANSIT, command.getTable());
-        assertEquals(Priority.FLOW_PRIORITY, command.getPriority());
-        assertEquals(newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
+        Assertions.assertEquals(expectedSwitch.getSwitchId(), command.getSwitchId());
+        Assertions.assertEquals(expectedSwitch.getOfVersion(), command.getOfVersion().toString());
+        Assertions.assertEquals(HA_FLOW_PATH.getCookie(), command.getCookie());
+        Assertions.assertEquals(OfTable.TRANSIT, command.getTable());
+        Assertions.assertEquals(Priority.FLOW_PRIORITY, command.getPriority());
+        Assertions.assertEquals(newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
         assertEqualsMatch(expectedMatch, command.getMatch());
 
         Instructions expectedInstructions = Instructions.builder().applyActions(expectedApplyActions).build();
-        assertEquals(expectedInstructions, command.getInstructions());
-        assertEquals(Lists.newArrayList(expectedGroupUuid), command.getDependsOn());
+        Assertions.assertEquals(expectedInstructions, command.getInstructions());
+        Assertions.assertEquals(Lists.newArrayList(expectedGroupUuid), command.getDependsOn());
     }
 
 

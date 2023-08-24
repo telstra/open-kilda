@@ -15,10 +15,6 @@
 
 package org.openkilda.northbound.messaging.kafka;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -34,11 +30,10 @@ import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.MessagingChannel;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +42,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.support.SendResult;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.SettableListenableFuture;
 
@@ -62,7 +57,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 public class KafkaMessagingChannelTest {
     private static final Logger logger = LoggerFactory.getLogger(KafkaMessagingChannelTest.class);
     private static final Set<Message> CHUNKED_RESPONSES = new HashSet<>();
@@ -74,10 +69,7 @@ public class KafkaMessagingChannelTest {
     @Autowired
     private KafkaMessagingChannel messagingChannel;
 
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
-
-    @Before
+    @BeforeEach
     public void reset() {
         CHUNKED_RESPONSES.clear();
         RESPONSES.clear();
@@ -96,8 +88,8 @@ public class KafkaMessagingChannelTest {
         prepareResponses(MAIN_TOPIC);
 
         InfoData result = response.get(1, TimeUnit.SECONDS);
-        assertEquals(data, result);
-        assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertEquals(data, result);
+        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
     }
 
     @Test
@@ -112,8 +104,8 @@ public class KafkaMessagingChannelTest {
         prepareResponses(MAIN_TOPIC);
 
         InfoData result = response.get(1, TimeUnit.SECONDS);
-        assertNull(result);
-        assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertNull(result);
+        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
     }
 
     @Test
@@ -129,9 +121,9 @@ public class KafkaMessagingChannelTest {
         prepareResponses(CHUNKED_TOPIC);
 
         List<InfoData> result = future.get(10, TimeUnit.SECONDS);
-        assertEquals(messagesAmount, result.size());
+        Assertions.assertEquals(messagesAmount, result.size());
 
-        assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
     }
 
     @Test
@@ -147,8 +139,8 @@ public class KafkaMessagingChannelTest {
         prepareResponses(CHUNKED_TOPIC);
         List<InfoData> result = future.get(10, TimeUnit.SECONDS);
 
-        assertEquals(responses, result.size());
-        assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertEquals(responses, result.size());
+        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
     }
 
     @Test
@@ -164,14 +156,12 @@ public class KafkaMessagingChannelTest {
         prepareResponses(CHUNKED_TOPIC);
         List<InfoData> result = future.get(1, TimeUnit.SECONDS);
 
-        assertTrue(result.isEmpty());
-        assertTrue(messagingChannel.getPendingChunkedRequests().isEmpty());
+        Assertions.assertTrue(result.isEmpty());
+        Assertions.assertTrue(messagingChannel.getPendingChunkedRequests().isEmpty());
     }
 
     @Test
     public void shouldCompleteResponseExceptionallyIfResponseIsError() throws Exception {
-        thrown.expect(ExecutionException.class);
-
         String requestId = UUID.randomUUID().toString();
         long timestamp = System.currentTimeMillis();
         logger.info("looking " + requestId);
@@ -183,15 +173,15 @@ public class KafkaMessagingChannelTest {
 
         CompletableFuture<InfoData> response = messagingChannel.sendAndGet(MAIN_TOPIC, request);
         prepareResponses(MAIN_TOPIC);
-        response.get(10, TimeUnit.SECONDS);
-
-        assertTrue(response.isCompletedExceptionally());
-        assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertThrows(ExecutionException.class, () -> {
+            response.get(10, TimeUnit.SECONDS);
+        });
+        Assertions.assertTrue(response.isCompletedExceptionally());
+        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
     }
 
     @Test
     public void shouldCompleteChunkedResponseExceptionallyIfResponseIsError() throws Exception {
-        thrown.expect(ExecutionException.class);
 
         String requestId = UUID.randomUUID().toString();
         long timestamp = System.currentTimeMillis();
@@ -203,15 +193,16 @@ public class KafkaMessagingChannelTest {
 
         CompletableFuture<List<InfoData>> response = messagingChannel.sendAndGetChunked(CHUNKED_TOPIC, request);
         prepareResponses(CHUNKED_TOPIC);
-        response.get(1, TimeUnit.SECONDS);
+        Assertions.assertThrows(ExecutionException.class, () -> {
+            response.get(1, TimeUnit.SECONDS);
+        });
+        Assertions.assertTrue(response.isCompletedExceptionally());
+        Assertions.assertTrue(messagingChannel.getPendingChunkedRequests().isEmpty());
 
-        assertTrue(response.isCompletedExceptionally());
-        assertTrue(messagingChannel.getPendingChunkedRequests().isEmpty());
     }
 
     @Test
     public void shouldCompleteResponseExceptionallyIfMessageIsNotSent() throws Exception {
-        thrown.expect(ExecutionException.class);
 
         String requestId = UUID.randomUUID().toString();
         long timestamp = System.currentTimeMillis();
@@ -219,15 +210,16 @@ public class KafkaMessagingChannelTest {
 
         CompletableFuture<InfoData> response = messagingChannel.sendAndGet(BROKEN_TOPIC, request);
         prepareResponses(BROKEN_TOPIC);
-        response.get(1, TimeUnit.SECONDS);
+        Assertions.assertThrows(ExecutionException.class, () -> {
+            response.get(1, TimeUnit.SECONDS);
+        });
+        Assertions.assertTrue(response.isCompletedExceptionally());
+        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
 
-        assertTrue(response.isCompletedExceptionally());
-        assertTrue(messagingChannel.getPendingRequests().isEmpty());
     }
 
     @Test
     public void shouldCompleteChunkedResponseExceptionallyIfMessageIsNotSent() throws Exception {
-        thrown.expect(ExecutionException.class);
 
         String requestId = UUID.randomUUID().toString();
         long timestamp = System.currentTimeMillis();
@@ -235,10 +227,12 @@ public class KafkaMessagingChannelTest {
 
         CompletableFuture<List<InfoData>> response = messagingChannel.sendAndGetChunked(BROKEN_TOPIC, request);
         prepareResponses(BROKEN_TOPIC);
-        response.get(1, TimeUnit.SECONDS);
+        Assertions.assertThrows(ExecutionException.class, () -> {
+            response.get(1, TimeUnit.SECONDS);
+        });
+        Assertions.assertTrue(response.isCompletedExceptionally());
+        Assertions.assertTrue(messagingChannel.getPendingChunkedRequests().isEmpty());
 
-        assertTrue(response.isCompletedExceptionally());
-        assertTrue(messagingChannel.getPendingChunkedRequests().isEmpty());
     }
 
     /**

@@ -58,12 +58,12 @@ import com.google.common.base.Objects;
 import lombok.Value;
 import org.apache.commons.lang3.function.FailableConsumer;
 import org.apache.storm.shade.com.google.common.collect.Lists;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -73,7 +73,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Queue;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class FlowPathServiceTest {
     private final FlowPathOperationConfig config = new FlowPathOperationConfig(3);
 
@@ -90,7 +90,7 @@ public class FlowPathServiceTest {
 
     private final Queue<SpeakerRequest> speakerRequests = new ArrayDeque<>();
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         flowSegmentRequestMetaFactory = newFlowSegmentRequestMetaFactory();
 
@@ -131,7 +131,7 @@ public class FlowPathServiceTest {
 
         verifyRequestIsOver(pathRequest.getReference(), FlowPathResultCode.SUCCESS);
 
-        Assert.assertTrue(service.deactivate());
+        Assertions.assertTrue(service.deactivate());
     }
 
     @Test
@@ -156,7 +156,7 @@ public class FlowPathServiceTest {
 
         verifyRequestIsOver(pathRequest.getReference(), FlowPathResultCode.SUCCESS);
 
-        Assert.assertTrue(service.deactivate());
+        Assertions.assertTrue(service.deactivate());
     }
 
     @Test
@@ -183,7 +183,7 @@ public class FlowPathServiceTest {
 
         verifyRequestIsOver(pathRequest.getReference(), FlowPathResultCode.SPEAKER_ERROR);
 
-        Assert.assertTrue(service.deactivate());
+        Assertions.assertTrue(service.deactivate());
     }
 
     @Test
@@ -217,7 +217,7 @@ public class FlowPathServiceTest {
 
         verifyRequestIsOver(pathRequest.getReference(), FlowPathResultCode.SPEAKER_ERROR);
 
-        Assert.assertTrue(service.deactivate());
+        Assertions.assertTrue(service.deactivate());
     }
 
     @Test
@@ -246,7 +246,7 @@ public class FlowPathServiceTest {
 
         verifyRequestIsOver(pathRequest.getReference(), FlowPathResultCode.SPEAKER_ERROR);
 
-        Assert.assertTrue(service.deactivate());
+        Assertions.assertTrue(service.deactivate());
     }
 
     @Test
@@ -274,7 +274,7 @@ public class FlowPathServiceTest {
 
         verifyRequestIsOver(pathRequest.getReference(), FlowPathResultCode.SPEAKER_ERROR);
 
-        Assert.assertTrue(service.deactivate());
+        Assertions.assertTrue(service.deactivate());
     }
 
     // remove
@@ -283,7 +283,7 @@ public class FlowPathServiceTest {
     // utility/service
 
     private void verifyRequestIsOver(FlowPathReference reference, FlowPathResultCode resultCode) {
-        Assert.assertTrue(speakerRequests.isEmpty());
+        Assertions.assertTrue(speakerRequests.isEmpty());
 
         FlowPathResult result = new FlowPathResult(reference, resultCode);
         verify(carrier).processFlowPathOperationResults(eq(result));
@@ -329,8 +329,8 @@ public class FlowPathServiceTest {
             }
         });
 
-        Assert.assertTrue(expected.isEmpty());
-        Assert.assertTrue(unexpected.isEmpty());
+        Assertions.assertTrue(expected.isEmpty());
+        Assertions.assertTrue(unexpected.isEmpty());
     }
 
     private void proceedSpeakerRequests(FailableConsumer<SpeakerRequest, Exception> handler) throws Exception {

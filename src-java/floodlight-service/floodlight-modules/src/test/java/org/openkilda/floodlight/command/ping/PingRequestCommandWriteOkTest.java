@@ -29,9 +29,9 @@ import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.Ping.Errors;
 
 import net.floodlightcontroller.core.IOFSwitch;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
@@ -44,7 +44,7 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
     private final PingService realPingService = new PingService();
 
     @Override
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
 
@@ -98,7 +98,7 @@ public class PingRequestCommandWriteOkTest extends PingRequestCommandAbstractTes
         command.call();
 
         List<Message> replies = kafkaMessageCatcher.getValues();
-        Assert.assertEquals(0, replies.size());
+        Assertions.assertEquals(0, replies.size());
     }
 
     private PingRequestCommand makeCommand(Ping ping) {

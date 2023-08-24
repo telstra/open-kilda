@@ -15,15 +15,16 @@
 
 package org.openkilda.grpc.speaker.mapper;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.grpc.speaker.model.PacketInOutStatsResponse;
 
 import io.grpc.noviflow.PacketInOutStats;
 import io.grpc.noviflow.YesNo;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 
 public class NoviflowResponseMapperTest {
@@ -43,8 +44,8 @@ public class NoviflowResponseMapperTest {
 
     @Test
     public void yesNoTest() {
-        Assert.assertTrue(mapper.toBoolean(YesNo.YES));
-        Assert.assertFalse(mapper.toBoolean(YesNo.NO));
+        assertTrue(mapper.toBoolean(YesNo.YES));
+        assertFalse(mapper.toBoolean(YesNo.NO));
         assertNull(mapper.toBoolean(null));
         assertNull(mapper.toBoolean(YesNo.UNRECOGNIZED));
         assertNull(mapper.toBoolean(YesNo.YESNO_RESERVED));

@@ -29,8 +29,8 @@ import org.openkilda.model.SwitchId;
 
 import lombok.Getter;
 import net.floodlightcontroller.core.IOFSwitch;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -110,9 +110,9 @@ public class IngressFlowSegmentInstallCommandTest extends IngressCommandInstallT
 
             realFlowModFactory = getFlowModFactory();
             if (metadata.isMultiTable()) {
-                Assert.assertTrue(realFlowModFactory instanceof IngressFlowSegmentInstallMultiTableFlowModFactory);
+                Assertions.assertTrue(realFlowModFactory instanceof IngressFlowSegmentInstallMultiTableFlowModFactory);
             } else {
-                Assert.assertTrue(realFlowModFactory instanceof IngressFlowSegmentInstallSingleTableFlowModFactory);
+                Assertions.assertTrue(realFlowModFactory instanceof IngressFlowSegmentInstallSingleTableFlowModFactory);
             }
 
             setFlowModFactory(flowModFactoryMock);

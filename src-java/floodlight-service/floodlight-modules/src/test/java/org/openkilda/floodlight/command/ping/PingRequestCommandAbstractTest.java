@@ -29,8 +29,8 @@ import org.openkilda.model.SwitchId;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
 import org.easymock.Mock;
-import org.junit.Assert;
-import org.junit.Before;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.ver12.OFFactoryVer12;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
@@ -55,7 +55,7 @@ abstract class PingRequestCommandAbstractTest extends PingCommandTest {
     protected IOFSwitch switchNotCapable;
 
     @Override
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
 
@@ -85,13 +85,13 @@ abstract class PingRequestCommandAbstractTest extends PingCommandTest {
 
     protected void verifySentErrorResponse(Ping ping, Ping.Errors errorCode) {
         List<Message> replies = kafkaMessageCatcher.getValues();
-        Assert.assertEquals(1, replies.size());
+        Assertions.assertEquals(1, replies.size());
 
         InfoMessage message = (InfoMessage) replies.get(0);
         PingResponse response = (PingResponse) message.getData();
 
-        Assert.assertEquals(ping.getPingId(), response.getPingId());
-        Assert.assertEquals(errorCode, response.getError());
+        Assertions.assertEquals(ping.getPingId(), response.getPingId());
+        Assertions.assertEquals(errorCode, response.getError());
     }
 
     protected Ping makePing(IOFSwitch source, IOFSwitch dest) {

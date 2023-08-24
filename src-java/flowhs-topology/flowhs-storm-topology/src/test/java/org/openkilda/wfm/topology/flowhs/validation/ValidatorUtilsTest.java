@@ -21,11 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.messaging.validation.ValidatorUtils;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
-@RunWith(Parameterized.class)
 public class ValidatorUtilsTest {
 
     /**
@@ -35,7 +33,7 @@ public class ValidatorUtilsTest {
      * Both parameters can be 0 or null to enable "erasing".
      * @return parameters for test in the format: {{must fail?} {maxLatency value} {maxLatencyTier2 value}}
      */
-    @Parameterized.Parameters()
+
     public static Object[] data() {
         return new Object[][]{
                 {false, null, null},
@@ -56,18 +54,9 @@ public class ValidatorUtilsTest {
         };
     }
 
-    private final boolean mustFail;
-    private final Long maxLatency;
-    private final Long maxLatencyTier2;
-
-    public ValidatorUtilsTest(boolean mustFail, Long maxLatency, Long maxLatencyTier2) {
-        this.mustFail = mustFail;
-        this.maxLatency = maxLatency;
-        this.maxLatencyTier2 = maxLatencyTier2;
-    }
-
-    @Test
-    public void verifyFlowValidatorForMaxLatencyParameters() {
+    @ParameterizedTest
+    @MethodSource("data")
+    public void verifyFlowValidatorForMaxLatencyParameters(boolean mustFail, Long maxLatency, Long maxLatencyTier2) {
         if (mustFail) {
             assertThatValidationThrows(maxLatency, maxLatencyTier2);
         } else {

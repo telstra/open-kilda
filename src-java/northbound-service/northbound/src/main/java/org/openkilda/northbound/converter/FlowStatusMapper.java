@@ -16,10 +16,13 @@
 package org.openkilda.northbound.converter;
 
 import org.openkilda.messaging.payload.flow.FlowState;
+import org.openkilda.messaging.payload.history.FlowStatusTimestampsEntry;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatus;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public abstract class FlowStatusMapper {
@@ -75,4 +78,7 @@ public abstract class FlowStatusMapper {
                 return flowStatus.toString().toLowerCase();
         }
     }
+
+    @Mapping(target = "timestamp", source = "statusChangeTimestamp")
+    public abstract FlowHistoryStatus toFlowHistoryStatus(FlowStatusTimestampsEntry entry);
 }

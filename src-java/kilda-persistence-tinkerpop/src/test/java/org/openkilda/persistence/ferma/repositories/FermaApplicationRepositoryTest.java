@@ -15,8 +15,9 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.ApplicationRule;
 import org.openkilda.model.FlowPathDirection;
@@ -25,9 +26,9 @@ import org.openkilda.model.cookie.ExclusionCookie;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.ApplicationRepository;
 
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 
@@ -37,12 +38,12 @@ public class FermaApplicationRepositoryTest extends InMemoryGraphBasedTest {
 
     private static ApplicationRepository applicationRepository;
 
-    @BeforeClass
+    @BeforeAll
     public static void setUp() {
         applicationRepository = repositoryFactory.createApplicationRepository();
     }
 
-    @Before
+    @BeforeEach
     public void init() {
         applicationRepository.add(buildRuleA());
         applicationRepository.add(buildRuleB());

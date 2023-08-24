@@ -67,9 +67,16 @@ public class PathsBolt extends PersistenceOperationsBolt {
 
     private List<PathsInfoData> getPaths(GetPathsRequest request) {
         try {
-            return pathService.getPaths(request.getSrcSwitchId(), request.getDstSwitchId(),
-                    request.getEncapsulationType(), request.getPathComputationStrategy(), request.getMaxLatency(),
-                    request.getMaxLatencyTier2(), request.getMaxPathCount());
+            if (Boolean.TRUE.equals(request.getIncludeProtectedPathAvailability())) {
+                return pathService.getPathsWithProtectedPath(request.getSrcSwitchId(),
+                        request.getDstSwitchId(), request.getEncapsulationType(), request.getPathComputationStrategy(),
+                        request.getMaxLatency(), request.getMaxLatencyTier2(), request.getMaxPathCount());
+            } else {
+                return pathService.getPaths(request.getSrcSwitchId(), request.getDstSwitchId(),
+                        request.getEncapsulationType(), request.getPathComputationStrategy(), request.getMaxLatency(),
+                        request.getMaxLatencyTier2(), request.getMaxPathCount());
+            }
+
         } catch (IllegalArgumentException e) {
             throw new MessageException(ErrorType.DATA_INVALID, e.getMessage(), "Bad request.");
         } catch (RecoverableException e) {
@@ -80,7 +87,7 @@ public class PathsBolt extends PersistenceOperationsBolt {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Switch properties not found.");
         } catch (UnroutableFlowException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(),
-                    String.format("Couldn't found any path from switch '%s' to switch '%s'.",
+                    String.format("Couldn't find any path from switch '%s' to switch '%s'.",
                             request.getSrcSwitchId(), request.getDstSwitchId()));
         }
     }

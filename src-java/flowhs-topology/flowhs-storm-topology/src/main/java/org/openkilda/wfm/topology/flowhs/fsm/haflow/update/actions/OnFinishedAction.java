@@ -28,8 +28,12 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.stream.Collectors;
 
 @Slf4j
 public class OnFinishedAction extends HistoryRecordingAction<HaFlowUpdateFsm, State, Event, HaFlowUpdateContext> {
@@ -46,16 +50,22 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowUpdateFsm, St
             sendPeriodicPingNotification(stateMachine);
             updateFlowMonitoring(stateMachine);
             dashboardLogger.onSuccessfulHaFlowUpdate(stateMachine.getHaFlowId());
-            stateMachine.saveActionToHistory("Flow was updated successfully");
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getHaFlowId())
+                    .withAction("HA-flow has been updated successfully")
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         } else if (stateMachine.getNewFlowStatus() == FlowStatus.DEGRADED) {
             sendPeriodicPingNotification(stateMachine);
             updateFlowMonitoring(stateMachine);
             dashboardLogger.onFailedHaFlowUpdate(stateMachine.getFlowId(), DEGRADED_FAIL_REASON);
             stateMachine.saveActionToHistory(DEGRADED_FAIL_REASON);
         } else {
-            stateMachine.saveActionToHistory("Flow update completed",
-                    format("Flow update completed with status %s and error %s", stateMachine.getNewFlowStatus(),
-                            stateMachine.getErrorReason()));
+            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .withTaskId(stateMachine.getHaFlowId())
+                    .withAction("HA-flow update has been completed")
+                    .withDescription(format("HA-flow update has been completed with status %s and error %s",
+                            stateMachine.getNewFlowStatus(), stateMachine.getErrorReason()))
+                    .withHaFlowId(stateMachine.getHaFlowId()));
         }
     }
 
@@ -67,12 +77,12 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowUpdateFsm, St
 
     private void updateFlowMonitoring(HaFlowUpdateFsm stateMachine) {
         HaFlow original = stateMachine.getOriginalHaFlow();
-        HaFlow target = HaFlowMapper.INSTANCE.toHaFlow(stateMachine.getTargetHaFlow());
+        HaFlow target = mapToTargetHaFlow(stateMachine.getTargetHaFlow());
 
         for (HaSubFlow originalSubFlow : original.getHaSubFlows()) {
             HaSubFlow targetSubFlow = target.getHaSubFlowOrThrowException(originalSubFlow.getHaSubFlowId());
             boolean originalNotSingle = !originalSubFlow.isOneSwitch();
-            boolean targetNotSingle = !targetSubFlow.isOneSwitch();
+            boolean targetNotSingle = !targetSubFlow.isOneSwitch(target.getSharedSwitchId());
             boolean srcUpdated = isSrcUpdated(original, target);
             boolean dstUpdated = isDstUpdated(originalSubFlow, targetSubFlow);
 
@@ -86,7 +96,7 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowUpdateFsm, St
             // setup new if it is not single
             //TODO: Review logic during https://github.com/telstra/open-kilda/issues/5208
             if (targetNotSingle && (srcUpdated || dstUpdated)) {
-                stateMachine.getCarrier().sendActivateFlowMonitoring(null);
+                //stateMachine.getCarrier().sendActivateFlowMonitoring(null);
             }
         }
     }
@@ -103,5 +113,13 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowUpdateFsm, St
                 && originalSubFlow.getEndpointPort() == targetSubFlow.getEndpointPort()
                 && originalSubFlow.getEndpointVlan() == targetSubFlow.getEndpointVlan()
                 && originalSubFlow.getEndpointInnerVlan() == targetSubFlow.getEndpointInnerVlan());
+    }
+
+    private HaFlow mapToTargetHaFlow(HaFlowRequest targetHaFlowRequest) {
+        HaFlow target = HaFlowMapper.INSTANCE.toHaFlow(targetHaFlowRequest);
+        target.setHaSubFlows(targetHaFlowRequest.getSubFlows().stream()
+                .map(HaFlowMapper.INSTANCE::toSubFlow)
+                .collect(Collectors.toSet()));
+        return target;
     }
 }

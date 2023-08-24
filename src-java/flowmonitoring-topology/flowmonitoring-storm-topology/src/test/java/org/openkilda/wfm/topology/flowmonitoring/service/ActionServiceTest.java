@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.flowmonitoring.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -49,16 +49,16 @@ import org.openkilda.wfm.topology.flowmonitoring.bolt.FlowOperationsCarrier;
 import org.openkilda.wfm.topology.flowmonitoring.fsm.FlowLatencyMonitoringFsm;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.util.Arrays;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class ActionServiceTest extends InMemoryGraphBasedTest {
 
     private static final Duration NANOSECOND = Duration.ofNanos(1);
@@ -83,7 +83,7 @@ public class ActionServiceTest extends InMemoryGraphBasedTest {
     private FlowOperationsCarrier carrier;
     private ManualClock clock = new ManualClock();
 
-    @Before
+    @BeforeEach
     public void setup() {
         FlowDefaults flowDefaults = new FlowDefaults();
         flowDefaults.setPathComputationStrategy(PathComputationStrategy.LATENCY);

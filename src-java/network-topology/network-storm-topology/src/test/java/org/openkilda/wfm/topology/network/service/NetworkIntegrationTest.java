@@ -28,14 +28,12 @@ import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 
 import com.google.common.collect.ImmutableList;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.net.Inet4Address;
 import java.net.InetSocketAddress;
@@ -44,15 +42,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class NetworkIntegrationTest {
     private static final long MAX_SPEED = 10000000;
     private static final long CURRENT_SPEED = 99999;
 
     private static PersistenceManager persistenceManager;
 
-    @ClassRule
-    public static TemporaryFolder fsData = new TemporaryFolder();
 
     private static final NetworkOptions options = NetworkOptions.builder()
             .bfdEnabled(true)
@@ -85,19 +81,19 @@ public class NetworkIntegrationTest {
         // This constructor is required to define exception list for field initializers.
     }
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpOnce() {
         persistenceManager = InMemoryGraphPersistenceManager.newInstance();
         persistenceManager.install();
     }
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         integrationCarrier = new NetworkIntegrationCarrier(options, persistenceManager);
     }
 
     @Test
-    @Ignore
+    @Disabled
     public void switchAdd() {
         Set<SwitchFeature> features = new HashSet<>();
         features.add(SwitchFeature.BFD);

@@ -15,9 +15,6 @@
 
 package org.openkilda.persistence.ferma.frames;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-
 import org.openkilda.model.IpSocketAddress;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
@@ -28,8 +25,9 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import net.jodah.failsafe.function.CheckedSupplier;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -37,7 +35,7 @@ import java.time.Instant;
 public class TimeModifyPropertyOnFramesTest extends InMemoryGraphBasedTest {
     private SwitchRepository switchRepository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
     }
@@ -53,7 +51,7 @@ public class TimeModifyPropertyOnFramesTest extends InMemoryGraphBasedTest {
 
         Instant timeModifyAfter = switchRepository.findById(new SwitchId(1)).get().getTimeModify();
 
-        assertNotEquals(timeModifyBefore, timeModifyAfter);
+        Assertions.assertNotEquals(timeModifyBefore, timeModifyAfter);
     }
 
     @Test
@@ -67,7 +65,7 @@ public class TimeModifyPropertyOnFramesTest extends InMemoryGraphBasedTest {
 
         Instant timeModifyAfter = switchRepository.findById(new SwitchId(1)).get().getTimeModify();
 
-        assertNotEquals(timeModifyBefore, timeModifyAfter);
+        Assertions.assertNotEquals(timeModifyBefore, timeModifyAfter);
     }
 
     @Test
@@ -80,7 +78,7 @@ public class TimeModifyPropertyOnFramesTest extends InMemoryGraphBasedTest {
 
         Instant timeModifyAfter = switchRepository.findById(new SwitchId(1)).get().getTimeModify();
 
-        assertNotEquals(timeModifyBefore, timeModifyAfter);
+        Assertions.assertNotEquals(timeModifyBefore, timeModifyAfter);
     }
 
     @Test
@@ -95,7 +93,7 @@ public class TimeModifyPropertyOnFramesTest extends InMemoryGraphBasedTest {
 
         Instant timeModifyAfter = switchRepository.findById(new SwitchId(1)).get().getTimeModify();
 
-        assertEquals(timeModifyBefore, timeModifyAfter);
+        Assertions.assertEquals(timeModifyBefore, timeModifyAfter);
     }
 
     @Test
@@ -110,7 +108,7 @@ public class TimeModifyPropertyOnFramesTest extends InMemoryGraphBasedTest {
 
         Instant timeModifyAfter = switchRepository.findById(new SwitchId(1)).get().getTimeModify();
 
-        assertEquals(timeModifyBefore, timeModifyAfter);
+        Assertions.assertEquals(timeModifyBefore, timeModifyAfter);
     }
 
 
@@ -126,12 +124,12 @@ public class TimeModifyPropertyOnFramesTest extends InMemoryGraphBasedTest {
 
         Instant timeModifyAfter = switchRepository.findById(new SwitchId(1)).get().getTimeModify();
 
-        assertEquals(timeModifyBefore, timeModifyAfter);
+        Assertions.assertEquals(timeModifyBefore, timeModifyAfter);
     }
 
     private void waitUntilNowIsAfter(Instant before) {
         Failsafe.with(new RetryPolicy<Instant>().withDelay(Duration.ofMillis(1))
-                .handleResultIf(result -> !before.isBefore(result)))
+                        .handleResultIf(result -> !before.isBefore(result)))
                 .get((CheckedSupplier<Instant>) Instant::now);
     }
 }

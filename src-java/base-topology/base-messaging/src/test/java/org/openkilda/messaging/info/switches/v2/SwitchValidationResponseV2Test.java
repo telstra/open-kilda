@@ -15,9 +15,8 @@
 
 package org.openkilda.messaging.info.switches.v2;
 
-import static org.junit.Assert.assertEquals;
-
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
@@ -34,9 +33,9 @@ public class SwitchValidationResponseV2Test {
                 .build();
 
         List<SwitchValidationResponseV2> list = response.split(1);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         SwitchValidationResponseV2 united = SwitchValidationResponseV2.unite(list);
-        assertEquals(response, united);
+        Assertions.assertEquals(response, united);
     }
 
     @Test
@@ -50,9 +49,9 @@ public class SwitchValidationResponseV2Test {
                 .build();
 
         List<SwitchValidationResponseV2> list = response.split(1);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         SwitchValidationResponseV2 united = SwitchValidationResponseV2.unite(list);
-        assertEquals(response, united);
+        Assertions.assertEquals(response, united);
     }
 
     @Test
@@ -66,9 +65,9 @@ public class SwitchValidationResponseV2Test {
                 .build();
 
         List<SwitchValidationResponseV2> list = response.split(1000);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         SwitchValidationResponseV2 united = SwitchValidationResponseV2.unite(list);
-        assertEquals(response, united);
+        Assertions.assertEquals(response, united);
     }
 
     @Test
@@ -82,9 +81,9 @@ public class SwitchValidationResponseV2Test {
                 .build();
 
         List<SwitchValidationResponseV2> list = response.split(32);
-        assertEquals(1, list.size());
+        Assertions.assertEquals(1, list.size());
         SwitchValidationResponseV2 united = SwitchValidationResponseV2.unite(list);
-        assertEquals(response, united);
+        Assertions.assertEquals(response, united);
     }
 
     @Test
@@ -98,9 +97,9 @@ public class SwitchValidationResponseV2Test {
                 .build();
 
         List<SwitchValidationResponseV2> list = response.split(1);
-        assertEquals(176, list.size());
+        Assertions.assertEquals(176, list.size());
         SwitchValidationResponseV2 united = SwitchValidationResponseV2.unite(list);
-        assertEquals(response, united);
+        Assertions.assertEquals(response, united);
     }
 
     @Test
@@ -114,9 +113,9 @@ public class SwitchValidationResponseV2Test {
                 .build();
 
         List<SwitchValidationResponseV2> list = response.split(3);
-        assertEquals(59, list.size());
+        Assertions.assertEquals(59, list.size());
         SwitchValidationResponseV2 united = SwitchValidationResponseV2.unite(list);
-        assertEquals(response, united);
+        Assertions.assertEquals(response, united);
     }
 
     @Test
@@ -130,9 +129,9 @@ public class SwitchValidationResponseV2Test {
                 .build();
 
         List<SwitchValidationResponseV2> list = response.split(500);
-        assertEquals(4, list.size());
+        Assertions.assertEquals(4, list.size());
         SwitchValidationResponseV2 united = SwitchValidationResponseV2.unite(list);
-        assertEquals(response, united);
+        Assertions.assertEquals(response, united);
     }
 
     @Test
@@ -146,9 +145,9 @@ public class SwitchValidationResponseV2Test {
                 .build();
 
         List<SwitchValidationResponseV2> list = response.split(1);
-        assertEquals(1776, list.size());
+        Assertions.assertEquals(1776, list.size());
         SwitchValidationResponseV2 united = SwitchValidationResponseV2.unite(list);
-        assertEquals(response, united);
+        Assertions.assertEquals(response, united);
     }
 
     private MetersValidationEntryV2 buildMeterEntry(

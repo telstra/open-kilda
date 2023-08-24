@@ -16,8 +16,6 @@
 package org.openkilda.wfm.topology.isllatency.bolts;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
 import static org.openkilda.wfm.topology.isllatency.bolts.IslStatsBolt.LATENCY_METRIC_NAME;
 
 import org.openkilda.messaging.Utils;
@@ -26,9 +24,9 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.error.JsonEncodeException;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.List;
@@ -55,9 +53,6 @@ public class IslStatsBoltTest {
     private static final String METRIC_PREFIX = "kilda.";
     private IslStatsBolt statsBolt = new IslStatsBolt(METRIC_PREFIX, 100);
 
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
-
     @Test
     public void buildTsdbTupleFromIslOneWayLatency() throws JsonEncodeException, IOException {
         List<Object> tsdbTuple = statsBolt.buildTsdbTuple(
@@ -66,17 +61,17 @@ public class IslStatsBoltTest {
     }
 
     private void assertTsdbTuple(List<Object> tsdbTuple) throws java.io.IOException {
-        assertThat(tsdbTuple.size(), is(1));
+        MatcherAssert.assertThat(tsdbTuple.size(), is(1));
 
         Datapoint datapoint = Utils.MAPPER.readValue(tsdbTuple.get(0).toString(), Datapoint.class);
-        assertEquals(METRIC_PREFIX + LATENCY_METRIC_NAME, datapoint.getMetric());
-        assertEquals((Long) TIMESTAMP, datapoint.getTime());
-        assertEquals(LATENCY, datapoint.getValue());
+        Assertions.assertEquals(METRIC_PREFIX + LATENCY_METRIC_NAME, datapoint.getMetric());
+        Assertions.assertEquals((Long) TIMESTAMP, datapoint.getTime());
+        Assertions.assertEquals(LATENCY, datapoint.getValue());
 
         Map<String, String> pathNode = datapoint.getTags();
-        assertEquals(SWITCH1_ID_OTSD_FORMAT, pathNode.get("src_switch"));
-        assertEquals(SWITCH2_ID_OTSD_FORMAT, pathNode.get("dst_switch"));
-        assertEquals(SWITCH1_PORT, Integer.parseInt(pathNode.get("src_port")));
-        assertEquals(SWITCH2_PORT, Integer.parseInt(pathNode.get("dst_port")));
+        Assertions.assertEquals(SWITCH1_ID_OTSD_FORMAT, pathNode.get("src_switch"));
+        Assertions.assertEquals(SWITCH2_ID_OTSD_FORMAT, pathNode.get("dst_switch"));
+        Assertions.assertEquals(SWITCH1_PORT, Integer.parseInt(pathNode.get("src_port")));
+        Assertions.assertEquals(SWITCH2_PORT, Integer.parseInt(pathNode.get("dst_port")));
     }
 }

@@ -42,9 +42,9 @@ import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPacket;
 import org.easymock.Mock;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.protocol.OFPacketIn;
@@ -66,7 +66,7 @@ public class PingResponseCommandTest extends PingCommandTest {
     private IOFSwitch iofSwitch;
 
     @Override
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
 
@@ -124,8 +124,8 @@ public class PingResponseCommandTest extends PingCommandTest {
 
         final DatapathId dpIdBeta = DatapathId.of(0x0000fffe000002L);
         final Ping ping = new Ping(new NetworkEndpoint(new SwitchId(dpIdBeta.getLong()), 8),
-                                   new NetworkEndpoint(new SwitchId(dpId.getLong()), 9),
-                                   new FlowTransitEncapsulation(2, FlowEncapsulationType.TRANSIT_VLAN), 3);
+                new NetworkEndpoint(new SwitchId(dpId.getLong()), 9),
+                new FlowTransitEncapsulation(2, FlowEncapsulationType.TRANSIT_VLAN), 3);
         final PingData payload = PingData.of(ping);
 
         moduleContext.addConfigParam(new PathVerificationService(), "hmac256-secret", "secret");
@@ -143,7 +143,7 @@ public class PingResponseCommandTest extends PingCommandTest {
 
         FloodlightContext metadata = new FloodlightContext();
         IPacket decodedEthernet = new Ethernet().deserialize(wireData, 0, wireData.length);
-        Assert.assertTrue(decodedEthernet instanceof Ethernet);
+        Assertions.assertTrue(decodedEthernet instanceof Ethernet);
         IFloodlightProviderService.bcStore.put(
                 metadata, IFloodlightProviderService.CONTEXT_PI_PAYLOAD, (Ethernet) decodedEthernet);
         OfInput input = new OfInput(iofSwitch, message, metadata);
@@ -152,13 +152,13 @@ public class PingResponseCommandTest extends PingCommandTest {
         command.call();
 
         final List<Message> replies = kafkaMessageCatcher.getValues();
-        Assert.assertEquals(1, replies.size());
+        Assertions.assertEquals(1, replies.size());
         InfoMessage response = (InfoMessage) replies.get(0);
         PingResponse pingResponse = (PingResponse) response.getData();
 
-        Assert.assertNull(pingResponse.getError());
-        Assert.assertNotNull(pingResponse.getMeters());
-        Assert.assertEquals(payload.getPingId(), pingResponse.getPingId());
+        Assertions.assertNull(pingResponse.getError());
+        Assertions.assertNotNull(pingResponse.getMeters());
+        Assertions.assertEquals(payload.getPingId(), pingResponse.getPingId());
     }
 
     private PingResponseCommand makeCommand(OfInput input) {
@@ -166,7 +166,7 @@ public class PingResponseCommandTest extends PingCommandTest {
     }
 
     private void expectSkip(PingResponseCommand command) throws Exception {
-        Assert.assertNull(command.call());
-        Assert.assertFalse(kafkaMessageCatcher.hasCaptured());
+        Assertions.assertNull(command.call());
+        Assertions.assertFalse(kafkaMessageCatcher.hasCaptured());
     }
 }

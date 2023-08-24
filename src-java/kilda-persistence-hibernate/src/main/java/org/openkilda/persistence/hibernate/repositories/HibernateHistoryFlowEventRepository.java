@@ -29,6 +29,7 @@ import org.openkilda.persistence.hibernate.entities.history.HibernateFlowEvent;
 import org.openkilda.persistence.hibernate.entities.history.HibernateFlowEventAction;
 import org.openkilda.persistence.hibernate.entities.history.HibernateFlowEventDump;
 import org.openkilda.persistence.hibernate.entities.history.HibernateFlowEvent_;
+import org.openkilda.persistence.hibernate.utils.UniqueKeyUtil;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 
 import java.time.Instant;
@@ -85,11 +86,12 @@ public class HibernateHistoryFlowEventRepository
     }
 
     /**
-     * Fetch and return hibernate {@link HibernateFlowEvent} entity, dedicated to use by others hibernate repositories.
+     * Fetch and return hibernate {@link HibernateFlowEvent} entity. Dedicated to use by other hibernate repositories.
      * NOTE: taskId field has no index, but taskIdUniqueKey has, so to find FlowEvent by taskId we will use unique key
      */
     public Optional<HibernateFlowEvent> findEntityByTaskId(String taskId) {
-        String taskIdKey = HibernateFlowEvent.makeTaskIdUniqueKey(taskId);
+        // TODO replace this code with UniqueKeyUtil::findEntityUsingTaskIdUniqueKey implementation
+        String taskIdKey = UniqueKeyUtil.makeTaskIdUniqueKey(taskId);
         CriteriaBuilder builder = getSession().getCriteriaBuilder();
         CriteriaQuery<HibernateFlowEvent> query = builder.createQuery(HibernateFlowEvent.class);
         Root<HibernateFlowEvent> root = query.from(HibernateFlowEvent.class);

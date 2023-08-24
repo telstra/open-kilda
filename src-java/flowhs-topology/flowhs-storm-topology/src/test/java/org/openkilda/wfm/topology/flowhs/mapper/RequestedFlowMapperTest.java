@@ -15,9 +15,9 @@
 
 package org.openkilda.wfm.topology.flowhs.mapper;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.model.DetectConnectedDevicesDto;
@@ -31,7 +31,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class RequestedFlowMapperTest {
 
@@ -123,8 +123,8 @@ public class RequestedFlowMapperTest {
         assertTrue(requestedFlow.isAllocateProtectedPath());
         assertTrue(requestedFlow.isIgnoreBandwidth());
         assertTrue(requestedFlow.isPeriodicPings());
-        assertEquals(new DetectConnectedDevices(true, true, true, true, true, true, true, true),
-                requestedFlow.getDetectConnectedDevices());
+        assertEquals(new DetectConnectedDevices(true, true, true, true, true, true,
+                true, true), requestedFlow.getDetectConnectedDevices());
     }
 
     @Test
@@ -148,8 +148,8 @@ public class RequestedFlowMapperTest {
         assertTrue(requestedFlow.isAllocateProtectedPath());
         assertTrue(requestedFlow.isIgnoreBandwidth());
         assertTrue(requestedFlow.isPeriodicPings());
-        assertEquals(new DetectConnectedDevices(true, true, true, true, true, true, true, true),
-                requestedFlow.getDetectConnectedDevices());
+        assertEquals(new DetectConnectedDevices(true, true, true, true, true, true,
+                true, true), requestedFlow.getDetectConnectedDevices());
 
         Flow mappedFlow = RequestedFlowMapper.INSTANCE.toFlow(requestedFlow);
         assertEquals(flow, mappedFlow);
@@ -203,9 +203,8 @@ public class RequestedFlowMapperTest {
 
         assertTrue(result.isPinned());
 
-        assertEquals(
-                new org.openkilda.model.DetectConnectedDevices(true, true, true, true, true, true, true, true),
-                result.getDetectConnectedDevices());
+        assertEquals(new org.openkilda.model.DetectConnectedDevices(true, true, true, true, true,
+                true, true, true), result.getDetectConnectedDevices());
 
         assertEquals(PATH_COMPUTATION_STRATEGY, result.getPathComputationStrategy());
         assertNull(result.getTargetPathComputationStrategy());
@@ -243,9 +242,8 @@ public class RequestedFlowMapperTest {
 
         assertEquals(ENCAPSULATION_TYPE, result.getFlowEncapsulationType());
         assertEquals(PATH_COMPUTATION_STRATEGY, result.getPathComputationStrategy());
-        assertEquals(
-                new DetectConnectedDevices(true, true, true, true, true, true, true, true),
-                result.getDetectConnectedDevices());
+        assertEquals(new DetectConnectedDevices(true, true, true, true, true, true,
+                true, true), result.getDetectConnectedDevices());
     }
 
     @Test
@@ -269,8 +267,8 @@ public class RequestedFlowMapperTest {
         assertTrue(flowRequest.isAllocateProtectedPath());
         assertTrue(flowRequest.isIgnoreBandwidth());
         assertTrue(flowRequest.isPeriodicPings());
-        assertEquals(new DetectConnectedDevicesDto(true, true, true, true, true, true, true, true),
-                flowRequest.getDetectConnectedDevices());
+        assertEquals(new DetectConnectedDevicesDto(true, true, true, true, true, true,
+                true, true), flowRequest.getDetectConnectedDevices());
     }
 
     @Test

@@ -15,7 +15,7 @@
 
 package org.openkilda.persistence.ferma.repositories;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.KildaConfiguration;
@@ -23,13 +23,13 @@ import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class FermaKildaConfigurationRepositoryTest extends InMemoryGraphBasedTest {
     static KildaConfigurationRepository kildaConfigurationRepository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
     }

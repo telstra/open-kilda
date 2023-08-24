@@ -15,9 +15,7 @@
 
 package org.openkilda.rulemanager.factory.generator.service.isl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
 import static org.openkilda.rulemanager.Constants.Priority.ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE;
 import static org.openkilda.rulemanager.Constants.STUB_VXLAN_UDP_SRC;
@@ -41,8 +39,9 @@ import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.List;
@@ -54,7 +53,7 @@ public class EgressIslVxlanRuleGeneratorTest {
 
     private EgressIslVxlanRuleGenerator generator;
 
-    @Before
+    @BeforeEach
     public void setup() {
         generator = EgressIslVxlanRuleGenerator.builder()
                 .islPort(ISL_PORT)
@@ -71,7 +70,7 @@ public class EgressIslVxlanRuleGeneratorTest {
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
         assertEquals(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES, ISL_PORT),
                 flowCommandData.getCookie());
@@ -96,7 +95,7 @@ public class EgressIslVxlanRuleGeneratorTest {
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
         assertEquals(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES, ISL_PORT),
                 flowCommandData.getCookie());
@@ -109,7 +108,7 @@ public class EgressIslVxlanRuleGeneratorTest {
 
         FieldMatch ethTypeMatch = getMatchByField(Field.ETH_TYPE, match);
         assertEquals(EthType.IPv4, ethTypeMatch.getValue());
-        assertFalse(ethTypeMatch.isMasked());
+        Assertions.assertFalse(ethTypeMatch.isMasked());
 
         Instructions instructions = flowCommandData.getInstructions();
         assertEquals(OfTable.EGRESS, instructions.getGoToTable());
@@ -120,32 +119,32 @@ public class EgressIslVxlanRuleGeneratorTest {
         Switch sw = buildSwitch("OF_13", Collections.emptySet());
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertTrue(commands.isEmpty());
+        Assertions.assertTrue(commands.isEmpty());
     }
 
     private void checkMatch(Set<FieldMatch> match, SwitchId switchId) {
         FieldMatch ethDstMatch = getMatchByField(Field.ETH_DST, match);
         assertEquals(switchId.toLong(), ethDstMatch.getValue());
-        assertFalse(ethDstMatch.isMasked());
+        Assertions.assertFalse(ethDstMatch.isMasked());
 
         FieldMatch ethTypeMatch = getMatchByField(Field.ETH_TYPE, match);
         assertEquals(EthType.IPv4, ethTypeMatch.getValue());
-        assertFalse(ethTypeMatch.isMasked());
+        Assertions.assertFalse(ethTypeMatch.isMasked());
 
         FieldMatch ipProtoMatch = getMatchByField(Field.IP_PROTO, match);
         assertEquals(IpProto.UDP, ipProtoMatch.getValue());
-        assertFalse(ipProtoMatch.isMasked());
+        Assertions.assertFalse(ipProtoMatch.isMasked());
 
         FieldMatch inPortMatch = getMatchByField(Field.IN_PORT, match);
         assertEquals(ISL_PORT, inPortMatch.getValue());
-        assertFalse(inPortMatch.isMasked());
+        Assertions.assertFalse(inPortMatch.isMasked());
 
         FieldMatch udpSrcMatch = getMatchByField(Field.UDP_SRC, match);
         assertEquals(STUB_VXLAN_UDP_SRC, udpSrcMatch.getValue());
-        assertFalse(udpSrcMatch.isMasked());
+        Assertions.assertFalse(udpSrcMatch.isMasked());
 
         FieldMatch udpDstMatch = getMatchByField(Field.UDP_DST, match);
         assertEquals(VXLAN_UDP_DST, udpDstMatch.getValue());
-        assertFalse(udpDstMatch.isMasked());
+        Assertions.assertFalse(udpDstMatch.isMasked());
     }
 }

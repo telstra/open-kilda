@@ -39,6 +39,8 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.AvailableNetworkFactory;
+import org.openkilda.pce.DiverseWeightsProcessor;
+import org.openkilda.pce.FlowParameters;
 import org.openkilda.pce.GetHaPathsResult;
 import org.openkilda.pce.GetPathsResult;
 import org.openkilda.pce.HaPath;
@@ -61,6 +63,8 @@ import org.openkilda.pce.model.PathWeight.Penalty;
 import org.openkilda.pce.model.WeightFunction;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -98,6 +102,31 @@ public class InMemoryPathComputer implements PathComputer {
         this.availableNetworkFactory = availableNetworkFactory;
         this.pathFinder = pathFinder;
         this.config = config;
+    }
+
+    @Override
+    public GetPathsResult getProtectedPath(Flow flow, Collection<PathId> reusePathsResources) {
+        try {
+            AvailableNetwork network =
+                    availableNetworkFactory.getAvailableNetwork(flow, reusePathsResources);
+
+            DiverseWeightsProcessor.processDiversityPenalties(new FlowParameters(flow),
+                    network, Lists.newArrayList(flow.getForwardPath(), flow.getReversePath()));
+
+            GetPathsResult pathsResult = getPath(network, new RequestedPath(flow), true);
+            log.debug("getProtectedPath: {}", pathsResult);
+
+            return pathsResult;
+        } catch (UnroutableFlowException e) {
+            if (e.getFailReason() == null || e.getFailReason().isEmpty()) {
+                return GetPathsResult.builder().failReasons(ImmutableMap.of(FailReasonType.UNROUTABLE_FLOW,
+                        new FailReason(FailReasonType.UNROUTABLE_FLOW, e.getMessage()))).build();
+            }
+            return GetPathsResult.builder().failReasons(e.getFailReason()).build();
+        } catch (RecoverableException e) {
+            return GetPathsResult.builder().failReasons(ImmutableMap.of(FailReasonType.PERSISTENCE_ERROR,
+                    new FailReason(FailReasonType.PERSISTENCE_ERROR))).build();
+        }
     }
 
     @Override

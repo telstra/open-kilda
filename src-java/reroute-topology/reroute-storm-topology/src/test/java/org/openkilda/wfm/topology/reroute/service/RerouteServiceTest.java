@@ -18,14 +18,15 @@ package org.openkilda.wfm.topology.reroute.service;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -73,12 +74,12 @@ import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.topology.reroute.bolts.MessageSender;
 import org.openkilda.wfm.topology.reroute.model.FlowThrottlingData;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -88,7 +89,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class RerouteServiceTest {
 
     private static final SwitchId SWITCH_ID_A = new SwitchId(1L);
@@ -154,15 +155,15 @@ public class RerouteServiceTest {
     @Mock
     MessageSender carrier;
 
-    @Before
+    @BeforeEach
     public void setup() throws Throwable {
-        doAnswer(invocation -> {
+        lenient().doAnswer(invocation -> {
             TransactionCallbackWithoutResult<?> arg = invocation.getArgument(0);
             arg.doInTransaction();
             return null;
         }).when(transactionManager).doInTransaction(Mockito.<TransactionCallbackWithoutResult<?>>any());
 
-        doAnswer(invocation -> {
+        lenient().doAnswer(invocation -> {
             TransactionCallback<?, ?> arg = invocation.getArgument(0);
             return arg.doInTransaction();
         }).when(transactionManager).doInTransaction(Mockito.<TransactionCallback<?, ?>>any());
@@ -435,8 +436,8 @@ public class RerouteServiceTest {
         rerouteService.processSingleSwitchFlowStatusUpdate(
                 new SwitchStateChanged(oneSwitchFlow.getSrcSwitchId(), SwitchStatus.INACTIVE));
 
-        assertEquals(format("Switch %s is inactive", oneSwitchFlow.getSrcSwitchId()),
-                FlowStatus.DOWN, oneSwitchFlow.getStatus());
+        assertEquals(FlowStatus.DOWN, oneSwitchFlow.getStatus(),
+                format("Switch %s is inactive", oneSwitchFlow.getSrcSwitchId()));
     }
 
     @Test

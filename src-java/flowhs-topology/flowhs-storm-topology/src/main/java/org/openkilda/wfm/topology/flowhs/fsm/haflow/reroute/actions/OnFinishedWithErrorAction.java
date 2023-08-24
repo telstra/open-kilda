@@ -22,6 +22,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,7 +42,12 @@ public class OnFinishedWithErrorAction extends
     public void perform(
             State from, State to, Event event, HaFlowRerouteContext context, HaFlowRerouteFsm stateMachine) {
         dashboardLogger.onFailedHaFlowReroute(stateMachine.getHaFlowId(), stateMachine.getErrorReason());
-        stateMachine.saveActionToHistory("Failed to reroute the HA-flow", stateMachine.getErrorReason());
+        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction("Failed to reroute the HA-flow")
+                .withDescription(stateMachine.getErrorReason())
+                .withHaFlowId(stateMachine.getHaFlowId()));
+
         log.info("HA-flow {} reroute result failed with error {}", stateMachine.getHaFlowId(),
                 stateMachine.getRerouteError());
         carrier.sendRerouteResultStatus(stateMachine.getHaFlowId(), stateMachine.getRerouteError(),

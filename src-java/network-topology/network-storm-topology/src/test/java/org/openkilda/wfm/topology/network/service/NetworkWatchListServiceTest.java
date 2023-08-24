@@ -16,8 +16,7 @@
 package org.openkilda.wfm.topology.network.service;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -29,25 +28,27 @@ import static org.mockito.Mockito.verify;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.model.Endpoint;
 
-import org.junit.Before;
-import org.junit.runner.RunWith;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class NetworkWatchListServiceTest {
 
     @Mock
     IWatchListCarrier carrier;
 
-    @Before
+    @BeforeEach
     public void setup() {
         reset(carrier);
     }
 
-    @org.junit.Test
+    @Test
     public void addWatch() {
 
         NetworkWatchListService s = new NetworkWatchListService(carrier, 10, 20, 30);
@@ -58,13 +59,13 @@ public class NetworkWatchListServiceTest {
         s.addWatch(Endpoint.of(new SwitchId(2), 1), 2);
         s.addWatch(Endpoint.of(new SwitchId(2), 2), 3);
 
-        assertThat(s.getEndpoints().size(), is(4));
-        assertThat(s.getTimeouts().size(), is(3));
+        MatcherAssert.assertThat(s.getEndpoints().size(), is(4));
+        MatcherAssert.assertThat(s.getTimeouts().size(), is(3));
 
         verify(carrier, times(4)).discoveryRequest(any(Endpoint.class), anyLong());
     }
 
-    @org.junit.Test
+    @Test
     public void removeWatch() {
         NetworkWatchListService s = new NetworkWatchListService(carrier, 10, 20, 30);
 
@@ -72,23 +73,23 @@ public class NetworkWatchListServiceTest {
         s.addWatch(Endpoint.of(new SwitchId(1), 2), 1);
         s.addWatch(Endpoint.of(new SwitchId(2), 1), 11);
 
-        assertThat(s.getEndpoints().size(), is(3));
+        MatcherAssert.assertThat(s.getEndpoints().size(), is(3));
 
         s.removeWatch(Endpoint.of(new SwitchId(1), 1));
         s.removeWatch(Endpoint.of(new SwitchId(1), 2));
         s.removeWatch(Endpoint.of(new SwitchId(2), 1));
 
-        assertThat(s.getEndpoints().size(), is(0));
-        assertThat(s.getTimeouts().size(), is(2));
+        MatcherAssert.assertThat(s.getEndpoints().size(), is(0));
+        MatcherAssert.assertThat(s.getTimeouts().size(), is(2));
 
         s.tick(100);
 
-        assertThat(s.getTimeouts().size(), is(0));
+        MatcherAssert.assertThat(s.getTimeouts().size(), is(0));
 
         verify(carrier, times(3)).discoveryRequest(any(Endpoint.class), anyLong());
     }
 
-    @org.junit.Test
+    @Test
     public void tick() {
         NetworkWatchListService s = new NetworkWatchListService(carrier, 10, 20, 30);
 
@@ -106,7 +107,7 @@ public class NetworkWatchListServiceTest {
         verify(carrier, times(10)).discoveryRequest(eq(Endpoint.of(new SwitchId(2), 2)), anyLong());
     }
 
-    @org.junit.Test
+    @Test
     public void enableSlowPollFlags() {
         NetworkWatchListService s = new NetworkWatchListService(carrier, 10, 20, 30);
 
@@ -129,7 +130,7 @@ public class NetworkWatchListServiceTest {
                 longThat(time -> Arrays.asList(1L, 11L, 41L, 71L).contains(time)));
     }
 
-    @org.junit.Test
+    @Test
     public void disableSlowPollFlags() {
         NetworkWatchListService s = new NetworkWatchListService(carrier, 10, 15, 30);
 
@@ -161,7 +162,7 @@ public class NetworkWatchListServiceTest {
                 longThat(time -> Arrays.asList(1L, 11L, 41L, 66L, 81L, 96L).contains(time)));
     }
 
-    @org.junit.Test
+    @Test
     public void calculateTimeout() {
         long genericTimeout = 10L;
         long exhaustedTimeout = 15L;

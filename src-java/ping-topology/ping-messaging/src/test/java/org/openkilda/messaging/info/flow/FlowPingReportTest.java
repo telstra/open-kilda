@@ -15,14 +15,15 @@
 
 package org.openkilda.messaging.info.flow;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.PingReport;
 import org.openkilda.messaging.model.PingReport.State;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class FlowPingReportTest {
     StringSerializer serializer = new StringSerializer();
@@ -37,9 +38,7 @@ public class FlowPingReportTest {
         InfoMessage decodedWrapper = (InfoMessage) serializer.deserialize();
         InfoData decoded = decodedWrapper.getData();
 
-        Assert.assertEquals(
-                String.format("%s object have been mangled in serialisation/deserialization loop",
-                        origin.getClass().getName()),
-                origin, decoded);
+        assertEquals(origin, decoded, String.format("%s object have been mangled in serialisation/deserialization loop",
+                origin.getClass().getName()));
     }
 }

@@ -19,8 +19,8 @@ import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.info.InfoMessage;
 
 import com.google.common.collect.Sets;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class LagPortResponseTest {
     StringSerializer serializer = new StringSerializer();
@@ -34,7 +34,7 @@ public class LagPortResponseTest {
         InfoMessage reconstructedMessage = (InfoMessage) serializer.deserialize();
         LagPortResponse reconstructed = (LagPortResponse) reconstructedMessage.getData();
 
-        Assert.assertEquals(origin, reconstructed);
+        Assertions.assertEquals(origin, reconstructed);
     }
 
     public static LagPortResponse makeResponse() {

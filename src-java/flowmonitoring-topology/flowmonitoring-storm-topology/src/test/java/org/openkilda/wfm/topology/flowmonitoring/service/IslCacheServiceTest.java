@@ -15,9 +15,9 @@
 
 package org.openkilda.wfm.topology.flowmonitoring.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.IslStatus.ACTIVE;
 
@@ -32,18 +32,18 @@ import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.wfm.topology.flowmonitoring.model.Link;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class IslCacheServiceTest extends InMemoryGraphBasedTest {
     private static final Duration ISL_RTT_LATENCY_EXPIRATION = Duration.ofSeconds(2);
 
@@ -69,7 +69,7 @@ public class IslCacheServiceTest extends InMemoryGraphBasedTest {
 
     private IslCacheService service;
 
-    @Before
+    @BeforeEach
     public void setup() {
         islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
 

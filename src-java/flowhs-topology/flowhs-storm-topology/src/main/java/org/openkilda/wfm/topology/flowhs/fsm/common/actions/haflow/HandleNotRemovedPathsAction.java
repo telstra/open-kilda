@@ -21,6 +21,8 @@ import org.openkilda.model.PathId;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -46,13 +48,20 @@ public class HandleNotRemovedPathsAction<T extends HaFlowPathSwappingFsm<T, S, E
 
         for (PathId subPathId : subPathIds) {
             if (subPathId != null) {
-                stateMachine.saveErrorToHistory(format("Failed to remove the ha sub path %s", subPathId));
+                saveErrorToHistory(stateMachine, format("Failed to remove the ha sub path %s", subPathId));
             }
         }
         for (PathId haFlowPathId : haFlowPathIds) {
             if (haFlowPathId != null) {
-                stateMachine.saveErrorToHistory(format("Failed to remove the ha flow path %s", haFlowPathId));
+                saveErrorToHistory(stateMachine, format("Failed to remove the ha flow path %s", haFlowPathId));
             }
         }
+    }
+
+    private void saveErrorToHistory(T stateMachine, String action) {
+        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .withAction(action)
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
 }

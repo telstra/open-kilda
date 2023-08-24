@@ -16,9 +16,9 @@
 package org.openkilda.persistence.ferma.repositories;
 
 import static java.util.Arrays.asList;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
-import static org.junit.Assert.assertThat;
 
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
@@ -29,8 +29,8 @@ import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
@@ -40,7 +40,7 @@ public class FermaPathSegmentRepositoryTest extends InMemoryGraphBasedTest {
     PathSegmentRepository pathSegmentRepository;
     FlowPathRepository flowPathRepository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         pathSegmentRepository = repositoryFactory.createPathSegmentRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();

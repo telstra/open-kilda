@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.service.lacp;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
@@ -33,8 +33,8 @@ import org.openkilda.floodlight.shared.packet.Lacp.State;
 import org.openkilda.floodlight.test.standard.PacketTestBase;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.projectfloodlight.openflow.types.MacAddress;
 
@@ -53,7 +53,7 @@ public class LacpServiceTest extends PacketTestBase {
 
     LacpService service;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         service = new LacpService();
         KafkaChannel kafkaChannel = mock(KafkaChannel.class);

@@ -16,8 +16,9 @@
 package org.openkilda.wfm.share.flow.resources.transitvlan;
 
 import static java.lang.String.format;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
@@ -28,9 +29,8 @@ import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.share.flow.resources.ResourceNotAvailableException;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -53,7 +53,7 @@ public class TransitVlanPoolTest extends InMemoryGraphBasedTest {
     private TransitVlanPool transitVlanPool;
     private TransitVlanRepository transitVlanRepository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         transitVlanPool = new TransitVlanPool(persistenceManager, MIN_TRANSIT_VLAN, MAX_TRANSIT_VLAN, 1);
         transitVlanRepository = persistenceManager.getRepositoryFactory().createTransitVlanRepository();
@@ -74,16 +74,16 @@ public class TransitVlanPoolTest extends InMemoryGraphBasedTest {
         });
     }
 
-    @Test(expected = ResourceNotAvailableException.class)
+    @Test
     public void vlanPoolFullTest() {
-        transactionManager.doInTransaction(() -> {
+        assertThrows(ResourceNotAvailableException.class, () -> transactionManager.doInTransaction(() -> {
             for (int i = MIN_TRANSIT_VLAN; i <= MAX_TRANSIT_VLAN + 1; i++) {
                 assertTrue(transitVlanPool.allocate(
                         format("flow_%d", i),
                         new PathId(format("path_%d", i)),
                         new PathId(format("opposite_dummy_%d", i))).getTransitVlan().getVlan() > 0);
             }
-        });
+        }));
     }
 
     @Test
@@ -96,7 +96,7 @@ public class TransitVlanPoolTest extends InMemoryGraphBasedTest {
 
             TransitVlan reverse = transitVlanPool.allocate(FLOW_ID_1, reversePathId, forwardPathId)
                     .getTransitVlan();
-            Assert.assertEquals(forward, reverse);
+            assertEquals(forward, reverse);
         });
     }
 

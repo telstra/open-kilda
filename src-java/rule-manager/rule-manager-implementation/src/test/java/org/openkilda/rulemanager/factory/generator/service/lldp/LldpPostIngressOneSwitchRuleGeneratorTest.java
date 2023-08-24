@@ -15,8 +15,8 @@
 
 package org.openkilda.rulemanager.factory.generator.service.lldp;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.PKTPS_FLAG;
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE;
@@ -30,13 +30,13 @@ import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.rulemanager.utils.RoutingMetadata;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 
 import java.util.Set;
 
 public class LldpPostIngressOneSwitchRuleGeneratorTest extends LldpRuleGeneratorTest {
 
-    @Before
+    @BeforeEach
     public void setup() {
         config = prepareConfig();
 
