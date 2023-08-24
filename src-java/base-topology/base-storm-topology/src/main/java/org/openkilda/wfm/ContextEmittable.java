@@ -20,7 +20,7 @@ import org.apache.storm.tuple.Values;
 
 /**
  * This interface represents something that has CommandContext and
- * knows how to emit the payload via a given Storm stream.
+ * knows how to emit the payload via the given Storm stream.
  */
 public interface ContextEmittable {
     CommandContext getCommandContext();

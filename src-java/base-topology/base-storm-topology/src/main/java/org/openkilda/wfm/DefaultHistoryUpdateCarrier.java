@@ -22,10 +22,10 @@ import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.apache.storm.tuple.Values;
 
 /**
- * This bold adds support for sending history updates that are accessible later via HistoryService.
- * A topology that uses this bolt must register a path to history bolt. That is, in a topology that extends
- * AbstractTopology, declare a Kafka bolt and specify a component ID that is a source of history updates
- * in the fields grouping and declare a stream.
+ * This is a default implementation for sending history updates that are accessible later via HistoryService.
+ * A topology that uses the bolt implementing this interface must register a path to history bolt.
+ * That is, in a topology that extends AbstractTopology, declare a Kafka bolt and specify a component ID
+ * that is a source of history updates in the fields grouping and declare a stream.
  * TODO add a readme.md with the details and example.
  */
 public interface DefaultHistoryUpdateCarrier extends HistoryUpdateCarrier, TupleIdentifiable, ContextEmittable {
