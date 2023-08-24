@@ -49,4 +49,8 @@ public class CommandWrapper extends Command {
     public boolean isOneShot() {
         return target.isOneShot();
     }
+
+    public String getName() {
+        return target.getName();
+    }
 }

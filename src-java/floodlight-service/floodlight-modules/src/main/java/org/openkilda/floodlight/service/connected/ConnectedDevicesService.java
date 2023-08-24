@@ -70,6 +70,7 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
             ServiceCookieTag.ARP_POST_INGRESS_COOKIE,
             ServiceCookieTag.ARP_POST_INGRESS_VXLAN_COOKIE,
             ServiceCookieTag.ARP_POST_INGRESS_ONE_SWITCH_COOKIE);
+    public static final String CONNECTED_DEVICES_COMMAND_NAME = "ConnectedDevicesServicePacketIn";
 
     private IKafkaProducerService producerService;
     private String topic;
@@ -90,6 +91,11 @@ public class ConnectedDevicesService implements IService, IInputTranslator {
             public Command call() {
                 handlePacketIn(input);
                 return null;
+            }
+
+            @Override
+            public String getName() {
+                return CONNECTED_DEVICES_COMMAND_NAME;
             }
         };
     }

@@ -38,6 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SessionService implements IService, IInputTranslator {
     private static final Logger log = LoggerFactory.getLogger(SessionService.class);
+    public static final String SESSION_COMMAND_NAME = "SessionServicePacketIn";
 
     private final Map<DatapathId, SwitchSessions> sessionsByDatapath = new ConcurrentHashMap<>();
 
@@ -74,6 +75,11 @@ public class SessionService implements IService, IInputTranslator {
             public Command call() throws Exception {
                 handleResponse(input.getDpId(), input.getMessage());
                 return null;
+            }
+
+            @Override
+            public String getName() {
+                return SESSION_COMMAND_NAME;
             }
         };
     }

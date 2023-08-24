@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.service;
 
+import static org.openkilda.floodlight.utils.Utils.mapToString;
+
 import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.KildaCoreConfig;
 import org.openkilda.floodlight.command.Command;
@@ -22,14 +24,18 @@ import org.openkilda.floodlight.command.CommandContext;
 import org.openkilda.floodlight.command.CommandWrapper;
 import org.openkilda.floodlight.command.PendingCommandSubmitter;
 import org.openkilda.floodlight.utils.CommandContextFactory;
+import org.openkilda.floodlight.utils.Utils;
 
+import lombok.Value;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.threadpool.IThreadPoolService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Future;
@@ -108,30 +114,12 @@ public class CommandProcessorService implements IService {
         }
     }
 
-    /**
-     * Submit pending command.
-     *
-     * <p>Initiator will receive exception returned by future object (if it will raise one). I.e. this interface
-     * allow to wait for some background task to complete, without occupy any working thread.
-     */
-    public synchronized void submitPending(Command initiator, Future<Command> successor) {
-        tasks.add(new ProcessorTask(initiator, successor));
-    }
-
-    public synchronized void markCompleted(ProcessorTask task) { }
-
     private Command wrapCommand(Command target) {
         return new CommandWrapper(target);
     }
 
     private void executeOneShot(Command command) {
-        executor.execute(() -> {
-            try {
-                command.call();
-            } catch (Exception e) {
-                command.exceptional(e);
-            }
-        });
+        executor.execute(new CommandExecutor(command));
     }
 
     private void executeChainResult(Command command) {
@@ -163,6 +151,8 @@ public class CommandProcessorService implements IService {
 
         BlockingQueue<Runnable> queue = executor.getQueue();
         int count;
+        int activeWorkerCount;
+        String rejectedCommandsDescription;
         synchronized (rejectedQueue) {
             while (!rejectedQueue.isEmpty()) {
                 Runnable entry = rejectedQueue.getFirst();
@@ -174,14 +164,34 @@ public class CommandProcessorService implements IService {
                 break;
             }
             count = rejectedQueue.size();
+            activeWorkerCount = executor.getActiveCount();
+            rejectedCommandsDescription = getRejectedCommandsDescription(rejectedQueue);
         }
 
-        reportQueueStatus(count);
+        reportQueueStatus(count, activeWorkerCount, rejectedCommandsDescription);
+    }
+
+    private static String getRejectedCommandsDescription(List<Runnable> queue) {
+        Map<String, Integer> commandsByName = new HashMap<>();
+        for (Runnable runnable : queue) {
+            String name = getCommandName(runnable);
+            commandsByName.put(name, commandsByName.getOrDefault(name, 0) + 1);
+        }
+        return mapToString(commandsByName);
+    }
+
+    private static String getCommandName(Runnable runnable) {
+        if (runnable instanceof CommandExecutor) {
+            CommandExecutor executor = ((CommandExecutor) runnable);
+            return executor.getCommandName();
+        } else {
+            return Utils.getClassName(runnable.getClass());
+        }
     }
 
     private void verifyPendingStatus() {
         LinkedList<ProcessorTask> checkList = rotatePendingCommands();
-        if (checkList.size() == 0) {
+        if (checkList.isEmpty()) {
             return;
         }
 
@@ -198,15 +208,15 @@ public class CommandProcessorService implements IService {
         }
     }
 
-    private void reportQueueStatus(int rejectedQueueSize) {
+    private void reportQueueStatus(int rejectedQueueSize, int activeWorkerCount, String rejectedCommandsDescription) {
         if (0 < rejectedQueueSize) {
             long now = System.currentTimeMillis();
             if (lastRejectCountReportedAt + REJECTED_REPORT_INTERVAL < now) {
                 lastRejectCountReportedAt = now;
 
                 String message = String.format(
-                        "Rejected commands queue size: %d (workers: %d / %d)",
-                        rejectedQueueSize, executor.getActiveCount(), executor.getPoolSize());
+                        "Rejected commands queue size: %d (workers: %d / %d). Command classes: %s",
+                        rejectedQueueSize, activeWorkerCount, executor.getPoolSize(), rejectedCommandsDescription);
                 if (rejectedQueueSize < REJECTED_ERROR_LIMIT) {
                     log.warn(message);
                 } else {
@@ -274,6 +284,24 @@ public class CommandProcessorService implements IService {
         @Override
         public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
             commandProcessor.handleExecutorReject(r);
+        }
+    }
+
+    @Value
+    private static class CommandExecutor implements Runnable {
+        Command command;
+
+        @Override
+        public void run() {
+            try {
+                command.call();
+            } catch (Exception e) {
+                command.exceptional(e);
+            }
+        }
+
+        public String getCommandName() {
+            return command.getName();
         }
     }
 }

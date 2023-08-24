@@ -156,6 +156,7 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
                                                          + (LLDP_TLV_OPTIONAL_HEADER_SIZE_IN_BYTES * 8);
 
     public static final byte[] ORGANIZATIONALLY_UNIQUE_IDENTIFIER = new byte[] {0x00, 0x26, (byte) 0xe1};
+    public static final String PATH_VERIFICATION_COMMAND_NAME = "PathVerificationServicePacketIn";
 
     private IKafkaProducerService producerService;
     private IOFSwitchService switchService;
@@ -263,6 +264,11 @@ public class PathVerificationService implements IFloodlightModule, IPathVerifica
             public Command call() {
                 handlePacketIn(input);
                 return null;
+            }
+
+            @Override
+            public String getName() {
+                return PATH_VERIFICATION_COMMAND_NAME;
             }
         };
     }
