@@ -16,12 +16,12 @@
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions;
 
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.BaseHaFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 

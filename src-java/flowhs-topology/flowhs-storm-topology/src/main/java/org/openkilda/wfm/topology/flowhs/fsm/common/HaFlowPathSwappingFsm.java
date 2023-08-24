@@ -31,12 +31,12 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.pce.GetHaPathsResult;
 import org.openkilda.pce.HaPath;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.HistoryUpdateCarrier;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaFlowPathIds;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
-import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
 
 import lombok.Getter;

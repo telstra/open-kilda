@@ -20,10 +20,10 @@ import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.HaFlowPathRepository;
+import org.openkilda.wfm.HistoryUpdateCarrier;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowPathRemovalAction;
-import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
 import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 

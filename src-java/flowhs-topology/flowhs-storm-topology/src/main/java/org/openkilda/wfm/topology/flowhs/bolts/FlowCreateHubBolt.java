@@ -41,10 +41,10 @@ import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.pce.PathComputerFactory;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.server42.control.messaging.flowrtt.ActivateFlowMonitoringInfoData;
+import org.openkilda.wfm.DefaultHistoryUpdateCarrier;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
@@ -66,7 +66,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class FlowCreateHubBolt extends HubBolt implements FlowGenericCarrier {
+public class FlowCreateHubBolt extends HubBolt implements FlowGenericCarrier, DefaultHistoryUpdateCarrier {
     private final FlowCreateConfig config;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
@@ -159,14 +159,6 @@ public class FlowCreateHubBolt extends HubBolt implements FlowGenericCarrier {
     @Override
     public void sendNorthboundResponse(@NonNull Message message) {
         emitWithContext(Stream.HUB_TO_NB_RESPONSE_SENDER.name(), getCurrentTuple(), new Values(currentKey, message));
-    }
-
-    @Override
-    public void sendHistoryUpdate(@NonNull FlowHistoryHolder historyHolder) {
-        InfoMessage message = new InfoMessage(historyHolder, getCommandContext().getCreateTime(),
-                getCommandContext().getCorrelationId());
-        emitWithContext(Stream.HUB_TO_HISTORY_TOPOLOGY_SENDER.name(), getCurrentTuple(),
-                new Values(historyHolder.getTaskId(), message));
     }
 
     @Override

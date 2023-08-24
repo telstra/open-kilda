@@ -18,13 +18,13 @@ package org.openkilda.wfm.topology.flowhs.fsm.common;
 import static java.util.Collections.emptyList;
 
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.HistoryUpdateCarrier;
 import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowHistoryData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.topology.flowhs.service.common.FlowHistoryCarrier;
-import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.ProcessingEventListener;
 

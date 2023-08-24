@@ -28,7 +28,7 @@ import org.openkilda.wfm.share.history.model.HaFlowDumpData;
 import org.openkilda.wfm.share.history.model.HaFlowEventData;
 import org.openkilda.wfm.share.history.model.HaFlowEventData.Event;
 import org.openkilda.wfm.share.history.model.HaFlowEventData.Initiator;
-import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
+import org.openkilda.wfm.HistoryUpdateCarrier;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

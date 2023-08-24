@@ -16,13 +16,13 @@
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions;
 
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.HistoryUpdateCarrier;
 import org.openkilda.wfm.share.metrics.TimedExecution;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.BaseHaFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 
