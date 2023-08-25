@@ -51,9 +51,6 @@ import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
-import org.openkilda.wfm.share.history.model.DumpType;
-import org.openkilda.wfm.share.history.model.FlowDumpData;
-import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.share.model.SpeakerRequestBuildContext;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
@@ -374,20 +371,14 @@ public class ResourcesAllocationAction extends
     }
 
     private void saveHistory(FlowCreateFsm stateMachine, Flow flow) {
-        FlowDumpData primaryPathsDumpData =
-                HistoryMapper.INSTANCE.map(flow, flow.getForwardPath(), flow.getReversePath(), DumpType.STATE_AFTER);
-        stateMachine.saveActionWithDumpToHistory("New primary paths were created",
+        stateMachine.saveActionToHistory("New primary paths were created",
                 format("The flow paths were created (with allocated resources): %s / %s",
-                        flow.getForwardPathId(), flow.getReversePathId()),
-                primaryPathsDumpData);
+                        flow.getForwardPathId(), flow.getReversePathId()));
 
         if (flow.isAllocateProtectedPath()) {
-            FlowDumpData protectedPathsDumpData = HistoryMapper.INSTANCE.map(flow, flow.getProtectedForwardPath(),
-                    flow.getProtectedReversePath(), DumpType.STATE_AFTER);
-            stateMachine.saveActionWithDumpToHistory("New protected paths were created",
+            stateMachine.saveActionToHistory("New protected paths were created",
                     format("The flow paths were created (with allocated resources): %s / %s",
-                            flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()),
-                    protectedPathsDumpData);
+                            flow.getForwardPathId(), flow.getReversePathId()));
         }
     }
 

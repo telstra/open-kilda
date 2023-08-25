@@ -41,7 +41,7 @@ import java.util.Objects;
 public class KildaConfiguration implements CompositeDataEntity<KildaConfiguration.KildaConfigurationData> {
     public static final KildaConfiguration DEFAULTS = new KildaConfiguration(KildaConfigurationDataImpl.builder()
             .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
-            .useMultiTable(false)
+            .useMultiTable(true)
             .pathComputationStrategy(PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH)
             .build());
 

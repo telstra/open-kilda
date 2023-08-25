@@ -65,12 +65,6 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
         [swProps, sw] <<
                 [[
                     [
-                        multiTable: false,
-                        switchLldp: false,
-                        switchArp: false
-                    ],
-
-                    [
                         multiTable: true,
                         switchLldp: false,
                         switchArp: false

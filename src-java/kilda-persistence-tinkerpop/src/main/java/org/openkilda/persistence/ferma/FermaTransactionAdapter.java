@@ -47,7 +47,7 @@ public class FermaTransactionAdapter<T extends FermaPersistentImplementation>
             throw new PersistenceException("Attempt to reopen transaction: " + transaction);
         }
 
-        log.debug("Opening a new transaction {} on graph {}", transaction, graph);
+        log.trace("Opening a new transaction {} on graph {}", transaction, graph);
         transaction.open();
     }
 
@@ -65,7 +65,7 @@ public class FermaTransactionAdapter<T extends FermaPersistentImplementation>
         DelegatingFramedGraph<?> graph = getContextExtension().getGraphCreateIfMissing();
         WrappedTransaction currentTx = graph.tx();
         if (currentTx.isOpen()) {
-            log.debug("Closing an existing underlying transaction {} on graph {}", currentTx, graph);
+            log.trace("Closing an existing underlying transaction {} on graph {}", currentTx, graph);
             commitOrRollback(currentTx, false);
         }
     }
@@ -82,7 +82,7 @@ public class FermaTransactionAdapter<T extends FermaPersistentImplementation>
                     "Attempt to %s not opened transaction (%s)", action, getImplementationType()));
         }
 
-        log.debug("Performing {} to the transaction ({})", action, getImplementationType());
+        log.trace("Performing {} to the transaction ({})", action, getImplementationType());
         try {
             if (isSuccess) {
                 transaction.commit();

@@ -40,6 +40,7 @@ import org.openkilda.model.PortProperties;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchConnect;
 import org.openkilda.model.SwitchConnectedDevice;
+import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.SwitchProperties.RttState;
@@ -131,8 +132,7 @@ public class SwitchOperationsService {
      * @param switchId switch id.
      */
     public GetSwitchResponse getSwitch(SwitchId switchId) throws SwitchNotFoundException {
-        Switch sw = switchRepository.findById(switchId)
-                .orElseThrow(() -> new SwitchNotFoundException(switchId));
+        Switch sw = findSwitch(switchId);
         switchRepository.detach(sw);
         return new GetSwitchResponse(sw);
     }
@@ -204,8 +204,7 @@ public class SwitchOperationsService {
      */
     public boolean deleteSwitch(SwitchId switchId, boolean force) throws SwitchNotFoundException {
         transactionManager.doInTransaction(() -> {
-            Switch sw = switchRepository.findById(switchId)
-                    .orElseThrow(() -> new SwitchNotFoundException(switchId));
+            Switch sw = findSwitch(switchId);
 
             switchPropertiesRepository.findBySwitchId(sw.getSwitchId())
                     .ifPresent(sp -> switchPropertiesRepository.remove(sp));
@@ -237,8 +236,7 @@ public class SwitchOperationsService {
      */
     public void checkSwitchIsDeactivated(SwitchId switchId)
             throws SwitchNotFoundException, IllegalSwitchStateException {
-        Switch sw = switchRepository.findById(switchId)
-                .orElseThrow(() -> new SwitchNotFoundException(switchId));
+        Switch sw = findSwitch(switchId);
 
         if (sw.getStatus() == SwitchStatus.ACTIVE) {
             String message = format("Switch '%s' is in 'Active' state.", switchId);
@@ -347,8 +345,9 @@ public class SwitchOperationsService {
             SwitchProperties switchProperties = switchPropertiesRepository.findBySwitchId(switchId)
                     .orElseThrow(() -> new SwitchPropertiesNotFoundException(switchId));
             final SwitchProperties oldProperties = new SwitchProperties(switchProperties);
+            final Switch sw = findSwitch(switchId);
 
-            validateSwitchProperties(switchId, update);
+            validateSwitchProperties(switchId, update, sw.getFeatures());
 
             // must be called before updating of switchProperties object
             final boolean isSwitchSyncNeeded = isSwitchSyncNeeded(switchProperties, update);
@@ -430,45 +429,11 @@ public class SwitchOperationsService {
                 || server42PropsChanged;
     }
 
-    private void validateSwitchProperties(SwitchId switchId, SwitchProperties updatedSwitchProperties) {
+    private void validateSwitchProperties(
+            SwitchId switchId, SwitchProperties updatedSwitchProperties, Set<SwitchFeature> features) {
         if (!updatedSwitchProperties.isMultiTable()) {
-            String propertyErrorMessage = "Illegal switch properties combination for switch %s. '%s' property "
-                    + "can be set to 'true' only if 'multiTable' property is 'true'.";
-            if (updatedSwitchProperties.isSwitchLldp()) {
-                throw new IllegalSwitchPropertiesException(format(propertyErrorMessage, switchId, "switchLldp"));
-            }
-
-            if (updatedSwitchProperties.isSwitchArp()) {
-                throw new IllegalSwitchPropertiesException(format(propertyErrorMessage, switchId, "switchArp"));
-            }
-
-            List<String> flowsWitchEnabledLldp = flowRepository.findByEndpointSwitchWithEnabledLldp(switchId).stream()
-                    .map(Flow::getFlowId)
-                    .collect(Collectors.toList());
-
-            if (!flowsWitchEnabledLldp.isEmpty()) {
-                throw new IllegalSwitchPropertiesException(
-                        format("Illegal switch properties combination for switch %s. "
-                                + "Detect Connected Devices feature is turn on for following flows [%s]. "
-                                + "For correct work of this feature switch property 'multiTable' must be set to 'true' "
-                                + "Please disable detecting of connected devices via LLDP for each flow before set "
-                                + "'multiTable' property to 'false'",
-                                switchId, String.join(", ", flowsWitchEnabledLldp)));
-            }
-
-            List<String> flowsWithEnabledArp = flowRepository.findByEndpointSwitchWithEnabledArp(switchId).stream()
-                    .map(Flow::getFlowId)
-                    .collect(Collectors.toList());
-
-            if (!flowsWithEnabledArp.isEmpty()) {
-                throw new IllegalSwitchPropertiesException(
-                        format("Illegal switch properties combination for switch %s. "
-                                + "Detect Connected Devices feature via ARP is turn on for following flows [%s]. "
-                                + "For correct work of this feature switch property 'multiTable' must be set to 'true' "
-                                + "Please disable detecting of connected devices via ARP for each flow before set "
-                                + "'multiTable' property to 'false'",
-                                switchId, String.join(", ", flowsWithEnabledArp)));
-            }
+            throw new IllegalSwitchPropertiesException("Single table mode was deprecated and it is not supported "
+                    + "anymore. The only valid value for switch property 'multi_table' is 'true'.");
         }
 
         if (updatedSwitchProperties.getServer42Port() != null) {
@@ -596,8 +561,7 @@ public class SwitchOperationsService {
      */
     public Switch patchSwitch(SwitchId switchId, SwitchPatch data) throws SwitchNotFoundException {
         return transactionManager.doInTransaction(() -> {
-            Switch foundSwitch = switchRepository.findById(switchId)
-                    .orElseThrow(() -> new SwitchNotFoundException(switchId));
+            Switch foundSwitch = findSwitch(switchId);
 
             Optional.ofNullable(data.getPop()).ifPresent(pop -> foundSwitch.setPop(!"".equals(pop) ? pop : null));
             Optional.ofNullable(data.getLocation()).ifPresent(location -> {
@@ -616,8 +580,7 @@ public class SwitchOperationsService {
      * Find and return the set of connections to the speakers for specific switch.
      */
     public SwitchConnectionsResponse getSwitchConnections(SwitchId switchId) throws SwitchNotFoundException {
-        Switch sw = switchRepository.findById(switchId)
-                .orElseThrow(() -> new SwitchNotFoundException(switchId));
+        Switch sw = findSwitch(switchId);
         SwitchAvailabilityData.SwitchAvailabilityDataBuilder payload = SwitchAvailabilityData.builder();
         for (SwitchConnect entry : switchConnectRepository.findBySwitchId(switchId)) {
             payload.connection(SwitchMapper.INSTANCE.map(entry));
@@ -649,6 +612,12 @@ public class SwitchOperationsService {
                                                 new TreeSet<>(Comparator.comparing(FlowDto::getFlowId)))),
                                 TreeMap::new)));
 
+    }
+
+
+    private Switch findSwitch(SwitchId switchId) throws SwitchNotFoundException {
+        return switchRepository.findById(switchId)
+                .orElseThrow(() -> new SwitchNotFoundException(switchId));
     }
 
     @Value
