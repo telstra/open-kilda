@@ -341,27 +341,16 @@ public class InMemoryPathComputer implements PathComputer {
         }
     }
 
-    @Override
-    public List<Path> getNPaths(SwitchId srcSwitchId, SwitchId dstSwitchId, int count,
-                                FlowEncapsulationType flowEncapsulationType,
-                                PathComputationStrategy pathComputationStrategy,
-                                Duration maxLatency, Duration maxLatencyTier2)
-            throws RecoverableException, UnroutableFlowException {
-        final long maxLatencyNs = maxLatency != null ? maxLatency.toNanos() : 0;
-        final long maxLatencyTier2Ns = maxLatencyTier2 != null ? maxLatencyTier2.toNanos() : 0;
-
-        Flow flow = Flow.builder()
-                .flowId("") // just any id, as not used.
-                .srcSwitch(Switch.builder().switchId(srcSwitchId).build())
-                .destSwitch(Switch.builder().switchId(dstSwitchId).build())
-                .ignoreBandwidth(false)
-                .encapsulationType(flowEncapsulationType)
-                .bandwidth(1) // to get ISLs with non zero available bandwidth
-                .maxLatency(maxLatencyNs)
-                .maxLatencyTier2(maxLatencyTier2Ns)
-                .build();
-
+    /**
+     * Calculates at most N the best paths taking into consideration parameters in the flow object.
+     * @param flow the requested flow
+     * @param count calculates no more than this number of paths
+     * @return the list of paths from better to worse
+     */
+    public List<Path> getNPaths(Flow flow, int count) throws RecoverableException, UnroutableFlowException {
         AvailableNetwork availableNetwork = availableNetworkFactory.getAvailableNetwork(flow, Collections.emptyList());
+
+        PathComputationStrategy pathComputationStrategy = flow.getPathComputationStrategy();
 
         if (MAX_LATENCY.equals(pathComputationStrategy)
                 && (flow.getMaxLatency() == null || flow.getMaxLatency() == 0)) {
@@ -373,12 +362,19 @@ public class InMemoryPathComputer implements PathComputer {
             case COST:
             case LATENCY:
             case COST_AND_AVAILABLE_BANDWIDTH:
-                paths = pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitchId, dstSwitchId, count,
+                paths = pathFinder.findNPathsBetweenSwitches(availableNetwork,
+                        flow.getSrcSwitchId(), flow.getDestSwitchId(), count,
                         getWeightFunctionByStrategy(pathComputationStrategy, false));
                 break;
             case MAX_LATENCY:
-                paths = pathFinder.findNPathsBetweenSwitches(availableNetwork, srcSwitchId, dstSwitchId, count,
-                        getWeightFunctionByStrategy(pathComputationStrategy, false), maxLatencyNs, maxLatencyTier2Ns);
+                paths = pathFinder.findNPathsBetweenSwitches(availableNetwork,
+                        flow.getSrcSwitchId(),
+                        flow.getDestSwitchId(),
+                        count,
+                        getWeightFunctionByStrategy(pathComputationStrategy, false),
+                        // TODO is this nanoseconds?
+                        flow.getMaxLatency(),
+                        flow.getMaxLatencyTier2());
                 break;
             default:
                 throw new UnsupportedOperationException(format(
@@ -394,10 +390,34 @@ public class InMemoryPathComputer implements PathComputer {
         }
 
         return paths.stream()
-                .map(foundPathResult -> convertToPath(srcSwitchId, dstSwitchId, foundPathResult))
+                .map(foundPathResult -> convertToPath(flow.getSrcSwitchId(), flow.getDestSwitchId(), foundPathResult))
                 .sorted(comparator)
                 .limit(count)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Path> getNPaths(SwitchId srcSwitchId, SwitchId dstSwitchId, int count,
+                                FlowEncapsulationType flowEncapsulationType,
+                                PathComputationStrategy pathComputationStrategy,
+                                Duration maxLatency, Duration maxLatencyTier2)
+            throws RecoverableException, UnroutableFlowException {
+        final long maxLatencyNs = maxLatency != null ? maxLatency.toNanos() : 0;
+        final long maxLatencyTier2Ns = maxLatencyTier2 != null ? maxLatencyTier2.toNanos() : 0;
+
+        Flow flow = Flow.builder()
+                .flowId("") // just any id, as not used.
+                .srcSwitch(Switch.builder().switchId(srcSwitchId).build())
+                .destSwitch(Switch.builder().switchId(dstSwitchId).build())
+                .ignoreBandwidth(false)
+                .encapsulationType(flowEncapsulationType)
+                .pathComputationStrategy(pathComputationStrategy)
+                .bandwidth(1) // to get ISLs with non zero available bandwidth
+                .maxLatency(maxLatencyNs)
+                .maxLatencyTier2(maxLatencyTier2Ns)
+                .build();
+
+        return getNPaths(flow, count);
     }
 
     @VisibleForTesting

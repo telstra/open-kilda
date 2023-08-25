@@ -30,4 +30,5 @@ import java.util.List;
 public class PathValidateResponse {
     Boolean isValid;
     List<String> errors;
+    String pceResponse;
 }

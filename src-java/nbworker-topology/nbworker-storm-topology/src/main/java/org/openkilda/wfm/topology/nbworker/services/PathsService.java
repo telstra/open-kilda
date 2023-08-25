@@ -37,8 +37,6 @@ import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.mapper.PathSegmentMapper;
 import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.repositories.FlowRepository;
-import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
@@ -66,24 +64,24 @@ import java.util.stream.Collectors;
 public class PathsService {
     private final int defaultMaxPathCount;
     private final PathComputer pathComputer;
+    private final PathComputerConfig pathComputerConfig;
     private final SwitchRepository switchRepository;
     private final SwitchPropertiesRepository switchPropertiesRepository;
     private final KildaConfigurationRepository kildaConfigurationRepository;
-    private final IslRepository islRepository;
-    private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
+    private final RepositoryFactory repositoryFactory;
 
     public PathsService(RepositoryFactory repositoryFactory, PathComputerConfig pathComputerConfig) {
         switchRepository = repositoryFactory.createSwitchRepository();
         switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
-        this.islRepository = repositoryFactory.createIslRepository();
-        this.flowRepository = repositoryFactory.createFlowRepository();
         PathComputerFactory pathComputerFactory = new PathComputerFactory(
                 pathComputerConfig, new AvailableNetworkFactory(pathComputerConfig, repositoryFactory));
         pathComputer = pathComputerFactory.getPathComputer();
         defaultMaxPathCount = pathComputerConfig.getMaxPathCount();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
+        this.pathComputerConfig = pathComputerConfig;
+        this.repositoryFactory = repositoryFactory;
     }
 
     /**
@@ -314,11 +312,9 @@ public class PathsService {
      * @return a response with the success or the list of errors
      */
     public List<PathValidationResult> validatePath(PathValidateRequest request) {
-        PathValidator pathValidator = new PathValidator(islRepository,
-                flowRepository,
-                switchPropertiesRepository,
-                switchRepository,
-                kildaConfigurationRepository.getOrDefault());
+        PathValidator pathValidator = new PathValidator(repositoryFactory,
+                kildaConfigurationRepository.getOrDefault(),
+                pathComputer);
 
         return Collections.singletonList(pathValidator.validatePath(
                 PathValidationDataMapper.INSTANCE.toPathValidationData(request.getPathValidationPayload())
@@ -327,7 +323,7 @@ public class PathsService {
 
     @Value
     @Builder
-    private static class GetPathsRequestParameters {
+    private static final class GetPathsRequestParameters {
         SwitchId srcSwitchId;
         SwitchId dstSwitchId;
         FlowEncapsulationType flowEncapsulationType;

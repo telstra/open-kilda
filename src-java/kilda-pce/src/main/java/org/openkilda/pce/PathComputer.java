@@ -108,6 +108,14 @@ public interface PathComputer {
             throws RecoverableException, UnroutableFlowException;
 
     /**
+     * Gets the best N paths. N is a number, not greater than the count param, of all paths that can be found.
+     * @param flow the requested flow
+     * @param count calculates no more than this number of paths
+     * @return a list of the best N paths ordered from best to worst.
+     */
+    List<Path> getNPaths(Flow flow, int count) throws RecoverableException, UnroutableFlowException;
+
+    /**
      * Finds the Y-point from the provided flow paths.
      */
     SwitchId getIntersectionPoint(SwitchId sharedSwitchId, FlowPath... flowPaths);

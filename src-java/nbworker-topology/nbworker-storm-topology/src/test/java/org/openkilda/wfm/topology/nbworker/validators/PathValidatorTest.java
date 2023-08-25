@@ -147,6 +147,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         nodes.add(new PathNodePayload(SWITCH_ID_0, 12, null));
 
         PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .nodes(nodes)
                 .bandwidth(0L)
                 .latencyMs(0L)
@@ -174,6 +175,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
         nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
         PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .nodes(nodes)
                 .bandwidth(0L)
                 .latencyMs(0L)
@@ -191,6 +193,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
         nodes.add(new PathNodePayload(SWITCH_ID_3, 6, null));
         PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .nodes(nodes)
                 .bandwidth(1000000000L)
                 .latencyMs(0L)
@@ -218,6 +221,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         nodes.add(new PathNodePayload(new SwitchId("01:01:01:01"), null, 6));
         nodes.add(new PathNodePayload(new SwitchId("01:01:01:02"), 6, null));
         PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .nodes(nodes)
                 .bandwidth(1000000000L)
                 .latencyMs(0L)
@@ -337,6 +341,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
 
         PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .nodes(nodes)
                 .flowEncapsulationType(org.openkilda.messaging.payload.flow.FlowEncapsulationType.VXLAN)
                 .build());
@@ -359,6 +364,8 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         nodes.add(new PathNodePayload(SWITCH_ID_4, 6, 7));
 
         PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
+                .bandwidth(1L)
                 .nodes(nodes)
                 .build());
         List<PathValidationResult> responses = pathsService.validatePath(request);
@@ -382,6 +389,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         nodes.add(new PathNodePayload(SWITCH_ID_1, null, 1));
         nodes.add(new PathNodePayload(SWITCH_ID_2, 0, null));
         PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .nodes(nodes)
                 .bandwidth(0L)
                 .latencyMs(0L)
@@ -445,6 +453,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
         nodes.add(new PathNodePayload(SWITCH_ID_0, 7, null));
         PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .nodes(nodes)
                 .bandwidth(0L)
                 .latencyMs(0L)
@@ -479,6 +488,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
         nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
         PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .nodes(nodes)
                 .bandwidth(0L)
                 .latencyMs(0L)
@@ -501,6 +511,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
         nodes.add(new PathNodePayload(new SwitchId("FF"), 7, null));
         PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .nodes(nodes)
                 .bandwidth(1000000L)
                 .latencyMs(1L)
@@ -582,6 +593,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
         nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
         PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .nodes(nodes)
                 .bandwidth(0L)
                 .latencyMs(0L)

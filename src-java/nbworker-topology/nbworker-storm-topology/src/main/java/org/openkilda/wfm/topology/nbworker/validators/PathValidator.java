@@ -29,9 +29,14 @@ import org.openkilda.model.PathValidationData.PathSegmentValidationData;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.pce.Path;
+import org.openkilda.pce.PathComputer;
+import org.openkilda.pce.exception.RecoverableException;
+import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslEndpoints;
+import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 
@@ -66,16 +71,17 @@ public class PathValidator {
     private final KildaConfiguration kildaConfiguration;
     private Map<IslEndpoints, Optional<Isl>> islCache;
     private Map<SwitchId, Optional<Switch>> switchCache;
+    private final PathComputer pathComputer;
 
-    public PathValidator(IslRepository islRepository,
-                         FlowRepository flowRepository,
-                         SwitchPropertiesRepository switchPropertiesRepository,
-                         SwitchRepository switchRepository, KildaConfiguration kildaConfiguration) {
-        this.islRepository = islRepository;
-        this.flowRepository = flowRepository;
-        this.switchPropertiesRepository = switchPropertiesRepository;
-        this.switchRepository = switchRepository;
+    public PathValidator(RepositoryFactory repositoryFactory,
+                         KildaConfiguration kildaConfiguration,
+                         PathComputer pathComputer) {
+        this.islRepository = repositoryFactory.createIslRepository();
+        this.flowRepository = repositoryFactory.createFlowRepository();
+        this.switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
+        this.switchRepository = repositoryFactory.createSwitchRepository();
         this.kildaConfiguration = kildaConfiguration;
+        this.pathComputer = pathComputer;
     }
 
     /**
@@ -101,7 +107,72 @@ public class PathValidator {
         return PathValidationResult.builder()
                 .isValid(result.isEmpty())
                 .errors(new LinkedList<>(result))
+                .pceResponse(getFindPathsRank(pathValidationData))
                 .build();
+    }
+
+    private String getFindPathsRank(PathValidationData pathValidationData) {
+        try {
+            Flow flow = Flow.builder()
+                    .flowId("")
+                    .bandwidth(pathValidationData.getBandwidth() == null ? 0 : pathValidationData.getBandwidth())
+                    .maxLatency(pathValidationData.getLatency() == null
+                            ? null : pathValidationData.getLatency().toNanos())
+                    .maxLatencyTier2(pathValidationData.getLatencyTier2() == null
+                            ? null : pathValidationData.getLatencyTier2().toNanos())
+                    // TODO how to do that?
+                    .diverseGroupId(pathValidationData.getDiverseWithFlow())
+                    .encapsulationType(pathValidationData.getFlowEncapsulationType())
+                    .srcSwitch(switchRepository.findById(pathValidationData.getSrcSwitchId())
+                            .orElseThrow(IllegalStateException::new))
+                    .destSwitch(switchRepository.findById(pathValidationData.getDestSwitchId())
+                            .orElseThrow(IllegalStateException::new))
+                    .srcPort(pathValidationData.getSrcPort())
+                    .destPort(pathValidationData.getDestPort())
+                    .pathComputationStrategy(pathValidationData.getPathComputationStrategy())
+                    .ignoreBandwidth(false)
+                    .build();
+            int maxPathCount = 10;
+
+            Optional<Integer> result = findPathInList(pathComputer.getNPaths(flow, maxPathCount),
+                    pathValidationData.getPathSegments());
+
+            if (result.isPresent()) {
+                return String.format("The requested path has been found by PCE at position %s", result.get());
+            } else {
+                return String.format("The requested path has been found by PCE among first %s paths", maxPathCount);
+            }
+        } catch (UnroutableFlowException | RecoverableException | IllegalStateException e) {
+            return String.format("The requested path cannot be found by PCE, because of the exception %s: %s",
+                    e.getClass(), e.getMessage());
+        }
+    }
+
+    private Optional<Integer> findPathInList(List<Path> pathList,
+                                             List<PathSegmentValidationData> segmentsData) {
+        for (int i = 0; i < pathList.size(); i++) {
+            Path currentPath = pathList.get(i);
+            if (currentPath.getSegments().size() == segmentsData.size()
+                    && isSameSegment(currentPath.getSegments(), segmentsData)) {
+                return Optional.of(i);
+            }
+        }
+
+        return Optional.empty();
+    }
+
+    private boolean isSameSegment(List<Path.Segment> segments, List<PathSegmentValidationData> segmentsData) {
+        for (int j = 0; j < segments.size(); j++) {
+            PathSegmentValidationData currentSegmentData = segmentsData.get(j);
+            Path.Segment currentSegment = segments.get(j);
+            if (!currentSegmentData.getDestPort().equals(currentSegment.getDestPort())
+                    || !currentSegmentData.getSrcPort().equals(currentSegment.getSrcPort())
+                    || !currentSegmentData.getSrcSwitchId().equals(currentSegment.getSrcSwitchId())
+                    || !currentSegmentData.getDestSwitchId().equals(currentSegment.getDestSwitchId())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private Optional<Isl> findIslByEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId destSwitchId, int destPort) {
@@ -585,7 +656,7 @@ public class PathValidator {
 
     @Getter
     @AllArgsConstructor(access = AccessLevel.PRIVATE)
-    private static class InputData {
+    private static final class InputData {
         PathValidationData path;
         PathValidationData.PathSegmentValidationData segment;
 

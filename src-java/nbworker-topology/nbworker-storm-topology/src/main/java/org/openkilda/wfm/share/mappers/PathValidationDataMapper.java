@@ -49,8 +49,11 @@ public abstract class PathValidationDataMapper {
 
         return PathValidationData.builder()
                 .srcSwitchId(pathValidationPayload.getNodes().get(0).getSwitchId())
+                .srcPort(pathValidationPayload.getNodes().get(0).getOutputPort())
                 .destSwitchId(
                         pathValidationPayload.getNodes().get(pathValidationPayload.getNodes().size() - 1).getSwitchId())
+                .destPort(pathValidationPayload.getNodes().get(pathValidationPayload.getNodes().size() - 1)
+                        .getInputPort())
                 .bandwidth(pathValidationPayload.getBandwidth())
                 .latency(pathValidationPayload.getLatencyMs() == null ? null :
                         Duration.ofMillis(pathValidationPayload.getLatencyMs()))
