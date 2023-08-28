@@ -83,3 +83,7 @@ flow.sla.check.interval.seconds = 60
 use.hs=true
 use.multitable=true
 cleanup.verifier=true
+#set value to 'false' to skip health check verification
+health_check.verifier=true
+#set value to 'false' to skip rebuild topology before test(s) execution(not for parallel execution)
+rebuild.topology_lab=true
