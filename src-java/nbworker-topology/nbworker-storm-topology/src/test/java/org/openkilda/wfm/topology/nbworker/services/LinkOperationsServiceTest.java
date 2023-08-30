@@ -16,9 +16,10 @@
 package org.openkilda.wfm.topology.nbworker.services;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
@@ -47,21 +48,18 @@ import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.share.mappers.IslMapper;
 import org.openkilda.wfm.share.model.Endpoint;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class LinkOperationsServiceTest extends InMemoryGraphBasedTest {
     private static IslRepository islRepository;
     private static SwitchRepository switchRepository;
@@ -81,10 +79,7 @@ public class LinkOperationsServiceTest extends InMemoryGraphBasedTest {
     @Mock
     private ILinkOperationsServiceCarrier carrier;
 
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
-
-    @BeforeClass
+    @BeforeAll
     public static void setUpOnce() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         islRepository = repositoryFactory.createIslRepository();
@@ -92,7 +87,7 @@ public class LinkOperationsServiceTest extends InMemoryGraphBasedTest {
         flowRepository = repositoryFactory.createFlowRepository();
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         linkOperationsService = new LinkOperationsService(carrier, persistenceManager.getRepositoryFactory(),
                 persistenceManager.getTransactionManager());
@@ -131,19 +126,24 @@ public class LinkOperationsServiceTest extends InMemoryGraphBasedTest {
         assertTrue(islRepository.findAll().isEmpty());
     }
 
-    @Test(expected = IllegalIslStateException.class)
-    public void shouldNotDeleteActiveIsl() throws IslNotFoundException, IllegalIslStateException {
-        createIsl(IslStatus.ACTIVE);
-        linkOperationsService
-                .deleteIsl(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT, TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT, false);
+    @Test
+    public void shouldNotDeleteActiveIsl() {
+        assertThrows(IllegalIslStateException.class, () -> {
+            createIsl(IslStatus.ACTIVE);
+            linkOperationsService
+                    .deleteIsl(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT, TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT, false);
+        });
+
     }
 
-    @Test(expected = IllegalIslStateException.class)
+    @Test
     public void shouldNotDeleteBusyIsl() throws IslNotFoundException, IllegalIslStateException {
-        createIsl(IslStatus.INACTIVE);
-        createFlow("test_flow_id", TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT, TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT);
-        linkOperationsService
-                .deleteIsl(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT, TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT, false);
+        assertThrows(IllegalIslStateException.class, () -> {
+            createIsl(IslStatus.INACTIVE);
+            createFlow("test_flow_id", TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT, TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT);
+            linkOperationsService
+                    .deleteIsl(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT, TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT, false);
+        });
     }
 
     @Test
@@ -205,28 +205,33 @@ public class LinkOperationsServiceTest extends InMemoryGraphBasedTest {
         verifyNoMoreInteractions(carrier);
     }
 
-    @Test(expected = IslNotFoundException.class)
-    public void shouldFailIfThereIsNoIslForBfdPropertiesUpdateRequest() throws IslNotFoundException {
-        linkOperationsService.writeBfdProperties(
-                Endpoint.of(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT),
-                Endpoint.of(TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT), defaultBfdProperties);
+    @Test
+    public void shouldFailIfThereIsNoIslForBfdPropertiesUpdateRequest() {
+        assertThrows(IslNotFoundException.class, () -> {
+            linkOperationsService.writeBfdProperties(
+                    Endpoint.of(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT),
+                    Endpoint.of(TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT), defaultBfdProperties);
+        });
+
     }
 
-    @Test(expected = IslNotFoundException.class)
-    public void shouldFailIfThereIsUniIslOnlyForBfdPropertiesUpdateRequest() throws IslNotFoundException {
-        Isl isl = Isl.builder()
-                .srcSwitch(createSwitchIfNotExist(TEST_SWITCH_A_ID))
-                .srcPort(TEST_SWITCH_A_PORT)
-                .destSwitch(createSwitchIfNotExist(TEST_SWITCH_B_ID))
-                .destPort(TEST_SWITCH_B_PORT)
-                .cost(0)
-                .status(IslStatus.ACTIVE)
-                .build();
-        islRepository.add(isl);
+    @Test
+    public void shouldFailIfThereIsUniIslOnlyForBfdPropertiesUpdateRequest() {
+        assertThrows(IslNotFoundException.class, () -> {
+            Isl isl = Isl.builder()
+                    .srcSwitch(createSwitchIfNotExist(TEST_SWITCH_A_ID))
+                    .srcPort(TEST_SWITCH_A_PORT)
+                    .destSwitch(createSwitchIfNotExist(TEST_SWITCH_B_ID))
+                    .destPort(TEST_SWITCH_B_PORT)
+                    .cost(0)
+                    .status(IslStatus.ACTIVE)
+                    .build();
+            islRepository.add(isl);
 
-        linkOperationsService.writeBfdProperties(
-                Endpoint.of(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT),
-                Endpoint.of(TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT), defaultBfdProperties);
+            linkOperationsService.writeBfdProperties(
+                    Endpoint.of(TEST_SWITCH_A_ID, TEST_SWITCH_A_PORT),
+                    Endpoint.of(TEST_SWITCH_B_ID, TEST_SWITCH_B_PORT), defaultBfdProperties);
+        });
     }
 
     private void verifyBfdProperties(BfdProperties expectedValue) {
@@ -239,9 +244,9 @@ public class LinkOperationsServiceTest extends InMemoryGraphBasedTest {
     private void verifyBfdProperties(Endpoint leftEnd, Endpoint rightEnd, BfdProperties expectedValue) {
         Optional<Isl> potentialIsl = islRepository.findByEndpoints(
                 leftEnd.getDatapath(), leftEnd.getPortNumber(), rightEnd.getDatapath(), rightEnd.getPortNumber());
-        Assert.assertTrue(potentialIsl.isPresent());
+        assertTrue(potentialIsl.isPresent());
         BfdProperties actualValue = IslMapper.INSTANCE.readBfdProperties(potentialIsl.get());
-        Assert.assertEquals(expectedValue, actualValue);
+        assertEquals(expectedValue, actualValue);
     }
 
     private void createIsl(IslStatus status) {

@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.network.utils;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class GenerationTrackerTest {
     private static final long LIMIT = 5;
@@ -26,21 +26,21 @@ public class GenerationTrackerTest {
         GenerationTracker<String> tracker = makeTracker();
 
         long empty = tracker.getLastSeenGeneration();
-        Assert.assertEquals(-1, empty);
-        Assert.assertEquals(empty, tracker.getLastSeenGeneration());
+        Assertions.assertEquals(-1, empty);
+        Assertions.assertEquals(empty, tracker.getLastSeenGeneration());
 
         String firstId = "A";
         long first = tracker.identify(firstId);
-        Assert.assertNotEquals(empty, first);
-        Assert.assertEquals(first, tracker.getLastSeenGeneration());
-        Assert.assertEquals(first, tracker.identify(firstId));
+        Assertions.assertNotEquals(empty, first);
+        Assertions.assertEquals(first, tracker.getLastSeenGeneration());
+        Assertions.assertEquals(first, tracker.identify(firstId));
 
         String secondId = "B";
         long second = tracker.identify(secondId);
-        Assert.assertNotEquals(empty, second);
-        Assert.assertNotEquals(first, second);
-        Assert.assertEquals(second, tracker.getLastSeenGeneration());
-        Assert.assertEquals(second, tracker.identify(secondId));
+        Assertions.assertNotEquals(empty, second);
+        Assertions.assertNotEquals(first, second);
+        Assertions.assertEquals(second, tracker.getLastSeenGeneration());
+        Assertions.assertEquals(second, tracker.identify(secondId));
     }
 
     @Test
@@ -50,12 +50,12 @@ public class GenerationTrackerTest {
         long referenceGeneration = tracker.identify(referenceId);
 
         for (int i = 0; i < LIMIT - 1; i++) {
-            Assert.assertNotEquals(referenceGeneration, tracker.identify(String.format("id-%d", i)));
-            Assert.assertEquals(referenceGeneration, tracker.identify(referenceId));
+            Assertions.assertNotEquals(referenceGeneration, tracker.identify(String.format("id-%d", i)));
+            Assertions.assertEquals(referenceGeneration, tracker.identify(referenceId));
         }
 
         tracker.identify("B");
-        Assert.assertNotEquals(referenceGeneration, tracker.identify(referenceId));
+        Assertions.assertNotEquals(referenceGeneration, tracker.identify(referenceId));
     }
 
     private GenerationTracker<String> makeTracker() {

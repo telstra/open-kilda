@@ -15,30 +15,31 @@
 
 package org.openkilda.wfm.topology.ping.model;
 
-import org.junit.Assert;
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
 
 public class WindowedCounterTest {
     @Test
     public void scenario1() {
         WindowedCounter counter = new WindowedCounter(3);
 
-        Assert.assertEquals(0, counter.getCount());
+        assertEquals(0, counter.getCount());
 
         counter.increment();
-        Assert.assertEquals(1, counter.getCount());
+        assertEquals(1, counter.getCount());
         counter.increment();
-        Assert.assertEquals(2, counter.getCount());
+        assertEquals(2, counter.getCount());
 
         counter.slide();
         counter.slide();
-        Assert.assertEquals(2, counter.getCount());
+        assertEquals(2, counter.getCount());
 
         counter.increment();
-        Assert.assertEquals(3, counter.getCount());
+        assertEquals(3, counter.getCount());
 
         counter.slide();
-        Assert.assertEquals(1, counter.getCount());
+        assertEquals(1, counter.getCount());
     }
 
     @Test
@@ -46,14 +47,14 @@ public class WindowedCounterTest {
         WindowedCounter counter = new WindowedCounter(1);
 
         counter.increment();
-        Assert.assertEquals(1, counter.getCount());
+        assertEquals(1, counter.getCount());
         counter.increment();
-        Assert.assertEquals(2, counter.getCount());
+        assertEquals(2, counter.getCount());
 
         counter.slide();
-        Assert.assertEquals(0, counter.getCount());
+        assertEquals(0, counter.getCount());
 
         counter.increment();
-        Assert.assertEquals(1, counter.getCount());
+        assertEquals(1, counter.getCount());
     }
 }

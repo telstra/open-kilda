@@ -15,15 +15,14 @@
 
 package org.openkilda.messaging.info.flow;
 
-import static org.junit.Assert.assertEquals;
-
 import org.openkilda.messaging.StringSerializer;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.Ping.Errors;
 
 import com.google.common.collect.Lists;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class YFlowPingResponseTest {
     private static final String Y_FLOW_ID = "y_flow_id1";
@@ -48,6 +47,6 @@ public class YFlowPingResponseTest {
         InfoMessage decodedWrapper = (InfoMessage) serializer.deserialize();
         InfoData decoded = decodedWrapper.getData();
 
-        assertEquals(origin, decoded);
+        Assertions.assertEquals(origin, decoded);
     }
 }

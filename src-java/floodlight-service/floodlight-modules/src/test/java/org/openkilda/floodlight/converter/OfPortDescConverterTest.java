@@ -15,10 +15,13 @@
 
 package org.openkilda.floodlight.converter;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.openkilda.messaging.info.event.PortInfoData;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -40,15 +43,15 @@ public class OfPortDescConverterTest {
                 OFPort.IN_PORT,
                 OFPort.NORMAL,
                 OFPort.TABLE}) {
-            Assert.assertTrue(String.format("Port %s must be detected as RESERVED, but it's not", port),
-                              OfPortDescConverter.INSTANCE.isReservedPort(port));
+            assertTrue(OfPortDescConverter.INSTANCE.isReservedPort(port),
+                    String.format("Port %s must be detected as RESERVED, but it's not", port));
         }
 
         for (OFPort port : new OFPort[]{
                 OFPort.of(1),
                 OFPort.of(OFPort.MAX.getPortNumber() - 1)}) {
-            Assert.assertFalse(String.format("Port %s must be detected as NOT RESERVED, but it's not", port),
-                              OfPortDescConverter.INSTANCE.isReservedPort(port));
+            assertFalse(OfPortDescConverter.INSTANCE.isReservedPort(port),
+                    String.format("Port %s must be detected as NOT RESERVED, but it's not", port));
         }
     }
 
@@ -62,21 +65,21 @@ public class OfPortDescConverterTest {
         Map<org.openkilda.messaging.info.event.PortChangeType, net.floodlightcontroller.core.PortChangeType> expected
                 = new HashMap<>();
         expected.put(org.openkilda.messaging.info.event.PortChangeType.ADD,
-                     net.floodlightcontroller.core.PortChangeType.ADD);
+                net.floodlightcontroller.core.PortChangeType.ADD);
         expected.put(org.openkilda.messaging.info.event.PortChangeType.OTHER_UPDATE,
-                     net.floodlightcontroller.core.PortChangeType.OTHER_UPDATE);
+                net.floodlightcontroller.core.PortChangeType.OTHER_UPDATE);
         expected.put(org.openkilda.messaging.info.event.PortChangeType.DELETE,
-                     net.floodlightcontroller.core.PortChangeType.DELETE);
+                net.floodlightcontroller.core.PortChangeType.DELETE);
         expected.put(org.openkilda.messaging.info.event.PortChangeType.UP,
-                     net.floodlightcontroller.core.PortChangeType.UP);
+                net.floodlightcontroller.core.PortChangeType.UP);
         expected.put(org.openkilda.messaging.info.event.PortChangeType.DOWN,
-                     net.floodlightcontroller.core.PortChangeType.DOWN);
+                net.floodlightcontroller.core.PortChangeType.DOWN);
 
         DatapathId dpId = DatapathId.of(1);
         for (Map.Entry<org.openkilda.messaging.info.event.PortChangeType,
                 net.floodlightcontroller.core.PortChangeType> entry : expected.entrySet()) {
             PortInfoData encoded = OfPortDescConverter.INSTANCE.toPortInfoData(dpId, portDesc, entry.getValue());
-            Assert.assertSame(entry.getKey(), encoded.getState());
+            assertSame(entry.getKey(), encoded.getState());
         }
     }
 }

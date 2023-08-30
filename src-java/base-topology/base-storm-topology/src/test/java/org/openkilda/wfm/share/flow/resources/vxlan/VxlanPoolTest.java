@@ -16,8 +16,8 @@
 package org.openkilda.wfm.share.flow.resources.vxlan;
 
 import static java.lang.String.format;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.PathId;
@@ -28,8 +28,9 @@ import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.VxlanRepository;
 import org.openkilda.wfm.share.flow.resources.ResourceNotAvailableException;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -50,7 +51,7 @@ public class VxlanPoolTest extends InMemoryGraphBasedTest {
     private VxlanPool vxlanPool;
     private VxlanRepository vxlanRepository;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         vxlanPool = new VxlanPool(persistenceManager, MIN_VXLAN, MAX_VXLAN, 1);
         vxlanRepository = persistenceManager.getRepositoryFactory().createVxlanRepository();
@@ -72,14 +73,14 @@ public class VxlanPoolTest extends InMemoryGraphBasedTest {
     }
 
 
-    @Test(expected = ResourceNotAvailableException.class)
+    @Test
     public void vxlanPoolFullTest() {
-        transactionManager.doInTransaction(() -> {
+        Assertions.assertThrows(ResourceNotAvailableException.class, () -> transactionManager.doInTransaction(() -> {
             for (int i = MIN_VXLAN; i <= MAX_VXLAN + 1; i++) {
                 assertTrue(vxlanPool.allocate(format("flow_%d", i), new PathId(format("path_%d", i)),
                         new PathId(format("op_path_%d", i))).getVxlan().getVni() > 0);
             }
-        });
+        }));
     }
 
     @Test

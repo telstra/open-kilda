@@ -21,33 +21,19 @@ import org.openkilda.model.history.HaFlowEvent;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.history.HaFlowEventRepository;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
-@RunWith(Parameterized.class)
 public class FermaHaFlowEventRepositoryTest extends InMemoryGraphBasedTest {
     public static final String FLOW_ADDED_BY_DEFAULT = "flow ID 12";
     private HaFlowEventRepository haFlowEventRepository;
 
-    private final Instant timeFrom;
-    private final Instant timeTo;
-    private final boolean success;
-    private final int maxCount;
-
-    public FermaHaFlowEventRepositoryTest(boolean success, Instant timeFrom, Instant timeTo, int maxCount) {
-        this.timeFrom = timeFrom;
-        this.timeTo = timeTo;
-        this.success = success;
-        this.maxCount = maxCount;
-    }
-
-    @Before
+    @BeforeEach
     public void setUp() {
         haFlowEventRepository = repositoryFactory.createHaFlowEventRepository();
 
@@ -64,8 +50,7 @@ public class FermaHaFlowEventRepositoryTest extends InMemoryGraphBasedTest {
      * Parameters are: success?, timeFrom, timeTo, maxCount.
      * @return test data
      */
-    @Parameterized.Parameters()
-    public static Object[] data() {
+    public static Object[] getParametersForFindByHaFlowIdAndTimeFrameTest() {
         return new Object[][]{
                 { true, null, null, 100 },
                 { true, Instant.parse("1970-01-01T00:00:00Z"), null, 100 },
@@ -84,8 +69,10 @@ public class FermaHaFlowEventRepositoryTest extends InMemoryGraphBasedTest {
         };
     }
 
-    @Test
-    public void whenHaFlowExists_findByHaFlowIdAndTimeFrame() {
+    @ParameterizedTest
+    @MethodSource("getParametersForFindByHaFlowIdAndTimeFrameTest")
+    public void whenHaFlowExists_findByHaFlowIdAndTimeFrame(
+            boolean success, Instant timeFrom, Instant timeTo, int maxCount) {
         List<HaFlowEvent> events = haFlowEventRepository.findByHaFlowIdAndTimeFrame(FLOW_ADDED_BY_DEFAULT,
                 timeFrom,
                 timeTo,

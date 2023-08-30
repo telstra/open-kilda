@@ -22,7 +22,7 @@ import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mock;
 
 public abstract class AbstractHaFlowTest<T> extends InMemoryGraphBasedTest {
@@ -33,7 +33,7 @@ public abstract class AbstractHaFlowTest<T> extends InMemoryGraphBasedTest {
     @Mock
     protected PathComputer pathComputer;
 
-    @Before
+    @BeforeEach
     public void before() {
         ruleManager = mock(RuleManager.class);
         pathComputer = mock(PathComputer.class);

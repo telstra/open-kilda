@@ -15,8 +15,7 @@
 
 package org.openkilda.rulemanager.factory.generator.flow;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
 import static org.openkilda.rulemanager.Utils.getCommand;
@@ -42,7 +41,8 @@ import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.rulemanager.utils.RoutingMetadata;
 
 import com.google.common.collect.Sets;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -77,7 +77,7 @@ public class InputArpRuleGeneratorTest {
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
         assertEquals(SW.getSwitchId(), flowCommandData.getSwitchId());
         assertEquals(SW.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
         assertEquals(new PortColourCookie(CookieType.ARP_INPUT_CUSTOMER_TYPE, PORT_NUMBER_1),
                 flowCommandData.getCookie());
@@ -95,7 +95,7 @@ public class InputArpRuleGeneratorTest {
                 .goToTable(OfTable.PRE_INGRESS)
                 .build();
         assertEquals(expectedInstructions, flowCommandData.getInstructions());
-        assertTrue(flowCommandData.getFlags().isEmpty());
+        Assertions.assertTrue(flowCommandData.getFlags().isEmpty());
     }
 
     @Test

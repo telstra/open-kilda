@@ -16,9 +16,6 @@
 package org.openkilda.wfm.topology.connecteddevices.service;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
 import static org.openkilda.model.cookie.Cookie.ARP_INPUT_PRE_DROP_COOKIE;
 import static org.openkilda.model.cookie.Cookie.LLDP_INPUT_PRE_DROP_COOKIE;
 
@@ -37,19 +34,20 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
 import org.openkilda.wfm.topology.connecteddevices.service.PacketService.FlowRelatedData;
 
-import junitparams.JUnitParamsRunner;
-import junitparams.Parameters;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
-@RunWith(JUnitParamsRunner.class)
 public class PacketServiceTest extends InMemoryGraphBasedTest {
     public static final String MAC_ADDRESS_1 = "00:00:00:00:00:01";
     public static final String MAC_ADDRESS_2 = "00:00:00:00:00:02";
@@ -88,7 +86,7 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
     private static TransitVlanRepository transitVlanRepository;
     private static PacketService packetService;
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpOnce() {
         switchConnectedDeviceRepository = persistenceManager.getRepositoryFactory()
                 .createSwitchConnectedDeviceRepository();
@@ -97,7 +95,7 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
         transitVlanRepository = persistenceManager.getRepositoryFactory().createTransitVlanRepository();
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         packetService = new PacketService(persistenceManager);
         switchRepository.add(Switch.builder().switchId(SWITCH_ID_1).build());
@@ -109,16 +107,18 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
         LldpInfoData data = createLldpInfoDataData();
         packetService.handleLldpData(data);
         Collection<SwitchConnectedDevice> devices = switchConnectedDeviceRepository.findAll();
-        assertEquals(1, devices.size());
-        assertEquals(devices.iterator().next().getTimeFirstSeen(), devices.iterator().next().getTimeLastSeen());
+        Assertions.assertEquals(1, devices.size());
+        Assertions.assertEquals(devices.iterator().next().getTimeFirstSeen(),
+                devices.iterator().next().getTimeLastSeen());
     }
 
     @Test
     public void testHandleArpDataSameTimeOnCreate() {
         packetService.handleArpData(createArpInfoData());
         Collection<SwitchConnectedDevice> devices = switchConnectedDeviceRepository.findAll();
-        assertEquals(1, devices.size());
-        assertEquals(devices.iterator().next().getTimeFirstSeen(), devices.iterator().next().getTimeLastSeen());
+        Assertions.assertEquals(1, devices.size());
+        Assertions.assertEquals(devices.iterator().next().getTimeFirstSeen(),
+                devices.iterator().next().getTimeLastSeen());
     }
 
     @Test
@@ -131,8 +131,9 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
         packetService.handleLldpData(createLldpInfoDataData());
 
         Collection<SwitchConnectedDevice> devices = switchConnectedDeviceRepository.findAll();
-        assertEquals(1, devices.size());
-        assertNotEquals(devices.iterator().next().getTimeFirstSeen(), devices.iterator().next().getTimeLastSeen());
+        Assertions.assertEquals(1, devices.size());
+        Assertions.assertNotEquals(devices.iterator().next().getTimeFirstSeen(),
+                devices.iterator().next().getTimeLastSeen());
     }
 
     @Test
@@ -145,8 +146,9 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
         packetService.handleArpData(createArpInfoData());
 
         Collection<SwitchConnectedDevice> devices = switchConnectedDeviceRepository.findAll();
-        assertEquals(1, devices.size());
-        assertNotEquals(devices.iterator().next().getTimeFirstSeen(), devices.iterator().next().getTimeLastSeen());
+        Assertions.assertEquals(1, devices.size());
+        Assertions.assertNotEquals(devices.iterator().next().getTimeFirstSeen(),
+                devices.iterator().next().getTimeLastSeen());
     }
 
     @Test
@@ -154,7 +156,7 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
         LldpInfoData data = createLldpInfoDataData();
         data.setSwitchId(new SwitchId("12345"));
         packetService.handleLldpData(data);
-        assertTrue(switchConnectedDeviceRepository.findAll().isEmpty());
+        Assertions.assertTrue(switchConnectedDeviceRepository.findAll().isEmpty());
     }
 
     @Test
@@ -162,7 +164,7 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
         ArpInfoData data = createArpInfoData();
         data.setSwitchId(new SwitchId("12345"));
         packetService.handleArpData(data);
-        assertTrue(switchConnectedDeviceRepository.findAll().isEmpty());
+        Assertions.assertTrue(switchConnectedDeviceRepository.findAll().isEmpty());
     }
 
     @Test
@@ -284,32 +286,32 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
         runHandleArpDataWithAddedDevice(updatedData);
     }
 
-    private Object[][] getOneSwitchOnePortFlowParameters() {
-        return new Object[][] {
+    private static Stream<Arguments> getOneSwitchOnePortFlowParameters() {
+        return Stream.of(
                 // inVlan, srcVlan, dstVlan, vlansInPacket, sourceSwitch
-                {VLAN_0, VLAN_0, VLAN_2, newArrayList(VLAN_2), true},
-                {VLAN_1, VLAN_0, VLAN_2, newArrayList(VLAN_2, VLAN_1), true},
-                {VLAN_1, VLAN_1, VLAN_2, newArrayList(VLAN_2), true},
-                {VLAN_0, VLAN_2, VLAN_0, newArrayList(VLAN_2), false},
-                {VLAN_1, VLAN_2, VLAN_0, newArrayList(VLAN_2, VLAN_1), false},
-                {VLAN_1, VLAN_2, VLAN_1, newArrayList(VLAN_2), false}
-        };
+                Arguments.of(VLAN_0, VLAN_0, VLAN_2, newArrayList(VLAN_2), true),
+                Arguments.of(VLAN_1, VLAN_0, VLAN_2, newArrayList(VLAN_2, VLAN_1), true),
+                Arguments.of(VLAN_1, VLAN_1, VLAN_2, newArrayList(VLAN_2), true),
+                Arguments.of(VLAN_0, VLAN_2, VLAN_0, newArrayList(VLAN_2), false),
+                Arguments.of(VLAN_1, VLAN_2, VLAN_0, newArrayList(VLAN_2, VLAN_1), false),
+                Arguments.of(VLAN_1, VLAN_2, VLAN_1, newArrayList(VLAN_2), false)
+        );
     }
 
-    @Test
-    @Parameters(method = "getOneSwitchOnePortFlowParameters")
+    @ParameterizedTest
+    @MethodSource("getOneSwitchOnePortFlowParameters")
     public void findFlowRelatedDataForOneSwitchOnePortFlowTest(
             int inVlan, int srcVlan, int dstVlan, List<Integer> vlansInPacket, boolean source) {
         createFlow(FLOW_ID, srcVlan, dstVlan, null, true, true);
         LldpInfoData data = createLldpInfoDataData(SWITCH_ID_1, vlansInPacket, PORT_NUMBER_1);
         FlowRelatedData flowRelatedData = packetService.findFlowRelatedDataForOneSwitchFlow(data);
-        assertEquals(FLOW_ID, flowRelatedData.getFlowId());
-        assertEquals(inVlan, flowRelatedData.getOriginalVlan());
-        assertEquals(source, flowRelatedData.getSource());
+        Assertions.assertEquals(FLOW_ID, flowRelatedData.getFlowId());
+        Assertions.assertEquals(inVlan, flowRelatedData.getOriginalVlan());
+        Assertions.assertEquals(source, flowRelatedData.getSource());
     }
 
-    private Object[][] getOneSwitchFlowParameters() {
-        return new Object[][] {
+    private static Object[][] getOneSwitchFlowParameters() {
+        return new Object[][]{
                 // inVlan, srcVlan, dstVlan, vlansInPacket, sourceSwitch
                 {VLAN_0, VLAN_0, VLAN_0, newArrayList(), true},
                 {VLAN_1, VLAN_0, VLAN_0, newArrayList(VLAN_1), true},
@@ -324,21 +326,21 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
         };
     }
 
-    @Test
-    @Parameters(method = "getOneSwitchFlowParameters")
+    @ParameterizedTest
+    @MethodSource("getOneSwitchFlowParameters")
     public void findFlowRelatedDataForOneSwitchFlowTest(
             int inVlan, int srcVlan, int dstVlan, List<Integer> vlansInPacket, boolean source) {
         createFlow(FLOW_ID, srcVlan, dstVlan, null, true, false);
         LldpInfoData data = createLldpInfoDataData(
                 SWITCH_ID_1, vlansInPacket, source ? PORT_NUMBER_1 : PORT_NUMBER_2);
         FlowRelatedData flowRelatedData = packetService.findFlowRelatedDataForOneSwitchFlow(data);
-        assertEquals(FLOW_ID, flowRelatedData.getFlowId());
-        assertEquals(inVlan, flowRelatedData.getOriginalVlan());
-        assertEquals(source, flowRelatedData.getSource());
+        Assertions.assertEquals(FLOW_ID, flowRelatedData.getFlowId());
+        Assertions.assertEquals(inVlan, flowRelatedData.getOriginalVlan());
+        Assertions.assertEquals(source, flowRelatedData.getSource());
     }
 
-    private Object[][] getVlanFlowParameters() {
-        return new Object[][] {
+    private static Object[][] getVlanFlowParameters() {
+        return new Object[][]{
                 // inVlan, srcVlan, dstVlan, transitVlan, vlansInPacket, sourceSwitch
                 {VLAN_0, VLAN_0, VLAN_3, VLAN_2, newArrayList(VLAN_2), true},
                 {VLAN_1, VLAN_0, VLAN_3, VLAN_2, newArrayList(VLAN_2, VLAN_1), true},
@@ -349,21 +351,21 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
         };
     }
 
-    @Test
-    @Parameters(method = "getVlanFlowParameters")
+    @ParameterizedTest
+    @MethodSource("getVlanFlowParameters")
     public void findFlowRelatedDataForVlanFlowTest(
             int inVlan, int srcVlan, int dstVlan, int transitVlan, List<Integer> vlansInPacket, boolean source) {
         createFlow(FLOW_ID, srcVlan, dstVlan, transitVlan, false, false);
         LldpInfoData data = createLldpInfoDataData(
                 source ? SWITCH_ID_1 : SWITCH_ID_2, vlansInPacket, source ? PORT_NUMBER_1 : PORT_NUMBER_2);
         FlowRelatedData flowRelatedData = packetService.findFlowRelatedDataForVlanFlow(data);
-        assertEquals(FLOW_ID, flowRelatedData.getFlowId());
-        assertEquals(inVlan, flowRelatedData.getOriginalVlan());
-        assertEquals(source, flowRelatedData.getSource());
+        Assertions.assertEquals(FLOW_ID, flowRelatedData.getFlowId());
+        Assertions.assertEquals(inVlan, flowRelatedData.getOriginalVlan());
+        Assertions.assertEquals(source, flowRelatedData.getSource());
     }
 
-    private Object[][] getInOutVlanCombinationForVxlanParameters() {
-        return new Object[][] {
+    private static Object[][] getInOutVlanCombinationForVxlanParameters() {
+        return new Object[][]{
                 // inVlan, srcVlan, dstVlan, vlansInPacket, sourceSwitch
                 {VLAN_0, VLAN_0, VLAN_0, newArrayList(), true},
                 {VLAN_0, VLAN_0, VLAN_2, newArrayList(), true},
@@ -376,28 +378,28 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
         };
     }
 
-    @Test
-    @Parameters(method = "getInOutVlanCombinationForVxlanParameters")
+    @ParameterizedTest
+    @MethodSource("getInOutVlanCombinationForVxlanParameters")
     public void findFlowRelatedDataForVxlanFlowTest(
             int inVlan, int srcVlan, int dstVlan, List<Integer> vlansInPacket, boolean source) {
         createFlow(FLOW_ID, srcVlan, dstVlan, null, false, false);
         LldpInfoData data = createLldpInfoDataData(
                 source ? SWITCH_ID_1 : SWITCH_ID_2, vlansInPacket, source ? PORT_NUMBER_1 : PORT_NUMBER_2);
         FlowRelatedData flowRelatedData = packetService.findFlowRelatedDataForVxlanFlow(data);
-        assertEquals(FLOW_ID, flowRelatedData.getFlowId());
-        assertEquals(inVlan, flowRelatedData.getOriginalVlan());
-        assertEquals(source, flowRelatedData.getSource());
+        Assertions.assertEquals(FLOW_ID, flowRelatedData.getFlowId());
+        Assertions.assertEquals(inVlan, flowRelatedData.getOriginalVlan());
+        Assertions.assertEquals(source, flowRelatedData.getSource());
     }
 
     private void runHandleLldpDataWithAddedDevice(LldpInfoData updatedData) {
         LldpInfoData data = createLldpInfoDataData();
         packetService.handleLldpData(data);
-        assertEquals(1, switchConnectedDeviceRepository.findAll().size());
+        Assertions.assertEquals(1, switchConnectedDeviceRepository.findAll().size());
         assertLldpConnectedDeviceExistInDatabase(data);
 
         // we must add second device
         packetService.handleLldpData(updatedData);
-        assertEquals(2, switchConnectedDeviceRepository.findAll().size());
+        Assertions.assertEquals(2, switchConnectedDeviceRepository.findAll().size());
         assertLldpConnectedDeviceExistInDatabase(data);
         assertLldpConnectedDeviceExistInDatabase(updatedData);
     }
@@ -406,7 +408,7 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
         LldpInfoData data = createLldpInfoDataData();
         packetService.handleLldpData(data);
         Collection<SwitchConnectedDevice> oldDevices = switchConnectedDeviceRepository.findAll();
-        assertEquals(1, oldDevices.size());
+        Assertions.assertEquals(1, oldDevices.size());
         assertLldpInfoDataDataEqualsSwitchConnectedDevice(data, oldDevices.iterator().next());
         SwitchConnectedDevice originalDevice = new SwitchConnectedDevice(oldDevices.iterator().next());
 
@@ -417,22 +419,22 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
         // we must update old device
         packetService.handleLldpData(updatedData);
         Collection<SwitchConnectedDevice> newDevices = switchConnectedDeviceRepository.findAll();
-        assertEquals(1, newDevices.size());
+        Assertions.assertEquals(1, newDevices.size());
         assertLldpInfoDataDataEqualsSwitchConnectedDevice(updatedData, newDevices.iterator().next());
 
         // time must be updated
-        assertNotEquals(originalDevice.getTimeLastSeen(), newDevices.iterator().next().getTimeLastSeen());
+        Assertions.assertNotEquals(originalDevice.getTimeLastSeen(), newDevices.iterator().next().getTimeLastSeen());
     }
 
     private void runHandleArpDataWithAddedDevice(ArpInfoData updatedData) {
         ArpInfoData data = createArpInfoData();
         packetService.handleArpData(data);
-        assertEquals(1, switchConnectedDeviceRepository.findAll().size());
+        Assertions.assertEquals(1, switchConnectedDeviceRepository.findAll().size());
         assertArpConnectedDeviceExistInDatabase(data);
 
         // we must add second device
         packetService.handleArpData(updatedData);
-        assertEquals(2, switchConnectedDeviceRepository.findAll().size());
+        Assertions.assertEquals(2, switchConnectedDeviceRepository.findAll().size());
         assertArpConnectedDeviceExistInDatabase(data);
         assertArpConnectedDeviceExistInDatabase(updatedData);
     }
@@ -440,39 +442,39 @@ public class PacketServiceTest extends InMemoryGraphBasedTest {
     private void assertLldpConnectedDeviceExistInDatabase(LldpInfoData data) {
         Optional<SwitchConnectedDevice> switchConnectedDevice = switchConnectedDeviceRepository
                 .findLldpByUniqueIndex(packetService.buildLldpUniqueIndex(data, data.getVlans().get(0)));
-        assertTrue(switchConnectedDevice.isPresent());
+        Assertions.assertTrue(switchConnectedDevice.isPresent());
         assertLldpInfoDataDataEqualsSwitchConnectedDevice(data, switchConnectedDevice.get());
     }
 
     private void assertArpConnectedDeviceExistInDatabase(ArpInfoData data) {
         Optional<SwitchConnectedDevice> switchConnectedDevice = switchConnectedDeviceRepository
                 .findArpByUniqueIndex(packetService.buildArpUniqueIndex(data, data.getVlans().get(0)));
-        assertTrue(switchConnectedDevice.isPresent());
+        Assertions.assertTrue(switchConnectedDevice.isPresent());
         assertArpInfoDataEqualsSwitchConnectedDevice(data, switchConnectedDevice.get());
     }
 
     private void assertLldpInfoDataDataEqualsSwitchConnectedDevice(
             LldpInfoData data, SwitchConnectedDevice device) {
-        assertEquals(data.getSwitchId(), device.getSwitchId());
-        assertEquals(data.getPortNumber(), device.getPortNumber());
-        assertEquals(data.getVlans().get(0).intValue(), device.getVlan());
-        assertEquals(data.getMacAddress(), device.getMacAddress());
-        assertEquals(data.getChassisId(), device.getChassisId());
-        assertEquals(data.getPortId(), device.getPortId());
-        assertEquals(data.getPortDescription(), device.getPortDescription());
-        assertEquals(data.getManagementAddress(), device.getManagementAddress());
-        assertEquals(data.getSystemCapabilities(), device.getSystemCapabilities());
-        assertEquals(data.getSystemName(), device.getSystemName());
-        assertEquals(data.getSystemDescription(), device.getSystemDescription());
-        assertEquals(data.getTtl(), device.getTtl());
+        Assertions.assertEquals(data.getSwitchId(), device.getSwitchId());
+        Assertions.assertEquals(data.getPortNumber(), device.getPortNumber());
+        Assertions.assertEquals(data.getVlans().get(0).intValue(), device.getVlan());
+        Assertions.assertEquals(data.getMacAddress(), device.getMacAddress());
+        Assertions.assertEquals(data.getChassisId(), device.getChassisId());
+        Assertions.assertEquals(data.getPortId(), device.getPortId());
+        Assertions.assertEquals(data.getPortDescription(), device.getPortDescription());
+        Assertions.assertEquals(data.getManagementAddress(), device.getManagementAddress());
+        Assertions.assertEquals(data.getSystemCapabilities(), device.getSystemCapabilities());
+        Assertions.assertEquals(data.getSystemName(), device.getSystemName());
+        Assertions.assertEquals(data.getSystemDescription(), device.getSystemDescription());
+        Assertions.assertEquals(data.getTtl(), device.getTtl());
     }
 
     private void assertArpInfoDataEqualsSwitchConnectedDevice(ArpInfoData data, SwitchConnectedDevice device) {
-        assertEquals(data.getSwitchId(), device.getSwitchId());
-        assertEquals(data.getPortNumber(), device.getPortNumber());
-        assertEquals(data.getVlans().get(0).intValue(), device.getVlan());
-        assertEquals(data.getMacAddress(), device.getMacAddress());
-        assertEquals(data.getIpAddress(), device.getIpAddress());
+        Assertions.assertEquals(data.getSwitchId(), device.getSwitchId());
+        Assertions.assertEquals(data.getPortNumber(), device.getPortNumber());
+        Assertions.assertEquals(data.getVlans().get(0).intValue(), device.getVlan());
+        Assertions.assertEquals(data.getMacAddress(), device.getMacAddress());
+        Assertions.assertEquals(data.getIpAddress(), device.getIpAddress());
     }
 
     private void createFlow(

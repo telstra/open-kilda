@@ -16,7 +16,6 @@
 package org.openkilda.rulemanager.factory.generator.flow;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.SwitchFeature.METERS;
@@ -67,8 +66,9 @@ import org.openkilda.rulemanager.action.noviflow.OpenFlowOxms;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -146,7 +146,7 @@ public class SingleTableServer42IngressRuleGeneratorTest {
 
     RuleManagerConfig config;
 
-    @Before
+    @BeforeEach
     public void setup() {
         config = mock(RuleManagerConfig.class);
         when(config.getServer42FlowRttUdpPortOffset()).thenReturn(PORT_OFFSET);
@@ -164,7 +164,7 @@ public class SingleTableServer42IngressRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.UDP_DST).value(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT).build(),
                 COPY_FIELD_ACTION,
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -180,7 +180,7 @@ public class SingleTableServer42IngressRuleGeneratorTest {
                 COPY_FIELD_ACTION,
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -195,7 +195,7 @@ public class SingleTableServer42IngressRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.UDP_DST).value(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT).build(),
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -209,7 +209,7 @@ public class SingleTableServer42IngressRuleGeneratorTest {
                 SetFieldAction.builder().field(Field.UDP_SRC).value(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT).build(),
                 SetFieldAction.builder().field(Field.UDP_DST).value(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT).build(),
                 COPY_FIELD_ACTION);
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -218,7 +218,7 @@ public class SingleTableServer42IngressRuleGeneratorTest {
         SingleTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(OUTER_VLAN_ID_1, FEATURES);
         List<Action> expectedActions = newArrayList(new PopVlanAction(), COPY_FIELD_ACTION, buildPushVxlan());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -228,7 +228,7 @@ public class SingleTableServer42IngressRuleGeneratorTest {
         List<Action> transformActions = generator.buildTransformActions(
                 OUTER_VLAN_ID_1, Sets.newHashSet(NOVIFLOW_PUSH_POP_VXLAN));
         List<Action> expectedActions = newArrayList(new PopVlanAction(), buildPushVxlan());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -237,7 +237,7 @@ public class SingleTableServer42IngressRuleGeneratorTest {
         SingleTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(COPY_FIELD_ACTION, buildPushVxlan());
-        assertEquals(expectedActions, transformActions);
+        Assertions.assertEquals(expectedActions, transformActions);
     }
 
     @Test
@@ -246,7 +246,7 @@ public class SingleTableServer42IngressRuleGeneratorTest {
                 .switchProperties(SWITCH_PROPERTIES)
                 .flowPath(ONE_SWITCH_PATH)
                 .build();
-        assertEquals(0, generator.generateCommands(SWITCH_1).size());
+        Assertions.assertEquals(0, generator.generateCommands(SWITCH_1).size());
     }
 
     @Test
@@ -255,7 +255,7 @@ public class SingleTableServer42IngressRuleGeneratorTest {
                 .switchProperties(null)
                 .flowPath(PATH)
                 .build();
-        assertEquals(0, generator.generateCommands(SWITCH_1).size());
+        Assertions.assertEquals(0, generator.generateCommands(SWITCH_1).size());
     }
 
     @Test
@@ -264,7 +264,7 @@ public class SingleTableServer42IngressRuleGeneratorTest {
                 .switchProperties(SwitchProperties.builder().multiTable(true).server42FlowRtt(true).build())
                 .flowPath(PATH)
                 .build();
-        assertEquals(0, generator.generateCommands(SWITCH_1).size());
+        Assertions.assertEquals(0, generator.generateCommands(SWITCH_1).size());
     }
 
     @Test
@@ -273,7 +273,7 @@ public class SingleTableServer42IngressRuleGeneratorTest {
                 .switchProperties(SwitchProperties.builder().multiTable(false).server42FlowRtt(false).build())
                 .flowPath(PATH)
                 .build();
-        assertEquals(0, generator.generateCommands(SWITCH_1).size());
+        Assertions.assertEquals(0, generator.generateCommands(SWITCH_1).size());
     }
 
     @Test
@@ -281,7 +281,7 @@ public class SingleTableServer42IngressRuleGeneratorTest {
         Flow flow = buildFlow(PATH, 0);
         SingleTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
 
@@ -309,7 +309,7 @@ public class SingleTableServer42IngressRuleGeneratorTest {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1);
         SingleTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData ingressCommand = (FlowSpeakerData) commands.get(0);
 
@@ -331,19 +331,19 @@ public class SingleTableServer42IngressRuleGeneratorTest {
     private void assertIngressCommand(
             FlowSpeakerData command, int expectedPriority, Set<FieldMatch> expectedMatch,
             List<Action> expectedApplyActions) {
-        assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
-        assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
+        Assertions.assertEquals(SWITCH_1.getSwitchId(), command.getSwitchId());
+        Assertions.assertEquals(SWITCH_1.getOfVersion(), command.getOfVersion().toString());
 
-        assertEquals(SERVER_42_INGRESS_COOKIE, command.getCookie());
-        assertEquals(OfTable.INPUT, command.getTable());
-        assertEquals(expectedPriority, command.getPriority());
+        Assertions.assertEquals(SERVER_42_INGRESS_COOKIE, command.getCookie());
+        Assertions.assertEquals(OfTable.INPUT, command.getTable());
+        Assertions.assertEquals(expectedPriority, command.getPriority());
         assertEqualsMatch(expectedMatch, command.getMatch());
 
         Instructions expectedInstructions = Instructions.builder()
                 .applyActions(expectedApplyActions)
                 .build();
-        assertEquals(expectedInstructions, command.getInstructions());
-        assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
+        Assertions.assertEquals(expectedInstructions, command.getInstructions());
+        Assertions.assertEquals(Sets.newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
     }
 
     private SingleTableServer42IngressRuleGenerator buildGenerator(

@@ -71,3 +71,7 @@ bootJar {
 }
 
 bootJar.dependsOn generateVersionTxt
+
+test {
+    useJUnitPlatform()
+}

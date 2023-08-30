@@ -70,4 +70,8 @@ public interface NbWorkerTopologyConfig extends AbstractTopologyConfig {
     @Default("20")
     @Description("The timeout for performing H&S operations")
     int getProcessTimeout();
+
+    @Key("nbworker.kafka.chunked.messages.size")
+    @Default("500")
+    int getChunkedMessagesChunkSize();
 }

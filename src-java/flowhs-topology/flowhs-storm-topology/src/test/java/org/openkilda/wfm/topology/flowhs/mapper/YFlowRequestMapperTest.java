@@ -15,9 +15,9 @@
 
 package org.openkilda.wfm.topology.flowhs.mapper;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.openkilda.messaging.command.yflow.SubFlowDto;
 import org.openkilda.messaging.command.yflow.SubFlowSharedEndpointEncapsulation;
@@ -29,7 +29,7 @@ import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -95,8 +95,8 @@ public class YFlowRequestMapperTest {
         assertEquals(REQUEST_PERIODIC_PINGS, actualRequestedFlow.isPeriodicPings());
         assertEquals(REQUEST_COMPUTATION_STRATEGY, actualRequestedFlow.getPathComputationStrategy());
         assertEquals(REQUEST_ALLOCATE_PROTECTED_PATH, actualRequestedFlow.isAllocateProtectedPath());
-        assertNotEquals("A diverse flow id from the request is ignored",
-                REQUEST_DIVERSE_FLOW_ID, actualRequestedFlow.getDiverseFlowId());
+        assertNotEquals(REQUEST_DIVERSE_FLOW_ID, actualRequestedFlow.getDiverseFlowId(),
+                "A diverse flow id from the request is ignored");
         assertNull(actualRequestedFlow.getDiverseFlowId());
 
         // taken from subflows

@@ -19,21 +19,21 @@ import org.openkilda.floodlight.utils.CommandContextFactory;
 
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.easymock.EasyMockSupport;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 public abstract class AbstractCommandTest extends EasyMockSupport {
     protected final CommandContextFactory commandContextFactory = new CommandContextFactory();
     protected final FloodlightModuleContext moduleContext = new FloodlightModuleContext();
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         injectMocks(this);
 
         commandContextFactory.init(moduleContext);
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         verifyAll();
     }

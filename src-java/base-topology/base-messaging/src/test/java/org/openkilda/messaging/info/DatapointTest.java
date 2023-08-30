@@ -19,8 +19,8 @@ import org.openkilda.messaging.ByteArraySerializer;
 import org.openkilda.messaging.info.switches.v2.action.SetFieldActionEntry;
 
 import com.google.common.collect.ImmutableMap;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class DatapointTest {
     ByteArraySerializer serializer = new ByteArraySerializer();
@@ -39,7 +39,7 @@ public class DatapointTest {
 
         Datapoint reconstruct = (Datapoint) ((InfoMessage) serializer.deserialize()).getData();
 
-        Assert.assertEquals(origin, reconstruct);
+        Assertions.assertEquals(origin, reconstruct);
     }
 
     @Test
@@ -50,6 +50,6 @@ public class DatapointTest {
 
         SetFieldActionEntry reconstruct = (SetFieldActionEntry) serializer.deserialize();
 
-        Assert.assertEquals(origin, reconstruct);
+        Assertions.assertEquals(origin, reconstruct);
     }
 }

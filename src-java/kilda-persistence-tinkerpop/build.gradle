@@ -32,7 +32,8 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params'
     testImplementation('org.apache.tinkerpop:tinkergraph-gremlin:3.3.11') {
         exclude group: 'org.codehaus.groovy'
     }
@@ -66,4 +67,8 @@ task testJar(type: Jar) {
 
 artifacts {
     testArtifacts testJar
+}
+
+test {
+    useJUnitPlatform()
 }

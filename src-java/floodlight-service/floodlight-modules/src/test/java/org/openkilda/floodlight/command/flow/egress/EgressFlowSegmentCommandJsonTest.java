@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.flow.egress;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.openkilda.floodlight.api.request.EgressFlowSegmentRequest;
 import org.openkilda.floodlight.api.request.factory.EgressFlowSegmentRequestFactory;
 import org.openkilda.floodlight.command.AbstractSpeakerCommandJsonTest;
@@ -27,19 +29,17 @@ import org.openkilda.model.MirrorConfig;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
 
-import org.junit.Assert;
-
 abstract class EgressFlowSegmentCommandJsonTest
         extends AbstractSpeakerCommandJsonTest<EgressFlowSegmentRequest> {
     protected void verifyPayload(EgressFlowSegmentRequest request, EgressFlowSegmentCommand command) {
-        Assert.assertEquals(request.getMessageContext(), command.getMessageContext());
-        Assert.assertEquals(request.getSwitchId(), command.getSwitchId());
-        Assert.assertEquals(request.getCommandId(), command.getCommandId());
-        Assert.assertEquals(request.getMetadata(), command.getMetadata());
-        Assert.assertEquals(request.getEndpoint(), command.getEndpoint());
-        Assert.assertEquals(request.getIngressEndpoint(), command.getIngressEndpoint());
-        Assert.assertEquals(request.getIslPort(), command.getIngressIslPort());
-        Assert.assertEquals(request.getEncapsulation(), command.getEncapsulation());
+        assertEquals(request.getMessageContext(), command.getMessageContext());
+        assertEquals(request.getSwitchId(), command.getSwitchId());
+        assertEquals(request.getCommandId(), command.getCommandId());
+        assertEquals(request.getMetadata(), command.getMetadata());
+        assertEquals(request.getEndpoint(), command.getEndpoint());
+        assertEquals(request.getIngressEndpoint(), command.getIngressEndpoint());
+        assertEquals(request.getIslPort(), command.getIngressIslPort());
+        assertEquals(request.getEncapsulation(), command.getEncapsulation());
     }
 
     @Override

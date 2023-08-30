@@ -1658,7 +1658,7 @@ switches"() {
      */
     def getFreeVlan(SwitchId swId, List<FlowCreatePayload> existingFlows = []) {
         def r = new Random()
-        def vlans = (flowHelper.allowedVlans - existingFlows.collectMany { [it.source, it.destination] }.findAll {
+        def vlans = (flowHelper.KILDA_ALLOWED_VLANS - existingFlows.collectMany { [it.source, it.destination] }.findAll {
             it.datapath == swId
         }.collect { it.vlanId })
         return vlans[r.nextInt(vlans.size())]

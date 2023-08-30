@@ -15,10 +15,11 @@
 
 package org.openkilda.config.converter;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class EnumLowerCaseConverterTest {
     private enum TestEnum {
@@ -29,24 +30,26 @@ public class EnumLowerCaseConverterTest {
 
     @Test
     public void toStringTest() {
-        assertEquals("first_value", converter.toString(TestEnum.class, TestEnum.FIRST_VALUE, null));
-        assertEquals("value_2", converter.toString(TestEnum.class, TestEnum.VALUE_2, null));
-        assertNull(converter.toString(TestEnum.class, null, null));
+        Assertions.assertEquals("first_value", converter.toString(TestEnum.class, TestEnum.FIRST_VALUE, null));
+        Assertions.assertEquals("value_2", converter.toString(TestEnum.class, TestEnum.VALUE_2, null));
+        Assertions.assertNull(converter.toString(TestEnum.class, null, null));
     }
 
     @Test
     public void fromValidStringTest() {
-        assertEquals(TestEnum.FIRST_VALUE, converter.fromString(TestEnum.class, "first_value", null));
-        assertEquals(TestEnum.FIRST_VALUE, converter.fromString(TestEnum.class, "First_Value", null));
-        assertEquals(TestEnum.FIRST_VALUE, converter.fromString(TestEnum.class, "FIRST_VALUE", null));
-        assertEquals(TestEnum.VALUE_2, converter.fromString(TestEnum.class, "value_2", null));
-        assertEquals(TestEnum.VALUE_2, converter.fromString(TestEnum.class, "Value_2", null));
-        assertEquals(TestEnum.VALUE_2, converter.fromString(TestEnum.class, "VALUE_2", null));
-        assertNull(converter.fromString(TestEnum.class, null, null));
+        Assertions.assertEquals(TestEnum.FIRST_VALUE, converter.fromString(TestEnum.class, "first_value", null));
+        Assertions.assertEquals(TestEnum.FIRST_VALUE, converter.fromString(TestEnum.class, "First_Value", null));
+        Assertions.assertEquals(TestEnum.FIRST_VALUE, converter.fromString(TestEnum.class, "FIRST_VALUE", null));
+        Assertions.assertEquals(TestEnum.VALUE_2, converter.fromString(TestEnum.class, "value_2", null));
+        Assertions.assertEquals(TestEnum.VALUE_2, converter.fromString(TestEnum.class, "Value_2", null));
+        Assertions.assertEquals(TestEnum.VALUE_2, converter.fromString(TestEnum.class, "VALUE_2", null));
+        Assertions.assertNull(converter.fromString(TestEnum.class, null, null));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void fromInvalidStringTest() {
-        converter.fromString(TestEnum.class, "123", null);
+        assertThrows(IllegalArgumentException.class, () -> {
+            converter.fromString(TestEnum.class, "123", null);
+        });
     }
 }

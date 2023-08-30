@@ -18,6 +18,10 @@ package org.openkilda.floodlight.service.ping;
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.expect;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.floodlight.KildaCore;
 import org.openkilda.floodlight.KildaCoreConfig;
@@ -43,9 +47,8 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.UDP;
 import org.easymock.EasyMock;
 import org.easymock.EasyMockSupport;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFType;
 import org.projectfloodlight.openflow.types.DatapathId;
 import org.projectfloodlight.openflow.types.TransportPort;
@@ -59,7 +62,7 @@ public class PingServiceTest extends EasyMockSupport {
     private FloodlightModuleContext moduleContext = new FloodlightModuleContext();
     private PathVerificationService pathVerificationService = new PathVerificationService();
 
-    @Before
+    @BeforeEach
     public void setUp() {
         injectMocks(this);
 
@@ -94,13 +97,13 @@ public class PingServiceTest extends EasyMockSupport {
         byte[] payload = new byte[]{0x31, 0x32, 0x33, 0x34, 0x35};
         byte[] wrapped = pingService.wrapData(ping, payload).serialize();
         IPacket decoded = new Ethernet().deserialize(wrapped, 0, wrapped.length);
-        Assert.assertTrue(decoded instanceof Ethernet);
+        assertTrue(decoded instanceof Ethernet);
         PingWiredView parsed = pingService.unwrapData(dpIdBeta, (Ethernet) decoded);
 
-        Assert.assertNotNull(parsed);
-        Assert.assertArrayEquals(payload, parsed.getPayload());
+        assertNotNull(parsed);
+        assertArrayEquals(payload, parsed.getPayload());
 
-        Assert.assertEquals(ping.getTransitEncapsulation().getId(), parsed.getVlanStack().get(0));
+        assertEquals(ping.getTransitEncapsulation().getId(), parsed.getVlanStack().get(0));
     }
 
     @Test
@@ -120,27 +123,27 @@ public class PingServiceTest extends EasyMockSupport {
         byte[] payload = new byte[]{0x31, 0x32, 0x33, 0x34, 0x35};
         byte[] wrapped = pingService.wrapData(ping, payload).serialize();
         IPacket ethernet = new Ethernet().deserialize(wrapped, 0, wrapped.length);
-        Assert.assertTrue(ethernet instanceof Ethernet);
+        assertTrue(ethernet instanceof Ethernet);
 
         IPacket ipv4 = ethernet.getPayload();
-        Assert.assertTrue(ipv4 instanceof IPv4);
+        assertTrue(ipv4 instanceof IPv4);
 
         IPacket udp = ipv4.getPayload();
-        Assert.assertTrue(udp instanceof UDP);
-        Assert.assertEquals(((UDP) udp).getSourcePort(), TransportPort.of(SwitchManager.STUB_VXLAN_UDP_SRC));
-        Assert.assertEquals(((UDP) udp).getDestinationPort(), TransportPort.of(SwitchManager.VXLAN_UDP_DST));
+        assertTrue(udp instanceof UDP);
+        assertEquals(((UDP) udp).getSourcePort(), TransportPort.of(SwitchManager.STUB_VXLAN_UDP_SRC));
+        assertEquals(((UDP) udp).getDestinationPort(), TransportPort.of(SwitchManager.VXLAN_UDP_DST));
 
         byte[] udpPayload = udp.getPayload().serialize();
         Vxlan vxlan = (Vxlan) new Vxlan().deserialize(udpPayload, 0, udpPayload.length);
-        Assert.assertEquals((int) ping.getTransitEncapsulation().getId(), vxlan.getVni());
+        assertEquals((int) ping.getTransitEncapsulation().getId(), vxlan.getVni());
 
         byte[] vxlanPayload = vxlan.getPayload().serialize();
         IPacket decoded = new Ethernet().deserialize(vxlanPayload, 0, vxlanPayload.length);
-        Assert.assertTrue(decoded instanceof Ethernet);
+        assertTrue(decoded instanceof Ethernet);
         PingWiredView parsed = pingService.unwrapData(dpIdBeta, (Ethernet) decoded);
 
-        Assert.assertNotNull(parsed);
-        Assert.assertArrayEquals(payload, parsed.getPayload());
-        Assert.assertTrue(parsed.getVlanStack().isEmpty());
+        assertNotNull(parsed);
+        assertArrayEquals(payload, parsed.getPayload());
+        assertTrue(parsed.getVlanStack().isEmpty());
     }
 }

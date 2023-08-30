@@ -15,16 +15,16 @@
 
 package org.openkilda.wfm.topology.flowhs.service.haflow;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.openkilda.floodlight.api.request.FlowSegmentRequest;
 import org.openkilda.messaging.command.haflow.HaFlowResponse;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.topology.flowhs.service.AbstractHaFlowTest;
 
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.List;
@@ -32,7 +32,7 @@ import java.util.List;
 public class HaFlowReadServiceTest extends AbstractHaFlowTest<FlowSegmentRequest> {
     private static HaFlowReadService haFlowReadService;
 
-    @BeforeClass
+    @BeforeAll
     public static void setUpOnce() {
         haFlowReadService = new HaFlowReadService(persistenceManager, 0, Duration.ofMillis(1));
     }
@@ -40,22 +40,24 @@ public class HaFlowReadServiceTest extends AbstractHaFlowTest<FlowSegmentRequest
     @Test
     public void dumpReturnsEmptyListTest() {
         List<HaFlowResponse> haFlows = haFlowReadService.getAllHaFlows();
-        assertEquals(0, haFlows.size());
+        Assertions.assertEquals(0, haFlows.size());
     }
 
-    @Test(expected = FlowNotFoundException.class)
-    public void failingFetchingForUnknownHaFlowIdTest() throws FlowNotFoundException {
-        String haFlowId = "unknown_ha_flow";
+    @Test
+    public void failingFetchingForUnknownHaFlowIdTest() {
+        assertThrows(FlowNotFoundException.class, () -> {
+            String haFlowId = "unknown_ha_flow";
 
-        haFlowReadService.getHaFlow(haFlowId);
-        fail();
+            haFlowReadService.getHaFlow(haFlowId);
+        });
     }
 
-    @Test(expected = FlowNotFoundException.class)
-    public void failingFetchingPathsForUnknownHaFlowIdTest() throws FlowNotFoundException {
-        String haFlowId = "unknown_ha_flow";
+    @Test
+    public void failingFetchingPathsForUnknownHaFlowIdTest() {
+        assertThrows(FlowNotFoundException.class, () -> {
+            String haFlowId = "unknown_ha_flow";
 
-        haFlowReadService.getHaFlowPaths(haFlowId);
-        fail();
+            haFlowReadService.getHaFlowPaths(haFlowId);
+        });
     }
 }

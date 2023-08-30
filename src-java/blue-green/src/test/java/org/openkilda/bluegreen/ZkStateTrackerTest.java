@@ -15,11 +15,11 @@
 
 package org.openkilda.bluegreen;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.util.UUID;
@@ -34,7 +34,7 @@ public class ZkStateTrackerTest {
         LifecycleEvent event = LifecycleEvent.builder().signal(Signal.START).uuid(startUid).build();
         stateTracker.processLifecycleEvent(event);
         verify(writer, Mockito.times(1)).setState(eq(1));
-        assertTrue(stateTracker.shutdownUuid == null);
+        assertNull(stateTracker.shutdownUuid);
     }
 
 
@@ -48,6 +48,6 @@ public class ZkStateTrackerTest {
         LifecycleEvent event = LifecycleEvent.builder().signal(Signal.SHUTDOWN).uuid(shutdownUuid).build();
         stateTracker.processLifecycleEvent(event);
         verify(writer, Mockito.times(1)).setState(eq(0));
-        assertTrue(stateTracker.startUuid == null);
+        assertNull(stateTracker.startUuid);
     }
 }

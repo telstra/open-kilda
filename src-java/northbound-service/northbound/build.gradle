@@ -81,7 +81,7 @@ dependencies {
     }
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
 }
 
@@ -91,3 +91,7 @@ bootJar {
 }
 
 bootJar.dependsOn generateVersionTxt
+
+test {
+    useJUnitPlatform()
+}

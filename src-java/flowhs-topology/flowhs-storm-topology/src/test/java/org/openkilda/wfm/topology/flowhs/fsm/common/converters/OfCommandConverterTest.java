@@ -29,7 +29,7 @@ import org.openkilda.floodlight.api.request.rulemanager.FlowCommand;
 import org.openkilda.floodlight.api.request.rulemanager.OfCommand;
 import org.openkilda.rulemanager.FlowSpeakerData;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;

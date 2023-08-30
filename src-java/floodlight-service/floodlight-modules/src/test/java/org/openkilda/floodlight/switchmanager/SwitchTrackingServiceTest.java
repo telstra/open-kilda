@@ -25,8 +25,8 @@ import static org.easymock.EasyMock.newCapture;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.reset;
 import static org.easymock.EasyMock.verify;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.error.SwitchNotFoundException;
@@ -63,10 +63,10 @@ import org.easymock.CaptureType;
 import org.easymock.EasyMockSupport;
 import org.easymock.IAnswer;
 import org.easymock.Mock;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFControllerRole;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
@@ -81,7 +81,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-@Ignore("nmarchenko must be fixed after mfl merging")
+@Disabled("nmarchenko must be fixed after mfl merging")
 public class SwitchTrackingServiceTest extends EasyMockSupport {
     private static final String KAFKA_ISL_DISCOVERY_TOPIC = "kilda.topo.disco";
     private static final long MAX_SPEED = 1000000;
@@ -111,7 +111,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
     @Mock
     private IKafkaProducerService producerService;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         injectMocks(this);
 
@@ -137,7 +137,7 @@ public class SwitchTrackingServiceTest extends EasyMockSupport {
         reset(kafkaUtility, topics, iofSwitchService);
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         verifyAll();
     }

@@ -26,13 +26,13 @@ import org.openkilda.wfm.topology.network.controller.AntiFlapFsm;
 import org.openkilda.wfm.topology.network.model.LinkStatus;
 import org.openkilda.wfm.topology.network.model.PortDataHolder;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class NetworkAntiFlapServiceTest {
     private static final long MAX_SPEED = 10000000;
     private static final long CURRENT_SPEED = 999999;
@@ -44,7 +44,7 @@ public class NetworkAntiFlapServiceTest {
     private final Endpoint endpoint1 = Endpoint.of(alphaDatapath, 1);
 
 
-    @Before
+    @BeforeEach
     public void setup() {
         resetMocks();
     }

@@ -15,15 +15,14 @@
 
 package org.openkilda.config.provider;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Key;
 import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
 import com.sabre.oss.conf4j.source.PropertiesConfigurationSource;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
 
 import java.util.Properties;
 import javax.validation.constraints.Min;
@@ -32,9 +31,6 @@ public class ValidatingConfigurationProviderTest {
     static final String TEST_KEY = "test_key";
     static final int VALID_TEST_VALUE = 100;
     static final int INVALID_TEST_VALUE = -1;
-
-    @Rule
-    public ExpectedException expectedException = ExpectedException.none();
 
     @Test
     public void shouldPassValidationForValidConfig() {
@@ -61,11 +57,11 @@ public class ValidatingConfigurationProviderTest {
         ValidatingConfigurationProvider provider = new ValidatingConfigurationProvider(
                 new PropertiesConfigurationSource(source), new JdkProxyStaticConfigurationFactory());
 
-        // when
-        expectedException.expect(ConfigurationException.class);
-        provider.getConfiguration(TestConfig.class);
 
-        // then ConfigurationException is thrown
+        assertThrows(ConfigurationException.class, () -> {
+            provider.getConfiguration(TestConfig.class);
+        });
+
     }
 
     @Configuration

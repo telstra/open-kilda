@@ -15,13 +15,13 @@
 
 package org.openkilda.floodlight.converter;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.model.SwitchId;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFMeterBandStats;
 import org.projectfloodlight.openflow.protocol.OFMeterStats;
 import org.projectfloodlight.openflow.protocol.OFMeterStatsReply;

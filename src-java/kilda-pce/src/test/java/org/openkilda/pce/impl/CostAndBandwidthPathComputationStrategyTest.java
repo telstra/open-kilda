@@ -17,10 +17,10 @@ package org.openkilda.pce.impl;
 
 import static java.lang.String.format;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -38,8 +38,7 @@ import org.openkilda.pce.finder.FailReasonType;
 
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
-import org.junit.Test;
-import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -62,7 +61,7 @@ public class CostAndBandwidthPathComputationStrategyTest extends InMemoryPathCom
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(f);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         assertEquals(new SwitchId("00:02"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path B
     }
 
@@ -79,7 +78,7 @@ public class CostAndBandwidthPathComputationStrategyTest extends InMemoryPathCom
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(f);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> only difference is it should now have C as first hop .. since B is inactive
         assertEquals(new SwitchId("01:03"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path C
     }
@@ -100,7 +99,7 @@ public class CostAndBandwidthPathComputationStrategyTest extends InMemoryPathCom
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(f);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> only difference is it should now have C as first hop .. since B is inactive
         assertEquals(new SwitchId("02:03"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path C
     }
@@ -120,24 +119,25 @@ public class CostAndBandwidthPathComputationStrategyTest extends InMemoryPathCom
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(f);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> Should choose B .. because default cost (700) cheaper than 2000
         assertEquals(new SwitchId("03:02"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path B
     }
 
     @Test
-    public void shouldFailToFindOverDiamondWithNoActiveRoutes() throws UnroutableFlowException, RecoverableException {
-        createDiamond(IslStatus.INACTIVE, IslStatus.INACTIVE, 10, 30, "04:", 1);
+    public void shouldFailToFindOverDiamondWithNoActiveRoutes() {
+        assertThrows(UnroutableFlowException.class, () -> {
+            createDiamond(IslStatus.INACTIVE, IslStatus.INACTIVE, 10, 30, "04:", 1);
 
-        Switch srcSwitch = getSwitchById("04:01");
-        Switch destSwitch = getSwitchById("04:04");
+            Switch srcSwitch = getSwitchById("04:01");
+            Switch destSwitch = getSwitchById("04:04");
 
-        Flow f = getTestFlowBuilder(srcSwitch, destSwitch).build();
+            Flow f = getTestFlowBuilder(srcSwitch, destSwitch).build();
 
-        thrown.expect(UnroutableFlowException.class);
 
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        pathComputer.getPath(f);
+            PathComputer pathComputer = pathComputerFactory.getPathComputer();
+            pathComputer.getPath(f);
+        });
     }
 
 
@@ -157,7 +157,7 @@ public class CostAndBandwidthPathComputationStrategyTest extends InMemoryPathCom
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(f1);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
 
         Switch srcSwitch2 = getSwitchById("05:01");
         Switch destSwitch2 = getSwitchById("05:04");
@@ -169,7 +169,7 @@ public class CostAndBandwidthPathComputationStrategyTest extends InMemoryPathCom
 
         path = pathComputer.getPath(f2);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         assertEquals(new SwitchId("05:02"), path.getForward().getSegments().get(0).getDestSwitchId());
     }
 
@@ -195,7 +195,7 @@ public class CostAndBandwidthPathComputationStrategyTest extends InMemoryPathCom
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(f1);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
 
         Switch srcSwitch2 = getSwitchById("06:01");
         Switch destSwitch2 = getSwitchById("07:04");
@@ -206,7 +206,7 @@ public class CostAndBandwidthPathComputationStrategyTest extends InMemoryPathCom
                 .ignoreBandwidth(false)
                 .build();
 
-        Exception exception = Assertions.assertThrows(UnroutableFlowException.class, () -> {
+        Exception exception = assertThrows(UnroutableFlowException.class, () -> {
             pathComputer.getPath(f2);
         });
         MatcherAssert.assertThat(exception.getMessage(), containsString(FailReasonType.NO_CONNECTION.toString()));
@@ -313,7 +313,7 @@ public class CostAndBandwidthPathComputationStrategyTest extends InMemoryPathCom
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(f);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         assertEquals(new SwitchId("00:03"), path.getForward().getSegments().get(0).getDestSwitchId());
     }
 

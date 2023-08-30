@@ -17,8 +17,7 @@ package org.openkilda.rulemanager.factory.generator.flow.haflow;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.model.cookie.CookieBase.CookieType.MULTI_TABLE_INGRESS_RULES;
 import static org.openkilda.rulemanager.Constants.Priority.DEFAULT_FLOW_PRIORITY;
 import static org.openkilda.rulemanager.Constants.Priority.DOUBLE_VLAN_FLOW_PRIORITY;
@@ -72,7 +71,8 @@ import org.openkilda.rulemanager.utils.RoutingMetadata;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -716,13 +716,13 @@ public class YPointForwardIngressHaRuleGeneratorTest extends HaRuleGeneratorBase
         RoutingMetadata preIngressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_1.getFeatures());
         assertPreIngressCommand(preIngressCommand, SWITCH_2, preIngressCookie, Priority.FLOW_PRIORITY,
-                expectedPreIngressMatch,  newArrayList(new PopVlanAction()), mapMetadata(preIngressMetadata));
+                expectedPreIngressMatch, newArrayList(new PopVlanAction()), mapMetadata(preIngressMetadata));
 
         assertInputCustomerCommand(inputCustomerCommand, SWITCH_2,
                 new PortColourCookie(MULTI_TABLE_INGRESS_RULES, PORT_NUMBER_1),
                 newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()));
 
-        assertEquals(Lists.newArrayList(meterCommand.getUuid(), groupCommand.getUuid()), ingressCommand.getDependsOn());
+        assertEquals(newArrayList(meterCommand.getUuid(), groupCommand.getUuid()), ingressCommand.getDependsOn());
         assertMeterCommand(meterCommand);
     }
 
@@ -752,44 +752,54 @@ public class YPointForwardIngressHaRuleGeneratorTest extends HaRuleGeneratorBase
         RoutingMetadata preIngressMetadata = RoutingMetadata.builder().outerVlanId(OUTER_VLAN_ID_1)
                 .build(SWITCH_1.getFeatures());
         assertPreIngressCommand(preIngressCommand, SWITCH_2, preIngressCookie, Priority.FLOW_PRIORITY,
-                expectedPreIngressMatch,  newArrayList(new PopVlanAction()), mapMetadata(preIngressMetadata));
+                expectedPreIngressMatch, newArrayList(new PopVlanAction()), mapMetadata(preIngressMetadata));
 
-        assertEquals(Lists.newArrayList(meterCommand.getUuid(), groupCommand.getUuid()), ingressCommand.getDependsOn());
+        assertEquals(newArrayList(meterCommand.getUuid(), groupCommand.getUuid()), ingressCommand.getDependsOn());
         assertMeterCommand(meterCommand);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void nullSubPathsTest() {
-        HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        buildGenerator(haFlow, null).generateCommands(SWITCH_2);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+            buildGenerator(haFlow, null).generateCommands(SWITCH_2);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void emptySubPathsTest() {
-        HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        buildGenerator(haFlow, new ArrayList<>()).generateCommands(SWITCH_2);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+            buildGenerator(haFlow, new ArrayList<>()).generateCommands(SWITCH_2);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void oneSubFlowTest() {
-        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_3, FORWARD_COOKIE, null);
-        HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        buildGenerator(haFlow, Lists.newArrayList(subPath1)).generateCommands(SWITCH_2);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_3, FORWARD_COOKIE, null);
+            HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+            buildGenerator(haFlow, Lists.newArrayList(subPath1)).generateCommands(SWITCH_2);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void incorrectSwitchTest() {
-        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_2, FORWARD_COOKIE, null);
-        HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        buildGenerator(haFlow, Lists.newArrayList(subPath1)).generateCommands(SWITCH_2);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_2, FORWARD_COOKIE, null);
+            HaFlow haFlow = buildHaFlow(SWITCH_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+            buildGenerator(haFlow, Lists.newArrayList(subPath1)).generateCommands(SWITCH_2);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void reverseSubPathTest() {
-        FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_3, FORWARD_COOKIE, null);
-        FlowPath subPath2 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_2, REVERSE_COOKIE, null);
-        HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        buildGenerator(haFlow, Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            FlowPath subPath1 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_3, FORWARD_COOKIE, null);
+            FlowPath subPath2 = buildSubPath(PATH_ID_1, SWITCH_2, SWITCH_2, REVERSE_COOKIE, null);
+            HaFlow haFlow = buildHaFlow(SWITCH_2, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
+            buildGenerator(haFlow, Lists.newArrayList(subPath1, subPath2)).generateCommands(SWITCH_2);
+        });
     }
 
     private void assertGroup(GroupSpeakerData group, Set<Action> firstBucketActions,
@@ -826,7 +836,7 @@ public class YPointForwardIngressHaRuleGeneratorTest extends HaRuleGeneratorBase
                 .build();
         assertEquals(expectedInstructions, command.getInstructions());
         assertEquals(newHashSet(OfFlowFlag.RESET_COUNTERS), command.getFlags());
-        assertEquals(Lists.newArrayList(expectedGroupUuid), command.getDependsOn());
+        assertEquals(newArrayList(expectedGroupUuid), command.getDependsOn());
     }
 
     private void assertPreIngressCommand(
@@ -837,7 +847,7 @@ public class YPointForwardIngressHaRuleGeneratorTest extends HaRuleGeneratorBase
         assertEquals(cookie, command.getCookie());
         assertEquals(OfTable.PRE_INGRESS, command.getTable());
         assertEquals(expectedPriority, command.getPriority());
-        assertTrue(command.getDependsOn().isEmpty());
+        Assertions.assertTrue(command.getDependsOn().isEmpty());
         assertEqualsMatch(expectedMatch, command.getMatch());
 
         Instructions expectedInstructions = Instructions.builder()
@@ -846,7 +856,7 @@ public class YPointForwardIngressHaRuleGeneratorTest extends HaRuleGeneratorBase
                 .goToTable(OfTable.INGRESS)
                 .build();
         assertEquals(expectedInstructions, command.getInstructions());
-        assertTrue(command.getFlags().isEmpty());
+        Assertions.assertTrue(command.getFlags().isEmpty());
     }
 
     private void assertInputCustomerCommand(
@@ -856,7 +866,7 @@ public class YPointForwardIngressHaRuleGeneratorTest extends HaRuleGeneratorBase
         assertEquals(cookie, command.getCookie());
         assertEquals(OfTable.INPUT, command.getTable());
         assertEquals(Priority.INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE, command.getPriority());
-        assertTrue(command.getDependsOn().isEmpty());
+        Assertions.assertTrue(command.getDependsOn().isEmpty());
 
         assertEqualsMatch(expectedMatch, command.getMatch());
 
@@ -864,7 +874,7 @@ public class YPointForwardIngressHaRuleGeneratorTest extends HaRuleGeneratorBase
                 .goToTable(OfTable.PRE_INGRESS)
                 .build();
         assertEquals(expectedInstructions, command.getInstructions());
-        assertTrue(command.getFlags().isEmpty());
+        Assertions.assertTrue(command.getFlags().isEmpty());
     }
 
     private void assertMeterCommand(MeterSpeakerData command) {
@@ -874,7 +884,7 @@ public class YPointForwardIngressHaRuleGeneratorTest extends HaRuleGeneratorBase
         assertEquals(newHashSet(MeterFlag.BURST, MeterFlag.KBPS, MeterFlag.STATS), command.getFlags());
         assertEquals(BANDWIDTH, command.getRate());
         assertEquals(Math.round(BANDWIDTH * BURST_COEFFICIENT), command.getBurst());
-        assertTrue(command.getDependsOn().isEmpty());
+        Assertions.assertTrue(command.getDependsOn().isEmpty());
 
     }
 

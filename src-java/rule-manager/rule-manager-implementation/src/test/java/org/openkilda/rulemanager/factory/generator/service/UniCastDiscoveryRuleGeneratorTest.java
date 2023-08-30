@@ -15,9 +15,7 @@
 
 package org.openkilda.rulemanager.factory.generator.service;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule;
@@ -51,8 +49,9 @@ import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.match.FieldMatch;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.List;
@@ -65,7 +64,7 @@ public class UniCastDiscoveryRuleGeneratorTest {
     private UniCastDiscoveryRuleGenerator generator;
     private Switch sw;
 
-    @Before
+    @BeforeEach
     public void setup() {
         config = mock(RuleManagerConfig.class);
         when(config.getBroadcastRateLimit()).thenReturn(200);
@@ -91,7 +90,7 @@ public class UniCastDiscoveryRuleGeneratorTest {
         MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
 
         assertEquals(1, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -111,7 +110,7 @@ public class UniCastDiscoveryRuleGeneratorTest {
         sw = buildSwitch("OF_12", Sets.newHashSet(METERS, PKTPS_FLAG));
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertTrue(commands.isEmpty());
+        Assertions.assertTrue(commands.isEmpty());
     }
 
     @Test
@@ -127,7 +126,7 @@ public class UniCastDiscoveryRuleGeneratorTest {
         MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
 
         assertEquals(1, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -140,14 +139,14 @@ public class UniCastDiscoveryRuleGeneratorTest {
         Instructions instructions = flowCommandData.getInstructions();
         assertEquals(3, instructions.getApplyActions().size());
         Action first = instructions.getApplyActions().get(0);
-        assertTrue(first instanceof MeterAction);
+        Assertions.assertTrue(first instanceof MeterAction);
         MeterAction meterAction = (MeterAction) first;
         assertEquals(meterCommandData.getMeterId(), meterAction.getMeterId());
         checkPortOutAction(instructions.getApplyActions().get(1));
         checkSetFieldAction(instructions.getApplyActions().get(2));
-        assertNull(instructions.getWriteActions());
-        assertNull(instructions.getGoToMeter());
-        assertNull(instructions.getGoToTable());
+        Assertions.assertNull(instructions.getWriteActions());
+        Assertions.assertNull(instructions.getGoToMeter());
+        Assertions.assertNull(instructions.getGoToTable());
 
         // Check meter command
         checkMeterCommand(meterCommandData);
@@ -164,7 +163,7 @@ public class UniCastDiscoveryRuleGeneratorTest {
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
 
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -177,9 +176,9 @@ public class UniCastDiscoveryRuleGeneratorTest {
         assertEquals(2, instructions.getApplyActions().size());
         checkPortOutAction(instructions.getApplyActions().get(0));
         checkSetFieldAction(instructions.getApplyActions().get(1));
-        assertNull(instructions.getWriteActions());
-        assertNull(instructions.getGoToMeter());
-        assertNull(instructions.getGoToTable());
+        Assertions.assertNull(instructions.getWriteActions());
+        Assertions.assertNull(instructions.getGoToMeter());
+        Assertions.assertNull(instructions.getGoToTable());
     }
 
     @Test
@@ -195,7 +194,7 @@ public class UniCastDiscoveryRuleGeneratorTest {
         MeterSpeakerData meterCommandData = getCommand(MeterSpeakerData.class, commands);
 
         assertEquals(1, flowCommandData.getDependsOn().size());
-        assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
+        Assertions.assertTrue(flowCommandData.getDependsOn().contains(meterCommandData.getUuid()));
 
         // Check flow command
         checkFlowCommandBaseProperties(flowCommandData);
@@ -214,7 +213,7 @@ public class UniCastDiscoveryRuleGeneratorTest {
                 config.getDiscoPacketSize());
         assertEquals(expectedBurst, meterCommandData.getBurst());
         assertEquals(3, meterCommandData.getFlags().size());
-        assertTrue(Sets.newHashSet(MeterFlag.BURST, MeterFlag.STATS, MeterFlag.KBPS)
+        Assertions.assertTrue(Sets.newHashSet(MeterFlag.BURST, MeterFlag.STATS, MeterFlag.KBPS)
                 .containsAll(meterCommandData.getFlags()));
     }
 
@@ -227,12 +226,12 @@ public class UniCastDiscoveryRuleGeneratorTest {
     private void checkMatch(Set<FieldMatch> match) {
         FieldMatch ethSrcMatch = getMatchByField(Field.ETH_SRC, match);
         assertEquals(new SwitchId(config.getFlowPingMagicSrcMacAddress()).toLong(), ethSrcMatch.getValue());
-        assertTrue(ethSrcMatch.isMasked());
+        Assertions.assertTrue(ethSrcMatch.isMasked());
         assertEquals(Mask.NO_MASK, ethSrcMatch.getMask().longValue());
 
         FieldMatch ethDstMatch = getMatchByField(Field.ETH_DST, match);
         assertEquals(sw.getSwitchId().toLong(), ethDstMatch.getValue());
-        assertTrue(ethDstMatch.isMasked());
+        Assertions.assertTrue(ethDstMatch.isMasked());
         assertEquals(Mask.NO_MASK, ethDstMatch.getMask().longValue());
     }
 
@@ -240,19 +239,19 @@ public class UniCastDiscoveryRuleGeneratorTest {
         assertEquals(2, instructions.getApplyActions().size());
         checkPortOutAction(instructions.getApplyActions().get(0));
         checkSetFieldAction(instructions.getApplyActions().get(1));
-        assertNull(instructions.getWriteActions());
+        Assertions.assertNull(instructions.getWriteActions());
         assertEquals(instructions.getGoToMeter(), meterId);
-        assertNull(instructions.getGoToTable());
+        Assertions.assertNull(instructions.getGoToTable());
     }
 
     private void checkPortOutAction(Action action) {
-        assertTrue(action instanceof PortOutAction);
+        Assertions.assertTrue(action instanceof PortOutAction);
         PortOutAction portOutAction = (PortOutAction) action;
         assertEquals(SpecialPortType.CONTROLLER, portOutAction.getPortNumber().getPortType());
     }
 
     private void checkSetFieldAction(Action action) {
-        assertTrue(action instanceof SetFieldAction);
+        Assertions.assertTrue(action instanceof SetFieldAction);
         SetFieldAction setFieldAction = (SetFieldAction) action;
         assertEquals(Field.ETH_DST, setFieldAction.getField());
         assertEquals(sw.getSwitchId().toLong(), setFieldAction.getValue());
@@ -263,7 +262,7 @@ public class UniCastDiscoveryRuleGeneratorTest {
         assertEquals(config.getUnicastRateLimit(), meterCommandData.getRate());
         assertEquals(config.getSystemMeterBurstSizeInPackets(), meterCommandData.getBurst());
         assertEquals(3, meterCommandData.getFlags().size());
-        assertTrue(Sets.newHashSet(MeterFlag.BURST, MeterFlag.STATS, MeterFlag.PKTPS)
+        Assertions.assertTrue(Sets.newHashSet(MeterFlag.BURST, MeterFlag.STATS, MeterFlag.PKTPS)
                 .containsAll(meterCommandData.getFlags()));
     }
 }

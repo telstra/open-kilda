@@ -17,7 +17,7 @@ package org.openkilda.floodlight.pathverification;
 
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
-import static org.junit.Assert.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 import org.openkilda.floodlight.FloodlightTestCase;
 import org.openkilda.floodlight.service.FeatureDetectorService;
@@ -28,8 +28,8 @@ import net.floodlightcontroller.core.internal.IOFSwitchService;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import org.apache.commons.codec.binary.Hex;
 import org.easymock.EasyMock;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -47,7 +47,7 @@ public class PathVerificationPacketOutTest extends FloodlightTestCase {
     private IOFSwitch sw1;
     private IOFSwitch sw2;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
         FloodlightModuleContext fmc = new FloodlightModuleContext();

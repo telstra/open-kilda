@@ -240,7 +240,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
             def flowHistory = northbound.getFlowHistory(flow.flowId).last()
             flowHistory.payload.last().action == REROUTE_SUCCESS
             // https://github.com/telstra/open-kilda/issues/4049
-            flowHistory.payload.last().details == "Flow reroute completed with status DEGRADED  and error null"
+            flowHistory.payload.last().details == "Flow reroute completed with status DEGRADED and error: The primary path status is DEGRADED"
             def flowInfo = northboundV2.getFlow(flow.flowId)
             assert flowInfo.status == FlowState.DEGRADED.toString()
             assert flowInfo.statusInfo == StatusInfo.BACK_UP_STRATEGY_USED

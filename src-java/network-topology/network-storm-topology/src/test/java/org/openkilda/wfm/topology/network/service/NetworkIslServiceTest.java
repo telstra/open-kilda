@@ -15,12 +15,16 @@
 
 package org.openkilda.wfm.topology.network.service;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.never;
@@ -72,16 +76,13 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -92,10 +93,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class NetworkIslServiceTest {
-    @ClassRule
-    public static TemporaryFolder fsData = new TemporaryFolder();
 
     private final ManualClock clock = new ManualClock();
 
@@ -146,51 +145,52 @@ public class NetworkIslServiceTest {
 
     private NetworkIslService service;
 
-    @Before
+    @BeforeEach
     public void setUp() {
-        when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
-        when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
+        lenient().when(persistenceManager.getTransactionManager()).thenReturn(transactionManager);
+        lenient().when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
 
-        when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
-        when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
-        when(repositoryFactory.createLinkPropsRepository()).thenReturn(linkPropsRepository);
-        when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
-        when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
-        when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
+        lenient().when(repositoryFactory.createSwitchRepository()).thenReturn(switchRepository);
+        lenient().when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
+        lenient().when(repositoryFactory.createLinkPropsRepository()).thenReturn(linkPropsRepository);
+        lenient().when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
+        lenient().when(repositoryFactory.createFeatureTogglesRepository()).thenReturn(featureTogglesRepository);
+        lenient().when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
 
         KildaFeatureToggles featureToggles = new KildaFeatureToggles(KildaFeatureToggles.DEFAULTS);
         featureToggles.setFlowsRerouteOnIslDiscoveryEnabled(true);
-        when(featureTogglesRepository.getOrDefault()).thenReturn(featureToggles);
+        lenient().when(featureTogglesRepository.getOrDefault()).thenReturn(featureToggles);
 
-        when(transactionManager.getDefaultRetryPolicy())
+        lenient().when(transactionManager.getDefaultRetryPolicy())
                 .thenReturn(new RetryPolicy<>().withMaxRetries(2));
-        doAnswer(invocation -> {
+        lenient().doAnswer(invocation -> {
             TransactionCallbackWithoutResult<?> tr = invocation.getArgument(0);
             tr.doInTransaction();
             return null;
         }).when(transactionManager).doInTransaction(Mockito.any(TransactionCallbackWithoutResult.class));
-        doAnswer(invocation -> {
-            RetryPolicy<?> retryPolicy = invocation.getArgument(0);
-            TransactionCallbackWithoutResult<?> tr = invocation.getArgument(1);
-            Failsafe.with(retryPolicy)
-                    .run(tr::doInTransaction);
-            return null;
-        }).when(transactionManager)
+        lenient()
+                .doAnswer(invocation -> {
+                    RetryPolicy<?> retryPolicy = invocation.getArgument(0);
+                    TransactionCallbackWithoutResult<?> tr = invocation.getArgument(1);
+                    Failsafe.with(retryPolicy)
+                            .run(tr::doInTransaction);
+                    return null;
+                }).when(transactionManager)
                 .doInTransaction(Mockito.any(RetryPolicy.class), Mockito.any(TransactionCallbackWithoutResult.class));
 
         NetworkTopologyDashboardLogger.Builder dashboardLoggerBuilder = mock(
                 NetworkTopologyDashboardLogger.Builder.class);
-        when(dashboardLoggerBuilder.build(any())).thenReturn(dashboardLogger);
+        lenient().when(dashboardLoggerBuilder.build(any())).thenReturn(dashboardLogger);
         service = new NetworkIslService(carrier, persistenceManager, options, dashboardLoggerBuilder, clock);
     }
 
     private void setupIslStorageStub() {
-        doAnswer(invocation -> {
+        lenient().doAnswer(invocation -> {
             Endpoint ingress = Endpoint.of(invocation.getArgument(0), invocation.getArgument(1));
             Endpoint egress = Endpoint.of(invocation.getArgument(2), invocation.getArgument(3));
             return islStorage.lookup(ingress, egress);
         }).when(islRepository).findByEndpoints(any(SwitchId.class), anyInt(), any(SwitchId.class), anyInt());
-        doAnswer(invocation -> {
+        lenient().doAnswer(invocation -> {
             Isl payload = invocation.getArgument(0);
             islStorage.save(payload);
             return null;
@@ -198,7 +198,7 @@ public class NetworkIslServiceTest {
     }
 
     @Test
-    @Ignore("incomplete")
+    @Disabled("incomplete")
     public void initialUp() {
         persistenceManager = InMemoryGraphPersistenceManager.newInstance();
         persistenceManager.install();
@@ -236,7 +236,7 @@ public class NetworkIslServiceTest {
     }
 
     @Test
-    @Ignore("become invalid due to change initialisation logic")
+    @Disabled("become invalid due to change initialisation logic")
     public void initialMoveEvent() {
         emulateEmptyPersistentDb();
 
@@ -279,10 +279,10 @@ public class NetworkIslServiceTest {
 
         // ensure we have marked ISL as unstable
         Isl forward = lookupIsl(reference.getSource(), reference.getDest());
-        Assert.assertEquals(updateTime, forward.getTimeUnstable());
+        assertEquals(updateTime, forward.getTimeUnstable());
 
         Isl reverse = lookupIsl(reference.getDest(), reference.getSource());
-        Assert.assertEquals(updateTime, reverse.getTimeUnstable());
+        assertEquals(updateTime, reverse.getTimeUnstable());
     }
 
     @Test
@@ -546,25 +546,25 @@ public class NetworkIslServiceTest {
                 reference, new RoundTripStatus(reference.getDest(), IslStatus.ACTIVE));
 
         Optional<Isl> forward = islStorage.lookup(reference.getSource(), reference.getDest());
-        Assert.assertTrue(forward.isPresent());
-        Assert.assertNotEquals(IslStatus.ACTIVE, forward.get().getRoundTripStatus());
-        Assert.assertEquals(IslStatus.ACTIVE, forward.get().getStatus());
+        assertTrue(forward.isPresent());
+        assertNotEquals(IslStatus.ACTIVE, forward.get().getRoundTripStatus());
+        assertEquals(IslStatus.ACTIVE, forward.get().getStatus());
         Optional<Isl> reverse = islStorage.lookup(reference.getDest(), reference.getSource());
-        Assert.assertTrue(reverse.isPresent());
-        Assert.assertEquals(IslStatus.ACTIVE, reverse.get().getRoundTripStatus());
-        Assert.assertEquals(IslStatus.ACTIVE, reverse.get().getStatus());
+        assertTrue(reverse.isPresent());
+        assertEquals(IslStatus.ACTIVE, reverse.get().getRoundTripStatus());
+        assertEquals(IslStatus.ACTIVE, reverse.get().getStatus());
 
         service.islMove(reference.getSource(), reference);
 
         verify(dashboardLogger).onIslMoved(eq(reference), any());
         forward = islStorage.lookup(reference.getSource(), reference.getDest());
-        Assert.assertTrue(forward.isPresent());
-        Assert.assertEquals(IslStatus.MOVED, forward.get().getActualStatus());
-        Assert.assertEquals(IslStatus.MOVED, forward.get().getStatus());
+        assertTrue(forward.isPresent());
+        assertEquals(IslStatus.MOVED, forward.get().getActualStatus());
+        assertEquals(IslStatus.MOVED, forward.get().getStatus());
         reverse = islStorage.lookup(reference.getDest(), reference.getSource());
-        Assert.assertTrue(reverse.isPresent());
-        Assert.assertNotEquals(IslStatus.MOVED, reverse.get().getActualStatus());
-        Assert.assertEquals(IslStatus.MOVED, reverse.get().getStatus());
+        assertTrue(reverse.isPresent());
+        assertNotEquals(IslStatus.MOVED, reverse.get().getActualStatus());
+        assertEquals(IslStatus.MOVED, reverse.get().getStatus());
 
         verify(carrier).islStatusUpdateNotification(any(IslStatusUpdateNotification.class));
         verify(carrier).triggerReroute(any(RerouteAffectedFlows.class));
@@ -771,14 +771,14 @@ public class NetworkIslServiceTest {
 
         Optional<Isl> potential = islStorage.lookup(reference.getSource(), reference.getDest());
 
-        Assert.assertTrue(potential.isPresent());
+        assertTrue(potential.isPresent());
         Isl link = potential.get();
-        Assert.assertNull(link.getBfdSessionStatus());
+        assertNull(link.getBfdSessionStatus());
 
         potential = islStorage.lookup(reference.getDest(), reference.getSource());
-        Assert.assertTrue(potential.isPresent());
+        assertTrue(potential.isPresent());
         link = potential.get();
-        Assert.assertNull(link.getBfdSessionStatus());
+        assertNull(link.getBfdSessionStatus());
 
         service.bfdStatusUpdate(reference.getSource(), reference, BfdStatusUpdate.UP);
         verifyBfdStatus(reference, BfdSessionStatus.UP, null);
@@ -927,7 +927,7 @@ public class NetworkIslServiceTest {
         verify(carrier).auxiliaryPollModeUpdateRequest(alphaEnd, false);
         verify(carrier).auxiliaryPollModeUpdateRequest(zetaEnd, false);
         verifyNoMoreInteractions(carrier);
-        Assert.assertTrue(islStorage.lookup(alphaEnd, zetaEnd).isPresent());
+        assertTrue(islStorage.lookup(alphaEnd, zetaEnd).isPresent());
 
         return reference;
     }
@@ -956,7 +956,7 @@ public class NetworkIslServiceTest {
         for (IslDownReason reason : IslDownReason.values()) {
             try {
                 service.islDown(reference.getSource(), reference, reason);
-                Assert.fail("No expected exception IslControllerNotFoundException");
+                fail("No expected exception IslControllerNotFoundException");
             } catch (IslControllerNotFoundException e) {
                 // expected
             }
@@ -1014,30 +1014,30 @@ public class NetworkIslServiceTest {
 
     private void verifyBfdStatus(IslReference reference, BfdSessionStatus leftToRight, BfdSessionStatus rightToLeft) {
         Optional<Isl> potential = islStorage.lookup(reference.getSource(), reference.getDest());
-        Assert.assertTrue(potential.isPresent());
+        assertTrue(potential.isPresent());
         verifyBfdStatus(potential.get(), leftToRight);
 
         potential = islStorage.lookup(reference.getDest(), reference.getSource());
-        Assert.assertTrue(potential.isPresent());
+        assertTrue(potential.isPresent());
         verifyBfdStatus(potential.get(), rightToLeft);
     }
 
     private void verifyBfdStatus(Isl link, BfdSessionStatus status) {
         if (status != null) {
-            Assert.assertEquals(status, link.getBfdSessionStatus());
+            assertEquals(status, link.getBfdSessionStatus());
         } else {
-            Assert.assertNull(link.getBfdSessionStatus());
+            assertNull(link.getBfdSessionStatus());
         }
     }
 
     private void verifyIslBandwidthUpdate(long expectedForward, long expectedReverse) {
         Isl forward = lookupIsl(endpointAlpha1, endpointBeta2);
-        Assert.assertEquals(expectedForward, forward.getMaxBandwidth());
-        Assert.assertEquals(expectedForward, forward.getAvailableBandwidth());
+        assertEquals(expectedForward, forward.getMaxBandwidth());
+        assertEquals(expectedForward, forward.getAvailableBandwidth());
 
         Isl reverse = lookupIsl(endpointBeta2, endpointAlpha1);
-        Assert.assertEquals(expectedReverse, reverse.getMaxBandwidth());
-        Assert.assertEquals(expectedReverse, reverse.getAvailableBandwidth());
+        assertEquals(expectedReverse, reverse.getMaxBandwidth());
+        assertEquals(expectedReverse, reverse.getAvailableBandwidth());
     }
 
     private void verifyStatus(IslReference reference, IslStatus expectedStatus) {
@@ -1046,7 +1046,7 @@ public class NetworkIslServiceTest {
     }
 
     private void verifyStatus(Isl persistedIsl, IslStatus expectedStatus) {
-        Assert.assertEquals(expectedStatus, persistedIsl.getStatus());
+        assertEquals(expectedStatus, persistedIsl.getStatus());
     }
 
     private void emulateEmptyPersistentDb() {
@@ -1060,7 +1060,7 @@ public class NetworkIslServiceTest {
                 dest.getDatapath(), dest.getPortNumber()))
                 .thenReturn(Optional.ofNullable(link));
 
-        doAnswer(invocation -> invocation.getArgument(0)).when(islRepository).add(any(Isl.class));
+        lenient().doAnswer(invocation -> invocation.getArgument(0)).when(islRepository).add(any(Isl.class));
     }
 
     private void mockPersistenceLinkProps(Endpoint source, Endpoint dest, LinkProps props) {
@@ -1068,14 +1068,14 @@ public class NetworkIslServiceTest {
         if (props != null) {
             response = Collections.singletonList(props);
         }
-        when(linkPropsRepository.findByEndpoints(source.getDatapath(), source.getPortNumber(),
-                dest.getDatapath(), dest.getPortNumber()))
+        lenient().when(linkPropsRepository.findByEndpoints(source.getDatapath(), source.getPortNumber(),
+                        dest.getDatapath(), dest.getPortNumber()))
                 .thenReturn(response);
     }
 
     private void mockPersistenceBandwidthAllocation(Endpoint source, Endpoint dest, long allocation) {
-        when(flowPathRepository.getUsedBandwidthBetweenEndpoints(source.getDatapath(), source.getPortNumber(),
-                dest.getDatapath(), dest.getPortNumber()))
+        lenient().when(flowPathRepository.getUsedBandwidthBetweenEndpoints(source.getDatapath(), source.getPortNumber(),
+                        dest.getDatapath(), dest.getPortNumber()))
                 .thenReturn(allocation);
     }
 
@@ -1115,8 +1115,9 @@ public class NetworkIslServiceTest {
                     .build();
             allocatedSwitches.put(datapath, entry);
 
-            when(switchRepository.findById(datapath)).thenReturn(Optional.of(entry));
-            when(switchPropertiesRepository.findBySwitchId(datapath)).thenReturn(Optional.of(switchProperties));
+            lenient().when(switchRepository.findById(datapath)).thenReturn(Optional.of(entry));
+            lenient().when(switchPropertiesRepository.findBySwitchId(datapath))
+                    .thenReturn(Optional.of(switchProperties));
         }
 
         return entry;

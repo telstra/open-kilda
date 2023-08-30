@@ -15,9 +15,10 @@
 
 package org.openkilda.floodlight.utils.metadata;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.openkilda.model.bitops.BitField;
 
-import org.junit.Assert;
 import org.projectfloodlight.openflow.types.U64;
 
 public class MetadataBaseTest {
@@ -31,9 +32,8 @@ public class MetadataBaseTest {
                 }
 
                 U64 rightField = MetadataBase.setField(U64.ZERO, -1, fields[rightIdx]);
-                Assert.assertEquals(
-                        String.format("Detect bit-fields collision between %s and %s", leftField, rightField),
-                        U64.ZERO, leftField.and(rightField));
+                assertEquals(U64.ZERO, leftField.and(rightField),
+                        String.format("Detect bit-fields collision between %s and %s", leftField, rightField));
             }
         }
     }

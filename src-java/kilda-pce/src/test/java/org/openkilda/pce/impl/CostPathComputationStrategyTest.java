@@ -15,10 +15,10 @@
 
 package org.openkilda.pce.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -33,8 +33,9 @@ import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
 
+import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
@@ -60,7 +61,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(f);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         assertEquals(new SwitchId("00:02"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path B
     }
 
@@ -81,7 +82,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(f);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> only difference is it should now have C as first hop .. since B is inactive
         assertEquals(new SwitchId("01:03"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path C
     }
@@ -106,7 +107,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(f);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> only difference is it should now have C as first hop .. since B is inactive
         assertEquals(new SwitchId("02:03"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path C
     }
@@ -130,28 +131,30 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(f);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         // ====> Should choose B .. because default cost (700) cheaper than 2000
         assertEquals(new SwitchId("03:02"), path.getForward().getSegments().get(0).getDestSwitchId()); // chooses path B
     }
 
     @Test
-    public void shouldFailToFindOverDiamondWithNoActiveRoutes() throws UnroutableFlowException, RecoverableException {
-        createDiamond(IslStatus.INACTIVE, IslStatus.INACTIVE, 10, 30, "04:", 1);
+    public void shouldFailToFindOverDiamondWithNoActiveRoutes() {
+        assertThrows(UnroutableFlowException.class, () -> {
+            createDiamond(IslStatus.INACTIVE, IslStatus.INACTIVE, 10, 30, "04:", 1);
 
-        Switch srcSwitch = getSwitchById("04:01");
-        Switch destSwitch = getSwitchById("04:04");
+            Switch srcSwitch = getSwitchById("04:01");
+            Switch destSwitch = getSwitchById("04:04");
 
-        Flow f = new TestFlowBuilder()
-                .srcSwitch(srcSwitch)
-                .destSwitch(destSwitch)
-                .bandwidth(100)
-                .build();
+            Flow f = new TestFlowBuilder()
+                    .srcSwitch(srcSwitch)
+                    .destSwitch(destSwitch)
+                    .bandwidth(100)
+                    .build();
 
-        thrown.expect(UnroutableFlowException.class);
 
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        pathComputer.getPath(f);
+            PathComputer pathComputer = pathComputerFactory.getPathComputer();
+            pathComputer.getPath(f);
+        });
+
     }
 
 
@@ -173,7 +176,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
         PathComputer pathComputer = pathComputerFactory.getPathComputer();
         GetPathsResult path = pathComputer.getPath(f1);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
 
         Switch srcSwitch2 = getSwitchById("05:01");
         Switch destSwitch2 = getSwitchById("05:04");
@@ -187,7 +190,7 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
 
         path = pathComputer.getPath(f2);
         assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
+        MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(2));
         assertEquals(new SwitchId("05:02"), path.getForward().getSegments().get(0).getDestSwitchId());
     }
 
@@ -196,41 +199,41 @@ public class CostPathComputationStrategyTest extends InMemoryPathComputerBaseTes
      * function completes in reasonable time ( < 10ms);
      */
     @Test
-    public void shouldFailToFindOverIslandsWithAllActiveLinksAndIgnoreBandwidth()
-            throws RecoverableException, UnroutableFlowException {
-        createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "06:", 1);
-        createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "07:", 1);
+    public void shouldFailToFindOverIslandsWithAllActiveLinksAndIgnoreBandwidth() {
+        assertThrows(UnroutableFlowException.class, () -> {
+            createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "06:", 1);
+            createDiamond(IslStatus.ACTIVE, IslStatus.ACTIVE, 10, 20, "07:", 1);
 
-        Switch srcSwitch1 = getSwitchById("06:01");
-        Switch destSwitch1 = getSwitchById("06:03");
+            Switch srcSwitch1 = getSwitchById("06:01");
+            Switch destSwitch1 = getSwitchById("06:03");
 
-        // THIS ONE SHOULD WORK
-        Flow f1 = new TestFlowBuilder()
-                .srcSwitch(srcSwitch1)
-                .destSwitch(destSwitch1)
-                .bandwidth(0)
-                .ignoreBandwidth(false)
-                .build();
+            // THIS ONE SHOULD WORK
+            Flow f1 = new TestFlowBuilder()
+                    .srcSwitch(srcSwitch1)
+                    .destSwitch(destSwitch1)
+                    .bandwidth(0)
+                    .ignoreBandwidth(false)
+                    .build();
 
-        PathComputer pathComputer = pathComputerFactory.getPathComputer();
-        GetPathsResult path = pathComputer.getPath(f1);
-        assertNotNull(path);
-        assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
+            PathComputer pathComputer = pathComputerFactory.getPathComputer();
+            GetPathsResult path = pathComputer.getPath(f1);
+            assertNotNull(path);
+            MatcherAssert.assertThat(path.getForward().getSegments(), Matchers.hasSize(1));
 
-        Switch srcSwitch2 = getSwitchById("06:01");
-        Switch destSwitch2 = getSwitchById("07:04");
+            Switch srcSwitch2 = getSwitchById("06:01");
+            Switch destSwitch2 = getSwitchById("07:04");
 
-        // THIS ONE SHOULD FAIL
-        Flow f2 = new TestFlowBuilder()
-                .srcSwitch(srcSwitch2)
-                .destSwitch(destSwitch2)
-                .bandwidth(0)
-                .ignoreBandwidth(false)
-                .build();
+            // THIS ONE SHOULD FAIL
+            Flow f2 = new TestFlowBuilder()
+                    .srcSwitch(srcSwitch2)
+                    .destSwitch(destSwitch2)
+                    .bandwidth(0)
+                    .ignoreBandwidth(false)
+                    .build();
 
-        thrown.expect(UnroutableFlowException.class);
+            pathComputer.getPath(f2);
+        });
 
-        pathComputer.getPath(f2);
     }
 
     @Test

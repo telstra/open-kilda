@@ -15,9 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.mapper;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -42,8 +40,9 @@ import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 
 import java.time.Instant;
@@ -106,7 +105,7 @@ public class HaFlowMapperTest {
     @Mock
     HaFlowRepository haFlowRepository;
 
-    @Before
+    @BeforeEach
     public void init() {
         flowRepository = mock(FlowRepository.class);
         haFlowRepository = mock(HaFlowRepository.class);
@@ -136,7 +135,7 @@ public class HaFlowMapperTest {
         assertEquals(request.getSharedEndpoint().getPortNumber().intValue(), result.getSharedPort());
         assertEquals(request.getSharedEndpoint().getOuterVlanId(), result.getSharedOuterVlan());
         assertEquals(request.getSharedEndpoint().getInnerVlanId(), result.getSharedInnerVlan());
-        assertEquals("Subflows must be mapped separately", 0, result.getHaSubFlows().size());
+        assertEquals(0, result.getHaSubFlows().size(), "Subflows must be mapped separately");
     }
 
     @Test
@@ -193,9 +192,9 @@ public class HaFlowMapperTest {
         assertEquals(haFlow.getSharedPort(), result.getSharedEndpoint().getPortNumber().intValue());
         assertEquals(haFlow.getSharedOuterVlan(), result.getSharedEndpoint().getOuterVlanId());
         assertEquals(haFlow.getSharedInnerVlan(), result.getSharedEndpoint().getInnerVlanId());
-        assertTrue(result.getDiverseWithFlows().isEmpty());
-        assertTrue(result.getDiverseWithYFlows().isEmpty());
-        assertTrue(result.getDiverseWithHaFlows().isEmpty());
+        Assertions.assertTrue(result.getDiverseWithFlows().isEmpty());
+        Assertions.assertTrue(result.getDiverseWithYFlows().isEmpty());
+        Assertions.assertTrue(result.getDiverseWithHaFlows().isEmpty());
         assertSubFlows(haFlow.getHaSubFlows(), result.getSubFlows());
     }
 
@@ -344,7 +343,7 @@ public class HaFlowMapperTest {
         assertEquals(maxLatency, actual.getMaxLatency());
         assertEquals(maxLatencyTier2, actual.getMaxLatencyTier2());
         assertEquals(strategy, actual.getPathComputationStrategy());
-        assertNull(actual.getYFlowId());
+        Assertions.assertNull(actual.getYFlowId());
     }
 
     private static Flow buildFlow(String flowId) {

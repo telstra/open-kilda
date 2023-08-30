@@ -47,7 +47,7 @@ public class OnFinishedAction extends HistoryRecordingAction<FlowRerouteFsm, Sta
             sendPeriodicPingNotification(stateMachine);
         } else {
             stateMachine.saveActionToHistory("Flow reroute completed",
-                    format("Flow reroute completed with status %s  and error %s", stateMachine.getNewFlowStatus(),
+                    format("Flow reroute completed with status %s and error: %s", stateMachine.getNewFlowStatus(),
                             stateMachine.getErrorReason()));
         }
         log.info("Flow {} reroute success", stateMachine.getFlowId());

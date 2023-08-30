@@ -16,12 +16,11 @@
 package org.openkilda.wfm.config.provider;
 
 import static java.lang.String.format;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Key;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.Properties;
 
@@ -42,7 +41,7 @@ public class MultiPrefixConfigurationProviderTest {
         TestConfig config = provider.getConfiguration(TestConfig.class);
 
         // then
-        assertNull(config.getTestProperty());
+        Assertions.assertNull(config.getTestProperty());
     }
 
     @Test
@@ -56,7 +55,7 @@ public class MultiPrefixConfigurationProviderTest {
         TestConfig config = provider.getConfiguration(TestConfig.class);
 
         // then
-        assertEquals(TEST_VALUE, config.getTestProperty());
+        Assertions.assertEquals(TEST_VALUE, config.getTestProperty());
     }
 
     @Configuration

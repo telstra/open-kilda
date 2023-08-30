@@ -40,9 +40,9 @@ import org.openkilda.wfm.topology.ping.model.PingContext;
 import org.openkilda.wfm.topology.ping.model.PingContext.Kinds;
 
 import com.google.common.collect.Lists;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -89,7 +89,7 @@ public class HaPingContextProducerTest {
     private HaSubFlow haSubFlowB;
 
 
-    @Before
+    @BeforeEach
     public void setUp() {
         sharedSwitch = Switch.builder().switchId(SWITCH_ID_1).build();
         ySwitch = Switch.builder().switchId(SWITCH_ID_2).build();
@@ -217,19 +217,19 @@ public class HaPingContextProducerTest {
      * Assert PingContext list are equals bypassing the pingId.
      */
     private void assertPingContextAreEquals(List<PingContext> expected, List<PingContext> actual) {
-        Assert.assertEquals(expected.size(), actual.size());
+        Assertions.assertEquals(expected.size(), actual.size());
         for (int i = 0; i < expected.size(); i++) {
             PingContext expectedPingContext = expected.get(i);
             PingContext actualPingContext = actual.get(i);
             assertPingAreEquals(expectedPingContext.getPing(), actualPingContext.getPing());
-            Assert.assertEquals(expectedPingContext.getGroup().getSize(), actualPingContext.getGroup().getSize());
-            Assert.assertEquals(expectedPingContext.getKind(), actualPingContext.getKind());
-            Assert.assertEquals(expectedPingContext.getHaFlow(), actualPingContext.getHaFlow());
-            Assert.assertEquals(expectedPingContext.getTransitEncapsulation(),
+            Assertions.assertEquals(expectedPingContext.getGroup().getSize(), actualPingContext.getGroup().getSize());
+            Assertions.assertEquals(expectedPingContext.getKind(), actualPingContext.getKind());
+            Assertions.assertEquals(expectedPingContext.getHaFlow(), actualPingContext.getHaFlow());
+            Assertions.assertEquals(expectedPingContext.getTransitEncapsulation(),
                     actualPingContext.getTransitEncapsulation());
-            Assert.assertEquals(expectedPingContext.getTimeout(), actualPingContext.getTimeout());
-            Assert.assertEquals(expectedPingContext.getDirection(), actualPingContext.getDirection());
-            Assert.assertEquals(expectedPingContext.getHaSubFlowId(), actualPingContext.getHaSubFlowId());
+            Assertions.assertEquals(expectedPingContext.getTimeout(), actualPingContext.getTimeout());
+            Assertions.assertEquals(expectedPingContext.getDirection(), actualPingContext.getDirection());
+            Assertions.assertEquals(expectedPingContext.getHaSubFlowId(), actualPingContext.getHaSubFlowId());
         }
     }
 
@@ -237,9 +237,9 @@ public class HaPingContextProducerTest {
      * Assert two Ping objects are equals bypassing the pingId.
      */
     private void assertPingAreEquals(Ping expected, Ping actual) {
-        Assert.assertEquals(expected.getSource(), actual.getSource());
-        Assert.assertEquals(expected.getDest(), actual.getDest());
-        Assert.assertEquals(expected.getTransitEncapsulation(), actual.getTransitEncapsulation());
+        Assertions.assertEquals(expected.getSource(), actual.getSource());
+        Assertions.assertEquals(expected.getDest(), actual.getDest());
+        Assertions.assertEquals(expected.getTransitEncapsulation(), actual.getTransitEncapsulation());
     }
 
     private void createHaFlow(boolean oneIsOneSwitchFlow) {

@@ -166,7 +166,7 @@ public class ValidateFlowAction extends
         stateMachine.setAffectedIsls(context.getAffectedIsl());
         stateMachine.setIgnoreBandwidth(context.isIgnoreBandwidth());
 
-        stateMachine.saveActionToHistory("HA-flow was validated successfully");
+        stateMachine.saveActionToHistory("The flow has been validated successfully");
 
         return Optional.empty();
     }

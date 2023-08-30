@@ -20,7 +20,9 @@ import static java.lang.String.format;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
+import org.openkilda.northbound.dto.v2.flows.BaseFlowEndpointV2;
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint;
 import org.openkilda.northbound.dto.v2.yflows.SubFlow;
 import org.openkilda.northbound.dto.v2.yflows.YFlow;
 import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpoint;
@@ -285,6 +287,14 @@ public class FlowTrafficExamBuilder {
     }
 
     private NetworkEndpoint makeComparableEndpoint(YFlowSharedEndpoint flowEndpoint) {
+        return new NetworkEndpoint(flowEndpoint.getSwitchId(), flowEndpoint.getPortNumber());
+    }
+
+    private NetworkEndpoint makeComparableEndpoint(HaFlowSharedEndpoint flowEndpoint) {
+        return new NetworkEndpoint(flowEndpoint.getSwitchId(), flowEndpoint.getPortNumber());
+    }
+
+    private NetworkEndpoint makeComparableEndpoint(BaseFlowEndpointV2 flowEndpoint) {
         return new NetworkEndpoint(flowEndpoint.getSwitchId(), flowEndpoint.getPortNumber());
     }
 }

@@ -39,7 +39,8 @@ public abstract class PathMapper {
      */
     public org.openkilda.messaging.info.network.Path map(org.openkilda.pce.Path path) {
         if (path == null || path.getSegments().isEmpty()) {
-            return new org.openkilda.messaging.info.network.Path(0L, Duration.ZERO, new ArrayList<>(), false);
+            return new org.openkilda.messaging.info.network.Path(0L, Duration.ZERO, new ArrayList<>(), false,
+                    null);
         }
 
         List<PathNodePayload> nodes = new ArrayList<>();
@@ -61,7 +62,14 @@ public abstract class PathMapper {
             nodes.add(new PathNodePayload(lastSegment.getDestSwitchId(), lastSegment.getDestPort(), null));
         }
 
+        if (path.getProtectedPath() != null && path.getProtectedPath().getProtectedPath() != null) {
+            throw new IllegalStateException("A protected path to some path cannot have its own protected path.");
+        }
+
+        org.openkilda.messaging.info.network.Path protectedPath =
+                path.getProtectedPath() == null ? null : map(path.getProtectedPath());
+
         return new org.openkilda.messaging.info.network.Path(path.getMinAvailableBandwidth(),
-                Duration.ofNanos(path.getLatency()), nodes, path.isBackupPath());
+                Duration.ofNanos(path.getLatency()), nodes, path.isBackupPath(), protectedPath);
     }
 }

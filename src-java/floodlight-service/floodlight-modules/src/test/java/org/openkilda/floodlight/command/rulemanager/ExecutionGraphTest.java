@@ -15,9 +15,10 @@
 
 package org.openkilda.floodlight.command.rulemanager;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -55,21 +56,25 @@ public class ExecutionGraphTest {
         assertEquals(Collections.singletonList(UUID_C), g.stages.get(2));
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void testTopologicalSortWithCycles() {
-        ExecutionGraph g = new ExecutionGraph();
-        g.add(UUID_A, new ArrayList<>(Collections.singletonList(UUID_B)));
-        g.add(UUID_B, new ArrayList<>(Collections.singletonList(UUID_A)));
-        g.buildStages();
+        assertThrows(IllegalStateException.class, () -> {
+            ExecutionGraph g = new ExecutionGraph();
+            g.add(UUID_A, new ArrayList<>(Collections.singletonList(UUID_B)));
+            g.add(UUID_B, new ArrayList<>(Collections.singletonList(UUID_A)));
+            g.buildStages();
+        });
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void testGraphImmutableAfterBuild() {
-        ExecutionGraph g = new ExecutionGraph();
-        g.add(UUID_A, new ArrayList<>());
-        g.add(UUID_B, new ArrayList<>(Collections.singletonList(UUID_A)));
+        assertThrows(IllegalStateException.class, () -> {
+            ExecutionGraph g = new ExecutionGraph();
+            g.add(UUID_A, new ArrayList<>());
+            g.add(UUID_B, new ArrayList<>(Collections.singletonList(UUID_A)));
 
-        g.buildStages();
-        g.add(UUID_C, new ArrayList<>());
+            g.buildStages();
+            g.add(UUID_C, new ArrayList<>());
+        });
     }
 }

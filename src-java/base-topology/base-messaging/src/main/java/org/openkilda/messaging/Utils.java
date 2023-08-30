@@ -122,8 +122,8 @@ public final class Utils {
      * Maximum allowable VXLAN VNI value.
      */
     private static final int MAX_VXLAN_ID = 16777214;
-
-
+    private static final String INTEGER_TYPE_NAME = "Integer";
+    private static final String BOOLEAN_TYPE_NAME = "Boolean";
 
     /**
      * A private constructor.
@@ -215,19 +215,28 @@ public final class Utils {
      * Joins collection of booleans.
      */
     public static boolean joinBooleans(Collection<Boolean> booleans) {
-        Set<Boolean> set = new HashSet<>(booleans);
-        set.remove(null);
-
-        if (set.size() > 1) {
-            throw new IllegalArgumentException(String.format("Stream %s contains true and false booleans. "
-                    + "It must contain only one value of boolean or null values.", booleans));
-        }
-        if (set.isEmpty()) {
-            throw new IllegalArgumentException(String.format("Stream %s has no non-null values.", booleans));
-        }
-        return set.iterator().next();
+        return joinCollection(booleans, BOOLEAN_TYPE_NAME);
     }
 
+    /**
+     * Joins collection of integers.
+     */
+    public static int joinIntegers(Collection<Integer> integers) {
+        return joinCollection(integers, INTEGER_TYPE_NAME);
+    }
+
+    /**
+     * Filters a list and returns list of non-null objects.
+     */
+    public static <E> List<E> getNonNullEntries(List<E> list) {
+        return list.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Gets size of a collection or 0 if collection is null.
+     */
     public static int getSize(Collection<?> collection) {
         return collection == null ? 0 : collection.size();
     }
@@ -258,6 +267,20 @@ public final class Utils {
             result.add(list.subList(i, Math.min(i + chunkSize, list.size())));
         }
         return result;
+    }
+
+    private static <T> T joinCollection(Collection<T> values, String typeName) {
+        Set<T> set = new HashSet<>(values);
+        set.remove(null);
+
+        if (set.size() > 1) {
+            throw new IllegalArgumentException(String.format("Collection %s contains different %s values. "
+                    + "It must contain only one type of %s values or null values.", values, typeName, typeName));
+        }
+        if (set.isEmpty()) {
+            throw new IllegalArgumentException(String.format("Stream %s has no non-null values.", values));
+        }
+        return set.iterator().next();
     }
 }
 

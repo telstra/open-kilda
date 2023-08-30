@@ -17,7 +17,6 @@ package org.openkilda.wfm.topology.flowhs.service;
 
 import static java.util.Collections.singleton;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -71,9 +70,9 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 
 import com.google.common.collect.ImmutableList;
 import org.hamcrest.Matchers;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.hamcrest.MockitoHamcrest;
@@ -130,7 +129,7 @@ public abstract class AbstractFlowTest<T> extends InMemoryGraphBasedTest {
     protected final Queue<T> requests = new ArrayDeque<>();
     final Map<SwitchId, Map<Cookie, FlowSegmentRequest>> installedSegments = new HashMap<>();
 
-    @Before
+    @BeforeEach
     public void before() {
         dummyFactory = new PersistenceDummyEntityFactory(persistenceManager);
 
@@ -149,7 +148,7 @@ public abstract class AbstractFlowTest<T> extends InMemoryGraphBasedTest {
         }
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         if (flowRepositorySpy != null) {
             reset(flowRepositorySpy);
@@ -260,15 +259,13 @@ public abstract class AbstractFlowTest<T> extends InMemoryGraphBasedTest {
 
     protected Flow verifyFlowStatus(String flowId, FlowStatus expectedStatus) {
         Flow flow = fetchFlow(flowId);
-        assertEquals(expectedStatus, flow.getStatus());
+        Assertions.assertEquals(expectedStatus, flow.getStatus());
         return flow;
     }
 
     protected void verifyFlowPathStatus(FlowPath path, FlowPathStatus expectedStatus, String name) {
-        Assert.assertNotNull(String.format("%s flow path not defined (is null)", name), path);
-        Assert.assertSame(
-                String.format("%s flow path status is invalid", name),
-                expectedStatus, path.getStatus());
+        Assertions.assertNotNull(path, String.format("%s flow path not defined (is null)", name));
+        Assertions.assertSame(expectedStatus, path.getStatus(), String.format("%s flow path status is invalid", name));
     }
 
     protected void verifyNorthboundSuccessResponse(FlowGenericCarrier carrierMock) {
@@ -280,11 +277,11 @@ public abstract class AbstractFlowTest<T> extends InMemoryGraphBasedTest {
         verify(carrierMock).sendNorthboundResponse(responseCaptor.capture());
 
         Message rawResponse = responseCaptor.getValue();
-        Assert.assertNotNull(rawResponse);
-        Assert.assertTrue(rawResponse instanceof InfoMessage);
+        Assertions.assertNotNull(rawResponse);
+        Assertions.assertTrue(rawResponse instanceof InfoMessage);
 
         InfoData rawPayload = ((InfoMessage) rawResponse).getData();
-        Assert.assertTrue(expectedPayloadType.isInstance(rawPayload));
+        Assertions.assertTrue(expectedPayloadType.isInstance(rawPayload));
     }
 
     protected void verifyNorthboundErrorResponse(FlowGenericCarrier carrier, ErrorType expectedErrorType) {
@@ -292,11 +289,11 @@ public abstract class AbstractFlowTest<T> extends InMemoryGraphBasedTest {
         verify(carrier).sendNorthboundResponse(responseCaptor.capture());
 
         Message rawResponse = responseCaptor.getValue();
-        Assert.assertNotNull(rawResponse);
-        Assert.assertTrue(rawResponse instanceof ErrorMessage);
+        Assertions.assertNotNull(rawResponse);
+        Assertions.assertTrue(rawResponse instanceof ErrorMessage);
         ErrorMessage response = (ErrorMessage) rawResponse;
 
-        Assert.assertSame(expectedErrorType, response.getData().getErrorType());
+        Assertions.assertSame(expectedErrorType, response.getData().getErrorType());
     }
 
     protected void verifyNoSpeakerInteraction(FlowGenericCarrier carrier) {
@@ -304,13 +301,13 @@ public abstract class AbstractFlowTest<T> extends InMemoryGraphBasedTest {
     }
 
     protected void verifyNoPathReplace(Flow origin, Flow result) {
-        Assert.assertEquals(origin.getForwardPathId(), result.getForwardPathId());
-        Assert.assertEquals(origin.getReversePathId(), result.getReversePathId());
+        Assertions.assertEquals(origin.getForwardPathId(), result.getForwardPathId());
+        Assertions.assertEquals(origin.getReversePathId(), result.getReversePathId());
     }
 
     protected void verifyPathReplace(Flow origin, Flow result) {
-        Assert.assertNotEquals(origin.getForwardPathId(), result.getForwardPathId());
-        Assert.assertNotEquals(origin.getReversePathId(), result.getReversePathId());
+        Assertions.assertNotEquals(origin.getForwardPathId(), result.getForwardPathId());
+        Assertions.assertNotEquals(origin.getReversePathId(), result.getReversePathId());
     }
 
     protected void alterFeatureToggles(Boolean isCreateAllowed, Boolean isUpdateAllowed, Boolean isDeleteAllowed) {

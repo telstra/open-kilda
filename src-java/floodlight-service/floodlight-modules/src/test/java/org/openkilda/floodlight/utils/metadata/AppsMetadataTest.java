@@ -15,7 +15,7 @@
 
 package org.openkilda.floodlight.utils.metadata;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class AppsMetadataTest extends MetadataBaseTest {
     @Test

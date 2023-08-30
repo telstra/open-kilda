@@ -15,9 +15,8 @@
 
 package org.openkilda.messaging.command.flow;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openkilda.messaging.command.Constants.bandwidth;
 import static org.openkilda.messaging.command.Constants.egressSwitchId;
 import static org.openkilda.messaging.command.Constants.flowName;
@@ -30,7 +29,8 @@ import static org.openkilda.messaging.command.Constants.switchId;
 import static org.openkilda.messaging.command.Constants.transitEncapsulationId;
 import static org.openkilda.messaging.command.Constants.transitEncapsulationType;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
@@ -42,8 +42,8 @@ public class InstallIngressFlowTest {
     @Test
     public void toStringTest() throws Exception {
         String flowString = flow.toString();
-        assertNotNull(flowString);
-        assertFalse(flowString.isEmpty());
+        Assertions.assertNotNull(flowString);
+        Assertions.assertFalse(flowString.isEmpty());
     }
 
     @Test
@@ -67,14 +67,18 @@ public class InstallIngressFlowTest {
         assertEquals(bandwidth, flow.getBandwidth().longValue());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setNullBandwidth() throws Exception {
-        flow.setBandwidth(null);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setBandwidth(null);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setNegativeBandwidth() throws Exception {
-        flow.setBandwidth(-1L);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setBandwidth(-1L);
+        });
     }
 
     @Test
@@ -83,9 +87,11 @@ public class InstallIngressFlowTest {
         assertEquals(meterId, flow.getMeterId().longValue());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setNegativeMeterId() throws Exception {
-        flow.setMeterId(-1L);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setMeterId(-1L);
+        });
     }
 
     @Test
@@ -106,13 +112,17 @@ public class InstallIngressFlowTest {
         assertEquals(0, flow.getInputVlanId().intValue());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setNegativeInputVlanId() throws Exception {
-        flow.setInputVlanId(-1);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setInputVlanId(-1);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void setTooBigInputVlanId() throws Exception {
-        flow.setInputVlanId(4096);
+        assertThrows(IllegalArgumentException.class,()-> {
+            flow.setInputVlanId(4096);
+        });
     }
 }

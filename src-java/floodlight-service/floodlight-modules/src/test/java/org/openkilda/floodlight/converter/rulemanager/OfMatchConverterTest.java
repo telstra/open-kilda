@@ -15,12 +15,12 @@
 
 package org.openkilda.floodlight.converter.rulemanager;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.match.FieldMatch;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
@@ -155,7 +155,7 @@ public class OfMatchConverterTest {
         OFFactoryVer13 factory = new OFFactoryVer13();
         Match match = factory.buildMatch()
                 .setMasked(MatchField.ETH_TYPE, EthType.IPv4, EthType.IPv4)
-                .setMasked(MatchField.ETH_SRC, MacAddress.of(1),  MacAddress.of(1))
+                .setMasked(MatchField.ETH_SRC, MacAddress.of(1), MacAddress.of(1))
                 .setMasked(MatchField.ETH_DST, MacAddress.of(2), MacAddress.of(2))
                 .setMasked(MatchField.IP_PROTO, IpProtocol.of((short) 17), IpProtocol.of((short) 17))
                 .setMasked(MatchField.UDP_SRC, TransportPort.of(11), TransportPort.of(11))

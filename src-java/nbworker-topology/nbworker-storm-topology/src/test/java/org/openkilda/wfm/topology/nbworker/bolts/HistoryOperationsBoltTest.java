@@ -15,9 +15,9 @@
 
 package org.openkilda.wfm.topology.nbworker.bolts;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
@@ -48,10 +48,8 @@ import org.openkilda.model.history.HaFlowEventDump.PathNodePayload;
 import org.openkilda.wfm.share.history.service.HistoryService;
 
 import com.google.common.collect.Lists;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -59,7 +57,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
-@RunWith(MockitoJUnitRunner.class)
 public class HistoryOperationsBoltTest {
 
     public static final String ENTRY_HA_FLOW_ID = "HA flow id";
@@ -120,7 +117,7 @@ public class HistoryOperationsBoltTest {
 
     private HistoryOperationsBolt historyOperationsBolt;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         HistoryService historyService = mock(HistoryService.class);
         when(historyService.getHaFlowHistoryEvents(any(), any(), any(), anyInt())).thenReturn(getHaFlowEventList());

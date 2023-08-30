@@ -15,18 +15,19 @@
 
 package org.openkilda.messaging.info.grpc;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.openkilda.messaging.model.grpc.PacketInOutStatsDto;
 import org.openkilda.model.SwitchId;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
 public class ResponseSerialisationTest {
 
-    private ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper();
 
     @Test
     public void getPacketInOutStatsResponseTest() throws IOException {
@@ -35,6 +36,6 @@ public class ResponseSerialisationTest {
 
         String jsonString = mapper.writeValueAsString(response);
         GetPacketInOutStatsResponse objectFromJson = mapper.readValue(jsonString, GetPacketInOutStatsResponse.class);
-        Assert.assertEquals(response, objectFromJson);
+        assertEquals(response, objectFromJson);
     }
 }

@@ -17,15 +17,15 @@ package org.openkilda.config.naming;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
-import static org.junit.Assert.assertEquals;
 
 import org.openkilda.config.KafkaTopicsConfig;
 
 import com.google.common.collect.ImmutableMap;
 import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
 import com.sabre.oss.conf4j.source.MapConfigurationSource;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class KafkaNamingForConfigurationValueProcessorTest {
     private static final String TEST_PREFIX = "test_prefix";
@@ -33,7 +33,7 @@ public class KafkaNamingForConfigurationValueProcessorTest {
 
     private JdkProxyStaticConfigurationFactory factory;
 
-    @Before
+    @BeforeEach
     public void setupFactoryWithNamingStrategy() {
         factory = new JdkProxyStaticConfigurationFactory();
 
@@ -51,7 +51,7 @@ public class KafkaNamingForConfigurationValueProcessorTest {
         KafkaTopicsConfig kafkaTopicsConfig = factory.createConfiguration(KafkaTopicsConfig.class, source);
 
         // then
-        assertEquals(TEST_PREFIX + "_" + TEST_VALUE, kafkaTopicsConfig.getCtrlTopic());
+        Assertions.assertEquals(TEST_PREFIX + "_" + TEST_VALUE, kafkaTopicsConfig.getCtrlTopic());
     }
 
     @Test
@@ -63,6 +63,6 @@ public class KafkaNamingForConfigurationValueProcessorTest {
         KafkaTopicsConfig kafkaTopicsConfig = factory.createConfiguration(KafkaTopicsConfig.class, source);
 
         // then
-        assertEquals(TEST_PREFIX + "_kilda.ctrl", kafkaTopicsConfig.getCtrlTopic());
+        Assertions.assertEquals(TEST_PREFIX + "_kilda.ctrl", kafkaTopicsConfig.getCtrlTopic());
     }
 }

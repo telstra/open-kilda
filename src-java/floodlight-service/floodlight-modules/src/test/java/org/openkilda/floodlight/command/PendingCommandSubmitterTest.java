@@ -19,6 +19,9 @@ import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.newCapture;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.floodlight.service.CommandProcessorService;
 import org.openkilda.floodlight.service.CommandProcessorService.ProcessorTask;
@@ -29,10 +32,9 @@ import org.easymock.Capture;
 import org.easymock.CaptureType;
 import org.easymock.EasyMockSupport;
 import org.easymock.Mock;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -50,7 +52,7 @@ public class PendingCommandSubmitterTest extends EasyMockSupport {
 
     private Capture<Command> processCatcher = newCapture(CaptureType.ALL);
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         injectMocks(this);
 
@@ -61,7 +63,7 @@ public class PendingCommandSubmitterTest extends EasyMockSupport {
         expectLastCall().andVoid().anyTimes();
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         verifyAll();
     }
@@ -84,7 +86,7 @@ public class PendingCommandSubmitterTest extends EasyMockSupport {
         replayAll();
         execute();
 
-        Assert.assertEquals(ImmutableList.of(initialTasks.get(1)), tasks);
+        assertEquals(ImmutableList.of(initialTasks.get(1)), tasks);
     }
 
     @Test
@@ -107,8 +109,8 @@ public class PendingCommandSubmitterTest extends EasyMockSupport {
         replayAll();
         execute();
 
-        Assert.assertEquals(ImmutableList.of(completeResult), processCatcher.getValues());
-        Assert.assertEquals(ImmutableList.of(initialTasks.get(1)), tasks);
+        assertEquals(ImmutableList.of(completeResult), processCatcher.getValues());
+        assertEquals(ImmutableList.of(initialTasks.get(1)), tasks);
     }
 
     @Test
@@ -133,8 +135,8 @@ public class PendingCommandSubmitterTest extends EasyMockSupport {
         replayAll();
         execute();
 
-        Assert.assertFalse(processCatcher.hasCaptured());
-        Assert.assertTrue(tasks.isEmpty());
+        assertFalse(processCatcher.hasCaptured());
+        assertTrue(tasks.isEmpty());
     }
 
     @Test
@@ -148,7 +150,7 @@ public class PendingCommandSubmitterTest extends EasyMockSupport {
         replayAll();
         execute();
 
-        Assert.assertEquals(initialTasks, tasks);
+        assertEquals(initialTasks, tasks);
     }
 
     @Test
@@ -173,7 +175,7 @@ public class PendingCommandSubmitterTest extends EasyMockSupport {
         replayAll();
         execute();
 
-        Assert.assertTrue(tasks.isEmpty());
+        assertTrue(tasks.isEmpty());
     }
 
     private Future<Command> createPendingFuture(int rounds) {

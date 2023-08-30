@@ -18,6 +18,7 @@ package org.openkilda.floodlight.service.session;
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.expect;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.openkilda.floodlight.error.SessionCloseException;
 import org.openkilda.floodlight.error.SessionErrorResponseException;
@@ -34,10 +35,10 @@ import org.easymock.CaptureType;
 import org.easymock.EasyMock;
 import org.easymock.EasyMockSupport;
 import org.easymock.Mock;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFBadActionCode;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 import org.projectfloodlight.openflow.protocol.OFBarrierRequest;
@@ -71,7 +72,7 @@ public class SessionServiceTest extends EasyMockSupport {
     @Mock
     private IOFSwitchService ofSwitchService;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         injectMocks(this);
 
@@ -86,7 +87,7 @@ public class SessionServiceTest extends EasyMockSupport {
         moduleContext.addService(IOFSwitchService.class, ofSwitchService);
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         verifyAll();
     }
@@ -104,18 +105,18 @@ public class SessionServiceTest extends EasyMockSupport {
         try (Session session = subject.open(context, sw)) {
             future = session.write(pktOut);
         }
-        Assert.assertFalse(future.isDone());
+        Assertions.assertFalse(future.isDone());
 
         List<OFMessage> swActualWrite = swWriteMessages.getValues();
-        Assert.assertEquals(2, swActualWrite.size());
-        Assert.assertEquals(pktOut, swActualWrite.get(0));
-        Assert.assertEquals(OFType.BARRIER_REQUEST, swActualWrite.get(1).getType());
+        assertEquals(2, swActualWrite.size());
+        assertEquals(pktOut, swActualWrite.get(0));
+        assertEquals(OFType.BARRIER_REQUEST, swActualWrite.get(1).getType());
 
         completeSessions(sw);
 
-        Assert.assertTrue(future.isDone());
+        Assertions.assertTrue(future.isDone());
         Optional<OFMessage> response = future.get();
-        Assert.assertFalse(response.isPresent());
+        Assertions.assertFalse(response.isPresent());
     }
 
     @Test
@@ -136,23 +137,23 @@ public class SessionServiceTest extends EasyMockSupport {
             barrierFuture = session.write(barrier);
         }
 
-        Assert.assertFalse(pktOutFuture.isDone());
-        Assert.assertFalse(barrierFuture.isDone());
+        Assertions.assertFalse(pktOutFuture.isDone());
+        Assertions.assertFalse(barrierFuture.isDone());
 
         subject.handleResponse(sw.getId(), ofFactory.buildBarrierReply().setXid(barrier.getXid()).build());
 
-        Assert.assertFalse(pktOutFuture.isDone());
-        Assert.assertTrue(barrierFuture.isDone());
+        Assertions.assertFalse(pktOutFuture.isDone());
+        Assertions.assertTrue(barrierFuture.isDone());
 
         completeSessions(sw);
 
-        Assert.assertTrue(pktOutFuture.isDone());
-        Assert.assertTrue(barrierFuture.isDone());
+        Assertions.assertTrue(pktOutFuture.isDone());
+        Assertions.assertTrue(barrierFuture.isDone());
 
         Optional<OFMessage> barrierResponse = barrierFuture.get();
-        Assert.assertTrue(barrierResponse.isPresent());
-        Assert.assertEquals(OFType.BARRIER_REPLY, barrierResponse.get().getType());
-        Assert.assertEquals(barrier.getXid(), barrierResponse.get().getXid());
+        Assertions.assertTrue(barrierResponse.isPresent());
+        assertEquals(OFType.BARRIER_REPLY, barrierResponse.get().getType());
+        assertEquals(barrier.getXid(), barrierResponse.get().getXid());
     }
 
     @Test
@@ -169,14 +170,14 @@ public class SessionServiceTest extends EasyMockSupport {
             future = session.write(pktOut);
         }
 
-        Assert.assertFalse(future.isDone());
+        Assertions.assertFalse(future.isDone());
 
         subject.handleResponse(sw.getId(), ofFactory.errorMsgs().buildBadActionErrorMsg()
                 .setXid(pktOut.getXid())
                 .setCode(OFBadActionCode.BAD_LEN)
                 .build());
 
-        Assert.assertTrue(future.isDone());
+        Assertions.assertTrue(future.isDone());
 
         completeSessions(sw);
 
@@ -199,10 +200,10 @@ public class SessionServiceTest extends EasyMockSupport {
 
         try {
             future.get(1, TimeUnit.SECONDS);
-            Assert.fail();
+            Assertions.fail();
         } catch (ExecutionException e) {
-            Assert.assertNotNull(e.getCause());
-            Assert.assertTrue(e.getCause() instanceof SwitchWriteException);
+            Assertions.assertNotNull(e.getCause());
+            Assertions.assertTrue(e.getCause() instanceof SwitchWriteException);
         }
     }
 
@@ -252,10 +253,10 @@ public class SessionServiceTest extends EasyMockSupport {
 
         try {
             future.get(1, TimeUnit.SECONDS);
-            Assert.fail();
+            Assertions.fail();
         } catch (ExecutionException e) {
-            Assert.assertNotNull(e.getCause());
-            Assert.assertTrue(e.getCause() instanceof SessionCloseException);
+            Assertions.assertNotNull(e.getCause());
+            Assertions.assertTrue(e.getCause() instanceof SessionCloseException);
         }
     }
 
@@ -267,20 +268,20 @@ public class SessionServiceTest extends EasyMockSupport {
 
     private void expectExceptionResponse(CompletableFuture<Optional<OFMessage>> future,
                                          Class<? extends SwitchOperationException> klass) throws Exception {
-        Assert.assertTrue(future.isDone());
+        Assertions.assertTrue(future.isDone());
         try {
             future.get();
             throw new AssertionError("Expect exception to be thrown");
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
-            Assert.assertTrue(klass.isInstance(cause));
+            Assertions.assertTrue(klass.isInstance(cause));
         }
     }
 
     private void expectNoResponse(CompletableFuture<Optional<OFMessage>> future)
             throws ExecutionException, InterruptedException {
-        Assert.assertTrue(future.isDone());
-        Assert.assertFalse(future.get().isPresent());
+        Assertions.assertTrue(future.isDone());
+        Assertions.assertFalse(future.get().isPresent());
     }
 
     private void setupSwitchMock(IOFSwitch mock, DatapathId dpId) {
@@ -308,10 +309,10 @@ public class SessionServiceTest extends EasyMockSupport {
 
     private void completeSessions(IOFSwitch sw) {
         List<OFMessage> requests = swWriteMessages.getValues();
-        Assert.assertTrue(0 < requests.size());
+        Assertions.assertTrue(0 < requests.size());
 
         OFMessage barrier = requests.get(requests.size() - 1);
-        Assert.assertEquals(OFType.BARRIER_REQUEST, barrier.getType());
+        assertEquals(OFType.BARRIER_REQUEST, barrier.getType());
         subject.handleResponse(sw.getId(), sw.getOFFactory().buildBarrierReply().setXid(barrier.getXid()).build());
     }
 }

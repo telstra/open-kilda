@@ -21,7 +21,7 @@ import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.FlowTransitEncapsulation;
 import org.openkilda.model.cookie.Cookie;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFFlowDeleteStrict;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.types.OFPort;

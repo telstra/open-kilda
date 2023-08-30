@@ -16,8 +16,8 @@
 package org.openkilda.wfm.share.flow.resources;
 
 import static java.lang.String.format;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
@@ -37,8 +37,9 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.transitvlan.TransitVlanEncapsulation;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.util.Properties;
@@ -121,7 +122,7 @@ public class FlowResourcesManagerTest extends InMemoryGraphBasedTest {
     private Switch switch4 = Switch.builder().switchId(new SwitchId("ff:04")).build();
     private Switch switch5 = Switch.builder().switchId(new SwitchId("ff:05")).build();
 
-    @Before
+    @BeforeEach
     public void setUp() {
         Properties configProps = new Properties();
         configProps.setProperty("flow.meter-id.max", "40");
@@ -149,7 +150,7 @@ public class FlowResourcesManagerTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldNotImmediatelyReuseResources() throws ResourceAllocationException {
+    public void shouldNotImmediatelyReuseResources() {
         transactionManager.doInTransaction(() -> {
             Flow flow = convertFlow(firstFlow);
             FlowResources flowResources = resourcesManager.allocateFlowResources(flow);
@@ -163,7 +164,7 @@ public class FlowResourcesManagerTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldAllocateForNoBandwidthFlow() throws ResourceAllocationException {
+    public void shouldAllocateForNoBandwidthFlow() {
         transactionManager.doInTransaction(() -> {
             Flow flow = convertFlow(fourthFlow);
             verifyMeterLessAllocation(resourcesManager.allocateFlowResources(flow));
@@ -171,7 +172,7 @@ public class FlowResourcesManagerTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldNotConsumeVlansForSingleSwitchFlows() throws ResourceAllocationException {
+    public void shouldNotConsumeVlansForSingleSwitchFlows() {
         transactionManager.doInTransaction(() -> {
             /*
              * This is to validate that single switch flows don't consume transit vlans.
@@ -191,7 +192,7 @@ public class FlowResourcesManagerTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldNotConsumeMetersForUnmeteredFlows() throws ResourceAllocationException {
+    public void shouldNotConsumeMetersForUnmeteredFlows() {
         transactionManager.doInTransaction(() -> {
             // for forward and reverse flows 2 meters are allocated, so just try max / 2 + 1 attempts
             final int attemps = (flowResourcesConfig.getMaxFlowMeterId()
@@ -207,7 +208,7 @@ public class FlowResourcesManagerTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void deallocateFlowResourcesTest() throws Exception {
+    public void deallocateFlowResourcesTest() {
         transactionManager.doInTransaction(() -> {
             Flow flow = convertFlow(firstFlow);
 
@@ -219,7 +220,7 @@ public class FlowResourcesManagerTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void deallocatePathResourcesTest() throws Exception {
+    public void deallocatePathResourcesTest() {
         transactionManager.doInTransaction(() -> {
             Flow flow = convertFlow(firstFlow);
 
@@ -233,15 +234,17 @@ public class FlowResourcesManagerTest extends InMemoryGraphBasedTest {
         });
     }
 
-    @Test(expected = ResourceAllocationException.class)
-    public void shouldThrowExceptionOnAllocationFailed() throws ResourceAllocationException {
-        transactionManager.doInTransaction(() -> {
-            FlowResourcesManager spy = Mockito.spy(resourcesManager);
-            Mockito.doThrow(ConstraintViolationException.class)
-                    .when(spy).allocateResources(any(), any(), any());
+    @Test
+    public void shouldThrowExceptionOnAllocationFailed() {
+        Assertions.assertThrows(ResourceAllocationException.class, () -> {
+            transactionManager.doInTransaction(() -> {
+                FlowResourcesManager spy = Mockito.spy(resourcesManager);
+                Mockito.doThrow(ConstraintViolationException.class)
+                        .when(spy).allocateResources(any(), any(), any());
 
-            Flow flow = convertFlow(firstFlow);
-            spy.allocateFlowResources(flow);
+                Flow flow = convertFlow(firstFlow);
+                spy.allocateFlowResources(flow);
+            });
         });
     }
 

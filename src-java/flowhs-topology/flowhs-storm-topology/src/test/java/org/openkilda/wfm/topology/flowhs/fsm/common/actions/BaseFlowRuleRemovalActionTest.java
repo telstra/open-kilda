@@ -16,11 +16,12 @@
 package org.openkilda.wfm.topology.flowhs.fsm.common.actions;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
@@ -37,17 +38,17 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingFsm;
 import org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.squirrelframework.foundation.fsm.StateMachine;
 
 import java.util.Optional;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class BaseFlowRuleRemovalActionTest extends InMemoryGraphBasedTest {
 
     public static final String FLOW_ID_1 = "flow1";
@@ -71,14 +72,14 @@ public class BaseFlowRuleRemovalActionTest extends InMemoryGraphBasedTest {
     private SwitchPropertiesRepository switchPropertiesRepository;
     TestClass testClass;
 
-    @Before
+    @BeforeEach
     public void setup() {
         flowRepository = spy(persistenceManager.getRepositoryFactory().createFlowRepository());
         switchPropertiesRepository = spy(persistenceManager.getRepositoryFactory().createSwitchPropertiesRepository());
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         when(repositoryFactory.createSwitchPropertiesRepository()).thenReturn(switchPropertiesRepository);
         testClass = new TestClass(persistenceManager, null);
-        when(switchPropertiesRepository.findBySwitchId(any()))
+        lenient().when(switchPropertiesRepository.findBySwitchId(any()))
                 .thenReturn(Optional.of(SwitchProperties.builder().build()));
     }
 

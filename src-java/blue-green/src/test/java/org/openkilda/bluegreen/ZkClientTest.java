@@ -15,9 +15,6 @@
 
 package org.openkilda.bluegreen;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doCallRealMethod;
@@ -30,7 +27,8 @@ import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -45,7 +43,7 @@ public class ZkClientTest {
     public void testGetPaths() {
         ZkClient client = Mockito.mock(ZkClient.class, Mockito.CALLS_REAL_METHODS);
         String actual = client.getPaths("path", "to");
-        assertEquals("/path/to", actual);
+        Assertions.assertEquals("/path/to", actual);
     }
 
     @Test
@@ -56,7 +54,7 @@ public class ZkClientTest {
         when(client.isRefreshIntervalPassed()).thenReturn(true);
         when(client.getZk()).thenReturn(zkMock);
         when(client.refreshConnectionIfNeeded(any())).thenCallRealMethod();
-        assertTrue(client.refreshConnectionIfNeeded(KeeperState.Expired));
+        Assertions.assertTrue(client.refreshConnectionIfNeeded(KeeperState.Expired));
         verify(client, Mockito.times(1)).safeRefreshConnection();
     }
 
@@ -68,7 +66,7 @@ public class ZkClientTest {
         when(client.isRefreshIntervalPassed()).thenReturn(true);
         when(client.getZk()).thenReturn(zkMock);
         when(client.refreshConnectionIfNeeded(any())).thenCallRealMethod();
-        assertTrue(client.refreshConnectionIfNeeded(KeeperState.Disconnected));
+        Assertions.assertTrue(client.refreshConnectionIfNeeded(KeeperState.Disconnected));
         verify(client, Mockito.times(1)).safeRefreshConnection();
     }
 
@@ -102,7 +100,7 @@ public class ZkClientTest {
         states.remove(KeeperState.Disconnected);
         states.remove(KeeperState.Expired);
         for (KeeperState state : states) {
-            assertFalse(client.refreshConnectionIfNeeded(state));
+            Assertions.assertFalse(client.refreshConnectionIfNeeded(state));
             verify(client, Mockito.times(0)).getZk();
             verify(client, Mockito.times(0)).init();
         }
@@ -160,7 +158,7 @@ public class ZkClientTest {
         try {
             client.ensureZNode("test");
         } catch (IllegalStateException e) {
-            assertEquals("Zk node /test still does not exists", e.getMessage());
+            Assertions.assertEquals("Zk node /test still does not exists", e.getMessage());
         }
         verify(zkMock, Mockito.times(1))
                 .create(eq("/test"), Mockito.any(), eq(Ids.OPEN_ACL_UNSAFE), eq(CreateMode.PERSISTENT));

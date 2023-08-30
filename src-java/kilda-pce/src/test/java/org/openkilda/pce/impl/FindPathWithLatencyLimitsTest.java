@@ -34,8 +34,8 @@ import org.openkilda.pce.model.FindPathResult;
 import org.openkilda.pce.model.WeightFunction;
 
 import org.hamcrest.Matchers;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
@@ -52,7 +52,7 @@ public class FindPathWithLatencyLimitsTest {
 
     private InMemoryPathComputer pathComputer;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         PathComputerConfig pathComputerConfig = new PropertiesBasedConfigurationProvider()
                 .getConfiguration(PathComputerConfig.class);

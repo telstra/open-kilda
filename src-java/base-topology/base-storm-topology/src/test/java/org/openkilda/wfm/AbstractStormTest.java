@@ -45,13 +45,13 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
-import org.junit.ClassRule;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.io.TempDir;
 import org.kohsuke.args4j.CmdLineException;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Properties;
@@ -69,8 +69,10 @@ public abstract class AbstractStormTest {
     protected static LocalCluster cluster;
     protected static TestUtils.KafkaTestFixture server;
 
-    @ClassRule
-    public static TemporaryFolder fsData = new TemporaryFolder();
+    @TempDir
+    public static Path fsDataPath;
+    @TempDir
+    public static File fsDataFile;
 
     private static Properties commonKafkaProperties() throws ConfigurationException, CmdLineException {
         Properties properties = new Properties();
@@ -193,7 +195,8 @@ public abstract class AbstractStormTest {
 
     protected static LaunchEnvironment makeLaunchEnvironment(Properties overlay)
             throws CmdLineException, ConfigurationException, IOException {
-        String extra = fsData.newFile().getName();
+        fsDataFile.createNewFile();
+        String extra = fsDataFile.getName();
         makeConfigFile(overlay, extra);
 
         String[] args = makeLaunchArgs(extra);
@@ -201,7 +204,7 @@ public abstract class AbstractStormTest {
     }
 
     protected static String[] makeLaunchArgs(String... extraConfig) {
-        String root = fsData.getRoot().getPath();
+        String root = fsDataPath.toString();
         return Stream.concat(Stream.of(CONFIG_NAME), Arrays.stream(extraConfig))
                 .map(f -> Paths.get(root, f).toString())
                 .flatMap(f -> Stream.of("--topology-config", f))
@@ -213,7 +216,7 @@ public abstract class AbstractStormTest {
     }
 
     protected static void makeConfigFile(Properties overlay, String location) throws IOException {
-        File path = new File(fsData.getRoot(), location);
+        File path = fsDataPath.resolve(location).toFile();
         overlay.store(new FileWriter(path), null);
     }
 

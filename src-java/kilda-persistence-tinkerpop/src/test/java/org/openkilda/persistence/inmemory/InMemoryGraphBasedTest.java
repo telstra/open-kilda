@@ -29,8 +29,8 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.tx.TransactionManager;
 
-import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 
 import java.util.Properties;
@@ -94,7 +94,7 @@ public abstract class InMemoryGraphBasedTest {
     protected static TransactionManager transactionManager;
     protected static RepositoryFactory repositoryFactory;
 
-    @BeforeClass
+    @BeforeAll
     public static void initPersistenceManager() {
         Properties properties = new Properties();
         properties.put("persistence.implementation.default", PersistenceImplementationType.IN_MEMORY_GRAPH.name());
@@ -113,7 +113,7 @@ public abstract class InMemoryGraphBasedTest {
         transactionManager = inMemoryGraphPersistenceManager.getTransactionManager();
     }
 
-    @Before
+    @BeforeEach
     public void cleanTinkerGraph() {
         inMemoryGraphPersistenceImplementation.purgeData();
     }

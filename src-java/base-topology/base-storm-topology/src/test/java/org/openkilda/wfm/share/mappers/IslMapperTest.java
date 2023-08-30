@@ -22,8 +22,8 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.SwitchId;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class IslMapperTest {
 
@@ -47,10 +47,10 @@ public class IslMapperTest {
 
         Isl isl = IslMapper.INSTANCE.map(islInfoData);
 
-        Assert.assertEquals(IslStatus.ACTIVE, isl.getStatus());
+        Assertions.assertEquals(IslStatus.ACTIVE, isl.getStatus());
 
         IslInfoData islInfoDataMapping = IslMapper.INSTANCE.map(isl);
 
-        Assert.assertEquals(islInfoData, islInfoDataMapping);
+        Assertions.assertEquals(islInfoData, islInfoDataMapping);
     }
 }

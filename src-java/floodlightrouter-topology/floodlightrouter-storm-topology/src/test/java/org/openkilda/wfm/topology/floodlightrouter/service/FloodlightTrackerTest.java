@@ -25,19 +25,19 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import org.openkilda.model.SwitchId;
 import org.openkilda.stubs.ManualClock;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.ap.internal.util.Collections;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Set;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class FloodlightTrackerTest {
     private static long DEFAULT_ALIVE_TIMEOUT = 5L;
     private static long DEFAULT_RESPONSE_TIMEOUT = 1L;
@@ -58,7 +58,7 @@ public class FloodlightTrackerTest {
     @Mock
     RegionMonitorCarrier carrier;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         testClock.set(Instant.EPOCH);
         service = new FloodlightTracker(carrier, regions, aliveSetup);

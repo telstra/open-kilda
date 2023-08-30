@@ -16,10 +16,10 @@
 package org.openkilda.northbound.converter;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openkilda.messaging.info.switches.LogicalPortType.BFD;
 import static org.openkilda.messaging.info.switches.LogicalPortType.LAG;
 
@@ -67,12 +67,12 @@ import org.openkilda.northbound.dto.v2.switches.SwitchLocationDtoV2;
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto;
 
 import com.google.common.collect.Lists;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
@@ -83,7 +83,7 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 public class SwitchMapperTest {
     public static final int LOGICAL_PORT_NUMBER_1 = 1;
     public static final int LOGICAL_PORT_NUMBER_2 = 2;
@@ -305,7 +305,7 @@ public class SwitchMapperTest {
                 ruleInfoDtoV2.getMisconfigured().get(0).getExpected());
         assertRules(Lists.newArrayList(rulesValidationEntryV2.getMisconfigured()).get(0).getDiscrepancies(),
                 ruleInfoDtoV2.getMisconfigured().get(0).getDiscrepancies());
-        assertEquals(Lists.newArrayList(rulesValidationEntryV2.getMisconfigured()).get(0).getId(),
+        assertEquals(newArrayList(rulesValidationEntryV2.getMisconfigured()).get(0).getId(),
                 ruleInfoDtoV2.getMisconfigured().get(0).getId());
     }
 
@@ -376,10 +376,10 @@ public class SwitchMapperTest {
                 .build();
         RulesValidationDto actual = switchMapper.toRulesValidationDtoV1(expected);
 
-        assertEquals(Lists.newArrayList(expected.getExcess()).get(0).getCookie(), actual.getExcess().get(0));
-        assertEquals(Lists.newArrayList(expected.getMissing()).get(0).getCookie(), actual.getMissing().get(0));
-        assertEquals(Lists.newArrayList(expected.getProper()).get(0).getCookie(), actual.getProper().get(0));
-        assertEquals(Lists.newArrayList(expected.getMisconfigured()).get(0).getExpected().getCookie(),
+        assertEquals(newArrayList(expected.getExcess()).get(0).getCookie(), actual.getExcess().get(0));
+        assertEquals(newArrayList(expected.getMissing()).get(0).getCookie(), actual.getMissing().get(0));
+        assertEquals(newArrayList(expected.getProper()).get(0).getCookie(), actual.getProper().get(0));
+        assertEquals(newArrayList(expected.getMisconfigured()).get(0).getExpected().getCookie(),
                 actual.getMisconfigured().get(0));
     }
 
@@ -397,17 +397,17 @@ public class SwitchMapperTest {
         assertEquals(expected.getExpected().getFlowId(), actual.getFlowId());
         assertEquals(expected.getExpected().getCookie(), actual.getCookie());
 
-        assertEquals(expected.getDiscrepancies().getFlags(), Lists.newArrayList(actual.getFlags()));
+        assertEquals(expected.getDiscrepancies().getFlags(), newArrayList(actual.getFlags()));
         assertEquals(expected.getDiscrepancies().getBurstSize(), actual.getBurstSize());
         assertEquals(expected.getDiscrepancies().getRate(), actual.getRate());
 
         assertEquals(expected.getExpected().getRate(), actual.getExpected().getRate());
         assertEquals(expected.getExpected().getBurstSize(), actual.getExpected().getBurstSize());
-        assertEquals(expected.getExpected().getFlags(), Lists.newArrayList(actual.getExpected().getFlags()));
+        assertEquals(expected.getExpected().getFlags(), newArrayList(actual.getExpected().getFlags()));
 
         assertEquals(expected.getDiscrepancies().getRate(), actual.getActual().getRate());
         assertEquals(expected.getDiscrepancies().getBurstSize(), actual.getActual().getBurstSize());
-        assertEquals(expected.getDiscrepancies().getFlags(), Lists.newArrayList(actual.getActual().getFlags()));
+        assertEquals(expected.getDiscrepancies().getFlags(), newArrayList(actual.getActual().getFlags()));
     }
 
     @Test
@@ -526,13 +526,13 @@ public class SwitchMapperTest {
         assertLogicalPorts(expected.getLogicalPorts().getMisconfigured().get(0).getDiscrepancies(),
                 actual.getLogicalPorts().getMisconfigured().get(0));
 
-        assertEquals(Lists.newArrayList(expected.getRules().getExcess()).get(0).getCookie(),
+        assertEquals(newArrayList(expected.getRules().getExcess()).get(0).getCookie(),
                 actual.getRules().getExcess().get(0));
-        assertEquals(Lists.newArrayList(expected.getRules().getMissing()).get(0).getCookie(),
+        assertEquals(newArrayList(expected.getRules().getMissing()).get(0).getCookie(),
                 actual.getRules().getMissing().get(0));
-        assertEquals(Lists.newArrayList(expected.getRules().getProper()).get(0).getCookie(),
+        assertEquals(newArrayList(expected.getRules().getProper()).get(0).getCookie(),
                 actual.getRules().getProper().get(0));
-        assertEquals(Lists.newArrayList(expected.getRules().getMisconfigured()).get(0).getExpected().getCookie(),
+        assertEquals(newArrayList(expected.getRules().getMisconfigured()).get(0).getExpected().getCookie(),
                 actual.getRules().getMisconfigured().get(0));
     }
 
@@ -644,7 +644,7 @@ public class SwitchMapperTest {
     private void assertMeters(MeterInfoEntryV2 expected, MeterInfoDto actual) {
         assertEquals(expected.getMeterId(), actual.getMeterId());
         assertEquals(expected.getFlowId(), actual.getFlowId());
-        assertEquals(expected.getFlags(), Lists.newArrayList(actual.getFlags()));
+        assertEquals(expected.getFlags(), newArrayList(actual.getFlags()));
         assertEquals(expected.getBurstSize(), actual.getBurstSize());
         assertEquals(expected.getCookie(), actual.getCookie());
         assertEquals(expected.getRate(), actual.getRate());

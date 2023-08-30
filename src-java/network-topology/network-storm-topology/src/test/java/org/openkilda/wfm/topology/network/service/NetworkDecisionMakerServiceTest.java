@@ -29,13 +29,13 @@ import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.model.Endpoint;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class NetworkDecisionMakerServiceTest {
     private static final Endpoint endpointAlpha = Endpoint.of(new SwitchId(1), 1);
     private static final Endpoint endpointBeta = Endpoint.of(new SwitchId(2), 1);
@@ -51,7 +51,7 @@ public class NetworkDecisionMakerServiceTest {
     @Mock
     IDecisionMakerCarrier carrier;
 
-    @Before
+    @BeforeEach
     public void setup() {
         reset(carrier);
     }

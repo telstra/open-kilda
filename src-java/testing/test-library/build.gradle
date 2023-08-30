@@ -55,11 +55,15 @@ dependencies {
     annotationProcessor 'org.mapstruct:mapstruct-processor'
 
     api 'org.junit.jupiter:junit-jupiter-api'
-    api 'org.junit.vintage:junit-vintage-engine'
+    api 'org.junit.jupiter:junit-jupiter-engine'
     api 'com.github.javafaker:javafaker:1.0.2'
     implementation 'com.nitorcreations:matchers'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+}
+
+test {
+    useJUnitPlatform()
 }

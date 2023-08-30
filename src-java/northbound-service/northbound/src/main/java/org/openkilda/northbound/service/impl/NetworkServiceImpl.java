@@ -64,11 +64,12 @@ public class NetworkServiceImpl implements NetworkService {
     public CompletableFuture<PathsDto> getPaths(
             SwitchId srcSwitch, SwitchId dstSwitch, FlowEncapsulationType encapsulationType,
             PathComputationStrategy pathComputationStrategy, Duration maxLatency, Duration maxLatencyTier2,
-            Integer maxPathCount) {
+            Integer maxPathCount, Boolean includeProtectedPath) {
         log.info("API request: Get Paths: srcSwitch {}, dstSwitch {}, encapsulationType {}, "
-                + "pathComputationStrategy {}, maxLatency {}, maxLatencyTier2 {}, maxPathCount {}",
+                + "pathComputationStrategy {}, maxLatency {}, maxLatencyTier2 {}, maxPathCount {},"
+                + "includeProtectedPath {}",
                 srcSwitch, dstSwitch, encapsulationType, pathComputationStrategy,
-                maxLatency, maxLatencyTier2, maxPathCount);
+                maxLatency, maxLatencyTier2, maxPathCount, includeProtectedPath);
 
         String correlationId = RequestCorrelationId.getId();
 
@@ -85,13 +86,13 @@ public class NetworkServiceImpl implements NetworkService {
         }
 
         GetPathsRequest request = new GetPathsRequest(srcSwitch, dstSwitch, encapsulationType, pathComputationStrategy,
-                maxLatency, maxLatencyTier2, maxPathCount);
+                maxLatency, maxLatencyTier2, maxPathCount, includeProtectedPath);
         CommandMessage message = new CommandMessage(request, System.currentTimeMillis(), correlationId);
 
         return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
                 .thenApply(paths -> {
                     List<PathDto> pathsDtoList = paths.stream().map(PathsInfoData.class::cast)
-                            .map(p -> pathMapper.mapToPath(p.getPath()))
+                            .map(p -> pathMapper.mapToPathDto(p.getPath()))
                             .collect(Collectors.toList());
                     return new PathsDto(pathsDtoList);
                 });

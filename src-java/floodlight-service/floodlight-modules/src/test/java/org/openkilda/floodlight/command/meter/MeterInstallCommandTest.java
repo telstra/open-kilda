@@ -18,6 +18,8 @@ package org.openkilda.floodlight.command.meter;
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.reset;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.floodlight.command.AbstractSpeakerCommandTest;
 import org.openkilda.floodlight.error.SessionErrorResponseException;
@@ -29,9 +31,8 @@ import org.openkilda.messaging.MessageContext;
 import org.openkilda.model.of.MeterSchema;
 
 import net.floodlightcontroller.core.SwitchDisconnectedException;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFBadRequestCode;
 import org.projectfloodlight.openflow.protocol.OFErrorMsg;
 import org.projectfloodlight.openflow.protocol.OFMeterMod;
@@ -46,7 +47,7 @@ public class MeterInstallCommandTest extends AbstractSpeakerCommandTest {
             messageContext, mapSwitchId(dpId), meterConfig);
 
     @Override
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
         expectSwitchDescription();
@@ -61,9 +62,9 @@ public class MeterInstallCommandTest extends AbstractSpeakerCommandTest {
         verifySuccessCompletion(result);
 
         SessionWriteRecord write0 = getWriteRecord(0);
-        Assert.assertTrue(write0.getRequest() instanceof OFMeterMod);
+        assertTrue(write0.getRequest() instanceof OFMeterMod);
         OFMeterMod request = (OFMeterMod) write0.getRequest();
-        Assert.assertEquals(OFMeterModCommand.ADD, request.getCommand());
+        assertEquals(OFMeterModCommand.ADD, request.getCommand());
     }
 
     @Test

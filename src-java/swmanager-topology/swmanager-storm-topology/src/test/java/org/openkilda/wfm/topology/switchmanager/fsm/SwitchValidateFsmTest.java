@@ -49,16 +49,16 @@ import org.openkilda.wfm.topology.switchmanager.service.SwitchManagerCarrier;
 import org.openkilda.wfm.topology.switchmanager.service.ValidationService;
 
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 import java.util.Set;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class SwitchValidateFsmTest {
 
     @Mock
@@ -92,7 +92,7 @@ public class SwitchValidateFsmTest {
             .requestCookie(null)
             .build();
 
-    @Before
+    @BeforeEach
     public void setUp() {
         this.fsmExecutor = new FsmExecutor<>(SwitchValidateFsm.SwitchValidateEvent.NEXT);
 

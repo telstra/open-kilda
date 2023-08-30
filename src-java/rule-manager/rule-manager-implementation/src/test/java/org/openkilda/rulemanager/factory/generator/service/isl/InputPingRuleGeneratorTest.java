@@ -15,10 +15,6 @@
 
 package org.openkilda.rulemanager.factory.generator.service.isl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.openkilda.rulemanager.Constants.Priority.PING_INPUT_PRIORITY;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
 import static org.openkilda.rulemanager.Utils.getCommand;
@@ -35,8 +31,9 @@ import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.factory.RuleGenerator;
 import org.openkilda.rulemanager.match.FieldMatch;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.List;
@@ -47,12 +44,12 @@ public class InputPingRuleGeneratorTest {
     private static final int ISL_PORT = 1;
     private static final String FLOW_PING_MAGIC_SRC_MAC_ADDRESS = "00:00:00:00:00:01";
 
-    @Before
+    @BeforeEach
     public void setup() {
         generator = InputPingRuleGenerator.builder()
-                            .islPort(ISL_PORT)
-                            .flowPingMagicSrcMacAddress(FLOW_PING_MAGIC_SRC_MAC_ADDRESS)
-                            .build();
+                .islPort(ISL_PORT)
+                .flowPingMagicSrcMacAddress(FLOW_PING_MAGIC_SRC_MAC_ADDRESS)
+                .build();
     }
 
     @Test
@@ -60,31 +57,31 @@ public class InputPingRuleGeneratorTest {
         Switch sw = buildSwitch("OF_13", Collections.emptySet());
         List<SpeakerData> commands = generator.generateCommands(sw);
 
-        assertEquals(1, commands.size());
+        Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
-        assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
-        assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
-        assertTrue(flowCommandData.getDependsOn().isEmpty());
+        Assertions.assertEquals(sw.getSwitchId(), flowCommandData.getSwitchId());
+        Assertions.assertEquals(sw.getOfVersion(), flowCommandData.getOfVersion().toString());
+        Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
-        assertEquals(new PortColourCookie(CookieType.PING_INPUT, ISL_PORT), flowCommandData.getCookie());
-        assertEquals(OfTable.INPUT, flowCommandData.getTable());
-        assertEquals(PING_INPUT_PRIORITY, flowCommandData.getPriority());
+        Assertions.assertEquals(new PortColourCookie(CookieType.PING_INPUT, ISL_PORT), flowCommandData.getCookie());
+        Assertions.assertEquals(OfTable.INPUT, flowCommandData.getTable());
+        Assertions.assertEquals(PING_INPUT_PRIORITY, flowCommandData.getPriority());
 
         FieldMatch ethSrcMatch = getMatchByField(Field.ETH_SRC, flowCommandData.getMatch());
-        assertEquals(new SwitchId(FLOW_PING_MAGIC_SRC_MAC_ADDRESS).toLong(), ethSrcMatch.getValue());
-        assertFalse(ethSrcMatch.isMasked());
+        Assertions.assertEquals(new SwitchId(FLOW_PING_MAGIC_SRC_MAC_ADDRESS).toLong(), ethSrcMatch.getValue());
+        Assertions.assertFalse(ethSrcMatch.isMasked());
 
         FieldMatch inPortMatch = getMatchByField(Field.IN_PORT, flowCommandData.getMatch());
-        assertEquals(ISL_PORT, inPortMatch.getValue());
-        assertFalse(inPortMatch.isMasked());
+        Assertions.assertEquals(ISL_PORT, inPortMatch.getValue());
+        Assertions.assertFalse(inPortMatch.isMasked());
 
-        assertEquals(flowCommandData.getInstructions().getGoToTable(), OfTable.TRANSIT);
+        Assertions.assertEquals(flowCommandData.getInstructions().getGoToTable(), OfTable.TRANSIT);
 
-        assertNull(flowCommandData.getInstructions().getWriteMetadata());
-        assertNull(flowCommandData.getInstructions().getGoToMeter());
-        assertNull(flowCommandData.getInstructions().getApplyActions());
-        assertNull(flowCommandData.getInstructions().getWriteActions());
+        Assertions.assertNull(flowCommandData.getInstructions().getWriteMetadata());
+        Assertions.assertNull(flowCommandData.getInstructions().getGoToMeter());
+        Assertions.assertNull(flowCommandData.getInstructions().getApplyActions());
+        Assertions.assertNull(flowCommandData.getInstructions().getWriteActions());
     }
 
 }

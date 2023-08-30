@@ -17,7 +17,7 @@ dependencies {
     testRuntimeOnly 'org.slf4j:slf4j-simple'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
     testImplementation 'org.hamcrest:hamcrest-library'
     testImplementation 'org.mockito:mockito-junit-jupiter'
 
@@ -27,4 +27,8 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
     testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+}
+
+test {
+    useJUnitPlatform()
 }

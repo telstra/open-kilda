@@ -20,8 +20,8 @@ import org.openkilda.messaging.info.event.PortInfoData;
 import org.openkilda.model.Port;
 import org.openkilda.model.SwitchId;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 
 public class PortMapperTest {
@@ -36,18 +36,18 @@ public class PortMapperTest {
 
         Port port = portMapper.map(portInfoData);
 
-        Assert.assertNotNull(port.getSwitchObj());
-        Assert.assertEquals(portInfoData.getSwitchId(), port.getSwitchObj().getSwitchId());
-        Assert.assertEquals(portInfoData.getSwitchId(), port.getSwitchId());
-        Assert.assertEquals(portInfoData.getPortNo(), port.getPortNo());
-        Assert.assertEquals(portInfoData.getCurrentSpeed().longValue(), port.getCurrentSpeed());
-        Assert.assertEquals(portInfoData.getMaxSpeed().longValue(), port.getMaxSpeed());
+        Assertions.assertNotNull(port.getSwitchObj());
+        Assertions.assertEquals(portInfoData.getSwitchId(), port.getSwitchObj().getSwitchId());
+        Assertions.assertEquals(portInfoData.getSwitchId(), port.getSwitchId());
+        Assertions.assertEquals(portInfoData.getPortNo(), port.getPortNo());
+        Assertions.assertEquals(portInfoData.getCurrentSpeed().longValue(), port.getCurrentSpeed());
+        Assertions.assertEquals(portInfoData.getMaxSpeed().longValue(), port.getMaxSpeed());
 
         PortInfoData portInfoDataMapping = portMapper.map(port);
 
-        Assert.assertEquals(port.getSwitchId(), portInfoDataMapping.getSwitchId());
-        Assert.assertEquals(port.getPortNo(), portInfoDataMapping.getPortNo());
-        Assert.assertEquals(port.getCurrentSpeed(), portInfoDataMapping.getCurrentSpeed().longValue());
-        Assert.assertEquals(port.getMaxSpeed(), portInfoDataMapping.getMaxSpeed().longValue());
+        Assertions.assertEquals(port.getSwitchId(), portInfoDataMapping.getSwitchId());
+        Assertions.assertEquals(port.getPortNo(), portInfoDataMapping.getPortNo());
+        Assertions.assertEquals(port.getCurrentSpeed(), portInfoDataMapping.getCurrentSpeed().longValue());
+        Assertions.assertEquals(port.getMaxSpeed(), portInfoDataMapping.getMaxSpeed().longValue());
     }
 }

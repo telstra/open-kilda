@@ -15,8 +15,6 @@
 
 package org.openkilda.wfm.topology.flowhs.mapper;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -33,8 +31,9 @@ import org.openkilda.persistence.repositories.HaFlowRepository;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 
 public class YFlowMapperTest {
@@ -58,7 +57,7 @@ public class YFlowMapperTest {
     @Mock
     HaFlowRepository haFlowRepository;
 
-    @Before
+    @BeforeEach
     public void init() {
         flowRepository = mock(FlowRepository.class);
         haFlowRepository = mock(HaFlowRepository.class);
@@ -82,10 +81,10 @@ public class YFlowMapperTest {
                 .thenReturn(Lists.newArrayList(HA_FLOW_ID_1, HA_FLOW_ID_2));
 
         YFlowDto result = mapper.toYFlowDto(yFlow, flowRepository, haFlowRepository);
-        assertEquals(Y_FLOW_ID_1, result.getYFlowId());
-        assertEquals(Sets.newHashSet(FLOW_ID_1, FLOW_ID_2), result.getDiverseWithFlows());
-        assertEquals(Sets.newHashSet(Y_FLOW_ID_2), result.getDiverseWithYFlows());
-        assertEquals(Sets.newHashSet(HA_FLOW_ID_1, HA_FLOW_ID_2), result.getDiverseWithHaFlows());
+        Assertions.assertEquals(Y_FLOW_ID_1, result.getYFlowId());
+        Assertions.assertEquals(Sets.newHashSet(FLOW_ID_1, FLOW_ID_2), result.getDiverseWithFlows());
+        Assertions.assertEquals(Sets.newHashSet(Y_FLOW_ID_2), result.getDiverseWithYFlows());
+        Assertions.assertEquals(Sets.newHashSet(HA_FLOW_ID_1, HA_FLOW_ID_2), result.getDiverseWithHaFlows());
     }
 
     @Test
@@ -96,10 +95,10 @@ public class YFlowMapperTest {
                 .build();
 
         YFlowDto result = mapper.toYFlowDto(yFlow, flowRepository, haFlowRepository);
-        assertEquals(Y_FLOW_ID_1, result.getYFlowId());
-        assertTrue(result.getDiverseWithFlows().isEmpty());
-        assertTrue(result.getDiverseWithYFlows().isEmpty());
-        assertTrue(result.getDiverseWithHaFlows().isEmpty());
+        Assertions.assertEquals(Y_FLOW_ID_1, result.getYFlowId());
+        Assertions.assertTrue(result.getDiverseWithFlows().isEmpty());
+        Assertions.assertTrue(result.getDiverseWithYFlows().isEmpty());
+        Assertions.assertTrue(result.getDiverseWithHaFlows().isEmpty());
     }
 
     private static Flow buildFlow(String flowId) {

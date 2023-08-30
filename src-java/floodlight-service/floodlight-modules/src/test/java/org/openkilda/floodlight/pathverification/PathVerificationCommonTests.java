@@ -16,7 +16,7 @@
 package org.openkilda.floodlight.pathverification;
 
 import static org.easymock.EasyMock.replay;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.ETHERNET_HEADER_SIZE;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.IP_V4_HEADER_SIZE;
 import static org.openkilda.floodlight.pathverification.PathVerificationService.LLDP_TLV_CHASSIS_ID_TOTAL_SIZE;
@@ -46,8 +46,8 @@ import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.LLDPTLV;
 import net.floodlightcontroller.packet.UDP;
 import org.easymock.EasyMock;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.projectfloodlight.openflow.protocol.OFDescStatsReply;
 import org.projectfloodlight.openflow.protocol.OFPacketOut;
 import org.projectfloodlight.openflow.protocol.OFPortDesc;
@@ -55,10 +55,10 @@ import org.projectfloodlight.openflow.types.OFPort;
 
 import java.net.InetSocketAddress;
 
-public class PathVerificationCommonTests  extends FloodlightTestCase {
+public class PathVerificationCommonTests extends FloodlightTestCase {
     private static final SwitchId switchId = new SwitchId(1);
     private static final int port = 1;
-    private static final byte[] timestampT0InBytes = new byte[] {
+    private static final byte[] timestampT0InBytes = new byte[]{
             0x07, 0x5b, (byte) 0xcd, 0x15,         // 123456789 seconds
             0x3a, (byte) 0xde, 0x68, (byte) 0xb1}; // 987654321 nanoseconds
     private static final long timestampT0 = PathVerificationService.noviflowTimestamp(timestampT0InBytes);
@@ -67,7 +67,7 @@ public class PathVerificationCommonTests  extends FloodlightTestCase {
     private PathVerificationService pvs;
     private IOFSwitch sw;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
         FloodlightModuleContext fmc = new FloodlightModuleContext();

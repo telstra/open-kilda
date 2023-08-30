@@ -25,8 +25,8 @@ import org.openkilda.server42.stats.messaging.Statistics.FlowLatencyPacket;
 import org.openkilda.server42.stats.messaging.Statistics.LatencyPacketBucket;
 import org.openkilda.server42.stats.messaging.Statistics.LatencyPacketBucket.Builder;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,9 +34,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 @SpringBootTest(classes = {StatsCollector.class})
 @TestPropertySource("classpath:test.properties")
 @MockBean(value = {
@@ -77,9 +77,9 @@ public class StatsCollectorTest {
         FlowRttStatsData statsPacket1 = (FlowRttStatsData) packet1Message.getData();
 
         assertThat(statsPacket1).extracting(
-                FlowRttStatsData::getFlowId,
-                FlowRttStatsData::getT0,
-                FlowRttStatsData::getT1)
+                        FlowRttStatsData::getFlowId,
+                        FlowRttStatsData::getT0,
+                        FlowRttStatsData::getT1)
                 .contains(packet1.getFlowId(), packet1.getT0(), packet1.getT1());
 
         assertThat(statsPacket1)
@@ -92,9 +92,9 @@ public class StatsCollectorTest {
         FlowRttStatsData statsPacket2 = (FlowRttStatsData) packet2Message.getData();
 
         assertThat(statsPacket2).extracting(
-                FlowRttStatsData::getFlowId,
-                FlowRttStatsData::getT0,
-                FlowRttStatsData::getT1)
+                        FlowRttStatsData::getFlowId,
+                        FlowRttStatsData::getT0,
+                        FlowRttStatsData::getT1)
                 .contains(packet2.getFlowId(), packet2.getT0(), packet2.getT1());
 
         assertThat(statsPacket2)

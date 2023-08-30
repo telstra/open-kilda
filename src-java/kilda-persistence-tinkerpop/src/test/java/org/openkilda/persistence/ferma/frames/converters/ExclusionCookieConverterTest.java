@@ -15,12 +15,11 @@
 
 package org.openkilda.persistence.ferma.frames.converters;
 
-import static org.junit.Assert.assertEquals;
-
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.ExclusionCookie;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class ExclusionCookieConverterTest {
     @Test
@@ -32,7 +31,7 @@ public class ExclusionCookieConverterTest {
         Long graphObject = new ExclusionCookieConverter().toGraphProperty(cookie);
 
         // then
-        assertEquals(cookie.getValue(), (long) graphObject);
+        Assertions.assertEquals(cookie.getValue(), (long) graphObject);
     }
 
     @Test
@@ -44,6 +43,6 @@ public class ExclusionCookieConverterTest {
         Cookie actualEntity = new ExclusionCookieConverter().toEntityAttribute(cookie.getValue());
 
         // then
-        assertEquals(cookie, actualEntity);
+        Assertions.assertEquals(cookie, actualEntity);
     }
 }

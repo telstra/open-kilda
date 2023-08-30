@@ -16,8 +16,9 @@
 package org.openkilda.wfm.topology.stats.service;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -70,20 +71,19 @@ import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowSubDescriptor;
 
 import com.google.common.collect.Sets;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class KildaEntryCacheServiceTest {
     private static final Long FLOW_UNMASKED_COOKIE = 1L;
     private static final int STAT_VLAN_1 = 5;
@@ -130,7 +130,7 @@ public class KildaEntryCacheServiceTest {
 
     KildaEntryCacheService service;
 
-    @Before
+    @BeforeEach
     public void initService() {
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         when(repositoryFactory.createYFlowRepository()).thenReturn(yFlowRepository);
@@ -215,7 +215,7 @@ public class KildaEntryCacheServiceTest {
                         new FlowStatsEntry(
                                 0,
                                 forwardPath.getCookie().toBuilder()
-                                .type(CookieType.SERVER_42_FLOW_RTT_INGRESS).build().getValue(),
+                                        .type(CookieType.SERVER_42_FLOW_RTT_INGRESS).build().getValue(),
                                 0, 0, 0, 0),
                         new FlowStatsEntry(
                                 0, forwardPath.getCookie().toBuilder().looped(true).build().getValue(),
@@ -383,9 +383,9 @@ public class KildaEntryCacheServiceTest {
 
         // source switch
         service.completeAndForwardFlowStats(new FlowStatsData(
-                flow.getSrcSwitchId(), asList(
-                    new FlowStatsEntry(0, forwardPathCookie.getValue(), 0, 0, 0, 0),
-                    new FlowStatsEntry(0, reversePathCookie.getValue(), 0, 0, 0, 0))));
+                flow.getSrcSwitchId(), asList(new FlowStatsEntry(0, forwardPathCookie.getValue(),
+                0, 0, 0, 0), new FlowStatsEntry(0,
+                reversePathCookie.getValue(), 0, 0, 0, 0))));
 
         verify(carrier, atLeastOnce()).emitFlowStats(cookieCacheCaptor.capture());
         List<FlowStatsAndDescriptor> statsEntries = cookieCacheCaptor.getValue().getStatsEntries();
@@ -403,9 +403,9 @@ public class KildaEntryCacheServiceTest {
 
         // transit
         service.completeAndForwardFlowStats(new FlowStatsData(
-                transitSwitch.getSwitchId(), asList(
-                    new FlowStatsEntry(0, forwardPathCookie.getValue(), 0, 0, 0, 0),
-                    new FlowStatsEntry(0, reversePathCookie.getValue(), 0, 0, 0, 0))));
+                transitSwitch.getSwitchId(), asList(new FlowStatsEntry(0, forwardPathCookie.getValue(),
+                0, 0, 0, 0), new FlowStatsEntry(0,
+                reversePathCookie.getValue(), 0, 0, 0, 0))));
         verify(carrier, atLeastOnce()).emitFlowStats(cookieCacheCaptor.capture());
         statsEntries = cookieCacheCaptor.getValue().getStatsEntries();
         assertDescriptionPopulation(statsEntries, 2, 2);
@@ -422,9 +422,9 @@ public class KildaEntryCacheServiceTest {
 
         // egress
         service.completeAndForwardFlowStats(new FlowStatsData(
-                flow.getDestSwitchId(), asList(
-                    new FlowStatsEntry(0, forwardPathCookie.getValue(), 0, 0, 0, 0),
-                    new FlowStatsEntry(0, reversePathCookie.getValue(), 0, 0, 0, 0))));
+                flow.getDestSwitchId(), asList(new FlowStatsEntry(0, forwardPathCookie.getValue(),
+                0, 0, 0, 0), new FlowStatsEntry(0,
+                reversePathCookie.getValue(), 0, 0, 0, 0))));
         verify(carrier, atLeastOnce()).emitFlowStats(cookieCacheCaptor.capture());
         statsEntries = cookieCacheCaptor.getValue().getStatsEntries();
         assertDescriptionPopulation(statsEntries, 2, 2);
@@ -452,8 +452,8 @@ public class KildaEntryCacheServiceTest {
 
         final MeterId forwardMeterId = flow.getForwardPath().getMeterId();
 
-        @SuppressWarnings({"ConstantConditions"})
-        final MeterId forwardProtectedMeterId = flow.getProtectedForwardPath().getMeterId();
+        @SuppressWarnings({"ConstantConditions"}) final MeterId forwardProtectedMeterId =
+                flow.getProtectedForwardPath().getMeterId();
 
         verify(carrier, atLeastOnce()).emitMeterStats(meterCacheCaptor.capture());
         List<MeterStatsAndDescriptor> statsEntries = meterCacheCaptor.getValue().getStatsEntries();
@@ -539,9 +539,9 @@ public class KildaEntryCacheServiceTest {
         service.activate();
 
         // shared endpoint
-        service.completeAndForwardMeterStats(new MeterStatsData(
-                yFlow.getSharedEndpoint().getSwitchId(), Collections.singletonList(
-                    new MeterStatsEntry(yFlow.getSharedEndpointMeterId().getValue(), 0, 0))));
+        service.completeAndForwardMeterStats(new MeterStatsData(yFlow.getSharedEndpoint().getSwitchId(),
+                Collections.singletonList(new MeterStatsEntry(yFlow.getSharedEndpointMeterId().getValue(),
+                        0, 0))));
 
         verify(carrier, atLeastOnce()).emitMeterStats(meterCacheCaptor.capture());
         List<MeterStatsAndDescriptor> statsEntries = meterCacheCaptor.getValue().getStatsEntries();
@@ -553,9 +553,9 @@ public class KildaEntryCacheServiceTest {
                         yFlow.getSharedEndpointMeterId()));
 
         // y-point
-        service.completeAndForwardMeterStats(new MeterStatsData(
-                yFlow.getYPoint(), Collections.singletonList(
-                    new MeterStatsEntry(yFlow.getMeterId().getValue(), 0, 0))));
+        service.completeAndForwardMeterStats(new MeterStatsData(yFlow.getYPoint(),
+                Collections.singletonList(new MeterStatsEntry(yFlow.getMeterId().getValue(),
+                        0, 0))));
         verify(carrier, atLeastOnce()).emitMeterStats(meterCacheCaptor.capture());
         statsEntries = meterCacheCaptor.getValue().getStatsEntries();
         assertDescriptionPopulation(statsEntries, 1, 1);
@@ -859,7 +859,7 @@ public class KildaEntryCacheServiceTest {
                 return;
             }
         }
-        Assert.fail("Cache miss");
+        fail("Cache miss");
     }
 
     private void assertMeterCache(
@@ -871,7 +871,7 @@ public class KildaEntryCacheServiceTest {
                 return;
             }
         }
-        Assert.fail("Cache miss");
+        fail("Cache miss");
     }
 
     private void assertDescriptionPopulation(

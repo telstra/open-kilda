@@ -16,6 +16,7 @@
 package org.openkilda.messaging.info.switches.v2;
 
 import org.openkilda.messaging.Utils;
+import org.openkilda.messaging.split.SplitIterator;
 
 import lombok.Builder;
 import lombok.Value;
@@ -36,69 +37,40 @@ public class ValidationEntry<E> {
             List<MisconfiguredInfo<E>> misconfigured) {
 
         List<ValidationEntry<E>> result = new ArrayList<>();
-        ValidationEntryBuilder<E> current = ValidationEntry.builder();
-        int currentSize = firstChunkSize;
-        boolean addCurrent = true;
+        SplitIterator<ValidationEntry<E>, ValidationEntry.ValidationEntryBuilder<E>> iterator = new SplitIterator<>(
+                firstChunkSize, chunkSize, ValidationEntryBuilder::build, ValidationEntry::builder);
 
         if (excess != null) {
-            for (List<E> entry : Utils.split(excess, currentSize, chunkSize)) {
-                current.excess(entry);
-                currentSize -= entry.size();
-                addCurrent = true;
-                if (currentSize == 0) {
-                    result.add(current.build());
-                    current = ValidationEntry.builder();
-                    currentSize = chunkSize;
-                    addCurrent = false;
-                }
+            for (List<E> entry : Utils.split(excess, iterator.getRemainingChunkSize(), chunkSize)) {
+                iterator.getCurrentBuilder().excess(entry);
+                iterator.next(entry.size()).ifPresent(result::add);
             }
         }
 
         if (proper != null) {
-            for (List<E> entry : Utils.split(proper, currentSize, chunkSize)) {
-                current.proper(entry);
-                currentSize -= entry.size();
-                addCurrent = true;
-                if (currentSize == 0) {
-                    result.add(current.build());
-                    current = ValidationEntry.builder();
-                    currentSize = chunkSize;
-                    addCurrent = false;
-                }
+            for (List<E> entry : Utils.split(proper, iterator.getRemainingChunkSize(), chunkSize)) {
+                iterator.getCurrentBuilder().proper(entry);
+                iterator.next(entry.size()).ifPresent(result::add);
             }
         }
 
         if (missing != null) {
-            for (List<E> entry : Utils.split(missing, currentSize, chunkSize)) {
-                current.missing(entry);
-                currentSize -= entry.size();
-                addCurrent = true;
-                if (currentSize == 0) {
-                    result.add(current.build());
-                    current = ValidationEntry.builder();
-                    currentSize = chunkSize;
-                    addCurrent = false;
-                }
+            for (List<E> entry : Utils.split(missing, iterator.getRemainingChunkSize(), chunkSize)) {
+                iterator.getCurrentBuilder().missing(entry);
+                iterator.next(entry.size()).ifPresent(result::add);
             }
         }
 
         if (misconfigured != null) {
             for (List<MisconfiguredInfo<E>> entry : Utils.split(
-                    misconfigured, currentSize, chunkSize)) {
-                current.misconfigured(entry);
-                currentSize -= entry.size();
-                addCurrent = true;
-                if (currentSize == 0) {
-                    result.add(current.build());
-                    current = ValidationEntry.builder();
-                    currentSize = chunkSize;
-                    addCurrent = false;
-                }
+                    misconfigured, iterator.getRemainingChunkSize(), chunkSize)) {
+                iterator.getCurrentBuilder().misconfigured(entry);
+                iterator.next(entry.size()).ifPresent(result::add);
             }
         }
 
-        if (addCurrent) {
-            result.add(current.build());
+        if (iterator.isAddCurrent()) {
+            result.add(iterator.getCurrentBuilder().build());
         }
         return result;
     }
