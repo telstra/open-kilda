@@ -17,19 +17,19 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
     @Shared
     HaFlowHelper haFlowHelper
 
-    @Shared
     boolean isDeleted
 
     @Tidy
     def "User can change an Ha-Flow and get its history event - #type"() {
         given: "HA-Flow"
-        isDeleted = false
         def swT = topologyHelper.switchTriplets[0]
         def haFlowRequest = haFlowHelper.randomHaFlow(swT)
         def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
 
         when: "Change the flow"
         change(haFlow)
+        if(type == HaFlowActionType.DELETE){isDeleted=true}
+
 
         then: "Correct event appears in HA-Flow history"
         haFlowHelper.getHistory(haFlow.haFlowId).hasExactlyNEntriesOfType(type, 1)
@@ -53,7 +53,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         HaFlowActionType.DELETE |
                 { HaFlow flow ->
                     haFlowHelper.deleteHaFlow(flow.haFlowId)
-                    isDeleted = true
 
                 }
 
@@ -68,7 +67,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
 
     def "History records can be received with timestamp filters"() {
         given: "HA-Flow"
-        isDeleted = false
         def timestampBeforeCreate = System.currentTimeSeconds()
         def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
         def haFlow = haFlowHelper.addHaFlow(haFlowHelper.randomHaFlow(swT))
