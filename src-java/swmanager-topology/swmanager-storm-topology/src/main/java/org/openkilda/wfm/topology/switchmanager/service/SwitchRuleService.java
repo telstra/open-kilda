@@ -123,7 +123,14 @@ public class SwitchRuleService implements SwitchManagerHubService {
 
     @Override
     public void dispatchErrorMessage(ErrorData payload, MessageCookie cookie) {
-        // FIXME(surabujin): the service completely ignores error responses
+        carrier.cancelTimeoutCallback(cookie.getValue());
+        ErrorMessage errorMessage = new ErrorMessage(payload, System.currentTimeMillis(), cookie.getNested() != null
+                ? cookie.getNested().getValue() : cookie.getValue());
+        carrier.response(cookie.getValue(), errorMessage);
+        isOperationCompleted = true;
+        if (!active) {
+            carrier.sendInactive();
+        }
         log.error("Got speaker error response: {} (request key: {})", payload, cookie.getValue());
     }
 

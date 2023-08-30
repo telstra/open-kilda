@@ -447,7 +447,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
                   switch           : srcSwitch,
                   defaultRules     : srcSwDefaultRules,
                   inPort           : null,
-                  inVlan           : 4095,
+                  inVlan           : 4096,
                   encapsulationType: "TRANSIT_VLAN",
                   outPort          : null
                  ],
@@ -455,7 +455,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
                   switch           : srcSwitch,
                   defaultRules     : srcSwDefaultRules,
                   inPort           : Integer.MAX_VALUE - 1,
-                  inVlan           : 4095,
+                  inVlan           : 4096,
                   encapsulationType: "TRANSIT_VLAN",
                   outPort          : null
                  ],
