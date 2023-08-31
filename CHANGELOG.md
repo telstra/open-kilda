@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.141.0 (29/08/2023)
+
+### Bug Fixes:
+-  [#5285](https://github.com/telstra/open-kilda/pull/5285) Move saving a flow dump to another action. (Issue: [#3038](https://github.com/telstra/open-kilda/issues/3038))
+
+### Improvements:
+-  [#5344](https://github.com/telstra/open-kilda/pull/5344) Add rejected command description in FL logs [**floodlight**]
+-  [#5314](https://github.com/telstra/open-kilda/pull/5314) Disable single table mode in API (Issue: [#5313](https://github.com/telstra/open-kilda/issues/5313)) [**configuration**]
+-  [#4882](https://github.com/telstra/open-kilda/pull/4882) Remove excessive logging in unit tests [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.140.0...v1.141.0).
+
+### Affected Components:
+history
+
+---
+
 ## v1.140.0 (17/08/2023)
 
 ### Features:
