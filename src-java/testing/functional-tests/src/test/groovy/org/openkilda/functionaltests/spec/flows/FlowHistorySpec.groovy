@@ -107,8 +107,8 @@ class FlowHistorySpec extends HealthCheckSpecification {
             dump.sourceVlan == flow.source.vlanId
             dump.destinationVlan == flow.destination.vlanId
             dump.forwardMeterId > 0
-            dump.forwardStatus == "IN_PROGRESS" // issue 3038
-            dump.reverseStatus == "IN_PROGRESS"
+            dump.forwardStatus == "ACTIVE"
+            dump.reverseStatus == "ACTIVE"
             dump.reverseMeterId > 0
             dump.sourceInnerVlan == flow.source.innerVlanId
             dump.destinationInnerVlan == flow.destination.innerVlanId
