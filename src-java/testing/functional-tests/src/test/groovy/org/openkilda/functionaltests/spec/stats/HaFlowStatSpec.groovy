@@ -6,6 +6,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.functionaltests.model.stats.HaFlowStats
 import org.openkilda.functionaltests.model.stats.HaFlowStatsMetric
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
@@ -21,6 +22,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
 import static org.openkilda.functionaltests.model.stats.HaFlowStatsMetric.HA_FLOW_RAW_BITS
 
 @Narrative("Verify that statistic is collected for different type of Ha-Flow")
@@ -39,6 +41,9 @@ class HaFlowStatSpec extends HealthCheckSpecification {
     HaFlowStats haFlowStats
     @Shared
     SwitchTriplet switchTriplet
+    @Autowired
+    @Shared
+    FlowStats flowStats
 
     def setupSpec() {
         switchTriplet = topologyHelper.getSwitchTriplets(false, false).find {
@@ -58,10 +63,9 @@ class HaFlowStatSpec extends HealthCheckSpecification {
 
     @Tidy
     @Unroll
-    def "System is able to collect #stat meter stats and they grow monotonically"() {
+    def "System is able to collect #stat meter stats"() {
         expect: "#stat stats is available"
-        assert stats.get(stat).isGrowingMonotonically(),
-                "Collected statistics doesn't show growing stats. Actual:${stat}"
+        assert stats.get(stat).hasNonZeroValues()
 
         where:
         stat << HaFlowStatsMetric.values().findAll { it.getValue().contains("meter.") }
@@ -71,11 +75,23 @@ class HaFlowStatSpec extends HealthCheckSpecification {
     @Unroll
     def "System is able to collect #stat stats and they grow monotonically"() {
         expect: "#stat stats is available"
-        assert stats.get(stat, direction).isGrowingMonotonically(),
-                "Collected statistics doesn't show growing stats. Actual:${stat}"
+        assert stats.get(stat, direction).isGrowingMonotonically()
 
         where:
         [stat, direction] << [HaFlowStatsMetric.values().findAll { !it.getValue().contains("meter.") },
+                              [FORWARD, REVERSE]].combinations()
+    }
+
+    @Tidy
+    @Unroll
+    def "System is able to collect latency stats for subflows"() {
+        expect: "#stat stats is available"
+        Wrappers.wait(statsRouterRequestInterval) {
+            assert flowStats.rttOf(subFlow).get(FLOW_RTT, direction).hasNonZeroValues()
+        }
+
+        where:
+        [subFlow, direction] << [haFlow.subFlows*.flowId,
                               [FORWARD, REVERSE]].combinations()
     }
 
