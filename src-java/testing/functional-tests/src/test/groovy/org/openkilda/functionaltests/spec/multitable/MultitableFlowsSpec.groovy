@@ -10,6 +10,7 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotUpdatedExpectedError
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.model.SwitchFeature
 
@@ -20,6 +21,7 @@ import spock.lang.See
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/multi-table-pipelines")
 class MultitableFlowsSpec extends HealthCheckSpecification {
 
+    @Tidy
     @Tags(TOPOLOGY_DEPENDENT)
     def "System does not allow to enable the multiTable mode on an unsupported switch"() {
         given: "Unsupported switch"
