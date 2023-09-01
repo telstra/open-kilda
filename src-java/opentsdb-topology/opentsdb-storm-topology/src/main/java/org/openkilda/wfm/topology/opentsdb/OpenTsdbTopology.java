@@ -24,44 +24,34 @@ import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 import org.openkilda.wfm.topology.opentsdb.OpenTsdbTopologyConfig.OpenTsdbConfig;
 import org.openkilda.wfm.topology.opentsdb.bolts.DatapointParseBolt;
-import org.openkilda.wfm.topology.opentsdb.bolts.OpenTsdbFilterBolt;
+import org.openkilda.wfm.topology.opentsdb.bolts.OpenTSDBFilterBolt;
 import org.openkilda.wfm.topology.utils.InfoDataTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
-import org.apache.storm.kafka.spout.KafkaSpoutConfig.FirstPollOffsetStrategy;
 import org.apache.storm.opentsdb.bolt.OpenTsdbBolt;
+import org.apache.storm.opentsdb.bolt.TupleOpenTsdbDatapointMapper;
 import org.apache.storm.opentsdb.client.OpenTsdbClient;
-import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
 
 /**
  * Apache Storm topology for sending metrics into Open TSDB.
  */
 public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
-    private final Map<String, String> targets;
 
     public OpenTsdbTopology(LaunchEnvironment env) {
         super(env, "opentsdb-topology", OpenTsdbTopologyConfig.class);
-
-        targets = collectTargets(String.format("%s.target.", OpenTsdbTopologyConfig.PREFIX), env.getProperties());
     }
 
     @VisibleForTesting
-    static final String OTSDB_SPOUT_ID = "input";
-    private static final String OTSDB_FILTER_BOLT_ID = OpenTsdbFilterBolt.class.getSimpleName();
+    static final String OTSDB_SPOUT_ID = "kilda.otsdb-spout";
+    private static final String OTSDB_BOLT_ID = "otsdb-bolt";
+    private static final String OTSDB_FILTER_BOLT_ID = OpenTSDBFilterBolt.class.getSimpleName();
     @VisibleForTesting
     static final String OTSDB_PARSE_BOLT_ID = DatapointParseBolt.class.getSimpleName();
 
@@ -75,122 +65,57 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
                 getZookeeperConfig());
         declareSpout(tb, zooKeeperSpout, ZooKeeperSpout.SPOUT_ID);
 
-        if (targets.isEmpty()) {
-            throw new IllegalStateException("There is no any OpenTSDB endpoint(target) defined into topology config");
-        }
-
-        int boltsToEnableCount = 0;
-        List<String> boltsToEnable = new ArrayList<>();
-        for (Map.Entry<String, String> entry : targets.entrySet()) {
-            logger.info("Creating metric channel for target {} with URL {}", entry.getKey(), entry.getValue());
-            String boltId = createDeliveryChannel(tb, entry.getKey(), entry.getValue());
-            boltsToEnableCount += getBoltInstancesCount(boltId);
-            boltsToEnable.add(boltId);
-        }
 
         ZooKeeperBolt zooKeeperBolt = new ZooKeeperBolt(getConfig().getBlueGreenMode(), getZkTopoName(),
-                getZookeeperConfig(), boltsToEnableCount);
-        BoltDeclarer zkBoltDeclarer = declareBolt(tb, zooKeeperBolt, ZooKeeperBolt.BOLT_ID);
-        for (String boltId : boltsToEnable) {
-            zkBoltDeclarer.allGrouping(boltId, ZkStreams.ZK.toString());
-        }
+                getZookeeperConfig(), getBoltInstancesCount(OTSDB_PARSE_BOLT_ID));
+        declareBolt(tb, zooKeeperBolt, ZooKeeperBolt.BOLT_ID)
+                .allGrouping(OTSDB_PARSE_BOLT_ID, ZkStreams.ZK.toString());
 
-        return tb.createTopology();
-    }
+        attachInput(tb);
 
-    private String createDeliveryChannel(TopologyBuilder topology, String targetName, String otsdbUrl) {
-        String spoutId = addNameToId(OTSDB_SPOUT_ID, targetName);
-        attachInput(topology, spoutId);
+        OpenTsdbConfig openTsdbConfig = topologyConfig.getOpenTsdbConfig();
 
-        String parseBoltId = addNameToId(OTSDB_PARSE_BOLT_ID, targetName);
-        declareBolt(topology, new DatapointParseBolt(), parseBoltId)
-                .shuffleGrouping(spoutId)
+        declareBolt(tb, new DatapointParseBolt(), OTSDB_PARSE_BOLT_ID)
+                .shuffleGrouping(OTSDB_SPOUT_ID)
                 .allGrouping(ZooKeeperSpout.SPOUT_ID);
 
-        String filterBoltId = addNameToId(OTSDB_FILTER_BOLT_ID, targetName);
-        declareBolt(topology, new OpenTsdbFilterBolt(), filterBoltId)
-                .fieldsGrouping(parseBoltId, new Fields("hash"));
-
-        attachOutput(topology, filterBoltId, targetName, otsdbUrl);
-
-        return parseBoltId;
-    }
-
-    private void attachInput(TopologyBuilder topology, String spoutId) {
-        String topic = topologyConfig.getKafkaTopics().getOtsdbTopic();
-
-        //FIXME: We have to use the Message class for messaging (but current setup saves some space/traffic in stream).
-        KafkaSpoutConfig<String, InfoData> config = makeKafkaSpoutConfig(
-                Collections.singletonList(topic), spoutId, InfoDataDeserializer.class)
-                .setRecordTranslator(new InfoDataTranslator())
-                .setFirstPollOffsetStrategy(FirstPollOffsetStrategy.UNCOMMITTED_EARLIEST)
-                .setTupleTrackingEnforced(true)
-                .build();
-
-        KafkaSpout<String, InfoData> kafkaSpout = new KafkaSpout<>(config);
-        declareSpout(topology, kafkaSpout, spoutId);
-    }
-
-    private void attachOutput(TopologyBuilder topology, String sourceBoltId, String targetName, String otsdbUrl) {
-        OpenTsdbConfig config = topologyConfig.getOpenTsdbConfig();
+        declareBolt(tb, new OpenTSDBFilterBolt(), OTSDB_FILTER_BOLT_ID)
+                .fieldsGrouping(OTSDB_PARSE_BOLT_ID, new Fields("hash"));
 
         OpenTsdbClient.Builder tsdbBuilder = OpenTsdbClient
-                .newBuilder(otsdbUrl)
+                .newBuilder(openTsdbConfig.getHosts())
                 .returnDetails();
-        if (config.getClientChunkedRequestsEnabled()) {
+        if (openTsdbConfig.getClientChunkedRequestsEnabled()) {
             tsdbBuilder.enableChunkedEncoding();
         }
 
         OpenTsdbBolt openTsdbBolt = new OpenTsdbBolt(tsdbBuilder,
-                Collections.singletonList(new StatsDatapointTupleMapper(OpenTsdbFilterBolt.FIELD_ID_DATAPOINT)));
-        openTsdbBolt.withBatchSize(config.getBatchSize()).withFlushInterval(config.getFlushInterval());
+                Collections.singletonList(TupleOpenTsdbDatapointMapper.DEFAULT_MAPPER));
+        openTsdbBolt.withBatchSize(openTsdbConfig.getBatchSize()).withFlushInterval(openTsdbConfig.getFlushInterval());
+        declareBolt(tb, openTsdbBolt, OTSDB_BOLT_ID)
+                .shuffleGrouping(OTSDB_FILTER_BOLT_ID);
 
-        declareBolt(topology, openTsdbBolt, addNameToId("output", targetName))
-                .shuffleGrouping(sourceBoltId);
+        return tb.createTopology();
+    }
+
+    private void attachInput(TopologyBuilder topology) {
+        String otsdbTopic = topologyConfig.getKafkaOtsdbTopic();
+
+        //FIXME: We have to use the Message class for messaging.
+        KafkaSpoutConfig<String, InfoData> config = getKafkaSpoutConfigBuilder(otsdbTopic, OTSDB_SPOUT_ID)
+                .setValue(InfoDataDeserializer.class)
+                .setRecordTranslator(new InfoDataTranslator())
+                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.UNCOMMITTED_EARLIEST)
+                .setTupleTrackingEnforced(true)
+                .build();
+
+        KafkaSpout<String, InfoData> kafkaSpout = new KafkaSpout<>(config);
+        declareSpout(topology, kafkaSpout, OTSDB_SPOUT_ID);
     }
 
     @Override
     protected String getZkTopoName() {
         return "opentsdb";
-    }
-
-    private Map<String, String> collectTargets(String prefix, Properties rawTopologyConfig) {
-        Map<String, String> targets = new HashMap<>();
-        for (Map.Entry<Object, Object> entry : rawTopologyConfig.entrySet()) {
-            String property = String.valueOf(entry.getKey());
-            if (!property.startsWith(prefix)) {
-                continue;
-            }
-
-            String name = property.substring(prefix.length());
-            if (name.isEmpty()) {
-                throw new IllegalArgumentException(String.format(
-                        "The target's name is an empty string (property: \"%s\", prefix: \"%s\")", property, prefix));
-            }
-
-            String value = String.valueOf(entry.getValue());
-            if (isValidUrl(value)) {
-                targets.put(name, value);
-            } else {
-                logger.error("The target's URL is invalid (property: \"{}\", url: \"{}\")", property, value);
-            }
-        }
-        return targets;
-    }
-
-    @VisibleForTesting
-    protected static boolean isValidUrl(String url) {
-        try {
-            URL u = new URL(url);
-            return u.getHost() != null && !u.getHost().isEmpty() && u.getPort() != -1;
-        } catch (MalformedURLException e) {
-            return false;
-        }
-    }
-
-    public static String addNameToId(String entityId, String name) {
-        // TODO(surabujin): perhaps we need to limit the set of allowed characters in "name" or add some escaping
-        return entityId + '.' + name;
     }
 
     /**

@@ -56,10 +56,6 @@ public interface KafkaTopicsConfig {
     @Default("kilda.otsdb")
     String getOtsdbTopic();
 
-    @Key("opentsdb.filtered")
-    @Default("kilda.otsdb.filtered.priv")
-    String getOtsdbFilteredTopic();
-
     @Key("speaker")
     @FallbackKey("kafka.speaker.topic")
     @Default("kilda.speaker.storm")
