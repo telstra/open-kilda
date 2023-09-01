@@ -87,6 +87,7 @@ public class OpenTsdbFilterBolt extends BaseRichBolt {
                 LOGGER.error("OTSDBTEST got datapoint number " + count);
             }
             count++;
+            collector.emit(tuple, makeDefaultTuple(datapoint));
         } else {
             if (isUpdateRequired(datapoint)) {
                 addDatapoint(datapoint);
