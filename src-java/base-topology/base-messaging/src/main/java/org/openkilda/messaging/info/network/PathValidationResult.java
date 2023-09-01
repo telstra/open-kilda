@@ -32,4 +32,5 @@ import java.util.List;
 public class PathValidationResult extends InfoData {
     Boolean isValid;
     List<String> errors;
+    String pceResponse;
 }

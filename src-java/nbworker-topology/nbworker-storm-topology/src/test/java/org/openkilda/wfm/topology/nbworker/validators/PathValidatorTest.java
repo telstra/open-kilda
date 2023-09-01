@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.nbworker.validators;
 
+import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -28,6 +29,7 @@ import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.command.flow.PathValidateRequest;
 import org.openkilda.messaging.info.network.PathValidationResult;
+import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.messaging.payload.network.PathValidationPayload;
 import org.openkilda.model.Flow;
@@ -586,11 +588,13 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .bandwidth(0L)
                 .latencyMs(0L)
                 .latencyTier2ms(0L)
+                .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build());
         List<PathValidationResult> responses = pathsService.validatePath(request);
 
         assertFalse(responses.isEmpty());
         assertTrue(responses.get(0).getIsValid());
+        assertEquals("The path has been computed successfully", responses.get(0).getPceResponse());
     }
 
     @Test
@@ -605,12 +609,14 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .latencyMs(0L)
                 .latencyTier2ms(0L)
                 .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
+                .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build());
         List<PathValidationResult> responsesBefore = pathsService.validatePath(request);
 
         assertFalse(responsesBefore.isEmpty());
         assertTrue(responsesBefore.get(0).getIsValid(),
                 "The path using default segments with bandwidth 1003 must be valid");
+        assertEquals("The path has been computed successfully", responsesBefore.get(0).getPceResponse());
 
         Optional<Isl> islForward = islRepository.findByEndpoints(SWITCH_ID_3, 7, SWITCH_ID_2, 7);
         assertTrue(islForward.isPresent());
@@ -648,14 +654,35 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .latencyTier2ms(0L)
                 .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .reuseFlowResources(flowToReuse)
+                .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build());
 
         List<PathValidationResult> responseWithReuseResources = pathsService.validatePath(requestWithReuseResources);
 
         assertFalse(responseWithReuseResources.isEmpty());
+        assertEquals("The path has been computed successfully",
+                responseWithReuseResources.get(0).getPceResponse());
         assertTrue(responseWithReuseResources.get(0).getIsValid(),
-                "The path must be valid because, although the flow %s consumes bandwidth, the validator"
-                        + " includes the consumed bandwidth to available bandwidth");
+                format("The path must be valid because, although the flow %s consumes bandwidth, the validator"
+                        + " adds the consumed bandwidth to available bandwidth", flowToReuse));
+    }
+
+    @Test
+    void whenNotEnoughData_pceResponseContainsError() {
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
+        nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
+        nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
+        PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .nodes(nodes)
+                .bandwidth(1000L)
+                .latencyMs(0L)
+                .latencyTier2ms(0L)
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
+                .build());
+        List<PathValidationResult> results = pathsService.validatePath(request);
+
+        assertEquals("The path has been computed successfully", results.get(0).getPceResponse());
     }
 
     private void createFlow(String flowId, Switch srcSwitch, int srcPort, Switch destSwitch, int destPort) {
@@ -670,6 +697,8 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .srcPort(srcPort)
                 .destSwitch(destSwitch)
                 .destPort(destPort)
+                .encapsulationType(VXLAN)
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .build();
         Optional.ofNullable(ignoreBandwidth).ifPresent(flow::setIgnoreBandwidth);
         Optional.ofNullable(bandwidth).ifPresent(flow::setBandwidth);

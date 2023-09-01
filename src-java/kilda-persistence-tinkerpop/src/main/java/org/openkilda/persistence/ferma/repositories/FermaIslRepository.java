@@ -54,6 +54,7 @@ import org.apache.tinkerpop.gremlin.structure.Edge;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -290,6 +291,51 @@ public class FermaIslRepository extends FermaGenericRepository<Isl, IslData, Isl
                     }
                 });
         return result;
+    }
+
+    @Override
+    public Collection<IslImmutableView> findActiveByEndpointsAndBandwidthAndEncapsulationType(
+            SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort,
+            long requiredBandwidth, FlowEncapsulationType flowEncapsulationType) {
+        Set<SwitchId> activeSwitches = findActiveSwitchesSupportingEncapsulationType(flowEncapsulationType,
+                srcSwitchId, dstSwitchId);
+
+        if (!activeSwitches.contains(srcSwitchId) || !activeSwitches.contains(dstSwitchId)) {
+            return emptyList();
+        }
+
+        return framedGraph().traverse(g -> g.E()
+                        .hasLabel(IslFrame.FRAME_LABEL)
+                        .has(IslFrame.SRC_SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(srcSwitchId))
+                        .has(IslFrame.DST_SWITCH_ID_PROPERTY, SwitchIdConverter.INSTANCE.toGraphProperty(dstSwitchId))
+                        .has(IslFrame.SRC_PORT_PROPERTY, srcPort)
+                        .has(IslFrame.DST_PORT_PROPERTY, dstPort)
+                        .has(IslFrame.STATUS_PROPERTY, IslStatusConverter.INSTANCE.toGraphProperty(IslStatus.ACTIVE))
+                        .has(IslFrame.AVAILABLE_BANDWIDTH_PROPERTY, P.gte(requiredBandwidth)))
+                .toListExplicit(IslFrame.class).stream()
+                .map(frame -> new IslViewImpl(frame, islConfig))
+                .collect(Collectors.toSet());
+    }
+
+    private Set<SwitchId> findActiveSwitchesSupportingEncapsulationType(FlowEncapsulationType flowEncapsulationType,
+                                                                        SwitchId... switchIds) {
+        String flowEncapType = FlowEncapsulationTypeConverter.INSTANCE.toGraphProperty(flowEncapsulationType);
+        Set<String> uniqueSwitchIds = Arrays.stream(switchIds).map(SwitchId::toString).collect(toSet());
+
+        return framedGraph().traverse(g -> g.V()
+                        .hasLabel(SwitchFrame.FRAME_LABEL)
+                        .has(SwitchFrame.STATUS_PROPERTY,
+                                SwitchStatusConverter.INSTANCE.toGraphProperty(SwitchStatus.ACTIVE))
+                        .has(SwitchFrame.SWITCH_ID_PROPERTY, P.within(uniqueSwitchIds))
+                        .where(__.out(SwitchPropertiesFrame.HAS_BY_EDGE)
+                                .hasLabel(SwitchPropertiesFrame.FRAME_LABEL)
+                                .values(SwitchPropertiesFrame.SUPPORTED_TRANSIT_ENCAPSULATION_PROPERTY).unfold()
+                                .is(flowEncapType))
+                        .values(SwitchFrame.SWITCH_ID_PROPERTY))
+                .getRawTraversal().toStream()
+                .map(String::valueOf)
+                .map(SwitchId::new)
+                .collect(toSet());
     }
 
     @Override

@@ -72,6 +72,7 @@ public class PathsService {
     private final IslRepository islRepository;
     private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
+    private AvailableNetworkFactory availableNetworkFactory;
 
     public PathsService(RepositoryFactory repositoryFactory, PathComputerConfig pathComputerConfig) {
         switchRepository = repositoryFactory.createSwitchRepository();
@@ -79,8 +80,9 @@ public class PathsService {
         kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
         this.islRepository = repositoryFactory.createIslRepository();
         this.flowRepository = repositoryFactory.createFlowRepository();
+        this.availableNetworkFactory = new AvailableNetworkFactory(pathComputerConfig, repositoryFactory);
         PathComputerFactory pathComputerFactory = new PathComputerFactory(
-                pathComputerConfig, new AvailableNetworkFactory(pathComputerConfig, repositoryFactory));
+                pathComputerConfig, availableNetworkFactory);
         pathComputer = pathComputerFactory.getPathComputer();
         defaultMaxPathCount = pathComputerConfig.getMaxPathCount();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
@@ -318,7 +320,9 @@ public class PathsService {
                 flowRepository,
                 switchPropertiesRepository,
                 switchRepository,
-                kildaConfigurationRepository.getOrDefault());
+                kildaConfigurationRepository.getOrDefault(),
+                availableNetworkFactory,
+                pathComputer);
 
         return Collections.singletonList(pathValidator.validatePath(
                 PathValidationDataMapper.INSTANCE.toPathValidationData(request.getPathValidationPayload())
