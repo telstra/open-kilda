@@ -1,7 +1,7 @@
-import { Injectable } from "@angular/core";
-import { HttpClient } from "@angular/common/http";
-import { environment } from "../../../environments/environment";
-import { Observable, Subject, BehaviorSubject } from "rxjs";
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
+import { Observable, Subject, BehaviorSubject } from 'rxjs';
 import {FlowMetricTsdb} from '../data-models/flowMetricTsdb';
 import {VictoriaData} from '../data-models/flowMetricVictoria';
 
@@ -114,7 +114,7 @@ export class DygraphService {
     }
 
   }
-  changeMeterGraphData(graphData){
+  changeMeterGraphData(graphData) {
     this.meterGraphSource.next(graphData);
   }
 
@@ -320,32 +320,32 @@ export class DygraphService {
 
 
   getColorCode(j, arr) {
-    var chars = "0123456789ABCDE".split("");
-    var hex = "#";
-    for (var i = 0; i < 6; i++) {
+    const chars = '0123456789ABCDE'.split('');
+    let hex = '#';
+    for (let i = 0; i < 6; i++) {
       hex += chars[Math.floor(Math.random() * 14)];
     }
-    var colorCode = hex;
+    const colorCode = hex;
     if (arr.indexOf(colorCode) < 0) {
       return colorCode;
     } else {
       this.getColorCode(j, arr);
     }
   }
-  getCookieBasedData(data,type) {
-    var constructedData = {};
-    for(var i=0; i < data.length; i++){
-       var cookieId = data[i].tags && data[i].tags['cookie'] ? data[i].tags['cookie']: null;
-       if(cookieId){
-         var keyArray = Object.keys(constructedData);
-         if(keyArray.indexOf(cookieId) > -1){
+  getCookieBasedData(data, type) {
+    const constructedData = {};
+    for (let i = 0; i < data.length; i++) {
+       const cookieId = data[i].tags && data[i].tags['cookie'] ? data[i].tags['cookie'] : null;
+       if (cookieId) {
+         const keyArray = Object.keys(constructedData);
+         if (keyArray.indexOf(cookieId) > -1) {
            constructedData[cookieId].push(data[i]);
-         }else{
-           if(type == 'forward' && cookieId.charAt(0) == '4'){
-             constructedData[cookieId]=[];
+         } else {
+           if (type == 'forward' && cookieId.charAt(0) == '4') {
+             constructedData[cookieId] = [];
              constructedData[cookieId].push(data[i]);
-           }else if(type == 'reverse' && cookieId.charAt(0) == '2' ){
-             constructedData[cookieId]=[];
+           } else if (type == 'reverse' && cookieId.charAt(0) == '2' ) {
+             constructedData[cookieId] = [];
              constructedData[cookieId].push(data[i]);
            }
          }
@@ -355,14 +355,14 @@ export class DygraphService {
      return constructedData;
   }
 
-  getCookieDataforFlowStats(data,type) {
-    var constructedData = [];
-    for(var i=0; i < data.length; i++){
-       var cookieId = data[i].tags && data[i].tags['cookie'] ? data[i].tags['cookie']: null;
-       if(cookieId){
-           if(type == 'forward' && cookieId.charAt(0) == '4'){
+  getCookieDataforFlowStats(data, type) {
+    const constructedData = [];
+    for (let i = 0; i < data.length; i++) {
+       const cookieId = data[i].tags && data[i].tags['cookie'] ? data[i].tags['cookie'] : null;
+       if (cookieId) {
+           if (type == 'forward' && cookieId.charAt(0) == '4') {
              constructedData.push(data[i]);
-           }else if(type == 'reverse' && cookieId.charAt(0) == '2' ){
+           } else if (type == 'reverse' && cookieId.charAt(0) == '2' ) {
              constructedData.push(data[i]);
            }
         }
@@ -404,7 +404,7 @@ export class DygraphService {
 
         /**getting all unique dps timestamps */
         let timestampArray = [];
-        const dpsArray= [];
+        const dpsArray = [];
         for (let j = 0; j < victoriaDataArr.length; j++) {
           const dataValues = typeof victoriaDataArr[j] !== 'undefined' ? victoriaDataArr[j].timeToValue : null;
 
@@ -438,7 +438,7 @@ export class DygraphService {
         timestampArray.sort();
 
         for (let m = 0; m < timestampArray.length; m++) {
-          const row =[];
+          const row = [];
           for (let n = 0; n < dpsArray.length; n++) {
             if (typeof dpsArray[n][timestampArray[m]] != 'undefined') {
               row.push(dpsArray[n][timestampArray[m]]);
@@ -523,8 +523,8 @@ export class DygraphService {
         timestampArray = Array.from(new Set(timestampArray)); /**Extracting unique timestamps */
         timestampArray.sort();
 
-        for (let m = 0; m< timestampArray.length; m++) {
-          const row =[];
+        for (let m = 0; m < timestampArray.length; m++) {
+          const row = [];
           for (let n = 0; n < dpsArray.length; n++) {
             if (typeof dpsArray[n][timestampArray[m]] != 'undefined') {
               row.push(dpsArray[n][timestampArray[m]]);
@@ -551,7 +551,8 @@ export class DygraphService {
 
     return { labels: labels, data: graphData, color: color };
   }
-  computeFlowPathGraphData(data, startDate, endDate, type, timezone, loadfromcookie) {
+
+  computeFlowPathGraphData(data, startDate, endDate, type, timezone) {
     const maxtrixArray = [];
     const labels = ['Date'];
     const color = [];
@@ -676,11 +677,11 @@ export class DygraphService {
           const dataValues = typeof data[j] !== 'undefined' ? data[j].dps : null;
 
           let metric = typeof data[j] !== 'undefined' ? data[j].metric : '';
-            // metric = metric + "(switchid=" + data[j].tags.switchid + ", direction="+ direction +", flowid="+data[j].tags['flowid']+")";
             metric = metric + '(flowid=' + data[j].tags['flowid'] + ')';
             labels.push(metric);
             let colorCode = this.getColorCode(j, color);
-            if (cookiesChecked && typeof(cookiesChecked[data[j].tags['flowid']]) != 'undefined' && typeof(cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid]) != 'undefined') {
+            if (cookiesChecked && typeof(cookiesChecked[data[j].tags['flowid']]) != 'undefined'
+                && typeof(cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid]) != 'undefined') {
               colorCode = cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid];
               color.push(colorCode);
             } else {
