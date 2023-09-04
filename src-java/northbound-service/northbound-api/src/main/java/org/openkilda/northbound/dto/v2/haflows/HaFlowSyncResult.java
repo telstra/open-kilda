@@ -15,16 +15,22 @@
 
 package org.openkilda.northbound.dto.v2.haflows;
 
+import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.dto.v2.flows.FlowPathV2.PathNodeV2;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
+
+import java.util.List;
+import java.util.Set;
 
 @Data
 @SuperBuilder
@@ -32,6 +38,33 @@ import lombok.experimental.SuperBuilder;
 @JsonNaming(SnakeCaseStrategy.class)
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @JsonInclude(Include.NON_EMPTY)
-@EqualsAndHashCode(callSuper = true)
-public class HaFlowSyncResult extends HaFlowRerouteResult {
+public class HaFlowSyncResult {
+    SyncSharedPath sharedPath;
+    List<SyncSubFlowPath> subFlowPaths;
+    SyncSharedPath protectedSharedPath;
+    List<SyncSubFlowPath> protectedSubFlowPaths;
+    Set<SwitchId> unsyncedSwitches;
+    String error;
+    boolean synced;
+
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @JsonNaming(SnakeCaseStrategy.class)
+    @FieldDefaults(level = AccessLevel.PRIVATE)
+    @JsonInclude(Include.NON_NULL)
+    public static class SyncSharedPath {
+        List<PathNodeV2> nodes;
+    }
+
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @JsonNaming(SnakeCaseStrategy.class)
+    @FieldDefaults(level = AccessLevel.PRIVATE)
+    @JsonInclude(Include.NON_NULL)
+    public static class SyncSubFlowPath {
+        String flowId;
+        List<PathNodeV2> nodes;
+    }
 }

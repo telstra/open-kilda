@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.model.yflow;
+package org.openkilda.wfm.topology.flowhs.model;
 
 import org.openkilda.messaging.command.yflow.SubFlowPathDto;
 import org.openkilda.messaging.info.event.PathInfoData;
@@ -28,7 +28,7 @@ import java.util.List;
 
 @Value
 @Builder
-public class YFlowPaths {
+public class CrossingPaths {
     @NonNull
     PathInfoData sharedPath;
 
@@ -36,10 +36,10 @@ public class YFlowPaths {
     List<SubFlowPathDto> subFlowPaths;
 
     /**
-     * Builds empty YFlowPaths.
+     * Builds empty CrossingPaths.
      */
-    public static YFlowPaths buildEmpty() {
-        return YFlowPaths.builder()
+    public static CrossingPaths buildEmpty() {
+        return CrossingPaths.builder()
                 .sharedPath(new PathInfoData(0, new ArrayList<>()))
                 .subFlowPaths(new ArrayList<>())
                 .build();
@@ -48,7 +48,7 @@ public class YFlowPaths {
     /**
      * Checks if paths have equal nodes.
      */
-    public boolean isSamePath(YFlowPaths otherPaths) {
+    public boolean isSamePath(CrossingPaths otherPaths) {
         if (otherPaths == null) {
             return false;
         }

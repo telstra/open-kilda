@@ -20,14 +20,12 @@ import static java.util.Objects.requireNonNull;
 import static org.openkilda.wfm.topology.flowhs.utils.HaFlowUtils.buildPathIds;
 
 import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
-import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.PathId;
-import org.openkilda.model.SwitchId;
 import org.openkilda.pce.GetHaPathsResult;
 import org.openkilda.pce.HaPath;
 import org.openkilda.wfm.CommandContext;
@@ -50,7 +48,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -59,7 +56,7 @@ import java.util.UUID;
 @Slf4j
 public abstract class HaFlowPathSwappingFsm<T extends AbstractStateMachine<T, S, E, C>, S, E,
         C extends SpeakerResponseContext, R extends NorthboundResponseCarrier & HistoryUpdateCarrier,
-        L extends FlowProcessingEventListener> extends FlowProcessingWithHistorySupportFsm<T, S, E, C, R, L> {
+        L extends FlowProcessingEventListener> extends HaFlowProcessingFsm<T, S, E, C, R, L> {
     protected final String haFlowId;
 
     protected HaFlowResources newPrimaryResources;
@@ -78,10 +75,6 @@ public abstract class HaFlowPathSwappingFsm<T extends AbstractStateMachine<T, S,
     protected final Set<PathId> rejectedHaPathsIds = new HashSet<>();
     protected final Collection<HaFlowResources> rejectedResources = new ArrayList<>();
 
-    protected final Map<UUID, SwitchId> pendingCommands = new HashMap<>();
-    protected final Map<UUID, Integer> retriedCommands = new HashMap<>();
-    protected final Map<UUID, SpeakerCommandResponse> failedCommands = new HashMap<>();
-
     protected final Map<UUID, BaseSpeakerCommandsRequest> ingressCommands = new HashMap<>();
     protected final Map<UUID, BaseSpeakerCommandsRequest> nonIngressCommands = new HashMap<>();
     protected final Map<UUID, BaseSpeakerCommandsRequest> removeCommands = new HashMap<>();
@@ -92,14 +85,9 @@ public abstract class HaFlowPathSwappingFsm<T extends AbstractStateMachine<T, S,
     protected HaFlowPathSwappingFsm(
             @NonNull E nextEvent, @NonNull E errorEvent, @NonNull CommandContext commandContext, @NonNull R carrier,
             @NonNull String haFlowId, @NonNull Collection<L> eventListeners) {
-        super(nextEvent, errorEvent, commandContext, carrier, eventListeners);
+        super(nextEvent, errorEvent, commandContext, carrier, haFlowId, eventListeners);
         this.haFlowId = haFlowId;
         this.backUpComputationWayUsedMap = new HashMap<>();
-    }
-
-    @Override
-    public final String getFlowId() {
-        return getHaFlowId();
     }
 
     public BaseSpeakerCommandsRequest getInstallCommand(UUID commandId) {
@@ -111,36 +99,6 @@ public abstract class HaFlowPathSwappingFsm<T extends AbstractStateMachine<T, S,
     }
 
     public abstract void fireNoPathFound(String errorReason);
-
-    public void clearPendingCommands() {
-        pendingCommands.clear();
-    }
-
-    public void addPendingCommand(UUID key, SwitchId switchId) {
-        pendingCommands.put(key, switchId);
-    }
-
-    public Optional<SwitchId> removePendingCommand(UUID key) {
-        return Optional.ofNullable(pendingCommands.remove(key));
-    }
-
-    public void clearRetriedCommands() {
-        retriedCommands.clear();
-    }
-
-    public int doRetryForCommand(UUID key) {
-        int attempt = retriedCommands.getOrDefault(key, 0) + 1;
-        retriedCommands.put(key, attempt);
-        return attempt;
-    }
-
-    public void clearFailedCommands() {
-        failedCommands.clear();
-    }
-
-    public void addFailedCommand(UUID key, SpeakerCommandResponse errorResponse) {
-        failedCommands.put(key, errorResponse);
-    }
 
     public void clearPendingAndRetriedAndFailedCommands() {
         clearPendingCommands();
