@@ -1,8 +1,8 @@
-import { Injectable } from "@angular/core";
-import { Observable, Subject, BehaviorSubject } from "rxjs";
+import { Injectable } from '@angular/core';
+import { Observable, Subject, BehaviorSubject } from 'rxjs';
 
 @Injectable({
-  providedIn: "root"
+  providedIn: 'root'
 })
 export class LoaderService {
   private messageSender = new Subject<any>();
@@ -10,16 +10,16 @@ export class LoaderService {
   messageReciever = this.messageSender.asObservable();
   constructor() {}
 
-  show(message : string = null) {
-    this.messageSender.next({show:true,message:message});
+  show(message: string = null) {
+    this.messageSender.next({show: true, message: message});
   }
 
-  hide(){
-    this.messageSender.next({show:false,message:null});
+  hide() {
+    this.messageSender.next({show: false, message: null});
   }
 
- 
 
-  
+
+
 
 }

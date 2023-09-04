@@ -13,63 +13,63 @@ declare var jQuery: any;
   templateUrl: './port-inventory-flows.component.html',
   styleUrls: ['./port-inventory-flows.component.css']
 })
-export class PortInventoryFlowsComponent implements  OnDestroy, OnInit,OnChanges, AfterViewInit {
+export class PortInventoryFlowsComponent implements  OnDestroy, OnInit, OnChanges, AfterViewInit {
   @ViewChild(DataTableDirective, { static: true })
   datatableElement: DataTableDirective;
-  @Input() data;  
-  @Input() textSearch:any;
+  @Input() data;
+  @Input() textSearch: any;
   dtOptions: any = {};
   dtTrigger: Subject<any> = new Subject();
-  wrapperHide = false;  
-  customername : boolean = false;
-  customerid : boolean = false;
-  flowid : boolean = false;
-  bandwidth : boolean = false;
-  constructor(private renderer:Renderer2,private loaderService:LoaderService,private switchService:SwitchService,public commonService:CommonService,private router: Router) { }
+  wrapperHide = false;
+  customername = false;
+  customerid = false;
+  flowid = false;
+  bandwidth = false;
+  constructor(private renderer: Renderer2, private loaderService: LoaderService, private switchService: SwitchService, public commonService: CommonService, private router: Router) { }
 
-  
-  ngOnInit() { 
-    var ref = this;
+
+  ngOnInit() {
+    const ref = this;
     this.dtOptions = {
     pageLength: 10,
     deferRender: true,
-    info:true,
+    info: true,
     dom: 'tpli',
-    "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
+    'aLengthMenu': [[10, 20, 35, 50, -1], [10, 20, 35, 50, 'All']],
     retrieve: true,
     autoWidth: false,
     colResize: false,
     stateSave: false,
     language: {
-      searchPlaceholder: "Search"
+      searchPlaceholder: 'Search'
     },
-    buttons:{
-      buttons:[
-        { extend: 'csv', text: 'Export', className: 'btn btn-dark',exportOptions:{columns: ':visible'} }
+    buttons: {
+      buttons: [
+        { extend: 'csv', text: 'Export', className: 'btn btn-dark', exportOptions: {columns: ':visible'} }
       ]
-    },drawCallback:function(){
-      if(jQuery('#port_inventory_flow_tbl tbody tr').length < 10){
+    }, drawCallback: function() {
+      if (jQuery('#port_inventory_flow_tbl tbody tr').length < 10) {
         jQuery('#port_inventory_flow_tbl_next').addClass('disabled');
-      }else{
+      } else {
         jQuery('#port_inventory_flow_tbl_next').removeClass('disabled');
       }
     },
-    "aoColumns": [
+    'aoColumns': [
       { sWidth: '15%' },
-      { sWidth:  '15%',"sType": "name","bSortable": true },
+      { sWidth:  '15%', 'sType': 'name', 'bSortable': true },
       { sWidth: '15%' },
       { sWidth: '15%' },
       ],
-    columnDefs:[
+    columnDefs: [
 
     ],
-    initComplete:function( settings, json ){ 
-      setTimeout(function(){
+    initComplete: function( settings, json ) {
+      setTimeout(function() {
         ref.loaderService.hide();
         ref.wrapperHide = true;
-      },this.data.length/2);
+      }, this.data.length / 2);
     }
-  }
+  };
 }
 
 
@@ -99,13 +99,13 @@ export class PortInventoryFlowsComponent implements  OnDestroy, OnInit,OnChanges
     this.dtTrigger.unsubscribe();
   }
 
-  ngOnChanges(change: SimpleChanges){
-    if(typeof(change.data)!=='undefined' && change.data){
-      if(typeof(change.data)!=='undefined' && change.data.currentValue){
+  ngOnChanges(change: SimpleChanges) {
+    if (typeof(change.data) !== 'undefined' && change.data) {
+      if (typeof(change.data) !== 'undefined' && change.data.currentValue) {
         this.data  = change.data.currentValue;
       }
     }
-    if(typeof(change.textSearch)!=='undefined' && change.textSearch.currentValue){
+    if (typeof(change.textSearch) !== 'undefined' && change.textSearch.currentValue) {
       this.fulltextSearch(change.textSearch.currentValue);
     }
   }
@@ -115,12 +115,12 @@ export class PortInventoryFlowsComponent implements  OnDestroy, OnInit,OnChanges
     this[inputContainer] = this[inputContainer] ? false : true;
     if (this[inputContainer]) {
       setTimeout(() => {
-        this.renderer.selectRootElement("#" + inputContainer).focus();
+        this.renderer.selectRootElement('#' + inputContainer).focus();
       });
-    }else{
+    } else {
       setTimeout(() => {
-        this.renderer.selectRootElement('#'+inputContainer).value = "";
-        jQuery('#'+inputContainer).trigger('change');
+        this.renderer.selectRootElement('#' + inputContainer).value = '';
+        jQuery('#' + inputContainer).trigger('change');
       });
     }
   }
@@ -128,55 +128,55 @@ export class PortInventoryFlowsComponent implements  OnDestroy, OnInit,OnChanges
   stopPropagationmethod(e) {
     event.stopPropagation();
 
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       return false;
     }
   }
 
-  fulltextSearch(value:any){ 
+  fulltextSearch(value: any) {
     this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
        dtInstance.search(value)
                .draw();
      });
  }
- showFlow(flowObj){
-  this.router.navigate(['/flows/details/'+flowObj['flow-id']]);
+ showFlow(flowObj) {
+  this.router.navigate(['/flows/details/' + flowObj['flow-id']]);
 }
-  descrepancyString(row){
-    let text = [];
-    if(row.hasOwnProperty('controller-flow')){
-        if(row['controller-flow']){
-          text.push("controller:true");
-        }else{
-          text.push("controller:false");
+  descrepancyString(row) {
+    const text = [];
+    if (row.hasOwnProperty('controller-flow')) {
+        if (row['controller-flow']) {
+          text.push('controller:true');
+        } else {
+          text.push('controller:false');
         }
-    }else{
-      text.push("controller:false");
+    } else {
+      text.push('controller:false');
     }
 
-    if(row.hasOwnProperty('inventory-flow')){
-      if(row['inventory-flow']){
-        text.push("inventory:true");
-      }else{
-        text.push("inventory:false");
+    if (row.hasOwnProperty('inventory-flow')) {
+      if (row['inventory-flow']) {
+        text.push('inventory:true');
+      } else {
+        text.push('inventory:false');
       }
-    }else{
-      text.push("inventory:false");
+    } else {
+      text.push('inventory:false');
     }
 
-    return text.join(", ");
+    return text.join(', ');
   }
-  enableButtons(){
-    setTimeout(()=>{
+  enableButtons() {
+    setTimeout(() => {
       this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
-        var buttons = new jQuery.fn.dataTable.Buttons(dtInstance, {
+        const buttons = new jQuery.fn.dataTable.Buttons(dtInstance, {
           buttons: [
-            { extend: 'csv', text: 'Export', className: 'btn btn-dark' ,exportOptions:{columns: ':visible'} }
+            { extend: 'csv', text: 'Export', className: 'btn btn-dark' , exportOptions: {columns: ':visible'} }
           ]
         }).container().appendTo($('#buttons'));
       });
     });
-    
+
   }
 
 }

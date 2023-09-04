@@ -1,4 +1,4 @@
-import { Component, OnInit ,ViewChild,Input,OnChanges,Output,EventEmitter, Renderer2, SimpleChanges} from '@angular/core';
+import { Component, OnInit , ViewChild, Input, OnChanges, Output, EventEmitter, Renderer2, SimpleChanges} from '@angular/core';
 import { SamlSettingService } from 'src/app/common/services/saml-setting.service';
 import { LoaderService } from 'src/app/common/services/loader.service';
 import {MessageObj} from '../../../common/constants/constants';
@@ -10,88 +10,89 @@ import { Subject } from 'rxjs';
   templateUrl: './saml-list-table.component.html',
   styleUrls: ['./saml-list-table.component.css']
 })
-export class SamlListTableComponent implements OnInit , OnChanges{
-  
+export class SamlListTableComponent implements OnInit , OnChanges {
+
   @ViewChild(DataTableDirective, { static: true }) datatableElement: DataTableDirective;
-  @Input() data=[];
+  @Input() data = [];
   @Output() editsaml = new EventEmitter();
   @Output() deletesaml = new EventEmitter();
-  dtOptions = {};  
-  wrapperHide=true;
+  dtOptions = {};
+  wrapperHide = true;
   dtTrigger: Subject<any> = new Subject();
   constructor(
-    private samlSettingService:SamlSettingService,
-    private loaderService:LoaderService,
-    private renderer:Renderer2
-  ) { 
-    this.wrapperHide=false;
+    private samlSettingService: SamlSettingService,
+    private loaderService: LoaderService,
+    private renderer: Renderer2
+  ) {
+    this.wrapperHide = false;
   }
 
   ngOnInit() {
-    var ref = this;
+    let ref = this;
     this.dtOptions = {
       pageLength: 10,
       deferRender: true,
-      info:true,
+      info: true,
       dom: 'tpli',
-      "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
+      'aLengthMenu': [[10, 20, 35, 50, -1], [10, 20, 35, 50, 'All']],
       retrieve: true,
       autoWidth: false,
       colResize: false,
       stateSave: false,
-      "order": [],
+      'order': [],
       language: {
-        searchPlaceholder: "Search"
+        searchPlaceholder: 'Search'
       },
-      drawCallback:function(){
-        if(jQuery('#flowDataTable tbody tr').length < 10){
+      drawCallback: function() {
+        if (jQuery('#flowDataTable tbody tr').length < 10) {
           jQuery('#flowDataTable_next').addClass('disabled');
-        }else{
+        } else {
           jQuery('#flowDataTable_next').removeClass('disabled');
         }
       },
-      "aoColumns": [
-        { sWidth: '7%' ,"sType": "name","bSortable": true},
+      'aoColumns': [
+        { sWidth: '7%' , 'sType': 'name', 'bSortable': true},
         { sWidth: '15%' },
         { sWidth: '13%' },
-        { sWidth: '10%' ,"bSortable": false},
-       
+        { sWidth: '10%' , 'bSortable': false},
+
        ],
-      initComplete:function( settings, json ){
-        setTimeout(function(){
+      initComplete: function( settings, json ) {
+        setTimeout(function() {
           ref.loaderService.hide();
           ref.wrapperHide = true;
-        },ref.data.length/2);
+        }, ref.data.length / 2);
       }
-    }
+    };
   }
 
-  editProvider(row){
+  editProvider(row) {
     this.editsaml.emit(row);
   }
 
-  deleteProvider(row){
+  deleteProvider(row) {
     this.deletesaml.emit(row);
-  }  
+  }
 
-  ngOnChanges(change:SimpleChanges){
-    var ref = this;
-    if( typeof(change.data)!='undefined' && change.data){
-      if(typeof(change.data)!=='undefined' && change.data.currentValue){
+  ngOnChanges(change: SimpleChanges) {
+    let ref = this;
+    if ( typeof(change.data) != 'undefined' && change.data) {
+      if (typeof(change.data) !== 'undefined' && change.data.currentValue) {
         this.data  = change.data.currentValue;
         this.dtTrigger.next();
       }
     }
   }
-  fulltextSearch(value:any){ 
-    if(this.dtTrigger)
+  fulltextSearch(value: any) {
+    if (this.dtTrigger) {
         this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
           dtInstance.search(value)
                   .draw();
         });
+    }
   }
 
-  ngAfterViewInit(){
+  ngAfterViewInit() {
     this.dtTrigger.next();
     this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
       dtInstance.columns().every(function () {
@@ -107,34 +108,34 @@ export class SamlListTableComponent implements OnInit , OnChanges{
     });
   }
 
-  toggleSearch(e,inputContainer){ 
-    
+  toggleSearch(e, inputContainer) {
+
     this[inputContainer] = this[inputContainer] ? false : true;
-    if(this[inputContainer]){
+    if (this[inputContainer]) {
       setTimeout(() => {
-        this.renderer.selectRootElement('#'+inputContainer).focus();
+        this.renderer.selectRootElement('#' + inputContainer).focus();
       });
-    }else{
+    } else {
       setTimeout(() => {
-        this.renderer.selectRootElement('#'+inputContainer).value = "";
-        jQuery('#'+inputContainer).trigger('change');
+        this.renderer.selectRootElement('#' + inputContainer).value = '';
+        jQuery('#' + inputContainer).trigger('change');
       });
     }
     event.stopPropagation();
   }
 
-  stopPropagationmethod(e){
+  stopPropagationmethod(e) {
     event.stopPropagation();
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       return false;
    }
   }
 
-  triggerSearch(){ 
-    setTimeout(()=>{
+  triggerSearch() {
+    setTimeout(() => {
       jQuery('#expandedSrcSwitchName').trigger('change');
       jQuery('#expandedTargetSwitchName').trigger('change');
-     },1000);
+     }, 1000);
   }
 
   ngOnDestroy(): void {

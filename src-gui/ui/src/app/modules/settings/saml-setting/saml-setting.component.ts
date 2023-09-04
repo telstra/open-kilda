@@ -1,4 +1,4 @@
-import { Component, OnInit,OnChanges, Renderer2, SimpleChanges} from '@angular/core';
+import { Component, OnInit, OnChanges, Renderer2, SimpleChanges} from '@angular/core';
 import { SamlSettingService } from 'src/app/common/services/saml-setting.service';
 import { LoaderService } from 'src/app/common/services/loader.service';
 import {MessageObj} from '../../../common/constants/constants';
@@ -13,94 +13,94 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
   templateUrl: './saml-setting.component.html',
   styleUrls: ['./saml-setting.component.css']
 })
-export class SamlSettingComponent implements OnInit,OnChanges {
-  AddAuthProvider:any=false;
-  EditAuthProvider:any=false;
-  EditProviderData:any=null;
-  loadProviderData=true;
-  authProviders:any=[];  
-  constructor( 
-      private samlSettingService:SamlSettingService,
-      private loaderService:LoaderService,
-      private toastr:ToastrService,
-      private renderer:Renderer2,
+export class SamlSettingComponent implements OnInit, OnChanges {
+  AddAuthProvider: any = false;
+  EditAuthProvider: any = false;
+  EditProviderData: any = null;
+  loadProviderData = true;
+  authProviders: any = [];
+  constructor(
+      private samlSettingService: SamlSettingService,
+      private loaderService: LoaderService,
+      private toastr: ToastrService,
+      private renderer: Renderer2,
       private modalService: NgbModal,
     ) {
-      
+
      }
 
   ngOnInit() {
     this.authProviders = [];
     this.getAuthProviders();
   }
-  
-  
-  getAuthProviders(){
+
+
+  getAuthProviders() {
     this.loadProviderData = true;
     this.loaderService.show(MessageObj.loading_data);
-    this.samlSettingService.getAuthProviders().subscribe((data)=>{
+    this.samlSettingService.getAuthProviders().subscribe((data) => {
       this.loadProviderData = false;
       this.authProviders = data;
       this.loaderService.hide();
-    },(error)=>{
+    }, (error) => {
       this.authProviders = [];
       this.loadProviderData = false;
-      var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']:MessageObj.error_loading_data;
-      this.toastr.error(errorMsg,'Error');
+      let errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message'] : MessageObj.error_loading_data;
+      this.toastr.error(errorMsg, 'Error');
       this.loaderService.hide();
-    })
+    });
   }
 
-  addAuthProvider(){
+  addAuthProvider() {
     this.AddAuthProvider = true;
     this.EditAuthProvider = false;
     this.EditProviderData = null;
   }
 
-  editProvider(row){
+  editProvider(row) {
     this.EditAuthProvider = true;
     this.AddAuthProvider = false;
     this.EditProviderData = row;
   }
-  cancelAction(){
+  cancelAction() {
     this.EditAuthProvider = false;
     this.AddAuthProvider = false;
     this.EditProviderData = null;
     this.authProviders = [];
     this.getAuthProviders();
   }
-  deleteProvider(row){
+  deleteProvider(row) {
 
-    var self = this;
+    let self = this;
     const modalReff = this.modalService.open(ModalconfirmationComponent);
-    modalReff.componentInstance.title = "Delete Auth Provider";
+    modalReff.componentInstance.title = 'Delete Auth Provider';
     modalReff.componentInstance.content = 'Are you sure you want to perform delete action ?';
-    
+
     modalReff.result.then((response) => {
-      if(response && response == true){
+      if (response && response == true) {
         this.loaderService.show(MessageObj.deleting_provider);
-        this.samlSettingService.deleteAuthProvider(row.uuid).subscribe((res:any)=>{
+        this.samlSettingService.deleteAuthProvider(row.uuid).subscribe((res: any) => {
           modalReff.close();
           this.loaderService.hide();
-          this.toastr.success(MessageObj.provider_deleted_success,'Success');
+          this.toastr.success(MessageObj.provider_deleted_success, 'Success');
           this.authProviders = [];
           this.getAuthProviders();
-        },(error)=>{
+        }, (error) => {
           this.loaderService.hide();
-          var errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message']:MessageObj.error_loading_data;
-          this.toastr.error(errorMsg,'Error');
-        })
-        
+          let errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message'] : MessageObj.error_loading_data;
+          this.toastr.error(errorMsg, 'Error');
+        });
+
       }
     });
-   
-  } 
-  ngOnChanges(change:SimpleChanges){
-    
+
+  }
+  ngOnChanges(change: SimpleChanges) {
+
   }
 
   ngOnDestroy(): void {
-    
+
   }
 
 }

@@ -18,28 +18,28 @@ export class PermissionViewComponent implements OnInit {
   roleData: Select2Data;
   subscription: Subscription;
   userEmail: string;
-  userid:number;
+  userid: number;
   submitted: boolean;
   roleAssignData: any;
-  roles:any;
+  roles: any;
 
   constructor(
-    private tabService: TabService, 
+    private tabService: TabService,
     private permissionService: PermissionService,
     private titleService: Title
   ) { }
 
-  /* 
+  /*
     Method: getPermissionById
     Description: Get Particular permission by permission id
   */
-  getPermissionById(){
+  getPermissionById() {
     this.permissionService.currentPermission.subscribe(permissionId => {
-      if(permissionId){
+      if (permissionId) {
         this.permissionService.getPermissionById(permissionId).subscribe(permission => {
           this.roles = permission.roles;
           this.permissionViewForm.patchValue({
-            name: permission.name, 
+            name: permission.name,
             description: permission.description
           });
         });
@@ -47,7 +47,7 @@ export class PermissionViewComponent implements OnInit {
     });
   }
 
-  /* 
+  /*
     Method: createEditForm
     Description: Create User edit form
   */

@@ -15,88 +15,88 @@ import { MessageObj } from 'src/app/common/constants/constants';
 })
 export class FlowComponent implements OnInit {
   openedTab = 'search';
-  src : string =  null;
-  dst : string = null;
-  loadFlows = false
+  src: string =  null;
+  dst: string = null;
+  loadFlows = false;
   constructor(
-    private titleService : Title,
+    private titleService: Title,
     private route: ActivatedRoute,
     public commonService: CommonService,
     private storeLinkService: StoreSettingtService,
-    private flowService : FlowsService,
+    private flowService: FlowsService,
     private loaderService: LoaderService,
-    private toastr:ToastrService,
-    private router:Router
-  ) { 
-    if(!this.commonService.hasPermission('menu_flows')){
-      this.toastr.error(MessageObj.unauthorised);  
-       this.router.navigate(["/home"]);
+    private toastr: ToastrService,
+    private router: Router
+  ) {
+    if (!this.commonService.hasPermission('menu_flows')) {
+      this.toastr.error(MessageObj.unauthorised);
+       this.router.navigate(['/home']);
       }
   }
 
   ngOnInit() {
-    this.titleService.setTitle('OPEN KILDA - Flows')
+    this.titleService.setTitle('OPEN KILDA - Flows');
     this.src = this.route.snapshot.queryParamMap.get('src');
     this.dst = this.route.snapshot.queryParamMap.get('dst');
-    
-    if(this.src || this.dst){ 
-      this.openedTab = 'list'; 
+
+    if (this.src || this.dst) {
+      this.openedTab = 'list';
       this.loadFlows = true;
     }
 
     this.getStoreLinkSettings();
   }
 
-  openTab(tab){
+  openTab(tab) {
     this.openedTab = tab;
-    if(tab == 'list'){
+    if (tab == 'list') {
         this.loadFlows = true;
-      }else{
+      } else {
         this.src = null;
         this.dst = null;
       }
-    
+
   }
 
-  copyToClip(event,item){
-    //console.log('event', event,item, this[item]);
+  copyToClip(event, item) {
+    // console.log('event', event,item, this[item]);
   }
 
-  getStatusList(){ 
-    if(!localStorage.getItem('linkStoreStatusList')){
-        this.flowService.getStatusList().subscribe((statuses)=>{
-            localStorage.setItem('linkStoreStatusList',JSON.stringify(statuses));
+  getStatusList() {
+    if (!localStorage.getItem('linkStoreStatusList')) {
+        this.flowService.getStatusList().subscribe((statuses) => {
+            localStorage.setItem('linkStoreStatusList', JSON.stringify(statuses));
             this.loaderService.hide();
-        },(error)=>{
-          localStorage.setItem('linkStoreStatusList',JSON.stringify([]));
+        }, (error) => {
+          localStorage.setItem('linkStoreStatusList', JSON.stringify([]));
           this.loaderService.hide();
         });
-    }else{
+    } else {
       this.loaderService.hide();
     }
-    
+
   }
-  getStoreLinkSettings(){
-    if(!localStorage.getItem('linkStoreSetting')){
+  getStoreLinkSettings() {
+    if (!localStorage.getItem('linkStoreSetting')) {
       this.loaderService.show(MessageObj.link_storage_config);
-      let query = {_:new Date().getTime()};
-      this.storeLinkService.getLinkStoreDetails(query).subscribe((settings)=>{
-        if(settings && settings['urls'] && typeof(settings['urls']['get-link']) !='undefined' &&  typeof(settings['urls']['get-link']['url'])!='undefined'){
-          localStorage.setItem('linkStoreSetting',JSON.stringify(settings));
-          localStorage.setItem('haslinkStoreSetting',"1");
+      const query = {_: new Date().getTime()};
+      this.storeLinkService.getLinkStoreDetails(query).subscribe((settings) => {
+        if (settings && settings['urls'] && typeof(settings['urls']['get-link']) != 'undefined' &&  typeof(settings['urls']['get-link']['url']) != 'undefined') {
+          localStorage.setItem('linkStoreSetting', JSON.stringify(settings));
+          localStorage.setItem('haslinkStoreSetting', '1');
           this.getStatusList();
-        }else{
+        } else {
           localStorage.removeItem('linkStoreSetting');
           localStorage.removeItem('haslinkStoreSetting');
           this.loaderService.hide();
         }
-      },(err)=>{
+      }, (err) => {
         this.loaderService.hide();
       });
-    }else{
+    } else {
       this.getStatusList();
     }
-   
+
   }
 
 }

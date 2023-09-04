@@ -1,5 +1,5 @@
 import { Injectable, EventEmitter, } from '@angular/core';
-import { Observable, Subject, BehaviorSubject } from "rxjs";
+import { Observable, Subject, BehaviorSubject } from 'rxjs';
 import { TopologyView } from '../data-models/topology-view';
 import { CookieManagerService } from './cookie-manager.service';
 
@@ -25,111 +25,111 @@ export class TopologyService {
   unidirectionalIsl = [];
 
 
-  
+
   topologyDefaultViewOptions: TopologyView =  {
     SWITCH_CHECKED: 0,
     ISL_CHECKED: 1,
     FLOW_CHECKED: 0,
     REFRESH_CHECKED: 0,
     REFRESH_INTERVAL: 1,
-    REFRESH_TYPE: "m",
-    WORLDMAP:0
-  }
+    REFRESH_TYPE: 'm',
+    WORLDMAP: 0
+  };
 
   constructor(private cookieService: CookieManagerService) {
 
   }
 
-  updateTopologyViewSetting(){
+  updateTopologyViewSetting() {
 
-    let currentViewSetting = this.getViewOptions();
+    const currentViewSetting = this.getViewOptions();
     /**Transmit new setting to component */
-    this.settingTransmitter.emit(currentViewSetting); 
+    this.settingTransmitter.emit(currentViewSetting);
   }
 
-  displayNotifications(notifications){
-    this.notificationSource.next(notifications); 
+  displayNotifications(notifications) {
+    this.notificationSource.next(notifications);
   }
 
-  highlightNotifications(data){
-    this.notifySource.next(data); 
+  highlightNotifications(data) {
+    this.notifySource.next(data);
   }
 
-  updateAutoRefreshSetting(){
-    let currentViewSetting = this.getViewOptions();
+  updateAutoRefreshSetting() {
+    const currentViewSetting = this.getViewOptions();
     /**Transmit new setting to component */
-    this.autoRefreshTransmitter.emit(currentViewSetting); 
+    this.autoRefreshTransmitter.emit(currentViewSetting);
   }
 
-  getViewOptions() : TopologyView{
-    let obj = JSON.parse(this.cookieService.get("topologyDefaultViewOptions"));
-    if(obj == null){
+  getViewOptions(): TopologyView {
+    const obj = JSON.parse(this.cookieService.get('topologyDefaultViewOptions'));
+    if (obj == null) {
       return this.topologyDefaultViewOptions;
     }
     return obj;
   }
 
-  setViewOptinos(obj : TopologyView){
-    this.cookieService.set("topologyDefaultViewOptions",JSON.stringify(obj));
+  setViewOptinos(obj: TopologyView) {
+    this.cookieService.set('topologyDefaultViewOptions', JSON.stringify(obj));
     this.updateTopologyViewSetting();
   }
 
-  setCoordinates(positions:any){
-    if(positions){
-      localStorage.setItem('positions',JSON.stringify(positions));
-      localStorage.setItem('isDirtyCoordinates','YES');
-    }else{
-      localStorage.removeItem('positions'); 
+  setCoordinates(positions: any) {
+    if (positions) {
+      localStorage.setItem('positions', JSON.stringify(positions));
+      localStorage.setItem('isDirtyCoordinates', 'YES');
+    } else {
+      localStorage.removeItem('positions');
       localStorage.removeItem('isDirtyCoordinates');
     }
-      
+
   }
 
-  setCoordinateChangeStatus(status){
-    localStorage.setItem('isDirtyCoordinates',status);
+  setCoordinateChangeStatus(status) {
+    localStorage.setItem('isDirtyCoordinates', status);
   }
 
-  isCoordinatesChanged(){
-    let flag = localStorage.getItem('isDirtyCoordinates');
+  isCoordinatesChanged() {
+    const flag = localStorage.getItem('isDirtyCoordinates');
     return flag == 'YES'  ? true : false;
   }
 
-  getCoordinates(){
+  getCoordinates() {
     return JSON.parse(localStorage.getItem('positions'));
   }
 
-  setAutoRefreshSetting(obj: TopologyView){
-    this.cookieService.set("topologyDefaultViewOptions",JSON.stringify(obj));
+  setAutoRefreshSetting(obj: TopologyView) {
+    this.cookieService.set('topologyDefaultViewOptions', JSON.stringify(obj));
     this.updateAutoRefreshSetting();
   }
 
-  setLinksData(data){
+  setLinksData(data) {
     this.linksdata = data;
 
     this.failedIsl = [];
     this.unidirectionalIsl = [];
 
-		for(var i=0,len=data.length;i<len;i++){
-			if(data[i].state && data[i].state.toLowerCase()== "failed"){
+		for (let i = 0, len = data.length; i < len; i++) {
+			if (data[i].state && data[i].state.toLowerCase() == 'failed') {
 				this.failedIsl.push(data[i]);
-      } 
+      }
 
-      if (data[i].unidirectional && data[i].state && data[i].state.toLowerCase()== "discovered"){
+      if (data[i].unidirectional && data[i].state && data[i].state.toLowerCase() == 'discovered') {
         this.unidirectionalIsl.push(data[i]);
-      } 
+      }
     }
 
   }
 
-  getLinksData(){
+  getLinksData() {
       return   this.linksdata;
   }
 
-  getFailedIsls(){
+  getFailedIsls() {
     return this.failedIsl;
   }
 
-  getUnidirectionalIsl(){
+  getUnidirectionalIsl() {
     return this.unidirectionalIsl;
   }
 }

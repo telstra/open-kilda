@@ -10,19 +10,19 @@ export class SamlSettingService {
 
   constructor(private httpClient: HttpClient) { }
 
-   getAuthProviders() : Observable<any>{
+   getAuthProviders(): Observable<any> {
      return this.httpClient.get<any>(`${environment.apiEndPoint}/samlconfig`);
    }
-   getDetail(uuid){
+   getDetail(uuid) {
     return this.httpClient.get<any>(`${environment.apiEndPoint}/samlconfig/${uuid}`);
    }
-    saveAuthProvider(data){
-       return this.httpClient.post(`${environment.apiEndPoint}/samlconfig`,data);
+    saveAuthProvider(data) {
+       return this.httpClient.post(`${environment.apiEndPoint}/samlconfig`, data);
     }
-    updateAuthProvider(data,uuid){
-      return this.httpClient.patch(`${environment.apiEndPoint}/samlconfig/${uuid}`,data);
+    updateAuthProvider(data, uuid) {
+      return this.httpClient.patch(`${environment.apiEndPoint}/samlconfig/${uuid}`, data);
    }
-    deleteAuthProvider(uuid){
+    deleteAuthProvider(uuid) {
       return this.httpClient.delete(`${environment.apiEndPoint}/samlconfig/${uuid}`);
   }
 }

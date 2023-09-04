@@ -10,16 +10,16 @@ import { MessageObj } from 'src/app/common/constants/constants';
 })
 export class SwitchesComponent implements OnInit {
   openedTab = 'search';
-  constructor(private commonService:CommonService,private toastr:ToastrService,private router:Router) { 
-    if(!this.commonService.hasPermission('menu_switches')){
-      this.toastr.error(MessageObj.unauthorised);  
-       this.router.navigate(["/home"]);
+  constructor(private commonService: CommonService, private toastr: ToastrService, private router: Router) {
+    if (!this.commonService.hasPermission('menu_switches')) {
+      this.toastr.error(MessageObj.unauthorised);
+       this.router.navigate(['/home']);
       }
   }
 
   ngOnInit() {
   }
-  openTab(tab){
+  openTab(tab) {
     this.openedTab = tab;
   }
 }
