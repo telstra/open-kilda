@@ -40,6 +40,10 @@ public abstract class PortMapper {
     @Mapping(target = "timestamp", ignore = true)
     @Mapping(target = "state", ignore = true)
     @Mapping(target = "enabled", ignore = true)
+    @Mapping(target = "interceptorInTimestamp", ignore = true)
+    @Mapping(target = "interceptorOutTimestamp", ignore = true)
+    @Mapping(target = "parseOutTimestamp", ignore = true)
+    @Mapping(target = "filterInTimestamp", ignore = true)
     public abstract PortInfoData map(Port port);
 
     /**
@@ -67,5 +71,9 @@ public abstract class PortMapper {
     @Mapping(source = "switchObj.switchId", target = "switchId")
     @Mapping(source = "port", target = "portNumber")
     @Mapping(target = "timestamp", ignore = true)
+    @Mapping(target = "interceptorInTimestamp", ignore = true)
+    @Mapping(target = "interceptorOutTimestamp", ignore = true)
+    @Mapping(target = "parseOutTimestamp", ignore = true)
+    @Mapping(target = "filterInTimestamp", ignore = true)
     public abstract PortPropertiesPayload map(PortProperties portProperties);
 }

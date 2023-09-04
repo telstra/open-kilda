@@ -35,7 +35,7 @@ public abstract class VersioningInterceptorBase implements BuildVersionObserver 
     public static final int CANT_CONNECT_TO_ZOOKEEPER_LOG_TIMEOUT = 60;
 
     @VisibleForTesting
-    ZkWatchDog watchDog;
+    public ZkWatchDog watchDog;
     protected String connectionString;
     protected String componentName;
     protected String runId;

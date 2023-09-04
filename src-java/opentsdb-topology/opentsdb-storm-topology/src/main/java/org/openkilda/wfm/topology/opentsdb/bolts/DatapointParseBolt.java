@@ -97,6 +97,7 @@ public class DatapointParseBolt extends BaseRichBolt {
                 }
 
                 for (Datapoint datapoint : datapoints) {
+                    datapoint.setParseOutTimestamp(System.currentTimeMillis());
                     collector.emit(asList(datapoint.simpleHashCode(), datapoint));
                 }
             } catch (Exception e) {

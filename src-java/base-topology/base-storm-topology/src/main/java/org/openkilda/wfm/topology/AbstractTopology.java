@@ -104,7 +104,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
 
     protected final TopologyDef topologyDef;
     protected final T topologyConfig;
-    private final KafkaConfig kafkaConfig;
+    protected final KafkaConfig kafkaConfig;
     private final ZookeeperConfig zookeeperConfig;
 
     protected AbstractTopology(LaunchEnvironment env, String topologyDefinitionName, Class<T> topologyConfigClass) {
@@ -424,7 +424,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         return config;
     }
 
-    private String makeKafkaGroupName(String spoutId) {
+    protected String makeKafkaGroupName(String spoutId) {
         return kafkaNamingStrategy.kafkaConsumerGroupName(format("%s__%s", topologyName, spoutId));
     }
 

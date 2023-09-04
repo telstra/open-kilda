@@ -15,8 +15,14 @@
 
 package org.openkilda.wfm.topology.opentsdb;
 
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
+import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
+
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.kafka.CustomNamedSubscription;
 import org.openkilda.wfm.kafka.InfoDataDeserializer;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
@@ -28,6 +34,8 @@ import org.openkilda.wfm.topology.opentsdb.bolts.OpenTsdbFilterBolt;
 import org.openkilda.wfm.topology.utils.InfoDataTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
@@ -116,12 +124,33 @@ public class OpenTsdbTopology extends AbstractTopology<OpenTsdbTopologyConfig> {
         return parseBoltId;
     }
 
+    protected KafkaSpoutConfig.Builder<String, InfoData> makeKafkaSpoutConfig2(
+            List<String> topics, String spoutId) {
+        KafkaSpoutConfig.Builder<String, InfoData> config = new KafkaSpoutConfig.Builder<>(
+                kafkaConfig.getHosts(), new CustomNamedSubscription(topics));
+
+        config.setProp(ConsumerConfig.GROUP_ID_CONFIG, makeKafkaGroupName(spoutId))
+                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST)
+                .setProp(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
+                .setProp(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
+                .setProp(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, InfoDataDeserializer.class)
+                .setProp(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor2.class.getName())
+                .setProp(CONSUMER_COMPONENT_NAME_PROPERTY, getZkTopoName())
+                .setProp(CONSUMER_RUN_ID_PROPERTY, topologyConfig.getBlueGreenMode())
+                .setProp(CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY, getZookeeperConfig().getConnectString())
+                .setProp(CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY,
+                        Long.toString(getZookeeperConfig().getReconnectDelay()))
+                .setTupleTrackingEnforced(true);
+
+        return config;
+    }
+
     private void attachInput(TopologyBuilder topology, String spoutId) {
         String topic = topologyConfig.getKafkaTopics().getOtsdbTopic();
 
         //FIXME: We have to use the Message class for messaging (but current setup saves some space/traffic in stream).
-        KafkaSpoutConfig<String, InfoData> config = makeKafkaSpoutConfig(
-                Collections.singletonList(topic), spoutId, InfoDataDeserializer.class)
+        KafkaSpoutConfig<String, InfoData> config = makeKafkaSpoutConfig2(
+                Collections.singletonList(topic), spoutId)
                 .setRecordTranslator(new InfoDataTranslator())
                 .setFirstPollOffsetStrategy(FirstPollOffsetStrategy.UNCOMMITTED_EARLIEST)
                 .setTupleTrackingEnforced(true)

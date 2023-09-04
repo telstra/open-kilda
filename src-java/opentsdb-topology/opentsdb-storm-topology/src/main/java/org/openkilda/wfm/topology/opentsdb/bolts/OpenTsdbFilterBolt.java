@@ -82,9 +82,35 @@ public class OpenTsdbFilterBolt extends BaseRichBolt {
         }
 
         Datapoint datapoint = (Datapoint) tuple.getValueByField("datapoint");
+        datapoint.setFilterInTimestamp(System.currentTimeMillis());
         if (datapoint.getValue().longValue() == 12345) {
             if (count % 10_000 == 0) {
                 LOGGER.error("OTSDBTEST got datapoint number " + count);
+            }
+            if (count % 1000 == 0) {
+                long interceptor = datapoint.getInterceptorOutTimestamp() - datapoint.getInterceptorInTimestamp();
+                long parseQueue = datapoint.getParseOutTimestamp() - datapoint.getInterceptorOutTimestamp();
+                long filterQueue = datapoint.getFilterInTimestamp() - datapoint.getParseOutTimestamp();
+                if (interceptor < 0) {
+                    interceptor = 0;
+                    LOGGER.error("OTSDBTEST interceptor " + interceptor);
+                }
+                if (parseQueue < 0) {
+                    parseQueue = 0;
+                    LOGGER.error("OTSDBTEST parseQueue " + parseQueue);
+                }
+                if (filterQueue < 0) {
+                    filterQueue = 0;
+                    LOGGER.error("OTSDBTEST filterQueue " + filterQueue);
+                }
+
+                long time = System.currentTimeMillis();
+                collector.emit(tuple, makeDefaultTuple(new Datapoint(
+                        "otsdb.interceptor", time, new HashMap<>(), interceptor)));
+                collector.emit(tuple, makeDefaultTuple(new Datapoint(
+                        "otsdb.parseQueue", time, new HashMap<>(), parseQueue)));
+                collector.emit(tuple, makeDefaultTuple(new Datapoint(
+                        "otsdb.filterQueue", time, new HashMap<>(), filterQueue)));
             }
             count++;
         } else {

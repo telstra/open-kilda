@@ -142,6 +142,10 @@ public abstract class HistoryMapper {
 
     @Mapping(target = "timestamp", ignore = true)
     @Mapping(target = "id", source = "recordId")
+    @Mapping(target = "interceptorInTimestamp", ignore = true)
+    @Mapping(target = "interceptorOutTimestamp", ignore = true)
+    @Mapping(target = "parseOutTimestamp", ignore = true)
+    @Mapping(target = "filterInTimestamp", ignore = true)
     public abstract PortHistoryPayload map(PortEvent portEvent);
 
     public String map(SwitchId switchId) {
@@ -150,6 +154,10 @@ public abstract class HistoryMapper {
 
     @Mapping(target = "statusChangeTimestamp", source = "timestamp")
     @Mapping(target = "timestamp", ignore = true)
+    @Mapping(target = "interceptorInTimestamp", ignore = true)
+    @Mapping(target = "interceptorOutTimestamp", ignore = true)
+    @Mapping(target = "parseOutTimestamp", ignore = true)
+    @Mapping(target = "filterInTimestamp", ignore = true)
     public abstract FlowStatusTimestampsEntry map(FlowStatusView flowStatusesImmutableView);
 
     public abstract List<MirrorPointStatus> map(List<FlowMirrorPath> flowMirrorPaths);
