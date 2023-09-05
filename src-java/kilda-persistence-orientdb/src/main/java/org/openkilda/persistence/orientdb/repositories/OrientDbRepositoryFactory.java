@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -63,7 +63,8 @@ public class OrientDbRepositoryFactory extends FermaRepositoryFactory {
 
     @Override
     public FlowRepository createFlowRepository() {
-        return new OrientDbFlowRepository(implementation, graphSupplier, createFlowPathRepository());
+        return new OrientDbFlowRepository(implementation, graphSupplier, createFlowPathRepository(),
+                createFlowStatsRepository());
     }
 
     @Override

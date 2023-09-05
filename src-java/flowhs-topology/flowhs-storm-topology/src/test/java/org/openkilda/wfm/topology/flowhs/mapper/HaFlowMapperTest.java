@@ -16,6 +16,9 @@
 package org.openkilda.wfm.topology.flowhs.mapper;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -27,6 +30,7 @@ import org.openkilda.messaging.command.haflow.HaSubFlowDto;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowStats;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaSubFlow;
@@ -34,13 +38,13 @@ import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowStatsRepository;
 import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -50,6 +54,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -88,6 +93,8 @@ public class HaFlowMapperTest {
     private static final String DESC_3 = "desc3";
     private static final String GROUP_1 = "group_1";
     private static final String GROUP_2 = "group_2";
+    private static final Long FORWARD_LATENCY = 5000L;
+    private static final Long REVERSE_LATENCY = 10000L;
     private static final HaSubFlowDto SUB_FLOW_1 = new HaSubFlowDto(
             SUB_FLOW_ID_1, new FlowEndpoint(SWITCH_ID_1, PORT_1, VLAN_1, INNER_VLAN_1), FlowStatus.UP, DESC_2,
             Instant.MIN, Instant.MAX);
@@ -100,15 +107,19 @@ public class HaFlowMapperTest {
     private final HaFlowMapper mapper = HaFlowMapper.INSTANCE;
 
     @Mock
-    FlowRepository flowRepository;
+    private FlowRepository flowRepository;
 
     @Mock
-    HaFlowRepository haFlowRepository;
+    private HaFlowRepository haFlowRepository;
+
+    @Mock
+    private FlowStatsRepository flowStatsRepository;
 
     @BeforeEach
     public void init() {
         flowRepository = mock(FlowRepository.class);
         haFlowRepository = mock(HaFlowRepository.class);
+        flowStatsRepository = mock(FlowStatsRepository.class);
     }
 
     @Test
@@ -192,9 +203,9 @@ public class HaFlowMapperTest {
         assertEquals(haFlow.getSharedPort(), result.getSharedEndpoint().getPortNumber().intValue());
         assertEquals(haFlow.getSharedOuterVlan(), result.getSharedEndpoint().getOuterVlanId());
         assertEquals(haFlow.getSharedInnerVlan(), result.getSharedEndpoint().getInnerVlanId());
-        Assertions.assertTrue(result.getDiverseWithFlows().isEmpty());
-        Assertions.assertTrue(result.getDiverseWithYFlows().isEmpty());
-        Assertions.assertTrue(result.getDiverseWithHaFlows().isEmpty());
+        assertTrue(result.getDiverseWithFlows().isEmpty());
+        assertTrue(result.getDiverseWithYFlows().isEmpty());
+        assertTrue(result.getDiverseWithHaFlows().isEmpty());
         assertSubFlows(haFlow.getHaSubFlows(), result.getSubFlows());
     }
 
@@ -218,6 +229,69 @@ public class HaFlowMapperTest {
         assertEquals(Sets.newHashSet(FLOW_1, FLOW_2), result.getDiverseWithFlows());
         assertEquals(Sets.newHashSet(Y_FLOW_ID_1, Y_FLOW_ID_2), result.getDiverseWithYFlows());
         assertEquals(Sets.newHashSet(HA_FLOW_ID_2), result.getDiverseWithHaFlows());
+    }
+
+    @Test
+    public void toHaFlowDtoWithFlowStats() {
+        HaFlow haFlow = buildHaFlow();
+
+        when(flowRepository.findByDiverseGroupId(anyString())).thenReturn(new ArrayList<>());
+        when(haFlowRepository.findHaFlowIdsByDiverseGroupId(anyString())).thenReturn(new ArrayList<>());
+        when(flowStatsRepository.findByFlowId(SUB_FLOW_ID_1))
+                .thenReturn(Optional.of(buildFlowStats(haFlow.getHaSubFlow(SUB_FLOW_ID_1).get())));
+        when(flowStatsRepository.findByFlowId(SUB_FLOW_ID_2))
+                .thenReturn(Optional.of(buildFlowStats(haFlow.getHaSubFlow(SUB_FLOW_ID_2).get())));
+
+        HaFlowDto result = mapper.toHaFlowDto(haFlow, flowRepository, haFlowRepository, flowStatsRepository);
+        assertEquals(HA_FLOW_ID_1, result.getHaFlowId());
+        assertEquals(haFlow.getMaximumBandwidth(), result.getMaximumBandwidth());
+        assertEquals(haFlow.getPathComputationStrategy(), result.getPathComputationStrategy());
+        assertEquals(haFlow.getEncapsulationType(), result.getEncapsulationType());
+        assertEquals(MAX_LATENCY, result.getMaxLatency().longValue());
+        assertEquals(MAX_LATENCY_TIER_2, result.getMaxLatencyTier2().longValue());
+        assertEquals(haFlow.isIgnoreBandwidth(), result.isIgnoreBandwidth());
+        assertEquals(haFlow.isPeriodicPings(), result.isPeriodicPings());
+        assertEquals(haFlow.isPinned(), result.isPinned());
+        assertEquals(haFlow.getPriority(), result.getPriority());
+        assertEquals(haFlow.isStrictBandwidth(), result.isStrictBandwidth());
+        assertEquals(haFlow.getDescription(), result.getDescription());
+        assertEquals(haFlow.isAllocateProtectedPath(), result.isAllocateProtectedPath());
+        assertEquals(haFlow.getStatus(), result.getStatus());
+        assertEquals(haFlow.getStatusInfo(), result.getStatusInfo());
+        assertEquals(haFlow.getSharedSwitchId(), result.getSharedEndpoint().getSwitchId());
+        assertEquals(haFlow.getSharedPort(), result.getSharedEndpoint().getPortNumber().intValue());
+        assertEquals(haFlow.getSharedOuterVlan(), result.getSharedEndpoint().getOuterVlanId());
+        assertEquals(haFlow.getSharedInnerVlan(), result.getSharedEndpoint().getInnerVlanId());
+        assertTrue(result.getDiverseWithFlows().isEmpty());
+        assertTrue(result.getDiverseWithYFlows().isEmpty());
+        assertTrue(result.getDiverseWithHaFlows().isEmpty());
+        assertSubFlows(haFlow.getHaSubFlows(), result.getSubFlows());
+        assertFlowStats(result.getSubFlows());
+    }
+
+    @Test
+    public void toHaFlowDtoWithEmptyFlowStats() {
+        HaFlow haFlow = buildHaFlow();
+
+        when(flowRepository.findByDiverseGroupId(anyString())).thenReturn(new ArrayList<>());
+        when(haFlowRepository.findHaFlowIdsByDiverseGroupId(anyString())).thenReturn(new ArrayList<>());
+        when(flowStatsRepository.findByFlowId(SUB_FLOW_ID_1)).thenReturn(Optional.empty());
+        when(flowStatsRepository.findByFlowId(SUB_FLOW_ID_2)).thenReturn(Optional.empty());
+
+        HaFlowDto result = mapper.toHaFlowDto(haFlow, flowRepository, haFlowRepository, flowStatsRepository);
+        List<HaSubFlowDto> subFlows = result.getSubFlows();
+
+        assertEquals(subFlows.size(), 2);
+
+        HaSubFlowDto firstHaSubFlowDto = subFlows.get(0);
+        HaSubFlowDto secondHaSubFlowDto = subFlows.get(1);
+
+        assertNotNull(firstHaSubFlowDto.getFlowId());
+        assertNull(firstHaSubFlowDto.getForwardLatency());
+        assertNull(firstHaSubFlowDto.getReverseLatency());
+        assertNotNull(secondHaSubFlowDto.getFlowId());
+        assertNull(secondHaSubFlowDto.getForwardLatency());
+        assertNull(secondHaSubFlowDto.getReverseLatency());
     }
 
     @Test
@@ -343,7 +417,14 @@ public class HaFlowMapperTest {
         assertEquals(maxLatency, actual.getMaxLatency());
         assertEquals(maxLatencyTier2, actual.getMaxLatencyTier2());
         assertEquals(strategy, actual.getPathComputationStrategy());
-        Assertions.assertNull(actual.getYFlowId());
+        assertNull(actual.getYFlowId());
+    }
+
+    private static void assertFlowStats(List<HaSubFlowDto> subFlows) {
+        subFlows.forEach(e -> {
+            assertEquals(e.getForwardLatency(), FORWARD_LATENCY);
+            assertEquals(e.getReverseLatency(), REVERSE_LATENCY);
+        });
     }
 
     private static Flow buildFlow(String flowId) {
@@ -353,5 +434,9 @@ public class HaFlowMapperTest {
     private static Flow buildYSubFlow(String flowId, String yFlowId) {
         return Flow.builder().flowId(flowId).yFlowId(yFlowId).srcSwitch(SWITCH_1).destSwitch(SWITCH_2)
                 .diverseGroupId(GROUP_1).build();
+    }
+
+    private static FlowStats buildFlowStats(HaSubFlow haSubFlow) {
+        return new FlowStats(haSubFlow, FORWARD_LATENCY, REVERSE_LATENCY);
     }
 }

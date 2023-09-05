@@ -102,11 +102,17 @@ public abstract class HaFlowMapper {
     @Mapping(target = "flowId", ignore = true)
     @Mapping(target = "timeCreate", ignore = true)
     @Mapping(target = "timeUpdate", ignore = true)
+    @Mapping(target = "forwardLatency", ignore = true)
+    @Mapping(target = "reverseLatency", ignore = true)
+    @Mapping(target = "latencyLastModifiedTime", ignore = true)
     public abstract HaSubFlowDto toSubFlowDto(HaSubFlowCreatePayload source);
 
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "timeCreate", ignore = true)
     @Mapping(target = "timeUpdate", ignore = true)
+    @Mapping(target = "forwardLatency", ignore = true)
+    @Mapping(target = "reverseLatency", ignore = true)
+    @Mapping(target = "latencyLastModifiedTime", ignore = true)
     public abstract HaSubFlowDto toSubFlowDto(HaSubFlowUpdatePayload source);
 
     @Mapping(target = "status", ignore = true)

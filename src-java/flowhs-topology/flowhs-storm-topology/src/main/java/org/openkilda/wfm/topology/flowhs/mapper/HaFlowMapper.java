@@ -21,11 +21,13 @@ import org.openkilda.messaging.command.haflow.HaFlowRequest.Type;
 import org.openkilda.messaging.command.haflow.HaSubFlowDto;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
+import org.openkilda.model.FlowStats;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowStatsRepository;
 import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
@@ -34,12 +36,15 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Mapper
 public abstract class HaFlowMapper {
@@ -65,22 +70,71 @@ public abstract class HaFlowMapper {
     public abstract HaFlowDto toHaFlowDto(
             HaFlow haFlow, Set<String> diverseWithFlows, Set<String> diverseWithYFlows, Set<String> diverseWithHaFlows);
 
+    @Mapping(target = "timeUpdate", source = "haFlow.timeModify")
+    @Mapping(target = "sharedEndpoint", source = "haFlow")
+    @Mapping(target = "subFlows", expression = "java(toSubFlowDtos(haFlow.getHaSubFlows(), flowStats))")
+    public abstract HaFlowDto toHaFlowDto(
+            HaFlow haFlow, Set<String> diverseWithFlows, Set<String> diverseWithYFlows, Set<String> diverseWithHaFlows,
+            Set<FlowStats> flowStats);
+
     /**
      * Map {@link HaFlow} to {@link HaFlowDto} with completing diverseFlows, diverseYFlows and diverseHaFlows.
      */
     public HaFlowDto toHaFlowDto(HaFlow haFlow, FlowRepository flowRepository, HaFlowRepository haFlowRepository) {
+        return toHaFlowDto(haFlow, flowRepository, haFlowRepository, null);
+    }
+
+    /**
+     * Map {@link HaFlow} to {@link HaFlowDto} with completing diverseFlows, diverseYFlows, diverseHaFlows and
+     * flowStats.
+     */
+    public HaFlowDto toHaFlowDto(HaFlow haFlow, FlowRepository flowRepository, HaFlowRepository haFlowRepository,
+                                 FlowStatsRepository flowStatsRepository) {
         Collection<Flow> diverseFlows = getDiverseFlows(haFlow.getDiverseGroupId(), flowRepository);
         Set<String> diverseFlowsIds = YFlowMapper.getDiverseFlowIds(diverseFlows);
         Set<String> diverseYFlowsIds = YFlowMapper.getDiverseYFlowIds(diverseFlows);
         Set<String> diverseHaFlowsIds = getDiverseWithHaFlow(
                 haFlow.getHaFlowId(), haFlow.getDiverseGroupId(), haFlowRepository);
-        return toHaFlowDto(haFlow, diverseFlowsIds, diverseYFlowsIds, diverseHaFlowsIds);
+        if (flowStatsRepository == null) {
+            return toHaFlowDto(haFlow, diverseFlowsIds, diverseYFlowsIds, diverseHaFlowsIds);
+        }
+        Set<FlowStats> flowStats = haFlow.getHaSubFlows().stream()
+                .map(e -> flowStatsRepository.findByFlowId(e.getHaSubFlowId()))
+                .flatMap(e -> e.map(Stream::of).orElseGet(Stream::empty))
+                .collect(Collectors.toSet());
+        return toHaFlowDto(haFlow, diverseFlowsIds, diverseYFlowsIds, diverseHaFlowsIds, flowStats);
     }
 
     @Mapping(target = "flowId", source = "haSubFlowId")
     @Mapping(target = "endpoint", source = "haSubFlow")
     @Mapping(target = "timeUpdate", source = "timeModify")
+    @Mapping(target = "forwardLatency", ignore = true)
+    @Mapping(target = "reverseLatency", ignore = true)
+    @Mapping(target = "latencyLastModifiedTime", ignore = true)
     public abstract HaSubFlowDto toSubFlowDto(HaSubFlow haSubFlow);
+
+    @Mapping(target = "flowId", source = "haSubFlow.haSubFlowId")
+    @Mapping(target = "endpoint", source = "haSubFlow")
+    @Mapping(target = "timeUpdate", source = "haSubFlow.timeModify")
+    @Mapping(target = "forwardLatency", source = "flowStats.forwardLatency")
+    @Mapping(target = "reverseLatency", source = "flowStats.reverseLatency")
+    @Mapping(target = "latencyLastModifiedTime", source = "flowStats.timeModify")
+    public abstract HaSubFlowDto toSubFlowDto(HaSubFlow haSubFlow, FlowStats flowStats);
+
+    /**
+     * Map haSubFlows {@link HaSubFlow} and flowStats {@link FlowStats} to HaSubFlowDtos {@link HaSubFlowDto}.
+     */
+    public List<HaSubFlowDto> toSubFlowDtos(Collection<HaSubFlow> haSubFlows, Set<FlowStats> flowStats) {
+        List<HaSubFlowDto> result = new ArrayList<>();
+        for (HaSubFlow haSubFlow : haSubFlows) {
+            FlowStats flowStat = flowStats.stream()
+                    .filter(e -> e.getFlowId().equals(haSubFlow.getHaSubFlowId()))
+                    .findFirst()
+                    .orElse(FlowStats.EMPTY);
+            result.add(toSubFlowDto(haSubFlow, flowStat));
+        }
+        return result;
+    }
 
     @Mapping(target = "haSubFlowId", source = "flowId")
     @Mapping(target = "endpointSwitch", source = "endpoint.switchId")

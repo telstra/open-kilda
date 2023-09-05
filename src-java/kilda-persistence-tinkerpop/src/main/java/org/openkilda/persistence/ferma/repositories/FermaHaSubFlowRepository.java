@@ -21,6 +21,7 @@ import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.HaSubFlowFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
+import org.openkilda.persistence.repositories.FlowStatsRepository;
 import org.openkilda.persistence.repositories.HaSubFlowRepository;
 
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
@@ -34,8 +35,12 @@ import java.util.stream.Collectors;
  */
 public class FermaHaSubFlowRepository extends FermaGenericRepository<HaSubFlow, HaSubFlowData, HaSubFlowFrame>
         implements HaSubFlowRepository {
-    public FermaHaSubFlowRepository(FermaPersistentImplementation implementation) {
+    protected final FlowStatsRepository flowStatsRepository;
+
+    public FermaHaSubFlowRepository(FermaPersistentImplementation implementation,
+                                    FlowStatsRepository flowStatsRepository) {
         super(implementation);
+        this.flowStatsRepository = flowStatsRepository;
     }
 
     @Override
@@ -74,6 +79,7 @@ public class FermaHaSubFlowRepository extends FermaGenericRepository<HaSubFlow, 
 
     @Override
     protected void doRemove(HaSubFlowFrame frame) {
+        flowStatsRepository.removeByFlowId(frame.getHaSubFlowId());
         frame.remove();
     }
 

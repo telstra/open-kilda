@@ -20,9 +20,11 @@ import org.openkilda.model.FlowStatus;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.experimental.FieldDefaults;
 
 import java.io.Serializable;
 import java.time.Instant;
@@ -31,6 +33,7 @@ import java.time.Instant;
 @Builder
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class HaSubFlowDto implements Serializable {
     private static final long serialVersionUID = 1L;
     String flowId;
@@ -39,4 +42,17 @@ public class HaSubFlowDto implements Serializable {
     String description;
     Instant timeCreate;
     Instant timeUpdate;
+    Long forwardLatency;
+    Long reverseLatency;
+    Instant latencyLastModifiedTime;
+
+    public HaSubFlowDto(String flowId, FlowEndpoint endpoint, FlowStatus status, String description, Instant timeCreate,
+                        Instant timeUpdate) {
+        this.flowId = flowId;
+        this.endpoint = endpoint;
+        this.status = status;
+        this.description = description;
+        this.timeCreate = timeCreate;
+        this.timeUpdate = timeUpdate;
+    }
 }

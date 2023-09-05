@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStats.FlowStatsData;
+import org.openkilda.model.HaSubFlow;
 
 import com.syncleus.ferma.VertexFrame;
 import com.syncleus.ferma.annotations.Property;
@@ -34,6 +35,7 @@ public abstract class FlowStatsFrame extends KildaBaseVertexFrame implements Flo
     public static final String FLOW_ID_PROPERTY = "flow_id";
 
     private Flow flowObj;
+    private HaSubFlow haSubFlowObj;
 
     @Override
     public Flow getFlowObj() {
@@ -53,6 +55,23 @@ public abstract class FlowStatsFrame extends KildaBaseVertexFrame implements Flo
     }
 
     @Override
+    public HaSubFlow getHaSubFlowObj() {
+        if (haSubFlowObj == null) {
+            List<? extends HaSubFlowFrame> haSubFlowFrames = traverse(v -> v.in(HAS_BY_EDGE)
+                    .hasLabel(HaSubFlowFrame.FRAME_LABEL))
+                    .toListExplicit(HaSubFlowFrame.class);
+            haSubFlowObj = !haSubFlowFrames.isEmpty() ? new HaSubFlow(haSubFlowFrames.get(0)) : null;
+            String haSubFlowId = haSubFlowObj != null ? haSubFlowObj.getHaSubFlowId() : null;
+            if (!Objects.equals(getFlowId(), haSubFlowId)) {
+                throw new IllegalStateException(format("The flow stats %s has inconsistent HA-Sub-Flow %s / %s",
+                        getId(), getFlowId(), haSubFlowId));
+            }
+        }
+
+        return haSubFlowObj;
+    }
+
+    @Override
     public void setFlowObj(Flow flowObj) {
         this.flowObj = flowObj;
         String flowId = flowObj.getFlowId();
@@ -65,6 +84,23 @@ public abstract class FlowStatsFrame extends KildaBaseVertexFrame implements Flo
         } else {
             FlowFrame frame = FlowFrame.load(getGraph(), flowId).orElseThrow(() ->
                     new IllegalArgumentException("Unable to link to non-existent flow " + flowObj));
+            linkIn(frame, HAS_BY_EDGE);
+        }
+    }
+
+    @Override
+    public void setHaSubFlowObj(HaSubFlow haSubFlowObj) {
+        this.haSubFlowObj = haSubFlowObj;
+        String haSubFlowId = haSubFlowObj.getHaSubFlowId();
+        setProperty(FLOW_ID_PROPERTY, haSubFlowId);
+
+        getElement().edges(Direction.IN, HAS_BY_EDGE).forEachRemaining(Edge::remove);
+        HaSubFlow.HaSubFlowData data = haSubFlowObj.getData();
+        if (data instanceof HaSubFlowFrame) {
+            linkIn((VertexFrame) data, HAS_BY_EDGE);
+        } else {
+            HaSubFlowFrame frame = HaSubFlowFrame.load(getGraph(), haSubFlowId).orElseThrow(() ->
+                    new IllegalArgumentException("Unable to link to non-existent HA-Sub-Flow " + haSubFlowId));
             linkIn(frame, HAS_BY_EDGE);
         }
     }

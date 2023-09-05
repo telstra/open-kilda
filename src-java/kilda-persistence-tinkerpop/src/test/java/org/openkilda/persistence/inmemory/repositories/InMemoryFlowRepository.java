@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import org.openkilda.persistence.ferma.repositories.FermaFlowRepository;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceImplementation;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowStatsRepository;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,8 +33,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class InMemoryFlowRepository extends FermaFlowRepository {
     public InMemoryFlowRepository(
-            InMemoryGraphPersistenceImplementation implementation, FlowPathRepository flowPathRepository) {
-        super(implementation, flowPathRepository);
+            InMemoryGraphPersistenceImplementation implementation, FlowPathRepository flowPathRepository,
+            FlowStatsRepository flowStatsRepository) {
+        super(implementation, flowPathRepository, flowStatsRepository);
     }
 
     @Override
