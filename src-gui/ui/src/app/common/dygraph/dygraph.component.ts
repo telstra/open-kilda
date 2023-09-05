@@ -74,9 +74,10 @@ export class DygraphComponent implements OnInit, OnDestroy {
       const getValue = typeof data[0] !== 'undefined' ? data[0].dps : {};
       let fDps = [];
       let rDps = [];
+      let getVal;
       metric1 = typeof data[0] !== 'undefined' ? data[0].metric : '';
       if (data.length == 2) {
-        const getVal = typeof data[1] !== 'undefined' ? data[1].dps : {};
+        getVal = typeof data[1] !== 'undefined' ? data[1].dps : {};
         rDps = Object.keys(getVal);
         metric2 = data[1].metric;
 

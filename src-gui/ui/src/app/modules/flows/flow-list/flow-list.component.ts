@@ -134,7 +134,7 @@ export class FlowListComponent implements OnDestroy, OnInit, OnChanges, AfterVie
       this.checkFlowData();
      }
     if (this.storedData && this.storedData.length <= 0 ) {
-      const statusParam = statusParam.filter(function (el) {
+        statusParam = statusParam.filter(function (el) {
         return el != null && el != '';
       });
       const filtersOptions = statusParam.length > 0 ? { status: statusParam.join(','), controller: this.filterFlag == 'controller', _: new Date().getTime()} : {controller: this.filterFlag == 'controller', _: new Date().getTime()};
