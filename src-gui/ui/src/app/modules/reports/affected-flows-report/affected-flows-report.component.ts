@@ -69,7 +69,7 @@ export class AffectedFlowsReportComponent  implements OnDestroy, OnInit, OnChang
     this.loaderService.show(MessageObj.loading_flows);
 
     if (this.storedData && this.storedData.length <= 0 ) {
-      const statusParam = statusParam.filter(function (el) {
+        statusParam = statusParam.filter(function (el) {
         return el != null && el != '';
       });
       const filtersOptions = statusParam.length > 0 ? { status: statusParam.join(','), controller: filter, _: new Date().getTime()} : {controller: filter, _: new Date().getTime()};

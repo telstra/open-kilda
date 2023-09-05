@@ -329,10 +329,11 @@ export class SwitchDatatableComponent implements OnInit, OnChanges, OnDestroy, A
   }
 
   copyToClip(event, copyItem, index) {
+    let copyData;
     if (copyItem == 'name') {
-      const copyData = (this.clipBoardItems[index]['common-name']) ? this.checkValue(this.clipBoardItems[index]['common-name']) : this.checkValue(this.clipBoardItems[index][copyItem]);
+       copyData = (this.clipBoardItems[index]['common-name']) ? this.checkValue(this.clipBoardItems[index]['common-name']) : this.checkValue(this.clipBoardItems[index][copyItem]);
     } else {
-      const copyData = this.checkValue(this.clipBoardItems[index][copyItem]);
+       copyData = this.checkValue(this.clipBoardItems[index][copyItem]);
     }
 
     this.clipboardService.copyFromContent(copyData);

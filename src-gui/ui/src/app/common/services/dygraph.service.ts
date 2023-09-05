@@ -216,9 +216,10 @@ export class DygraphService {
       const fDpsObject = typeof data[0] !== 'undefined' ? data[0].dps : {};
       let fDps = [];
       let rDps = [];
+      let rDpsObject;
       metric1 = typeof data[0] !== 'undefined' ? data[0].metric : '';
       if (data.length == 2) {
-        const rDpsObject = typeof data[1] !== 'undefined' ? data[1].dps : {};
+        rDpsObject = typeof data[1] !== 'undefined' ? data[1].dps : {};
         rDps = Object.keys(rDpsObject);
         metric2 = data[1].metric;
 

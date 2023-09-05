@@ -193,7 +193,7 @@ export class AffectedFlowListComponent implements OnInit, AfterViewInit, OnChang
   }
 
   copyToClip(event, copyItem, index) {
-    const copyItem = this.clipBoardItems[index][copyItem];
+    copyItem = this.clipBoardItems[index][copyItem];
     this.clipboardService.copyFromContent(copyItem);
   }
 

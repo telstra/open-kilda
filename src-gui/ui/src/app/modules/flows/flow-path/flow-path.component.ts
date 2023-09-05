@@ -225,42 +225,42 @@ export class FlowPathComponent implements OnInit, OnDestroy {
   }
 
   loadIslDetail(index, type) {
+      let src_switch, src_port, dst_switch, dst_port;
     if (type == 'forward') {
-      const src_switch = this.forwardPathData[index].switch_id;
-      const src_port = this.forwardPathData[index].output_port;
-      const dst_switch = this.forwardPathData[index + 1].switch_id;
-      const dst_port = this.forwardPathData[index + 1].input_port;
+       src_switch = this.forwardPathData[index].switch_id;
+       src_port = this.forwardPathData[index].output_port;
+       dst_switch = this.forwardPathData[index + 1].switch_id;
+       dst_port = this.forwardPathData[index + 1].input_port;
     } else {
-      const src_switch = this.reversePathData[index].switch_id;
-      const src_port = this.reversePathData[index].output_port;
-      const dst_switch = this.reversePathData[index + 1].switch_id;
-      const dst_port = this.reversePathData[index + 1].input_port;
+       src_switch = this.reversePathData[index].switch_id;
+       src_port = this.reversePathData[index].output_port;
+       dst_switch = this.reversePathData[index + 1].switch_id;
+       dst_port = this.reversePathData[index + 1].input_port;
     }
     this.flowpathService.loadIslDetail(src_switch, src_port, dst_switch, dst_port);
    }
   zoomFn(type, dir) {
+      let svgElement;
      if (type == 'forwardDiverse') {
-      const svgElement = d3.select('#svgForwardPath');
-      this.showFlowsForward = false;
+       svgElement = d3.select('#svgForwardPath');
+       this.showFlowsForward = false;
     } else if (type == 'reverseDiverse') {
-      const svgElement = d3.select('#svgReversePath');
-      this.showFlowsReverse = false;
+       svgElement = d3.select('#svgReversePath');
+       this.showFlowsReverse = false;
     }
 
     const direction = (dir == 'in') ? 1 : -1;
     this.flowpathService.zoomFn(direction, svgElement, type);
   }
   fetchFlowCommonSwitch(flowid, type) {
+      const flowSwitches = [];
     if (type == 'forward') {
       const pathData = this.diversePath[flowid].forward_path;
-      const flowSwitches = [];
       for (const d in pathData) {
         flowSwitches.push(pathData[d].switch_id);
       }
-
     } else if ( type == 'reverse' ) {
       const pathData = this.diversePath[flowid].reverse_path;
-      const flowSwitches = [];
       for (const d in pathData) {
         flowSwitches.push(pathData[d].switch_id);
       }

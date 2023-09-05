@@ -256,13 +256,14 @@ export class FlowpathService {
     const midX = (bounds.x + width) / 2,
       midY = (bounds.y + height) / 2;
     if (width == 0 || height == 0) { return; }
-
+    let scale: number;
+    let translate: number[];
     if (nodes.length > 10) {
-      const scale = 0.50;
-      const translate = [(fullWidth / 2  - scale * midX) / scale, (fullHeight / 2  - scale * midY) / scale];
+       scale = 0.50;
+       translate = [(fullWidth / 2  - scale * midX) / scale, (fullHeight / 2  - scale * midY) / scale];
     } else {
-      const scale = (zoomLevel || 1.30) / Math.max(width / fullWidth, height / fullHeight);
-      const translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
+       scale = (zoomLevel || 1.30) / Math.max(width / fullWidth, height / fullHeight);
+       translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
     }
 
     const newtranformation = d3.zoomIdentity
