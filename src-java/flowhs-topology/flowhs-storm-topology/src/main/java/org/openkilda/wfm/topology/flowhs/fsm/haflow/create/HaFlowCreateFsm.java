@@ -48,8 +48,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.ResourcesAllo
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.ResourcesDeallocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions.RollbackInstalledRulesAction;
 import org.openkilda.wfm.topology.flowhs.service.FlowCreateEventListener;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
+import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowGenericCarrier;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
@@ -74,7 +74,7 @@ import java.util.concurrent.TimeUnit;
 @Setter
 @Slf4j
 public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, State, Event,
-        HaFlowCreateContext, FlowGenericCarrier, FlowCreateEventListener> {
+        HaFlowCreateContext, HaFlowGenericCarrier, FlowCreateEventListener> {
 
     public static final String INSTALL_ACTION_NAME = "install";
     public static final String REMOVE_ACTION_NAME = "delete";
@@ -92,7 +92,7 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
     private int remainRetries;
     private boolean timedOut;
 
-    private HaFlowCreateFsm(@NonNull CommandContext commandContext, @NonNull FlowGenericCarrier carrier,
+    private HaFlowCreateFsm(@NonNull CommandContext commandContext, @NonNull HaFlowGenericCarrier carrier,
                             @NonNull String haFlowId,
                             @NonNull Collection<FlowCreateEventListener> eventListeners, @NonNull Config config) {
         super(Event.NEXT, Event.ERROR, commandContext, carrier, haFlowId, eventListeners);
@@ -168,16 +168,16 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
 
     public static class Factory {
         private final StateMachineBuilder<HaFlowCreateFsm, State, Event, HaFlowCreateContext> builder;
-        private final FlowGenericCarrier carrier;
+        private final HaFlowGenericCarrier carrier;
         private final Config config;
 
-        public Factory(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
+        public Factory(@NonNull HaFlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
                        @NonNull FlowResourcesManager resourcesManager, @NonNull PathComputer pathComputer,
                        @NonNull RuleManager ruleManager, @NonNull Config config) {
             this.carrier = carrier;
             this.config = config;
             this.builder = StateMachineBuilderFactory.create(HaFlowCreateFsm.class, State.class, Event.class,
-                    HaFlowCreateContext.class, CommandContext.class, FlowGenericCarrier.class, String.class,
+                    HaFlowCreateContext.class, CommandContext.class, HaFlowGenericCarrier.class, String.class,
                     Collection.class, Config.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);

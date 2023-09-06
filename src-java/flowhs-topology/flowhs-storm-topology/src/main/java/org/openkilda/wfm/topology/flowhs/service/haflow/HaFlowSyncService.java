@@ -44,7 +44,7 @@ public class HaFlowSyncService extends FlowProcessingService<HaFlowSyncFsm, Even
     private final HaFlowSyncFsm.Factory fsmFactory;
 
     public HaFlowSyncService(
-            @NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
+            @NonNull HaFlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
             @NonNull RuleManager ruleManager, int speakerCommandRetriesLimit) {
         super(new FlowProcessingFsmRegister<>(), new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
 

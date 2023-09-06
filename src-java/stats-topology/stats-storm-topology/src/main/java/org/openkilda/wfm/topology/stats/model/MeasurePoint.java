@@ -22,5 +22,7 @@ public enum MeasurePoint {
     TRANSIT,
     UNKNOWN,
     Y_FLOW_SHARED,
-    Y_FLOW_Y_POINT
+    Y_FLOW_Y_POINT,
+    HA_FLOW_Y_POINT,
+    HA_FLOW_SHARED,
 }

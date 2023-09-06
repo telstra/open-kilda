@@ -37,8 +37,8 @@ import java.util.UUID;
 @Slf4j
 @Getter
 public abstract class HaFlowProcessingFsm<T extends AbstractStateMachine<T, S, E, C>, S, E, C,
-        R extends NorthboundResponseCarrier & HistoryUpdateCarrier, L extends ProcessingEventListener>
-        extends FlowProcessingWithHistorySupportFsm<T, S, E, C, R, L> {
+        R extends NorthboundResponseCarrier & HistoryUpdateCarrier,
+        L extends ProcessingEventListener> extends FlowProcessingWithHistorySupportFsm<T, S, E, C, R, L> {
     private final String haFlowId;
 
     private final Map<UUID, SwitchId> pendingCommands = new HashMap<>();

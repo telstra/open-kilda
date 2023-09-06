@@ -15,19 +15,23 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions;
 
+import static org.openkilda.wfm.topology.flowhs.utils.HaFlowUtils.buildUpdateHaFlowPathInfo;
+
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.HaFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowGenericCarrier;
 
 public class NotifyHaFlowStatsAction extends
         FlowProcessingWithHistorySupportAction<HaFlowCreateFsm, State, Event, HaFlowCreateContext> {
-    private FlowGenericCarrier carrier;
+    private final HaFlowGenericCarrier carrier;
 
-    public NotifyHaFlowStatsAction(PersistenceManager persistenceManager, FlowGenericCarrier carrier) {
+    public NotifyHaFlowStatsAction(PersistenceManager persistenceManager, HaFlowGenericCarrier carrier) {
         super(persistenceManager);
         this.carrier = carrier;
     }
@@ -35,6 +39,13 @@ public class NotifyHaFlowStatsAction extends
     @Override
     protected void perform(
             State from, State to, Event event, HaFlowCreateContext context, HaFlowCreateFsm stateMachine) {
-        //TODO notify stats https://github.com/telstra/open-kilda/issues/5182
+        haFlowRepository.findById(stateMachine.getHaFlowId())
+                .ifPresent(haFlow -> haFlow.getPaths()
+                        .forEach(haPath -> haPath.getSubPaths()
+                                .forEach(subPath -> sendUpdateHaFlowPathInfo(subPath, haFlow))));
+    }
+
+    private void sendUpdateHaFlowPathInfo(FlowPath subPath, HaFlow haFlow) {
+        carrier.sendNotifyFlowStats(buildUpdateHaFlowPathInfo(subPath, haFlow));
     }
 }

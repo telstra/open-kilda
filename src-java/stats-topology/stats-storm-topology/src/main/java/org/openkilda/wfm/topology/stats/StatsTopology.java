@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.stats;
 
 import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.FLOW_STATS_METRIC_GEN_BOLT;
+import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.GROUP_STATS_METRIC_GEN_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.METER_CFG_STATS_METRIC_GEN_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.METER_STATS_METRIC_GEN_BOLT;
 import static org.openkilda.wfm.topology.stats.StatsTopology.ComponentId.PACKET_IN_OUT_STATS_METRIC_GEN_BOLT;
@@ -48,6 +49,7 @@ import org.openkilda.wfm.topology.stats.bolts.StatsRequesterBolt;
 import org.openkilda.wfm.topology.stats.bolts.TickBolt;
 import org.openkilda.wfm.topology.stats.bolts.metrics.FlowMetricGenBolt;
 import org.openkilda.wfm.topology.stats.bolts.metrics.FlowRttMetricGenBolt;
+import org.openkilda.wfm.topology.stats.bolts.metrics.GroupStatsMetricGenBolt;
 import org.openkilda.wfm.topology.stats.bolts.metrics.MeterConfigMetricGenBolt;
 import org.openkilda.wfm.topology.stats.bolts.metrics.MeterStatsMetricGenBolt;
 import org.openkilda.wfm.topology.stats.bolts.metrics.PacketInOutMetricGenBolt;
@@ -182,6 +184,9 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         declareBolt(topologyBuilder,
                 new MeterStatsMetricGenBolt(topologyConfig.getMetricPrefix()), METER_STATS_METRIC_GEN_BOLT.name())
                 .shuffleGrouping(STATS_CACHE_BOLT.name(), CacheBolt.METER_STATS_STREAM);
+        declareBolt(topologyBuilder,
+                new GroupStatsMetricGenBolt(topologyConfig.getMetricPrefix()), GROUP_STATS_METRIC_GEN_BOLT.name())
+                .shuffleGrouping(STATS_CACHE_BOLT.name(), CacheBolt.GROUP_STATS_STREAM);
     }
 
     private void openTsdbBolt(TopologyBuilder topologyBuilder) {
@@ -190,6 +195,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
         declareBolt(topologyBuilder, kafkaBolt, STATS_OPENTSDB_BOLT.name())
                 .shuffleGrouping(PORT_STATS_METRIC_GEN_BOLT.name())
                 .shuffleGrouping(METER_STATS_METRIC_GEN_BOLT.name())
+                .shuffleGrouping(GROUP_STATS_METRIC_GEN_BOLT.name())
                 .shuffleGrouping(METER_CFG_STATS_METRIC_GEN_BOLT.name())
                 .shuffleGrouping(FLOW_STATS_METRIC_GEN_BOLT.name())
                 .shuffleGrouping(TABLE_STATS_METRIC_GEN_BOLT.name())
@@ -234,6 +240,7 @@ public class StatsTopology extends AbstractTopology<StatsTopologyConfig> {
 
         PORT_STATS_METRIC_GEN_BOLT,
         METER_STATS_METRIC_GEN_BOLT,
+        GROUP_STATS_METRIC_GEN_BOLT,
         METER_CFG_STATS_METRIC_GEN_BOLT,
         SYSTEM_RULE_STATS_METRIC_GEN_BOLT,
         FLOW_STATS_METRIC_GEN_BOLT,

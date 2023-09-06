@@ -18,6 +18,7 @@ package org.openkilda.messaging.info.stats;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
+import lombok.ToString;
 
 import java.io.Serializable;
 
@@ -25,6 +26,7 @@ import java.io.Serializable;
  * TODO: add javadoc.
  */
 @Getter
+@ToString
 public class FlowStatsEntry implements Serializable {
     @JsonProperty
     private int tableId;

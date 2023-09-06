@@ -40,7 +40,7 @@ import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
 import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowSyncService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
@@ -52,7 +52,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class HaFlowSyncHubBolt extends HubBolt implements FlowGenericCarrier {
+public class HaFlowSyncHubBolt extends HubBolt implements HaFlowGenericCarrier {
     private final HaFlowSyncConfig config;
     private final RuleManagerConfig ruleManagerConfig;
 

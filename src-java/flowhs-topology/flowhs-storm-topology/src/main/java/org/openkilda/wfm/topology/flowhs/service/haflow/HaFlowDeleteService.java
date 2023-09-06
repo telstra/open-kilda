@@ -28,7 +28,6 @@ import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingFsmRegister;
 import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingService;
@@ -38,11 +37,11 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class HaFlowDeleteService extends FlowProcessingService<HaFlowDeleteFsm, Event, HaFlowDeleteContext,
-        FlowGenericCarrier, FlowProcessingFsmRegister<HaFlowDeleteFsm>, FlowProcessingEventListener> {
+        HaFlowGenericCarrier, FlowProcessingFsmRegister<HaFlowDeleteFsm>, FlowProcessingEventListener> {
     private final HaFlowDeleteFsm.Factory fsmFactory;
 
     public HaFlowDeleteService(
-            @NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
+            @NonNull HaFlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
             @NonNull FlowResourcesManager flowResourcesManager, @NonNull RuleManager ruleManager,
             int speakerCommandRetriesLimit) {
         super(new FlowProcessingFsmRegister<>(), new FsmExecutor<>(Event.NEXT), carrier, persistenceManager);
@@ -53,7 +52,7 @@ public class HaFlowDeleteService extends FlowProcessingService<HaFlowDeleteFsm, 
     /**
      * Handles request for ha-flow delete.
      *
-     * @param key command identifier.
+     * @param key      command identifier.
      * @param haFlowId the flow to delete.
      */
     public void handleRequest(@NonNull String key, @NonNull CommandContext commandContext, @NonNull String haFlowId)
