@@ -196,6 +196,10 @@ public class KildaEntryCacheService {
                 removePathInfo.getYPointGroupId(),
                 removePathInfo.getYPointMeterId(), removePathInfo.getHaSubFlowId(),
                 removePathInfo.getYPointSwitchId());
+
+        log.info("ICHUPIN CACHE_SERVICE after remove cookieToFlow cache :{}. \n cache: {}",
+                cookieToFlow.size(), cookieToFlow);
+        System.out.println("ICHUPIN after remove" + cookieToFlow.size());
     }
 
     /**
@@ -250,6 +254,9 @@ public class KildaEntryCacheService {
                 updatePathInfo.getYPointGroupId(),
                 updatePathInfo.getYPointMeterId(), updatePathInfo.getHaSubFlowId(),
                 updatePathInfo.getYPointSwitchId());
+        log.info("ICHUPIN CACHE_SERVICE after update cookieToFlow cache :{}. \n cache: {}",
+                cookieToFlow.size(), cookieToFlow);
+        System.out.println("ICHUPIN after update" + cookieToFlow.size());
     }
 
     private void updateCacheHa(KildaEntryDescriptorHandler cacheHandler,

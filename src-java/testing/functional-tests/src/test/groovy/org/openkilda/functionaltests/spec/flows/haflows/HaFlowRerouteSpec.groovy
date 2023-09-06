@@ -1,12 +1,19 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.stats.HaFlowStats
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
+import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
+import static org.openkilda.functionaltests.model.stats.HaFlowStatsMetric.HA_FLOW_RAW_BITS
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -30,7 +37,10 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     HaFlowHelper haFlowHelper
-
+    @Autowired
+    @Shared
+    HaFlowStats haFlowStats
+    
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Valid HA-flow can be rerouted"() {
@@ -56,6 +66,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
             newPaths != oldPaths
         }
         newPaths != null
+        def timeAfterRerouting = new Date().getTime()
 
         and: "History has relevant entries about HA-flow reroute"
         // TODO when https://github.com/telstra/open-kilda/issues/5169 will be closed
@@ -68,6 +79,24 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         withPool {
             allInvolvedSwitchIds.eachParallel { SwitchId switchId ->
                 northboundV2.validateSwitch(switchId).isAsExpected()
+            }
+        }
+        
+        and: "Traffic passes through HA-Flow"
+        if (swT.isHaTraffExamAvailable()) {
+            assert haFlowHelper.getTraffExam(haFlow).run().hasTraffic()
+            statsHelper."force kilda to collect stats"()
+        }
+
+        then: "Stats are collected"
+        if (swT.isHaTraffExamAvailable()) {
+            wait(STATS_LOGGING_TIMEOUT) {
+                assert haFlowStats.of(haFlow.getHaFlowId()).get(HA_FLOW_RAW_BITS,
+                        REVERSE,
+                        haFlow.getSubFlows().shuffled().first().getEndpoint()).hasNonZeroValuesAfter(timeAfterRerouting)
+                assert haFlowStats.of(haFlow.getHaFlowId()).get(HA_FLOW_RAW_BITS,
+                        FORWARD,
+                        haFlow.getSharedEndpoint()).hasNonZeroValuesAfter(timeAfterRerouting)
             }
         }
 

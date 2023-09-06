@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,15 +13,28 @@
  *   limitations under the License.
  */
 
-package org.openkilda.testing.service.otsdb.model;
+package org.openkilda.testing.service.tsdb.model;
 
-import java.util.Collections;
+import lombok.Builder;
+import lombok.Data;
 
-public class EmptyStatsResult extends StatsResult {
-    public EmptyStatsResult() {
-        super();
-        tags = Collections.emptyMap();
-        aggregateTags = Collections.emptyList();
-        dps = Collections.emptyMap();
+import java.util.List;
+import java.util.Map;
+
+@Data
+@Builder
+public class LegacyQueryRequestDto {
+    private long start;
+    private long end;
+    private List<QueryDto> queries;
+
+    @Data
+    @Builder
+    public static class QueryDto {
+        private String aggregator;
+        private String metric;
+        private boolean rate;
+        private Map<String, String> tags;
     }
 }
+

@@ -131,8 +131,13 @@ public class DefaultServiceConfig {
         return floodlights;
     }
 
-    @Bean(name = "otsdbRestTemplate")
-    public RestTemplate otsdbRestTemplate(@Value("${opentsdb.endpoint}") String endpoint) {
+    @Bean(name = "legacyTsdbRestTemplate")
+    public RestTemplate legacyTsdbRestTemplate(@Value("${legacy.tsdb.endpoint}") String endpoint) {
+        return buildLoggingRestTemplate(endpoint);
+    }
+
+    @Bean(name = "tsdbRestTemplate")
+    public RestTemplate tsdbRestTemplate(@Value("${tsdb.endpoint}") String endpoint) {
         return buildLoggingRestTemplate(endpoint);
     }
 

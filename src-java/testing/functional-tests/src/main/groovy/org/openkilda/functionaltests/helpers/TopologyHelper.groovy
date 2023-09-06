@@ -224,6 +224,14 @@ class TopologyHelper {
         }
     }
 
+    Switch getSwitch(SwitchId id) {
+        return topology.getSwitches().find{it.getDpId() == id}
+    }
+
+    int getTraffgenPortBySwitchId(SwitchId id) {
+        return topology.getSwitches().find{it.getDpId() == id}.getTraffGens().first().getSwitchPort()
+    }
+
     private static boolean areHaPathsIntersect(subPaths1, subPaths2) {
         for (List<PathNode> subPath1 : subPaths1) {
             for (List<PathNode> subPath2 : subPaths2) {

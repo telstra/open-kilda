@@ -35,8 +35,11 @@ kafka.topic.topo.disco=kilda.topo.disco.storm
 lab-api.endpoint=http://localhost:8288
 lockkeeper.port=5001
 
-opentsdb.endpoint=http://localhost:4242
-opentsdb.metric.prefix=kilda.
+legacy.tsdb.endpoint=http://localhost:4242
+tsdb.endpoint=http://localhost:8428
+use.legacy.tsdb=false
+
+tsdb.metric.prefix=kilda.
 
 spring.profiles.active=virtual
 
