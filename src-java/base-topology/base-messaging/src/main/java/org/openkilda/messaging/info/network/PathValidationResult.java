@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
+import lombok.Singular;
 import lombok.Value;
 
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.List;
 @JsonNaming(value = PropertyNamingStrategy.SnakeCaseStrategy.class)
 public class PathValidationResult extends InfoData {
     Boolean isValid;
+    @Singular
     List<String> errors;
     String pceResponse;
 }
