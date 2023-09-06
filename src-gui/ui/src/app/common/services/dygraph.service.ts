@@ -31,85 +31,85 @@ export class DygraphService {
   constructor(private httpClient: HttpClient) {}
 
   getForwardGraphData(
-    src_switch,
-    src_port,
-    dst_switch,
-    dst_port,
-    frequency,
-    graph,
-    menu,
-    from,
-    to
+      src_switch,
+      src_port,
+      dst_switch,
+      dst_port,
+      frequency,
+      graph,
+      menu,
+      from,
+      to
   ): Observable<any[]> {
     if (graph === 'latency') {
       return this.httpClient.get<any[]>(
-        `${
-          environment.apiEndPoint
-        }/stats/isl/${src_switch}/${src_port}/${dst_switch}/${dst_port}/${from}/${to}/${frequency}/latency`
+          `${
+              environment.apiEndPoint
+          }/stats/isl/${src_switch}/${src_port}/${dst_switch}/${dst_port}/${from}/${to}/${frequency}/latency`
       );
     }
     if (graph === 'rtt') {
       return this.httpClient.get<any[]>(
-        `${
-          environment.apiEndPoint
-        }/stats/isl/${src_switch}/${src_port}/${dst_switch}/${dst_port}/${from}/${to}/${frequency}/rtt`
+          `${
+              environment.apiEndPoint
+          }/stats/isl/${src_switch}/${src_port}/${dst_switch}/${dst_port}/${from}/${to}/${frequency}/rtt`
       );
     }
 
     if (graph === 'source') {
       return this.httpClient.get<any[]>(
-        `${
-          environment.apiEndPoint
-        }/stats/switchid/${src_switch}/port/${src_port}/${from}/${to}/${frequency}/${menu}`
+          `${
+              environment.apiEndPoint
+          }/stats/switchid/${src_switch}/port/${src_port}/${from}/${to}/${frequency}/${menu}`
       );
     }
 
     if (graph === 'target') {
       return this.httpClient.get<any[]>(
-        `${
-          environment.apiEndPoint
-        }/stats/switchid/${dst_switch}/port/${dst_port}/${from}/${to}/${frequency}/${menu}`
+          `${
+              environment.apiEndPoint
+          }/stats/switchid/${dst_switch}/port/${dst_port}/${from}/${to}/${frequency}/${menu}`
       );
     }
 
     if (graph === 'isllossforward') {
       return this.httpClient.get<any[]>(
-        `${
-          environment.apiEndPoint
-        }/stats/isl/losspackets/${src_switch}/${src_port}/${dst_switch}/${dst_port}/${from}/${to}/${frequency}/${menu}`
+          `${
+              environment.apiEndPoint
+          }/stats/isl/losspackets/${src_switch}/${src_port}/${dst_switch}/${dst_port}/${from}/${to}/${frequency}/${menu}`
       );
     }
 
     if (graph === 'isllossreverse') {
       return this.httpClient.get<any[]>(
-        `${
-          environment.apiEndPoint
-        }/stats/isl/losspackets/${dst_switch}/${dst_port}/${src_switch}/${src_port}/${from}/${to}/${frequency}/${menu}`
+          `${
+              environment.apiEndPoint
+          }/stats/isl/losspackets/${dst_switch}/${dst_port}/${src_switch}/${src_port}/${from}/${to}/${frequency}/${menu}`
       );
     }
   }
   getBackwardGraphData(
-    src_switch,
-    src_port,
-    dst_switch,
-    dst_port,
-    frequency,
-    graph,
-    from,
-    to
+      src_switch,
+      src_port,
+      dst_switch,
+      dst_port,
+      frequency,
+      graph,
+      from,
+      to
   ): Observable<any[]> {
     if (graph === 'rtt') {
       return this.httpClient.get<any[]>(
-        `${
-          environment.apiEndPoint
-        }/stats/isl/${dst_switch}/${dst_port}/${src_switch}/${src_port}/${from}/${to}/${frequency}/rtt`
+          `${
+              environment.apiEndPoint
+          }/stats/isl/${dst_switch}/${dst_port}/${src_switch}/${src_port}/${from}/${to}/${frequency}/rtt`
       );
     }
     if (graph == 'latency') {
       return this.httpClient.get<any[]>(
-        `${
-          environment.apiEndPoint
-        }/stats/isl/${dst_switch}/${dst_port}/${src_switch}/${src_port}/${from}/${to}/${frequency}/latency`
+          `${
+              environment.apiEndPoint
+          }/stats/isl/${dst_switch}/${dst_port}/${src_switch}/${src_port}/${from}/${to}/${frequency}/latency`
       );
     }
 
@@ -127,9 +127,9 @@ export class DygraphService {
     const tempArray = [];
     for (let i = 0; i < metricArray.length; i++) {
       if (
-        metricArray[i].includes('bits') ||
-        metricArray[i].includes('packets') ||
-        metricArray[i].includes('bytes')
+          metricArray[i].includes('bits') ||
+          metricArray[i].includes('packets') ||
+          metricArray[i].includes('bytes')
       ) {
         tempArray.push({
           label: metricArray[i].split(':')[1],
@@ -146,8 +146,8 @@ export class DygraphService {
     const tempArray = [];
     for (let i = 0; i < metricArray.length; i++) {
       if (
-        metricArray[i].includes('bytes') ||
-        metricArray[i].includes('latency')
+          metricArray[i].includes('bytes') ||
+          metricArray[i].includes('latency')
       ) {
       } else {
         tempArray.push({
@@ -261,15 +261,14 @@ export class DygraphService {
     }
 
     if (!jsonResponse) {
-      const fDpsObject = typeof data[0] !== 'undefined' ? data[0].dps : {};
-      let fDps = [];
-      let rDps = [];
-      let rDpsObject;
-      metric1 = typeof data[0] !== 'undefined' ? data[0].metric : '';
-      if (data.length == 2) {
-        rDpsObject = typeof data[1] !== 'undefined' ? data[1].dps : {};
-        rDps = Object.keys(rDpsObject);
-        metric2 = data[1].metric;
+      const fDpsObject = data[0] && data[0].dps ? data[0].dps : {};
+      const fDps = Object.keys(fDpsObject);
+      const rDpsObject = data[1] && data[1].dps ? data[1].dps : {};
+      const rDps = Object.keys(rDpsObject);
+      metric1 = data[0] && data[0].tags && data[0].tags.direction
+          ? `${data[0].metric}(${data[0].tags.direction})` : data[0] ? data[0].metric : '';
+      metric2 = data[1] && data[1].tags && data[1].tags.direction
+          ? `${data[1].metric}(${data[1].tags.direction})` : data[1] ? data[1].metric : '';
 
       const graphDps = [...fDps, ...rDps].filter((v, i, a) => a.indexOf(v) === i).sort();
 
@@ -335,39 +334,39 @@ export class DygraphService {
   getCookieBasedData(data, type) {
     const constructedData = {};
     for (let i = 0; i < data.length; i++) {
-       const cookieId = data[i].tags && data[i].tags['cookie'] ? data[i].tags['cookie'] : null;
-       if (cookieId) {
-         const keyArray = Object.keys(constructedData);
-         if (keyArray.indexOf(cookieId) > -1) {
-           constructedData[cookieId].push(data[i]);
-         } else {
-           if (type == 'forward' && cookieId.charAt(0) == '4') {
-             constructedData[cookieId] = [];
-             constructedData[cookieId].push(data[i]);
-           } else if (type == 'reverse' && cookieId.charAt(0) == '2' ) {
-             constructedData[cookieId] = [];
-             constructedData[cookieId].push(data[i]);
-           }
-         }
-       }
-     }
+      const cookieId = data[i].tags && data[i].tags['cookie'] ? data[i].tags['cookie'] : null;
+      if (cookieId) {
+        const keyArray = Object.keys(constructedData);
+        if (keyArray.indexOf(cookieId) > -1) {
+          constructedData[cookieId].push(data[i]);
+        } else {
+          if (type == 'forward' && cookieId.charAt(0) == '4') {
+            constructedData[cookieId] = [];
+            constructedData[cookieId].push(data[i]);
+          } else if (type == 'reverse' && cookieId.charAt(0) == '2' ) {
+            constructedData[cookieId] = [];
+            constructedData[cookieId].push(data[i]);
+          }
+        }
+      }
+    }
 
-     return constructedData;
+    return constructedData;
   }
 
   getCookieDataforFlowStats(data, type) {
     const constructedData = [];
     for (let i = 0; i < data.length; i++) {
-       const cookieId = data[i].tags && data[i].tags['cookie'] ? data[i].tags['cookie'] : null;
-       if (cookieId) {
-           if (type == 'forward' && cookieId.charAt(0) == '4') {
-             constructedData.push(data[i]);
-           } else if (type == 'reverse' && cookieId.charAt(0) == '2' ) {
-             constructedData.push(data[i]);
-           }
+      const cookieId = data[i].tags && data[i].tags['cookie'] ? data[i].tags['cookie'] : null;
+      if (cookieId) {
+        if (type == 'forward' && cookieId.charAt(0) == '4') {
+          constructedData.push(data[i]);
+        } else if (type == 'reverse' && cookieId.charAt(0) == '2' ) {
+          constructedData.push(data[i]);
         }
-     }
-     return constructedData;
+      }
+    }
+    return constructedData;
   }
 
   private parseDate(date: string, offset: number): Date | null {
@@ -583,27 +582,27 @@ export class DygraphService {
           const dataValues = typeof data[j] !== 'undefined' ? data[j].dps : null;
 
           let metric = typeof data[j] !== 'undefined' ? data[j].metric : '';
-            metric = metric + '(switchid=' + data[j].tags.switchid + ', cookie=' + data[j].tags['cookie'] + ')';
-            labels.push(metric);
-            let colorCode = this.getColorCode(j, color);
-            if (cookiesChecked && typeof(cookiesChecked[data[j].tags['cookie']]) != 'undefined' && typeof(cookiesChecked[data[j].tags['cookie']][data[j].tags.switchid]) != 'undefined') {
-              colorCode = cookiesChecked[data[j].tags['cookie']][data[j].tags.switchid];
-              color.push(colorCode);
-            } else {
-              if (cookiesChecked && typeof(cookiesChecked[data[j].tags['cookie']]) != 'undefined') {
-                cookiesChecked[data[j].tags['cookie']][data[j].tags.switchid] = colorCode;
-                color.push(colorCode);
-              } else {
-                cookiesChecked[data[j].tags['cookie']] = [];
+          metric = metric + '(switchid=' + data[j].tags.switchid + ', cookie=' + data[j].tags['cookie'] + ')';
+          labels.push(metric);
+          let colorCode = this.getColorCode(j, color);
+          if (cookiesChecked && typeof(cookiesChecked[data[j].tags['cookie']]) != 'undefined' && typeof(cookiesChecked[data[j].tags['cookie']][data[j].tags.switchid]) != 'undefined') {
+            colorCode = cookiesChecked[data[j].tags['cookie']][data[j].tags.switchid];
+            color.push(colorCode);
+          } else {
+            if (cookiesChecked && typeof(cookiesChecked[data[j].tags['cookie']]) != 'undefined') {
               cookiesChecked[data[j].tags['cookie']][data[j].tags.switchid] = colorCode;
               color.push(colorCode);
-              }
+            } else {
+              cookiesChecked[data[j].tags['cookie']] = [];
+              cookiesChecked[data[j].tags['cookie']][data[j].tags.switchid] = colorCode;
+              color.push(colorCode);
+            }
 
-            }
-            if (dataValues) {
-              timestampArray = timestampArray.concat(Object.keys(dataValues));
-              dpsArray.push(dataValues);
-            }
+          }
+          if (dataValues) {
+            timestampArray = timestampArray.concat(Object.keys(dataValues));
+            dpsArray.push(dataValues);
+          }
 
         }
 
@@ -619,7 +618,7 @@ export class DygraphService {
               row.push(null);
             }
           }
-          row.unshift(new Date(Number(parseInt(timestampArray[m]) * 1000)));
+          row.unshift(new Date(Number(parseInt(timestampArray[m], 10) * 1000)));
           maxtrixArray.push(row);
         }
       }
@@ -628,9 +627,9 @@ export class DygraphService {
       const dat = new Date(endDate);
       let lastTime = dat.getTime();
       const usedDate =
-      maxtrixArray && maxtrixArray.length
-          ? new Date(maxtrixArray[maxtrixArray.length - 1][0])
-          : new Date();
+          maxtrixArray && maxtrixArray.length
+              ? new Date(maxtrixArray[maxtrixArray.length - 1][0])
+              : new Date();
       if (typeof timezone !== 'undefined' && timezone == 'UTC') {
         lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
       }
@@ -677,27 +676,27 @@ export class DygraphService {
           const dataValues = typeof data[j] !== 'undefined' ? data[j].dps : null;
 
           let metric = typeof data[j] !== 'undefined' ? data[j].metric : '';
-            metric = metric + '(flowid=' + data[j].tags['flowid'] + ')';
-            labels.push(metric);
-            let colorCode = this.getColorCode(j, color);
-            if (cookiesChecked && typeof(cookiesChecked[data[j].tags['flowid']]) != 'undefined'
-                && typeof(cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid]) != 'undefined') {
-              colorCode = cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid];
-              color.push(colorCode);
-            } else {
-              if (cookiesChecked && typeof(cookiesChecked[data[j].tags['flowid']]) != 'undefined') {
-                cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid] = colorCode;
-                color.push(colorCode);
-              } else {
-                cookiesChecked[data[j].tags['flowid']] = [];
+          metric = metric + '(flowid=' + data[j].tags['flowid'] + ')';
+          labels.push(metric);
+          let colorCode = this.getColorCode(j, color);
+          if (cookiesChecked && typeof(cookiesChecked[data[j].tags['flowid']]) != 'undefined'
+              && typeof(cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid]) != 'undefined') {
+            colorCode = cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid];
+            color.push(colorCode);
+          } else {
+            if (cookiesChecked && typeof(cookiesChecked[data[j].tags['flowid']]) != 'undefined') {
               cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid] = colorCode;
               color.push(colorCode);
-              }
+            } else {
+              cookiesChecked[data[j].tags['flowid']] = [];
+              cookiesChecked[data[j].tags['flowid']][data[j].tags.switchid] = colorCode;
+              color.push(colorCode);
             }
-            if (dataValues) {
-              timestampArray = timestampArray.concat(Object.keys(dataValues));
-              dpsArray.push(dataValues);
-            }
+          }
+          if (dataValues) {
+            timestampArray = timestampArray.concat(Object.keys(dataValues));
+            dpsArray.push(dataValues);
+          }
 
         }
 
@@ -713,7 +712,7 @@ export class DygraphService {
               row.push(null);
             }
           }
-          row.unshift(new Date(Number(parseInt(timestampArray[m]) * 1000)));
+          row.unshift(new Date(Number(parseInt(timestampArray[m], 10) * 1000)));
           maxtrixArray.push(row);
         }
       }
@@ -722,9 +721,9 @@ export class DygraphService {
       const dat = new Date(endDate);
       let lastTime = dat.getTime();
       const usedDate =
-      maxtrixArray && maxtrixArray.length
-          ? new Date(maxtrixArray[maxtrixArray.length - 1][0])
-          : new Date();
+          maxtrixArray && maxtrixArray.length
+              ? new Date(maxtrixArray[maxtrixArray.length - 1][0])
+              : new Date();
       if (typeof timezone !== 'undefined' && timezone == 'UTC') {
         lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
       }
@@ -756,7 +755,7 @@ export class DygraphService {
         if (series.isHighlighted) {
           labeledData = '<b>' + labeledData + '</b>';
         }
-         html += '<br>' + labeledData;
+        html += '<br>' + labeledData;
       }
 
     });
