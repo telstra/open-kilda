@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.northbound.dto.v2.flows.PathValidateResponse
+
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN
 import static org.openkilda.model.FlowEncapsulationType.VXLAN
 import static org.openkilda.model.PathComputationStrategy.COST
@@ -348,14 +350,14 @@ class PathHelper {
                 intersectingSwitchSize / baseFlowSwitches.size() * 100 as int,)
     }
 
-    List<String> 'get path check errors'(List<PathNode> path,
-                                         Long bandwidth,
-                                         Long latencyMs,
-                                         Long latencyTier2ms,
-                                         String diverseWithFlow,
-                                         String reuseFlowResources,
-                                         FlowEncapsulationType flowEncapsulationType = TRANSIT_VLAN,
-                                         PathComputationStrategy pathComputationStrategy = COST) {
+    PathValidateResponse getPathCheckResult(List<PathNode> path,
+                                            Long bandwidth,
+                                            Long latencyMs,
+                                            Long latencyTier2ms,
+                                            String diverseWithFlow,
+                                            String reuseFlowResources,
+                                            FlowEncapsulationType flowEncapsulationType = TRANSIT_VLAN,
+                                            PathComputationStrategy pathComputationStrategy = COST) {
         return northboundV2.checkPath(PathValidationPayload.builder()
                 .nodes(convertToPathNodePayload(path))
                 .bandwidth(bandwidth)
@@ -366,13 +368,12 @@ class PathHelper {
                 .flowEncapsulationType(convertEncapsulationType(flowEncapsulationType))
                 .pathComputationStrategy(pathComputationStrategy)
                 .build())
-                .getErrors()
     }
 
-    List<String> 'get path check errors'(List<PathNode> path,
-                                         Long bandwidth,
-                                         FlowEncapsulationType flowEncapsulationType = TRANSIT_VLAN) {
-        return 'get path check errors'(path,
+    PathValidateResponse getPathCheckResult(List<PathNode> path,
+                                    Long bandwidth,
+                                    FlowEncapsulationType flowEncapsulationType = TRANSIT_VLAN) {
+        return getPathCheckResult(path,
                 bandwidth,
                 null,
                 null,
@@ -382,8 +383,8 @@ class PathHelper {
                 COST_AND_AVAILABLE_BANDWIDTH)
     }
 
-    List<String> 'get path check errors'(List<PathNode> path) {
-        return 'get path check errors'(path,
+    PathValidateResponse getPathCheckResult(List<PathNode> path) {
+        return getPathCheckResult(path,
                 null,
                 null,
                 null,
@@ -393,11 +394,11 @@ class PathHelper {
                 COST_AND_AVAILABLE_BANDWIDTH)
     }
 
-    List<String> 'get path check errors'(List<PathNode> path,
-                                         String flowId,
-                                         Long maxLatency,
-                                         Long maxLatencyTier2 = null) {
-        return 'get path check errors'(path,
+    PathValidateResponse getPathCheckResult(List<PathNode> path,
+                                    String flowId,
+                                    Long maxLatency,
+                                    Long maxLatencyTier2 = null) {
+        return getPathCheckResult(path,
                 null,
                 maxLatency,
                 maxLatencyTier2,
@@ -407,9 +408,9 @@ class PathHelper {
                 LATENCY)
     }
 
-    List<String> 'get path check errors'(List<PathNode> path,
-                                         String flowId) {
-        return 'get path check errors'(path,
+    PathValidateResponse getPathCheckResult(List<PathNode> path,
+                                    String flowId) {
+        return getPathCheckResult(path,
                 null,
                 null,
                 null,
