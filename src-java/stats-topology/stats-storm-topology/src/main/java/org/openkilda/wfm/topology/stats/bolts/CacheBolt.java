@@ -124,10 +124,8 @@ public class CacheBolt extends AbstractBolt implements KildaEntryCacheCarrier {
         } else if (data instanceof RemoveYFlowStatsInfo) {
             cacheService.removeCached((RemoveYFlowStatsInfo) data);
         } else if (data instanceof UpdateHaFlowPathInfo) {
-            log.info("ICHUPIN CacheBolt addOrUpdateCacheHa");
             cacheService.addOrUpdateCacheHa((UpdateHaFlowPathInfo) data);
         } else if (data instanceof RemoveHaFlowPathInfo) {
-            log.info("ICHUPIN CacheBolt removeCachedHa");
             cacheService.removeCachedHa((RemoveHaFlowPathInfo) data);
         } else {
             unhandledInput(input);
