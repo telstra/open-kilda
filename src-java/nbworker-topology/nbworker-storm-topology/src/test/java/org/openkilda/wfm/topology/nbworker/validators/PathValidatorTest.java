@@ -79,6 +79,12 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
     private boolean isSetupDone;
 
+    private final Switch switch0 = Switch.builder().switchId(SWITCH_ID_0).status(SwitchStatus.ACTIVE).build();
+    private final Switch switch1 = Switch.builder().switchId(SWITCH_ID_1).status(SwitchStatus.ACTIVE).build();
+    private final Switch switch2 = Switch.builder().switchId(SWITCH_ID_2).status(SwitchStatus.ACTIVE).build();
+    private final Switch switch3 = Switch.builder().switchId(SWITCH_ID_3).status(SwitchStatus.ACTIVE).build();
+    private final Switch switch4 = Switch.builder().switchId(SWITCH_ID_4).status(SwitchStatus.ACTIVE).build();
+
     @BeforeAll
     public static void setUpOnce() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
@@ -106,11 +112,6 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
     @BeforeEach
     public void createTestTopology() {
         if (!isSetupDone) {
-            Switch switch0 = Switch.builder().switchId(SWITCH_ID_0).status(SwitchStatus.ACTIVE).build();
-            Switch switch1 = Switch.builder().switchId(SWITCH_ID_1).status(SwitchStatus.ACTIVE).build();
-            Switch switch2 = Switch.builder().switchId(SWITCH_ID_2).status(SwitchStatus.ACTIVE).build();
-            Switch switch3 = Switch.builder().switchId(SWITCH_ID_3).status(SwitchStatus.ACTIVE).build();
-            Switch switch4 = Switch.builder().switchId(SWITCH_ID_4).status(SwitchStatus.ACTIVE).build();
 
             switchRepository.add(switch0);
             switchRepository.add(switch1);
@@ -445,9 +446,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
     @Test
     public void whenDiverseWith_andNoLinkExists_validatePathReturnsError() {
-        Switch switch1 = Switch.builder().switchId(SWITCH_ID_1).build();
-        Switch switch2 = Switch.builder().switchId(SWITCH_ID_3).build();
-        createFlow("flow_1", switch1, 6, switch2, 6);
+        createFlow("flow_1", switch1, 6, switch3, 6);
 
         assertTrue(flowRepository.findById("flow_1").isPresent());
         assertFalse(flowRepository.findById("flow_1").get().getData().getPaths().isEmpty());
@@ -479,9 +478,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
     @Test
     public void whenDiverseWith_andExistsIntersection_validatePathReturnsError() {
-        Switch switch1 = Switch.builder().switchId(SWITCH_ID_1).build();
-        Switch switch2 = Switch.builder().switchId(SWITCH_ID_3).build();
-        createFlow("flow_1", switch1, 6, switch2, 6);
+        createFlow("flow_1", switch1, 6, switch3, 6);
 
         assertTrue(flowRepository.findById("flow_1").isPresent());
         assertFalse(flowRepository.findById("flow_1").get().getData().getPaths().isEmpty());
@@ -508,10 +505,6 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
     @Test
     void whenDiverseWith_andIntersectionWithGroup_validatePathReturnsAllIntersections() {
-        Switch switch1 = Switch.builder().switchId(SWITCH_ID_1).build();
-        Switch switch2 = Switch.builder().switchId(SWITCH_ID_2).build();
-        Switch switch3 = Switch.builder().switchId(SWITCH_ID_3).build();
-
         String diverseFlow1 = "diverse_1";
         String diverseFlow2 = "diverse_2";
 
