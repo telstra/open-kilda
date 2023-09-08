@@ -40,16 +40,16 @@ class LogParallelSpecsListener extends AbstractRunListener {
         log.error("Specs ran in parallel: $specsInProgress")
     }
 
-    String getSpecPath(SpecInfo spec) {
+    static String getSpecPath(SpecInfo spec) {
         return spec.reflection.name[spec.reflection.name.indexOf(".spec.") + 1..-1].replaceAll("\\.", "/") + "/"
     }
 
-    String getIterationPath(IterationInfo iteration) {
+    static String getIterationPath(IterationInfo iteration) {
         return getSpecPath(iteration.feature.spec) + iteration.displayName
                 .replaceAll(/[!@#%^&*(),.?":{}|<>\s\[\]]/, "_").truncate(200)
     }
 
-    String getCommonSpecPath(SpecInfo spec) {
+    static String getCommonSpecPath(SpecInfo spec) {
         return getSpecPath(spec) + "common"
     }
 }
