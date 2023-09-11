@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.stats.service;
 
+import static org.openkilda.model.GroupId.ROUND_TRIP_LATENCY_GROUP_ID;
+
 import org.openkilda.messaging.info.stats.GroupStatsEntry;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.share.utils.MetricFormatter;
@@ -92,8 +94,9 @@ public final class GroupStatsHandler extends BaseStatsEntryHandler {
 
     @Override
     public void handleStatsEntry(DummyGroupDescriptor descriptor) {
-        log.error("Missed cache for switch '{}' groupId '{}'", switchId, statsEntry.getGroupId());
-        throw new IllegalArgumentException(formatUnexpectedDescriptorMessage(descriptor.getClass()));
+        if (ROUND_TRIP_LATENCY_GROUP_ID.getValue() != statsEntry.getGroupId()) {
+            log.warn("Missed cache for switch '{}' groupId '{}'", switchId, statsEntry.getGroupId());
+        }
     }
 
     @Override

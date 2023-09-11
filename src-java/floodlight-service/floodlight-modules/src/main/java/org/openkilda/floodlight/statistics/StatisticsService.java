@@ -251,7 +251,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
             OFGroupStatsRequest groupStatsRequest = factory
                     .buildGroupStatsRequest()
-                    .setGroup(OFGroup.ANY)
+                    .setGroup(OFGroup.ALL)
                     .build();
 
             logger.info("Getting group stats for switch={} OF-xid:{}", iofSwitch.getId(), groupStatsRequest.getXid());
