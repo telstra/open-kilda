@@ -20,7 +20,7 @@ zookeeper.connect_string = {{ getv "/kilda_zookeeper_hosts"}}/{{ getv "/kilda_zo
 kafka.bootstrap.server={{ getv "/kilda_kafka_hosts" }}
 kafka.bootstrap.server.internal={{ getv "/kilda_kafka_hosts" }}
 legacy.tsdb.endpoint=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
-tsdb.endpoint=http://{{ getv "/kilda_victoriametrics_hosts" }}:{{ getv "/kilda_victoriametrics_port" }}{{ getv "kilda_tests_victoriametrics_query_path" }}
+tsdb.endpoint=http://{{ getv "/kilda_victoriametrics_hosts" }}:{{ getv "/kilda_victoriametrics_write_port" }}{{ getv "kilda_tests_victoriametrics_query_path" }}
 grpc.endpoint={{ getv "/kilda_grpc_endpoint" }}:{{ getv "/kilda_grpc_rest_port" }}
 {{end}}
 northbound.username={{ getv "/kilda_northbound_username" }}

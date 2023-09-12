@@ -34,6 +34,9 @@ nb.base.url=http://northbound.pendev:8080/api
 opentsdb.base.url=http://opentsdb.pendev:4242
 opentsdb.metric.prefix = kilda.
 
+#VICTORIA METRICS Base URL
+victoria.base.url=http://victoriametrics.pendev:8428/prometheus
+
 #Kilda username and password
 kilda.username = kilda
 kilda.password = kilda

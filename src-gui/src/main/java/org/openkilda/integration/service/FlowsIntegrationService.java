@@ -15,6 +15,7 @@
 
 package org.openkilda.integration.service;
 
+import org.openkilda.config.ApplicationProperties;
 import org.openkilda.constants.IConstants;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.integration.converter.FlowConverter;
@@ -30,12 +31,10 @@ import org.openkilda.model.FlowHistory;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
 import org.openkilda.service.ApplicationService;
-import org.openkilda.utility.ApplicationProperties;
 import org.openkilda.utility.IoUtil;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.apache.http.HttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +46,6 @@ import org.springframework.web.util.UriUtils;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-
 import java.util.List;
 
 /**
@@ -159,7 +157,7 @@ public class FlowsIntegrationService {
     public List<FlowV2> getAllFlowList() {
         try {
             HttpResponse response = restClientManager.invoke(
-                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW_V2, HttpMethod.GET, 
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_FLOW_V2, HttpMethod.GET,
                     "", "application/json", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponseList(response, FlowV2.class);
@@ -278,7 +276,7 @@ public class FlowsIntegrationService {
      * Update flow.
      *
      * @param flowId the flow id
-     * @param flow the flow
+     * @param flow   the flow
      * @return the flow
      */
     public FlowV2 updateFlow(String flowId, FlowV2 flow) {
@@ -325,10 +323,10 @@ public class FlowsIntegrationService {
             throw new IntegrationException(e);
         }
     }
-    
+
     /**
      * Re sync flow.
-     * 
+     *
      * @param flowId the flow id
      * @return
      */
@@ -350,11 +348,11 @@ public class FlowsIntegrationService {
             throw new IntegrationException(e);
         }
     }
-    
+
     /**
      * Flow ping.
      *
-     * @param flow the flow
+     * @param flow   the flow
      * @param flowId the flow id
      * @return the string
      */
@@ -377,20 +375,20 @@ public class FlowsIntegrationService {
             throw new IntegrationException(e);
         }
     }
-    
+
     /**
      * Gets the flow history by id.
      *
      * @param flowId the flow id
      * @return the flow history by id
      */
-    public List<FlowHistory> getFlowHistoryById(final String flowId, String timeFrom, String timeTo) 
+    public List<FlowHistory> getFlowHistoryById(final String flowId, String timeFrom, String timeTo)
             throws IntegrationException {
         try {
             UriComponentsBuilder builder = UriComponentsBuilder
-                        .fromHttpUrl(applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
-                                .GET_FLOW_HISTORY.replace("{flow_id}",
-                                UriUtils.encodePath(flowId, "UTF-8")));
+                    .fromHttpUrl(applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
+                            .GET_FLOW_HISTORY.replace("{flow_id}",
+                                    UriUtils.encodePath(flowId, "UTF-8")));
             builder = setFlowTimestamp(timeFrom, timeTo, builder);
             String fullUri = builder.build().toUriString();
             HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
@@ -418,14 +416,14 @@ public class FlowsIntegrationService {
     public FlowConnectedDevice getFlowConnectedDevice(String flowId, String timeLastSeen) {
         try {
             UriComponentsBuilder builder = UriComponentsBuilder
-                        .fromHttpUrl(applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
-                                .GET_FLOW_CONNECTED_DEVICE.replace("{flow_id}", flowId));
+                    .fromHttpUrl(applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
+                            .GET_FLOW_CONNECTED_DEVICE.replace("{flow_id}", flowId));
             if (timeLastSeen != null) {
                 builder.queryParam("since", timeLastSeen);
             }
             String fullUri = builder.build().toUriString();
             HttpResponse response = restClientManager.invoke(fullUri, HttpMethod.GET, "", "",
-                        applicationService.getAuthHeader());
+                    applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponse(response, FlowConnectedDevice.class);
             }
@@ -433,33 +431,30 @@ public class FlowsIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while getting flow connected device: " + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } 
+        }
     }
-    
+
     /**
      * This Method is used to set flow timestamp.
-     * 
-     * @param timeFrom
-     *            the timeFrom
-     * @param timeTo
-     *            the timeTo
-     * @param builder
-     *            the uri component builder
+     *
+     * @param timeFrom the timeFrom
+     * @param timeTo   the timeTo
+     * @param builder  the uri component builder
      * @return UriComponentsBuilder
      */
-    private UriComponentsBuilder setFlowTimestamp(final String timeFrom, final String timeTo, 
-            final UriComponentsBuilder builder) {
+    private UriComponentsBuilder setFlowTimestamp(final String timeFrom, final String timeTo,
+                                                  final UriComponentsBuilder builder) {
         try {
             if (timeFrom != null) {
                 builder.queryParam("timeFrom", timeFrom);
             }
             if (timeTo != null) {
                 builder.queryParam("timeTo", timeTo);
-            }  
+            }
         } catch (Exception e) {
             throw new ContentNotFoundException();
         }
         return builder;
     }
-            
+
 }

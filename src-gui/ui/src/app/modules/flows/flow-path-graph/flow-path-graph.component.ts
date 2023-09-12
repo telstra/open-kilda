@@ -180,27 +180,26 @@ export class FlowPathGraphComponent implements OnInit, AfterViewInit, OnDestroy 
         const cookieBasedData = this.dygraphService.getCookieBasedData(response, this.type);
         this.cookieData = Object.keys(cookieBasedData);
         const data = (dataforgraph && dataforgraph.length) ? dataforgraph : [] ;
-        this.plotFlowPathGraph(data, fromDate, toDate, this.type, formData.timezone, this.selectedCookie);
+        this.plotFlowPathGraph(data, fromDate, toDate, this.type, formData.timezone);
       },
       error => {
         const dataforgraph = this.dygraphService.getCookieDataforFlowStats([], this.type);
         const cookieBasedData = this.dygraphService.getCookieBasedData([], this.type);
         this.cookieData = Object(cookieBasedData).keys;
         const data = (dataforgraph && dataforgraph.length) ? dataforgraph : [];
-        this.plotFlowPathGraph(data, fromDate, toDate, this.type, formData.timezone, this.selectedCookie);
+        this.plotFlowPathGraph(data, fromDate, toDate, this.type, formData.timezone);
       }
     );
   }
 
 
-  plotFlowPathGraph(data, startDate, endDate, type, timezone, loadfromCookie) {
+  plotFlowPathGraph(data, startDate, endDate, type, timezone) {
     const graph_data = this.dygraphService.computeFlowPathGraphData(
       data,
       startDate,
       endDate,
       type,
-      timezone,
-      loadfromCookie
+      timezone
     );
     const graphData =  graph_data['data'];
     const labels = graph_data['labels'];
