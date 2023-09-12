@@ -25,6 +25,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.service.northbound.model.HaFlowActionType
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
@@ -69,7 +70,18 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def timeAfterRerouting = new Date().getTime()
 
         and: "History has relevant entries about HA-flow reroute"
-        // TODO when https://github.com/telstra/open-kilda/issues/5169 will be closed
+        def historyRecord = haFlowHelper.getHistory(haFlow.haFlowId).getEntriesByType(HaFlowActionType.REROUTE)
+
+        verifyAll {
+            historyRecord.size() == 1
+            historyRecord[0].haFlowId == haFlow.haFlowId
+            historyRecord[0].taskId
+            historyRecord[0].timestampIso
+
+            historyRecord[0].payloads.action.find {it == HaFlowActionType.REROUTE.getPayloadLastAction()}
+            historyRecord[0].payloads.every {it.timestampIso }
+            historyRecord.dumps.flatten().isEmpty()
+        }
 
         and: "HA-flow passes validation"
         northboundV2.validateHaFlow(haFlow.haFlowId).asExpected
@@ -131,7 +143,6 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         then: "The HA-flow goes to 'Down' status"
         wait(rerouteDelay + WAIT_OFFSET) {
             haFlowHelper.assertHaFlowAndSubFlowStatuses(haFlow.haFlowId, FlowState.DOWN)
-            // TODO check failed reroute in history https://github.com/telstra/open-kilda/issues/5169
         }
 
         when: "Bring all ports up on the shared switch that are involved in the alternative paths"
@@ -187,7 +198,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
 
         and: "All ISL ports on the shared switch that are involved in the current HA-flow paths are down"
         def alternativePaths = allPotentialPaths.unique { it.first() }
-                .findAll { !currentPathNodes.contains(it) }
+                .findAll { !currentPathNodes.contains(it.first()) }
 
         withPool {
             alternativePaths*.first().each {
@@ -208,7 +219,9 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         then: "The HA-flow goes to 'Down' status"
         wait(rerouteDelay + WAIT_OFFSET) {
             haFlowHelper.assertHaFlowAndSubFlowStatuses(haFlow.haFlowId, FlowState.DOWN)
-            // TODO check failed reroute in history https://github.com/telstra/open-kilda/issues/5169
+            haFlowHelper.getHistory(haFlow.haFlowId).getEntriesByType(HaFlowActionType.REROUTE_FAIL)[0].payloads.find {
+                it.action == HaFlowActionType.REROUTE_FAIL.payloadLastAction
+            }
         }
 
         and: "All involved switches pass switch validation"
