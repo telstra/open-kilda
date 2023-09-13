@@ -5,6 +5,7 @@ import static FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_MIRROR_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ONLY_IN_DB
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
@@ -205,12 +206,13 @@ class FlowHelperV2 {
         return updateFlow(flowId, toV2(flow))
     }
 
-    FlowResponseV2 partialUpdate(String flowId, FlowPatchV2 flow) {
+    FlowResponseV2 partialUpdate(String flowId, FlowPatchV2 flow, boolean isUpdateConsecutive = true) {
         log.debug("Updating flow '${flowId}'(partial update)")
+        String action = isUpdateConsecutive ? UPDATE_SUCCESS : PARTIAL_UPDATE_ONLY_IN_DB
         def response = northboundV2.partialUpdate(flowId, flow)
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             assert northboundV2.getFlowStatus(flowId).status == FlowState.UP
-            assert northbound.getFlowHistory(flowId).last().payload.last().action == UPDATE_SUCCESS
+            assert northbound.getFlowHistory(flowId).last().payload.last().action == action
         }
         return response
     }
