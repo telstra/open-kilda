@@ -6,6 +6,7 @@ import datetime
 import string
 
 from kilda.tsdb_dump_restore import utils
+from kilda.tsdb_dump_restore.constants import AGGREGATE_FUNCTION
 
 
 class _StatsClientBase:
@@ -101,7 +102,7 @@ class OpenTSDBStatsClient(_StatsClientBase):
         if not tags:
             tags = dict()
 
-        agg_func = 'max'
+        agg_func = AGGREGATE_FUNCTION
         if is_rate:
             agg_func = 'rate'
 
