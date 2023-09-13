@@ -213,6 +213,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         !linkPropsAreDeleted && northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
+    @Tidy
     @Tags(SMOKE)
     def "Newly discovered link gets cost and max bandwidth from link props"() {
         given: "An active ISL"

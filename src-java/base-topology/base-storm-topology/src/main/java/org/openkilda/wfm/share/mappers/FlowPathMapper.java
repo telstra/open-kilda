@@ -24,6 +24,7 @@ import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.NetworkEndpoint;
 import org.openkilda.model.PathSegment;
 
@@ -86,6 +87,21 @@ public abstract class FlowPathMapper {
      * Convert {@link FlowPath} to {@link PathNodePayload}.
      */
     public List<PathNodePayload> mapToPathNodes(Flow flow, FlowPath flowPath) {
+        FlowEndpoint ingress = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
+        FlowEndpoint egress = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
+
+        List<PathSegment> pathSegments = flowPath.getSegments();
+        return mapToPathNodes(ingress, pathSegments, egress);
+    }
+
+    /**
+     * Maps a {@link HaFlow} and a {@link FlowPath} to a list of {@link PathNodePayload} objects.
+     *
+     * @param flow the {@link HaFlow} object to map
+     * @param flowPath the {@link FlowPath} object to map
+     * @return a list of {@link PathNodePayload} objects representing the mapped path nodes
+     */
+    public List<PathNodePayload> mapToPathNodes(HaFlow flow, FlowPath flowPath) {
         FlowEndpoint ingress = FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint();
         FlowEndpoint egress = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint();
 

@@ -15,19 +15,23 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.actions;
 
+import static org.openkilda.wfm.topology.flowhs.utils.HaFlowUtils.buildRemoveHaFlowPathInfo;
+
+import org.openkilda.model.FlowPath;
+import org.openkilda.model.HaFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HaFlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowGenericCarrier;
 
 public class NotifyHaFlowStatsAction extends
         HaFlowProcessingWithHistorySupportAction<HaFlowDeleteFsm, State, Event, HaFlowDeleteContext> {
-    private FlowGenericCarrier carrier;
+    private final HaFlowGenericCarrier carrier;
 
-    public NotifyHaFlowStatsAction(PersistenceManager persistenceManager, FlowGenericCarrier carrier) {
+    public NotifyHaFlowStatsAction(PersistenceManager persistenceManager, HaFlowGenericCarrier carrier) {
         super(persistenceManager);
         this.carrier = carrier;
     }
@@ -35,6 +39,13 @@ public class NotifyHaFlowStatsAction extends
     @Override
     protected void perform(
             State from, State to, Event event, HaFlowDeleteContext context, HaFlowDeleteFsm stateMachine) {
-        //TODO notify stats https://github.com/telstra/open-kilda/issues/5182
+        haFlowRepository.findById(stateMachine.getHaFlowId())
+                .ifPresent(haFlow -> haFlow.getPaths()
+                        .forEach(haPath -> haPath.getSubPaths()
+                                .forEach(subPath -> sendRemoveHaFlowPathInfo(haFlow, subPath))));
+    }
+
+    private void sendRemoveHaFlowPathInfo(HaFlow haFlow, FlowPath subPath) {
+        carrier.sendNotifyFlowStats(buildRemoveHaFlowPathInfo(subPath, haFlow));
     }
 }

@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -73,5 +73,14 @@ public class FermaFlowStatsRepository
     @Override
     protected FlowStatsData doDetach(FlowStats entity, FlowStatsFrame frame) {
         return FlowStatsCloner.INSTANCE.deepCopy(frame);
+    }
+
+    @Override
+    public void removeByFlowId(String flowId) {
+        framedGraph().traverse(g -> g.V()
+                .hasLabel(FlowStatsFrame.FRAME_LABEL)
+                .has(FlowStatsFrame.FLOW_ID_PROPERTY, flowId))
+                .toListExplicit(FlowStatsFrame.class)
+                .forEach(this::doRemove);
     }
 }

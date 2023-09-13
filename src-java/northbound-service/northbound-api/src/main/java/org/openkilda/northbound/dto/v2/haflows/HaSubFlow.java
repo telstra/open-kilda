@@ -38,4 +38,18 @@ public class HaSubFlow {
 
     String timeCreate;
     String timeUpdate;
+
+    Long forwardLatency;
+    Long reverseLatency;
+    String latencyLastModifiedTime;
+
+    public HaSubFlow(String flowId, BaseFlowEndpointV2 endpoint, String status, String description, String timeCreate,
+                     String timeUpdate) {
+        this.flowId = flowId;
+        this.endpoint = endpoint;
+        this.status = status;
+        this.description = description;
+        this.timeCreate = timeCreate;
+        this.timeUpdate = timeUpdate;
+    }
 }

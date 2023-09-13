@@ -9,57 +9,57 @@ import { CommonService } from '../../services/common.service';
 })
 export class SidebarComponent implements OnInit {
 
-  currentUrl :any = '';
-  activeSubmenu :any = '';
+  currentUrl: any = '';
+  activeSubmenu: any = '';
   constructor(private router: Router, public commonService: CommonService) {
-    this.router.events.subscribe((_:NavigationEnd) => {
+    this.router.events.subscribe((_: NavigationEnd) => {
       this.currentUrl = router.url;
-      if(!this.currentUrl.includes('/flows')){
+      if (!this.currentUrl.includes('/flows')) {
         localStorage.removeItem('flows');
         localStorage.removeItem('haslinkStoreSetting');
         localStorage.removeItem('linkStoreSetting');
         localStorage.removeItem('linkStoreStatusList');
-        localStorage.removeItem('activeFlowStatusFilter'); 
-        //localStorage.removeItem('filterFlag');          
-        localStorage.removeItem('flowsinventory');       
+        localStorage.removeItem('activeFlowStatusFilter');
+        // localStorage.removeItem('filterFlag');
+        localStorage.removeItem('flowsinventory');
       }
-      if(!this.currentUrl.includes('/isl')) {
+      if (!this.currentUrl.includes('/isl')) {
         localStorage.removeItem('linkData');
-        localStorage.removeItem('ISL_LIST');  
+        localStorage.removeItem('ISL_LIST');
       }
-      if(!this.currentUrl.includes('/topology')) {
+      if (!this.currentUrl.includes('/topology')) {
         localStorage.removeItem('notification_data');
-      } 
-      if(!this.currentUrl.includes('/switches')) {
+      }
+      if (!this.currentUrl.includes('/switches')) {
         localStorage.removeItem('SWITCHES_LIST');
         localStorage.removeItem('SWITCHES_LIST_ALL');
-        localStorage.removeItem('switchPortDetail');  
-      }  
+        localStorage.removeItem('switchPortDetail');
+      }
 
-      if(!this.currentUrl.includes('/port')) {
+      if (!this.currentUrl.includes('/port')) {
         localStorage.removeItem('portFlows');
         localStorage.removeItem('portFlowInventory');
-      }  
-     
+      }
+
       this.commonService.setCurrentUrl(router.url);
-      
+
     });
   }
 
   ngOnInit() {}
 
 
-  urlmatch(url){
+  urlmatch(url) {
      return this.currentUrl.includes(url);
   }
 
-  toggleSubmenu(id){
-    if(this.activeSubmenu == id){
+  toggleSubmenu(id) {
+    if (this.activeSubmenu == id) {
       this.activeSubmenu = '';
-    }else{
+    } else {
       this.activeSubmenu = id;
     }
-    
+
   }
 
   closeSidebar() {
@@ -69,7 +69,7 @@ export class SidebarComponent implements OnInit {
 
   openSidebar() {
     jQuery('body').addClass('mini-sidebar');
-    localStorage.setItem('sidebarToggled','1');
+    localStorage.setItem('sidebarToggled', '1');
   }
-  
+
 }

@@ -135,12 +135,6 @@ class ConfigurationSpec extends HealthCheckSpecification {
         }
         northbound.deleteSwitch(sw.dpId, false)
 
-        and: "Update the multi table field in kilda configuration"
-        def newMultiTableValue = !initConf.useMultiTable
-        northbound.updateKildaConfiguration(northbound.getKildaConfiguration().tap {
-            it.useMultiTable = newMultiTableValue
-        })
-
         and: "New switch connects"
         switchHelper.reviveSwitch(sw, blockData, false)
         withPool {
@@ -164,7 +158,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         portDiscoveryIsEnabled = true
 
         then: "Switch is added with switch property according to the kilda configuration"
-        northbound.getSwitchProperties(sw.dpId).multiTable == newMultiTableValue
+        northbound.getSwitchProperties(sw.dpId).multiTable == initConf.useMultiTable
 
         cleanup: "Revert system to origin state"
         blockData && !switchIsActivated && switchHelper.reviveSwitch(sw, blockData, false)
@@ -178,7 +172,6 @@ class ConfigurationSpec extends HealthCheckSpecification {
                 }
             }
         }
-        initConf && northbound.updateKildaConfiguration(initConf)
         initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
         wait(RULES_INSTALLATION_TIME) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()

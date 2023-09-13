@@ -166,6 +166,7 @@ class SwitchSyncSpec extends BaseSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     def "Able to synchronize switch (delete excess rules and meters)"() {
         given: "Two active not neighboring switches"
         def switches = topology.getActiveSwitches()
@@ -284,6 +285,7 @@ class SwitchSyncSpec extends BaseSpecification {
 
         cleanup: "Delete the flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
+        involvedSwitches && switchHelper.synchronize(involvedSwitches.dpId.asList())
     }
 
     @Tidy
@@ -399,6 +401,7 @@ class SwitchSyncSpec extends BaseSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tidy
     @Tags([VIRTUAL, LOW_PRIORITY])
     def "Able to synchronize misconfigured default meter"() {
         given: "An active switch with valid default rules and one misconfigured default meter"
@@ -432,6 +435,9 @@ class SwitchSyncSpec extends BaseSpecification {
                 it.meters.proper.find { it.meterId == broadcastCookieMeterId }.rate == meterToManipulate.rate
             }
         }
+
+        cleanup:
+        sw && switchHelper.synchronize([sw.dpId])
     }
 
     @Tidy

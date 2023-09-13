@@ -11,16 +11,16 @@ export interface Flow {
     description?: string;
     target_switch_name: string;
     source_switch_name: string;
-    dummytest:string;
-    diverse_with:any;
-    'last-updated':string,
-    created:string,
-    allocate_protected_path:boolean,
-    'ignore-bandwidth':boolean,
-    'controller-flow':boolean,
-    'inventory-flow':boolean,
-    pinned:boolean,
-    'encapsulation-type':string,
-    'path-computation-strategy':string,
-    'periodic-pings':string,
+    dummytest: string;
+    diverse_with: any;
+    'last-updated': string;
+    created: string;
+    allocate_protected_path: boolean;
+    'ignore-bandwidth': boolean;
+    'controller-flow': boolean;
+    'inventory-flow': boolean;
+    pinned: boolean;
+    'encapsulation-type': string;
+    'path-computation-strategy': string;
+    'periodic-pings': string;
 }

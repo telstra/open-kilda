@@ -1,111 +1,111 @@
-import { Component, OnInit, OnChanges } from "@angular/core";
+import { Component, OnInit, OnChanges } from '@angular/core';
 import {
   Router,
   ActivatedRoute,
   NavigationEnd,
   Params,
   PRIMARY_OUTLET
-} from "@angular/router";
-import { filter } from "rxjs/operators";
-import { Location } from "@angular/common";
+} from '@angular/router';
+import { filter } from 'rxjs/operators';
+import { Location } from '@angular/common';
 
 interface IBreadcrumb {
   label: string;
   params?: Params;
-  url: string,
-  links: any,
+  url: string;
+  links: any;
 }
 
 @Component({
-  selector: "app-breadcrumb",
-  templateUrl: "./breadcrumb.component.html",
-  styleUrls: ["./breadcrumb.component.css"]
+  selector: 'app-breadcrumb',
+  templateUrl: './breadcrumb.component.html',
+  styleUrls: ['./breadcrumb.component.css']
 })
 export class BreadcrumbComponent implements OnInit {
   public breadcrumbs: IBreadcrumb[];
-  public currentRoute : any;
-  constructor(private activatedRoute: ActivatedRoute, private router: Router,private location:Location) {
+  public currentRoute: any;
+  constructor(private activatedRoute: ActivatedRoute, private router: Router, private location: Location) {
     this.breadcrumbs = [];
   }
 
   ngOnInit() {
-    const ROUTE_DATA_BREADCRUMB: string = "breadcrumb";
+    const ROUTE_DATA_BREADCRUMB = 'breadcrumb';
     this.router.events
       .pipe(filter(event => event instanceof NavigationEnd)) .pipe(filter(event => event instanceof NavigationEnd))
       .subscribe(event => {
         // set breadcrumbs
-        let tempRoute : any = event;
+        const tempRoute: any = event;
         this.currentRoute = tempRoute.url;
-        let root: ActivatedRoute = this.activatedRoute.root;
+        const root: ActivatedRoute = this.activatedRoute.root;
         this.breadcrumbs = this.filterBreadCrumbs(this.getBreadcrumbs(root));
-      });  
+      });
   }
 
   private getBreadcrumbs(
     route: ActivatedRoute,
-    url: string = "",
+    url: string = '',
     breadcrumbs: IBreadcrumb[] = []
   ): IBreadcrumb[] {
-    const ROUTE_DATA_BREADCRUMB: string = "breadcrumb";
+    const ROUTE_DATA_BREADCRUMB = 'breadcrumb';
 
     // get the child routes
-    let children: ActivatedRoute[] = route.children;
+    const children: ActivatedRoute[] = route.children;
 
-    //return if there are no more children
+    // return if there are no more children
     if (children.length === 0) {
       return breadcrumbs;
     }
 
-    //iterate over each children
-    for (let child of children) {
-      //verify primary route
+    // iterate over each children
+    for (const child of children) {
+      // verify primary route
       if (child.outlet !== PRIMARY_OUTLET) {
         continue;
       }
 
-      //verify the custom data property "breadcrumb" is specified on the route
+      // verify the custom data property "breadcrumb" is specified on the route
       if (!child.snapshot.data.hasOwnProperty(ROUTE_DATA_BREADCRUMB)) {
         return this.getBreadcrumbs(child, url, breadcrumbs);
       }
-      //get the route's URL segment
-      let routeURL: string = child.snapshot.url
+      // get the route's URL segment
+      const routeURL: string = child.snapshot.url
         .map(segment => segment.path)
-        .join("/");
+        .join('/');
 
-      //append route URL to URL
+      // append route URL to URL
       url += `/${routeURL}`;
 
-      let patt = new RegExp("{[a-z]+}");
+      const patt = new RegExp('{[a-z]+}');
       let breadcrumbLabel = child.snapshot.data[ROUTE_DATA_BREADCRUMB];
 
       let breadcrumbLinks = [];
 
-      if(typeof child.snapshot.data.links !== 'undefined' ){
+      if (typeof child.snapshot.data.links !== 'undefined' ) {
         breadcrumbLinks = child.snapshot.data.links;
       }
 
       /** manipulating breadcrumbs for dynamic params */
-      let dynamicBreadCrumb = patt.test(
+      const dynamicBreadCrumb = patt.test(
         child.snapshot.data[ROUTE_DATA_BREADCRUMB]
       );
 
       if (dynamicBreadCrumb) {
-        for (let param in child.snapshot.params) {
-          let re = new RegExp("{" + param + "}", "g");
+        for (const param in child.snapshot.params) {
+          const re = new RegExp('{' + param + '}', 'g');
           breadcrumbLabel = breadcrumbLabel.replace(
             re,
             child.snapshot.params[param]
           );
-          if(breadcrumbLinks.length > 0){
-            breadcrumbLinks.forEach((v,i)=>{
-             v.link=v.link.replace(re, child.snapshot.params[param]);
+          if (breadcrumbLinks.length > 0) {
+            breadcrumbLinks.forEach((v, i) => {
+             v.link = v.link.replace(re, child.snapshot.params[param]);
              breadcrumbLinks[i] = v;
             });
           }
         }
       }
 
-      let breadcrumb: IBreadcrumb = {
+      const breadcrumb: IBreadcrumb = {
         label: breadcrumbLabel,
         params: child.snapshot.params,
         url: url,
@@ -113,27 +113,27 @@ export class BreadcrumbComponent implements OnInit {
       };
       breadcrumbs.push(breadcrumb);
 
-      //recursive
+      // recursive
       return this.getBreadcrumbs(child, url, breadcrumbs);
     }
-    //we should never get here, but just in case
+    // we should never get here, but just in case
     return breadcrumbs;
   }
 
-  private filterBreadCrumbs(breadcrumbs){
-      return breadcrumbs.filter(element=>{
-        if(element.url.includes('switches') && element.url.includes('details')){
-          let retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON')) || null;
-          if(retrievedSwitchObject && retrievedSwitchObject.switch_id && element.label == retrievedSwitchObject.switch_id ){
+  private filterBreadCrumbs(breadcrumbs) {
+      return breadcrumbs.filter(element => {
+        if (element.url.includes('switches') && element.url.includes('details')) {
+          const retrievedSwitchObject = JSON.parse(localStorage.getItem('switchDetailsJSON')) || null;
+          if (retrievedSwitchObject && retrievedSwitchObject.switch_id && element.label == retrievedSwitchObject.switch_id ) {
             element.label = retrievedSwitchObject.name || retrievedSwitchObject.switch_name;
           }
         }
         return element.label;
-      })
+      });
 
   }
 
-  
 
- 
+
+
 }

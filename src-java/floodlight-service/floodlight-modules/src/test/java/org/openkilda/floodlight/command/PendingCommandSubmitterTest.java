@@ -81,8 +81,6 @@ public class PendingCommandSubmitterTest extends EasyMockSupport {
         LinkedList<ProcessorTask> tasks = new LinkedList<>(initialTasks);
         expect(verifyBatch.getTasksBatch()).andReturn(tasks);
 
-        commandProcessor.markCompleted(tasks.get(0));
-
         replayAll();
         execute();
 
@@ -103,8 +101,6 @@ public class PendingCommandSubmitterTest extends EasyMockSupport {
                 new ProcessorTask(createMock(Command.class), createPendingFuture(2)));
         LinkedList<ProcessorTask> tasks = new LinkedList<>(initialTasks);
         expect(verifyBatch.getTasksBatch()).andReturn(tasks);
-
-        commandProcessor.markCompleted(tasks.get(0));
 
         replayAll();
         execute();
@@ -129,8 +125,6 @@ public class PendingCommandSubmitterTest extends EasyMockSupport {
         LinkedList<ProcessorTask> tasks = new LinkedList<>();
         tasks.add(new ProcessorTask(initiator, pending));
         expect(verifyBatch.getTasksBatch()).andReturn(tasks);
-
-        commandProcessor.markCompleted(tasks.get(0));
 
         replayAll();
         execute();
@@ -168,9 +162,6 @@ public class PendingCommandSubmitterTest extends EasyMockSupport {
         tasks.add(new ProcessorTask(createMock(Command.class), iter1Cancel));
         tasks.add(new ProcessorTask(createMock(Command.class), iter0Cancel));
         expect(verifyBatch.getTasksBatch()).andReturn(tasks);
-
-        commandProcessor.markCompleted(tasks.get(1));
-        commandProcessor.markCompleted(tasks.get(0));
 
         replayAll();
         execute();

@@ -253,7 +253,9 @@ public class OfBatchExecutor {
         if (!hasFlows) {
             return;
         }
+        Set<UUID> unprocessedUuids = new HashSet<>();
         try {
+            unprocessedUuids.addAll(holder.getAllFlowUuids());
             List<FlowSpeakerData> switchFlows = flowStats.get();
             Map<Long, Long> cookieCounts = switchFlows.stream()
                     .map(v -> v.getCookie().getValue())
@@ -280,10 +282,11 @@ public class OfBatchExecutor {
                             }
                         }
                     }
+                    unprocessedUuids.remove(expectedFlow.getUuid());
                 }
             }
         } catch (Exception e) {
-            holder.otherFail("Failed to verify flows for message", e);
+            holder.otherFail("Failed to verify flows for message", e, unprocessedUuids);
         }
     }
 
@@ -292,7 +295,9 @@ public class OfBatchExecutor {
         if (!hasMeters) {
             return;
         }
+        Set<UUID> unprocessedUuids = new HashSet<>();
         try {
+            unprocessedUuids.addAll(holder.getAllMeterUuids());
             List<MeterSpeakerData> switchMeters = meterStats.get();
 
             for (MeterSpeakerData switchMeter : switchMeters) {
@@ -308,10 +313,11 @@ public class OfBatchExecutor {
                                             + "Switch features: %s.", expectedMeter, switchMeter, switchFeatures));
                         }
                     }
+                    unprocessedUuids.remove(expectedMeter.getUuid());
                 }
             }
         } catch (Exception e) {
-            holder.otherFail("Failed to verify meters for message", e);
+            holder.otherFail("Failed to verify meters for message", e, unprocessedUuids);
         }
     }
 
@@ -320,7 +326,9 @@ public class OfBatchExecutor {
         if (!hasGroups) {
             return;
         }
+        Set<UUID> unprocessedUuids = new HashSet<>();
         try {
+            unprocessedUuids.addAll(holder.getAllGroupUuids());
             List<GroupSpeakerData> switchGroups = groupStats.get();
             for (GroupSpeakerData switchGroup : switchGroups) {
                 GroupSpeakerData expectedGroup = holder.getByGroupId(switchGroup.getGroupId());
@@ -335,10 +343,11 @@ public class OfBatchExecutor {
                                             expectedGroup, switchGroup));
                         }
                     }
+                    unprocessedUuids.remove(expectedGroup.getUuid());
                 }
             }
         } catch (Exception e) {
-            holder.otherFail("Failed to verify groups for message", e);
+            holder.otherFail("Failed to verify groups for message", e, unprocessedUuids);
         }
     }
 

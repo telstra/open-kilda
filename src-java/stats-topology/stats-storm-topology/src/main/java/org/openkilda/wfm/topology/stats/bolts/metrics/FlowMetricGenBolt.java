@@ -27,11 +27,15 @@ import org.openkilda.wfm.topology.stats.service.AnyFlowStatsEntryHandler;
 import org.openkilda.wfm.topology.stats.service.FlowEndpointStatsEntryHandler;
 import org.openkilda.wfm.topology.stats.service.TimeSeriesMeterEmitter;
 
+import com.google.common.collect.Maps;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.tuple.Tuple;
 
+import java.util.List;
+import java.util.Map;
 import javax.annotation.Nullable;
+
 
 /**
  * The type Flow metric gen bolt.
@@ -51,19 +55,39 @@ public class FlowMetricGenBolt extends MetricGenBolt implements TimeSeriesMeterE
         long timestamp = pullContext(input).getCreateTime();
         SwitchId switchId = stats.getSwitchId();
 
-        for (FlowStatsAndDescriptor entry : stats.getStatsEntries()) {
-            handleStatsEntry(entry.getData(), timestamp, switchId, entry.getDescriptor());
+        List<FlowStatsAndDescriptor> statsEntries = stats.getStatsEntries();
+        Map<Long, Boolean> isAlreadySentCookieMap = Maps.newHashMap();
+
+        for (FlowStatsAndDescriptor statsEntry : statsEntries) {
+            handleStatsEntry(statsEntry.getData(), timestamp, switchId, statsEntry.getDescriptor(),
+                    useAnyFlowHandlerForCookie(isAlreadySentCookieMap, statsEntry));
+            isAlreadySentCookieMap.put(statsEntry.getData().getCookie(), true);
         }
+    }
+
+    /**
+     * This is a dirty fix, please, suggest an alternative solution if any.
+     * Here we have an isAlreadySentCookieMap, that contains the mapping between all the cookies
+     * from the stats.getStatsEntries and flags, that represents whether this cookie already been sent to
+     * the AnyFlowHandler(this handler generates the raw entries).
+     * And the method useAnyFlowHandlerForCookie() that checks whether this cookie has been sent.
+     * This fix has been done to avoid sending duplicated RAW metrics for the same cookie and same switchId,
+     * but for the different measure points.
+     */
+    private static boolean useAnyFlowHandlerForCookie(Map<Long, Boolean> isAlreadySentCookieMap,
+                                                      FlowStatsAndDescriptor statsEntry) {
+        return !isAlreadySentCookieMap.getOrDefault(statsEntry.getData().getCookie(), false);
     }
 
     private void handleStatsEntry(
             FlowStatsEntry statsEntry, long timestamp, @NonNull SwitchId switchId,
-            @Nullable KildaEntryDescriptor descriptor) {
+            @Nullable KildaEntryDescriptor descriptor, boolean useAnyFlowHandler) {
         if (descriptor == null) {
             descriptor = new DummyFlowDescriptor(switchId);
         }
-
-        AnyFlowStatsEntryHandler.apply(this, switchId, timestamp, statsEntry, descriptor);
+        if (useAnyFlowHandler) {
+            AnyFlowStatsEntryHandler.apply(this, switchId, timestamp, statsEntry, descriptor);
+        }
         FlowEndpointStatsEntryHandler.apply(this, switchId, timestamp, statsEntry, descriptor);
     }
 }

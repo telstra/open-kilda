@@ -25,6 +25,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.grpc.GetPacketInOutStatsResponse;
 import org.openkilda.messaging.info.stats.FlowStatsData;
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
+import org.openkilda.messaging.info.stats.GroupStatsData;
 import org.openkilda.messaging.info.stats.MeterConfigStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.PortStatsData;
@@ -78,6 +79,9 @@ public class SpeakerStatsRouterBolt extends AbstractBolt {
                 emitWithContext(METER_CFG_STATS_STREAM, tuple, new Values(infoMessage));
             } else if (data instanceof MeterStatsData) {
                 log.debug("Meter stats message: {}", infoMessage);
+                emitWithContext(TO_CACHE_STREAM, tuple, new Values(data));
+            } else if (data instanceof GroupStatsData) {
+                log.debug("Group stats message: {}", infoMessage);
                 emitWithContext(TO_CACHE_STREAM, tuple, new Values(data));
             } else if (data instanceof FlowStatsData) {
                 log.debug("Flow stats message: {}", infoMessage);

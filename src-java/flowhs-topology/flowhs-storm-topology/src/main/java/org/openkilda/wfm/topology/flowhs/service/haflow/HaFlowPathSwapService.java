@@ -51,7 +51,7 @@ public class HaFlowPathSwapService extends FlowProcessingService<HaFlowPathSwapF
     /**
      * Handles request for HA-flow path swap.
      *
-     * @param key command identifier.
+     * @param key      command identifier.
      * @param haFlowId the flow to swap.
      */
     public void handleRequest(@NonNull String key, @NonNull CommandContext commandContext, @NonNull String haFlowId)

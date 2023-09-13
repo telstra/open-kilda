@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command;
 
+import org.openkilda.floodlight.utils.Utils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +34,10 @@ public abstract class Command implements Callable<Command> {
     public Command exceptional(Throwable e) {
         log.error(String.format("Unhandled exception into %s: %s", getClass().getName(), e.getMessage()), e);
         return null;
+    }
+
+    public String getName() {
+        return Utils.getClassName(getClass());
     }
 
     /**

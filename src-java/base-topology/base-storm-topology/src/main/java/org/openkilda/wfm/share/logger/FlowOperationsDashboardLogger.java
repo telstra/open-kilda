@@ -73,6 +73,10 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String HA_FLOW_UPDATE_RESULT_EVENT = "ha_flow_update_result";
     private static final String HA_FLOW_PATH_SWAP_EVENT = "ha_flow_path_swap";
     private static final String HA_FLOW_PATH_SWAP_RESULT_EVENT = "ha_flow_path_swap_result";
+    private static final String HA_FLOW_REROUTE_EVENT = "ha_flow_reroute";
+    private static final String HA_FLOW_REROUTE_RESULT_EVENT = "ha_flow_reroute_result";
+    private static final String HA_FLOW_SYNC_EVENT = "ha_flow_sync";
+    private static final String HA_FLOW_SYNC_RESULT_EVENT = "ha_flow_reroute_result";
 
     private static final String TAG = "FLOW_OPERATIONS_DASHBOARD";
     private static final String DASHBOARD = "dashboard";
@@ -80,6 +84,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
     private static final String DELETE_RESULT = "delete-result";
     private static final String UPDATE_RESULT = "update-result";
     private static final String REROUTE_RESULT = "reroute-result";
+    private static final String SYNC_RESULT = "sync-result";
 
     private static final String SUCCESSFUL_RESULT = "successful";
     private static final String FAILED_RESULT = "failed";
@@ -338,8 +343,8 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "flow-sync-success");
         data.put(FLOW_ID, flowId);
-        data.put(EVENT_TYPE, FLOW_SYNC_EVENT);
-        data.put("sync-result", SUCCESSFUL_RESULT);
+        data.put(EVENT_TYPE, SYNC_RESULT_EVENT);
+        data.put(SYNC_RESULT, SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Flow \"%s\" SYNC success", flowId), data);
     }
 
@@ -350,8 +355,8 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "flow-sync-failed");
         data.put(FLOW_ID, flowId);
-        data.put(EVENT_TYPE, FLOW_SYNC_EVENT);
-        data.put("sync-result", FAILED_RESULT);
+        data.put(EVENT_TYPE, SYNC_RESULT_EVENT);
+        data.put(SYNC_RESULT, FAILED_RESULT);
         invokeLogger(
                 Level.INFO, String.format(
                         "Flow \"%s\" SYNC failed - %d of %d path have failed to sync",
@@ -900,7 +905,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "ha-flow-paths-reroute");
         data.put(FLOW_ID, haFlowId);
-        data.put(EVENT_TYPE, REROUTE_EVENT);
+        data.put(EVENT_TYPE, HA_FLOW_REROUTE_EVENT);
         invokeLogger(Level.INFO, String.format(
                 "Reroute due to failure on %s ISLs HA-flow %s", affectedIsl, haFlowId), data);
     }
@@ -912,7 +917,7 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "ha-flow-reroute-successful");
         data.put(FLOW_ID, haFlowId);
-        data.put(EVENT_TYPE, REROUTE_RESULT_EVENT);
+        data.put(EVENT_TYPE, HA_FLOW_REROUTE_RESULT_EVENT);
         data.put(REROUTE_RESULT, SUCCESSFUL_RESULT);
         invokeLogger(Level.INFO, String.format("Successful reroute of the HA-flow %s", haFlowId), data);
     }
@@ -924,11 +929,48 @@ public class FlowOperationsDashboardLogger extends AbstractDashboardLogger {
         Map<String, String> data = new HashMap<>();
         data.put(TAG, "ha-flow-reroute-failed");
         data.put(FLOW_ID, haFlowId);
-        data.put(EVENT_TYPE, REROUTE_RESULT_EVENT);
+        data.put(EVENT_TYPE, HA_FLOW_REROUTE_RESULT_EVENT);
         data.put(REROUTE_RESULT, FAILED_RESULT);
         data.put(FAILURE_REASON, failureReason);
         invokeLogger(
                 Level.WARN, String.format(
                         "Failed reroute of the HA-flow %s, reason: %s", haFlowId, failureReason), data);
+    }
+
+    /**
+     * Log an HA-flow-sync event.
+     */
+    public void onHaFlowSync(String haFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-sync");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_SYNC_EVENT);
+        invokeLogger(Level.INFO, String.format("Performing HA-flow '%s' SYNC", haFlowId), data);
+    }
+
+    /**
+     * Log an HA-flow-sync-successful event.
+     */
+    public void onSuccessfulHaFlowSync(String haFlowId) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-sync-success");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_SYNC_RESULT_EVENT);
+        data.put(SYNC_RESULT, SUCCESSFUL_RESULT);
+        invokeLogger(Level.INFO, String.format("HA-flow '%s' SYNC success", haFlowId), data);
+    }
+
+    /**
+     * Log an HA-flow-sync-failed event.
+     */
+    public void onFailedHaFlowSync(String haFlowId, String failureReason) {
+        Map<String, String> data = new HashMap<>();
+        data.put(TAG, "ha-flow-sync-failed");
+        data.put(FLOW_ID, haFlowId);
+        data.put(EVENT_TYPE, HA_FLOW_SYNC_RESULT_EVENT);
+        data.put(SYNC_RESULT, FAILED_RESULT);
+        data.put(FAILURE_REASON, failureReason);
+        invokeLogger(Level.INFO, String.format(
+                        "HA-flow '%s' SYNC failed, reason: %s", haFlowId, failureReason), data);
     }
 }

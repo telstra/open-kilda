@@ -16,12 +16,16 @@ import org.openkilda.testing.tools.SoftAssertions
 
 import groovy.util.logging.Slf4j
 import org.apache.zookeeper.ZooKeeper
+import org.springframework.beans.factory.annotation.Value
 
 @Slf4j
 class HealthCheckSpecification extends HealthCheckBaseSpecification {
 
     static Throwable healthCheckError
     static boolean healthCheckRan = false
+
+    @Value('${health_check.verifier:true}')
+    boolean enable
 
 
     def healthCheck() {
@@ -145,18 +149,26 @@ class HealthCheckSpecification extends HealthCheckBaseSpecification {
                 }
             }
         }
-        withPool {
-            [healthCheckEndpoint,
-             allZookeeperNodesInExpectedState,
-             allSwitchesAreActive,
-             allLinksAreActive,
-             noFlowsLeft,
-             noLinkPropertiesLeft,
-             linksBandwidthAndSpeedMatch,
-             noExcessRulesMeters,
-             allSwitchesConnectedToExpectedRegion,
-             featureTogglesInExpectedState,
-             switchesConfigurationIsCorrect].eachParallel { it() }
+
+        if(enable) {
+            withPool {
+                [healthCheckEndpoint,
+                 allZookeeperNodesInExpectedState,
+                 allSwitchesAreActive,
+                 allLinksAreActive,
+                 noFlowsLeft,
+                 noLinkPropertiesLeft,
+                 linksBandwidthAndSpeedMatch,
+                 noExcessRulesMeters,
+                 allSwitchesConnectedToExpectedRegion,
+                 featureTogglesInExpectedState,
+                 switchesConfigurationIsCorrect].eachParallel { it() }
+            }
+        } else {
+            withPool {
+                [healthCheckEndpoint,
+                 allZookeeperNodesInExpectedState].eachParallel { it() }
+            }
         }
     }
 

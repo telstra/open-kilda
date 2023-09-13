@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { SwitchService } from '../../../common/services/switch.service';
 import { ToastrService } from 'ngx-toastr';
-import { ClipboardService } from "ngx-clipboard";
-import { LoaderService } from "../../../common/services/loader.service";
+import { ClipboardService } from 'ngx-clipboard';
+import { LoaderService } from '../../../common/services/loader.service';
 import { CommonService } from '../../../common/services/common.service';
 import {ActivatedRoute} from '@angular/router';
 
@@ -13,18 +13,18 @@ import {ActivatedRoute} from '@angular/router';
 })
 export class SwitchMetersComponent implements OnInit {
 
-  switchedMeters : any;
+  switchedMeters: any;
   switch_id: string;
-  showMetersJSON: boolean = true;
+  showMetersJSON = true;
   jsonViewer = true;
   tabularViewer = false;
   property = 'jsonViewer';
 
   loading = false;
-  clipBoardItems :any= {
-    switchMeterVal:""
-  }
-	constructor( private switchService:SwitchService,
+  clipBoardItems: any = {
+    switchMeterVal: ''
+  };
+	constructor( private switchService: SwitchService,
     private toastr: ToastrService,
     private loaderService: LoaderService,
     private clipboardService: ClipboardService,
@@ -39,21 +39,21 @@ export class SwitchMetersComponent implements OnInit {
           switchDetailsKey = switchDetailsKey + id;
       });
       const retrievedSwitchObject = JSON.parse(localStorage.getItem(switchDetailsKey));
-      this.switch_id =retrievedSwitchObject.switch_id;
+      this.switch_id = retrievedSwitchObject.switch_id;
       this.tabularViewer = false;
       this.switchMeters();
   }
 
   switchMeters() {
     this.loading = true;
-    if( this.property == 'tabularViewer'){
+    if ( this.property == 'tabularViewer') {
       this.tabularViewer = true;
     this.jsonViewer = false;
-    }else{
+    } else {
       this.tabularViewer = false;
     this.jsonViewer = true;
     }
-    
+
     this.switchService.getSwitchMetersList(this.switch_id).subscribe(
       data => {
         this.switchedMeters = data;
@@ -63,40 +63,40 @@ export class SwitchMetersComponent implements OnInit {
       },
       error => {
         this.loading = false;
-        this.toastr.error(error['error'] && error['error']["error-auxiliary-message"] ? error['error']["error-auxiliary-message"] : 'Error in api response' , "Error!");
+        this.toastr.error(error['error'] && error['error']['error-auxiliary-message'] ? error['error']['error-auxiliary-message'] : 'Error in api response' , 'Error!');
       }
     );
   }
 
-   
 
-  showMenu(e){
+
+  showMenu(e) {
     e.preventDefault();
     $('.clip-board-button').hide();
     $('.clip-board-button').css({
-      top: e.pageY+'px',
-         left: (e.pageX-220)+'px',
-         "z-index":2,
+      top: e.pageY + 'px',
+         left: (e.pageX - 220) + 'px',
+         'z-index': 2,
      }).toggle();
-     
+
   }
 
   copyToClip(event, copyItem) {
     this.clipboardService.copyFromContent(this.clipBoardItems[copyItem]);
   }
 
-  copyToClipHtml(event, copyHtmlItem){
+  copyToClipHtml(event, copyHtmlItem) {
     this.clipboardService.copyFromContent(jQuery('.code').text());
   }
 
-  toggleView(e){
-   
+  toggleView(e) {
+
     if (e.target.checked) {
       this.property = 'tabularViewer';
       this.jsonViewer = false ;
     } else {
-      this.property = 'jsonViewer';   
-      this.tabularViewer = false;   
+      this.property = 'jsonViewer';
+      this.tabularViewer = false;
    }
     this[this.property] = true;
   }

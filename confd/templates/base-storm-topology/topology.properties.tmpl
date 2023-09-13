@@ -56,7 +56,7 @@ persistence.implementation.area.history = {{ getv "/kilda_persistence_history_im
 
 opentsdb.target.opentsdb = http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
 {{if getv "/kilda_victoriametrics_host"}}
-opentsdb.target.victoriametrics = http://{{ getv "/kilda_victoriametrics_host" }}:{{ getv "/kilda_victoriametrics_port" }}{{ getv "/kilda_victoriametrics_path" }}
+opentsdb.target.victoriametrics = http://{{ getv "/kilda_victoriametrics_host" }}:{{ getv "/kilda_victoriametrics_write_port" }}{{ getv "/kilda_victoriametrics_path" }}
 {{else}}
 opentsdb.target.victoriametrics =
 {{end}}

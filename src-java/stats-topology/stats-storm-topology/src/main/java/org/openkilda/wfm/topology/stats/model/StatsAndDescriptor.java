@@ -16,8 +16,10 @@
 package org.openkilda.wfm.topology.stats.model;
 
 import lombok.Getter;
+import lombok.ToString;
 
 @Getter
+@ToString
 public abstract class StatsAndDescriptor<T> {
     private final T data;
     private final KildaEntryDescriptor descriptor;

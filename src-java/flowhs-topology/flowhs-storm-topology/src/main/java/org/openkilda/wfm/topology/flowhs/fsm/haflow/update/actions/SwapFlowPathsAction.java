@@ -59,6 +59,7 @@ public class SwapFlowPathsAction extends
     }
 
     private void swapPrimaryPaths(HaFlowUpdateFsm stateMachine) {
+        log.info("swapProimryPaths started");
         PathId newForwardPathId = stateMachine.getNewPrimaryPathIds().getForward().getHaPathId();
         PathId newReversePathId = stateMachine.getNewPrimaryPathIds().getReverse().getHaPathId();
         if (newForwardPathId != null && newReversePathId != null) {
@@ -93,6 +94,7 @@ public class SwapFlowPathsAction extends
                 saveHistory(stateMachine, haFlow, newForwardPathId, newReversePathId);
             });
         }
+        log.info("swapProimryPaths finished");
     }
 
     private void swapProtectedPaths(HaFlowUpdateFsm stateMachine) {

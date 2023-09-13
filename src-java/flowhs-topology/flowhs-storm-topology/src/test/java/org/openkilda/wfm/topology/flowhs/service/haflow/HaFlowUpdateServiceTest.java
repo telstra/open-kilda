@@ -44,7 +44,6 @@ import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.Switch;
 import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
 import org.openkilda.wfm.topology.flowhs.service.AbstractHaFlowTest;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
 import com.google.common.collect.Sets;
 import org.junit.jupiter.api.BeforeEach;
@@ -91,12 +90,12 @@ public class HaFlowUpdateServiceTest extends AbstractHaFlowTest<FlowSegmentReque
 
 
     @Mock
-    private FlowGenericCarrier carrier;
+    private HaFlowGenericCarrier carrier;
     HaFlowUpdateService service;
 
     @BeforeEach
     public void init() {
-        carrier = mock(FlowGenericCarrier.class);
+        carrier = mock(HaFlowGenericCarrier.class);
         service = new HaFlowUpdateService(carrier, persistenceManager, pathComputer, flowResourcesManager,
                 ruleManager, 0, 3, 0, 0);
     }

@@ -15,27 +15,38 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow;
 
+import static org.openkilda.wfm.topology.flowhs.utils.HaFlowUtils.buildRemoveHaFlowPathInfo;
+
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.HaFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowGenericCarrier;
 
-public class NotifyHaFlowStatsOnRemovedPathsAction<T extends HaFlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E,
-        C extends SpeakerResponseContext> extends FlowProcessingWithHistorySupportAction<T, S, E, C> {
-    private FlowGenericCarrier carrier;
+import java.util.Optional;
+import java.util.stream.Stream;
 
-    public NotifyHaFlowStatsOnRemovedPathsAction(PersistenceManager persistenceManager, FlowGenericCarrier carrier) {
+public class NotifyHaFlowStatsOnRemovedPathsAction<T extends HaFlowPathSwappingFsm<T, S, E, C, ?, ?>, S, E, C
+        extends SpeakerResponseContext> extends FlowProcessingWithHistorySupportAction<T, S, E, C> {
+    private final HaFlowGenericCarrier carrier;
+
+    public NotifyHaFlowStatsOnRemovedPathsAction(PersistenceManager persistenceManager, HaFlowGenericCarrier carrier) {
         super(persistenceManager);
         this.carrier = carrier;
     }
 
     @Override
     protected void perform(S from, S to, E event, C context, T stateMachine) {
-        HaFlow originalHaFlow = stateMachine.getOriginalHaFlow();
+        Stream.concat(stateMachine.getOldPrimaryPathIds().getAllSubPathIds().stream(),
+                Optional.ofNullable(stateMachine.getOldProtectedPathIds())
+                        .map(haPathIdsPair -> haPathIdsPair.getAllSubPathIds().stream())
+                        .orElse(Stream.empty())).forEach(pathId -> flowPathRepository.findById(pathId)
+                .ifPresent(flowPath -> sendRemoveHaFlowPathInfo(stateMachine.getOriginalHaFlow(), flowPath)));
+    }
 
-        // TODO notify stats https://github.com/telstra/open-kilda/issues/5182
-        // example: org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowStatsOnRemovedPathsAction
+    private void sendRemoveHaFlowPathInfo(HaFlow haFlow, FlowPath flowPath) {
+        carrier.sendNotifyFlowStats(buildRemoveHaFlowPathInfo(flowPath, haFlow));
     }
 }

@@ -1,8 +1,11 @@
 package org.openkilda.functionaltests.spec.stats
 
+import org.openkilda.functionaltests.model.stats.FlowStats
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -20,8 +23,6 @@ import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -30,15 +31,15 @@ import javax.inject.Provider
 @Tags(LOW_PRIORITY)
 @Narrative("Verify that statistic is collected for different type of flow")
 class FlowStatSpec extends HealthCheckSpecification {
-    @Shared
-    @Value('${opentsdb.metric.prefix}')
-    String metricPrefix
 
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
     @Shared
     Integer statsRouterInterval
+
+    @Autowired @Shared
+    FlowStats flowStats
 
     def setupSpec() {
         /*it can't be initialized properly in Shared scope, that's why setupSpec is used.
@@ -55,6 +56,7 @@ class FlowStatSpec extends HealthCheckSpecification {
             it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches &&
                     it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
         } ?: assumeTrue(false, "No suiting switches found")
+        def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "Flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -65,40 +67,27 @@ class FlowStatSpec extends HealthCheckSpecification {
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
 
         when: "Generate traffic on the given flow"
-        Date startTime = new Date()
         def traffExam = traffExamProvider.get()
         Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flowHelperV2.toV1(flow),
                 (int) flow.maximumBandwidth, 5).tap { udp = true }
-        def waitInterval = 10
-        def mainPathStat
-        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
-        def metric = metricPrefix + "flow.raw.bytes"
         //generate two points of stat just to be sure that stat is not collected for protected path
         2.times { count ->
             exam.setResources(traffExam.startExam(exam))
             assert traffExam.waitExam(exam).hasTraffic()
-            Wrappers.wait(statsRouterInterval, waitInterval) {
-                mainPathStat = otsdb.query(startTime, metric, tags).dps
-                assert mainPathStat.size() == count + 1
-            }
+            statsHelper."force kilda to collect stats"()
         }
 
         then: "Stats collects stat for main path cookies"
         def flowInfo = database.getFlow(flow.flowId)
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
         def mainReverseCookie = flowInfo.reversePath.cookie.value
-        def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
-        def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
-        [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
-            assert stats.size() > 0
-            stats.values().each { assert it != 0 }
-        }
+        def stats = flowStats.of(flow.getFlowId())
+        stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValues()
+        stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValues()
 
         and: "System collects stats for egress cookie of protected path with zero value"
         def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
-        def protectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
-        protectedReverseCookieStat.size() == 1
-        protectedReverseCookieStat.values().first() == 0
+        !stats.get(FLOW_RAW_BYTES, srcSwitchId, protectedReverseCookie).hasNonZeroValues()
 
         when: "Swap main and protected path"
         northbound.swapFlowPath(flow.flowId)
@@ -108,33 +97,29 @@ class FlowStatSpec extends HealthCheckSpecification {
             assert pathHelper.convert(newFlowPathInfo) == currentProtectedPath
             assert pathHelper.convert(newFlowPathInfo.protectedPath) == currentPath
         }
+        def timeAfterSwap = new Date().getTime()
 
         and: "Generate traffic on the flow"
-        def newProtectedReverseCookieStat
         //generate two points of stat to be sure that stat is not collected for a new protected path(after swapping)
         2.times { count ->
             exam.setResources(traffExam.startExam(exam))
             assert traffExam.waitExam(exam).hasTraffic()
-            Wrappers.wait(statsRouterInterval, waitInterval) {
-                assert otsdb.query(startTime, metric, tags).dps.size() > mainPathStat.size()
-                newProtectedReverseCookieStat = otsdb.query(startTime, metric,
-                        tags + [cookie: protectedReverseCookie]).dps
-                assert newProtectedReverseCookieStat.size() == count + 2 // 2 because we have already one point of stat
-            }
+            statsHelper."force kilda to collect stats"()
         }
 
         then: "System collects stats for previous egress cookie of protected path with non zero value"
-        newProtectedReverseCookieStat.values().takeRight(2).each { assert it != 0 }
+        def newFlowStats = stats.of(flow.getFlowId())
+        newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, protectedReverseCookie).hasNonZeroValues()
 
         and: "System doesn't collect stats anymore for previous ingress/egress cookie of main path"
-        otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps.size() == mainReverseCookieStat.size()
-        otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps.size() == mainForwardCookieStat.size()
+        !newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValuesAfter(timeAfterSwap)
+        !newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValuesAfter(timeAfterSwap)
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2762")
+    @Tidy
     def "System collects stats when a protected flow was intentionally rerouted"() {
         given: "Two active not neighboring switches with three diverse paths at least"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
@@ -142,6 +127,7 @@ class FlowStatSpec extends HealthCheckSpecification {
             it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches &&
                     it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
         } ?: assumeTrue(false, "No suiting switches found")
+        def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "A flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -154,37 +140,27 @@ class FlowStatSpec extends HealthCheckSpecification {
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
 
         when: "Generate traffic on the given flow"
-        Date startTime = new Date()
         def traffExam = traffExamProvider.get()
         Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flowHelperV2.toV1(flow),
                 (int) flow.maximumBandwidth, 3).tap { udp = true }
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
+        //statsHelper."force kilda to collect stats"()
 
         then: "Stats is not empty for main path cookies"
-        def metric = metricPrefix + "flow.raw.bytes"
-        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
-        def waitInterval = 10
-        def mainPathStat
-        Wrappers.wait(statsRouterInterval, waitInterval) {
-            mainPathStat = otsdb.query(startTime, metric, tags).dps
-            assert mainPathStat.size() >= 1
-        }
         def flowInfo = database.getFlow(flow.flowId)
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
         def mainReverseCookie = flowInfo.reversePath.cookie.value
-        def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
-        def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
-        [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
-            assert stats.size() > 0
-            stats.values().each { assert it != 0 }
+        def stats
+        Wrappers.wait(statsRouterInterval) {
+            stats = flowStats.of(flow.getFlowId())
+            stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValues()
+            stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValues()
         }
 
         and: "Stats is empty for protected path egress cookie"
         def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
-        def protectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
-        protectedReverseCookieStat.size() > 0
-        protectedReverseCookieStat.values().each { assert it == 0 }
+        !stats.get(FLOW_RAW_BYTES, srcSwitchId, protectedReverseCookie).hasNonZeroValues()
 
         when: "Make the current and protected path less preferable than alternatives"
         def alternativePaths = switchPair.paths.findAll { it != currentPath && it != currentProtectedPath }
@@ -204,28 +180,26 @@ class FlowStatSpec extends HealthCheckSpecification {
         and: "Generate traffic on the flow"
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
+        //statsHelper."force kilda to collect stats"()
+
 
         then: "Stats is not empty for new main path cookies"
         def newFlowInfo = database.getFlow(flow.flowId)
         def newMainForwardCookie = newFlowInfo.forwardPath.cookie.value
         def newMainReverseCookie = newFlowInfo.reversePath.cookie.value
-        Wrappers.wait(statsRouterInterval, waitInterval) {
-            def newMainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: newMainForwardCookie]).dps
-            def newMainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: newMainReverseCookie]).dps
-            [newMainForwardCookieStat, newMainReverseCookieStat].each { stats ->
-                assert stats.size() > 0
-                stats.values().each { assert it != 0 }
-            }
+        def newFlowStats
+        Wrappers.wait(statsRouterInterval) {
+            newFlowStats = flowStats.of(flow.getFlowId())
+            newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, newMainForwardCookie).hasNonZeroValues()
+            newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, newMainReverseCookie).hasNonZeroValues()
         }
 
         and: "Stats is empty for a new protected path egress cookie"
         def newProtectedReverseCookie = newFlowInfo.protectedReversePath.cookie.value
-        def newProtectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: newProtectedReverseCookie]).dps
-        newProtectedReverseCookieStat.size() > 0
-        newProtectedReverseCookieStat.values().each { assert it == 0 }
+        !newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, newProtectedReverseCookie).hasNonZeroValues()
 
-        and: "Cleanup: revert system to original state"
-        flowHelperV2.deleteFlow(flow.flowId)
+        cleanup: "revert system to original state"
+        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
@@ -237,6 +211,7 @@ class FlowStatSpec extends HealthCheckSpecification {
             it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches &&
                     it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
         } ?: assumeTrue(false, "No suiting switches found")
+        def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "A flow with protected path"
         def flow = flowHelper.randomFlow(switchPair)
@@ -249,36 +224,27 @@ class FlowStatSpec extends HealthCheckSpecification {
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
 
         when: "Generate traffic on the given flow"
-        Date startTime = new Date()
         def traffExam = traffExamProvider.get()
         Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 3)
                 .tap { udp = true}
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
+        statsHelper."force kilda to collect stats"()
 
         then: "System collects stats for main path cookies"
-        def metric = metricPrefix + "flow.raw.bytes"
-        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.id]
-        def waitInterval = 10
-        def mainPathStat
-        Wrappers.wait(statsRouterInterval, waitInterval) {
-            mainPathStat = otsdb.query(startTime, metric, tags).dps
-            assert mainPathStat.size() >= 1
-        }
-        def flowInfo = database.getFlow(flow.id)
+        def flowInfo = database.getFlow(flow.getId())
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
         def mainReverseCookie = flowInfo.reversePath.cookie.value
-        def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
-        def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
-        [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
-            assert stats.size() > 0
-            stats.values().each { assert it != 0 }
+        def stats
+        Wrappers.wait(statsRouterInterval) {
+            stats = flowStats.of(flow.getId())
+            stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValues()
+            stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValues()
         }
 
         and: "System collects stats for egress cookie of protected path with zero value"
         def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
-        def protectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
-        protectedReverseCookieStat.values().each { assert it == 0 }
+        !stats.get(FLOW_RAW_BYTES, srcSwitchId, protectedReverseCookie).hasNonZeroValues()
 
         when: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
@@ -288,24 +254,22 @@ class FlowStatSpec extends HealthCheckSpecification {
             assert northboundV2.getFlowStatus(flow.id).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.id)) == currentProtectedPath
         }
+        def timeAfterSwap = new Date().getTime()
 
         and: "Generate traffic on the flow"
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
+        statsHelper."force kilda to collect stats"()
 
         then: "System collects stats for previous egress cookie of protected path with non zero value"
-        Wrappers.wait(statsRouterInterval, waitInterval) {
-            def protectedPathStat = otsdb.query(startTime, metric, tags).dps
-            assert protectedPathStat.size() > mainPathStat.size()
-            def newProtectedReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: protectedReverseCookie]).dps
-            assert !newProtectedReverseCookieStat.values().findAll { it != 0 }.empty
+        def newFlowStats = flowStats.of(flow.getId())
+        Wrappers.wait(statsRouterInterval) {
+            flowStats.of(flow.getId()).get(FLOW_RAW_BYTES, srcSwitchId, protectedReverseCookie).hasNonZeroValues()
         }
 
         and: "System doesn't collect stats for previous main path cookies due to main path is broken"
-        def newMainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
-        def newMainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
-        newMainForwardCookieStat.size() == mainForwardCookieStat.size()
-        newMainReverseCookieStat.size() == mainReverseCookieStat.size()
+        !newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValuesAfter(timeAfterSwap)
+        !newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValuesAfter(timeAfterSwap)
 
         cleanup:
         flow && flowHelper.deleteFlow(flow.id)
@@ -324,6 +288,7 @@ class FlowStatSpec extends HealthCheckSpecification {
             it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches &&
                     it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
         } ?: assumeTrue(false, "No suiting switches found")
+        def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "A flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -364,29 +329,21 @@ class FlowStatSpec extends HealthCheckSpecification {
         }
 
         and: "Generate traffic on the given flow"
-        Date startTime = new Date()
         def traffExam = traffExamProvider.get()
         Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flowHelperV2.toV1(flow),
                 (int) flow.maximumBandwidth, 3).tap { udp = true }
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
+        statsHelper."force kilda to collect stats"()
 
-        then: "System collects stats for a new main path cookies"
-        def metric = metricPrefix + "flow.raw.bytes"
-        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
-        def waitInterval = 10
-        Wrappers.wait(statsRouterInterval, waitInterval) {
-            def mainPathStat = otsdb.query(startTime, metric, tags).dps
-            assert mainPathStat.size() >= 1
-        }
+        then: "System collects stats for main path cookies"
         def flowInfo = database.getFlow(flow.flowId)
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
         def mainReverseCookie = flowInfo.reversePath.cookie.value
-        def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
-        def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
-        [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
-            assert stats.size() > 0
-            stats.values().each { assert it != 0 }
+        Wrappers.wait(statsRouterInterval) {
+            def stats = flowStats.of(flow.getFlowId())
+            stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValues()
+            stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValues()
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
@@ -408,6 +365,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
             it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches
         } ?: assumeTrue(false, "No suiting switches found")
+        def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "An unmetered flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -424,22 +382,16 @@ class FlowStatSpec extends HealthCheckSpecification {
                 (int) flow.maximumBandwidth, 3).tap { udp = true }
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
+        statsHelper."force kilda to collect stats"()
 
         then: "System collects stats for egress/ingress cookies"
-        def metric = metricPrefix + "flow.raw.bytes"
-        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
-        def waitInterval = 10
-        Wrappers.wait(statsRouterInterval + WAIT_OFFSET, waitInterval) {
-            assert otsdb.query(startTime, metric, tags).dps.size() >= 1
-        }
         def flowInfo = database.getFlow(flow.flowId)
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
         def mainReverseCookie = flowInfo.reversePath.cookie.value
-        def mainForwardCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainForwardCookie]).dps
-        def mainReverseCookieStat = otsdb.query(startTime, metric, tags + [cookie: mainReverseCookie]).dps
-        [mainForwardCookieStat, mainReverseCookieStat].each { stats ->
-            assert stats.size() > 0
-            stats.values().each { assert it != 0 }
+        Wrappers.wait(statsRouterInterval) {
+            def stats = flowStats.of(flow.getFlowId())
+            stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValues()
+            stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValues()
         }
 
         cleanup:
@@ -453,6 +405,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.switchPairs.find {
             [it.src, it.dst].every { it.dpId in traffGenSwitches }
         } ?: assumeTrue(false, "No suiting switches found")
+        def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "A flow with updated port on src endpoint via partial update"
         def traffgenPortOnSrcSw = topology.activeTraffGens.find { it.switchConnected ==  switchPair.src}.switchPort
@@ -467,25 +420,21 @@ class FlowStatSpec extends HealthCheckSpecification {
         })
 
         when: "Generate traffic on the flow"
-        Date startTime = new Date()
         def traffExam = traffExamProvider.get()
         Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(northbound.getFlow(flow.flowId),
                 (int) flow.maximumBandwidth, 5).tap { udp = true }
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
+        statsHelper."force kilda to collect stats"()
 
         then: "System collects stats for ingress/egress cookies"
         def flowInfo = database.getFlow(flow.flowId)
-        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
-        def metric = metricPrefix + "flow.raw.bytes"
-        def waitInterval = 5
-        Wrappers.wait(statsRouterInterval, waitInterval) {
-            def forwardStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps
-            assert forwardStats.size() > 0
-            assert forwardStats.values().each { it != 0 }
-            def reverseStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.reversePath.cookie.value]).dps
-            assert reverseStats.size() > 0
-            assert reverseStats.values().each { it != 0 }
+        def mainForwardCookie = flowInfo.forwardPath.cookie.value
+        def mainReverseCookie = flowInfo.reversePath.cookie.value
+        Wrappers.wait(statsRouterInterval) {
+            def stats = flowStats.of(flow.getFlowId())
+            stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValues()
+            stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValues()
         }
 
         cleanup:
@@ -499,6 +448,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         def switchPair = topologyHelper.switchPairs.find {
             [it.src, it.dst].every { it.dpId in traffGenSwitches }
         } ?: assumeTrue(false, "No suiting switches found")
+        def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "A flow with updated vlan on src endpoint via partial update"
         def traffgenPortOnSrcSw = topology.activeTraffGens.find { it.switchConnected ==  switchPair.src}.switchPort
@@ -517,19 +467,16 @@ class FlowStatSpec extends HealthCheckSpecification {
                 (int) flow.maximumBandwidth, 5).tap { udp = true }
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
+        statsHelper."force kilda to collect stats"()
 
         then: "System collects stats for ingress/egress cookies"
         def flowInfo = database.getFlow(flow.flowId)
-        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
-        def metric = metricPrefix + "flow.raw.bytes"
-        def waitInterval = 5
-        Wrappers.wait(statsRouterInterval, waitInterval) {
-            def forwardStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps
-            assert forwardStats.size() > 0
-            assert forwardStats.values().each { it != 0 }
-            def reverseStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.reversePath.cookie.value]).dps
-            assert reverseStats.size() > 0
-            assert reverseStats.values().each { it != 0 }
+        def mainForwardCookie = flowInfo.forwardPath.cookie.value
+        def mainReverseCookie = flowInfo.reversePath.cookie.value
+        Wrappers.wait(statsRouterInterval) {
+            def stats = flowStats.of(flow.getFlowId())
+            stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValues()
+            stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValues()
         }
 
         cleanup:
@@ -544,6 +491,7 @@ class FlowStatSpec extends HealthCheckSpecification {
             [it.src, it.dst].every { it.dpId in traffGenSwitches } &&
                     switchHelper.getCachedSwProps(it.src.dpId).multiTable
         } ?: assumeTrue(false, "No suiting switches found")
+
 
         and: "A flow with updated inner vlan on src endpoint via partial update"
         def flow = flowHelperV2.randomFlow(switchPair, true)
@@ -560,19 +508,16 @@ class FlowStatSpec extends HealthCheckSpecification {
                 (int) flow.maximumBandwidth, 5)
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
+        statsHelper."force kilda to collect stats"()
 
         then: "System collects stats for ingress/egress cookies"
         def flowInfo = database.getFlow(flow.flowId)
-        def tags = [switchid: switchPair.src.dpId.toOtsdFormat(), flowid: flow.flowId]
-        def metric = metricPrefix + "flow.raw.bytes"
-        def waitInterval = 5
-        Wrappers.wait(statsRouterInterval, waitInterval) {
-            def forwardStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.forwardPath.cookie.value]).dps
-            assert forwardStats.size() > 0
-            assert forwardStats.values().each { it != 0 }
-            def reverseStats = otsdb.query(startTime, metric, tags + [cookie: flowInfo.reversePath.cookie.value]).dps
-            assert reverseStats.size() > 0
-            assert reverseStats.values().each { it != 0 }
+        def mainForwardCookie = flowInfo.forwardPath.cookie.value
+        def mainReverseCookie = flowInfo.reversePath.cookie.value
+        Wrappers.wait(statsRouterInterval) {
+            def stats = flowStats.of(flow.getFlowId())
+            stats.get(FLOW_RAW_BYTES, switchPair.getSrc().getDpId(), mainForwardCookie).hasNonZeroValues()
+            stats.get(FLOW_RAW_BYTES, switchPair.getSrc().getDpId(), mainReverseCookie).hasNonZeroValues()
         }
 
         cleanup:

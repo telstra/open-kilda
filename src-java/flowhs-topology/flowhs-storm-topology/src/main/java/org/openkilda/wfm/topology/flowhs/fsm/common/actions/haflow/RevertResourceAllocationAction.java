@@ -80,7 +80,7 @@ public class RevertResourceAllocationAction<T extends HaFlowPathSwappingFsm<T, S
                 .withTaskId(correlationId)
                 .withAction("HA-flow resources have been de-allocated")
                 .withDescription(format("The following resources for HA-flow %s have been de-allocated: %s",
-                            haFlow.getHaFlowId(), resources))
+                        haFlow.getHaFlowId(), resources))
                 .withHaFlowId(haFlow.getHaFlowId())
                 .withHaFlowDumpAfter(haFlow));
     }

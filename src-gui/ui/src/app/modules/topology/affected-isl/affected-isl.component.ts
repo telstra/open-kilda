@@ -7,14 +7,13 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
   styleUrls: ['./affected-isl.component.css']
 })
 export class AffectedIslComponent implements OnInit {
-  openedTab :string = 'failed';
+  openedTab = 'failed';
   constructor(public activeModal: NgbActiveModal) { }
   ngOnInit() { }
-   toggleTab(tab){
-  	if(tab === 'failed'){
+   toggleTab(tab) {
+  	if (tab === 'failed') {
   		this.openedTab = 'failed';
-  	}
-  	else{
+  	} else {
   		this.openedTab = 'unidirectional';
   	}
   }

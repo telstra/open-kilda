@@ -56,6 +56,7 @@ import org.slf4j.LoggerFactory;
 
 public class LacpService implements IService, IInputTranslator {
     private static final Logger logger = LoggerFactory.getLogger(LacpService.class);
+    public static final String LACP_COMMAND_NAME = "LacpServicePacketIn";
 
     private IOFSwitchService switchService;
     private MacAddress systemId;
@@ -77,6 +78,11 @@ public class LacpService implements IService, IInputTranslator {
             public Command call() {
                 handlePacketIn(input);
                 return null;
+            }
+
+            @Override
+            public String getName() {
+                return LACP_COMMAND_NAME;
             }
         };
     }

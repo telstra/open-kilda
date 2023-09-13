@@ -9,7 +9,8 @@ compileJava.ajc.options.compilerArgs += '-verbose'
 description = 'OpenTSDB Storm Topology'
 dependencies {
     implementation project(':base-storm-topology')
-    runtimeOnly project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
+    // runtimeClasspath because 'releaseArtifacts' shouldn't go for tests.
+    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
     testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
     implementation project(':kilda-reporting')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')

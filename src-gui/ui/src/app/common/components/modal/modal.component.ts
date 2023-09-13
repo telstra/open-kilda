@@ -10,7 +10,7 @@ export class ModalComponent implements OnInit {
 
   title: any;
   content: any;
-  
+
   constructor(public activeModal: NgbActiveModal) { }
 
   ngOnInit() {

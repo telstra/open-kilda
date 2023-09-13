@@ -16,12 +16,16 @@
 package org.openkilda.wfm.topology.flowhs.fsm.create.actions;
 
 import static java.lang.String.format;
+import static org.openkilda.wfm.share.history.model.DumpType.STATE_AFTER;
 
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.model.Flow;
+import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
+import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
@@ -30,6 +34,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
 
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Optional;
 
 @Slf4j
 public class CompleteFlowCreateAction extends
@@ -87,6 +93,33 @@ public class CompleteFlowCreateAction extends
         });
 
         dashboardLogger.onFlowStatusUpdate(flowId, flowStatus);
-        stateMachine.saveActionToHistory(format("The flow status was set to %s", flowStatus));
+        saveHistoryWithDump(stateMachine, flowStatus);
+    }
+
+    private void saveHistoryWithDump(FlowCreateFsm stateMachine, FlowStatus flowStatus) {
+        Optional<Flow> flow = flowRepository.findById(stateMachine.getFlowId());
+        Optional<FlowPath> forwardPath = flowPathRepository.findById(stateMachine.getForwardPathId());
+        Optional<FlowPath> reversePath = flowPathRepository.findById(stateMachine.getReversePathId());
+        Optional<FlowPath> protectedForwardPath = flowPathRepository.findById(stateMachine.getProtectedForwardPathId());
+        Optional<FlowPath> protectedReversePath = flowPathRepository.findById(stateMachine.getProtectedReversePathId());
+
+        if (flow.isPresent() && forwardPath.isPresent() && reversePath.isPresent()) {
+            stateMachine.saveActionWithDumpToHistory(format("The flow status was set to %s", flowStatus),
+                    "Flow creation complete",
+                    HistoryMapper.INSTANCE.map(flow.get(), forwardPath.get(), reversePath.get(), STATE_AFTER));
+        } else {
+            log.error("Could not save flow history; there is not enough information. isPresent: Flow: {}, Forward path:"
+                    + " {}, Reverse path: {}", flow.isPresent(), forwardPath.isPresent(), reversePath.isPresent());
+            stateMachine.saveActionToHistory(format("The flow status was set to %s", flowStatus),
+                    "Flow creation complete");
+        }
+
+        if (flow.isPresent() && protectedForwardPath.isPresent() && protectedReversePath.isPresent()) {
+            stateMachine.saveActionWithDumpToHistory("Flow creation complete",
+                    format("Protected paths have been allocated. Forward %s. Reverse %s.",
+                            protectedForwardPath.get(), protectedReversePath.get()),
+                    HistoryMapper.INSTANCE.map(flow.get(), protectedForwardPath.get(), protectedReversePath.get(),
+                            STATE_AFTER));
+        }
     }
 }

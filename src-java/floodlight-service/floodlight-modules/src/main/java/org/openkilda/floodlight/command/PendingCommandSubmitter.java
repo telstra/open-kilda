@@ -65,7 +65,6 @@ public class PendingCommandSubmitter extends Command {
             }
 
             iterator.remove();
-            commandProcessor.markCompleted(entry);
 
             if (entry.pendingSuccessor.isCancelled()) {
                 continue;
