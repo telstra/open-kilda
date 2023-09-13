@@ -1,6 +1,6 @@
 
 import { Permission } from './permission';
-import { User } from "./user";
+import { User } from './user';
 
 export interface Role {
     role_id: number;
@@ -9,5 +9,5 @@ export interface Role {
     description: string;
     status: string;
     permissions: Permission;
-    users: User
+    users: User;
 }

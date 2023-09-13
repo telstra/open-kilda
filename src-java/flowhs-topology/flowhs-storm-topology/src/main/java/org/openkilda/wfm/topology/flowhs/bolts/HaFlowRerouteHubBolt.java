@@ -38,8 +38,8 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.reroute.FlowType;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
-import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
-import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
+import org.openkilda.messaging.info.stats.RemoveHaFlowPathInfo;
+import org.openkilda.messaging.info.stats.UpdateHaFlowPathInfo;
 import org.openkilda.pce.AvailableNetworkFactory;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.PathComputerConfig;
@@ -57,7 +57,7 @@ import org.openkilda.wfm.share.utils.KeyProvider;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
-import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowRerouteHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowRerouteService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
@@ -74,7 +74,7 @@ import org.apache.storm.tuple.Values;
  * It only works with DB. Switch rules wouldn't be modified.
  * Class is just a stub to give an API for users. It will be modified later.
  */
-public class HaFlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarrier {
+public class HaFlowRerouteHubBolt extends HubBolt implements HaFlowRerouteHubCarrier {
     private final HaFlowRerouteConfig config;
     private final PathComputerConfig pathComputerConfig;
     private final FlowResourcesConfig flowResourcesConfig;
@@ -171,12 +171,19 @@ public class HaFlowRerouteHubBolt extends HubBolt implements FlowRerouteHubCarri
     }
 
     @Override
-    public void sendNotifyFlowStats(@NonNull UpdateFlowPathInfo flowPathInfo) {
-        //TODO implement https://github.com/telstra/open-kilda/issues/5182
+    public void sendNotifyFlowStats(@NonNull UpdateHaFlowPathInfo haFlowPathInfo) {
+        Message message = new InfoMessage(haFlowPathInfo, System.currentTimeMillis(),
+                getCommandContext().getCorrelationId());
+        emitWithContext(HUB_TO_STATS_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(haFlowPathInfo.getHaFlowId(), message));
     }
 
-    public void sendNotifyFlowStats(RemoveFlowPathInfo flowPathInfo) {
-        //TODO implement https://github.com/telstra/open-kilda/issues/5182
+    @Override
+    public void sendNotifyFlowStats(RemoveHaFlowPathInfo haFlowPathInfo) {
+        Message message = new InfoMessage(haFlowPathInfo, System.currentTimeMillis(),
+                getCommandContext().getCorrelationId());
+        emitWithContext(HUB_TO_STATS_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(haFlowPathInfo.getHaFlowId(), message));
     }
 
     @Override

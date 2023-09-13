@@ -128,10 +128,10 @@ public final class FermaModelUtils {
     }
 
     /**
-     * Builds 2 PathSegment objects.
+     * Builds N PathSegment objects.
      */
-    public static List<PathSegment> buildSegments(PathId pathId, Switch switch1, Switch switch2, Switch switch3) {
-        return buildSegments(pathId, Lists.newArrayList(switch1, switch3, switch2));
+    public static List<PathSegment> buildSegments(PathId pathId, Switch... switches) {
+        return buildSegments(pathId, Lists.newArrayList(switches));
     }
 
     /**

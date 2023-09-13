@@ -43,8 +43,6 @@ be delivered at the other end. 'Pings' the flow in both directions(forward and r
 """)
 class FlowPingSpec extends HealthCheckSpecification {
 
-    @Value('${opentsdb.metric.prefix}')
-    String metricPrefix
     @Value('${flow.ping.interval}')
     int pingInterval
 

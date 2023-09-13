@@ -1,5 +1,5 @@
 import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, Renderer2, Input } from '@angular/core';
-import { SwitchService } from "../../../common/services/switch.service";
+import { SwitchService } from '../../../common/services/switch.service';
 import { DataTableDirective } from 'angular-datatables';
 import { Subject } from 'rxjs';
 import { TopologyService } from 'src/app/common/services/topology.service';
@@ -12,46 +12,46 @@ import { TopologyService } from 'src/app/common/services/topology.service';
 export class UnidirectionalIslComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(DataTableDirective, { static: true })
   datatableElement: DataTableDirective;
-  dtOptions:any =  {};
+  dtOptions: any =  {};
   dtTrigger: Subject<any> = new Subject();
-  unidirectionalISL : any;
+  unidirectionalISL: any;
 
-  uexpandedSrcSwitchName: boolean = false;
-  uexpandedSrcPort: boolean = false;
-  uexpandedDestinationSwitchName: boolean = false;
-  uexpandedDestinationPort: boolean = false;
-  uexpandedCost: boolean = false;
-  uexpandedState: boolean = false;
-  uexpandedSpeed: boolean = false;
-  uexpandedAvailableBandwidth: boolean = false;
-  uexpandedLatency: boolean = false;
+  uexpandedSrcSwitchName = false;
+  uexpandedSrcPort = false;
+  uexpandedDestinationSwitchName = false;
+  uexpandedDestinationPort = false;
+  uexpandedCost = false;
+  uexpandedState = false;
+  uexpandedSpeed = false;
+  uexpandedAvailableBandwidth = false;
+  uexpandedLatency = false;
 
-  constructor(private switchService: SwitchService,private renderer:Renderer2,private topologyService:TopologyService) { 
+  constructor(private switchService: SwitchService, private renderer: Renderer2, private topologyService: TopologyService) {
     this.unidirectionalISL = topologyService.getUnidirectionalIsl();
   }
 
   ngOnInit() {
   	  this.dtOptions = {
-      "iDisplayLength": 8,
-      "bLengthChange": false,
+      'iDisplayLength': 8,
+      'bLengthChange': false,
       retrieve: true,
       autoWidth: false,
       colResize: false,
       lengthMenu: false,
       dom: 'tpli',
-      "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
+      'aLengthMenu': [[10, 20, 35, 50, -1], [10, 20, 35, 50, 'All']],
       language: {
-        searchPlaceholder: "Search"
+        searchPlaceholder: 'Search'
         },
-        drawCallback:function(){
-          if(jQuery('#unidirectional-isl-table tbody tr').length < 10){
+        drawCallback: function() {
+          if (jQuery('#unidirectional-isl-table tbody tr').length < 10) {
             jQuery('#unidirectional-isl-table_next').addClass('disabled');
-          }else{
+          } else {
             jQuery('#unidirectional-isl-table_next').removeClass('disabled');
           }
         },
-      "aoColumns": [
-				  { sWidth: '14%',"sType": "name","bSortable": true },
+      'aoColumns': [
+				  { sWidth: '14%', 'sType': 'name', 'bSortable': true },
 	              { sWidth:  '8%' },
 	              { sWidth: '8%' },
 	              { sWidth: '14%' },
@@ -63,19 +63,19 @@ export class UnidirectionalIslComponent implements OnInit, AfterViewInit, OnDest
 	              { sWidth: '12%' },
 	              { sWidth: '8%' }
 		    ],
-      "columnDefs": [
+      'columnDefs': [
             {
-                "targets": [ 1 ],
-                "visible": false,
-                "searchable": true
+                'targets': [ 1 ],
+                'visible': false,
+                'searchable': true
             },
             {
-                "targets": [ 4 ],
-                "visible": false,
-                "searchable": true
+                'targets': [ 4 ],
+                'visible': false,
+                'searchable': true
             }
-        ] 
-    }
+        ]
+    };
   }
 
   ngAfterViewInit(): void {
@@ -97,7 +97,7 @@ export class UnidirectionalIslComponent implements OnInit, AfterViewInit, OnDest
  rerender(): void {
     this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
       dtInstance.destroy();
-      try{ this.dtTrigger.next();  }catch(err){  }
+      try { this.dtTrigger.next();  } catch (err) {  }
     });
   }
 
@@ -105,26 +105,26 @@ export class UnidirectionalIslComponent implements OnInit, AfterViewInit, OnDest
      this.dtTrigger.unsubscribe();
   }
 
-  toggleuSearch(e,inputContainer){ 
+  toggleuSearch(e, inputContainer) {
     this[inputContainer] = this[inputContainer] ? false : true;
-    if (this[inputContainer]){
+    if (this[inputContainer]) {
       setTimeout(() => {
-        this.renderer.selectRootElement("#" + inputContainer).focus();
+        this.renderer.selectRootElement('#' + inputContainer).focus();
       });
-    }else{
+    } else {
       setTimeout(() => {
-        this.renderer.selectRootElement('#'+inputContainer).value = "";
-        jQuery('#'+inputContainer).trigger('change');
+        this.renderer.selectRootElement('#' + inputContainer).value = '';
+        jQuery('#' + inputContainer).trigger('change');
       });
     }
     event.stopPropagation();
   }
 
-  
-  stopPropagationmethod(e){
+
+  stopPropagationmethod(e) {
     event.stopPropagation();
 
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       return false;
     }
   }

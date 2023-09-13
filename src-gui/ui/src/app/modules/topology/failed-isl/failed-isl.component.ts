@@ -1,5 +1,5 @@
 import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, Renderer2 } from '@angular/core';
-import { SwitchService } from "../../../common/services/switch.service";
+import { SwitchService } from '../../../common/services/switch.service';
 import { DataTableDirective } from 'angular-datatables';
 import { Subject } from 'rxjs';
 import { TopologyService } from 'src/app/common/services/topology.service';
@@ -14,46 +14,46 @@ export class FailedIslComponent implements OnInit, AfterViewInit, OnDestroy {
   datatableElement: DataTableDirective;
   dtOptions: any = {};
   dtTrigger: Subject<any> = new Subject();
-  failedISL : any;
-  
-  
-  expandedSrcSwitchName : boolean = false;
-  expandedSrcPort : boolean = false;
-  expandedDestinationSwitchName : boolean = false;
-  expandedDestinationPort : boolean = false;
-  expandedCost : boolean = false;
-  expandedState : boolean = false;
-  expandedSpeed : boolean = false;
-  expandedAvailableBandwidth : boolean = false;
-  expandedLatency : boolean = false;
+  failedISL: any;
+
+
+  expandedSrcSwitchName = false;
+  expandedSrcPort = false;
+  expandedDestinationSwitchName = false;
+  expandedDestinationPort = false;
+  expandedCost = false;
+  expandedState = false;
+  expandedSpeed = false;
+  expandedAvailableBandwidth = false;
+  expandedLatency = false;
 
 
 
-  constructor(private switchService: SwitchService, private renderer:Renderer2,private topologyService: TopologyService) { 
+  constructor(private switchService: SwitchService, private renderer: Renderer2, private topologyService: TopologyService) {
     this.failedISL = topologyService.getFailedIsls();
   }
 
   ngOnInit() {
   	  this.dtOptions = {
-      "iDisplayLength": 8,
-      "bLengthChange": false,
+      'iDisplayLength': 8,
+      'bLengthChange': false,
       retrieve: true,
       autoWidth: false,
       colResize: false,
       dom: 'tpli',
-      "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
+      'aLengthMenu': [[10, 20, 35, 50, -1], [10, 20, 35, 50, 'All']],
       language: {
-        searchPlaceholder: "Search"
+        searchPlaceholder: 'Search'
       },
-      drawCallback:function(){
-        if(jQuery('#failed-isl-table tbody tr').length < 10){
+      drawCallback: function() {
+        if (jQuery('#failed-isl-table tbody tr').length < 10) {
           jQuery('#failed-isl-table_next').addClass('disabled');
-        }else{
+        } else {
           jQuery('#failed-isl-table_next').removeClass('disabled');
         }
       },
-      "aoColumns": [
-              { sWidth: '14%',"sType": "name","bSortable": true },
+      'aoColumns': [
+              { sWidth: '14%', 'sType': 'name', 'bSortable': true },
               { sWidth:  '8%' },
               { sWidth: '8%' },
               { sWidth: '14%' },
@@ -65,19 +65,19 @@ export class FailedIslComponent implements OnInit, AfterViewInit, OnDestroy {
               { sWidth: '12%' },
               { sWidth: '8%' }
       ],
-      "columnDefs": [
+      'columnDefs': [
             {
-                "targets": [ 1 ],
-                "visible": false,
-                "searchable": true
+                'targets': [ 1 ],
+                'visible': false,
+                'searchable': true
             },
             {
-                "targets": [ 4 ],
-                "visible": false,
-                "searchable": true
+                'targets': [ 4 ],
+                'visible': false,
+                'searchable': true
             }
-      ] 
-      
+      ]
+
     };
   }
 
@@ -99,8 +99,8 @@ export class FailedIslComponent implements OnInit, AfterViewInit, OnDestroy {
  rerender(): void {
     this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
       dtInstance.destroy();
-      try{ this.dtTrigger.next();  }catch(err){  }
-  
+      try { this.dtTrigger.next();  } catch (err) {  }
+
     });
   }
 
@@ -108,26 +108,26 @@ export class FailedIslComponent implements OnInit, AfterViewInit, OnDestroy {
      this.dtTrigger.unsubscribe();
   }
 
-   toggleSearch(e,inputContainer){ 
+   toggleSearch(e, inputContainer) {
     event.stopPropagation();
     this[inputContainer] = this[inputContainer] ? false : true;
     if (this[inputContainer]) {
       setTimeout(() => {
-        this.renderer.selectRootElement("#" + inputContainer).focus();
+        this.renderer.selectRootElement('#' + inputContainer).focus();
       });
-    }else{
+    } else {
       setTimeout(() => {
-        this.renderer.selectRootElement('#'+inputContainer).value = "";
-        jQuery('#'+inputContainer).trigger('change');
+        this.renderer.selectRootElement('#' + inputContainer).value = '';
+        jQuery('#' + inputContainer).trigger('change');
       });
     }
     event.stopPropagation();
   }
 
-  stopPropagationmethod(e){
+  stopPropagationmethod(e) {
     event.stopPropagation();
 
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       return false;
     }
   }

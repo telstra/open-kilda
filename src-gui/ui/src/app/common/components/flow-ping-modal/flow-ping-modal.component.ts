@@ -8,10 +8,10 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 })
 export class FlowPingModalComponent implements OnInit {
   title: any;
-  pingFlowIndex:any;
-  selectedFlowList:any;
-  responseData:any;
-  progressHeight= '25px';
+  pingFlowIndex: any;
+  selectedFlowList: any;
+  responseData: any;
+  progressHeight = '25px';
   constructor(public activeModal: NgbActiveModal) { }
 
   ngOnInit() {

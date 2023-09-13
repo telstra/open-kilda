@@ -29,7 +29,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Config;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.service.FlowRerouteEventListener;
-import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingFsmRegister;
 import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingService;
 
@@ -38,11 +37,11 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class HaFlowRerouteService extends FlowProcessingService<HaFlowRerouteFsm, Event, HaFlowRerouteContext,
-        FlowRerouteHubCarrier, FlowProcessingFsmRegister<HaFlowRerouteFsm>, FlowRerouteEventListener> {
+        HaFlowRerouteHubCarrier, FlowProcessingFsmRegister<HaFlowRerouteFsm>, FlowRerouteEventListener> {
     private final HaFlowRerouteFsm.Factory fsmFactory;
 
     public HaFlowRerouteService(
-            @NonNull FlowRerouteHubCarrier carrier, @NonNull PersistenceManager persistenceManager,
+            @NonNull HaFlowRerouteHubCarrier carrier, @NonNull PersistenceManager persistenceManager,
             @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager flowResourcesManager,
             @NonNull RuleManager ruleManager, int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
             int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {

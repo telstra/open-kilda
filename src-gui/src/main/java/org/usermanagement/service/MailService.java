@@ -17,20 +17,17 @@ package org.usermanagement.service;
 
 import org.openkilda.utility.StringUtil;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
-import org.usermanagement.util.CollectionUtils;
-
 import java.util.List;
 import java.util.Map;
-
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 
@@ -41,7 +38,9 @@ import javax.mail.internet.MimeMessage;
 @Service
 public class MailService {
 
-    /** The Constant _log. */
+    /**
+     * The Constant _log.
+     */
     private static final Logger LOGGER = LoggerFactory.getLogger(MailService.class);
 
     @Autowired
@@ -49,7 +48,7 @@ public class MailService {
 
     @Autowired
     private JavaMailSender javaMailSender;
-    
+
     @Value("${mail.from}")
     private String from;
 
@@ -57,15 +56,15 @@ public class MailService {
      * Sending message.
      *
      * @param receivers the list of receivers.
-     * @param subject mail subject.
-     * @param template template.
-     * @param context Map with context values for velocity template.
+     * @param subject   mail subject.
+     * @param template  template.
+     * @param context   Map with context values for velocity template.
      */
     public void send(final List<String> receivers, final String subject, final TemplateService.Template template,
-            final Map<String, Object> context) {
+                     final Map<String, Object> context) {
         MimeMessage mimeMessage = javaMailSender.createMimeMessage();
         MimeMessageHelper msg = new MimeMessageHelper(mimeMessage);
-        if (!CollectionUtils.isNullOrEmpty(receivers)) {
+        if (!CollectionUtils.isEmpty(receivers)) {
 
             try {
                 msg.setFrom(from);
@@ -85,12 +84,12 @@ public class MailService {
      * Sending message.
      *
      * @param receiver the receiver.
-     * @param subject mail subject.
+     * @param subject  mail subject.
      * @param template template.
-     * @param context Map with context values for velocity template.
+     * @param context  Map with context values for velocity template.
      */
     public void send(final String receiver, final String subject, final TemplateService.Template template,
-            final Map<String, Object> context) {
+                     final Map<String, Object> context) {
         MimeMessage mimeMessage = javaMailSender.createMimeMessage();
         MimeMessageHelper msg = new MimeMessageHelper(mimeMessage);
         if (!StringUtil.isNullOrEmpty(receiver)) {

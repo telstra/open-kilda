@@ -42,8 +42,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.actions.RemoveHaFlowA
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.actions.RemoveRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.actions.RevertHaFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.actions.ValidateHaFlowAction;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
+import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowGenericCarrier;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
@@ -63,13 +63,13 @@ import java.util.concurrent.TimeUnit;
 @Setter
 @Slf4j
 public final class HaFlowDeleteFsm extends HaFlowProcessingFsm<HaFlowDeleteFsm, State, Event,
-        HaFlowDeleteContext, FlowGenericCarrier, FlowProcessingEventListener> {
+        HaFlowDeleteContext, HaFlowGenericCarrier, FlowProcessingEventListener> {
     private FlowStatus originalFlowStatus;
 
     private final List<HaFlowResources> haFlowResources = new ArrayList<>();
 
     public HaFlowDeleteFsm(
-            @NonNull CommandContext commandContext, @NonNull FlowGenericCarrier carrier, @NonNull String haFlowId,
+            @NonNull CommandContext commandContext, @NonNull HaFlowGenericCarrier carrier, @NonNull String haFlowId,
             @NonNull Collection<FlowProcessingEventListener> eventListeners) {
         super(Event.NEXT, Event.ERROR, commandContext, carrier, haFlowId, eventListeners);
     }
@@ -81,15 +81,15 @@ public final class HaFlowDeleteFsm extends HaFlowProcessingFsm<HaFlowDeleteFsm, 
 
     public static class Factory {
         private final StateMachineBuilder<HaFlowDeleteFsm, State, Event, HaFlowDeleteContext> builder;
-        private final FlowGenericCarrier carrier;
+        private final HaFlowGenericCarrier carrier;
 
-        public Factory(@NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
+        public Factory(@NonNull HaFlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
                        @NonNull FlowResourcesManager resourcesManager, @NonNull RuleManager ruleManager,
                        int speakerCommandRetriesLimit) {
             this.carrier = carrier;
 
             builder = StateMachineBuilderFactory.create(HaFlowDeleteFsm.class, State.class, Event.class,
-                    HaFlowDeleteContext.class, CommandContext.class, FlowGenericCarrier.class, String.class,
+                    HaFlowDeleteContext.class, CommandContext.class, HaFlowGenericCarrier.class, String.class,
                     Collection.class);
 
             final FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);

@@ -140,14 +140,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
 
         cleanup:
         flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
-        if (srcSwitch && dstSwitch && !testIsCompleted) {
-            [srcSwitch, dstSwitch].each { northbound.synchronizeSwitch(it.dpId, true) }
-            [srcSwitch, dstSwitch].each { sw ->
-                Wrappers.wait(RULES_INSTALLATION_TIME) {
-                    northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty()
-                }
-            }
-        }
+        flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
     @Tidy
@@ -162,8 +155,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         } ?: assumeTrue(false, "No not-neighbouring switch pairs found")
 
         when: "Create an intermediate-switch flow"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair))
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
 
         then: "The intermediate switch does not contain any information about meter"
@@ -213,6 +205,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     def "Able to validate switch with 'misconfigured' meters"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }
@@ -334,7 +327,7 @@ misconfigured"
         }
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deletedFlow = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -343,6 +336,12 @@ misconfigured"
             srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
         }
+
+        def testIsCompleted = true
+
+        cleanup:
+        flow && !deletedFlow && flowHelperV2.deleteFlow(flow.flowId)
+        flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
     @Tidy
@@ -430,24 +429,17 @@ misconfigured"
 
         cleanup:
         flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
-        if (srcSwitch && dstSwitch && !testIsCompleted) {
-            [srcSwitch, dstSwitch].each { northbound.synchronizeSwitch(it.dpId, true) }
-            [srcSwitch, dstSwitch].each { sw ->
-                Wrappers.wait(RULES_INSTALLATION_TIME) {
-                    northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty()
-                }
-            }
-        }
+        flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
     @Tidy
     def "Able to validate and sync a switch with missing ingress rule (unmetered)"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flow.maximumBandwidth = 0
-        flow.ignoreBandwidth = true
-        flowHelperV2.addFlow(flow)
+        def flowRequest = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        flowRequest.maximumBandwidth = 0
+        flowRequest.ignoreBandwidth = true
+        def flow = flowHelperV2.addFlow(flowRequest)
 
         and: "Remove ingress rule on the srcSwitch"
         def ingressCookie = database.getFlow(flow.flowId).forwardPath.cookie.value
@@ -496,12 +488,7 @@ misconfigured"
 
         cleanup:
         flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
-        if (srcSwitch && dstSwitch && !testIsCompleted) {
-            [srcSwitch, dstSwitch].each { northbound.synchronizeSwitch(it.dpId, true) }
-            [srcSwitch, dstSwitch].each { sw ->
-                northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty()
-            }
-        }
+        flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
     @Tidy
@@ -658,6 +645,7 @@ misconfigured"
         }
     }
 
+    @Tidy
     def "Able to validate and sync an excess ingress/egress/transit rule + meter"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
@@ -670,8 +658,7 @@ misconfigured"
         } ?: assumeTrue(false, "Unable to find required switches in topology")
 
         and: "Create an intermediate-switch flow"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair))
         def createdCookiesSrcSw = northbound.getSwitchRules(switchPair.src.dpId).flowEntries*.cookie
         def createdCookiesDstSw = northbound.getSwitchRules(switchPair.dst.dpId).flowEntries*.cookie
         def createdCookiesTransitSwitch = northbound.getSwitchRules(pathHelper.getInvolvedSwitches(flow.flowId)[1].dpId)
@@ -787,12 +774,15 @@ misconfigured"
                 switchValidateInfo.verifyMeterSectionsAreEmpty()
             }
         }
+        def testIsCompleted = true
 
         cleanup:
         flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         producer && producer.close()
+        flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(switchPair.src, switchPair.dst)
     }
 
+    @Tidy
     @Tags(TOPOLOGY_DEPENDENT)
     def "Able to validate and sync a switch with missing 'vxlan' ingress/transit/egress rule + meter"() {
         given: "Two active not neighboring VXLAN supported switches"
@@ -803,9 +793,7 @@ misconfigured"
         } ?: assumeTrue(false, "Unable to find required switches in topology")
 
         and: "Create a flow with vxlan encapsulation"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.encapsulationType = FlowEncapsulationType.VXLAN
-        flowHelperV2.addFlow(flow)
+        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair).tap {it.encapsulationType = FlowEncapsulationType.VXLAN})
 
         and: "Remove required rules and meters from switches"
         def flowInfoFromDb = database.getFlow(flow.flowId)
@@ -906,8 +894,11 @@ misconfigured"
             }
         }
 
-        and: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def testIsCompleted = true
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(switchPair.src, switchPair.dst)
     }
 
     @Tidy

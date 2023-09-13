@@ -15,15 +15,20 @@
 
 package org.openkilda.wfm.topology.stats.service;
 
+import org.openkilda.model.GroupId;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.wfm.topology.stats.model.CommonFlowDescriptor;
+import org.openkilda.wfm.topology.stats.model.CommonHaFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.CookieCacheKey;
 import org.openkilda.wfm.topology.stats.model.DummyFlowDescriptor;
+import org.openkilda.wfm.topology.stats.model.DummyGroupDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyMeterDescriptor;
 import org.openkilda.wfm.topology.stats.model.EndpointFlowDescriptor;
+import org.openkilda.wfm.topology.stats.model.GroupCacheKey;
+import org.openkilda.wfm.topology.stats.model.HaFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptorHandler;
 import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
@@ -31,17 +36,20 @@ import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowSubDescriptor;
 
-import java.util.Map;
+import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
 
 abstract class BaseCacheChangeHandler implements KildaEntryDescriptorHandler {
-    protected final Map<CookieCacheKey, KildaEntryDescriptor> cookieToEntry;
-    protected final Map<MeterCacheKey, KildaEntryDescriptor> meterToEntry;
+    protected final HashSetValuedHashMap<CookieCacheKey, KildaEntryDescriptor> cookieToEntry;
+    protected final HashSetValuedHashMap<MeterCacheKey, KildaEntryDescriptor> meterToEntry;
+    protected final HashSetValuedHashMap<GroupCacheKey, KildaEntryDescriptor> groupToEntry;
 
     public BaseCacheChangeHandler(
-            Map<CookieCacheKey, KildaEntryDescriptor> cookieToEntry,
-            Map<MeterCacheKey, KildaEntryDescriptor> meterToEntry) {
+            HashSetValuedHashMap<CookieCacheKey, KildaEntryDescriptor> cookieToEntry,
+            HashSetValuedHashMap<MeterCacheKey, KildaEntryDescriptor> meterToEntry,
+            HashSetValuedHashMap<GroupCacheKey, KildaEntryDescriptor> groupToEntry) {
         this.cookieToEntry = cookieToEntry;
         this.meterToEntry = meterToEntry;
+        this.groupToEntry = groupToEntry;
     }
 
     @Override
@@ -76,6 +84,20 @@ abstract class BaseCacheChangeHandler implements KildaEntryDescriptorHandler {
     }
 
     @Override
+    public void handleStatsEntry(CommonHaFlowDescriptor descriptor) {
+        handleHaFlowStatsEntry(descriptor.getSwitchId(), descriptor.getCookie(),
+                descriptor.getMeterId(), descriptor.getYpointGroupId(),
+                descriptor.getYPointMeterId(), descriptor);
+    }
+
+    @Override
+    public void handleStatsEntry(HaFlowDescriptor descriptor) {
+        handleHaFlowStatsEntry(descriptor.getSwitchId(), descriptor.getCookie(),
+                descriptor.getMeterId(), descriptor.getYpointGroupId(),
+                descriptor.getYPointMeterId(), descriptor);
+    }
+
+    @Override
     public void handleStatsEntry(YFlowSubDescriptor descriptor) {
         FlowSegmentCookie cookie = descriptor.getCookie();
         handleFlowStatsEntry(descriptor.getSwitchId(), cookie, descriptor.getMeterId(), descriptor);
@@ -92,6 +114,30 @@ abstract class BaseCacheChangeHandler implements KildaEntryDescriptorHandler {
     @Override
     public void handleStatsEntry(DummyMeterDescriptor descriptor) {
         throw new IllegalArgumentException(formatUnexpectedArgumentMessage(descriptor.getClass()));
+    }
+
+    @Override
+    public void handleStatsEntry(DummyGroupDescriptor descriptor) {
+        throw new IllegalArgumentException(formatUnexpectedArgumentMessage(descriptor.getClass()));
+    }
+
+    private void handleHaFlowStatsEntry(SwitchId switchId, FlowSegmentCookie cookie, MeterId meterId,
+                                        GroupId yPointGroupId, MeterId yPointMeterId, KildaEntryDescriptor entry) {
+        cacheAction(new CookieCacheKey(switchId, cookie.getValue()), entry);
+        cacheAction(
+                new CookieCacheKey(
+                        switchId, cookie.toBuilder().type(CookieType.SERVER_42_FLOW_RTT_INGRESS).build().getValue()),
+                entry);
+
+        if (meterId != null) {
+            cacheAction(new MeterCacheKey(entry.getSwitchId(), meterId.getValue()), entry);
+        }
+        if (yPointMeterId != null) {
+            cacheAction(new MeterCacheKey(entry.getSwitchId(), yPointMeterId.getValue()), entry);
+        }
+        if (yPointGroupId != null) {
+            cacheAction(new GroupCacheKey(entry.getSwitchId(), yPointGroupId.getValue()), entry);
+        }
     }
 
     private void handleFlowStatsEntry(
@@ -112,6 +158,8 @@ abstract class BaseCacheChangeHandler implements KildaEntryDescriptorHandler {
     protected abstract void cacheAction(CookieCacheKey key, KildaEntryDescriptor entry);
 
     protected abstract void cacheAction(MeterCacheKey key, KildaEntryDescriptor entry);
+
+    protected abstract void cacheAction(GroupCacheKey key, KildaEntryDescriptor entry);
 
     private static String formatUnexpectedArgumentMessage(Class<?> klass) {
         return String.format("Kilda entries descriptor cache are not supposed to keep entries of %s", klass.getName());

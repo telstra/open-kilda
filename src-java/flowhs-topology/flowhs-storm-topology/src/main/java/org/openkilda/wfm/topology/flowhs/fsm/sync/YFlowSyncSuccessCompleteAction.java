@@ -30,7 +30,7 @@ import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.sync.YFlowSyncFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.sync.YFlowSyncFsm.State;
-import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowPaths;
+import org.openkilda.wfm.topology.flowhs.model.CrossingPaths;
 import org.openkilda.wfm.topology.flowhs.service.FlowSyncCarrier;
 import org.openkilda.wfm.topology.flowhs.utils.YFlowUtils;
 
@@ -79,7 +79,7 @@ public class YFlowSyncSuccessCompleteAction extends SuccessCompleteActionBase<YF
     }
 
     private void sendResponse(YFlow yFlow, FlowSyncCarrier carrier, CommandContext commandContext) {
-        YFlowPaths paths = utils.definePaths(yFlow);
+        CrossingPaths paths = utils.definePaths(yFlow);
         YFlowRerouteResponse response = new YFlowRerouteResponse(
                 paths.getSharedPath(), paths.getSubFlowPaths(), false);
         carrier.sendNorthboundResponse(new InfoMessage(response, commandContext.getCreateTime(),

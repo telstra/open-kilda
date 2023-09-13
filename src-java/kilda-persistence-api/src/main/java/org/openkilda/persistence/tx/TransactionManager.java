@@ -116,7 +116,7 @@ public class TransactionManager implements Serializable {
         RetryPolicy<T> retryPolicy = new RetryPolicy<T>()
                 .handle(RecoverablePersistenceException.class)
                 .withMaxRetries(transactionRetriesLimit)
-                .onRetry(e -> log.info("Failure in transaction. Retrying #{}...", e.getAttemptCount(),
+                .onRetry(e -> log.debug("Failure in transaction. Retrying #{}...", e.getAttemptCount(),
                         e.getLastFailure()))
                 .onRetriesExceeded(e -> log.error("Failure in transaction. No more retries", e.getFailure()));
         if (transactionRetriesMaxDelay > 0) {
@@ -177,10 +177,10 @@ public class TransactionManager implements Serializable {
             canClear = transaction.closeIfRoot(implementationTransactionAdapter);
         } finally {
             if (canClear) {
-                log.debug("Remove global transaction tracking in {}", threadName);
+                log.trace("Remove global transaction tracking in {}", threadName);
                 clearContext();
             } else {
-                log.debug("Do not close transaction into {}, because it is nested transaction block", threadName);
+                log.trace("Do not close transaction into {}, because it is nested transaction block", threadName);
             }
         }
     }
@@ -188,13 +188,13 @@ public class TransactionManager implements Serializable {
     private Transaction fillContext(ImplementationTransactionAdapter<?> effective) {
         PersistenceContext context = PersistenceContextManager.INSTANCE.getContextCreateIfMissing();
         return context.setTransactionIfClear(() -> {
-            log.debug("Install global transaction tracking in {}", Thread.currentThread().getName());
+            log.trace("Install global transaction tracking in {}", Thread.currentThread().getName());
             return new Transaction(effective);
         });
     }
 
     private void clearContext() {
-        log.debug("Remove global transaction tracking in {}", Thread.currentThread().getName());
+        log.trace("Remove global transaction tracking in {}", Thread.currentThread().getName());
         PersistenceContext context = PersistenceContextManager.INSTANCE.getContextCreateIfMissing();
         context.clearTransaction();
     }

@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -74,8 +74,20 @@ public class FlowStats implements CompositeDataEntity<FlowStatsData> {
 
     @Builder
     public FlowStats(Flow flowObj, Long forwardLatency, Long reverseLatency) {
-        this.data = FlowStatsDataImpl.builder().flowObj(flowObj)
-                .forwardLatency(forwardLatency).reverseLatency(reverseLatency).build();
+        this.data = FlowStatsDataImpl.builder()
+                .flowObj(flowObj)
+                .forwardLatency(forwardLatency)
+                .reverseLatency(reverseLatency)
+                .build();
+    }
+
+    @Builder(builderMethodName = "haBuilder")
+    public FlowStats(HaSubFlow haSubFlowObj, Long forwardLatency, Long reverseLatency) {
+        this.data = FlowStatsDataImpl.builder()
+                .haSubFlowObj(haSubFlowObj)
+                .forwardLatency(forwardLatency)
+                .reverseLatency(reverseLatency)
+                .build();
     }
 
     public FlowStats(@NonNull FlowStats.FlowStatsData data) {
@@ -111,7 +123,11 @@ public class FlowStats implements CompositeDataEntity<FlowStatsData> {
 
         Flow getFlowObj();
 
+        HaSubFlow getHaSubFlowObj();
+
         void setFlowObj(Flow flowObj);
+
+        void setHaSubFlowObj(HaSubFlow haSubFlowObj);
 
         Long getForwardLatency();
 
@@ -138,6 +154,9 @@ public class FlowStats implements CompositeDataEntity<FlowStatsData> {
         @ToString.Exclude
         @EqualsAndHashCode.Exclude
         Flow flowObj;
+        @ToString.Exclude
+        @EqualsAndHashCode.Exclude
+        HaSubFlow haSubFlowObj;
         Long forwardLatency;
         Long reverseLatency;
 
@@ -145,7 +164,12 @@ public class FlowStats implements CompositeDataEntity<FlowStatsData> {
 
         @Override
         public String getFlowId() {
-            return flowObj.getFlowId();
+            if (flowObj != null) {
+                return flowObj.getFlowId();
+            } else if (haSubFlowObj != null) {
+                return haSubFlowObj.getHaSubFlowId();
+            }
+            return null;
         }
     }
 
@@ -156,17 +180,36 @@ public class FlowStats implements CompositeDataEntity<FlowStatsData> {
     public interface FlowStatsCloner {
         FlowStatsCloner INSTANCE = Mappers.getMapper(FlowStatsCloner.class);
 
-        void copy(FlowStatsData source, @MappingTarget FlowStatsData target);
-
         @Mapping(target = "flowObj", ignore = true)
+        @Mapping(target = "haSubFlowObj", ignore = true)
         void copyWithoutFlow(FlowStatsData source, @MappingTarget FlowStatsData target);
+
+        /**
+         * Performs copy of entity data.
+         */
+        default void copy(FlowStatsData source, FlowStatsData target) {
+            if (source == null) {
+                return;
+            }
+
+            if (source.getFlowObj() != null) {
+                target.setFlowObj(new Flow(source.getFlowObj()));
+            } else if (source.getHaSubFlowObj() != null) {
+                target.setHaSubFlowObj(new HaSubFlow(source.getHaSubFlowObj(), source.getHaSubFlowObj().getHaFlow()));
+            }
+            copyWithoutFlow(source, target);
+        }
 
         /**
          * Performs deep copy of entity data.
          */
         default FlowStatsData deepCopy(FlowStatsData source) {
             FlowStatsData result = new FlowStatsDataImpl();
-            result.setFlowObj(new Flow(source.getFlowObj()));
+            if (source.getFlowObj() != null) {
+                result.setFlowObj(new Flow(source.getFlowObj()));
+            } else if (source.getHaSubFlowObj() != null) {
+                result.setHaSubFlowObj(new HaSubFlow(source.getHaSubFlowObj(), source.getHaSubFlowObj().getHaFlow()));
+            }
             copyWithoutFlow(source, result);
             return result;
         }

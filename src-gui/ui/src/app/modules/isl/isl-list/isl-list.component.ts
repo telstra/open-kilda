@@ -13,48 +13,48 @@ import { MessageObj } from 'src/app/common/constants/constants';
   styleUrls: ['./isl-list.component.css']
 })
 export class IslListComponent implements OnInit, AfterViewInit {
-  
+
   dataSet = [];
   loadingData = true;
   constructor(
     private titleService: Title,
-    private loaderService:LoaderService,
-    private islListService : IslListService,
-    private toastr : ToastrService
+    private loaderService: LoaderService,
+    private islListService: IslListService,
+    private toastr: ToastrService
   ) { }
 
   ngOnInit() {
     this.titleService.setTitle('OPEN KILDA - ISL');
-    var islListData = JSON.parse(localStorage.getItem("ISL_LIST"));
-    if(islListData){
-      var storageTime = islListData.timeStamp;
-      var startTime = new Date(storageTime).getTime();
-      var lastTime = new Date().getTime();
-      let timeminDiff = lastTime - startTime;
-      var diffMins = Math.round(((timeminDiff % 86400000) % 3600000) / 60000);;
-      var islList = islListData.list_data;
-      if(islList && diffMins < 5){
+    const islListData = JSON.parse(localStorage.getItem('ISL_LIST'));
+    if (islListData) {
+      const storageTime = islListData.timeStamp;
+      const startTime = new Date(storageTime).getTime();
+      const lastTime = new Date().getTime();
+      const timeminDiff = lastTime - startTime;
+      const diffMins = Math.round(((timeminDiff % 86400000) % 3600000) / 60000);
+      const islList = islListData.list_data;
+      if (islList && diffMins < 5) {
         this.dataSet = islList;
         this.loadingData = false;
-      }else{
+      } else {
         this.getISLlistService();
       }
-    }else{
+    } else {
       this.getISLlistService();
     }
-    
+
   }
 
-  getISLlistService(){
-   this.loaderService.show("Loading ISL");
+  getISLlistService() {
+   this.loaderService.show('Loading ISL');
     this.loadingData = true;
-    let query = {_:new Date().getTime()};
+    const query = {_: new Date().getTime()};
     this.islListService.getIslList(query).subscribe(
       (data: Array<object>) => {
-        var islListData = JSON.stringify({'timeStamp':new Date().getTime(),"list_data":data});
-        localStorage.setItem('ISL_LIST',islListData);
+        const islListData = JSON.stringify({'timeStamp': new Date().getTime(), 'list_data': data});
+        localStorage.setItem('ISL_LIST', islListData);
         if (!data || data.length == 0) {
-          this.toastr.info(MessageObj.no_isl_available, "Information");
+          this.toastr.info(MessageObj.no_isl_available, 'Information');
           this.dataSet = [];
         } else {
           this.dataSet = data;
@@ -62,14 +62,14 @@ export class IslListComponent implements OnInit, AfterViewInit {
         this.loadingData = false;
       },
       error => {
-        this.toastr.info(MessageObj.no_isl_available, "Information");
+        this.toastr.info(MessageObj.no_isl_available, 'Information');
         this.dataSet = [];
         this.loadingData = false;
       }
     );
   }
 
-  ngAfterViewInit(){
+  ngAfterViewInit() {
   }
 
 }

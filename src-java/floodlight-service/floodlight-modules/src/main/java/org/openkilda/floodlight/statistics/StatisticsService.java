@@ -19,6 +19,7 @@ import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static java.lang.String.format;
 
 import org.openkilda.floodlight.converter.OfFlowStatsMapper;
+import org.openkilda.floodlight.converter.OfGroupStatsMapper;
 import org.openkilda.floodlight.converter.OfMeterStatsMapper;
 import org.openkilda.floodlight.converter.OfPortStatsMapper;
 import org.openkilda.floodlight.converter.OfTableStatsMapper;
@@ -48,6 +49,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFFlowStatsRequest;
+import org.projectfloodlight.openflow.protocol.OFGroupStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFMeterStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFPortStatsRequest;
 import org.projectfloodlight.openflow.protocol.OFStatsReply;
@@ -138,6 +140,12 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
                     }
 
                     try {
+                        gatherGroupStats(iofSwitch);
+                    } catch (Exception e) {
+                        logger.error(format("Failed to gather stats for groups on switch %s.", iofSwitch.getId()), e);
+                    }
+
+                    try {
                         gatherTableStats(iofSwitch);
                     } catch (Exception e) {
                         logger.error(format("Failed to gather stats for tables on switch %s.", iofSwitch.getId()), e);
@@ -158,7 +166,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
         logger.info("Getting port stats for switch={} OF-xid:{}", iofSwitch.getId(), portStatsRequest.getXid());
 
         Futures.addCallback(iofSwitch.writeStatsRequest(portStatsRequest), new RequestCallback<>(
-                data -> OfPortStatsMapper.INSTANCE.toPostStatsData(data, switchId), switchId, "port"),
+                        data -> OfPortStatsMapper.INSTANCE.toPostStatsData(data, switchId), switchId, "port"),
                 directExecutor());
     }
 
@@ -177,7 +185,7 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
             logger.info("Getting flow stats for switch={} OF-xid:{}", iofSwitch.getId(), flowStatsRequest.getXid());
 
             Futures.addCallback(iofSwitch.writeStatsRequest(flowStatsRequest), new RequestCallback<>(
-                    data -> OfFlowStatsMapper.INSTANCE.toFlowStatsData(data, switchId), switchId, "flow"),
+                            data -> OfFlowStatsMapper.INSTANCE.toFlowStatsData(data, switchId), switchId, "flow"),
                     directExecutor());
         }
     }
@@ -231,6 +239,26 @@ public class StatisticsService implements IStatisticsService, IFloodlightModule 
             Futures.addCallback(iofSwitch.writeStatsRequest(meterStatsRequest),
                     new RequestCallback<>(
                             data -> OfMeterStatsMapper.INSTANCE.toMeterStatsData(data, switchId), switchId, "meter"),
+                    directExecutor());
+        }
+    }
+
+    private void gatherGroupStats(IOFSwitch iofSwitch) {
+        OFFactory factory = iofSwitch.getOFFactory();
+
+        SwitchId switchId = new SwitchId(iofSwitch.getId().getLong());
+
+        if (factory.getVersion().compareTo(OFVersion.OF_13) >= 0) {
+            OFGroupStatsRequest groupStatsRequest = factory
+                    .buildGroupStatsRequest()
+                    .setGroup(OFGroup.ANY)
+                    .build();
+
+            logger.info("Getting group stats for switch={} OF-xid:{}", iofSwitch.getId(), groupStatsRequest.getXid());
+
+            Futures.addCallback(iofSwitch.writeStatsRequest(groupStatsRequest),
+                    new RequestCallback<>(
+                            data -> OfGroupStatsMapper.INSTANCE.toGroupStatsData(data, switchId), switchId, "group"),
                     directExecutor());
         }
     }

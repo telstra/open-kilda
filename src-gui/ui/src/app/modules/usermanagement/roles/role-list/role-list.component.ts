@@ -6,8 +6,8 @@ import { ToastrService } from 'ngx-toastr';
 import { LoaderService } from '../../../../common/services/loader.service';
 import { TabService } from '../../../../common/services/tab.service';
 import { Title } from '@angular/platform-browser';
-import { NgbModal } from "@ng-bootstrap/ng-bootstrap";
-import { ModalconfirmationComponent } from "../../../../common/components/modalconfirmation/modalconfirmation.component";
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { ModalconfirmationComponent } from '../../../../common/components/modalconfirmation/modalconfirmation.component';
 import { CommonService } from '../../../../common/services/common.service';
 import { MessageObj } from 'src/app/common/constants/constants';
 
@@ -16,25 +16,25 @@ import { MessageObj } from 'src/app/common/constants/constants';
   templateUrl: './role-list.component.html',
   styleUrls: ['./role-list.component.css']
 })
-export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit{
+export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit {
   @ViewChild(DataTableDirective, { static: true })
 
   datatableElement: DataTableDirective;
-  dtOptions : any = {};
-  roleData:any;
+  dtOptions: any = {};
+  roleData: any;
   dtTrigger: Subject<any> = new Subject();
   hide = false;
   loadCount = 0;
-  expandedName : boolean = false;
-  expandedPermission : boolean = false;
+  expandedName = false;
+  expandedPermission = false;
 
-  constructor(private roleService:RoleService,
+  constructor(private roleService: RoleService,
     private toastr: ToastrService,
-    private tabService: TabService, 
-    private loaderService : LoaderService,
+    private tabService: TabService,
+    private loaderService: LoaderService,
     private titleService: Title,
     private modalService: NgbModal,
-    private renderer : Renderer2,
+    private renderer: Renderer2,
     public commonService: CommonService
   ) {}
 
@@ -55,7 +55,7 @@ export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit{
 
     });
 
-  
+
   }
 
   rerender(): void {
@@ -75,7 +75,7 @@ export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit{
     Method: getRoles
     Description: Fetch all the roles records
   */
-  getRoles(){
+  getRoles() {
     this.loadCount++;
     this.loaderService.show(MessageObj.loading_roles);
     this.roleService.getRoles().subscribe((role: Array<object>) => {
@@ -85,16 +85,16 @@ export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit{
     },
     error => {
       this.loaderService.hide();
-      if(error){
-        if(error.status == 0){
-          this.toastr.info(MessageObj.connection_refused,'Warning');
-        }else if(error.error['error-message']){
-          this.toastr.error(error.error['error-message'],'Error');
-        }else{
-          this.toastr.error(MessageObj.something_wrong,'Error');
+      if (error) {
+        if (error.status == 0) {
+          this.toastr.info(MessageObj.connection_refused, 'Warning');
+        } else if (error.error['error-message']) {
+          this.toastr.error(error.error['error-message'], 'Error');
+        } else {
+          this.toastr.error(MessageObj.something_wrong, 'Error');
         }
-      }else{
-        this.toastr.error(MessageObj.something_wrong,'Error');
+      } else {
+        this.toastr.error(MessageObj.something_wrong, 'Error');
       }
     });
   }
@@ -104,7 +104,7 @@ export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit{
     Description: Edit a particular user by user id
   */
 
-  editRole(id){
+  editRole(id) {
     this.roleService.selectedRole(id);
     this.tabService.setSelectedTab('role-edit');
   }
@@ -113,17 +113,17 @@ export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit{
     Method: deleteRole
     Description: Delete a particular role by role id
   */
-  deleteRole(id){
+  deleteRole(id) {
     const modalRef = this.modalService.open(ModalconfirmationComponent);
-    modalRef.componentInstance.title = "Confirmation";
+    modalRef.componentInstance.title = 'Confirmation';
     modalRef.componentInstance.content = 'Are you sure you want to delete role?';
-    
+
     modalRef.result.then((response) => {
-      if(response && response == true){
+      if (response && response == true) {
         this.roleService.deleteRole(id).subscribe(() => {
-          this.toastr.success(MessageObj.role_removed,'Success')
+          this.toastr.success(MessageObj.role_removed, 'Success');
           this.getRoles();
-        }, error =>{
+        }, error => {
           this.toastr.error(error.error['error-auxiliary-message']);
         });
       }
@@ -131,41 +131,41 @@ export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit{
   }
 
   ngOnInit() {
-    let ref = this;
+    const ref = this;
     this.titleService.setTitle('OPEN KILDA - Roles');
     this.loaderService.show();
     this.getRoles();
-    this.dtOptions = { 
+    this.dtOptions = {
       pageLength: 10,
       retrieve: true,
       autoWidth: true,
       colResize: false,
       dom: 'tpli',
-      "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
-      drawCallback:function(){
-        if(jQuery('#roles_table tbody tr').length < 10){
+      'aLengthMenu': [[10, 20, 35, 50, -1], [10, 20, 35, 50, 'All']],
+      drawCallback: function() {
+        if (jQuery('#roles_table tbody tr').length < 10) {
           jQuery('#roles_table_next').addClass('disabled');
-        }else{
+        } else {
           jQuery('#roles_table_next').removeClass('disabled');
         }
       },
-      "aoColumns": [{
+      'aoColumns': [{
           sWidth: '20%',
-        },{
-          sWidth: '50%',"bSortable": false,
-        },{
-          sWidth: '30%',"bSortable": false
+        }, {
+          sWidth: '50%', 'bSortable': false,
+        }, {
+          sWidth: '30%', 'bSortable': false
         }
       ],
       language: {
-        searchPlaceholder: "Search"
+        searchPlaceholder: 'Search'
       },
-      initComplete:function( settings, json ){
-        let timerOut = ref.loadCount > 1 ? ref.roleData.length*2.7 : 1500;
-        setTimeout(function(){
+      initComplete: function( settings, json ) {
+        const timerOut = ref.loadCount > 1 ? ref.roleData.length * 2.7 : 1500;
+        setTimeout(function() {
           ref.loaderService.hide();
           ref.hide = true;
-        },timerOut);
+        }, timerOut);
       }
     };
   }
@@ -174,17 +174,17 @@ export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit{
     Method: toggleSearch
     Description: Enable / disable of search text
   */
-  toggleSearch(e,inputContainer){ 
+  toggleSearch(e, inputContainer) {
     event.stopPropagation();
     this[inputContainer] = this[inputContainer] ? false : true;
     if (this[inputContainer]) {
       setTimeout(() => {
-        this.renderer.selectRootElement("#" + inputContainer).focus();
+        this.renderer.selectRootElement('#' + inputContainer).focus();
       });
-    }else{
+    } else {
       setTimeout(() => {
-        this.renderer.selectRootElement('#'+inputContainer).value = "";
-        jQuery('#'+inputContainer).trigger('change');
+        this.renderer.selectRootElement('#' + inputContainer).value = '';
+        jQuery('#' + inputContainer).trigger('change');
       });
     }
   }
@@ -193,19 +193,19 @@ export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit{
     Method: OpenTab
     Description: Used to open tabs with component selector
   */
- 
-  OpenTab(tab, id){
+
+  OpenTab(tab, id) {
     this.tabService.clearSelectedTab();
-    if(id){
-      this.roleService.selectedRole(id); //role
+    if (id) {
+      this.roleService.selectedRole(id); // role
     }
     this.tabService.setSelectedTab(tab);
   }
 
-  stopPropagationmethod(e){
+  stopPropagationmethod(e) {
     event.stopPropagation();
 
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       return false;
     }
   }

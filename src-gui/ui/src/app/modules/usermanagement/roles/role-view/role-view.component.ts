@@ -18,17 +18,17 @@ export class RoleViewComponent implements OnInit {
   constructor(
     private tabService: TabService,
     private roleService: RoleService,
-    private loaderService : NgxSpinnerService,
+    private loaderService: NgxSpinnerService,
     private titleService: Title
   ) {
 
     /* Get all roles for Role select field */
     this.roleService.currentRole.subscribe(roleId => {
-      if(roleId){
+      if (roleId) {
         this.roleService.getUserRoleById(roleId).subscribe(role => {
           this.users = role.users;
           this.roleViewForm.patchValue({
-            name: role.name, 
+            name: role.name,
             description: role.description
           });
         });
@@ -36,7 +36,7 @@ export class RoleViewComponent implements OnInit {
     });
   }
 
-  /* 
+  /*
     Method: createEditForm
     Description: Create User edit form
   */

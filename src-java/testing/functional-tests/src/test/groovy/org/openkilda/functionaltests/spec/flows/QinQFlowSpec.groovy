@@ -325,35 +325,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])
-    def "System doesn't allow to create a QinQ flow when a switch supports multi table mode but it is disabled"() {
-        given: "A switch pair with disabled multi table mode at least on the one switch"
-        def swP = topologyHelper.getNeighboringSwitchPair()
-        def initSrcSwProps = switchHelper.getCachedSwProps(swP.src.dpId)
-        SwitchHelper.updateSwitchProperties(swP.src, initSrcSwProps.jacksonCopy().tap {
-            it.multiTable = false
-        })
-
-        when: "Try to create a QinQ flow when at least on switch doesn't support multi table mode"
-        def flow = flowHelperV2.randomFlow(swP)
-        flow.source.innerVlanId = 4093
-        flow.destination.innerVlanId = 3904
-        northboundV2.addFlow(flow)
-
-        then: "Human readable error is returned"
-        def exc = thrown(HttpClientErrorException)
-        new FlowNotCreatedExpectedError(~/Flow\'s source endpoint is double VLAN tagged, switch ${swP.getSrc().getDpId()}\
- is not capable to support such endpoint encapsulation./).matches(exc)
-        cleanup: "Revert system to original state"
-        !exc && northboundV2.deleteFlow(flow.flowId)
-        northbound.updateSwitchProperties(swP.src.dpId, initSrcSwProps)
-        Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-            assert northbound.getSwitchRules(swP.src.dpId).flowEntries*.cookie.sort() == swP.src.defaultCookies.sort()
-        }
-        SwitchHelper.updateSwitchProperties(swP.src, initSrcSwProps)
-    }
-
-    @Tidy
     def "System doesn't allow to create a QinQ flow with incorrect innerVlanIds\
 (src:#srcInnerVlanId, dst:#dstInnerVlanId)"() {
         given: "A switch pair with enabled multi table mode"

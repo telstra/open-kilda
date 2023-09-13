@@ -1,11 +1,15 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.stats.FlowStats
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS_Y
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
@@ -37,6 +41,8 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     Provider<TraffExamService> traffExamProvider
+    @Autowired @Shared
+    FlowStats flowStats
 
     @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
@@ -100,17 +106,16 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         when: "Traffic starts to flow on both sub-flows with maximum bandwidth (if applicable)"
-        def beforeTraffic = new Date()
         def traffExam = traffExamProvider.get()
-        List<ExamReport> examReports
         def exam = new FlowTrafficExamBuilder(topology, traffExam).buildYFlowExam(yFlow, yFlow.maximumBandwidth, 10)
-        examReports = withPool {
+        List<ExamReport> examReports = withPool {
             [exam.forward1, exam.forward2, exam.reverse1, exam.reverse2].collectParallel { Exam direction ->
                 def resources = traffExam.startExam(direction)
                 direction.setResources(resources)
                 traffExam.waitExam(direction)
             }
         }
+        statsHelper."force kilda to collect stats"()
 
         then: "Traffic flows on both sub-flows, but does not exceed the y-flow bandwidth restriction (~halves for each sub-flow)"
         examReports.each { report ->
@@ -118,8 +123,17 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         }
 
 
-        and: "Y-flow and subflows stats are available (flow.raw.bytes)"
-        statsHelper.verifyYFlowWritesStats(yFlow, beforeTraffic, true)
+        and: "Subflows stats are available (flow.raw.bytes)"
+        def subflow = yFlow.getSubFlows().shuffled().first()
+        def subflowId = subflow.getFlowId()
+        def flowInfo = database.getFlow(subflowId)
+        def mainForwardCookie = flowInfo.forwardPath.cookie.value
+        def mainReverseCookie = flowInfo.reversePath.cookie.value
+        wait(statsRouterRequestInterval + WAIT_OFFSET) {
+            def stats = flowStats.of(subflowId)
+            assert stats.get(FLOW_RAW_BYTES, subflow.getEndpoint().getSwitchId(), mainForwardCookie).hasNonZeroValues()
+            assert stats.get(FLOW_RAW_BYTES, yFlow.getSharedEndpoint().getSwitchId(), mainReverseCookie).hasNonZeroValues()
+        }
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)

@@ -42,4 +42,8 @@ class SwitchTriplet {
     static Closure ONE_SUB_FLOW_IS_ONE_SWITCH_FLOW = {
         SwitchTriplet swT -> swT.shared == swT.ep1 && swT.shared != swT.ep2
     }
+
+    static Closure TRAFFGEN_CAPABLE = { SwitchTriplet swT ->
+        !(swT.ep1.getTraffGens().isEmpty() || swT.ep2.getTraffGens().isEmpty() || swT.shared.getTraffGens().isEmpty())
+    }
 }

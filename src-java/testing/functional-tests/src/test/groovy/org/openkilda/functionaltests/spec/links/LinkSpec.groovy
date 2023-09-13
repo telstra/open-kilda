@@ -352,6 +352,7 @@ class LinkSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.contains("ISL was not found")
     }
 
+    @Tidy
     def "Unable to delete an active link"() {
         given: "An active link"
         def isl = topology.getIslsForActiveSwitches()[0]
@@ -570,6 +571,7 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
     }
 
+    @Tidy
     @Tags([SMOKE])
     def "ISL is able to properly fail when both src and dst switches suddenly disconnect"() {
         given: "An active ISL"
@@ -586,7 +588,7 @@ class LinkSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(links, isl.reversed).get().state == FAILED
         }
 
-        and: "Restore broken switches and revive ISL"
+        cleanup: "Restore broken switches and revive ISL"
         lockKeeper.reviveSwitch(isl.srcSwitch, srcBlockData)
         lockKeeper.reviveSwitch(isl.dstSwitch, dstBlockData)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -597,13 +599,14 @@ class LinkSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tidy
     @Tags(SMOKE)
     def "Able to update max bandwidth for a link"() {
         given: "An active ISL"
         // Find such an ISL that is the only ISL between switches.
-        def isl = topology.islsForActiveSwitches.find { isl ->
+        def isl = topology.islsForActiveSwitches.find { item ->
             topology.islsForActiveSwitches.findAll {
-                isl.srcSwitch == it.srcSwitch && isl.dstSwitch == it.dstSwitch
+                item.srcSwitch == it.srcSwitch && item.dstSwitch == it.dstSwitch
             }.size() == 1
         }
         def islInfo = islUtils.getIslInfo(isl).get()
@@ -611,10 +614,8 @@ class LinkSpec extends HealthCheckSpecification {
         def initialAvailableBandwidth = islInfo.availableBandwidth
 
         when: "Create a flow going through this ISL"
-        def flow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch)
         def flowMaxBandwidth = 12345
-        flow.maximumBandwidth = flowMaxBandwidth
-        flowHelperV2.addFlow(flow)
+        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch).tap { it.maximumBandwidth = flowMaxBandwidth})
 
         and: "Update max bandwidth for the link"
         def offset = 10000
@@ -690,10 +691,17 @@ class LinkSpec extends HealthCheckSpecification {
                     initialAvailableBandwidth - flowMaxBandwidth
         }
 
-        and: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+
+        boolean isIslInInitialState = [isl, isl.reversed].every {
+            islUtils.getIslInfo(links, it).get().maxBandwidth == initialMaxBandwidth
+        }
+        !isIslInInitialState && northbound.updateLinkMaxBandwidth(isl.srcSwitch.dpId, isl.srcPort,
+                isl.dstSwitch.dpId, isl.dstPort, initialMaxBandwidth)
     }
 
+    @Tidy
     def "Unable to update max bandwidth with specifying invalid query parameters (#item is invalid)"() {
         when: "Update max bandwidth with specifying invalid #item"
         northbound.updateLinkMaxBandwidth(srcSwId, srcSwPort, dstSwId, dstSwPort, 1000000)
@@ -710,6 +718,7 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
     }
 
+    @Tidy
     def "Unable to update max bandwidth without full specifying a particular link (#item is missing)"() {
         when: "Update max bandwidth without specifying #item"
         northbound.updateLinkMaxBandwidth(srcSwId, srcSwPort, dstSwId, dstSwPort, 1000000)

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpRequest, HttpHandler, HttpEvent,HttpResponse,HttpErrorResponse, HttpInterceptor,HTTP_INTERCEPTORS, HttpHeaderResponse  } from '@angular/common/http';
+import { HttpRequest, HttpHandler, HttpEvent, HttpResponse, HttpErrorResponse, HttpInterceptor, HTTP_INTERCEPTORS, HttpHeaderResponse  } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { LoaderService } from '../services/loader.service';
@@ -12,21 +12,21 @@ import { MessageObj } from '../constants/constants';
 
 @Injectable()
 export class AppAuthInterceptor implements HttpInterceptor {
-    constructor(private appLoader:LoaderService, private cookieManager:CookieManagerService,private _router: Router,private toastr:ToastrService) {}
+    constructor(private appLoader: LoaderService, private cookieManager: CookieManagerService, private _router: Router, private toastr: ToastrService) {}
 
     intercept(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
         let requestToForward = request;
-        var url_to_call = request.url;
-        var url_arr = url_to_call.split('/');
-        if(typeof(url_arr[2])!='undefined' && url_arr[2] == location.host){
-            let token = this.cookieManager.get('XSRF-TOKEN') as string;
+        const url_to_call = request.url;
+        const url_arr = url_to_call.split('/');
+        if (typeof(url_arr[2]) != 'undefined' && url_arr[2] == location.host) {
+            const token = this.cookieManager.get('XSRF-TOKEN') as string;
             if (token !== null) {
-                requestToForward = request.clone({ setHeaders: { "X-XSRF-TOKEN": token } });
+                requestToForward = request.clone({ setHeaders: { 'X-XSRF-TOKEN': token } });
             }
-        } 
+        }
         return next.handle(requestToForward).pipe(catchError(err => {
             if (err.status === 401) {
-                let msg = this.cookieManager.get('isLoggedOutInProgress') ? "": MessageObj.session_expired ;
+                const msg = this.cookieManager.get('isLoggedOutInProgress') ? '' : MessageObj.session_expired ;
                 this.appLoader.show(msg);
                 localStorage.removeItem('flows');
                 localStorage.removeItem('is2FaEnabled');
@@ -37,7 +37,7 @@ export class AppAuthInterceptor implements HttpInterceptor {
                 this._router.navigate(['/logout']);
             }
             return throwError(err);
-        }))
+        }));
     }
 }
 

@@ -180,6 +180,7 @@ timeout"() {
      * directly to kafka, because currently it is the only way to simulate an incredibly rapid port flapping that
      * may sometimes occur on hardware switches(overheat?)
      */
+    @Tidy
     @Tags(SMOKE)
     def "System properly registers events order when port flaps incredibly fast (end with Down)"() {
 
@@ -202,7 +203,7 @@ timeout"() {
             TimeUnit.SECONDS.sleep(1)
         }
 
-        and: "cleanup: restore broken ISL"
+        cleanup: "restore broken ISL"
         new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, 0)
                 .kafkaChangePort(PortChangeType.UP)
         Wrappers.wait(WAIT_OFFSET) { islUtils.getIslInfo(isl).get().state == DISCOVERED }

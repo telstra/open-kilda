@@ -19,6 +19,7 @@ import static org.openkilda.server42.messaging.FlowDirection.FORWARD;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStats;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -63,19 +64,22 @@ public class FlowStatsService {
                         FlowStats toCreate = new FlowStats(flow.get(), null, null);
                         flowStatsRepository.add(toCreate);
                         flowStats = toCreate;
-                    } else if (haSubFlowRepository.findById(flowId).isPresent()) {
-                        //TODO: https://github.com/telstra/open-kilda/issues/5223
                     } else {
-                        log.warn("Can't save latency for flow '{}'. Flow not found.", flowId);
-                        return;
+                        Optional<HaSubFlow> haSubFlow = haSubFlowRepository.findById(flowId);
+                        if (haSubFlow.isPresent()) {
+                            FlowStats toCreate = new FlowStats(haSubFlow.get(), null, null);
+                            flowStatsRepository.add(toCreate);
+                            flowStats = toCreate;
+                        } else {
+                            log.warn("Can't save latency for flow '{}'. Flow not found.", flowId);
+                            return;
+                        }
                     }
                 }
-                if (flowStats != null) {
-                    if (FORWARD.name().toLowerCase().equals(direction)) {
-                        flowStats.setForwardLatency(latency);
-                    } else {
-                        flowStats.setReverseLatency(latency);
-                    }
+                if (FORWARD.name().toLowerCase().equals(direction)) {
+                    flowStats.setForwardLatency(latency);
+                } else {
+                    flowStats.setReverseLatency(latency);
                 }
             });
         } catch (PersistenceException e) {

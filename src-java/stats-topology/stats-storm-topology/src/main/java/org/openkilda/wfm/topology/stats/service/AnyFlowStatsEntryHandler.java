@@ -23,9 +23,12 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.stats.bolts.metrics.FlowDirectionHelper.Direction;
 import org.openkilda.wfm.topology.stats.model.CommonFlowDescriptor;
+import org.openkilda.wfm.topology.stats.model.CommonHaFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyFlowDescriptor;
+import org.openkilda.wfm.topology.stats.model.DummyGroupDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyMeterDescriptor;
 import org.openkilda.wfm.topology.stats.model.EndpointFlowDescriptor;
+import org.openkilda.wfm.topology.stats.model.HaFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
 import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
@@ -35,10 +38,21 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public final class AnyFlowStatsEntryHandler extends BaseFlowStatsEntryHandler {
+
+    /**
+     * Initialize the metric handling process for the raw metrics.
+     *
+     * @param meterEmitter The TimeSeriesMeterEmitter object used for emitting time series meter data.
+     * @param switchId     The SwitchId object representing the switch identifier.
+     * @param timestamp    The timestamp for the operation.
+     * @param statsEntry   The FlowStatsEntry object containing flow statistics.
+     * @param descriptor   The KildaEntryDescriptor object representing a descriptor for Kilda entries.
+     */
     public static void apply(
             TimeSeriesMeterEmitter meterEmitter, SwitchId switchId, long timestamp, FlowStatsEntry statsEntry,
             KildaEntryDescriptor descriptor) {
-        AnyFlowStatsEntryHandler handler = new AnyFlowStatsEntryHandler(meterEmitter, switchId, timestamp, statsEntry);
+        AnyFlowStatsEntryHandler handler =
+                new AnyFlowStatsEntryHandler(meterEmitter, switchId, timestamp, statsEntry);
         handler.handle(descriptor);
     }
 
@@ -58,6 +72,14 @@ public final class AnyFlowStatsEntryHandler extends BaseFlowStatsEntryHandler {
     @Override
     public void handleStatsEntry(YFlowDescriptor descriptor) {
         throw new IllegalArgumentException(formatUnexpectedDescriptorMessage(descriptor.getClass()));
+    }
+
+    @Override
+    public void handleStatsEntry(CommonHaFlowDescriptor descriptor) {
+        TagsFormatter tags = initTagsHa(descriptor.getCookie());
+        tags.addHaFlowIdTag(descriptor.getHaFlowId());
+        tags.addFlowIdTag(descriptor.getHaSubFlowId());
+        emitHaMeterPoints(tags);
     }
 
     @Override
@@ -82,6 +104,11 @@ public final class AnyFlowStatsEntryHandler extends BaseFlowStatsEntryHandler {
     }
 
     @Override
+    public void handleStatsEntry(DummyGroupDescriptor descriptor) {
+        throw new IllegalArgumentException(formatUnexpectedDescriptorMessage(descriptor.getClass()));
+    }
+
+    @Override
     public void handleStatsEntry(StatVlanDescriptor descriptor) {
         // nothing to do here
     }
@@ -91,9 +118,20 @@ public final class AnyFlowStatsEntryHandler extends BaseFlowStatsEntryHandler {
         handleStatsEntry((CommonFlowDescriptor) descriptor);
     }
 
+    @Override
+    public void handleStatsEntry(HaFlowDescriptor descriptor) {
+        handleStatsEntry((CommonHaFlowDescriptor) descriptor);
+    }
+
     private void emitMeterPoints(TagsFormatter tagsFormatter) {
         meterEmitter.emitPacketAndBytePoints(
                 new MetricFormatter("flow.raw."), timestamp, statsEntry.getPacketCount(), statsEntry.getByteCount(),
+                tagsFormatter.getTags());
+    }
+
+    private void emitHaMeterPoints(TagsFormatter tagsFormatter) {
+        meterEmitter.emitPacketAndBytePoints(
+                new MetricFormatter("haflow.raw."), timestamp, statsEntry.getPacketCount(), statsEntry.getByteCount(),
                 tagsFormatter.getTags());
     }
 
@@ -127,6 +165,17 @@ public final class AnyFlowStatsEntryHandler extends BaseFlowStatsEntryHandler {
         tags.addIsFlowSatelliteTag(flowSatellite);
         tags.addCookieTypeTag(cookieType);
 
+        return tags;
+    }
+
+    private TagsFormatter initTagsHa(FlowSegmentCookie decodedCookie) {
+        TagsFormatter tags = new TagsFormatter();
+        directionFromCookieIntoTags(decodedCookie, tags);
+        tags.addSwitchIdTag(switchId);
+        tags.addCookieTag(statsEntry.getCookie());
+        tags.addTableIdTag(statsEntry.getTableId());
+        tags.addInPortTag(statsEntry.getInPort());
+        tags.addOutPortTag(statsEntry.getOutPort());
         return tags;
     }
 }

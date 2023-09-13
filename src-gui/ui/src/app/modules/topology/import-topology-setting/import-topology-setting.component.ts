@@ -10,17 +10,17 @@ import { MessageObj } from 'src/app/common/constants/constants';
   styleUrls: ['./import-topology-setting.component.css']
 })
 export class ImportTopologySettingComponent implements OnInit {
-  files:FileList;
-  jsondata:any;
-  importsettingForm:FormGroup;
-  formSubmitted:boolean=false;
-  invalidJson:boolean=false;
+  files: FileList;
+  jsondata: any;
+  importsettingForm: FormGroup;
+  formSubmitted = false;
+  invalidJson = false;
   constructor(public activeModal: NgbActiveModal,
-            private userService:UserService,
-            private toastr:ToastrService,
-            private modalService:NgbModal,
-            private formBuilder:FormBuilder
-            ) { 
+            private userService: UserService,
+            private toastr: ToastrService,
+            private modalService: NgbModal,
+            private formBuilder: FormBuilder
+            ) {
 
   }
 
@@ -31,67 +31,67 @@ export class ImportTopologySettingComponent implements OnInit {
     });
   }
 
-  getFile(e){
+  getFile(e) {
     this.files = e.target.files;
-    if(this.files && this.files.length){
-        let reader = new FileReader();
-        let self = this;
-        reader.onloadend = function(x){
+    if (this.files && this.files.length) {
+        const reader = new FileReader();
+        const self = this;
+        reader.onloadend = function(x) {
           self.jsondata = reader.result;
-        }
-        reader.readAsText(this.files[0]);        
-        this.disableField('jsondata','files');
-    }else{
+        };
+        reader.readAsText(this.files[0]);
+        this.disableField('jsondata', 'files');
+    } else {
       this.enableField('jsondata');
       this.enableField('files');
     }
-    
+
   }
-  emptyFile(){
+  emptyFile() {
     this.formSubmitted = false;
     this.importsettingForm.controls['files'].setValue(null);
-    this.disableField('jsondata','files');
+    this.disableField('jsondata', 'files');
   }
-  enableField(field){
+  enableField(field) {
     this.importsettingForm.controls[field].enable();
   }
-  disableField(field,enablefield){
-    if(this.importsettingForm.controls[enablefield].value){
+  disableField(field, enablefield) {
+    if (this.importsettingForm.controls[enablefield].value) {
       this.importsettingForm.controls[field].disable();
       this.enableField(enablefield);
-    }else{
+    } else {
       this.enableField(field);
       this.enableField(enablefield);
     }
-    
+
   }
-  submitForm(){ 
+  submitForm() {
     this.formSubmitted = true;
-    if(this.jsondata && this.importsettingForm.value.files){
-      this.jsondata = JSON.parse(this.jsondata);     
-    }else{
+    if (this.jsondata && this.importsettingForm.value.files) {
+      this.jsondata = JSON.parse(this.jsondata);
+    } else {
       this.jsondata = (this.importsettingForm && this.importsettingForm.value && this.importsettingForm.value.jsondata) ? this.importsettingForm.value.jsondata : null;
     }
     this.invalidJson = !this.IsJsonString(this.jsondata);
-    if(this.jsondata && !this.invalidJson){
+    if (this.jsondata && !this.invalidJson) {
       this.userService
       .saveSettings(this.jsondata)
       .subscribe(() => {
         this.toastr.success(MessageObj.import_setting_saved);
         this.modalService.dismissAll();
-        let url = "topology";
+        const url = 'topology';
         window.location.href = url;
       }, error => {
 
       });
     }
     return false;
-    
+
   }
 
   IsJsonString(str) {
     try {
-      if(typeof(str) == 'object'){
+      if (typeof(str) == 'object') {
         str = JSON.stringify(str);
       }
      JSON.parse(str);
@@ -100,6 +100,6 @@ export class ImportTopologySettingComponent implements OnInit {
     }
     return true;
 }
-  
+
 
 }

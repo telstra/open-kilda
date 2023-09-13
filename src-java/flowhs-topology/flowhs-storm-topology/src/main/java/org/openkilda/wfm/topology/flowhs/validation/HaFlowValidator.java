@@ -23,9 +23,13 @@ import org.openkilda.messaging.command.haflow.HaSubFlowPartialUpdateDto;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.messaging.validation.ValidatorUtils;
+import org.openkilda.model.FlowStatus;
+import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.Switch;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
@@ -53,6 +57,23 @@ public class HaFlowValidator {
      */
     public void validateFlowIdUniqueness(String id) throws InvalidFlowException {
         flowValidator.validateFlowIdUniqueness(id);
+    }
+
+    /**
+     * Checks if HA-flow and HA-sub flow statuses are not equal to IN_PROGRESS status.
+     */
+    public void validateHaFlowStatusIsNotInProgress(HaFlow haFlow) {
+        if (FlowStatus.IN_PROGRESS.equals(haFlow.getStatus())) {
+            String message = format("HA-flow %s is in progress now", haFlow.getHaFlowId());
+            throw new FlowProcessingException(ErrorType.REQUEST_INVALID, message);
+        }
+        for (HaSubFlow subFlow : haFlow.getHaSubFlows()) {
+            if (FlowStatus.IN_PROGRESS.equals(subFlow.getStatus())) {
+                String message = format("HA-sub flow %s of HA-flow %s is in progress now",
+                        subFlow.getHaSubFlowId(), haFlow.getHaFlowId());
+                throw new FlowProcessingException(ErrorType.REQUEST_INVALID, message);
+            }
+        }
     }
 
     /**

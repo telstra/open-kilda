@@ -16,10 +16,13 @@
 package org.openkilda.wfm.topology.stats.service;
 
 import org.openkilda.wfm.topology.stats.model.SwitchFlowStats;
+import org.openkilda.wfm.topology.stats.model.SwitchGroupStats;
 import org.openkilda.wfm.topology.stats.model.SwitchMeterStats;
 
 public interface KildaEntryCacheCarrier {
     void emitFlowStats(SwitchFlowStats stats);
 
     void emitMeterStats(SwitchMeterStats stats);
+
+    void emitGroupStats(SwitchGroupStats stats);
 }
