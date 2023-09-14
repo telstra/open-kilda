@@ -18,12 +18,14 @@ package org.openkilda.northbound.converter;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.messaging.command.haflow.HaFlowDto;
 import org.openkilda.messaging.command.haflow.HaFlowPartialUpdateRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPathsResponse;
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRerouteResponse;
+import org.openkilda.messaging.command.haflow.HaFlowSyncResponse;
 import org.openkilda.messaging.command.haflow.HaSubFlowDto;
 import org.openkilda.messaging.command.haflow.HaSubFlowPartialUpdateDto;
 import org.openkilda.messaging.command.yflow.FlowPartialUpdateEndpoint;
@@ -47,12 +49,16 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowSyncResult;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowSyncResult.SyncSharedPath;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowSyncResult.SyncSubFlowPath;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowPatchPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowUpdatePayload;
 
+import com.google.common.collect.Sets;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,6 +69,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @ExtendWith(SpringExtension.class)
 public class HaFlowMapperTest {
@@ -96,6 +103,7 @@ public class HaFlowMapperTest {
     private static final String DESC_1 = "desc1";
     private static final String DESC_2 = "desc2";
     private static final String DESC_3 = "desc3";
+    private static final String ERROR = "some error";
     private static final String STATUS_INFO = "some info";
     private static final HaSubFlowCreatePayload CREATE_SUB_FLOW_1 = new HaSubFlowCreatePayload(
             new BaseFlowEndpointV2(SWITCH_ID_1, PORT_1, VLAN_1, INNER_VLAN_1), DESC_2);
@@ -373,11 +381,57 @@ public class HaFlowMapperTest {
                 result.getSubFlowPaths().get(1).getProtectedPath().getReverse());
     }
 
-    private static PathInfoData buildPathInfoData(long latency, SwitchId switchId1) {
+    @Test
+    public void mapToSyncResult() {
+        PathInfoData sharedPath = buildPathInfoData(MAX_LATENCY, SWITCH_ID_1);
+        PathInfoData protectedSharedPath = buildPathInfoData(MAX_LATENCY, SWITCH_ID_2);
+        List<SubFlowPathDto> subFlowPaths = newArrayList(
+                new SubFlowPathDto(FLOW_1, buildPathInfoData(MAX_LATENCY_TIER_2, SWITCH_ID_3)));
+        List<SubFlowPathDto> protectedSubFlowPaths = newArrayList(
+                new SubFlowPathDto(FLOW_1, buildPathInfoData(MAX_LATENCY_TIER_2, SWITCH_ID_4)));
+        Set<SwitchId> unsyncedSwitchIds = Sets.newHashSet(SWITCH_ID_2, SWITCH_ID_3);
+
+        HaFlowSyncResponse response = new HaFlowSyncResponse(sharedPath, subFlowPaths, protectedSharedPath,
+                protectedSubFlowPaths, unsyncedSwitchIds, ERROR, true);
+
+        HaFlowSyncResult result = mapper.toSyncResult(response);
+        assertSyncSharedPaths(sharedPath, result.getSharedPath());
+        assertSyncSharedPaths(protectedSharedPath, result.getProtectedSharedPath());
+        assertSyncSubPaths(subFlowPaths, result.getSubFlowPaths());
+        assertSyncSubPaths(protectedSubFlowPaths, result.getProtectedSubFlowPaths());
+        assertEquals(unsyncedSwitchIds, result.getUnsyncedSwitches());
+        assertEquals(ERROR, result.getError());
+        assertTrue(response.isSynced());
+    }
+
+    private PathInfoData buildPathInfoData(long latency, SwitchId switchId1) {
         PathInfoData pathInfoData = new PathInfoData();
         pathInfoData.setLatency(latency);
         pathInfoData.setPath(Collections.singletonList(new PathNode(switchId1, 1, 1, 1L, 1L)));
         return pathInfoData;
+    }
+
+    private void assertSyncSharedPaths(PathInfoData expected, SyncSharedPath actual) {
+        assertEquals(expected.getPath().size(), actual.getNodes().size());
+        for (int i = 0; i < expected.getPath().size(); i++) {
+            assertPathNode(expected.getPath().get(i), actual.getNodes().get(i));
+        }
+    }
+
+    private void assertSyncSubPaths(List<SubFlowPathDto> expected, List<SyncSubFlowPath> actual) {
+        assertEquals(expected.size(), actual.size());
+        for (int i = 0; i < expected.size(); i++) {
+            assertSyncSubPath(expected.get(i), actual.get(i));
+        }
+    }
+
+    private void assertSyncSubPath(SubFlowPathDto expected, SyncSubFlowPath actual) {
+        assertEquals(expected.getFlowId(), actual.getFlowId());
+        assertEquals(expected.getPath().getPath().size(), actual.getNodes().size());
+
+        for (int i = 0; i < expected.getPath().getPath().size(); i++) {
+            assertPathNode(expected.getPath().getPath().get(i), actual.getNodes().get(i));
+        }
     }
 
     private void assertSubFlow(HaSubFlowUpdatePayload expected, HaSubFlowDto actual) {

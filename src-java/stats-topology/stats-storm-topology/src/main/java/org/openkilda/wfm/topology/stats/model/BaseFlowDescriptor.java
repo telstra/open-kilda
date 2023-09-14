@@ -30,7 +30,6 @@ import lombok.ToString;
 public abstract class BaseFlowDescriptor extends KildaEntryDescriptor {
     @NonNull
     protected final FlowSegmentCookie cookie;
-
     protected final MeterId meterId;
 
     public BaseFlowDescriptor(

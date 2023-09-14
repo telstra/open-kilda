@@ -28,7 +28,7 @@ import lombok.EqualsAndHashCode;
 import java.util.List;
 
 /**
- * Represents a reroute response for y-flow.
+ * Represents a reroute response for an HA-flow.
  */
 @Data
 @AllArgsConstructor

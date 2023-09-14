@@ -17,6 +17,9 @@ package org.openkilda.wfm.topology.stats.model;
 
 import org.openkilda.messaging.info.stats.FlowStatsEntry;
 
+import lombok.ToString;
+
+@ToString
 public class FlowStatsAndDescriptor extends StatsAndDescriptor<FlowStatsEntry> {
     public FlowStatsAndDescriptor(FlowStatsEntry data, KildaEntryDescriptor descriptor) {
         super(data, descriptor);

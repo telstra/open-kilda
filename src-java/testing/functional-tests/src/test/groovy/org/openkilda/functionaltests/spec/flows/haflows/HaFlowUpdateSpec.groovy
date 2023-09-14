@@ -1,5 +1,9 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithConflictExpectedError
+import org.openkilda.functionaltests.error.haflow.HaFlowNotUpdatedExpectedError
+import spock.lang.Ignore
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -56,16 +60,6 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
-
-        and: "Traffic passes through HA-Flow"
-        def switchTripletAfterUpdate = topologyHelper.getSwitchTriplet(update.getSharedEndpoint().getSwitchId(),
-                update.getSubFlows().get(0).getEndpoint().getSwitchId(),
-                update.getSubFlows().get(1).getEndpoint().getSwitchId())
-
-        //https://github.com/telstra/open-kilda/issues/5304
-//        if (switchTripletAfterUpdate.isHaTraffExamAvailable()) {
-//            assert haFlowHelper.getTraffExam(haFlow).run().hasTraffic()
-//        }
 
         cleanup:
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)

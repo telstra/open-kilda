@@ -30,6 +30,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
     }
 
     //'ISL with BFD session' case is covered in BfdSpec. Spoiler: it should act the same and don't change cost at all.
+    @Tidy
     def "ISL is NOT considered 'unstable' due to failing connection between switches (not port down)"() {
         given: "ISL going through a-switch with link props created"
         def isl = topology.islsForActiveSwitches.find {
@@ -39,7 +40,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
         when: "Remove a-switch rules to break link between switches"
         def rulesToRemove = [isl.aswitch, isl.aswitch.reversed]
         lockKeeper.removeFlows(rulesToRemove)
-        def portIsDown = true
+        def isRulesRemoved = true
 
         then: "Status of forward and reverse ISLs becomes 'FAILED'"
         Wrappers.wait(discoveryTimeout * 1.5 + WAIT_OFFSET) {
@@ -58,13 +59,13 @@ class UnstableIslSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
             assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
         }
-        portIsDown = true
+        isRulesRemoved = false
 
         then: "Isl is not being 'unstable'"
         [isl, isl.reversed].each { assert database.getIslTimeUnstable(it) == null }
 
         cleanup:
-        if (isl && !portIsDown) {
+        if (isl && isRulesRemoved) {
             lockKeeper.addFlows(rulesToRemove)
             Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
                 def links = northbound.getAllLinks()

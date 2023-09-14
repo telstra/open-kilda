@@ -32,6 +32,7 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowStatsRepository;
 import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.error.FlowNotFoundException;
@@ -56,6 +57,7 @@ import java.util.stream.Collectors;
 public class HaFlowReadService {
     private final HaFlowRepository haFlowRepository;
     private final FlowRepository flowRepository;
+    private final FlowStatsRepository flowStatsRepository;
     private final TransactionManager transactionManager;
     private final int readOperationRetriesLimit;
     private final Duration readOperationRetryDelay;
@@ -64,6 +66,7 @@ public class HaFlowReadService {
                              int readOperationRetriesLimit, @NonNull Duration readOperationRetryDelay) {
         haFlowRepository = persistenceManager.getRepositoryFactory().createHaFlowRepository();
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        flowStatsRepository = persistenceManager.getRepositoryFactory().createFlowStatsRepository();
         transactionManager = persistenceManager.getTransactionManager();
         this.readOperationRetriesLimit = readOperationRetriesLimit;
         this.readOperationRetryDelay = readOperationRetryDelay;
@@ -85,7 +88,8 @@ public class HaFlowReadService {
     public List<HaFlowResponse> getAllHaFlows() {
         return transactionManager.doInTransaction(getReadOperationRetryPolicy(), haFlowRepository::findAll)
                 .stream()
-                .map(haFlow -> HaFlowMapper.INSTANCE.toHaFlowDto(haFlow, flowRepository, haFlowRepository))
+                .map(haFlow -> HaFlowMapper.INSTANCE.toHaFlowDto(haFlow, flowRepository, haFlowRepository,
+                        flowStatsRepository))
                 .map(HaFlowResponse::new)
                 .collect(Collectors.toList());
     }
@@ -96,7 +100,8 @@ public class HaFlowReadService {
     public HaFlowResponse getHaFlow(@NonNull String haFlowId) throws FlowNotFoundException {
         return transactionManager.doInTransaction(getReadOperationRetryPolicy(), () ->
                         haFlowRepository.findById(haFlowId))
-                .map(haFlow -> HaFlowMapper.INSTANCE.toHaFlowDto(haFlow, flowRepository, haFlowRepository))
+                .map(haFlow -> HaFlowMapper.INSTANCE.toHaFlowDto(haFlow, flowRepository, haFlowRepository,
+                        flowStatsRepository))
                 .map(HaFlowResponse::new)
                 .orElseThrow(() -> new FlowNotFoundException(haFlowId));
     }

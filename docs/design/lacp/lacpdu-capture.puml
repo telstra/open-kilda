@@ -1,0 +1,17 @@
+@startuml
+title LACPDU (LACP data unit) capture
+
+participant CustomerDevice
+participant OpenFlowSwitch
+box "Kilda"
+participant Floodlight
+end box
+
+CustomerDevice -> OpenFlowSwitch : LACPDU request
+OpenFlowSwitch -> Floodlight : LACPDU request
+Floodlight -> Floodlight : deserialize packet
+Floodlight -> Floodlight : create LACPDU reply\nfrom LACPDU request
+Floodlight -> OpenFlowSwitch : packet-out LACPDU reply
+OpenFlowSwitch -> CustomerDevice : LACPDU reply
+
+@enduml

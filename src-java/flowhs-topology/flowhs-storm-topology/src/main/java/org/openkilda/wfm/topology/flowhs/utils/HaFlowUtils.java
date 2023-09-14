@@ -19,7 +19,11 @@ import static java.util.Collections.emptyList;
 
 import org.openkilda.messaging.command.yflow.SubFlowPathDto;
 import org.openkilda.messaging.info.event.PathInfoData;
+import org.openkilda.messaging.info.stats.RemoveHaFlowPathInfo;
+import org.openkilda.messaging.info.stats.UpdateHaFlowPathInfo;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.PathId;
@@ -31,7 +35,7 @@ import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaFlowPathIds;
 import org.openkilda.wfm.share.flow.resources.HaPathIdsPair.HaPathIdsPairBuilder;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
-import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowPaths;
+import org.openkilda.wfm.topology.flowhs.model.CrossingPaths;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -109,9 +113,9 @@ public final class HaFlowUtils {
     }
 
     /**
-     * Builds YFlowPaths object.
+     * Builds CrossingPaths object from flowPaths.
      */
-    public static YFlowPaths definePaths(List<FlowPath> flowPaths) {
+    public static CrossingPaths definePaths(List<FlowPath> flowPaths) {
         List<FlowPath> nonEmptyPaths = flowPaths.stream()
                 .filter(flowPath -> !flowPath.getSegments().isEmpty())
                 .collect(Collectors.toList());
@@ -122,10 +126,20 @@ public final class HaFlowUtils {
                 .map(flowPath -> new SubFlowPathDto(flowPath.getHaSubFlowId(), FlowPathMapper.INSTANCE.map(flowPath)))
                 .collect(Collectors.toList());
 
-        return YFlowPaths.builder()
+        return CrossingPaths.builder()
                 .sharedPath(sharedPath)
                 .subFlowPaths(subFlowPaths)
                 .build();
+    }
+
+    /**
+     * Builds CrossingPaths object from haFlowPath.
+     */
+    public static CrossingPaths buildCrossingPaths(HaFlowPath haFlowPath, CrossingPaths defaultValue) {
+        return Optional.ofNullable(haFlowPath)
+                .map(HaFlowPath::getSubPaths)
+                .map(HaFlowUtils::definePaths)
+                .orElse(defaultValue);
     }
 
     /**
@@ -191,6 +205,57 @@ public final class HaFlowUtils {
                 .map(HaPathIdsPair::getReverse)
                 .map(HaFlowUtils::getSubPathIds)
                 .orElse(new ArrayList<>());
+    }
+
+    /**
+     * Builds an instance of UpdateHaFlowPathInfo based on the given FlowPath and HaFlow.
+     *
+     * @param flowPath The FlowPath object containing information about the flow path.
+     * @param haFlow   The HaFlow object containing information about the high availability flow.
+     * @return An instance of UpdateHaFlowPathInfo.
+     */
+    public static UpdateHaFlowPathInfo buildUpdateHaFlowPathInfo(FlowPath flowPath, HaFlow haFlow) {
+        HaFlowPath haFlowPath = flowPath.getHaFlowPath();
+        return new UpdateHaFlowPathInfo(
+                flowPath.getHaFlowId(),
+                flowPath.getCookie(),
+                flowPath.isForward() ? haFlowPath.getSharedPointMeterId() : flowPath.getMeterId(),
+                FlowPathMapper.INSTANCE.mapToPathNodes(haFlow, flowPath),
+                false,
+                false,
+                flowPath.getCookie().getDirection() == FlowPathDirection.FORWARD
+                        ? haFlowPath.getYPointGroupId() : null,
+                flowPath.getCookie().getDirection() == FlowPathDirection.REVERSE
+                        ? haFlowPath.getYPointMeterId() : null,
+                flowPath.getHaSubFlowId(),
+                haFlowPath.getYPointSwitchId(),
+                haFlowPath.getSharedSwitchId());
+    }
+
+    /**
+     * Builds an instance of RemoveHaFlowPathInfo based on the given FlowPath and HaFlow.
+     *
+     * @param flowPath The FlowPath object containing information about the flow path.
+     * @param haFlow   The HaFlow object containing information about the high availability flow.
+     * @return An instance of RemoveHaFlowPathInfo representing the removal of the high availability flow path.
+     * @throws NullPointerException if either flowPath or haFlow is null.
+     */
+    public static RemoveHaFlowPathInfo buildRemoveHaFlowPathInfo(FlowPath flowPath, HaFlow haFlow) {
+        HaFlowPath haFlowPath = flowPath.getHaFlowPath();
+        return new RemoveHaFlowPathInfo(
+                flowPath.getHaFlowId(),
+                flowPath.getCookie(),
+                flowPath.isForward() ? haFlowPath.getSharedPointMeterId() : flowPath.getMeterId(),
+                FlowPathMapper.INSTANCE.mapToPathNodes(haFlow, flowPath),
+                false,
+                false,
+                flowPath.getCookie().getDirection() == FlowPathDirection.FORWARD
+                        ? haFlowPath.getYPointGroupId() : null,
+                flowPath.getCookie().getDirection() == FlowPathDirection.REVERSE
+                        ? haFlowPath.getYPointMeterId() : null,
+                flowPath.getHaSubFlowId(),
+                haFlowPath.getYPointSwitchId(),
+                haFlowPath.getSharedSwitchId());
     }
 
     private static Collection<PathId> getSubPathIds(HaFlowPathIds haFlowPathIds) {

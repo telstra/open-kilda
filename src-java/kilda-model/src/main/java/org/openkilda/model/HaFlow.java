@@ -482,23 +482,36 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
                 getDiverseGroupId());
     }
 
-    private FlowPathStatus computePathsStatus(Collection<HaFlowPath> paths) {
-        return paths.stream()
-                .flatMap(path -> path.getSubPaths().stream())
-                .filter(Objects::nonNull)
-                .map(FlowPath::getStatus)
+    private FlowPathStatus computePathsStatus(HaFlowPath forwardPath, HaFlowPath reversePath) {
+        List<FlowPathStatus> statuses = new ArrayList<>();
+        for (HaFlowPath haPath : new HaFlowPath[] {forwardPath, reversePath}) {
+            if (haPath == null || haPath.getSubPaths() == null) {
+                return FlowPathStatus.INACTIVE;
+            }
+            List<FlowPathStatus> nonNullSubStatuses = haPath.getSubPaths().stream()
+                    .filter(Objects::nonNull)
+                    .map(FlowPath::getStatus)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            if (nonNullSubStatuses.size() != 2) {
+                return FlowPathStatus.INACTIVE;
+            }
+            statuses.addAll(nonNullSubStatuses);
+        }
+        return statuses.stream()
                 .max(FlowPathStatus::compareTo)
-                .orElse(null);
+                .orElse(FlowPathStatus.INACTIVE);
     }
 
     /**
      * Computes the HA-flow status based on sub-flow statuses.
      */
     public FlowStatus computeStatus() {
-        FlowPathStatus mainPathsStatus = computePathsStatus(getPrimaryPaths());
+        FlowPathStatus mainPathsStatus = computePathsStatus(getForwardPath(), getReversePath());
 
         if (isAllocateProtectedPath()
-                && !FlowPathStatus.ACTIVE.equals(computePathsStatus(getProtectedPaths()))
+                && !FlowPathStatus.ACTIVE.equals(
+                        computePathsStatus(getProtectedForwardPath(), getProtectedReversePath()))
                 && FlowPathStatus.ACTIVE.equals(mainPathsStatus)) {
             return FlowStatus.DEGRADED;
         }

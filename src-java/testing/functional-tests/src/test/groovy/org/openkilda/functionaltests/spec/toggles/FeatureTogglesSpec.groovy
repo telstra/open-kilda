@@ -8,6 +8,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 
@@ -25,13 +26,15 @@ BFD toggle is tested in BfdSpec*/
 @Tags([SMOKE, LOW_PRIORITY])
 @Isolated
 class FeatureTogglesSpec extends HealthCheckSpecification {
+
+    @Tidy
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"
-        def flow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
-        flowHelper.addFlow(flow)
+        def flowRequest = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
+        def flow = flowHelper.addFlow(flowRequest)
 
         when: "Set create_flow toggle to false"
-        northbound.toggleFeature(FeatureTogglesDto.builder().createFlowEnabled(false).build())
+        def disableFlowCreation = northbound.toggleFeature(FeatureTogglesDto.builder().createFlowEnabled(false).build())
 
         and: "Try to create a new flow"
         northbound.addFlow(flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
@@ -40,65 +43,72 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         new FlowForbiddenToCreateExpectedError(~/Flow create feature is disabled/).matches(e)
         and: "Update of previously existing flow is still possible"
-        flowHelper.updateFlow(flow.id, flow.tap { it.description = it.description + "updated" })
+        flowHelper.updateFlow(flow.id, flowRequest.tap { it.description = it.description + "updated" })
 
         and: "Delete of previously existing flow is still possible"
-        flowHelper.deleteFlow(flow.id)
+        def deletedFlow = flowHelper.deleteFlow(flow.id)
 
-        and: "Cleanup: set create_flow toggle back to true"
-        northbound.toggleFeature(FeatureTogglesDto.builder().createFlowEnabled(true).build())
+        cleanup: "set create_flow toggle back to true and delete resources if required"
+        disableFlowCreation && northbound.toggleFeature(FeatureTogglesDto.builder().createFlowEnabled(true).build())
+        flow && !deletedFlow && flowHelper.deleteFlow(flow.id)
     }
 
+    @Tidy
     def "System forbids updating flows when 'update_flow' toggle is set to false"() {
         given: "Existing flow"
-        def flow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
-        flowHelper.addFlow(flow)
+        def flowRequest = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
+        def flow = flowHelper.addFlow(flowRequest)
 
         when: "Set update_flow toggle to false"
-        northbound.toggleFeature(FeatureTogglesDto.builder().updateFlowEnabled(false).build())
+        def disableFlowUpdating = northbound.toggleFeature(FeatureTogglesDto.builder().updateFlowEnabled(false).build())
 
         and: "Try to update the flow"
-        northbound.updateFlow(flow.id, flow.tap { it.description = it.description + "updated" })
+        northbound.updateFlow(flowRequest.id, flowRequest.tap { it.description = it.description + "updated" })
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
         new FlowForbiddenToUpdateExpectedError(~/Flow update feature is disabled/).matches(e)
+
         and: "Creating new flow is still possible"
-        def newFlow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
-        flowHelper.addFlow(newFlow)
+        def newFlow = flowHelper.addFlow(flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
 
-        and: "Deleting of flows is still possible"
-        [newFlow, flow].each { flowHelper.deleteFlow(it.id) }
-
-        and: "Cleanup: set update_flow toggle back to true"
-        northbound.toggleFeature(FeatureTogglesDto.builder().updateFlowEnabled(true).build())
+        cleanup: "set update_flow toggle back to true and delete created link"
+        flow && flowHelper.deleteFlow(flow.id)
+        newFlow && flowHelper.deleteFlow(newFlow.id)
+        disableFlowUpdating && northbound.toggleFeature(FeatureTogglesDto.builder().updateFlowEnabled(true).build())
     }
 
+    @Tidy
     def "System forbids deleting flows when 'delete_flow' toggle is set to false"() {
         given: "Existing flow"
-        def flow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
-        flowHelper.addFlow(flow)
+        def flowRequest = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
+        def flow = flowHelper.addFlow(flowRequest)
 
         when: "Set delete_flow toggle to false"
-        northbound.toggleFeature(FeatureTogglesDto.builder().deleteFlowEnabled(false).build())
+        def disableFlowDeletion = northbound.toggleFeature(FeatureTogglesDto.builder().deleteFlowEnabled(false).build())
 
         and: "Try to delete the flow"
-        northbound.deleteFlow(flow.id)
+        northbound.deleteFlow(flowRequest.id)
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
         new FlowForbiddenToDeleteExpectedError(~/Flow delete feature is disabled/).matches(e)
         and: "Creating new flow is still possible"
-        def newFlow = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
-        flowHelper.addFlow(newFlow)
+        def newFlow = flowHelper.addFlow(flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
 
         and: "Updating of flow is still possible"
-        flowHelper.updateFlow(flow.id, flow.tap { it.description = it.description + "updated" })
+        flowHelper.updateFlow(flowRequest.id, flowRequest.tap { it.description = it.description + "updated" })
 
         when: "Set delete_flow toggle back to true"
-        northbound.toggleFeature(FeatureTogglesDto.builder().deleteFlowEnabled(true).build())
+        def enableFlowDeletion = northbound.toggleFeature(FeatureTogglesDto.builder().deleteFlowEnabled(true).build())
 
         then: "Able to delete flows"
-        [flow, newFlow].each { flowHelper.deleteFlow(it.id) }
+        def deletedFlow = flowHelper.deleteFlow(flow.id)
+        def deletedNewFlow = flowHelper.deleteFlow(newFlow.id)
+
+        cleanup:
+        disableFlowDeletion && !enableFlowDeletion && northbound.toggleFeature(FeatureTogglesDto.builder().deleteFlowEnabled(true).build())
+        flow && !deletedFlow && flowHelper.deleteFlow(flow.id)
+        newFlow && !deletedNewFlow && flowHelper.deleteFlow(newFlow.id)
     }
 }

@@ -10,6 +10,8 @@ kilda_tests_zookeeper_hosts: "localhost"
 
 kilda_tests_opentsdb_hosts: "localhost"
 kilda_tests_opentsdb_port: "4242"
+kilda_tests_victoriametrics_hosts: "localhost"
+kilda_tests_victoriametrics_port: "8428"
 
 kilda_tests_hibernate_url: jdbc:mysql://localhost:8101/kilda
 

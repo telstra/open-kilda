@@ -40,6 +40,7 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPingPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPingResult;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowSyncResult;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
@@ -70,6 +71,7 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.northbound.model.HaFlowHistoryEntry;
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult;
 
 import lombok.extern.slf4j.Slf4j;
@@ -631,9 +633,32 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     }
 
     @Override
+    public HaFlowSyncResult syncHaFlow(String haFlowId) {
+        return restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}/sync", HttpMethod.POST,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), HaFlowSyncResult.class, haFlowId).getBody();
+    }
+
+    @Override
     public HaFlowPingResult pingHaFlow(String haFlowId, HaFlowPingPayload payload) {
         HttpEntity<HaFlowPingPayload> httpEntity = new HttpEntity<>(payload, buildHeadersWithCorrelationId());
         return restTemplate.exchange("/api/v2/ha-flows/{ha_flow_id}/ping", HttpMethod.POST, httpEntity,
                 HaFlowPingResult.class, haFlowId).getBody();
+    }
+
+    @Override
+    public List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Long timeFrom, Long timeTo, Integer maxCount) {
+        UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v2/ha-flows//{flow_id}/history");
+        if (timeFrom != null) {
+            uriBuilder.queryParam("timeFrom", timeFrom);
+        }
+        if (timeTo != null) {
+            uriBuilder.queryParam("timeTo", timeTo);
+        }
+        if (maxCount != null) {
+            uriBuilder.queryParam("max_count", maxCount);
+        }
+        HaFlowHistoryEntry[] haFlowHistory = restTemplate.exchange(uriBuilder.build().toString(), HttpMethod.GET,
+                new HttpEntity<>(buildHeadersWithCorrelationId()), HaFlowHistoryEntry[].class, flowId).getBody();
+        return Arrays.asList(haFlowHistory);
     }
 }

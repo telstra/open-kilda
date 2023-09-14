@@ -1,13 +1,13 @@
-import { Component, OnInit } from "@angular/core";
-import { NgbActiveModal, NgbModal } from "@ng-bootstrap/ng-bootstrap";
-import { ClipboardService } from "ngx-clipboard";
-import { ToastrService } from "ngx-toastr";
+import { Component, OnInit } from '@angular/core';
+import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { ClipboardService } from 'ngx-clipboard';
+import { ToastrService } from 'ngx-toastr';
 import { MessageObj } from '../../constants/constants';
 
 @Component({
-  selector: "app-reset-password",
-  templateUrl: "./reset-password.component.html",
-  styleUrls: ["./reset-password.component.css"]
+  selector: 'app-reset-password',
+  templateUrl: './reset-password.component.html',
+  styleUrls: ['./reset-password.component.css']
 })
 export class ResetPasswordComponent implements OnInit {
   title: any;
@@ -17,7 +17,7 @@ export class ResetPasswordComponent implements OnInit {
     private clipboardService: ClipboardService,
     private toaster: ToastrService
   ) {}
- 
+
   ngOnInit() {}
 
   copyPassword(content) {

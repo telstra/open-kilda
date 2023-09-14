@@ -34,8 +34,7 @@ import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.PeriodicHaPingCommand;
 import org.openkilda.messaging.command.haflow.HaFlowDeleteRequest;
 import org.openkilda.messaging.info.InfoMessage;
-import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
-import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
+import org.openkilda.messaging.info.stats.RemoveHaFlowPathInfo;
 import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
@@ -51,8 +50,8 @@ import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream;
 import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowDeleteService;
+import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowGenericCarrier;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import lombok.Getter;
@@ -63,7 +62,7 @@ import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class HaFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
+public class HaFlowDeleteHubBolt extends HubBolt implements HaFlowGenericCarrier {
     private final HaFlowDeleteConfig config;
     private final FlowResourcesConfig flowResourcesConfig;
     private final RuleManagerConfig ruleManagerConfig;
@@ -156,13 +155,11 @@ public class HaFlowDeleteHubBolt extends HubBolt implements FlowGenericCarrier {
     }
 
     @Override
-    public void sendNotifyFlowStats(@NonNull RemoveFlowPathInfo flowPathInfo) {
-        //TODO implement https://github.com/telstra/open-kilda/issues/5182
-    }
-
-    @Override
-    public void sendNotifyFlowStats(UpdateFlowPathInfo flowPathInfo) {
-        //TODO implement https://github.com/telstra/open-kilda/issues/5182
+    public void sendNotifyFlowStats(@NonNull RemoveHaFlowPathInfo haFlowPathInfo) {
+        Message message = new InfoMessage(haFlowPathInfo, System.currentTimeMillis(),
+                getCommandContext().getCorrelationId());
+        emitWithContext(HUB_TO_STATS_TOPOLOGY_SENDER.name(), getCurrentTuple(),
+                new Values(haFlowPathInfo.getHaFlowId(), message));
     }
 
     @Override

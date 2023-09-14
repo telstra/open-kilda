@@ -26,10 +26,10 @@ export class RoleAddComponent implements OnInit, AfterViewInit {
 
 
   constructor(
-    private formBuilder:FormBuilder, 
-    private tabService: TabService, 
-    private permissionService: PermissionService, 
-    private roleService: RoleService, 
+    private formBuilder: FormBuilder,
+    private tabService: TabService,
+    private permissionService: PermissionService,
+    private roleService: RoleService,
     private toastr: ToastrService,
     private titleService: Title,
     private loaderService: LoaderService
@@ -39,24 +39,24 @@ export class RoleAddComponent implements OnInit, AfterViewInit {
     this.PermissionData = [];
     this.permissions = [];
     this.permissionService.getPermissions().subscribe((permissions: Array<object>) => {
-      permissions.map((permission:any) => this.permissions.push({ id: permission.permission_id, name: permission.name }));
+      permissions.map((permission: any) => this.permissions.push({ id: permission.permission_id, name: permission.name }));
       this.PermissionData = this.permissions;
     },
     error => {
-      console.log("error", error);
+      console.log('error', error);
     });
   }
 
   /* Create User add form */
   private createForm() {
     this.roleAddForm = this.formBuilder.group({
-      name : ['',Validators.required],
+      name : ['', Validators.required],
       description : ['', Validators.required],
       permission: ['', Validators.required]
     });
   }
   /* Add role form  */
-  addRole(){
+  addRole() {
     this.loaderService.show(MessageObj.adding_role);
     this.submitted = true;
     if (this.roleAddForm.invalid) {
@@ -65,18 +65,18 @@ export class RoleAddComponent implements OnInit, AfterViewInit {
     }
 
     this.roleData = {
-      'name': this.roleAddForm.value.name, 
+      'name': this.roleAddForm.value.name,
       'description': this.roleAddForm.value.description,
       'permission_id': this.roleAddForm.value.permission
     };
 
     this.roleService.addRole(this.roleData).subscribe(role => {
       this.loaderService.hide();
-      this.toastr.success(MessageObj.role_added,'Success! ');
+      this.toastr.success(MessageObj.role_added, 'Success! ');
       this.tabService.setSelectedTab('roles');
-    },error =>{
+    }, error => {
       this.loaderService.hide();
-      this.toastr.error(error.error['error-message'],'Error! ');
+      this.toastr.error(error.error['error-message'], 'Error! ');
     });
   }
 
@@ -90,7 +90,7 @@ export class RoleAddComponent implements OnInit, AfterViewInit {
     this.createForm();
   }
 
-  ngAfterViewInit(){
+  ngAfterViewInit() {
 
   }
 

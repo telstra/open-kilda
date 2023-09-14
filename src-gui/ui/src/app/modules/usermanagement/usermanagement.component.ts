@@ -17,16 +17,16 @@ export class UsermanagementComponent implements OnInit {
 
   constructor(private tabService: TabService,
     public commonService: CommonService,
-    private toaster:ToastrService,
-    private router:Router
+    private toaster: ToastrService,
+    private router: Router
   ) {
 
-    if(!this.commonService.hasPermission('menu_user_management')){
-      this.toaster.error(MessageObj.unauthorised);  
-       this.router.navigate(["/home"]);
+    if (!this.commonService.hasPermission('menu_user_management')) {
+      this.toaster.error(MessageObj.unauthorised);
+       this.router.navigate(['/home']);
       }
     this.subscription = this.tabService.getSelectedTab().subscribe(tab => {
-      if(tab){
+      if (tab) {
         this.openedTab = tab.text;
       }
     });
@@ -35,7 +35,7 @@ export class UsermanagementComponent implements OnInit {
   ngOnInit() {
   }
 
-  openTab(tab){
+  openTab(tab) {
     this.openedTab = tab;
   }
 

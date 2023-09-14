@@ -22,54 +22,54 @@ export class RoleEditComponent implements OnInit, AfterViewInit {
   subscription: Subscription;
   userEmail: string;
   PermissionData: NgOption[];
-  userid:number;
+  userid: number;
   roleUpdatedData: any;
   selectedRole: number;
   permissions: any;
-  rolePermissions:any;
+  rolePermissions: any;
   selectedRolePermissions: any;
 
-  constructor(private formBuilder:FormBuilder, 
-    private tabService: TabService, 
+  constructor(private formBuilder: FormBuilder,
+    private tabService: TabService,
     private permissionService: PermissionService,
     private roleService: RoleService,
-    private loaderService : LoaderService,
-    private toastr : ToastrService,
+    private loaderService: LoaderService,
+    private toastr: ToastrService,
     private titleService: Title
   ) {
-    
+
   }
 
-  getRoleData(){
+  getRoleData() {
     /* Get all permissions for Permission select field */
     this.loaderService.show(MessageObj.getting_role);
     this.PermissionData = [];
     this.permissions = [];
-    this.selectedRolePermissions=[];
+    this.selectedRolePermissions = [];
     this.permissionService.getPermissions().subscribe((permissions: Array<object>) => {
-      this.PermissionData.push(permissions.map((permission:any) => this.permissions.push({ id: permission.permission_id, name: permission.name })));
+      this.PermissionData.push(permissions.map((permission: any) => this.permissions.push({ id: permission.permission_id, name: permission.name })));
       this.PermissionData = this.permissions;
       this.roleService.currentRole.subscribe(roleId => {
-        if(roleId){
+        if (roleId) {
           this.selectedRole = roleId;
           this.roleService.getRoleById(roleId).subscribe(role => {
             this.rolePermissions = role.permissions;
             this.rolePermissions.map((rp) => {
-              let permisionExist = this.PermissionData.find(per=>per.id==rp.permission_id);
-              if(permisionExist){
+              const permisionExist = this.PermissionData.find(per => per.id == rp.permission_id);
+              if (permisionExist) {
                 this.selectedRolePermissions.push(rp.permission_id);
               }
             });
             this.roleEditForm.patchValue({
-              name: role.name, 
+              name: role.name,
               description: role.description,
               permission: this.selectedRolePermissions
             });
           });
         }
-        setTimeout(()=>{
+        setTimeout(() => {
           this.loaderService.hide();
-        },2000)
+        }, 2000);
       });
     },
     error => {
@@ -77,7 +77,7 @@ export class RoleEditComponent implements OnInit, AfterViewInit {
     });
   }
 
-  /* 
+  /*
     Method: createEditForm
     Description: Create User edit form
   */
@@ -85,7 +85,7 @@ export class RoleEditComponent implements OnInit, AfterViewInit {
     this.roleEditForm = new FormGroup({
       name: new FormControl({value: ''}, Validators.required),
       description: new FormControl({value: ''}, Validators.required),
-      permission: new FormControl({value: ''}, Validators.required) 
+      permission: new FormControl({value: ''}, Validators.required)
     });
   }
 
@@ -93,7 +93,7 @@ export class RoleEditComponent implements OnInit, AfterViewInit {
    * Method: submitform
    * Description: Update user information
    */
-  submitform(){
+  submitform() {
     this.loaderService.show(MessageObj.updating_role);
     if (this.roleEditForm.invalid) {
       this.loaderService.hide();
@@ -104,14 +104,14 @@ export class RoleEditComponent implements OnInit, AfterViewInit {
       name: this.roleEditForm.value.name,
       description: this.roleEditForm.value.description,
       permission_id: this.roleEditForm.value.permission
-    }
+    };
 
     this.roleService.editRole(this.selectedRole, this.roleUpdatedData).subscribe(role => {
-      this.toastr.success(MessageObj.role_updated,'Success! ');
+      this.toastr.success(MessageObj.role_updated, 'Success! ');
       this.loaderService.hide();
       this.tabService.setSelectedTab('roles');
-    },error =>{
-      this.toastr.error(error.error['error-message'],'Error! ');
+    }, error => {
+      this.toastr.error(error.error['error-message'], 'Error! ');
       this.loaderService.hide();
     });
   }
@@ -126,7 +126,7 @@ export class RoleEditComponent implements OnInit, AfterViewInit {
     this.getRoleData();
   }
 
-  ngAfterViewInit(){
+  ngAfterViewInit() {
 
   }
 

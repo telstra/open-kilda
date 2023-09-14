@@ -51,7 +51,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Config;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingFsmRegister;
 import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingService;
@@ -71,7 +70,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class HaFlowUpdateService extends FlowProcessingService<HaFlowUpdateFsm, Event, HaFlowUpdateContext,
-        FlowGenericCarrier, FlowProcessingFsmRegister<HaFlowUpdateFsm>, FlowProcessingEventListener> {
+        HaFlowGenericCarrier, FlowProcessingFsmRegister<HaFlowUpdateFsm>, FlowProcessingEventListener> {
     private static final Set<PathComputationStrategy> LATENCY_BASED_STRATEGIES =
             Sets.newHashSet(PathComputationStrategy.LATENCY, PathComputationStrategy.MAX_LATENCY);
 
@@ -82,7 +81,7 @@ public class HaFlowUpdateService extends FlowProcessingService<HaFlowUpdateFsm, 
     private final TransactionManager transactionManager;
 
     public HaFlowUpdateService(
-            @NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
+            @NonNull HaFlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
             @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager flowResourcesManager,
             @NonNull RuleManager ruleManager, int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
             int resourceAllocationRetriesLimit, int speakerCommandRetriesLimit) {
@@ -104,7 +103,7 @@ public class HaFlowUpdateService extends FlowProcessingService<HaFlowUpdateFsm, 
     /**
      * Handles request for ha-flow update.
      *
-     * @param key command identifier.
+     * @param key     command identifier.
      * @param request request data.
      */
     public void handleUpdateRequest(
@@ -138,7 +137,7 @@ public class HaFlowUpdateService extends FlowProcessingService<HaFlowUpdateFsm, 
     /**
      * Handles request for ha-flow update.
      *
-     * @param key command identifier.
+     * @param key     command identifier.
      * @param request request data.
      */
     public void handlePartialUpdateRequest(

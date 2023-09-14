@@ -21,6 +21,7 @@ import org.openkilda.model.PathValidationData;
 import org.openkilda.model.Switch;
 import org.openkilda.pce.Path;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 
@@ -40,6 +41,10 @@ public abstract class PathValidationDataMapper {
      * @return the messaging representation of a path validation data
      */
     public PathValidationData toPathValidationData(PathValidationPayload pathValidationPayload) {
+        if (pathValidationPayload.getNodes() == null || pathValidationPayload.getNodes().isEmpty()) {
+            throw new IllegalArgumentException("Nodes are mandatory part of the path validation data");
+        }
+
         List<PathValidationData.PathSegmentValidationData> segments = new LinkedList<>();
 
         for (int i = 0; i < pathValidationPayload.getNodes().size() - 1; i++) {
@@ -95,14 +100,20 @@ public abstract class PathValidationDataMapper {
      * @return a flow object
      */
     public Flow toFlow(PathValidationData pathValidationData, String diversityGroupId) {
-        if (pathValidationData == null) {
+        if (ObjectUtils.anyNull(pathValidationData)) {
             throw new IllegalArgumentException("Cannot convert null to Flow object. PathValidationData is mandatory.");
+        }
+        if (ObjectUtils.anyNull(pathValidationData.getSrcPort(),
+                pathValidationData.getSrcSwitchId(),
+                pathValidationData.getDestPort(),
+                pathValidationData.getDestSwitchId())) {
+            throw new IllegalArgumentException("End points switch and port are mandatory");
         }
 
         return Flow.builder()
                 .pathComputationStrategy(pathValidationData.getPathComputationStrategy())
                 .encapsulationType(pathValidationData.getFlowEncapsulationType())
-                .bandwidth(pathValidationData.getBandwidth())
+                .bandwidth(ObjectUtils.defaultIfNull(pathValidationData.getBandwidth(), 0L))
                 .flowId("A virtual flow created in PathValidationDataMapper")
                 .srcSwitch(Switch.builder().switchId(pathValidationData.getSrcSwitchId()).build())
                 .srcPort(pathValidationData.getSrcPort())

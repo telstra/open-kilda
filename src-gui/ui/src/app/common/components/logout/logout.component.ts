@@ -17,7 +17,7 @@ export class LogoutComponent implements OnInit {
 
   ngOnInit() {
     this.toastr.clear();
-    window.location.href=environment.appEndPoint;
+    window.location.href = environment.appEndPoint;
   }
 
 }

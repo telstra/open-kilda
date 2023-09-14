@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import org.openkilda.persistence.ferma.frames.converters.FlowStatusConverter;
 import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.FlowStatsRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.persistence.tx.TransactionRequired;
 
@@ -66,11 +67,14 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
     private static final String FLOWS_ALIAS = "flows_alias";
 
     protected final FlowPathRepository flowPathRepository;
+    protected final FlowStatsRepository flowStatsRepository;
 
     public FermaFlowRepository(
-            FermaPersistentImplementation implementation, FlowPathRepository flowPathRepository) {
+            FermaPersistentImplementation implementation, FlowPathRepository flowPathRepository,
+            FlowStatsRepository flowStatsRepository) {
         super(implementation);
         this.flowPathRepository = flowPathRepository;
+        this.flowStatsRepository = flowStatsRepository;
     }
 
     @Override
@@ -656,6 +660,7 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
                 flowPathRepository.remove(path);
             }
         });
+        flowStatsRepository.removeByFlowId(frame.getFlowId());
         frame.remove();
     }
 

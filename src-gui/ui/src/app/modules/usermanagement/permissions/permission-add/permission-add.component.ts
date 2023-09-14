@@ -21,9 +21,9 @@ export class PermissionAddComponent implements OnInit {
   permissionData: any;
 
   constructor(
-    private formBuilder:FormBuilder, 
-    private tabService: TabService, 
-    private permissionService: PermissionService, 
+    private formBuilder: FormBuilder,
+    private tabService: TabService,
+    private permissionService: PermissionService,
     private toastr: ToastrService,
     private titleService: Title,
     private loaderService: LoaderService
@@ -32,16 +32,16 @@ export class PermissionAddComponent implements OnInit {
    /* Create User add form */
    private createForm() {
     this.permissionAddForm = this.formBuilder.group({
-      name : ['',Validators.required],
+      name : ['', Validators.required],
       description : []
     });
   }
 
-  /* 
+  /*
     Method: addPermission
     Description: Add new permission
   */
-  addPermission(){
+  addPermission() {
     this.loaderService.show(MessageObj.adding_permission);
     this.submitted = true;
     if (this.permissionAddForm.invalid) {
@@ -49,17 +49,17 @@ export class PermissionAddComponent implements OnInit {
     }
 
     this.permissionData = {
-      'name': this.permissionAddForm.value.name, 
+      'name': this.permissionAddForm.value.name,
       'description': this.permissionAddForm.value.description,
     };
 
     this.permissionService.addPermission(this.permissionData).subscribe(permission => {
       this.loaderService.hide();
-      this.toastr.success(MessageObj.permission_added,'Success! ');
+      this.toastr.success(MessageObj.permission_added, 'Success! ');
       this.tabService.setSelectedTab('permissions');
-    },error =>{
+    }, error => {
       this.loaderService.hide();
-      this.toastr.error(error.error['error-message'],'Error! ');
+      this.toastr.error(error.error['error-message'], 'Error! ');
     });
   }
 

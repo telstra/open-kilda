@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions;
 
+import static org.openkilda.wfm.topology.flowhs.utils.HaFlowUtils.buildCrossingPaths;
+
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.haflow.HaFlowRerouteResponse;
 import org.openkilda.messaging.error.ErrorType;
@@ -31,8 +33,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteContext
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowPaths;
-import org.openkilda.wfm.topology.flowhs.utils.HaFlowUtils;
+import org.openkilda.wfm.topology.flowhs.model.CrossingPaths;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -77,14 +78,8 @@ public class PostResourceAllocationAction extends
 
     private Message buildRerouteResponseMessage(
             HaFlowPath currentForward, HaFlowPath newForward, CommandContext commandContext) {
-        YFlowPaths currentPaths = Optional.ofNullable(currentForward)
-                .map(HaFlowPath::getSubPaths)
-                .map(HaFlowUtils::definePaths)
-                .orElse(YFlowPaths.buildEmpty());
-        YFlowPaths newPaths = Optional.ofNullable(newForward)
-                .map(HaFlowPath::getSubPaths)
-                .map(HaFlowUtils::definePaths)
-                .orElse(currentPaths);
+        CrossingPaths currentPaths = buildCrossingPaths(currentForward, CrossingPaths.buildEmpty());
+        CrossingPaths newPaths = buildCrossingPaths(newForward, currentPaths);
 
         HaFlowRerouteResponse response = new HaFlowRerouteResponse(
                 newPaths.getSharedPath(), newPaths.getSubFlowPaths(), !currentPaths.isSamePath(newPaths));

@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { NgbActiveModal, NgbModal,NgbProgressbarModule } from '@ng-bootstrap/ng-bootstrap';
+import { NgbActiveModal, NgbModal, NgbProgressbarModule } from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
   selector: 'app-flow-re-route-modal',
@@ -9,11 +9,11 @@ import { NgbActiveModal, NgbModal,NgbProgressbarModule } from '@ng-bootstrap/ng-
 export class FlowReRouteModalComponent implements OnInit {
 
   title: any;
-  reRouteIndex:any;
-  responseData:any;
-  progressHeight= '25px';
+  reRouteIndex: any;
+  responseData: any;
+  progressHeight = '25px';
   constructor(public activeModal: NgbActiveModal) { }
-  
+
   ngOnInit() {
 
   }

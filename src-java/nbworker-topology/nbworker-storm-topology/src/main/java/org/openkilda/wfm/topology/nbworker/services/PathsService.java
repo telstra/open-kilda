@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.command.flow.PathValidateRequest;
 import org.openkilda.messaging.info.network.PathValidationResult;
 import org.openkilda.messaging.info.network.PathsInfoData;
@@ -24,6 +26,7 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
+import org.openkilda.model.PathValidationData;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
@@ -255,7 +258,7 @@ public class PathsService {
             Integer maxPathCount) throws SwitchNotFoundException {
         if (Objects.equals(srcSwitchId, dstSwitchId)) {
             throw new IllegalArgumentException(
-                    String.format("Source and destination switch IDs are equal: '%s'", srcSwitchId));
+                    format("Source and destination switch IDs are equal: '%s'", srcSwitchId));
         }
         if (!switchRepository.exists(srcSwitchId)) {
             throw new SwitchNotFoundException(srcSwitchId);
@@ -272,7 +275,7 @@ public class PathsService {
         SwitchProperties srcProperties = switchPropertiesRepository.findBySwitchId(srcSwitchId).orElseThrow(
                 () -> new SwitchPropertiesNotFoundException(srcSwitchId));
         if (!srcProperties.getSupportedTransitEncapsulation().contains(flowEncapsulationType)) {
-            throw new IllegalArgumentException(String.format("Switch %s doesn't support %s encapsulation type. Choose "
+            throw new IllegalArgumentException(format("Switch %s doesn't support %s encapsulation type. Choose "
                             + "one of the supported encapsulation types %s or update switch properties and add needed "
                             + "encapsulation type.", srcSwitchId, flowEncapsulationType,
                     srcProperties.getSupportedTransitEncapsulation()));
@@ -281,7 +284,7 @@ public class PathsService {
         SwitchProperties dstProperties = switchPropertiesRepository.findBySwitchId(dstSwitchId).orElseThrow(
                 () -> new SwitchPropertiesNotFoundException(dstSwitchId));
         if (!dstProperties.getSupportedTransitEncapsulation().contains(flowEncapsulationType)) {
-            throw new IllegalArgumentException(String.format("Switch %s doesn't support %s encapsulation type. Choose "
+            throw new IllegalArgumentException(format("Switch %s doesn't support %s encapsulation type. Choose "
                             + "one of the supported encapsulation types %s or update switch properties and add needed "
                             + "encapsulation type.", dstSwitchId, requestEncapsulationType,
                     dstProperties.getSupportedTransitEncapsulation()));
@@ -295,7 +298,7 @@ public class PathsService {
         }
 
         if (maxPathCount <= 0) {
-            throw new IllegalArgumentException(String.format("Incorrect maxPathCount: %s", maxPathCount));
+            throw new IllegalArgumentException(format("Incorrect maxPathCount: %s", maxPathCount));
         }
 
         return GetPathsRequestParameters.builder()
@@ -323,10 +326,17 @@ public class PathsService {
                 kildaConfigurationRepository.getOrDefault(),
                 availableNetworkFactory,
                 pathComputer);
+        PathValidationData data;
+        try {
+            data = PathValidationDataMapper.INSTANCE.toPathValidationData(request.getPathValidationPayload());
+        } catch (RuntimeException e) {
+            return Collections.singletonList(PathValidationResult.builder()
+                            .isValid(false)
+                            .error(format("Could not create path validation data from the request. %s", e))
+                            .build());
+        }
 
-        return Collections.singletonList(pathValidator.validatePath(
-                PathValidationDataMapper.INSTANCE.toPathValidationData(request.getPathValidationPayload())
-        ));
+        return Collections.singletonList(pathValidator.validatePath(data));
     }
 
     @Value

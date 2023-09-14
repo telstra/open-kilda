@@ -24,7 +24,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteContext
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.FlowRerouteHubCarrier;
+import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowRerouteHubCarrier;
 import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
 import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 
@@ -34,9 +34,9 @@ import lombok.extern.slf4j.Slf4j;
 public class OnFinishedAction extends HistoryRecordingAction<HaFlowRerouteFsm, State, Event, HaFlowRerouteContext> {
 
     private final FlowOperationsDashboardLogger dashboardLogger;
-    private final FlowRerouteHubCarrier carrier;
+    private final HaFlowRerouteHubCarrier carrier;
 
-    public OnFinishedAction(FlowOperationsDashboardLogger dashboardLogger, FlowRerouteHubCarrier carrier) {
+    public OnFinishedAction(FlowOperationsDashboardLogger dashboardLogger, HaFlowRerouteHubCarrier carrier) {
         this.dashboardLogger = dashboardLogger;
         this.carrier = carrier;
     }

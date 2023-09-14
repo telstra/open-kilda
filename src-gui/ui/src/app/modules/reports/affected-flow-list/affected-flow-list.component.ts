@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, ViewChild, OnChanges, SimpleChange,EventEmitter, SimpleChanges, Renderer2, AfterViewInit, OnDestroy, Output } from '@angular/core';
+import { Component, OnInit, Input, ViewChild, OnChanges, SimpleChange, EventEmitter, SimpleChanges, Renderer2, AfterViewInit, OnDestroy, Output } from '@angular/core';
 import { DataTableDirective } from 'angular-datatables';
 import { LoaderService } from 'src/app/common/services/loader.service';
 import { Subject } from 'rxjs';
@@ -21,125 +21,126 @@ import { MessageObj } from 'src/app/common/constants/constants';
 export class AffectedFlowListComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy {
   @ViewChild(DataTableDirective, { static: true }) datatableElement: DataTableDirective;
   @Input() data = [];
-  @Input() textSearch:any;
+  @Input() textSearch: any;
   @Output() refresh =  new EventEmitter();
-  
 
-  typeFilter:string = '';
+
+  typeFilter = '';
   dtOptions = {};
   dtTrigger: Subject<any> = new Subject();
 
   wrapperHide = true;
-  expandedSrcSwitchName : boolean = false;
-  expandedTargetSwitchName : boolean = false;
-  expandedReason : boolean = false;
+  expandedSrcSwitchName = false;
+  expandedTargetSwitchName = false;
+  expandedReason = false;
 
-  expandedFlowId : boolean = false;
-  expandedStatus : boolean = false;
-  loadFilter : boolean =  false;
-  activeStatus :any = '';
+  expandedFlowId = false;
+  expandedStatus = false;
+  loadFilter =  false;
+  activeStatus: any = '';
   clipBoardItems = [];
 
-  constructor(private loaderService:LoaderService, private renderer: Renderer2,private router: Router,
-    public commonService: CommonService,    
-    private flowService:FlowsService,
-    private clipboardService: ClipboardService,    
-    private modalService:NgbModal,
+  constructor(private loaderService: LoaderService, private renderer: Renderer2, private router: Router,
+    public commonService: CommonService,
+    private flowService: FlowsService,
+    private clipboardService: ClipboardService,
+    private modalService: NgbModal,
     private formBuilder: FormBuilder) {
-    this.wrapperHide = false; 
+    this.wrapperHide = false;
    }
   ngOnInit() {
-    let ref= this;
+    const ref = this;
     this.dtOptions = {
       pageLength: 10,
       deferRender: true,
-      info:true,
+      info: true,
       dom: 'tpli',
-      "aLengthMenu": [[10, 20, 35, 50, -1], [10, 20, 35, 50, "All"]],
+      'aLengthMenu': [[10, 20, 35, 50, -1], [10, 20, 35, 50, 'All']],
       retrieve: true,
       autoWidth: false,
       colResize: false,
       stateSave: false,
-      "order": [],
+      'order': [],
       language: {
-        searchPlaceholder: "Search"
+        searchPlaceholder: 'Search'
       },
-      buttons:{
-        buttons:[
-          { extend: 'csv', text: 'Export', filename:"Affected_Flows",className: 'btn btn-dark',exportOptions:{columns: ':visible'} }
+      buttons: {
+        buttons: [
+          { extend: 'csv', text: 'Export', filename: 'Affected_Flows', className: 'btn btn-dark', exportOptions: {columns: ':visible'} }
         ]
       },
-      drawCallback:function(){
-        if(jQuery('#flowDataTable tbody tr').length < 10){
+      drawCallback: function() {
+        if (jQuery('#flowDataTable tbody tr').length < 10) {
           jQuery('#flowDataTable_next').addClass('disabled');
-        }else{
+        } else {
           jQuery('#flowDataTable_next').removeClass('disabled');
         }
       },
-      "aoColumns": [
+      'aoColumns': [
         { sWidth: '10%'},
-        { sWidth: '10%',"sType": "name","bSortable": true },
+        { sWidth: '10%', 'sType': 'name', 'bSortable': true },
         { sWidth: '10%'},
         { sWidth: '10%' },
         { sWidth: '10%' },
         { sWidth: '10%' },
-        { sWidth: '40%',"sType": "name","bSortable": true }, 
+        { sWidth: '40%', 'sType': 'name', 'bSortable': true },
        ],
-       columnDefs:[
+       columnDefs: [
         {
-          "targets": [ 2],
-          "visible": false,
-          "searchable": true
+          'targets': [ 2],
+          'visible': false,
+          'searchable': true
       },
       {
-          "targets": [4 ],
-          "visible": false,
-          "searchable": true
+          'targets': [4 ],
+          'visible': false,
+          'searchable': true
       },
       ],
-      initComplete:function( settings, json ){
-        setTimeout(function(){
+      initComplete: function( settings, json ) {
+        setTimeout(function() {
           ref.loaderService.hide();
           ref.wrapperHide = true;
-        },ref.data.length/2);
+        }, ref.data.length / 2);
       }
-    }
+    };
   }
 
-  ngOnChanges(change:SimpleChanges){
-    var ref = this;
-    if( typeof(change.data)!='undefined' && change.data){
-      if(typeof(change.data)!=='undefined' && change.data.currentValue){
+  ngOnChanges(change: SimpleChanges) {
+    const ref = this;
+    if ( typeof(change.data) != 'undefined' && change.data) {
+      if (typeof(change.data) !== 'undefined' && change.data.currentValue) {
         this.data  = change.data.currentValue;
         this.clipBoardItems = this.data;
       }
     }
-    if(typeof(change.textSearch)!=='undefined' && change.textSearch.currentValue){
+    if (typeof(change.textSearch) !== 'undefined' && change.textSearch.currentValue) {
       this.fulltextSearch(change.textSearch.currentValue);
     }
-   
+
 
     this.triggerSearch();
   }
-  
+
   loadFilters() {
     this.loadFilter = ! this.loadFilter;
   }
- 
-  fulltextSearch(value:any){ 
-    if(this.dtTrigger)
+
+  fulltextSearch(value: any) {
+    if (this.dtTrigger) {
         this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
           dtInstance.search(value)
                   .draw();
         });
+    }
   }
 
-  ngAfterViewInit(){
+  ngAfterViewInit() {
     this.dtTrigger.next();
     this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
       dtInstance.columns().every(function () {
         const that = this;
-        $('input[type="search"]', this.header()).on('keyup change', function () { 
+        $('input[type="search"]', this.header()).on('keyup change', function () {
           if (that.search() !== this['value']) {
               that
               .search(this['value'])
@@ -151,61 +152,61 @@ export class AffectedFlowListComponent implements OnInit, AfterViewInit, OnChang
     this.enableButtons();
   }
 
-  toggleSearch(e,inputContainer){ 
-    
+  toggleSearch(e, inputContainer) {
+
     this[inputContainer] = this[inputContainer] ? false : true;
-    if(this[inputContainer]){
+    if (this[inputContainer]) {
       setTimeout(() => {
-        this.renderer.selectRootElement('#'+inputContainer).focus();
+        this.renderer.selectRootElement('#' + inputContainer).focus();
       });
-    }else{
+    } else {
       setTimeout(() => {
-        this.renderer.selectRootElement('#'+inputContainer).value = "";
-        jQuery('#'+inputContainer).trigger('change');
+        this.renderer.selectRootElement('#' + inputContainer).value = '';
+        jQuery('#' + inputContainer).trigger('change');
       });
     }
     event.stopPropagation();
   }
 
-  stopPropagationmethod(e){
+  stopPropagationmethod(e) {
     event.stopPropagation();
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       return false;
    }
   }
 
-  triggerSearch(){ 
-    setTimeout(()=>{
+  triggerSearch() {
+    setTimeout(() => {
       jQuery('#expandedSrcSwitchName').trigger('change');
       jQuery('#expandedTargetSwitchName').trigger('change');
-     },1000);
+     }, 1000);
   }
 
-  showFlow(flowObj : Flow){
-    localStorage.setItem("filterFlag",'controller');
-    this.router.navigate(['/flows/details/'+flowObj.flowid]);
+  showFlow(flowObj: Flow) {
+    localStorage.setItem('filterFlag', 'controller');
+    this.router.navigate(['/flows/details/' + flowObj.flowid]);
   }
- 
+
 
   ngOnDestroy(): void {
     this.dtTrigger.unsubscribe();
   }
-  
-  copyToClip(event, copyItem,index) {
-    var copyItem = this.clipBoardItems[index][copyItem];
+
+  copyToClip(event, copyItem, index) {
+    copyItem = this.clipBoardItems[index][copyItem];
     this.clipboardService.copyFromContent(copyItem);
   }
 
-  enableButtons(){
-    setTimeout(()=>{
+  enableButtons() {
+    setTimeout(() => {
       this.datatableElement.dtInstance.then((dtInstance: DataTables.Api) => {
-        var buttons = new jQuery.fn.dataTable.Buttons(dtInstance, {
+        const buttons = new jQuery.fn.dataTable.Buttons(dtInstance, {
           buttons: [
-            { extend: 'csv', filename:"Affected_Flows", text: 'Export', className: 'btn btn-dark' ,exportOptions:{columns: ':visible'} }
+            { extend: 'csv', filename: 'Affected_Flows', text: 'Export', className: 'btn btn-dark' , exportOptions: {columns: ':visible'} }
           ]
         }).container().appendTo($('#buttons'));
       });
     });
-    
+
   }
 }

@@ -15,37 +15,28 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.create.actions;
 
-import static java.lang.String.format;
-import static org.openkilda.wfm.topology.flowhs.utils.SpeakerRequestHelper.keepOnlyFailedCommands;
-
 import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
-import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.BaseReceivedResponseAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
 public class OnReceivedResponseAction
-        extends HistoryRecordingAction<HaFlowCreateFsm, State, Event, HaFlowCreateContext> {
-    private static final String FAILED_TO_APPLY_RULE_MESSAGE = "Failed to %s rule";
-
-    private final int speakerCommandRetriesLimit;
+        extends BaseReceivedResponseAction<HaFlowCreateFsm, State, Event, HaFlowCreateContext> {
     private final String actionName;
-    private final Event finishEvent;
 
-    public OnReceivedResponseAction(int speakerCommandRetriesLimit, String actionName, Event finishEvent) {
-        this.speakerCommandRetriesLimit = speakerCommandRetriesLimit;
+    public OnReceivedResponseAction(
+            int speakerCommandRetriesLimit, String actionName, Event finishEvent, FlowGenericCarrier carrier) {
+        super(speakerCommandRetriesLimit, finishEvent, carrier);
         this.actionName = actionName;
-        this.finishEvent = finishEvent;
     }
 
     @Override
@@ -53,74 +44,7 @@ public class OnReceivedResponseAction
             State from, State to, Event event, HaFlowCreateContext context, HaFlowCreateFsm stateMachine) {
         SpeakerCommandResponse response = context.getSpeakerResponse();
         UUID commandId = response.getCommandId();
-        Optional<BaseSpeakerCommandsRequest> command = stateMachine.getSpeakerCommand(commandId);
-        if (!command.isPresent() || !stateMachine.hasPendingCommand(commandId)) {
-            log.info("Received a response for unexpected command: {}", response);
-            return;
-        }
-
-        if (response.isSuccess()) {
-            stateMachine.removePendingCommand(commandId);
-            HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
-                    .withHaFlowId(stateMachine.getHaFlowId())
-                    .withAction(format("%s rules were %sed", command.get().getCommands().size(), actionName))
-                    .withDescription(format("%s rules were %sed: switch %s", command.get().getCommands().size(),
-                                    actionName, response.getSwitchId())));
-
-        } else {
-            BaseSpeakerCommandsRequest request = stateMachine.getSpeakerCommand(commandId).orElse(null);
-            int retries = stateMachine.doRetryForCommand(commandId);
-            if (retries <= speakerCommandRetriesLimit && request != null) {
-                response.getFailedCommandIds().forEach((uuid, message) -> {
-                    String errorDescription = format(
-                            "Failed to %s the rule: commandId %s, switch %s, uuid %s. Error %s. "
-                                    + "Retrying (attempt %d)",
-                            actionName, commandId, response.getSwitchId(), uuid, message, retries);
-                    log.error(errorDescription);
-
-                    if (stateMachine.getCommandContext().getCorrelationId() == null) {
-                        log.error("Correlation ID is null. It's not possible to write history.");
-                    } else {
-                        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
-                                .withAction(format(FAILED_TO_APPLY_RULE_MESSAGE, actionName))
-                                .withDescription(errorDescription));
-                    }
-                });
-
-                keepOnlyFailedCommands(request, response.getFailedCommandIds().keySet());
-                stateMachine.getCarrier().sendSpeakerRequest(request);
-            } else {
-                stateMachine.removePendingCommand(commandId);
-
-                response.getFailedCommandIds().forEach((uuid, message) ->
-                        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
-                                .withAction(format(FAILED_TO_APPLY_RULE_MESSAGE, actionName))
-                                .withDescription(format(
-                                        "Failed to %s the rule: commandId %s, switch %s, uuid %s. Error: %s",
-                                        actionName, commandId, response.getSwitchId(), uuid, message))
-                                .withHaFlowId(stateMachine.getHaFlowId())));
-
-                stateMachine.addFailedCommand(commandId, response);
-            }
-        }
-
-        if (stateMachine.getPendingCommands().isEmpty()) {
-            if (stateMachine.getFailedCommands().isEmpty()) {
-                log.debug("Received responses for all pending {} commands of the flow {}",
-                        actionName, stateMachine.getFlowId());
-                stateMachine.fire(finishEvent);
-            } else {
-                String errorMessage = format("Received error response(s) for %d %s commands",
-                        stateMachine.getFailedCommands().size(), actionName);
-                HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                        .withTaskId(stateMachine.getCommandContext().getCorrelationId())
-                        .withAction(errorMessage)
-                        .withHaFlowId(stateMachine.getHaFlowId()));
-                stateMachine.fireError(errorMessage);
-            }
-        }
+        BaseSpeakerCommandsRequest request = stateMachine.getSpeakerCommand(commandId).orElse(null);
+        handleResponse(response, request, actionName, stateMachine);
     }
 }

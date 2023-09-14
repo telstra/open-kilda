@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.nbworker.validators;
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
@@ -59,6 +60,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -214,12 +216,14 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         assertFalse(responses.isEmpty());
         assertFalse(responses.get(0).getIsValid());
         assertEquals(2, responses.get(0).getErrors().size(), "There must be 2 errors: forward and reverse paths");
-        Collections.sort(responses.get(0).getErrors());
-        assertEquals(responses.get(0).getErrors().get(0),
+
+        List<String> errors = new ArrayList<>(responses.get(0).getErrors());
+        Collections.sort(errors);
+        assertEquals(errors.get(0),
                 "There is not enough bandwidth between end points: switch 00:00:00:00:00:00:00:01 port 6 and "
                         + "switch 00:00:00:00:00:00:00:03 port 6 (forward path). Requested bandwidth 1000000000,"
                         + " but the link supports 10000.");
-        assertEquals(responses.get(0).getErrors().get(1),
+        assertEquals(errors.get(1),
                 "There is not enough bandwidth between end points: switch 00:00:00:00:00:00:00:03 port 6 and "
                         + "switch 00:00:00:00:00:00:00:01 port 6 (reverse path). Requested bandwidth 1000000000,"
                         + " but the link supports 10000.");
@@ -711,21 +715,34 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    void whenNotEnoughData_pceResponseContainsError() {
+    void whenNotEnoughData_noExceptionThrown_andPceResponseIsPresent() {
         List<PathNodePayload> nodes = new LinkedList<>();
         nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
         nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
         nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
         PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
                 .nodes(nodes)
-                .bandwidth(1000L)
-                .latencyMs(0L)
-                .latencyTier2ms(0L)
                 .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .build());
         List<PathValidationResult> results = pathsService.validatePath(request);
 
         assertEquals("The path has been computed successfully", results.get(0).getPceResponse());
+    }
+
+    @Test
+    void whenNoNodes_noExceptionThrown_andResponseContainsError() {
+        PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
+                .build());
+        List<PathValidationResult> results = pathsService.validatePath(request);
+
+        assertNotNull(results);
+        assertFalse(results.isEmpty());
+        assertFalse(results.get(0).getIsValid());
+        assertFalse(results.get(0).getErrors().isEmpty());
+        String errorMessage = "Could not create path validation data from the request. java.lang.IllegalArgumentExcep"
+                + "tion: Nodes are mandatory part of the path validation data";
+        assertEquals(errorMessage, results.get(0).getErrors().get(0));
     }
 
     private void createFlow(String flowId, Switch srcSwitch, int srcPort, Switch destSwitch, int destPort) {

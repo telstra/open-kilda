@@ -33,7 +33,7 @@ import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
-import org.openkilda.wfm.topology.flowhs.model.yflow.YFlowPaths;
+import org.openkilda.wfm.topology.flowhs.model.CrossingPaths;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,15 +51,15 @@ public class YFlowUtils {
         this.yFlowRepository = repositoryFactory.createYFlowRepository();
     }
 
-    public YFlowPaths definePaths(String yFlowId, List<Long> ignoredPathsCookies) {
+    public CrossingPaths definePaths(String yFlowId, List<Long> ignoredPathsCookies) {
         return definePaths(collectPaths(yFlowId, ignoredPathsCookies));
     }
 
-    public YFlowPaths definePaths(YFlow yFlow) {
+    public CrossingPaths definePaths(YFlow yFlow) {
         return definePaths(collectPaths(yFlow));
     }
 
-    private YFlowPaths definePaths(List<FlowPath> flowPaths) {
+    private CrossingPaths definePaths(List<FlowPath> flowPaths) {
         List<FlowPath> nonEmptyPaths = flowPaths.stream()
                 .filter(fp -> !fp.getSegments().isEmpty()).collect(Collectors.toList());
         PathInfoData sharedPath = FlowPathMapper.INSTANCE.map(nonEmptyPaths.size() >= 2
@@ -70,7 +70,7 @@ public class YFlowUtils {
                 .sorted(Comparator.comparing(SubFlowPathDto::getFlowId))
                 .collect(Collectors.toList());
 
-        return YFlowPaths.builder()
+        return CrossingPaths.builder()
                 .sharedPath(sharedPath)
                 .subFlowPaths(subFlowPaths)
                 .build();

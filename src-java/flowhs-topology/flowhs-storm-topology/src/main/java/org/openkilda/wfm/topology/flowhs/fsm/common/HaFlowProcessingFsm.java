@@ -17,16 +17,14 @@ package org.openkilda.wfm.topology.flowhs.fsm.common;
 
 import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsRequest;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
-import org.openkilda.model.FlowStatus;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.share.flow.resources.HaFlowResources;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
+import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.ProcessingEventListener;
 
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.squirrelframework.foundation.fsm.impl.AbstractStateMachine;
 
@@ -39,19 +37,14 @@ import java.util.UUID;
 @Slf4j
 @Getter
 public abstract class HaFlowProcessingFsm<T extends AbstractStateMachine<T, S, E, C>, S, E, C,
-        R extends FlowGenericCarrier, L extends ProcessingEventListener>
-        extends FlowProcessingWithHistorySupportFsm<T, S, E, C, R, L> {
+        R extends NorthboundResponseCarrier & HistoryUpdateCarrier,
+        L extends ProcessingEventListener> extends FlowProcessingWithHistorySupportFsm<T, S, E, C, R, L> {
     private final String haFlowId;
 
     private final Map<UUID, SwitchId> pendingCommands = new HashMap<>();
     private final Map<UUID, Integer> retriedCommands = new HashMap<>();
     private final Map<UUID, SpeakerCommandResponse> failedCommands = new HashMap<>();
     private final Map<UUID, BaseSpeakerCommandsRequest> speakerCommands = new HashMap<>();
-
-    @Setter
-    private FlowStatus originalHaFlowStatus;
-    @Setter
-    private HaFlowResources newPrimaryResources;
 
     protected HaFlowProcessingFsm(E nextEvent, E errorEvent,
                                   @NonNull CommandContext commandContext, @NonNull R carrier, @NonNull String haFlowId,
@@ -65,13 +58,8 @@ public abstract class HaFlowProcessingFsm<T extends AbstractStateMachine<T, S, E
         return getHaFlowId();
     }
 
-
     public void clearPendingCommands() {
         pendingCommands.clear();
-    }
-
-    public Optional<SwitchId> getPendingCommand(UUID key) {
-        return Optional.ofNullable(pendingCommands.get(key));
     }
 
     public boolean hasPendingCommand(UUID key) {

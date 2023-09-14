@@ -33,6 +33,7 @@ import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.MeterSpeakerData;
 import org.openkilda.rulemanager.SpeakerData;
 
+import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
@@ -40,6 +41,7 @@ import org.projectfloodlight.openflow.protocol.OFFactory;
 import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.types.DatapathId;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -48,6 +50,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class OfBatchHolder implements OfEntityBatch {
@@ -108,6 +111,16 @@ public class OfBatchHolder implements OfEntityBatch {
     }
 
     /**
+     * Process other fail during command processing and record failed commands.
+     */
+    public void otherFail(String message, Throwable throwable, Collection<UUID> failedCommands) {
+        otherFail(message, throwable);
+        for (UUID failedCommand : failedCommands) {
+            recordFailedUuid(failedCommand, message);
+        }
+    }
+
+    /**
      * Checks if action deps are satisfied.
      */
     public boolean canExecute(UUID uuid) {
@@ -154,6 +167,18 @@ public class OfBatchHolder implements OfEntityBatch {
 
     public GroupSpeakerData getByGroupId(GroupId groupId) {
         return groupsMap.get(groupId);
+    }
+
+    public Set<UUID> getAllFlowUuids() {
+        return flowsMap.values().stream().map(SpeakerData::getUuid).collect(Collectors.toSet());
+    }
+
+    public Set<UUID> getAllMeterUuids() {
+        return metersMap.values().stream().map(SpeakerData::getUuid).collect(Collectors.toSet());
+    }
+
+    public Set<UUID> getAllGroupUuids() {
+        return groupsMap.values().stream().map(SpeakerData::getUuid).collect(Collectors.toSet());
     }
 
     public UUID popAwaitingXid(long xid) {
@@ -230,7 +255,8 @@ public class OfBatchHolder implements OfEntityBatch {
         DatapathId dpId = DatapathId.of(switchId.toLong());
         IOFSwitch sw = iofSwitchService.getSwitch(dpId);
         if (sw == null) {
-            otherFail(format("Can't process speaker command %s", data), new SwitchNotFoundException(dpId));
+            otherFail(format("Can't process speaker command %s", data), new SwitchNotFoundException(dpId),
+                    Sets.newHashSet(data.getUuid()));
             return;
         }
         OFFactory factory = sw.getOFFactory();

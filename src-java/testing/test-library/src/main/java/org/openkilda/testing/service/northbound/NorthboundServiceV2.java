@@ -36,6 +36,7 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPingPayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPingResult;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult;
+import org.openkilda.northbound.dto.v2.haflows.HaFlowSyncResult;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult;
 import org.openkilda.northbound.dto.v2.links.BfdProperties;
@@ -62,6 +63,7 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.northbound.model.HaFlowHistoryEntry;
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult;
 
 import java.util.Date;
@@ -210,5 +212,9 @@ public interface NorthboundServiceV2 {
 
     HaFlowRerouteResult rerouteHaFlow(String haFlowId);
 
+    HaFlowSyncResult syncHaFlow(String haFlowId);
+
     HaFlowPingResult pingHaFlow(String haFlowId, HaFlowPingPayload payload);
+
+    List<HaFlowHistoryEntry> getHaFlowHistory(String flowId, Long timeFrom, Long timeTo, Integer maxCount);
 }

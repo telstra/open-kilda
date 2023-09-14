@@ -94,7 +94,7 @@ public class EmitInstallRulesRequestsAction extends
         result.addAll(buildRules(haFlow.getForwardPath(), overlappingPathIds));
         result.addAll(buildRules(haFlow.getReversePath(), overlappingPathIds));
 
-        if (haFlow.getProtectedForwardPath() != null && haFlow.getProtectedForwardPath() != null) {
+        if (haFlow.getProtectedForwardPath() != null && haFlow.getProtectedReversePath() != null) {
             result.addAll(buildRules(haFlow.getProtectedForwardPath(), overlappingPathIds));
             result.addAll(buildRules(haFlow.getProtectedReversePath(), overlappingPathIds));
         }

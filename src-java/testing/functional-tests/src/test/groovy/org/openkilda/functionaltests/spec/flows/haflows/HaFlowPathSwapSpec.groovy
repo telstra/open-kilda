@@ -1,9 +1,13 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import org.openkilda.functionaltests.model.stats.HaFlowStats
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
+import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
+import static org.openkilda.functionaltests.model.stats.HaFlowStatsMetric.HA_FLOW_RAW_BITS
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 
@@ -23,11 +27,16 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 
+import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
+
 @Narrative("Verify path swap operations on HA-flows.")
 class HaFlowPathSwapSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     HaFlowHelper haFlowHelper
+    @Autowired
+    @Shared
+    HaFlowStats haFlowStats
 
     static def convertPaths(HaFlowPaths haFlowPaths) {
         return [PathHelper.convert(haFlowPaths.subFlowPaths[0].forward),
@@ -61,6 +70,7 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
                 it.status == FlowState.UP.toString()
             }
         }
+        def timeAfterSwap = new Date().getTime()
 
         then: "The sub-flows are switched to protected paths"
         def haFlowPathInfoAfter = northboundV2.getHaFlowPaths(haFlowId)
@@ -87,9 +97,20 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
         and: "Traffic passes through HA-Flow"
         if (swT.isHaTraffExamAvailable()) {
             assert haFlowHelper.getTraffExam(createdHaFlow).run().hasTraffic()
+            statsHelper."force kilda to collect stats"()
         }
 
-        // TODO check stats
+        then: "Stats are collected"
+        if (swT.isHaTraffExamAvailable()) {
+            Wrappers.wait(STATS_LOGGING_TIMEOUT) {
+                assert haFlowStats.of(createdHaFlow.getHaFlowId()).get(HA_FLOW_RAW_BITS,
+                        REVERSE,
+                        createdHaFlow.getSubFlows().shuffled().first().getEndpoint()).hasNonZeroValuesAfter(timeAfterSwap)
+                assert haFlowStats.of(createdHaFlow.getHaFlowId()).get(HA_FLOW_RAW_BITS,
+                        FORWARD,
+                        createdHaFlow.getSharedEndpoint()).hasNonZeroValuesAfter(timeAfterSwap)
+            }
+        }
 
         cleanup:
         createdHaFlow && haFlowHelper.deleteHaFlow(createdHaFlow.haFlowId)

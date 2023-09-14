@@ -21,6 +21,7 @@ import org.openkilda.model.SwitchId;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import lombok.ToString;
 
 import java.util.List;
 
@@ -32,6 +33,7 @@ import java.util.List;
         "message_type",
         "switch_id",
         "stats"})
+@ToString
 public class FlowStatsData extends InfoData {
 
     private static final long serialVersionUID = 1L;
