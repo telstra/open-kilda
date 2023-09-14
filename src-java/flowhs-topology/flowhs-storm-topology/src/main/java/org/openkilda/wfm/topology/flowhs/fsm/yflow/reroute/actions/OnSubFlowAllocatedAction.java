@@ -18,18 +18,12 @@ package org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.Message;
-import org.openkilda.messaging.command.yflow.YFlowRerouteResponse;
-import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.YFlowRepository;
-import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.model.CrossingPaths;
 import org.openkilda.wfm.topology.flowhs.utils.YFlowUtils;
 
 import lombok.extern.slf4j.Slf4j;
@@ -39,13 +33,10 @@ import java.util.Optional;
 @Slf4j
 public class OnSubFlowAllocatedAction extends
         NbTrackableWithHistorySupportAction<YFlowRerouteFsm, State, Event, YFlowRerouteContext> {
-    private final YFlowRepository yFlowRepository;
     private final YFlowUtils utils;
 
     public OnSubFlowAllocatedAction(PersistenceManager persistenceManager) {
         super(persistenceManager);
-        RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        yFlowRepository = repositoryFactory.createYFlowRepository();
         utils = new YFlowUtils(persistenceManager);
     }
 
@@ -63,24 +54,24 @@ public class OnSubFlowAllocatedAction extends
 
         stateMachine.addAllocatedSubFlow(subFlowId);
 
-        if (stateMachine.getAllocatedSubFlows().size() == stateMachine.getSubFlows().size()) {
-            return Optional.of(buildRerouteResponseMessage(stateMachine));
+        if (isNeedSendSuccessResponse(stateMachine)) {
+            return Optional.of(utils.buildRerouteResponseMessage(stateMachine));
         }
 
         return Optional.empty();
 
     }
 
-    private Message buildRerouteResponseMessage(YFlowRerouteFsm stateMachine) {
-        CrossingPaths paths = utils.definePaths(stateMachine.getYFlowId(), stateMachine.getOldYFlowPathCookies());
-        boolean rerouted = !(
-                paths.getSharedPath().equals(stateMachine.getOldSharedPath())
-                        && paths.getSubFlowPaths().equals(stateMachine.getOldSubFlowPathDtos()));
-        YFlowRerouteResponse response = new YFlowRerouteResponse(
-                paths.getSharedPath(), paths.getSubFlowPaths(), rerouted);
-        CommandContext commandContext = stateMachine.getCommandContext();
-        return new InfoMessage(response, commandContext.getCreateTime(),
-                commandContext.getCorrelationId());
+    private boolean isNeedSendSuccessResponse(YFlowRerouteFsm stateMachine) {
+        return isAllSuccess(stateMachine) || isAtLeastOneSuccessAndNoMoreForthcomingRequests(stateMachine);
+    }
+
+    private boolean isAllSuccess(YFlowRerouteFsm stateMachine) {
+        return stateMachine.getAllocatedSubFlows().size() == stateMachine.getSubFlows().size();
+    }
+
+    private boolean isAtLeastOneSuccessAndNoMoreForthcomingRequests(YFlowRerouteFsm stateMachine) {
+        return (!stateMachine.getAllocatedSubFlows().isEmpty() && stateMachine.getFailedSubFlows().size() == 1);
     }
 
     @Override

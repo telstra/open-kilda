@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute;
 import org.openkilda.floodlight.api.request.rulemanager.DeleteSpeakerCommandsRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.yflow.SubFlowPathDto;
+import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.model.IslEndpoint;
@@ -92,6 +93,8 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
     private final Set<String> allocatedSubFlows = new HashSet<>();
 
     private String mainAffinityFlowId;
+    private ErrorType mainError;
+    private String mainErrorDescription;
     private Collection<FlowRerouteRequest> rerouteRequests;
 
     private PathInfoData oldSharedPath;
@@ -117,6 +120,13 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
 
     public void addReroutingSubFlow(String flowId) {
         reroutingSubFlows.add(flowId);
+    }
+
+    public void setMainErrorAndDescription(ErrorType mainError, String errorDescription) {
+        if (this.mainError == null || ErrorType.NOT_FOUND.equals(mainError)) {
+            this.mainError = mainError;
+            this.mainErrorDescription = errorDescription;
+        }
     }
 
     public void removeReroutingSubFlow(String flowId) {
@@ -202,7 +212,7 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
             builder.internalTransition()
                     .within(State.REROUTING_SUB_FLOWS)
                     .on(Event.SUB_FLOW_FAILED)
-                    .perform(new HandleNotReroutedSubFlowAction(persistenceManager));
+                    .perform(new HandleNotReroutedSubFlowAction(persistenceManager, flowRerouteService));
             builder.transitions()
                     .from(State.REROUTING_SUB_FLOWS)
                     .toAmong(State.SUB_FLOW_REROUTES_FINISHED, State.SUB_FLOW_REROUTES_FINISHED,
