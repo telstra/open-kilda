@@ -24,6 +24,8 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.pce.exception.RecoverableException;
 import org.openkilda.pce.exception.UnroutableFlowException;
+import org.openkilda.pce.impl.AvailableNetwork;
+import org.openkilda.pce.impl.RequestedPath;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -50,18 +52,29 @@ public interface PathComputer {
      * Gets a path between source and destination switches for a specified flow.
      *
      * @param flow the {@link Flow} instance.
-     * @param reusePathsResources    allow already allocated path resources (bandwidth)
-     *                               be reused in new path computation.
+     * @param reusePathsResources allow already allocated path resources to be used in the new path computation.
+     * @param isProtected true if it is required to find a protected path.
      * @return {@link GetPathsResult} instance
      */
     GetPathsResult getPath(Flow flow, Collection<PathId> reusePathsResources, boolean isProtected)
             throws UnroutableFlowException, RecoverableException;
 
     /**
-     * Gets a ha-path for specified haflow.
+     * Gets a path in a given AvailableNetwork fulfilling the requirements of the requestedPath.
+     * This method is useful when it is required to find a path in a subset of the entire network.
+     * @param network the network in which it is required to find a path
+     * @param requestedPath parameters of the path
+     * @param isProtected true if it is required to find a protected path.
+     * @return instance
+     */
+    GetPathsResult getPath(AvailableNetwork network, RequestedPath requestedPath, boolean isProtected)
+            throws UnroutableFlowException;
+
+    /**
+     * Gets an HA-path for the specified HA-flow.
      *
      * @param haFlow the {@link HaFlow} instance.
-     * @param isProtected true if need to find protected path.
+     * @param isProtected true if it is required to find a protected path.
      * @return {@link GetPathsResult} instance
      */
     default GetHaPathsResult getHaPath(HaFlow haFlow, boolean isProtected)
@@ -70,11 +83,10 @@ public interface PathComputer {
     }
 
     /**
-     * Gets a ha-path for specified haflow.
+     * Gets an HA-path for the specified HA-flow.
      *
      * @param haFlow the {@link HaFlow} instance.
-     * @param reuseSubPathsResources allow already allocated path resources (bandwidth)
-     *                               be reused in new path computation.
+     * @param reuseSubPathsResources allow already allocated resources to be used in the path computation.
      * @return {@link GetHaPathsResult} instance
      */
     GetHaPathsResult getHaPath(HaFlow haFlow, Collection<PathId> reuseSubPathsResources, boolean isProtected)

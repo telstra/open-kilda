@@ -72,6 +72,10 @@ public interface IslRepository extends Repository<Isl> {
     Collection<IslImmutableView> findActiveByPathAndBandwidthAndEncapsulationType(
             PathId pathId, long requiredBandwidth, FlowEncapsulationType flowEncapsulationType);
 
+    Collection<IslImmutableView> findActiveByEndpointsAndBandwidthAndEncapsulationType(
+            SwitchId srcSwitchId, int srcPort, SwitchId dstSwitchId, int dstPort,
+            long requiredBandwidth, FlowEncapsulationType flowEncapsulationType);
+
     /**
      * Finds all active ISLs.
      */

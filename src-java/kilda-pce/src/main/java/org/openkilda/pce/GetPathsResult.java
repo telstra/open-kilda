@@ -19,6 +19,7 @@ import org.openkilda.pce.finder.FailReason;
 import org.openkilda.pce.finder.FailReasonType;
 
 import lombok.Builder;
+import lombok.Singular;
 import lombok.Value;
 
 import java.io.Serializable;
@@ -32,6 +33,7 @@ public class GetPathsResult implements Serializable {
     Path reverse;
     boolean backUpPathComputationWayUsed;
 
+    @Singular
     Map<FailReasonType, FailReason> failReasons;
 
     public boolean isSuccess() {

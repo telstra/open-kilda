@@ -15,14 +15,17 @@
 
 package org.openkilda.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Value;
 
 import java.time.Duration;
+import java.util.LinkedList;
 import java.util.List;
 
 @Value
 @Builder
+@AllArgsConstructor
 public class PathValidationData {
 
     Long bandwidth;
@@ -37,6 +40,23 @@ public class PathValidationData {
     SwitchId destSwitchId;
     Integer destPort;
     PathComputationStrategy pathComputationStrategy;
+
+    public PathValidationData(PathValidationData pathValidationData, FlowEncapsulationType flowEncapsulationType,
+                              PathComputationStrategy pathComputationStrategy) {
+        this.bandwidth = pathValidationData.getBandwidth();
+        this.latency = pathValidationData.getLatency();
+        this.latencyTier2 = pathValidationData.getLatencyTier2();
+        this.pathSegments = new LinkedList<>(pathValidationData.getPathSegments());
+        this.diverseWithFlow = pathValidationData.getDiverseWithFlow();
+        this.reuseFlowResources = pathValidationData.getReuseFlowResources();
+        this.srcSwitchId = pathValidationData.getSrcSwitchId();
+        this.srcPort = pathValidationData.getSrcPort();
+        this.destSwitchId = pathValidationData.getDestSwitchId();
+        this.destPort = pathValidationData.getDestPort();
+
+        this.flowEncapsulationType = flowEncapsulationType;
+        this.pathComputationStrategy = pathComputationStrategy;
+    }
 
     @Value
     @Builder

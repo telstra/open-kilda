@@ -17,9 +17,11 @@ package org.openkilda.northbound.dto.v2.flows;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.experimental.FieldDefaults;
 
 import java.util.List;
 
@@ -27,7 +29,9 @@ import java.util.List;
 @Builder
 @AllArgsConstructor
 @JsonNaming(value = PropertyNamingStrategy.SnakeCaseStrategy.class)
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class PathValidateResponse {
     Boolean isValid;
     List<String> errors;
+    String pceResponse;
 }

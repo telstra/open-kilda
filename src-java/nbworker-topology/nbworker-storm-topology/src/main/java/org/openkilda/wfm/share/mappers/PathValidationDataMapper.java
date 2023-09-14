@@ -16,14 +16,19 @@
 package org.openkilda.wfm.share.mappers;
 
 import org.openkilda.messaging.payload.network.PathValidationPayload;
+import org.openkilda.model.Flow;
 import org.openkilda.model.PathValidationData;
+import org.openkilda.model.Switch;
+import org.openkilda.pce.Path;
 
+import org.apache.commons.lang3.ObjectUtils;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Mapper
 public abstract class PathValidationDataMapper {
@@ -36,6 +41,10 @@ public abstract class PathValidationDataMapper {
      * @return the messaging representation of a path validation data
      */
     public PathValidationData toPathValidationData(PathValidationPayload pathValidationPayload) {
+        if (pathValidationPayload.getNodes() == null || pathValidationPayload.getNodes().isEmpty()) {
+            throw new IllegalArgumentException("Nodes are mandatory part of the path validation data");
+        }
+
         List<PathValidationData.PathSegmentValidationData> segments = new LinkedList<>();
 
         for (int i = 0; i < pathValidationPayload.getNodes().size() - 1; i++) {
@@ -49,8 +58,11 @@ public abstract class PathValidationDataMapper {
 
         return PathValidationData.builder()
                 .srcSwitchId(pathValidationPayload.getNodes().get(0).getSwitchId())
+                .srcPort(pathValidationPayload.getNodes().get(0).getOutputPort())
                 .destSwitchId(
                         pathValidationPayload.getNodes().get(pathValidationPayload.getNodes().size() - 1).getSwitchId())
+                .destPort(pathValidationPayload.getNodes()
+                        .get(pathValidationPayload.getNodes().size() - 1).getInputPort())
                 .bandwidth(pathValidationPayload.getBandwidth())
                 .latency(pathValidationPayload.getLatencyMs() == null ? null :
                         Duration.ofMillis(pathValidationPayload.getLatencyMs()))
@@ -62,6 +74,55 @@ public abstract class PathValidationDataMapper {
                         pathValidationPayload.getFlowEncapsulationType()))
                 .pathComputationStrategy(pathValidationPayload.getPathComputationStrategy())
                 .pathSegments(segments)
+                .build();
+    }
+
+    /**
+     * Converts segments data to a list of PCE's segments.
+     * @param pathValidationData a path with its parameters provided by user for validation
+     * @return a list of PCE's segments representation
+     */
+    public List<Path.Segment> extractSegments(PathValidationData pathValidationData) {
+        return pathValidationData.getPathSegments().stream().map(segment ->
+                Path.Segment.builder()
+                        .srcSwitchId(segment.getSrcSwitchId())
+                        .srcPort(segment.getSrcPort())
+                        .destSwitchId(segment.getDestSwitchId())
+                        .destPort(segment.getDestPort())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Converts the validation to a flow object. This flow object is virtual and could be malformed.
+     * @param pathValidationData validation data
+     * @param diversityGroupId diversity group ID if it exists
+     * @return a flow object
+     */
+    public Flow toFlow(PathValidationData pathValidationData, String diversityGroupId) {
+        if (ObjectUtils.anyNull(pathValidationData)) {
+            throw new IllegalArgumentException("Cannot convert null to Flow object. PathValidationData is mandatory.");
+        }
+        if (ObjectUtils.anyNull(pathValidationData.getSrcPort(),
+                pathValidationData.getSrcSwitchId(),
+                pathValidationData.getDestPort(),
+                pathValidationData.getDestSwitchId())) {
+            throw new IllegalArgumentException("End points switch and port are mandatory");
+        }
+
+        return Flow.builder()
+                .pathComputationStrategy(pathValidationData.getPathComputationStrategy())
+                .encapsulationType(pathValidationData.getFlowEncapsulationType())
+                .bandwidth(ObjectUtils.defaultIfNull(pathValidationData.getBandwidth(), 0L))
+                .flowId("A virtual flow created in PathValidationDataMapper")
+                .srcSwitch(Switch.builder().switchId(pathValidationData.getSrcSwitchId()).build())
+                .srcPort(pathValidationData.getSrcPort())
+                .destSwitch(Switch.builder().switchId(pathValidationData.getDestSwitchId()).build())
+                .destPort(pathValidationData.getDestPort())
+                .maxLatency(pathValidationData.getLatency() != null ? pathValidationData.getLatency().toNanos() : null)
+                .maxLatencyTier2(pathValidationData.getLatencyTier2() != null
+                        ? pathValidationData.getLatencyTier2().toNanos() : null)
+                .diverseGroupId(diversityGroupId)
                 .build();
     }
 }
