@@ -69,7 +69,7 @@ public class TransitYRuleGenerator extends TransitRuleGenerator implements Meter
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie().toBuilder().yFlow(true).build())
-                .table(multiTable ? OfTable.TRANSIT : OfTable.INPUT)
+                .table(OfTable.TRANSIT)
                 .priority(Priority.Y_FLOW_PRIORITY)
                 .match(makeTransitMatch(sw, inPort, encapsulation))
                 .instructions(buildInstructions(sw));

@@ -102,3 +102,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 030-ensure-all-objects-are-multi-table.yaml
+  - include:
+      relativeToChangelogFile: true
+      file: 031-remove-multi-table-fields.yaml

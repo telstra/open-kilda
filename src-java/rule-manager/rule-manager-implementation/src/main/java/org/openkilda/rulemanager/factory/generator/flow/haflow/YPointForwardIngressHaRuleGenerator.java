@@ -72,8 +72,7 @@ import java.util.Set;
 public class YPointForwardIngressHaRuleGenerator implements MeteredRuleGenerator {
 
     /*
-     * This set must contain FlowSideAdapters with src multiTable=true which have same SwitchId and inPort as ingress
-     * endpoint of target subPath.
+     * This set must contain FlowSideAdapters which have same SwitchId and inPort as ingress endpoint of target subPath.
      */
     @Default
     private final Set<FlowSideAdapter> overlappingIngressAdapters = new HashSet<>();
@@ -164,7 +163,7 @@ public class YPointForwardIngressHaRuleGenerator implements MeteredRuleGenerator
 
     @VisibleForTesting
     static Set<FieldMatch> buildIngressMatch(FlowEndpoint endpoint, Set<SwitchFeature> switchFeatures) {
-        return Utils.makeIngressMatch(endpoint, true, switchFeatures);
+        return Utils.makeIngressMatch(endpoint, switchFeatures);
     }
 
     @VisibleForTesting

@@ -76,14 +76,14 @@ public final class Constants {
         public static final int CATCH_BFD_RULE_PRIORITY = DROP_DISCOVERY_LOOP_RULE_PRIORITY + 1;
         public static final int ROUND_TRIP_LATENCY_RULE_PRIORITY = DROP_DISCOVERY_LOOP_RULE_PRIORITY + 1;
         public static final int PING_INPUT_PRIORITY = FLOW_PRIORITY - 1;
-        public static final int ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
-        public static final int ISL_TRANSIT_VXLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 3;
-        public static final int INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 2;
-        public static final int ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE = FLOW_PRIORITY - 5;
+        public static final int ISL_EGRESS_VXLAN_RULE_PRIORITY = FLOW_PRIORITY - 2;
+        public static final int ISL_TRANSIT_VXLAN_RULE_PRIORITY = FLOW_PRIORITY - 3;
+        public static final int INGRESS_CUSTOMER_PORT_RULE_PRIORITY = FLOW_PRIORITY - 2;
+        public static final int ISL_EGRESS_VLAN_RULE_PRIORITY = FLOW_PRIORITY - 5;
         public static final int DEFAULT_FLOW_PRIORITY = FLOW_PRIORITY - 1;
         public static final int DEFAULT_FLOW_VLAN_STATS_PRIORITY = FLOW_PRIORITY - 10;
         public static final int DOUBLE_VLAN_FLOW_PRIORITY = FLOW_PRIORITY + 10;
-        public static final int LACP_RULE_PRIORITY = INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE + 200;
+        public static final int LACP_RULE_PRIORITY = INGRESS_CUSTOMER_PORT_RULE_PRIORITY + 200;
         public static final int DROP_LOOP_SLOW_PROTOCOLS_PRIORITY = LACP_RULE_PRIORITY + 10;
 
         public static final int MIRROR_FLOW_PRIORITY = FLOW_PRIORITY + 50;
@@ -99,7 +99,7 @@ public final class Constants {
         public static final int Y_FLOW_DOUBLE_VLAN_PRIORITY = Y_FLOW_PRIORITY + 10;
         public static final int Y_DEFAULT_FLOW_PRIORITY = Y_FLOW_PRIORITY - 10;
 
-        public static final int SERVER_42_FLOW_RTT_INPUT_PRIORITY = INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE;
+        public static final int SERVER_42_FLOW_RTT_INPUT_PRIORITY = INGRESS_CUSTOMER_PORT_RULE_PRIORITY;
         public static final int SERVER_42_FLOW_RTT_TURNING_PRIORITY = DISCOVERY_RULE_PRIORITY;
         public static final int SERVER_42_FLOW_RTT_VXLAN_TURNING_PRIORITY = VERIFICATION_RULE_VXLAN_PRIORITY + 1;
         public static final int SERVER_42_FLOW_RTT_OUTPUT_VLAN_PRIORITY = DISCOVERY_RULE_PRIORITY;

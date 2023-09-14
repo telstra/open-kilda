@@ -79,7 +79,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class MultiTableServer42IngressRuleGeneratorTest {
+public class Server42IngressRuleGeneratorTest {
     public static final PathId PATH_ID = new PathId("path_id");
     public static final String FLOW_ID = "flow";
     public static final MeterId METER_ID = new MeterId(17);
@@ -151,7 +151,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsVlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        MultiTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
+        Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES);
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
@@ -163,7 +163,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsVlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
-        MultiTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
+        Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
@@ -176,7 +176,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsVlanEncapsulationFullPortTest() {
         Flow flow = buildFlow(PATH, 0, 0);
-        MultiTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
+        Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
@@ -189,7 +189,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsVlanEncapsulationInnerVlanEqualTransitVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, TRANSIT_VLAN_ID);
-        MultiTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
+        Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(TRANSIT_VLAN_ID, FEATURES);
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
@@ -200,7 +200,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsVxlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        MultiTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
+        Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES);
         List<Action> expectedActions = newArrayList(new PopVlanAction(), buildPushVxlan());
         Assertions.assertEquals(expectedActions, transformActions);
@@ -209,7 +209,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsVxlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
-        MultiTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
+        Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(buildPushVxlan());
         Assertions.assertEquals(expectedActions, transformActions);
@@ -218,7 +218,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     @Test
     public void buildTransformActionsVxlanEncapsulationFullPortTest() {
         Flow flow = buildFlow(PATH, 0, 0);
-        MultiTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
+        Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
         List<Action> expectedActions = newArrayList(buildPushVxlan());
         Assertions.assertEquals(expectedActions, transformActions);
@@ -226,7 +226,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
 
     @Test
     public void oneSwitchFlowTest() {
-        MultiTableServer42IngressRuleGenerator generator = MultiTableServer42IngressRuleGenerator.builder()
+        Server42IngressRuleGenerator generator = Server42IngressRuleGenerator.builder()
                 .switchProperties(SWITCH_PROPERTIES)
                 .flowPath(ONE_SWITCH_PATH)
                 .build();
@@ -235,7 +235,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
 
     @Test
     public void nullSwitchPropertiesTest() {
-        MultiTableServer42IngressRuleGenerator generator = MultiTableServer42IngressRuleGenerator.builder()
+        Server42IngressRuleGenerator generator = Server42IngressRuleGenerator.builder()
                 .switchProperties(null)
                 .flowPath(PATH)
                 .build();
@@ -244,7 +244,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
 
     @Test
     public void falseServer42SwitchPropertiesTest() {
-        MultiTableServer42IngressRuleGenerator generator = MultiTableServer42IngressRuleGenerator.builder()
+        Server42IngressRuleGenerator generator = Server42IngressRuleGenerator.builder()
                 .switchProperties(SwitchProperties.builder().server42FlowRtt(false).build())
                 .flowPath(PATH)
                 .build();
@@ -254,7 +254,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     @Test
     public void buildCommandsVlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        MultiTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
+        Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         Assertions.assertEquals(3, commands.size());
 
@@ -285,7 +285,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     @Test
     public void buildCommandsVxlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
-        MultiTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
+        Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         Assertions.assertEquals(3, commands.size());
 
@@ -311,7 +311,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     @Test
     public void buildCommandsVlanEncapsulationFullPortTest() {
         Flow flow = buildFlow(PATH, 0, 0);
-        MultiTableServer42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
+        Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
         Assertions.assertEquals(2, commands.size());
 
@@ -338,7 +338,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
 
     @Test
     public void noOverlappingFlowsTest() {
-        MultiTableServer42IngressRuleGenerator generator = MultiTableServer42IngressRuleGenerator.builder()
+        Server42IngressRuleGenerator generator = Server42IngressRuleGenerator.builder()
                 .overlappingIngressAdapters(new HashSet<>()).build();
         FlowEndpoint ingressEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_NUMBER_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         Assertions.assertTrue(generator.needToBuildServer42PreIngressRule(ingressEndpoint));
@@ -347,7 +347,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
 
     @Test
     public void noOverlappingFlowsFullPortFlowTest() {
-        MultiTableServer42IngressRuleGenerator generator = MultiTableServer42IngressRuleGenerator.builder()
+        Server42IngressRuleGenerator generator = Server42IngressRuleGenerator.builder()
                 .overlappingIngressAdapters(new HashSet<>()).build();
         FlowEndpoint ingressEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_NUMBER_1, 0, 0);
         Assertions.assertFalse(generator.needToBuildServer42PreIngressRule(ingressEndpoint));
@@ -357,7 +357,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     @Test
     public void outerVlanInPortOverlappingFlowTest() {
         Flow overlappingFlow = buildOverlappingFlow(PORT_NUMBER_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        MultiTableServer42IngressRuleGenerator generator = buildGenerator(overlappingFlow);
+        Server42IngressRuleGenerator generator = buildGenerator(overlappingFlow);
         FlowEndpoint ingressEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_NUMBER_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         Assertions.assertFalse(generator.needToBuildServer42PreIngressRule(ingressEndpoint));
         Assertions.assertFalse(generator.needToBuildServer42InputRule(ingressEndpoint));
@@ -366,7 +366,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     @Test
     public void outerVlanOverlappingFlowTest() {
         Flow overlappingFlow = buildOverlappingFlow(PORT_NUMBER_2, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        MultiTableServer42IngressRuleGenerator generator = buildGenerator(overlappingFlow);
+        Server42IngressRuleGenerator generator = buildGenerator(overlappingFlow);
         FlowEndpoint ingressEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_NUMBER_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         Assertions.assertFalse(generator.needToBuildServer42PreIngressRule(ingressEndpoint));
         Assertions.assertTrue(generator.needToBuildServer42InputRule(ingressEndpoint));
@@ -375,7 +375,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     @Test
     public void overlappingOfFullFlowTest() {
         Flow overlappingFlow = buildOverlappingFlow(PORT_NUMBER_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
-        MultiTableServer42IngressRuleGenerator generator = buildGenerator(overlappingFlow);
+        Server42IngressRuleGenerator generator = buildGenerator(overlappingFlow);
         FlowEndpoint ingressEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_NUMBER_1, 0, 0);
         Assertions.assertFalse(generator.needToBuildServer42PreIngressRule(ingressEndpoint));
         Assertions.assertFalse(generator.needToBuildServer42InputRule(ingressEndpoint));
@@ -384,7 +384,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     @Test
     public void fullPortOverlappingFlowTest() {
         Flow overlappingFlow = buildOverlappingFlow(PORT_NUMBER_1, 0, 0);
-        MultiTableServer42IngressRuleGenerator generator = buildGenerator(overlappingFlow);
+        Server42IngressRuleGenerator generator = buildGenerator(overlappingFlow);
         FlowEndpoint ingressEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_NUMBER_1, OUTER_VLAN_ID_1, 0);
         Assertions.assertTrue(generator.needToBuildServer42PreIngressRule(ingressEndpoint));
         Assertions.assertFalse(generator.needToBuildServer42InputRule(ingressEndpoint));
@@ -393,7 +393,7 @@ public class MultiTableServer42IngressRuleGeneratorTest {
     @Test
     public void inPortOverlappingFlowTest() {
         Flow overlappingFlow = buildOverlappingFlow(PORT_NUMBER_1, OUTER_VLAN_ID_2, INNER_VLAN_ID_1);
-        MultiTableServer42IngressRuleGenerator generator = buildGenerator(overlappingFlow);
+        Server42IngressRuleGenerator generator = buildGenerator(overlappingFlow);
         FlowEndpoint ingressEndpoint = new FlowEndpoint(SWITCH_ID_1, PORT_NUMBER_1, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         Assertions.assertTrue(generator.needToBuildServer42PreIngressRule(ingressEndpoint));
         Assertions.assertFalse(generator.needToBuildServer42InputRule(ingressEndpoint));
@@ -475,9 +475,9 @@ public class MultiTableServer42IngressRuleGeneratorTest {
         Assertions.assertTrue(command.getFlags().isEmpty());
     }
 
-    private MultiTableServer42IngressRuleGenerator buildGenerator(
+    private Server42IngressRuleGenerator buildGenerator(
             FlowPath path, Flow flow, FlowTransitEncapsulation encapsulation) {
-        return MultiTableServer42IngressRuleGenerator.builder()
+        return Server42IngressRuleGenerator.builder()
                 .config(config)
                 .flowPath(path)
                 .flow(flow)
@@ -487,8 +487,8 @@ public class MultiTableServer42IngressRuleGeneratorTest {
                 .build();
     }
 
-    private MultiTableServer42IngressRuleGenerator buildGenerator(Flow overLappingFlow) {
-        return MultiTableServer42IngressRuleGenerator.builder()
+    private Server42IngressRuleGenerator buildGenerator(Flow overLappingFlow) {
+        return Server42IngressRuleGenerator.builder()
                 .config(config)
                 .overlappingIngressAdapters(Sets.newHashSet(new FlowSourceAdapter(overLappingFlow)))
                 .switchProperties(SWITCH_PROPERTIES)
