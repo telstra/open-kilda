@@ -604,7 +604,7 @@ export class FlowDetailComponent implements OnInit {
       }
     );
   }
-   if (this.isSubflowForYFlow()) {
+   if (this.isSubflowForYFlow(this.flowDetail)) {
        this.y_flow_id = this.flowDetail.y_flow_id;
    }
 
