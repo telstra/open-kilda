@@ -124,6 +124,27 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         haFlow && !deletedFlow && haFlow.delete()
     }
 
+    @Tidy
+    @Tags(LOW_PRIORITY)
+    def "History records can be retrieved with timeline in milliseconds format"() {
+        given: "HA-Flow"
+        def swT = topologyHelper.switchTriplets[0]
+        def timeBeforeAction = System.currentTimeMillis()
+        HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+
+        when: "Get timestamp after create event"
+        def historyRecord = haFlow.getHistory(timeBeforeAction, System.currentTimeMillis())
+
+        then: "The appropriate history record has been returned"
+        verifyAll {
+            historyRecord.entries.size() == 1
+            historyRecord.getEntriesByType(HaFlowActionType.CREATE)
+        }
+
+        cleanup:
+        haFlow && haFlow.delete()
+    }
+
     @Tags(LOW_PRIORITY)
     @Tidy
     def "History records are created during link unsuccessful rerouting with root cause details and can be retrieved with or without timeline"() {
