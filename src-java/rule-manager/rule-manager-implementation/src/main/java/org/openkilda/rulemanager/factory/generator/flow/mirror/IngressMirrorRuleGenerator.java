@@ -45,7 +45,7 @@ import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.GroupAction;
 import org.openkilda.rulemanager.action.PortOutAction;
-import org.openkilda.rulemanager.factory.generator.flow.IngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.BaseIngressRuleGenerator;
 import org.openkilda.rulemanager.group.Bucket;
 import org.openkilda.rulemanager.group.GroupType;
 import org.openkilda.rulemanager.group.WatchGroup;
@@ -63,8 +63,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @SuperBuilder
-public class IngressMirrorRuleGenerator extends IngressRuleGenerator {
-    private boolean multiTable;
+public class IngressMirrorRuleGenerator extends BaseIngressRuleGenerator {
     private UUID sharedMeterCommandUuid;
 
     @Override
@@ -98,9 +97,9 @@ public class IngressMirrorRuleGenerator extends IngressRuleGenerator {
                 .switchId(ingressEndpoint.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie().toBuilder().mirror(true).build())
-                .table(multiTable ? OfTable.INGRESS : OfTable.INPUT)
+                .table(OfTable.INGRESS)
                 .priority(getPriority(ingressEndpoint))
-                .match(makeIngressMatch(ingressEndpoint, multiTable, sw.getFeatures()))
+                .match(makeIngressMatch(ingressEndpoint, sw.getFeatures()))
                 .instructions(buildIngressInstructions(sw, buildIngressActions(ingressEndpoint, groupId)));
 
         if (sw.getFeatures().contains(SwitchFeature.RESET_COUNTS_FLAG)) {
@@ -129,13 +128,7 @@ public class IngressMirrorRuleGenerator extends IngressRuleGenerator {
 
     @VisibleForTesting
     List<Action> buildIngressActions(FlowEndpoint ingressEndpoint, GroupId groupId) {
-        List<Integer> currentStack;
-        if (multiTable) {
-            currentStack = makeVlanStack(ingressEndpoint.getInnerVlanId());
-        } else {
-            currentStack = makeVlanStack(ingressEndpoint.getOuterVlanId());
-        }
-
+        List<Integer> currentStack = makeVlanStack(ingressEndpoint.getInnerVlanId());
         List<Integer> targetStack;
         if (flowPath.isOneSwitchPath()) {
             targetStack = FlowSideAdapter.makeEgressAdapter(flow, flowPath).getEndpoint().getVlanStack();

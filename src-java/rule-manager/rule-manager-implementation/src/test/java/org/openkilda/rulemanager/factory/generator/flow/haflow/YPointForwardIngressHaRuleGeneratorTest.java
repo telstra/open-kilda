@@ -865,7 +865,7 @@ public class YPointForwardIngressHaRuleGeneratorTest extends HaRuleGeneratorBase
         assertEquals(expectedSwitch.getOfVersion(), command.getOfVersion().toString());
         assertEquals(cookie, command.getCookie());
         assertEquals(OfTable.INPUT, command.getTable());
-        assertEquals(Priority.INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE, command.getPriority());
+        assertEquals(Priority.INGRESS_CUSTOMER_PORT_RULE_PRIORITY, command.getPriority());
         Assertions.assertTrue(command.getDependsOn().isEmpty());
 
         assertEqualsMatch(expectedMatch, command.getMatch());

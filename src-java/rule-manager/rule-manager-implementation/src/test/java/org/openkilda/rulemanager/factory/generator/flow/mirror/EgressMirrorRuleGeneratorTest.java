@@ -102,7 +102,7 @@ public class EgressMirrorRuleGeneratorTest {
     private static final FlowMirrorPoints MIRROR_POINTS = buildMirrorPoints(SWITCH_2);
 
     @Test
-    public void buildVlanMultiTableDoubleVlanEgressMirrorRuleTest() {
+    public void buildVlanDoubleVlanEgressMirrorRuleTest() {
         FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, INNER_VLAN_ID);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
@@ -123,7 +123,7 @@ public class EgressMirrorRuleGeneratorTest {
     }
 
     @Test
-    public void buildVlanMultiTableOuterVlanEgressMirrorRuleTest() {
+    public void buildVlanOuterVlanEgressMirrorRuleTest() {
         FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
@@ -142,7 +142,7 @@ public class EgressMirrorRuleGeneratorTest {
     }
 
     @Test
-    public void buildVlanMultiTableOuterVlanEqualsTransitEgressMirrorRuleTest() {
+    public void buildVlanOuterVlanEqualsTransitEgressMirrorRuleTest() {
         FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, VLAN_ENCAPSULATION.getId(), 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
@@ -160,7 +160,7 @@ public class EgressMirrorRuleGeneratorTest {
 
 
     @Test
-    public void buildVlanMultiTableOuterInnerVlanEqualsTransitEgressMirrorRuleTest() {
+    public void buildVlanOuterInnerVlanEqualsTransitEgressMirrorRuleTest() {
         FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, VLAN_ENCAPSULATION.getId());
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
@@ -180,7 +180,7 @@ public class EgressMirrorRuleGeneratorTest {
     }
 
     @Test
-    public void buildVlanMultiTableFullPortEgressMirrorRuleTest() {
+    public void buildVlanFullPortEgressMirrorRuleTest() {
         FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, 0, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
@@ -199,7 +199,7 @@ public class EgressMirrorRuleGeneratorTest {
     }
 
     @Test
-    public void buildVxlanMultiTableOuterInnerVlanEgressMirrorRuleTest() {
+    public void buildVxlanOuterInnerVlanEgressMirrorRuleTest() {
         FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, INNER_VLAN_ID);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
@@ -222,7 +222,7 @@ public class EgressMirrorRuleGeneratorTest {
     }
 
     @Test
-    public void buildVxlanMultiTableOuterVlanEgressMirrorRuleTest() {
+    public void buildVxlanOuterVlanEgressMirrorRuleTest() {
         FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
@@ -243,7 +243,7 @@ public class EgressMirrorRuleGeneratorTest {
     }
 
     @Test
-    public void buildVxlanMultiTableFullPortEgressMirrorRuleTest() {
+    public void buildVxlanFullPortEgressMirrorRuleTest() {
         FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, 0, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);

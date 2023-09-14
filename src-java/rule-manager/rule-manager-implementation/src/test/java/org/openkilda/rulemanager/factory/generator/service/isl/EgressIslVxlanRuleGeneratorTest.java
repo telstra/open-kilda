@@ -17,7 +17,7 @@ package org.openkilda.rulemanager.factory.generator.service.isl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN;
-import static org.openkilda.rulemanager.Constants.Priority.ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE;
+import static org.openkilda.rulemanager.Constants.Priority.ISL_EGRESS_VXLAN_RULE_PRIORITY;
 import static org.openkilda.rulemanager.Constants.STUB_VXLAN_UDP_SRC;
 import static org.openkilda.rulemanager.Constants.VXLAN_UDP_DST;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
@@ -75,7 +75,7 @@ public class EgressIslVxlanRuleGeneratorTest {
         assertEquals(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES, ISL_PORT),
                 flowCommandData.getCookie());
         assertEquals(OfTable.INPUT, flowCommandData.getTable());
-        assertEquals(ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE, flowCommandData.getPriority());
+        assertEquals(ISL_EGRESS_VXLAN_RULE_PRIORITY, flowCommandData.getPriority());
 
         Set<FieldMatch> match = flowCommandData.getMatch();
         assertEquals(6, match.size());
@@ -100,7 +100,7 @@ public class EgressIslVxlanRuleGeneratorTest {
         assertEquals(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES, ISL_PORT),
                 flowCommandData.getCookie());
         assertEquals(OfTable.INPUT, flowCommandData.getTable());
-        assertEquals(ISL_EGRESS_VXLAN_RULE_PRIORITY_MULTITABLE, flowCommandData.getPriority());
+        assertEquals(ISL_EGRESS_VXLAN_RULE_PRIORITY, flowCommandData.getPriority());
 
         Set<FieldMatch> match = flowCommandData.getMatch();
         assertEquals(6, match.size());
