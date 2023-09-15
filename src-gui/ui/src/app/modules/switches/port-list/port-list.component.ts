@@ -1,11 +1,10 @@
-import {Component, OnInit, AfterViewInit, OnDestroy, ViewChild, Input, OnChanges, SimpleChanges} from '@angular/core';
+import {AfterViewInit, Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild} from '@angular/core';
 import {SwitchService} from '../../../common/services/switch.service';
 import {SwitchidmaskPipe} from '../../../common/pipes/switchidmask.pipe';
 import {ToastrService} from 'ngx-toastr';
 import {ActivatedRoute, Router} from '@angular/router';
 import {DataTableDirective} from 'angular-datatables';
 import {Subject, Subscription} from 'rxjs';
-import {NgxSpinnerService} from 'ngx-spinner';
 import {LoaderService} from '../../../common/services/loader.service';
 import {Title} from '@angular/platform-browser';
 import {CommonService} from 'src/app/common/services/common.service';
@@ -312,28 +311,23 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
 
     createLagPort() {
         const modalRef = this.modalService.open(CreateLagPortComponent, {size: 'lg', windowClass: 'modal-port slideInUp'});
-        modalRef.componentInstance.emitService.subscribe((res) => {
-            let result = res.map(i => Number(i));
+        modalRef.componentInstance.emitService.subscribe((createLagPort: CreateLagPortModel) => {
             this.loaderService.show(MessageObj.apply_changes);
-            this.switchService.createLagLogicalPort({port_numbers: result}, this.switch_id).subscribe(res => {
+            this.switchService.createLagLogicalPort(createLagPort, this.switch_id).subscribe(res => {
                 if (res) {
                     this.toastr.success(MessageObj.create_lag_port, 'Success');
                     this.loaderService.hide();
                     modalRef.componentInstance.activeModal.close(true);
-                    this.portListData();
+                    this.initPortListData();
                 }
 
             }, error => {
                 this.loaderService.hide();
                 modalRef.componentInstance.activeModal.close(true);
-                var message = (error.error['error-auxiliary-message']) ? error.error['error-auxiliary-message'] : error.error['error-description'];
+                const message = `${error.error['error-auxiliary-message'] + ','} ${error.error['error-description']}`;
                 this.toastr.error(message, 'Error');
             });
         });
-      
-
     }
-
-
 }
 

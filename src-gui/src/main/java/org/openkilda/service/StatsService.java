@@ -15,6 +15,8 @@
 
 package org.openkilda.service;
 
+import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
+
 import org.openkilda.config.ApplicationProperties;
 import org.openkilda.constants.Direction;
 import org.openkilda.constants.IConstants.Status;
@@ -428,18 +430,18 @@ public class StatsService {
         List<PortInfo> portInfos = getPortInfo(portStatsByPortNo);
         String switchIdentifier = IoUtil.switchCodeToSwitchId(switchid);
         List<SwitchLogicalPort> switchLogicalPorts = switchIntegrationService.getLogicalPort(switchIdentifier);
-        if (!switchLogicalPorts.isEmpty()) {
+        if (isNotEmpty(switchLogicalPorts)) {
             for (SwitchLogicalPort logicalPort : switchLogicalPorts) {
-                for (String portnumber : logicalPort.getPortNumbers()) {
-                    for (int i = 0; i < portInfos.size(); i++) {
-                        if (portInfos.get(i).getPortNumber().equals(logicalPort.getLogicalPortNumber())) {
-                            portInfos.get(i).setLogicalPort(true);
-                            portInfos.get(i).setAssignmenttype("PORT");
-                            portInfos.get(i).setPortNumbers(logicalPort.getPortNumbers());
-                        } else if (portInfos.get(i).getPortNumber().equals(portnumber)) {
-                            portInfos.get(i).setAssignmenttype("LAG_GROUP");
-                            portInfos.get(i).setLogicalGroupName(logicalPort.getLogicalPortNumber());
-                            portInfos.get(i).setLogicalPort(false);
+                for (String portNumber : logicalPort.getPortNumbers()) {
+                    for (PortInfo portInfo : portInfos) {
+                        if (portInfo.getPortNumber().equals(logicalPort.getLogicalPortNumber())) {
+                            portInfo.setLogicalPort(true);
+                            portInfo.setAssignmenttype("PORT");
+                            portInfo.setPortNumbers(logicalPort.getPortNumbers());
+                        } else if (portInfo.getPortNumber().equals(portNumber)) {
+                            portInfo.setAssignmenttype("LAG_GROUP");
+                            portInfo.setLogicalGroupName(logicalPort.getLogicalPortNumber());
+                            portInfo.setLogicalPort(false);
                         }
                     }
                 }
@@ -452,9 +454,9 @@ public class StatsService {
                 for (IslPath islPath : islLink.getPath()) {
                     switchIdInfo = ("SW" + islPath.getSwitchId().replaceAll(":", "")).toUpperCase();
                     if (switchIdInfo.equals(switchid)) {
-                        for (int i = 0; i < portInfos.size(); i++) {
-                            if (portInfos.get(i).getPortNumber().equals(islPath.getPortNo().toString())) {
-                                portInfos.get(i).setAssignmenttype("ISL");
+                        for (PortInfo portInfo : portInfos) {
+                            if (portInfo.getPortNumber().equals(islPath.getPortNo().toString())) {
+                                portInfo.setAssignmenttype("ISL");
                             }
                         }
                     }
@@ -497,7 +499,7 @@ public class StatsService {
 
         LinkedHashMap<Long, Double> timeToValueMap = new LinkedHashMap<>();
         Map<String, String> tags = new HashMap<>();
-        if (dbData.getData() != null && CollectionUtils.isNotEmpty(dbData.getData().getResult())) {
+        if (dbData.getData() != null && isNotEmpty(dbData.getData().getResult())) {
             tags = dbData.getData().getResult().get(0).getTags();
             dbData.getData().getResult().get(0).getValues()
                     .forEach(timeToValue ->

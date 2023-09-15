@@ -1,11 +1,7 @@
 import {Component, OnInit, EventEmitter, Output, AfterViewInit, OnDestroy} from '@angular/core';
 import {SwitchidmaskPipe} from '../../../common/pipes/switchidmask.pipe';
 import {FormBuilder, FormGroup, Validators, NgForm} from '@angular/forms';
-import * as _moment from 'moment';
-import {NgxSpinnerService} from 'ngx-spinner';
 import {ToastrService} from 'ngx-toastr';
-import {DygraphService} from '../../../common/services/dygraph.service';
-import {IslDataService} from '../../../common/services/isl-data.service';
 import {SwitchService} from '../../../common/services/switch.service';
 import {ActivatedRoute, Router, NavigationEnd} from '@angular/router';
 import {filter} from 'rxjs/operators';
@@ -65,7 +61,6 @@ export class PortDetailsComponent implements OnInit, OnDestroy {
                 private toastr: ToastrService,
                 private loaderService: LoaderService,
                 private router: Router,
-                private dygraphService: DygraphService,
                 private route: ActivatedRoute,
                 private switchService: SwitchService,
                 private clipboardService: ClipboardService,
@@ -169,7 +164,7 @@ export class PortDetailsComponent implements OnInit, OnDestroy {
         }
         return status;
 
-    };
+    }
 
     commitConfig() {
         const portStatus = this.portForm.value.portStatus;
@@ -295,7 +290,7 @@ export class PortDetailsComponent implements OnInit, OnDestroy {
                     this.router.navigate(['/switches/details/' + this.retrievedSwitchObject.switch_id]);
                 }, error => {
                     this.loaderService.hide();
-                    var message = (error.error['error-auxiliary-message']) ? error.error['error-auxiliary-message'] : error.error['error-description'];
+                    const message = `${error.error['error-auxiliary-message'] + ','} ${error.error['error-description']}`;
                     this.toastr.error(message, 'Error');
                 });
             }

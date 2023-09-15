@@ -17,8 +17,8 @@ package org.openkilda.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 
 import java.util.List;
@@ -26,11 +26,10 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data
+@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class SwitchLogicalPort {
-    
-    @JsonProperty("port_numbers")
+
     private List<String> portNumbers;
-    
-    @JsonProperty("logical_port_number")
+    private Boolean lacpReply;
     private String logicalPortNumber;
 }
