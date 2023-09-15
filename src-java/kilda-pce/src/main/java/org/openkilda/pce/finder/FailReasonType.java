@@ -23,7 +23,9 @@ public enum FailReasonType {
     HARD_DIVERSITY_PENALTIES("There is no non-overlapped protected path"),
     MAX_BANDWIDTH("Failed to find path with requested bandwidth"),
     PERSISTENCE_ERROR("Cannot fetch required data from the persistence layer."),
-    UNROUTABLE_FLOW("Unroutable flow exception occurred.");
+    UNROUTABLE_FLOW("Unroutable flow exception occurred."),
+    RECOVERABLE_EXCEPTION("An unhandled recoverable exception occurred."),
+    RUNTIME_EXCEPTION("An unhandled runtime exception occurred.");
 
     private final String value;
 

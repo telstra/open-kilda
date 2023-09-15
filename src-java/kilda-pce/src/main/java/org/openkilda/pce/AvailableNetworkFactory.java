@@ -36,6 +36,9 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A factory for {@link AvailableNetwork} instances.
@@ -61,7 +64,7 @@ public class AvailableNetworkFactory {
      */
     public AvailableNetwork getAvailableNetwork(Flow flow, Collection<PathId> reusePathsResources)
             throws RecoverableException {
-        return getAvailableNetwork(new FlowParameters(flow), reusePathsResources);
+        return getAvailableNetwork(new FlowParameters(flow), reusePathsResources, this::getAvailableIsls);
     }
 
     /**
@@ -73,16 +76,35 @@ public class AvailableNetworkFactory {
      */
     public AvailableNetwork getAvailableNetwork(HaFlow haFlow, Collection<PathId> reusePathsResources)
             throws RecoverableException {
-        return getAvailableNetwork(new FlowParameters(haFlow), reusePathsResources);
+        return getAvailableNetwork(new FlowParameters(haFlow), reusePathsResources, this::getAvailableIsls);
     }
 
-    private AvailableNetwork getAvailableNetwork(FlowParameters parameters, Collection<PathId> reusePathsResources)
+    /**
+     * Creates an available network from the given path only.
+     *
+     * @param parameters requested flow parameters to take into consideration (such as bandwidth or diversity group)
+     * @param path a path that holds segments to build an available network
+     * @return return an AvailableNetwork containing a single path only.
+     */
+    public AvailableNetwork getAvailableNetwork(FlowParameters parameters, Path path,
+                                                Collection<PathId> reusePathsResources) throws RecoverableException {
+        if (parameters.getEncapsulationType() == null) {
+            throw new IllegalArgumentException("The flow parameters don't contain encapsulation type");
+        }
+
+        return getAvailableNetwork(parameters, reusePathsResources,
+                (buildStrategy, flowParameters) -> getIslsFromRepository(parameters, path.getSegments().stream())
+        );
+    }
+
+    private AvailableNetwork getAvailableNetwork(FlowParameters parameters, Collection<PathId> reusePathsResources,
+                                 BiFunction<BuildStrategy, FlowParameters, Collection<IslImmutableView>> availableIsls)
             throws RecoverableException {
         BuildStrategy buildStrategy = BuildStrategy.from(config.getNetworkStrategy());
         AvailableNetwork network = new AvailableNetwork();
         try {
             // Reads all active links from the database and creates representation of the network.
-            getAvailableIsls(buildStrategy, parameters).forEach(link -> addIslAsEdge(link, network));
+            availableIsls.apply(buildStrategy, parameters).forEach(link -> addIslAsEdge(link, network));
             if (!parameters.isIgnoreBandwidth()) {
                 Set<PathId> reusePaths = new HashSet<>(reusePathsResources);
                 reusePaths.addAll(findSharedBandwidthPathIds(parameters));
@@ -103,6 +125,19 @@ public class AvailableNetworkFactory {
         }
 
         return network;
+    }
+
+    private Collection<IslImmutableView> getIslsFromRepository(FlowParameters parameters,
+                                                               Stream<Path.Segment> segment) {
+        return segment.map(s -> islRepository.findActiveByEndpointsAndBandwidthAndEncapsulationType(
+                        s.getSrcSwitchId(),
+                        s.getSrcPort(),
+                        s.getDestSwitchId(),
+                        s.getDestPort(),
+                        parameters.getBandwidth(),
+                        parameters.getEncapsulationType()))
+                .flatMap(Collection::stream)
+                .collect(Collectors.toSet());
     }
 
     private Set<PathId> findSharedBandwidthPathIds(FlowParameters parameters) {

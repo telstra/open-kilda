@@ -65,9 +65,6 @@ import org.openkilda.pce.model.WeightFunction;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
@@ -137,11 +134,12 @@ public class InMemoryPathComputer implements PathComputer {
         return getPath(network, new RequestedPath(flow), isProtected);
     }
 
-    private GetPathsResult getPath(AvailableNetwork network, RequestedPath requestedPath, boolean isProtected)
+    @Override
+    public GetPathsResult getPath(AvailableNetwork network, RequestedPath requestedPath, boolean isProtected)
             throws UnroutableFlowException {
         if (requestedPath.isOneSwitch()) {
             log.info("No path computation for one-switch path");
-            SwitchId singleSwitchId = requestedPath.srcSwitchId;
+            SwitchId singleSwitchId = requestedPath.getSrcSwitchId();
             FindOneDirectionPathResult pathResult = FindOneDirectionPathResult.builder()
                     .foundPath(emptyList()).backUpPathComputationWayUsed(false).build();
             return GetPathsResult.builder()
@@ -151,10 +149,10 @@ public class InMemoryPathComputer implements PathComputer {
                     .build();
         }
 
-        WeightFunction weightFunction = getWeightFunctionByStrategy(requestedPath.strategy, isProtected);
+        WeightFunction weightFunction = getWeightFunctionByStrategy(requestedPath.getStrategy(), isProtected);
         FindPathResult findPathResult;
         try {
-            findPathResult = findPathInNetwork(requestedPath, network, weightFunction, requestedPath.strategy);
+            findPathResult = findPathInNetwork(requestedPath, network, weightFunction, requestedPath.getStrategy());
         } catch (UnroutableFlowException e) {
             String bandwidthMessage = "";
             if (requestedPath.getBandwidth() > 0) {
@@ -635,34 +633,5 @@ public class InMemoryPathComputer implements PathComputer {
         }
 
         return paths;
-    }
-
-    @Data
-    @AllArgsConstructor(access = AccessLevel.PRIVATE)
-    private static class RequestedPath {
-        SwitchId srcSwitchId;
-        SwitchId dstSwitchId;
-        long bandwidth;
-        boolean ignoreBandwidth;
-        PathComputationStrategy strategy;
-        Long maxLatency;
-        Long maxLatencyTier2;
-        String name;
-
-        RequestedPath(Flow flow) {
-            this(flow.getSrcSwitchId(), flow.getDestSwitchId(), flow.getBandwidth(), flow.isIgnoreBandwidth(),
-                    flow.getPathComputationStrategy(), flow.getMaxLatency(), flow.getMaxLatencyTier2(),
-                    flow.getFlowId());
-        }
-
-        RequestedPath(HaFlow haFlow, HaSubFlow subFlow) {
-            this(haFlow.getSharedSwitchId(), subFlow.getEndpointSwitchId(), haFlow.getMaximumBandwidth(),
-                    haFlow.isIgnoreBandwidth(), haFlow.getPathComputationStrategy(), haFlow.getMaxLatency(),
-                    haFlow.getMaxLatencyTier2(), haFlow.getHaFlowId());
-        }
-
-        public boolean isOneSwitch() {
-            return srcSwitchId.equals(dstSwitchId);
-        }
     }
 }

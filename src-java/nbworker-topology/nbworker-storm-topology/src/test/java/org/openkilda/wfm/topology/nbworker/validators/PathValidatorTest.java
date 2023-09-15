@@ -15,8 +15,10 @@
 
 package org.openkilda.wfm.topology.nbworker.validators;
 
+import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
@@ -28,6 +30,7 @@ import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.command.flow.PathValidateRequest;
 import org.openkilda.messaging.info.network.PathValidationResult;
+import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.messaging.payload.network.PathValidationPayload;
 import org.openkilda.model.Flow;
@@ -57,6 +60,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -201,12 +205,14 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         assertFalse(responses.isEmpty());
         assertFalse(responses.get(0).getIsValid());
         assertEquals(2, responses.get(0).getErrors().size(), "There must be 2 errors: forward and reverse paths");
-        Collections.sort(responses.get(0).getErrors());
-        assertEquals(responses.get(0).getErrors().get(0),
+
+        List<String> errors = new ArrayList<>(responses.get(0).getErrors());
+        Collections.sort(errors);
+        assertEquals(errors.get(0),
                 "There is not enough bandwidth between end points: switch 00:00:00:00:00:00:00:01 port 6 and "
                         + "switch 00:00:00:00:00:00:00:03 port 6 (forward path). Requested bandwidth 1000000000,"
                         + " but the link supports 10000.");
-        assertEquals(responses.get(0).getErrors().get(1),
+        assertEquals(errors.get(1),
                 "There is not enough bandwidth between end points: switch 00:00:00:00:00:00:00:03 port 6 and "
                         + "switch 00:00:00:00:00:00:00:01 port 6 (reverse path). Requested bandwidth 1000000000,"
                         + " but the link supports 10000.");
@@ -586,11 +592,13 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .bandwidth(0L)
                 .latencyMs(0L)
                 .latencyTier2ms(0L)
+                .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build());
         List<PathValidationResult> responses = pathsService.validatePath(request);
 
         assertFalse(responses.isEmpty());
         assertTrue(responses.get(0).getIsValid());
+        assertEquals("The path has been computed successfully", responses.get(0).getPceResponse());
     }
 
     @Test
@@ -605,12 +613,14 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .latencyMs(0L)
                 .latencyTier2ms(0L)
                 .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
+                .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build());
         List<PathValidationResult> responsesBefore = pathsService.validatePath(request);
 
         assertFalse(responsesBefore.isEmpty());
         assertTrue(responsesBefore.get(0).getIsValid(),
                 "The path using default segments with bandwidth 1003 must be valid");
+        assertEquals("The path has been computed successfully", responsesBefore.get(0).getPceResponse());
 
         Optional<Isl> islForward = islRepository.findByEndpoints(SWITCH_ID_3, 7, SWITCH_ID_2, 7);
         assertTrue(islForward.isPresent());
@@ -648,14 +658,48 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .latencyTier2ms(0L)
                 .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .reuseFlowResources(flowToReuse)
+                .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build());
 
         List<PathValidationResult> responseWithReuseResources = pathsService.validatePath(requestWithReuseResources);
 
         assertFalse(responseWithReuseResources.isEmpty());
+        assertEquals("The path has been computed successfully",
+                responseWithReuseResources.get(0).getPceResponse());
         assertTrue(responseWithReuseResources.get(0).getIsValid(),
-                "The path must be valid because, although the flow %s consumes bandwidth, the validator"
-                        + " includes the consumed bandwidth to available bandwidth");
+                format("The path must be valid because, although the flow %s consumes bandwidth, the validator"
+                        + " adds the consumed bandwidth to available bandwidth", flowToReuse));
+    }
+
+    @Test
+    void whenNotEnoughData_noExceptionThrown_andPceResponseIsPresent() {
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
+        nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
+        nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
+        PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .nodes(nodes)
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
+                .build());
+        List<PathValidationResult> results = pathsService.validatePath(request);
+
+        assertEquals("The path has been computed successfully", results.get(0).getPceResponse());
+    }
+
+    @Test
+    void whenNoNodes_noExceptionThrown_andResponseContainsError() {
+        PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
+                .build());
+        List<PathValidationResult> results = pathsService.validatePath(request);
+
+        assertNotNull(results);
+        assertFalse(results.isEmpty());
+        assertFalse(results.get(0).getIsValid());
+        assertFalse(results.get(0).getErrors().isEmpty());
+        String errorMessage = "Could not create path validation data from the request. java.lang.IllegalArgumentExcep"
+                + "tion: Nodes are mandatory part of the path validation data";
+        assertEquals(errorMessage, results.get(0).getErrors().get(0));
     }
 
     private void createFlow(String flowId, Switch srcSwitch, int srcPort, Switch destSwitch, int destPort) {
@@ -670,6 +714,8 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .srcPort(srcPort)
                 .destSwitch(destSwitch)
                 .destPort(destPort)
+                .encapsulationType(VXLAN)
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .build();
         Optional.ofNullable(ignoreBandwidth).ifPresent(flow::setIgnoreBandwidth);
         Optional.ofNullable(bandwidth).ifPresent(flow::setBandwidth);
