@@ -34,6 +34,10 @@ class SwitchPairs {
         return new SwitchPairs(switchPairs.sort {it.paths.min { it.size() }?.size() > 2})
     }
 
+    SwitchPairs sortedBySmallestPathsAmount() {
+        return new SwitchPairs(switchPairs.sort{it.paths.size()})
+    }
+
     SwitchPair random() {
         return new SwitchPairs(switchPairs.shuffled()).first()
     }
