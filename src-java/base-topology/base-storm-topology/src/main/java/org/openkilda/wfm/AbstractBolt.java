@@ -66,10 +66,10 @@ public abstract class AbstractBolt extends BaseRichBolt {
     @Getter(AccessLevel.PROTECTED)
     private transient Integer taskId;
 
-    @Getter(AccessLevel.PROTECTED)
+    @Getter(AccessLevel.PUBLIC)
     private transient Tuple currentTuple;
 
-    @Getter(AccessLevel.PROTECTED)
+    @Getter(AccessLevel.PUBLIC)
     @Setter(AccessLevel.PROTECTED)
     private transient CommandContext commandContext;
 
@@ -137,7 +137,14 @@ public abstract class AbstractBolt extends BaseRichBolt {
         output.emit(stream, payload);
     }
 
-    protected void emitWithContext(String stream, Tuple input, Values payload) {
+    /**
+     * Emitting (sending a message) the given payload with the anchor based on the tuple to the given stream.
+     * This guarantees that the message will be eventually processed by Storm even in cases of the target bolt failure.
+     * @param stream Storm stream to send the message to
+     * @param input current tuple; will be used as an anchor
+     * @param payload the message payload
+     */
+    public void emitWithContext(String stream, Tuple input, Values payload) {
         payload.add(getCommandContext());
         log.debug("emit tuple into {} stream: {}", stream, payload);
         getOutput().emit(stream, input, payload);

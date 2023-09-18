@@ -21,8 +21,8 @@ import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
 import org.openkilda.messaging.info.stats.StatsNotification;
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
 import org.openkilda.model.SwitchId;
+import org.openkilda.wfm.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
-import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.LifecycleEventCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
 

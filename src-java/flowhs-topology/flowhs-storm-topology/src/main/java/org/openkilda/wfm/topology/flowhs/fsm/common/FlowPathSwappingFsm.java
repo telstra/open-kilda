@@ -26,10 +26,10 @@ import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.HistoryUpdateCarrier;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
-import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
 
 import lombok.Getter;

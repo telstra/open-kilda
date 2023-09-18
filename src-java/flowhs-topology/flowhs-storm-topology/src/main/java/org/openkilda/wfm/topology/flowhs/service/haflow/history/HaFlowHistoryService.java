@@ -15,10 +15,10 @@
 
 package org.openkilda.wfm.topology.flowhs.service.haflow.history;
 
+import org.openkilda.wfm.HistoryUpdateCarrier;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.history.model.HaFlowEventData;
 import org.openkilda.wfm.share.history.model.HaFlowHistoryData;
-import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;

@@ -19,11 +19,11 @@ import static java.lang.String.format;
 
 import org.openkilda.model.HaFlow;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.HistoryUpdateCarrier;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
-import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
 import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
 

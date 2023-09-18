@@ -21,8 +21,8 @@ import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsReque
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
-import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
 
 import lombok.Getter;

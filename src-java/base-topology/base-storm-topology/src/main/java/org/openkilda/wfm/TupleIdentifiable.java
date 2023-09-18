@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,16 +13,13 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.service.common;
+package org.openkilda.wfm;
 
-import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
+import org.apache.storm.tuple.Tuple;
 
 /**
- * Defines a base carrier for processing history updates.
+ * This interface represents something that has a distinct tuple that can be used as an anchor in Storm.
  */
-public interface HistoryUpdateCarrier {
-    /**
-     * Sends main events to history bolt.
-     */
-    void sendHistoryUpdate(FlowHistoryHolder historyHolder);
+public interface TupleIdentifiable {
+    Tuple getCurrentTuple();
 }
