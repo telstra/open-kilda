@@ -25,7 +25,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
@@ -39,44 +38,34 @@ public final class FlowHistoryHelper {
 
     /**
      * Prepares default values if not provided by a user and retrieves flow history events from the service.
+     * @param flowStatusHistoryAwareService a service that provides history entries
      * @param flowId retrieves statuses for this flow ID (mandatory)
-     * @param timeFromInput retrieves statuses starting from this time (optional)
-     * @param timeToInput retrieves statuses up to this time (optional)
-     * @param maxCountInput retrieves at most this number of entries (optional)
+     * @param constraints constraints for limiting the output. Includes: time from, time to, max entries.
+     * @param <T> a type of entity for which the history were saved
      * @return a response containing flow history events with a CONTENT_RANGE header if needed.
      */
-    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     public static <T> CompletableFuture<ResponseEntity<List<T>>> getFlowHistoryEvents(
             FlowHistoryAware<T> flowStatusHistoryAwareService,
             String flowId,
-            Optional<Long> timeFromInput,
-            Optional<Long> timeToInput,
-            Optional<Integer> maxCountInput
+            FlowHistoryRangeConstraints constraints
     ) {
-        FlowHistoryRangeConstraints constraints =
-                new FlowHistoryRangeConstraints(timeFromInput, timeToInput, maxCountInput);
         return flowStatusHistoryAwareService.getFlowHistory(flowId, constraints)
                 .thenApply(historyEventsListToResponseEntity(constraints));
     }
 
     /**
      * Prepares default values if not provided by a user and retrieves flow statuses from the service.
+     * @param flowStatusHistoryAwareService a service that provides history entries
      * @param flowId retrieves statuses for this flow ID (mandatory)
-     * @param timeFromInput retrieves statuses starting from this time (optional)
-     * @param timeToInput retrieves statuses up to this time (optional)
-     * @param maxCountInput retrieves at most this number of entries (optional)
+     * @param constraints constraints for limiting the output. Includes: time from, time to, max entries.
+     * @param <T> a type of entity for which the history were saved
      * @return a response containing flow statuses with a CONTENT_RANGE header if needed.
      */
-    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     public static <T> CompletableFuture<ResponseEntity<FlowHistoryStatusesResponse>> getFlowStatuses(
             FlowHistoryAware<T> flowStatusHistoryAwareService,
             String flowId,
-            Optional<Long> timeFromInput,
-            Optional<Long> timeToInput,
-            Optional<Integer> maxCountInput
+            FlowHistoryRangeConstraints constraints
     ) {
-        FlowHistoryRangeConstraints constraints =
-                new FlowHistoryRangeConstraints(timeFromInput, timeToInput, maxCountInput);
         return flowStatusHistoryAwareService.getFlowStatuses(flowId, constraints)
                 .thenApply(statusesResponseToResponseEntity(constraints));
     }

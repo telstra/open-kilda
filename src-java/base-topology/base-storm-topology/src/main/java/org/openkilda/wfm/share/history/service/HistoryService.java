@@ -75,25 +75,22 @@ public class HistoryService {
 
     private void storeHaFlowHistory(FlowHistoryHolder historyHolder) {
         HaFlowHistoryMapper mapper = HaFlowHistoryMapper.INSTANCE;
-        log.debug("HaFlowHistory start saving data: {}", historyHolder);
         transactionManager.doInTransaction(() -> {
             String taskId = historyHolder.getTaskId();
             if (historyHolder.getHaFlowEventData() != null) {
-                HaFlowEvent event = mapper.createHaFlowEvent(historyHolder.getHaFlowEventData());
-                event.setTaskId(taskId);
+                HaFlowEvent event = mapper.createHaFlowEvent(historyHolder.getHaFlowEventData(), taskId);
                 haFlowEventRepository.add(event);
             }
 
             if (historyHolder.getHaFlowHistoryData() != null) {
-                HaFlowEventAction history = mapper.createHaFlowEventAction(historyHolder.getHaFlowHistoryData());
-                history.setTaskId(taskId);
+                HaFlowEventAction history = mapper.createHaFlowEventAction(historyHolder.getHaFlowHistoryData(),
+                        taskId);
                 haFlowEventActionRepository.add(history);
             }
 
             if (historyHolder.getHaFlowDumpData() != null) {
                 HaFlowEventDump dump = new HaFlowEventDump(
                         mapper.createHaFlowEventDump(historyHolder.getHaFlowDumpData()));
-                dump.setTaskId(taskId);
                 haFlowEventDumpRepository.add(dump);
             }
         });
@@ -166,15 +163,12 @@ public class HistoryService {
      */
     public List<HaFlowEvent> getHaFlowHistoryEvents(String haFlowId, Instant timeFrom, Instant timeTo, int maxCount) {
         List<HaFlowEvent> result = new LinkedList<>();
-        log.debug("getHaFlowHistoryEvents fetching events using time from: {}, time to: {}, maxCount: {}, flow ID: {}",
-                timeFrom, timeTo, maxCount, haFlowId);
         transactionManager.doInTransaction(() -> haFlowEventRepository
                 .findByHaFlowIdAndTimeFrame(haFlowId, timeFrom, timeTo, maxCount))
                 .forEach(haFlowEvent -> {
                     haFlowEventRepository.detach(haFlowEvent);
                     result.add(haFlowEvent);
                 });
-        log.info("getHaFlowHistoryEvents fetched {} events", result.size());
         return result;
     }
 

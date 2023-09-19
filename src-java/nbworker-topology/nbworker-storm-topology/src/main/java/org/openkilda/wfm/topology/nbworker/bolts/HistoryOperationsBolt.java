@@ -77,8 +77,8 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
 
     @TimedExecution("get_flow_history")
     private List<InfoData> getFlowHistory(GetFlowHistoryRequest request) {
-        Instant timeFrom = Instant.ofEpochSecond(request.getTimestampFrom());
-        Instant timeTo = Instant.ofEpochSecond(request.getTimestampTo() + 1).minusMillis(1);
+        Instant timeFrom = request.getTimestampFrom();
+        Instant timeTo = request.getTimestampTo();
 
         if (Objects.equals(request.getModelType(), HaFlow.class)) {
             return getHaFlowHistory(request.getFlowId(), timeFrom, timeTo, request.getMaxCount());
@@ -118,8 +118,9 @@ public class HistoryOperationsBolt extends PersistenceOperationsBolt {
     }
 
     private List<InfoData> getFlowStatusTimestamps(GetFlowStatusTimestampsRequest request) {
-        Instant timeFrom = Instant.ofEpochSecond(request.getTimestampFrom());
-        Instant timeTo = Instant.ofEpochSecond(request.getTimestampTo() + 1).minusMillis(1);
+        Instant timeFrom = request.getTimestampFrom();
+        Instant timeTo = request.getTimestampTo();
+
         return historyService.getFlowStatusTimestamps(request.getFlowId(), timeFrom, timeTo, request.getMaxCount())
                 .stream()
                 .map(HistoryMapper.INSTANCE::map)

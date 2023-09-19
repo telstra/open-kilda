@@ -19,6 +19,7 @@ import static java.lang.String.format;
 
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
+import org.openkilda.northbound.converter.LongToInstantConverter;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import lombok.AccessLevel;
@@ -33,8 +34,8 @@ import java.util.function.Predicate;
 @Value
 public class FlowHistoryRangeConstraints {
     private static final int DEFAULT_MAX_HISTORY_RECORD_COUNT = 100;
-    long timeFrom;
-    long timeTo;
+    Instant timeFrom;
+    Instant timeTo;
     int maxCount;
 
     @Getter(AccessLevel.NONE)
@@ -45,8 +46,9 @@ public class FlowHistoryRangeConstraints {
     public FlowHistoryRangeConstraints(Optional<Long> timeFromInput,
                                        Optional<Long> timeToInput,
                                        Optional<Integer> maxCountInput) {
-        this.timeFrom = timeFromInput.orElse(0L);
-        this.timeTo = timeToInput.orElseGet(() -> Instant.now().getEpochSecond());
+        this.timeFrom = timeFromInput.map(LongToInstantConverter::convert).orElseGet(() -> Instant.ofEpochSecond(0L));
+        this.timeTo = timeToInput.map(LongToInstantConverter::convert).orElseGet(Instant::now);
+
         this.maxCount = maxCountInput.orElseGet(() -> {
             if (timeFromInput.isPresent() || timeToInput.isPresent()) {
                 return Integer.MAX_VALUE;

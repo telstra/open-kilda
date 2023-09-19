@@ -24,8 +24,8 @@ import org.openkilda.wfm.share.flow.resources.HaPathIdsPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -49,6 +49,7 @@ public abstract class BaseHaFlowPathRemovalAction<T extends FlowProcessingWithHi
         if (haPathIdsPair == null) {
             return;
         }
+        FlowHistoryService flowHistoryService = FlowHistoryService.using(carrier);
 
         for (PathId subPathId : haPathIdsPair.getAllSubPathIds()) {
             if (subPathId != null) {
@@ -56,7 +57,7 @@ public abstract class BaseHaFlowPathRemovalAction<T extends FlowProcessingWithHi
                 if (oldSubPath != null) {
                     log.debug("Removed HA-flow sub path {}", oldSubPath);
                     updateIslsForFlowPath(oldSubPath);
-                    HaFlowHistoryService.using(carrier).save(HaFlowHistory.withTaskId(correlationId)
+                    flowHistoryService.save(HaFlowHistory.of(correlationId)
                                     .withAction("Remove an HA-flow sub path")
                                     .withDescription(String.format("%s with ID %s has been removed",
                                             oldSubPath.getClass().getSimpleName(), oldSubPath.getPathId())));
@@ -69,7 +70,7 @@ public abstract class BaseHaFlowPathRemovalAction<T extends FlowProcessingWithHi
                 HaFlowPath oldPath = haFlowPathRepository.remove(haFlowPathId).orElse(null);
                 if (oldPath != null) {
                     log.debug("Removed HA-flow path {}", oldPath);
-                    HaFlowHistoryService.using(carrier).save(HaFlowHistory.withTaskId(correlationId)
+                    flowHistoryService.save(HaFlowHistory.of(correlationId)
                                     .withAction("Remove an HA-flow path")
                                     .withDescription(String.format("%s with ID %s has been removed",
                                             oldPath.getClass().getSimpleName(), oldPath.getHaPathId()))
@@ -81,11 +82,13 @@ public abstract class BaseHaFlowPathRemovalAction<T extends FlowProcessingWithHi
 
     protected void removeRejectedPaths(Collection<PathId> subPathIds, Collection<PathId> haFlowPathIds,
                                        HistoryUpdateCarrier carrier, String correlationId) {
+        FlowHistoryService flowHistoryService = FlowHistoryService.using(carrier);
+
         for (PathId subPathId : subPathIds) {
             flowPathRepository.remove(subPathId)
                     .ifPresent(subPath -> {
                         updateIslsForFlowPath(subPath);
-                        HaFlowHistoryService.using(carrier).save(HaFlowHistory.withTaskId(correlationId)
+                        flowHistoryService.save(HaFlowHistory.of(correlationId)
                                 .withAction("Remove a rejected path")
                                 .withDescription(String.format("%s with ID %s has been removed",
                                         subPath.getClass().getSimpleName(), subPath.getPathId()))
@@ -95,7 +98,7 @@ public abstract class BaseHaFlowPathRemovalAction<T extends FlowProcessingWithHi
         for (PathId haFlowPathId : haFlowPathIds) {
             haFlowPathRepository.remove(haFlowPathId)
                     .ifPresent(haFlowPath -> {
-                        HaFlowHistoryService.using(carrier).save(HaFlowHistory.withTaskId(correlationId)
+                        flowHistoryService.save(HaFlowHistory.of(correlationId)
                                 .withAction("Remove a rejected path")
                                 .withDescription(String.format("%s with ID %s has been removed",
                                         haFlowPath.getClass().getSimpleName(), haFlowPath.getHaPathId()))

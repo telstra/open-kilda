@@ -48,6 +48,8 @@ import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
+import org.openkilda.wfm.share.history.model.DumpType;
+import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsCarrier;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService.UpdateFlowResult;
 
@@ -57,32 +59,35 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
-    public static final String FLOW_ID_1 = "flow_1";
-    public static final String FLOW_ID_2 = "flow_2";
-    public static final String FLOW_ID_3 = "flow_3";
-    public static final PathId FORWARD_PATH_1 = new PathId("forward_path_1");
-    public static final PathId FORWARD_PATH_2 = new PathId("forward_path_2");
-    public static final PathId FORWARD_PATH_3 = new PathId("forward_path_3");
-    public static final PathId REVERSE_PATH_1 = new PathId("reverse_path_1");
-    public static final PathId REVERSE_PATH_2 = new PathId("reverse_path_2");
-    public static final PathId REVERSE_PATH_3 = new PathId("reverse_path_3");
-    public static final long UNMASKED_COOKIE = 123;
-    public static final SwitchId SWITCH_ID_1 = new SwitchId(1);
-    public static final SwitchId SWITCH_ID_2 = new SwitchId(2);
-    public static final SwitchId SWITCH_ID_3 = new SwitchId(3);
-    public static final SwitchId SWITCH_ID_4 = new SwitchId(4);
-    public static final int VLAN_1 = 1;
-    public static final int PORT_1 = 2;
-    public static final int PORT_2 = 3;
-    public static final int VLAN_2 = 4;
-    public static final int VLAN_3 = 5;
+    private static final String FLOW_ID_1 = "flow_1";
+    private static final String FLOW_ID_2 = "flow_2";
+    private static final String FLOW_ID_3 = "flow_3";
+    private static final PathId FORWARD_PATH_1 = new PathId("forward_path_1");
+    private static final PathId FORWARD_PATH_2 = new PathId("forward_path_2");
+    private static final PathId FORWARD_PATH_3 = new PathId("forward_path_3");
+    private static final PathId REVERSE_PATH_1 = new PathId("reverse_path_1");
+    private static final PathId REVERSE_PATH_2 = new PathId("reverse_path_2");
+    private static final PathId REVERSE_PATH_3 = new PathId("reverse_path_3");
+    private static final long UNMASKED_COOKIE = 123;
+    private static final SwitchId SWITCH_ID_1 = new SwitchId(1);
+    private static final SwitchId SWITCH_ID_2 = new SwitchId(2);
+    private static final SwitchId SWITCH_ID_3 = new SwitchId(3);
+    private static final SwitchId SWITCH_ID_4 = new SwitchId(4);
+    private static final int VLAN_1 = 1;
+    private static final int PORT_1 = 2;
+    private static final int PORT_2 = 3;
+    private static final int VLAN_2 = 4;
+    private static final int VLAN_3 = 5;
+    private static final String CORRELATION_ID = "some ID";
 
     private static FlowOperationsService flowOperationsService;
     private static FlowRepository flowRepository;
@@ -145,7 +150,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .description("new_description")
                 .build();
 
-        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow, CORRELATION_ID);
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
@@ -156,7 +161,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
         receivedFlow = FlowPatch.builder()
                 .flowId(testFlowId)
                 .build();
-        updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+        updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow, CORRELATION_ID);
 
         assertEquals(maxLatency, updatedFlow.getMaxLatency());
         assertEquals(priority, updatedFlow.getPriority());
@@ -183,7 +188,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                     .ignoreBandwidth(true)
                     .build();
 
-            flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+            flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow, CORRELATION_ID);
         });
 
     }
@@ -207,7 +212,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                     .ignoreBandwidth(false)
                     .build();
 
-            flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+            flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow, CORRELATION_ID);
         });
     }
 
@@ -227,7 +232,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .strictBandwidth(true)
                 .build();
 
-        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow, CORRELATION_ID);
 
         assertTrue(updatedFlow.isStrictBandwidth());
     }
@@ -254,7 +259,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .vlanStatistics(expectedVlanStatistics)
                 .build();
 
-        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow, CORRELATION_ID);
 
         assertThat(updatedFlow.getVlanStatistics(), containsInAnyOrder(originalVlanStatistics.toArray()));
     }
@@ -298,7 +303,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .destination(PatchEndpoint.builder().vlanId(newDstVLan).build())
                 .build();
 
-        flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+        flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow, CORRELATION_ID);
     }
 
     @Test
@@ -309,7 +314,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                     .flowId(FLOW_ID_1)
                     .allocateProtectedPath(true)
                     .build();
-            flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+            flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow, CORRELATION_ID);
         });
     }
 
@@ -321,7 +326,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                     .flowId(FLOW_ID_1)
                     .destination(PatchEndpoint.builder().switchId(SWITCH_ID_1).build())
                     .build();
-            flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+            flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow, CORRELATION_ID);
         });
     }
 
@@ -333,7 +338,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                     .flowId(FLOW_ID_1)
                     .source(PatchEndpoint.builder().switchId(SWITCH_ID_2).build())
                     .build();
-            flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+            flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow, CORRELATION_ID);
         });
     }
 
@@ -347,7 +352,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                     .destination(PatchEndpoint.builder().switchId(SWITCH_ID_3).build())
                     .allocateProtectedPath(true)
                     .build();
-            flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+            flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow, CORRELATION_ID);
         });
     }
 
@@ -358,7 +363,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .flowId(FLOW_ID_1)
                 .allocateProtectedPath(true)
                 .build();
-        flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+        flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow, CORRELATION_ID);
         // no exception expected
     }
 
@@ -371,7 +376,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .source(PatchEndpoint.builder().switchId(SWITCH_ID_2).build())
                 .allocateProtectedPath(true)
                 .build();
-        flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+        flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow, CORRELATION_ID);
         // no exception expected
     }
 
@@ -384,7 +389,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .destination(PatchEndpoint.builder().switchId(SWITCH_ID_2).build())
                 .allocateProtectedPath(true)
                 .build();
-        flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+        flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow, CORRELATION_ID);
         // no exception expected
     }
 
@@ -398,7 +403,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .destination(PatchEndpoint.builder().switchId(SWITCH_ID_3).build())
                 .allocateProtectedPath(true)
                 .build();
-        flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
+        flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow, CORRELATION_ID);
         // no exception expected
     }
 
@@ -727,7 +732,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .maxLatency(100_500L)
                 .build();
 
-        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch);
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch, CORRELATION_ID);
         assertEquals(Long.valueOf(100_500L), updatedFlow.getMaxLatency());
     }
 
@@ -744,7 +749,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .maxLatencyTier2(420_000L)
                 .build();
 
-        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch);
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch, CORRELATION_ID);
 
         assertEquals(Long.valueOf(100_500L), updatedFlow.getMaxLatency());
         assertEquals(Long.valueOf(420_000L), updatedFlow.getMaxLatencyTier2());
@@ -762,7 +767,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .build();
 
         assertThrows(InvalidFlowException.class,
-                () -> flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch),
+                () -> flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch, CORRELATION_ID),
                 "Max latency tier 2 cannot be used without max latency parameter");
     }
 
@@ -777,10 +782,61 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
                 .maxLatencyTier2(420_000L)
                 .build();
 
-        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch);
+        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), flowPatch, CORRELATION_ID);
 
         assertEquals(Long.valueOf(100_500L), updatedFlow.getMaxLatency());
         assertEquals(Long.valueOf(420_000L), updatedFlow.getMaxLatencyTier2());
+    }
+
+    @Test
+    void whenPartialUpdate_dumpBeforeAndDumpAfterIsSaved() throws FlowNotFoundException, InvalidFlowException {
+        Flow createdFlow = createFlow(FLOW_ID_1, switchA, 1, switchC, 2,
+                FORWARD_PATH_1, REVERSE_PATH_1, switchB, false,
+                100_500L, 0L);
+        FlowPatch flowPatch = FlowPatch.builder()
+                .flowId(FLOW_ID_1)
+                .priority(4)
+                .build();
+        FlowCarrierImpl carrier = new FlowCarrierImpl();
+
+        assertTrue(carrier.getHistoryHolderList().isEmpty());
+        Flow updatedFlow = flowOperationsService.updateFlow(carrier, flowPatch, CORRELATION_ID);
+
+        assertEquals(3, carrier.getHistoryHolderList().size());
+
+        String event = "Flow partial updating";
+        assertEquals(event, carrier.getHistoryHolderList().get(0).getFlowHistoryData().getAction());
+
+        assertEquals(DumpType.STATE_BEFORE, carrier.getHistoryHolderList().get(1).getFlowDumpData().getDumpType());
+        assertEquals(DumpType.STATE_AFTER, carrier.getHistoryHolderList().get(2).getFlowDumpData().getDumpType());
+
+        String action = "Flow PATCH operation has been executed without the consecutive update.";
+        assertEquals(action, carrier.getHistoryHolderList().get(2).getFlowHistoryData().getAction());
+    }
+
+    @Test
+    void whenFullUpdateIsRequired_historyActionIsSaved() throws FlowNotFoundException, InvalidFlowException {
+        Flow createdFlow = createFlow(FLOW_ID_1, switchA, 1, switchC, 2,
+                FORWARD_PATH_1, REVERSE_PATH_1, switchB, false,
+                100_500L, 0L);
+        FlowPatch flowPatch = FlowPatch.builder()
+                .flowId(FLOW_ID_1)
+                .allocateProtectedPath(true)
+                .build();
+        FlowCarrierImpl carrier = new FlowCarrierImpl();
+
+        assertTrue(carrier.getHistoryHolderList().isEmpty());
+        Flow updatedFlow = flowOperationsService.updateFlow(carrier, flowPatch, CORRELATION_ID);
+
+        assertEquals(3, carrier.getHistoryHolderList().size());
+
+        String event = "Flow partial updating";
+        assertEquals(event, carrier.getHistoryHolderList().get(0).getFlowHistoryData().getAction());
+
+        assertEquals(DumpType.STATE_BEFORE, carrier.getHistoryHolderList().get(1).getFlowDumpData().getDumpType());
+
+        String action = "Full update is required. Executing the UPDATE operation.";
+        assertEquals(action, carrier.getHistoryHolderList().get(2).getFlowHistoryData().getAction());
     }
 
     private void assertFlows(Collection<Flow> actualFlows, String... expectedFlowIds) {
@@ -916,36 +972,9 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
         return pathSegment;
     }
 
-    private void runUpdateVlanStatisticsToZero(int srcVLan, int dstVlan)
-            throws FlowNotFoundException, InvalidFlowException {
-        Set<Integer> originalVlanStatistics = Sets.newHashSet(1, 2, 3);
-        Flow flow = new TestFlowBuilder()
-                .flowId(FLOW_ID_1)
-                .srcSwitch(switchA)
-                .srcVlan(srcVLan)
-                .destSwitch(switchB)
-                .destVlan(dstVlan)
-                .vlanStatistics(originalVlanStatistics)
-                .build();
-        flowRepository.add(flow);
-
-        FlowPatch receivedFlow = FlowPatch.builder()
-                .flowId(FLOW_ID_1)
-                .vlanStatistics(new HashSet<>())
-                .build();
-
-        Flow updatedFlow = flowOperationsService.updateFlow(new FlowCarrierImpl(), receivedFlow);
-        assertTrue(updatedFlow.getVlanStatistics().isEmpty());
-    }
-
-    private static PatchEndpoint buildPathEndpoint(Integer vlan) {
-        if (vlan == null) {
-            return null;
-        }
-        return PatchEndpoint.builder().vlanId(vlan).build();
-    }
-
     private static class FlowCarrierImpl implements FlowOperationsCarrier {
+        private List<FlowHistoryHolder> historyHolderList = new ArrayList<>();
+
         @Override
         public void emitPeriodicPingUpdate(String flowId, boolean enabled) {
 
@@ -959,6 +988,15 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
         @Override
         public void sendNorthboundResponse(InfoData data) {
 
+        }
+
+        @Override
+        public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
+            historyHolderList.add(historyHolder);
+        }
+
+        public List<FlowHistoryHolder> getHistoryHolderList() {
+            return historyHolderList;
         }
     }
 }

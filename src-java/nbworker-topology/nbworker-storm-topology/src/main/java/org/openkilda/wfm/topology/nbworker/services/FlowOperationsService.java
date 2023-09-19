@@ -63,11 +63,17 @@ import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.IslNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
+import org.openkilda.wfm.share.history.model.FlowEventData;
+import org.openkilda.wfm.share.history.model.FlowHistoryData;
+import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.mappers.FlowMapper;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.share.mappers.RequestedFlowMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
+import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistory;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
 import org.openkilda.wfm.topology.nbworker.bolts.FlowOperationsCarrier;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -79,6 +85,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.RetryPolicy;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -350,7 +357,7 @@ public class FlowOperationsService {
     /**
      * Partial update flow.
      */
-    public Flow updateFlow(FlowOperationsCarrier carrier, FlowPatch flowPatch)
+    public Flow updateFlow(FlowOperationsCarrier carrier, FlowPatch flowPatch, String correlationId)
             throws FlowNotFoundException, InvalidFlowException {
         String flowId = flowPatch.getFlowId();
         if (yFlowRepository.isSubFlow(flowId)) {
@@ -366,6 +373,7 @@ public class FlowOperationsService {
             Flow currentFlow = foundFlow.get();
 
             validateFlow(flowPatch, currentFlow);
+            saveNewHistoryEvent(carrier, currentFlow, flowPatch, correlationId);
 
             final UpdateFlowResult.UpdateFlowResultBuilder result = prepareFlowUpdateResult(flowPatch, currentFlow);
 
@@ -392,6 +400,7 @@ public class FlowOperationsService {
 
         Flow updatedFlow = updateFlowResult.getUpdatedFlow();
         if (updateFlowResult.isNeedUpdateFlow()) {
+            saveHistoryActionFullUpdate(carrier, updatedFlow, correlationId);
             FlowRequest flowRequest = RequestedFlowMapper.INSTANCE.toFlowRequest(updatedFlow);
             FlowRequest changedRequest = addChangedFields(flowRequest, flowPatch);
             flowDashboardLogger.onFlowPatchUpdate(RequestedFlowMapper.INSTANCE.toFlow(flowRequest));
@@ -399,6 +408,7 @@ public class FlowOperationsService {
         } else {
             flowDashboardLogger.onFlowPatchUpdate(updatedFlow);
             carrier.sendNorthboundResponse(buildFlowResponse(updatedFlow));
+            saveHistoryActionAfterPatch(carrier, updatedFlow, flowPatch, correlationId);
         }
 
         return updateFlowResult.getUpdatedFlow();
@@ -427,6 +437,53 @@ public class FlowOperationsService {
 
         return UpdateFlowResult.builder()
                 .needUpdateFlow(updateRequired);
+    }
+
+    private void saveHistoryActionFullUpdate(HistoryUpdateCarrier carrier, Flow flow, String correlationId) {
+        if (correlationId == null) {
+            throw new IllegalStateException("Trying to save history, but the correlation ID is not available");
+        }
+
+        carrier.sendHistoryUpdate(FlowHistoryHolder.builder()
+                .taskId(correlationId)
+                .flowHistoryData(FlowHistoryData.builder()
+                        .flowId(flow.getFlowId())
+                        .action("Full update is required. Executing the UPDATE operation.")
+                        .time(Instant.now())
+                        .build())
+                .build());
+    }
+
+    private void saveHistoryActionAfterPatch(HistoryUpdateCarrier carrier, Flow flow, FlowPatch flowPatch,
+                                             String correlationId) {
+        if (correlationId == null) {
+            throw new IllegalStateException("Trying to save history, but the correlation ID is not available");
+        }
+
+        FlowHistoryService.using(carrier).save(FlowHistory.of(correlationId)
+                .withAction("Flow PATCH operation has been executed without the consecutive update.")
+                .withFlowId(flow.getFlowId())
+                .withFlowDumpAfter(flow, flow.getForwardPath(), flow.getReversePath()));
+    }
+
+    private void saveNewHistoryEvent(HistoryUpdateCarrier carrier, Flow flow, FlowPatch flowPatch,
+                                     String correlationId) {
+        if (correlationId == null) {
+            throw new IllegalStateException("Trying to save history, but the correlation ID is not available");
+        }
+
+        FlowHistoryService.using(carrier).saveNewFlowEvent(FlowEventData.builder()
+                        .event(FlowEventData.Event.PATCH)
+                        .flowId(flow.getFlowId())
+                        .taskId(correlationId)
+                        .details("Flow PATCH operation is invoked")
+                .build());
+
+        FlowHistoryService.using(carrier).save(FlowHistory.of(correlationId)
+                .withAction("Flow PATCH parameters have been validated successfully.")
+                .withDescription("Flow patch parameters: " + flowPatch)
+                .withFlowId(flow.getFlowId())
+                .withFlowDumpBefore(flow, flow.getForwardPath(), flow.getReversePath()));
     }
 
     private boolean updateRequiredByPathComputationStrategy(FlowPatch flowPatch, Flow flow) {

@@ -30,8 +30,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -58,8 +58,8 @@ public class EmitInstallRulesRequestsAction extends
                 speakerCommands, stateMachine.getCommandContext(), true);
 
         if (installRequests.isEmpty()) {
-            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
                     .withAction("No requests to install HA-flow rules")
                     .withHaFlowId(stateMachine.getHaFlowId()));
             stateMachine.fire(Event.SKIP_RULES_INSTALL);
@@ -71,8 +71,8 @@ public class EmitInstallRulesRequestsAction extends
                 stateMachine.addPendingCommand(request.getCommandId(), request.getSwitchId());
             });
 
-            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
                     .withAction("Commands for installing HA-flow rules have been sent")
                     .withHaFlowId(stateMachine.getHaFlowId()));
         }

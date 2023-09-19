@@ -33,8 +33,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 import org.openkilda.wfm.topology.flowhs.utils.HaFlowUtils;
 
 import lombok.extern.slf4j.Slf4j;
@@ -151,8 +151,8 @@ public class SwapFlowPathsAction extends
     private void saveHistory(
             HaFlowUpdateFsm stateMachine, HaFlow haFlow, PathId forwardPathId, PathId reversePathId) {
 
-        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+        FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .of(stateMachine.getCommandContext().getCorrelationId())
                 .withAction("HA-flow was updated with new paths")
                 .withDescription(format("The HA-flow %s has been updated with paths %s / %s",
                         haFlow.getHaFlowId(), forwardPathId, reversePathId))

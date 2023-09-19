@@ -36,8 +36,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteContext
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -104,8 +104,8 @@ public class AllocatePrimaryResourcesAction extends
 
             saveAllocationActionToHistory(stateMachine, haFlow, PATHS_TYPE, createdPaths);
         } else {
-            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
                     .withAction("Found the same primary path. Skipped creating of it")
                     .withHaFlowId(stateMachine.getHaFlowId()));
         }

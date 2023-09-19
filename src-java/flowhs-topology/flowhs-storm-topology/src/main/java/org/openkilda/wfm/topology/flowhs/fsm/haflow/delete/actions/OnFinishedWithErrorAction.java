@@ -21,8 +21,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,8 +39,8 @@ public class OnFinishedWithErrorAction
     public void perform(State from, State to, Event event, HaFlowDeleteContext context, HaFlowDeleteFsm stateMachine) {
         dashboardLogger.onFailedHaFlowDelete(stateMachine.getHaFlowId(), stateMachine.getErrorReason());
 
-        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                .withTaskId(stateMachine.getHaFlowId())
+        FlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                .of(stateMachine.getCommandContext().getCorrelationId())
                 .withAction("Failed to delete the HA-flow")
                 .withDescription(stateMachine.getErrorReason())
                 .withHaFlowId(stateMachine.getHaFlowId()));

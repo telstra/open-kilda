@@ -30,11 +30,13 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.messaging.nbtopology.request.FlowPatchRequest;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.error.FlowNotFoundException;
+import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 import org.openkilda.wfm.topology.nbworker.services.FlowOperationsService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -86,7 +88,7 @@ public class FlowPatchBolt extends AbstractBolt implements FlowOperationsCarrier
         FlowPatch flowPatch = request.getFlow();
 
         try {
-            flowOperationsService.updateFlow(this, flowPatch);
+            flowOperationsService.updateFlow(this, flowPatch, getCorrelationId());
         } catch (FlowNotFoundException e) {
             throw new MessageException(ErrorType.NOT_FOUND, e.getMessage(), "Flow was not found.");
         } catch (IllegalArgumentException e) {
@@ -102,6 +104,7 @@ public class FlowPatchBolt extends AbstractBolt implements FlowOperationsCarrier
         declarer.declareStream(StreamType.ERROR.toString(), new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.PING.toString(), new Fields(FIELD_ID_PAYLOAD, FIELD_ID_CONTEXT));
         declarer.declareStream(StreamType.FLOWHS.toString(), new Fields(FIELD_ID_KEY, FIELD_ID_PAYLOAD));
+        declarer.declareStream(StreamType.HISTORY_WRITER.toString(), MessageKafkaTranslator.STREAM_FIELDS);
     }
 
     @Override
@@ -122,5 +125,13 @@ public class FlowPatchBolt extends AbstractBolt implements FlowOperationsCarrier
     @Override
     public void sendNorthboundResponse(InfoData data) {
         getOutput().emit(getCurrentTuple(), new Values(Collections.singletonList(data), getCommandContext()));
+    }
+
+    @Override
+    public void sendHistoryUpdate(FlowHistoryHolder historyHolder) {
+        InfoMessage message = new InfoMessage(historyHolder, getCommandContext().getCreateTime(),
+                getCommandContext().getCorrelationId());
+        emitWithContext(StreamType.HISTORY_WRITER.toString(), getCurrentTuple(),
+                new Values(historyHolder.getTaskId(), message));
     }
 }

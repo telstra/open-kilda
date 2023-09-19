@@ -24,8 +24,8 @@ import org.openkilda.wfm.share.flow.resources.HaFlowResources;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
 import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
@@ -76,8 +76,8 @@ public class RevertResourceAllocationAction<T extends HaFlowPathSwappingFsm<T, S
     private void saveHistory(T stateMachine, HaFlow haFlow, HaFlowResources resources) {
         String correlationId = stateMachine.getCommandContext().getCorrelationId();
 
-        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                .withTaskId(correlationId)
+        FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .of(correlationId)
                 .withAction("HA-flow resources have been de-allocated")
                 .withDescription(format("The following resources for HA-flow %s have been de-allocated: %s",
                         haFlow.getHaFlowId(), resources))

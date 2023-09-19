@@ -437,21 +437,28 @@ public class PathValidator {
             return Collections.singleton(getNoForwardIslError(inputData));
         }
 
-        Optional<Flow> diverseFlow = flowRepository.findById(inputData.getPath().getDiverseWithFlow());
-        if (!diverseFlow.isPresent()) {
+        Collection<Flow> diverseFlow = flowRepository.findByDiverseGroupId(
+                getDiversityGroupId(inputData.getPath().getDiverseWithFlow()));
+
+        if (diverseFlow.isEmpty()) {
             return Collections.singleton(getNoDiverseFlowFoundError(inputData));
         }
 
-        if (diverseFlow.get().getData().getPaths().stream()
+        return diverseFlow.stream().map(flow -> collectIntersectionWithDiverseFlowErrors(flow, inputData))
+                .flatMap(Collection::stream)
+                .collect(Collectors.toSet());
+    }
+
+    private Set<String> collectIntersectionWithDiverseFlowErrors(Flow flow, InputData inputData) {
+        if (flow.getData().getPaths().stream()
                 .map(FlowPath::getSegments)
                 .flatMap(List::stream)
                 .anyMatch(pathSegment -> inputData.getSegment().getSrcSwitchId().equals(pathSegment.getSrcSwitchId())
                         && inputData.getSegment().getDestSwitchId().equals(pathSegment.getDestSwitchId())
                         && inputData.getSegment().getSrcPort().equals(pathSegment.getSrcPort())
                         && inputData.getSegment().getDestPort().equals(pathSegment.getDestPort()))) {
-            return Collections.singleton(getNotDiverseSegmentError(inputData));
+            return Collections.singleton(getNotDiverseSegmentError(inputData, flow.getFlowId()));
         }
-
         return Collections.emptySet();
     }
 
@@ -592,10 +599,10 @@ public class PathValidator {
         return format("Could not find the diverse flow with ID %s.", data.getPath().getDiverseWithFlow());
     }
 
-    private String getNotDiverseSegmentError(InputData data) {
+    private String getNotDiverseSegmentError(InputData data, String flowId) {
         return format("The following segment intersects with the flow %s: source switch %s port %d and "
                         + "destination switch %s port %d.",
-                data.getPath().getDiverseWithFlow(),
+                flowId,
                 data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort(),
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort());
     }

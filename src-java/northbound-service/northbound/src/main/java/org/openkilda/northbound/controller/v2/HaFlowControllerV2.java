@@ -32,6 +32,7 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult;
 import org.openkilda.northbound.service.HaFlowService;
 import org.openkilda.northbound.utils.flowhistory.FlowHistoryHelper;
+import org.openkilda.northbound.utils.flowhistory.FlowHistoryRangeConstraints;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -165,9 +166,9 @@ public class HaFlowControllerV2 extends BaseController {
     @GetMapping(path = "/{ha-flow_id}/history")
     public CompletableFuture<ResponseEntity<List<HaFlowHistoryEntry>>> getHistory(
             @PathVariable("ha-flow_id") String haFlowId,
-            @ApiParam(value = "default: 0 (1 January 1970 00:00:00).")
+            @ApiParam(value = "Linux epoch time in seconds or milliseconds. Default: 0 (1 January 1970 00:00:00).")
             @RequestParam(value = "timeFrom", required = false) Optional<Long> optionalTimeFrom,
-            @ApiParam(value = "default: now.")
+            @ApiParam(value = "Linux epoch time in seconds or milliseconds. Default: now.")
             @RequestParam(value = "timeTo", required = false) Optional<Long> optionalTimeTo,
             @ApiParam(value = "Return at most N latest records. "
                     + "Default: if `timeFrom` or/and `timeTo` parameters are presented default value of "
@@ -175,8 +176,9 @@ public class HaFlowControllerV2 extends BaseController {
                     + "Otherwise default value of `maxCount` will be equal to 100. In This case response will contain "
                     + "header 'Content-Range'.")
             @RequestParam(value = "max_count", required = false) Optional<Integer> optionalMaxCount) {
+        FlowHistoryRangeConstraints constraints =
+                new FlowHistoryRangeConstraints(optionalTimeFrom, optionalTimeTo, optionalMaxCount);
 
-        return FlowHistoryHelper
-                .getFlowHistoryEvents(flowService, haFlowId, optionalTimeFrom, optionalTimeTo, optionalMaxCount);
+        return FlowHistoryHelper.getFlowHistoryEvents(flowService, haFlowId, constraints);
     }
 }
