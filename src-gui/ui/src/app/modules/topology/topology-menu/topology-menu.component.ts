@@ -1,84 +1,84 @@
-import { Component, Input,Renderer2,OnInit } from '@angular/core';
+import { Component, Input, Renderer2, OnInit } from '@angular/core';
 import { TopologyService } from '../../../common/services/topology.service';
 import { TopologyView } from '../../../common/data-models/topology-view';
 import { trigger, state, style, transition, animate} from '@angular/animations';
-import { NgbModal } from "@ng-bootstrap/ng-bootstrap";
-import { AffectedIslComponent } from "../affected-isl/affected-isl.component";
-import {ImportTopologySettingComponent} from "../import-topology-setting/import-topology-setting.component";
-import {ExportTopologySettingComponent} from "../export-topology-setting/export-topology-setting.component";
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { AffectedIslComponent } from '../affected-isl/affected-isl.component';
+import {ImportTopologySettingComponent} from '../import-topology-setting/import-topology-setting.component';
+import {ExportTopologySettingComponent} from '../export-topology-setting/export-topology-setting.component';
 import { CommonService } from 'src/app/common/services/common.service';
 declare var jQuery: any;
 
 @Component({
-  selector: "app-topology-menu",
-  templateUrl: "./topology-menu.component.html",
-  styleUrls: ["./topology-menu.component.css"],
+  selector: 'app-topology-menu',
+  templateUrl: './topology-menu.component.html',
+  styleUrls: ['./topology-menu.component.css'],
   animations: [
-    trigger("changeState", [
+    trigger('changeState', [
       state(
-        "show",
+        'show',
         style({
           opacity: 1,
-          display:"block",
-          "min-height": "200px",
-          transition: "all 0.4s ease-in-out"
+          display: 'block',
+          'min-height': '200px',
+          transition: 'all 0.4s ease-in-out'
         })
       ),
       state(
-        "hide",
+        'hide',
         style({
           opacity: 0,
-          display:"none",
-          height: "0px",
-          transition: "all 0.4s ease-in-out"
+          display: 'none',
+          height: '0px',
+          transition: 'all 0.4s ease-in-out'
         })
       ),
-      transition("show=>hide", animate("30ms")),
-      transition("hide=>show", animate("30ms"))
+      transition('show=>hide', animate('30ms')),
+      transition('hide=>show', animate('30ms'))
     ])
   ]
 })
 export class TopologyMenuComponent implements OnInit {
 
   @Input() currentState;
-  refreshMenu = "hide";
-  showInfoFlag = "hide";
-  worldMapText = "World Map View";
+  refreshMenu = 'hide';
+  showInfoFlag = 'hide';
+  worldMapText = 'World Map View';
   submenu = '';
   refreshIntervals = [
-    { label: "30 SECONDS", value: 30 },
-    { label: "45 SECONDS", value: 45 },
-    { label: "1 MINUTE", value: 60 },
-    { label: "2 MINUTES", value: 120 },
-    { label: "3 MINUTES", value: 180 },
-    { label: "5 MINUTES", value: 300 },
-    { label: "10 MINUTES", value: 600 },
-    { label: "15 MINUTES", value: 900 },
-    { label: "30 MINUTES", value: 1800 },
+    { label: '30 SECONDS', value: 30 },
+    { label: '45 SECONDS', value: 45 },
+    { label: '1 MINUTE', value: 60 },
+    { label: '2 MINUTES', value: 120 },
+    { label: '3 MINUTES', value: 180 },
+    { label: '5 MINUTES', value: 300 },
+    { label: '10 MINUTES', value: 600 },
+    { label: '15 MINUTES', value: 900 },
+    { label: '30 MINUTES', value: 1800 },
   ];
   constructor(
-    private topologyService:TopologyService,
+    private topologyService: TopologyService,
     private modalService: NgbModal,
-    public commonService:CommonService
+    public commonService: CommonService
   ) {}
 
   defaultSetting: TopologyView;
   linksdata = [];
-  
+
   ngOnInit() {
     this.defaultSetting = this.topologyService.getViewOptions();
-    if(!this.commonService.hasPermission('topology_world_map_view')){
+    if (!this.commonService.hasPermission('topology_world_map_view')) {
       this.defaultSetting.WORLDMAP = 0;
     }
-    if(this.defaultSetting.WORLDMAP){
-      this.worldMapText = "Topology View";
-    }else{
-      this.worldMapText = "World Map View";
+    if (this.defaultSetting.WORLDMAP) {
+      this.worldMapText = 'Topology View';
+    } else {
+      this.worldMapText = 'World Map View';
     }
     this.topologyService.settingReceiver.subscribe((data: TopologyView) => {
       this.defaultSetting = data;
     });
-   
+
 
     this.topologyService.autoRefreshReceiver.subscribe((data: TopologyView) => {
       this.defaultSetting = data;
@@ -86,21 +86,21 @@ export class TopologyMenuComponent implements OnInit {
   }
 
   toggleRefreshMenu() {
-    this.refreshMenu = this.refreshMenu == "hide" ? "show" : "hide";
+    this.refreshMenu = this.refreshMenu == 'hide' ? 'show' : 'hide';
   }
-  
+
 
   setAutoRefresh = (refreshInterval) => {
-    let currentSettings = this.defaultSetting;
+    const currentSettings = this.defaultSetting;
     currentSettings.REFRESH_INTERVAL = refreshInterval; /** Interval in seconds */
     currentSettings.REFRESH_CHECKED = 1;
     this.topologyService.setAutoRefreshSetting(currentSettings);
     this.toggleRefreshMenu();
     this.topologyService.setViewOptinos(currentSettings);
-  };
+  }
 
-  stopAutoRefresh = ()=>{
-    let currentSettings = this.defaultSetting;
+  stopAutoRefresh = () => {
+    const currentSettings = this.defaultSetting;
     currentSettings.REFRESH_CHECKED = 0;
     currentSettings.REFRESH_INTERVAL = 0;
     this.topologyService.setAutoRefreshSetting(currentSettings);
@@ -108,64 +108,64 @@ export class TopologyMenuComponent implements OnInit {
     this.topologyService.setViewOptinos(currentSettings);
   }
 
-  showWorldMap(){
-    let settings = this.topologyService.getViewOptions();
-    var val = (settings.WORLDMAP == 0) ? 1 :0;
-    if(val){
-      this.worldMapText = "Topology View";
-    }else{
-      this.worldMapText = "World Map View";
+  showWorldMap() {
+    const settings = this.topologyService.getViewOptions();
+    const val = (settings.WORLDMAP == 0) ? 1 : 0;
+    if (val) {
+      this.worldMapText = 'Topology View';
+    } else {
+      this.worldMapText = 'World Map View';
     }
     settings.WORLDMAP = val;
     this.topologyService.setViewOptinos(settings);
   }
 
   showIsl() {
-    let settings = this.defaultSetting;
+    const settings = this.defaultSetting;
     settings.ISL_CHECKED = 1;
     settings.FLOW_CHECKED = 0;
     this.topologyService.setViewOptinos(settings);
   }
 
-  openSubmenu(id){
-    if(this.submenu == id){
+  openSubmenu(id) {
+    if (this.submenu == id) {
       this.submenu = '';
-    }else{
+    } else {
       this.submenu = id;
     }
   }
 
   showFlow() {
-    let settings = this.defaultSetting;
+    const settings = this.defaultSetting;
     settings.ISL_CHECKED = 0;
     settings.FLOW_CHECKED = 1;
     this.topologyService.setViewOptinos(settings);
   }
 
   showSwitch() {
-    let settings = this.defaultSetting;
+    const settings = this.defaultSetting;
     settings.SWITCH_CHECKED = settings.SWITCH_CHECKED ? 0 : 1;
     this.topologyService.setViewOptinos(settings);
   }
 
    showInfo = () => {
-    this.showInfoFlag = this.showInfoFlag == "hide" ? "show" : "hide";
-  };
-
-  importSettingModal(){
-    const modalRef = this.modalService.open(ImportTopologySettingComponent,{ size: 'lg',windowClass:'modal-import-setting slideInUp'});
+    this.showInfoFlag = this.showInfoFlag == 'hide' ? 'show' : 'hide';
   }
 
-  showAffectedISL(){
-    const modalRef = this.modalService.open(AffectedIslComponent,{ size: 'lg',windowClass:'modal-isl slideInUp'});
+  importSettingModal() {
+    const modalRef = this.modalService.open(ImportTopologySettingComponent, { size: 'lg', windowClass: 'modal-import-setting slideInUp'});
   }
 
-  exportSetting(){
-    const modalRef = this.modalService.open(ExportTopologySettingComponent,{ size: 'lg',windowClass:'modal-import-setting slideInUp'});
+  showAffectedISL() {
+    const modalRef = this.modalService.open(AffectedIslComponent, { size: 'lg', windowClass: 'modal-isl slideInUp'});
   }
 
-  onClickedOutside(e: Event,type) {
-    this[type] = "hide";
+  exportSetting() {
+    const modalRef = this.modalService.open(ExportTopologySettingComponent, { size: 'lg', windowClass: 'modal-import-setting slideInUp'});
+  }
+
+  onClickedOutside(e: Event, type) {
+    this[type] = 'hide';
   }
 
 }

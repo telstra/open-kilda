@@ -16,16 +16,18 @@
 package org.openkilda.wfm.topology.stats.service;
 
 import org.openkilda.wfm.topology.stats.model.CookieCacheKey;
+import org.openkilda.wfm.topology.stats.model.GroupCacheKey;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
 import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
 
-import java.util.Map;
+import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
 
 public class CacheRemoveHandler extends BaseCacheChangeHandler {
     public CacheRemoveHandler(
-            Map<CookieCacheKey, KildaEntryDescriptor> cookieToEntry, Map<MeterCacheKey,
-            KildaEntryDescriptor> meterToEntry) {
-        super(cookieToEntry, meterToEntry);
+            HashSetValuedHashMap<CookieCacheKey, KildaEntryDescriptor> cookieToEntry,
+            HashSetValuedHashMap<MeterCacheKey, KildaEntryDescriptor> meterToEntry,
+            HashSetValuedHashMap<GroupCacheKey, KildaEntryDescriptor> groupToEntry) {
+        super(cookieToEntry, meterToEntry, groupToEntry);
     }
 
     @Override
@@ -36,5 +38,10 @@ public class CacheRemoveHandler extends BaseCacheChangeHandler {
     @Override
     protected void cacheAction(MeterCacheKey key, KildaEntryDescriptor entry) {
         meterToEntry.remove(key);
+    }
+
+    @Override
+    protected void cacheAction(GroupCacheKey key, KildaEntryDescriptor entry) {
+        groupToEntry.remove(key);
     }
 }

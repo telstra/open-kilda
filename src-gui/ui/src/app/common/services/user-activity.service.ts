@@ -12,38 +12,38 @@ export class UserActivityService {
 
   constructor(private httpClient: HttpClient) { }
 
-  getUserActivityList() : Observable<UserActivityModel[]>{
-    let date = new Date().getTime();
+  getUserActivityList(): Observable<UserActivityModel[]> {
+    const date = new Date().getTime();
    	return this.httpClient.get<UserActivityModel[]>(`${environment.apiEndPoint}/useractivity/log?_=${date}`);
   }
 
-   getFilteredUserActivityList(username, type, startDate, endDate) : Observable<UserActivityModel[]>{
-   let url: string = '';
-   let replacement ="";
-   let currentDate =  new Date().getTime();
-   if(type.length || username.length || startDate !='' || endDate!=''){
-        url+="";
-        if(type.length){
-           for(let i=0;i<type.length;i++){
-                 url+='activity='+type[i]+"&";
+   getFilteredUserActivityList(username, type, startDate, endDate): Observable<UserActivityModel[]> {
+   let url = '';
+   const replacement = '';
+   const currentDate =  new Date().getTime();
+   if (type.length || username.length || startDate != '' || endDate != '') {
+        url += '';
+        if (type.length) {
+           for (let i = 0; i < type.length; i++) {
+                 url += 'activity=' + type[i] + '&';
             }}
-         if(username.length){
-           for(let i=0;i<username.length;i++){
-           url+='userId='+username[i]+"&";
+         if (username.length) {
+           for (let i = 0; i < username.length; i++) {
+           url += 'userId=' + username[i] + '&';
            }
          }
-         if(startDate!='' && startDate!= undefined){
-           url+='startTime='+new Date(startDate).getTime()+"&";
+         if (startDate != '' && startDate != undefined) {
+           url += 'startTime=' + new Date(startDate).getTime() + '&';
          }
-         if(endDate!='' && endDate!= undefined){
-           url+='endTime='+new Date(endDate).getTime();
+         if (endDate != '' && endDate != undefined) {
+           url += 'endTime=' + new Date(endDate).getTime();
          }
-    }    
+    }
 	return this.httpClient.get<UserActivityModel[]>(`${environment.apiEndPoint}/useractivity/log?${url}&_=${currentDate}`);
   }
 
-  getDropdownList() : Observable<UserActivityModel[]>{
-    let date = new Date().getTime();
+  getDropdownList(): Observable<UserActivityModel[]> {
+    const date = new Date().getTime();
 	return this.httpClient.get<UserActivityModel[]>(`${environment.apiEndPoint}/useractivity/info?_=${date}`);
   }
 

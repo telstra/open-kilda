@@ -1,6 +1,6 @@
 
 import { Role } from './role';
-import { Permission } from "./permission";
+import { Permission } from './permission';
 
 export interface User {
     user_id: number;
@@ -9,7 +9,7 @@ export interface User {
     email: string;
     status: string;
     is2FaEnabled: boolean;
-    password:string;
+    password: string;
     roles: Role;
     permissions: Permission;
 }

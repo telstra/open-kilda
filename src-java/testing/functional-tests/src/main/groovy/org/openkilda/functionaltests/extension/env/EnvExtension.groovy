@@ -73,6 +73,9 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     @Value('${discovery.timeout}')
     int discoveryTimeout
 
+    @Value('${rebuild.topology_lab:true}')
+    boolean isTopologyRebuildRequired
+
     @Override
     void start() {
         SpringContextNotifier.addListener(this)
@@ -84,7 +87,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
         if (profile == "virtual") {
             log.info("Multi table is enabled by default: $useMultitable")
             northbound.updateKildaConfiguration(new KildaConfigurationDto(useMultiTable: useMultitable))
-            buildVirtualEnvironment()
+            isTopologyRebuildRequired ? buildVirtualEnvironment() : topology.setLabId(labService.getLabs().first().labId)
             log.info("Virtual topology is successfully created")
         } else if (profile == "hardware") {
             labService.createHwLab(topology)

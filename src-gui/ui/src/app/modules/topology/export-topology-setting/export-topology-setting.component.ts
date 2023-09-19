@@ -12,27 +12,27 @@ import { ToastrService } from 'ngx-toastr';
 })
 export class ExportTopologySettingComponent implements OnInit {
   settings: any;
-  downloadCoordinatesHref:any;
-  viewJson:boolean=false;
-  constructor(private topologyService:TopologyService,
-    private sanitizer:DomSanitizer,
-    public activeModal:NgbActiveModal,
-    private clipboardService:ClipboardService,
-    private toastr:ToastrService) { }
+  downloadCoordinatesHref: any;
+  viewJson = false;
+  constructor(private topologyService: TopologyService,
+    private sanitizer: DomSanitizer,
+    public activeModal: NgbActiveModal,
+    private clipboardService: ClipboardService,
+    private toastr: ToastrService) { }
 
   ngOnInit() {
     this.settings = this.topologyService.getCoordinates();
-    var theJSON = JSON.stringify(this.settings);
-    var uri = this.sanitizer.bypassSecurityTrustUrl("data:text/json;charset=UTF-8," + encodeURIComponent(theJSON));
+    const theJSON = JSON.stringify(this.settings);
+    const uri = this.sanitizer.bypassSecurityTrustUrl('data:text/json;charset=UTF-8,' + encodeURIComponent(theJSON));
     this.downloadCoordinatesHref = uri;
   }
 
-  enableViewJson(){
+  enableViewJson() {
     this.viewJson = true;
   }
 
   copyToClip() {
-    let dataToCopy  = JSON.stringify(this.settings);
+    const dataToCopy  = JSON.stringify(this.settings);
     this.clipboardService.copyFromContent(dataToCopy);
     this.toastr.success('Copied');
   }

@@ -34,7 +34,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Config;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
-import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingFsmRegister;
 import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingService;
@@ -48,7 +47,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class HaFlowCreateService extends FlowProcessingService<HaFlowCreateFsm, Event, HaFlowCreateContext,
-        FlowGenericCarrier, FlowProcessingFsmRegister<HaFlowCreateFsm>, FlowProcessingEventListener> {
+        HaFlowGenericCarrier, FlowProcessingFsmRegister<HaFlowCreateFsm>, FlowProcessingEventListener> {
     private static final String HA_FLOW_PREFIX = "haf-";
     private static final char SUB_FLOW_INITIAL_POSTFIX = 'a';
 
@@ -57,7 +56,7 @@ public class HaFlowCreateService extends FlowProcessingService<HaFlowCreateFsm, 
     private final NoArgGenerator flowIdGenerator;
 
     public HaFlowCreateService(
-            @NonNull FlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
+            @NonNull HaFlowGenericCarrier carrier, @NonNull PersistenceManager persistenceManager,
             @NonNull PathComputer pathComputer, @NonNull FlowResourcesManager flowResourcesManager,
             @NonNull RuleManager ruleManager, int genericRetriesLimit, int pathAllocationRetriesLimit,
             int pathAllocationRetryDelay, int speakerCommandRetriesLimit) {

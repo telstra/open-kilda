@@ -1,4 +1,4 @@
-/* Copyright 2021 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ public class InMemoryRepositoryFactory extends FermaRepositoryFactory {
 
     @Override
     public FlowRepository createFlowRepository() {
-        return new InMemoryFlowRepository(implementation, createFlowPathRepository());
+        return new InMemoryFlowRepository(implementation, createFlowPathRepository(), createFlowStatsRepository());
     }
 
     @Override

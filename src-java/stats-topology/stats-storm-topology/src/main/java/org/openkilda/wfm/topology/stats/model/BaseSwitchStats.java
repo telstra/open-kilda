@@ -18,10 +18,12 @@ package org.openkilda.wfm.topology.stats.model;
 import org.openkilda.model.SwitchId;
 
 import lombok.Getter;
+import lombok.ToString;
 
 import java.io.Serializable;
 
 @Getter
+@ToString
 public class BaseSwitchStats implements Serializable {
     protected final SwitchId switchId;
 

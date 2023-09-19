@@ -28,9 +28,12 @@ import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.wfm.share.utils.MetricFormatter;
 import org.openkilda.wfm.topology.stats.bolts.metrics.FlowDirectionHelper.Direction;
 import org.openkilda.wfm.topology.stats.model.CommonFlowDescriptor;
+import org.openkilda.wfm.topology.stats.model.CommonHaFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyFlowDescriptor;
+import org.openkilda.wfm.topology.stats.model.DummyGroupDescriptor;
 import org.openkilda.wfm.topology.stats.model.DummyMeterDescriptor;
 import org.openkilda.wfm.topology.stats.model.EndpointFlowDescriptor;
+import org.openkilda.wfm.topology.stats.model.HaFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
 import org.openkilda.wfm.topology.stats.model.MeasurePoint;
 import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
@@ -78,12 +81,26 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
     }
 
     @Override
+    public void handleStatsEntry(CommonHaFlowDescriptor descriptor) {
+        // nothing to do here
+    }
+
+    @Override
     public void handleStatsEntry(YFlowDescriptor descriptor) {
         TagsFormatter tags = initTags(false);
         tags.addYFlowIdTag(descriptor.getYFlowId());
         if (descriptor.getMeasurePoint() == MeasurePoint.Y_FLOW_Y_POINT) {
             emitYFlowYPointPoints(tags);
         }
+    }
+
+    @Override
+    public void handleStatsEntry(HaFlowDescriptor descriptor) {
+        TagsFormatter tags = initTagsHa();
+        tags.addHaFlowIdTag(descriptor.getHaFlowId());
+        tags.addFlowIdTag(descriptor.getHaSubFlowId());
+        directionFromCookieIntoTags(descriptor.getCookie(), tags);
+        emitHaMeterPoints(tags, descriptor.getMeasurePoint(), descriptor.isHasMirror());
     }
 
     @Override
@@ -113,6 +130,11 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
 
     @Override
     public void handleStatsEntry(DummyMeterDescriptor descriptor) {
+        throw new IllegalArgumentException(formatUnexpectedDescriptorMessage(descriptor.getClass()));
+    }
+
+    @Override
+    public void handleStatsEntry(DummyGroupDescriptor descriptor) {
         throw new IllegalArgumentException(formatUnexpectedDescriptorMessage(descriptor.getClass()));
     }
 
@@ -152,6 +174,32 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
         }
     }
 
+    private void emitHaMeterPoints(TagsFormatter tags, MeasurePoint measurePoint, boolean hasMirror) {
+        FlowSegmentCookie cookie = decodeFlowSegmentCookie(statsEntry.getCookie());
+        if (cookie != null && cookie.getType() == SERVICE_OR_FLOW_SEGMENT
+                && cookie.isMirror() == hasMirror) {
+            directionFromCookieIntoTags(cookie, tags);
+            switch (measurePoint) {
+                case HA_FLOW_Y_POINT:
+                    emitHaPoints(tags, "haflow.ypoint.");
+                    break;
+                case INGRESS:
+                    emitHaPoints(tags, "haflow.ingress.");
+                    break;
+                case EGRESS:
+                    emitHaPoints(tags, "haflow.");
+                    break;
+                default:
+                    // nothing to do here
+            }
+        }
+    }
+
+    private void emitHaPoints(TagsFormatter tags, String prefix) {
+        meterEmitter.emitPacketAndBytePoints(new MetricFormatter(prefix), timestamp,
+                statsEntry.getPacketCount(), statsEntry.getByteCount(), tags.getTags());
+    }
+
     private void emitIngressPoints(TagsFormatter tags) {
         meterEmitter.emitPacketAndBytePoints(
                 new MetricFormatter("flow.ingress."), timestamp,
@@ -181,6 +229,12 @@ public final class FlowEndpointStatsEntryHandler extends BaseFlowStatsEntryHandl
         tags.addFlowIdTag(null);
         tags.addDirectionTag(Direction.UNKNOWN);
         tags.addIsYFlowSubFlowTag(isYSubFlow);
+        return tags;
+    }
+
+    private TagsFormatter initTagsHa() {
+        TagsFormatter tags = new TagsFormatter();
+        tags.addDirectionTag(Direction.UNKNOWN);
         return tags;
     }
 

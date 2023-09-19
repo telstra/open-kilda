@@ -22,10 +22,13 @@ import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.stats.FlowStatsData;
+import org.openkilda.messaging.info.stats.GroupStatsData;
 import org.openkilda.messaging.info.stats.MeterStatsData;
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
+import org.openkilda.messaging.info.stats.RemoveHaFlowPathInfo;
 import org.openkilda.messaging.info.stats.RemoveYFlowStatsInfo;
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
+import org.openkilda.messaging.info.stats.UpdateHaFlowPathInfo;
 import org.openkilda.messaging.info.stats.UpdateYFlowStatsInfo;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.context.PersistenceContextRequired;
@@ -34,6 +37,7 @@ import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.stats.model.SwitchFlowStats;
+import org.openkilda.wfm.topology.stats.model.SwitchGroupStats;
 import org.openkilda.wfm.topology.stats.model.SwitchMeterStats;
 import org.openkilda.wfm.topology.stats.service.KildaEntryCacheCarrier;
 import org.openkilda.wfm.topology.stats.service.KildaEntryCacheService;
@@ -48,6 +52,7 @@ public class CacheBolt extends AbstractBolt implements KildaEntryCacheCarrier {
 
     public static final String FLOW_STATS_STREAM = "FLOW_STATS";
     public static final String METER_STATS_STREAM = "METER_STATS";
+    public static final String GROUP_STATS_STREAM = "GROUP_STATS";
 
     public static final Fields STATS_STREAM_FIELDS = new Fields(STATS_FIELD, FIELD_ID_CONTEXT);
 
@@ -101,6 +106,8 @@ public class CacheBolt extends AbstractBolt implements KildaEntryCacheCarrier {
             cacheService.completeAndForwardFlowStats((FlowStatsData) data);
         } else if (data instanceof MeterStatsData) {
             cacheService.completeAndForwardMeterStats((MeterStatsData) data);
+        } else if (data instanceof GroupStatsData) {
+            cacheService.completeAndForwardGroupStats((GroupStatsData) data);
         } else {
             unhandledInput(input);
         }
@@ -116,6 +123,10 @@ public class CacheBolt extends AbstractBolt implements KildaEntryCacheCarrier {
             cacheService.addOrUpdateCache((UpdateYFlowStatsInfo) data);
         } else if (data instanceof RemoveYFlowStatsInfo) {
             cacheService.removeCached((RemoveYFlowStatsInfo) data);
+        } else if (data instanceof UpdateHaFlowPathInfo) {
+            cacheService.addOrUpdateCacheHa((UpdateHaFlowPathInfo) data);
+        } else if (data instanceof RemoveHaFlowPathInfo) {
+            cacheService.removeCachedHa((RemoveHaFlowPathInfo) data);
         } else {
             unhandledInput(input);
         }
@@ -134,9 +145,16 @@ public class CacheBolt extends AbstractBolt implements KildaEntryCacheCarrier {
     }
 
     @Override
+    public void emitGroupStats(SwitchGroupStats stats) {
+        Values values = new Values(stats, getCommandContext());
+        emit(GROUP_STATS_STREAM, getCurrentTuple(), values);
+    }
+
+    @Override
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declareStream(FLOW_STATS_STREAM, STATS_STREAM_FIELDS);
         declarer.declareStream(METER_STATS_STREAM, STATS_STREAM_FIELDS);
+        declarer.declareStream(GROUP_STATS_STREAM, STATS_STREAM_FIELDS);
         declarer.declareStream(ZOOKEEPER_STREAM,
                 new Fields(ZooKeeperBolt.FIELD_ID_STATE, ZooKeeperBolt.FIELD_ID_CONTEXT));
     }

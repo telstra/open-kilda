@@ -1,10 +1,14 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.model.stats.FlowStats
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -39,6 +43,9 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     Provider<TraffExamService> traffExamProvider
+
+    @Autowired @Shared
+    FlowStats flowStats
 
     @Tidy
     def "Able to swap main and protected paths manually"() {
@@ -106,7 +113,6 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         }
 
         when: "Traffic starts to flow on both sub-flows with maximum bandwidth (if applicable)"
-        def beforeTraffic = new Date()
         def traffExam = traffExamProvider.get()
         List<ExamReport> examReports
         def exam = new FlowTrafficExamBuilder(topology, traffExam).buildYFlowExam(yFlow, yFlow.maximumBandwidth, 10)
@@ -117,6 +123,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
                 traffExam.waitExam(direction)
             }
         }
+        statsHelper."force kilda to collect stats"()
 
         then: "Traffic flows on both sub-flows, but does not exceed the y-flow bandwidth restriction (~halves for each sub-flow)"
         examReports.each { report ->
@@ -124,7 +131,18 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         }
 
         and: "Y-flow and subflows stats are available (flow.raw.bytes)"
-        statsHelper.verifyYFlowWritesStats(yFlow, beforeTraffic, true)
+        def subflow = yFlow.getSubFlows().shuffled().first()
+        def subflowId = subflow.getFlowId()
+        def dstSwitchId = subflow.getEndpoint().getSwitchId()
+        def flowInfo = database.getFlow(subflowId)
+        def mainForwardCookie = flowInfo.forwardPath.cookie.value
+        def mainReverseCookie = flowInfo.reversePath.cookie.value
+        Wrappers.wait(STATS_LOGGING_TIMEOUT) {
+            def stats = flowStats.of(subflowId)
+            stats.get(FLOW_RAW_BYTES, dstSwitchId, mainForwardCookie).hasNonZeroValues()
+            stats.get(FLOW_RAW_BYTES, yFlow.getSharedEndpoint().getSwitchId(), mainReverseCookie).hasNonZeroValues()
+        }
+
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }

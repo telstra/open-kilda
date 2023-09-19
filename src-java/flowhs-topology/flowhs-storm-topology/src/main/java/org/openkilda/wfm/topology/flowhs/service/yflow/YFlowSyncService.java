@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.service;
+package org.openkilda.wfm.topology.flowhs.service.yflow;
 
 import org.openkilda.floodlight.api.request.SpeakerRequest;
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
@@ -32,6 +32,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.sync.YFlowSyncFsm;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathOperationConfig;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathReference;
 import org.openkilda.wfm.topology.flowhs.model.path.FlowPathRequest;
+import org.openkilda.wfm.topology.flowhs.service.FlowSyncCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.SyncServiceBase;
 import org.openkilda.wfm.topology.flowhs.utils.HandlerResponseMapping;
 

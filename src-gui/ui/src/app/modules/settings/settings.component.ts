@@ -13,39 +13,39 @@ import { MessageObj } from 'src/app/common/constants/constants';
 export class SettingsComponent implements OnInit {
 
   openedTab = 'storesetting';
-  openedInnerTab = 'identityserver'
+  openedInnerTab = 'identityserver';
   isIdentityServer = false;
   constructor(
     private titleService: Title,
-    public commonService:CommonService,
-    private toastr:ToastrService,
-    private router:Router
-  ) { 
-    if(!this.commonService.hasPermission('store_setting') && !this.commonService.hasPermission('application_setting') && !this.commonService.hasPermission('saml_setting')){
-      this.toastr.error(MessageObj.unauthorised);  
-       this.router.navigate(["/home"]);
-      }else{
-        if(this.commonService.hasPermission('store_setting')){
+    public commonService: CommonService,
+    private toastr: ToastrService,
+    private router: Router
+  ) {
+    if (!this.commonService.hasPermission('store_setting') && !this.commonService.hasPermission('application_setting') && !this.commonService.hasPermission('saml_setting')) {
+      this.toastr.error(MessageObj.unauthorised);
+       this.router.navigate(['/home']);
+      } else {
+        if (this.commonService.hasPermission('store_setting')) {
           this.openedTab = 'storesetting';
-        }else if(this.commonService.hasPermission('application_setting')){
+        } else if (this.commonService.hasPermission('application_setting')) {
           this.openedTab = 'applicationsetting';
-        }else if(this.commonService.hasPermission('saml_setting')){
-          this.openedTab = "samlsetting";
+        } else if (this.commonService.hasPermission('saml_setting')) {
+          this.openedTab = 'samlsetting';
         }
       }
   }
 
   ngOnInit() {
     this.titleService.setTitle('OPEN KILDA - Settings');
-    this.commonService.linkStoreReceiver.subscribe((value:any)=>{
+    this.commonService.linkStoreReceiver.subscribe((value: any) => {
         this.isIdentityServer = value;
     });
     }
-  
-  openTab(tab){
+
+  openTab(tab) {
     this.openedTab = tab;
   }
-  openinnerTab(tab){
+  openinnerTab(tab) {
     this.openedInnerTab = tab;
   }
 

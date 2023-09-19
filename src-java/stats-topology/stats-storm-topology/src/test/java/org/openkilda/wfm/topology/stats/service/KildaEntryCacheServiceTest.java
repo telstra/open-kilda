@@ -52,6 +52,7 @@ import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
+import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
@@ -122,6 +123,8 @@ public class KildaEntryCacheServiceTest {
     @Mock
     YFlowRepository yFlowRepository;
     @Mock
+    HaFlowRepository haFlowRepository;
+    @Mock
     KildaEntryCacheCarrier carrier;
     @Captor
     ArgumentCaptor<SwitchFlowStats> cookieCacheCaptor;
@@ -134,6 +137,7 @@ public class KildaEntryCacheServiceTest {
     public void initService() {
         when(repositoryFactory.createFlowRepository()).thenReturn(flowRepository);
         when(repositoryFactory.createYFlowRepository()).thenReturn(yFlowRepository);
+        when(repositoryFactory.createHaFlowRepository()).thenReturn(haFlowRepository);
         when(persistenceManager.getRepositoryFactory()).thenReturn(repositoryFactory);
         service = new KildaEntryCacheService(persistenceManager, carrier);
     }
@@ -143,6 +147,7 @@ public class KildaEntryCacheServiceTest {
         Flow flow = buildFlow();
         when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
         when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
+        when(haFlowRepository.findAll()).thenReturn(Collections.emptyList());
 
         service.activate();
 
@@ -263,6 +268,7 @@ public class KildaEntryCacheServiceTest {
 
         when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
         when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
+        when(haFlowRepository.findAll()).thenReturn(Collections.emptyList());
 
         service.activate();
 
@@ -318,6 +324,7 @@ public class KildaEntryCacheServiceTest {
 
         when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
         when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
+        when(haFlowRepository.findAll()).thenReturn(Collections.emptyList());
 
         service.activate();
 
@@ -375,6 +382,7 @@ public class KildaEntryCacheServiceTest {
 
         when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
         when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
+        when(haFlowRepository.findAll()).thenReturn(Collections.emptyList());
 
         service.activate();
 
@@ -444,6 +452,7 @@ public class KildaEntryCacheServiceTest {
     public void shouldCacheServiceRefreshMeterCache() {
         Flow flow = buildFlow();
         when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
+        when(haFlowRepository.findAll()).thenReturn(Collections.emptyList());
 
         service.activate();
 
@@ -535,6 +544,7 @@ public class KildaEntryCacheServiceTest {
 
         when(flowRepository.findAll()).thenReturn(Collections.emptyList());
         when(yFlowRepository.findAll()).thenReturn(Collections.singletonList(yFlow));
+        when(haFlowRepository.findAll()).thenReturn(Collections.emptyList());
 
         service.activate();
 
@@ -786,6 +796,7 @@ public class KildaEntryCacheServiceTest {
         Flow flow = buildFlow();
         when(flowRepository.findAll()).thenReturn(Collections.singletonList(flow));
         when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
+        when(haFlowRepository.findAll()).thenReturn(Collections.emptyList());
 
         FlowStatsData flowStats = new FlowStatsData(SRC_SWITCH_ID, Collections.singletonList(
                 new FlowStatsEntry(0, FORWARD_PATH_COOKIE.getValue(), 0, 0, 0, 0)));
@@ -815,23 +826,27 @@ public class KildaEntryCacheServiceTest {
     public void serviceSingleActivationTest() {
         when(flowRepository.findAll()).thenReturn(Collections.emptyList());
         when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
+        when(haFlowRepository.findAll()).thenReturn(Collections.emptyList());
 
         service.activate();
 
         verify(flowRepository, times(1)).findAll();
         verify(yFlowRepository, times(1)).findAll();
+        verify(haFlowRepository, times(1)).findAll();
     }
 
     @Test
     public void serviceDoubleActivationTest() {
         when(flowRepository.findAll()).thenReturn(Collections.emptyList());
         when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
+        when(haFlowRepository.findAll()).thenReturn(Collections.emptyList());
 
         service.activate();
         service.activate(); // second activation must not refresh cache
 
         verify(flowRepository, times(1)).findAll();
         verify(yFlowRepository, times(1)).findAll();
+        verify(haFlowRepository, times(1)).findAll();
     }
 
 
@@ -839,6 +854,7 @@ public class KildaEntryCacheServiceTest {
     public void serviceActivationAfterDeactivationTest() {
         when(flowRepository.findAll()).thenReturn(Collections.emptyList());
         when(yFlowRepository.findAll()).thenReturn(Collections.emptyList());
+        when(haFlowRepository.findAll()).thenReturn(Collections.emptyList());
 
         service.activate();
         service.deactivate();

@@ -1,5 +1,5 @@
 
-import { Role } from "./role";
+import { Role } from './role';
 
 export interface Permission {
     permission_id: number;

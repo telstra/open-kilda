@@ -48,6 +48,10 @@ public class TagsFormatter {
         tags.put("y_flow_id", yFlowId != null ? yFlowId : UNKNOWN_FLOW_ID_TAG_VALUE);
     }
 
+    public void addHaFlowIdTag(String flowId) {
+        tags.put("ha_flow_id", flowId != null ? flowId : UNKNOWN_FLOW_ID_TAG_VALUE);
+    }
+
     public void addDirectionTag(FlowPathDirection direction) {
         addDirectionTag(direction != null ? FlowDirectionHelper.mapDirection(direction) : null);
     }
@@ -82,6 +86,10 @@ public class TagsFormatter {
 
     public void addMeterIdTag(long meterId) {
         tags.put("meterid", String.valueOf(meterId));
+    }
+
+    public void addGroupIdTag(long meterId) {
+        tags.put("groupid", String.valueOf(meterId));
     }
 
     public void addInPortTag(long portNumber) {

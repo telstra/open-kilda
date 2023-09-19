@@ -1,8 +1,5 @@
 package org.openkilda.functionaltests.helpers
 
-import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult
-import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
-
 import static groovyx.gpars.GParsPool.withPool
 import static org.hamcrest.MatcherAssert.assertThat
 import static org.hamcrest.Matchers.hasItem
@@ -56,6 +53,7 @@ import org.openkilda.model.cookie.ServiceCookie.ServiceCookieTag
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult
 import org.openkilda.northbound.dto.v2.switches.MeterInfoDtoV2
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2
 import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
@@ -157,6 +155,24 @@ class SwitchHelper {
         topology.get().activeTraffGens.findAll { it.switchConnected.dpId == sw.dpId }
     }
 
+    static int getRandomAvailablePort(Switch sw, TopologyDefinition topologyDefinition, boolean useTraffgenPorts = true, List<Integer> busyPort = []) {
+        List<Integer> allowedPorts = topologyDefinition.getAllowedPortsForSwitch(sw)
+        def availablePorts = allowedPorts - busyPort
+        def port = availablePorts[new Random().nextInt(availablePorts.size())]
+        if (useTraffgenPorts) {
+            List<Integer> tgPorts = sw.traffGens*.switchPort.findAll { availablePorts.contains(it) }
+            if (tgPorts) {
+                port = tgPorts[0]
+            } else {
+                tgPorts = sw.traffGens*.switchPort.findAll { allowedPorts.contains(it) }
+                if (tgPorts) {
+                    port = tgPorts[0]
+                }
+            }
+        }
+        return port
+    }
+
     @Memoized
     static SwitchDto nbFormat(Switch sw) {
         northbound.get().getSwitch(sw.dpId)
@@ -165,6 +181,11 @@ class SwitchHelper {
     @Memoized
     static Set<SwitchFeature> getFeatures(Switch sw) {
         database.get().getSwitch(sw.dpId).features
+    }
+
+    static void synchronize(Switch sw) {
+        northbound.get().synchronizeSwitch(sw.dpId, true)
+        assert northboundV2.get().validateSwitch(sw.dpId).asExpected
     }
 
     static List<Long> getDefaultCookies(Switch sw) {

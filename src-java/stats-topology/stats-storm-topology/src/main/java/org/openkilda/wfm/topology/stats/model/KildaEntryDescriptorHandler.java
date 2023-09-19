@@ -26,9 +26,15 @@ public interface KildaEntryDescriptorHandler {
 
     void handleStatsEntry(YFlowDescriptor descriptor);
 
+    void handleStatsEntry(CommonHaFlowDescriptor descriptor);
+
+    void handleStatsEntry(HaFlowDescriptor descriptor);
+
     void handleStatsEntry(YFlowSubDescriptor descriptor);
 
     void handleStatsEntry(DummyFlowDescriptor descriptor);
 
     void handleStatsEntry(DummyMeterDescriptor descriptor);
+
+    void handleStatsEntry(DummyGroupDescriptor descriptor);
 }

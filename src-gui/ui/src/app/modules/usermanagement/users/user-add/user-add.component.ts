@@ -21,36 +21,36 @@ export class UserAddComponent implements OnInit {
   submitted = false;
   roleData: NgOption[];
   userData: any;
-  roles:any;
+  roles: any;
 
   constructor(
-    private formBuilder:FormBuilder, 
-    private tabService: TabService, 
-    private roleService: RoleService, 
-    private userService: UserService, 
+    private formBuilder: FormBuilder,
+    private tabService: TabService,
+    private roleService: RoleService,
+    private userService: UserService,
     private toastr: ToastrService,
     private titleService: Title,
     private loaderService: LoaderService
   ) {
-    
+
     /* Get all roles for Select2 */
     this.roles = [];
     this.roleData = [];
     this.roleService.getRoles().subscribe((role: Array<object>) => {
-      role.map((role:any) => this.roles.push({ id: role.role_id, name: role.name }));
+      role.map((role: any) => this.roles.push({ id: role.role_id, name: role.name }));
       this.roleData = this.roles;
     },
     error => {
-     console.log("error", error);
+     console.log('error', error);
     });
 
-    
+
   }
 
   /* Create User add form */
   private createForm() {
     this.userAddForm = this.formBuilder.group({
-      email : ['',[Validators.required, Validators.email]],
+      email : ['', [Validators.required, Validators.email]],
       name : ['', Validators.required],
       roles: ['', Validators.required],
       is2FaEnabled: [true]
@@ -58,7 +58,7 @@ export class UserAddComponent implements OnInit {
   }
 
   /* Add user form submit function */
-  addUser(){
+  addUser() {
     this.submitted = true;
     if (this.userAddForm.invalid) {
       return;
@@ -67,20 +67,20 @@ export class UserAddComponent implements OnInit {
     this.loaderService.show(MessageObj.adding_user);
 
     this.userData = {
-      'name': this.userAddForm.value.name, 
-      'user_name': this.userAddForm.value.email, 
-      'email': this.userAddForm.value.email, 
+      'name': this.userAddForm.value.name,
+      'user_name': this.userAddForm.value.email,
+      'email': this.userAddForm.value.email,
       'role_id': this.userAddForm.value.roles,
       'is2FaEnabled': this.userAddForm.value.is2FaEnabled
     };
 
     this.userService.addUser(this.userData).subscribe(user => {
       this.loaderService.hide();
-      this.toastr.success(MessageObj.user_added,'Success! ');
+      this.toastr.success(MessageObj.user_added, 'Success! ');
       this.tabService.setSelectedTab('users');
-    },error =>{
+    }, error => {
       this.loaderService.hide();
-      this.toastr.error(error.error['error-message'],'Error! ');
+      this.toastr.error(error.error['error-message'], 'Error! ');
     });
   }
 
