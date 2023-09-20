@@ -23,11 +23,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
 @AllArgsConstructor
 @Builder
 @JsonNaming(SnakeCaseStrategy.class)
-public class HaSubFlowPayload {
+public class HaSubFlowPayload implements Serializable {
     String haFlowId;
     String haSubFlowId;
     FlowStatus status;
