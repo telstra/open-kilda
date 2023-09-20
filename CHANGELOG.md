@@ -1,6 +1,36 @@
 # Changelog
 
-## v1.142.0 (07/09/2023)
+## v1.143.0 (21/09/2023)
+
+### Features:
+-  [#5355](https://github.com/telstra/open-kilda/pull/5355) Update Flow graph in GUI for VictoriaMetrics #5295 (Issues: [#5295](https://github.com/telstra/open-kilda/issues/5295) [#5295](https://github.com/telstra/open-kilda/issues/5295))
+-  [#5361](https://github.com/telstra/open-kilda/pull/5361) Introduce getting actual paths from PCE when executing path check API.
+
+### Bug Fixes:
+-  [#5364](https://github.com/telstra/open-kilda/pull/5364) Fix PathValidator to consider all flows in a diverse group (Issue: [#5351](https://github.com/telstra/open-kilda/issues/5351))
+
+### Improvements:
+-  [#5377](https://github.com/telstra/open-kilda/pull/5377) 5317 [TEST]: HA-Flow: History: Retrieving data by timestamp in milliseconds [**tests**]
+-  [#5388](https://github.com/telstra/open-kilda/pull/5388) [TEST]: Path check: Diverse: Check all flows from group [**tests**]
+-  [#5389](https://github.com/telstra/open-kilda/pull/5389) Added more options for topologies parallelism
+-  [#5359](https://github.com/telstra/open-kilda/pull/5359) 5357: [TEST]: Add cleanup to make tests Tidy [**tests**]
+-  [#5369](https://github.com/telstra/open-kilda/pull/5369) [TEST] Ha-Flow: History: Expanding suite [**tests**]
+-  [#5338](https://github.com/telstra/open-kilda/pull/5338) Allow to use epoch time in seconds or millisecond in history API. (Issue: [#5317](https://github.com/telstra/open-kilda/issues/5317)) [**api**]
+
+### Other changes:
+-  [#5322](https://github.com/telstra/open-kilda/pull/5322) Test/ha flow history - basic tests for ha flow history [**api**][**tests**]
+-  [#5358](https://github.com/telstra/open-kilda/pull/5358) #5250: [TEST] Ha-Flow latency stats (Issues: [#5250](https://github.com/telstra/open-kilda/issues/5250) [#5250](https://github.com/telstra/open-kilda/issues/5250)) [**tests**]
+-  [#3440](https://github.com/telstra/open-kilda/pull/3440) Add first part of design for LACP support (Issue: [#3439](https://github.com/telstra/open-kilda/issues/3439)) [**docs**]
+-  [#5372](https://github.com/telstra/open-kilda/pull/5372) #5361: [TEST] PCE response in path check API (Issues: [#5361](https://github.com/telstra/open-kilda/issues/5361) [#5361](https://github.com/telstra/open-kilda/issues/5361)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.142.0...v1.143.0).
+
+### Affected Components:
+history
+
+--
+
+## v1.142.0 (19/09/2023)
 
 ### Features:
 -  [#5250](https://github.com/telstra/open-kilda/pull/5250) Add HA-Flows support to Flow Stats (Issue: [#5223](https://github.com/telstra/open-kilda/issues/5223))
@@ -9,6 +39,7 @@
 -  [#5335](https://github.com/telstra/open-kilda/pull/5335) 5182: [TEST] Ha-Flow stats (Issue: [#5182](https://github.com/telstra/open-kilda/issues/5182)) [**tests**]
 
 ### Bug Fixes:
+-  [#5365](https://github.com/telstra/open-kilda/pull/5365) Fix for gather group stats
 -  [#5363](https://github.com/telstra/open-kilda/pull/5363) This is UI hotfix, related to this PR #5323 (Issues: [#5323](https://github.com/telstra/open-kilda/issues/5323) [#5323](https://github.com/telstra/open-kilda/issues/5323)) [**gui**]
 
 ### Improvements:
