@@ -160,7 +160,7 @@ class PathCheckSpec extends HealthCheckSpecification {
         }
         pathToCheck.addAll(pathHelper.getPathNodes(flow1Path.forwardPath))
 
-        def checkErrors = pathHelper."get path check errors"(pathToCheck, flow1.flowId)
+        def checkErrors = pathHelper.getPathCheckResult(pathToCheck, flow1.flowId)
 
         then: "Path check reports has ONLY one intersecting segment"
         verifyAll{
@@ -171,7 +171,7 @@ class PathCheckSpec extends HealthCheckSpecification {
         when: "Check potential path that has intersection with both flows from diverse group"
         flow2.source.switchId == flow1.destination.switchId ? pathToCheck.addAll(pathHelper.getPathNodes(flow2Path.forwardPath))
                 : pathToCheck.addAll(pathHelper.getPathNodes(flow2Path.reversePath))
-        checkErrors = pathHelper."get path check errors"(pathToCheck, flow1.flowId)
+        checkErrors = pathHelper.getPathCheckResult(pathToCheck, flow1.flowId)
 
         then: "Path check reports has intersecting segments with both flows from diverse group"
         verifyAll {
