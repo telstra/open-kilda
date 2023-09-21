@@ -37,4 +37,6 @@ public interface KildaEntryDescriptorHandler {
     void handleStatsEntry(DummyMeterDescriptor descriptor);
 
     void handleStatsEntry(DummyGroupDescriptor descriptor);
+
+    void handleStatsEntry(MirrorGroupDescriptor descriptor);
 }

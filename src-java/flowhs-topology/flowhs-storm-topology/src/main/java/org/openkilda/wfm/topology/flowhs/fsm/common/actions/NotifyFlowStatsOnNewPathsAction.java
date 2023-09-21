@@ -45,7 +45,8 @@ public class NotifyFlowStatsOnNewPathsAction<T extends FlowPathSwappingFsm<T, S,
                     Flow flow = flowPath.getFlow();
                     UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
                             flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), flowPath.getCookie(),
-                            flowPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, flowPath),
+                            flowPath.getMeterId(), null,
+                            FlowPathMapper.INSTANCE.mapToPathNodes(flow, flowPath),
                             flow.getVlanStatistics(), flowPath.hasIngressMirror(), flowPath.hasEgressMirror());
                     carrier.sendNotifyFlowStats(pathInfo);
                 });

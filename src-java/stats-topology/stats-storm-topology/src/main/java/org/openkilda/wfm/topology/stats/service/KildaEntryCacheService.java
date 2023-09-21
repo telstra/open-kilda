@@ -63,6 +63,7 @@ import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptorHandler;
 import org.openkilda.wfm.topology.stats.model.MeasurePoint;
 import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
+import org.openkilda.wfm.topology.stats.model.MirrorGroupDescriptor;
 import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
 import org.openkilda.wfm.topology.stats.model.SwitchFlowStats;
 import org.openkilda.wfm.topology.stats.model.SwitchGroupStats;
@@ -71,9 +72,11 @@ import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowSubDescriptor;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -268,7 +271,7 @@ public class KildaEntryCacheService {
         updateCache(
                 cacheHandler, pathInfo.getFlowId(), pathInfo.getYFlowId(), pathInfo.getYPointSwitchId(),
                 pathInfo.getCookie(), pathInfo.getMeterId(), pathInfo.getPathNodes(), pathInfo.getStatVlans(),
-                pathInfo.isIngressMirror(), pathInfo.isEgressMirror());
+                pathInfo.isIngressMirror(), pathInfo.isEgressMirror(), pathInfo.getSwitchIdByGroupId());
     }
 
     private void updateCache(KildaEntryDescriptorHandler cacheHandler, BaseYFlowStatsInfo yFlowStatsInfo) {
@@ -301,11 +304,14 @@ public class KildaEntryCacheService {
     private void updateCache(
             KildaEntryDescriptorHandler cacheHandler, String flowId, String yFlowId, SwitchId yPointSwitchId,
             FlowSegmentCookie cookie, MeterId meterId, List<PathNodePayload> pathNodes, Set<Integer> statsVlan,
-            boolean ingressMirror, boolean egressMirror) {
+            boolean ingressMirror, boolean egressMirror, Map<Long, SwitchId> switchIdByGroupMirror) {
         if (pathNodes.isEmpty()) {
             throw new IllegalArgumentException("The path can't be empty");
         }
-
+        if (MapUtils.isNotEmpty(switchIdByGroupMirror)) {
+            switchIdByGroupMirror.forEach((groupId, switchId) ->
+                    cacheHandler.handle(new MirrorGroupDescriptor(switchId, new GroupId(groupId))));
+        }
         processTransitCookies(cacheHandler, flowId, yFlowId, yPointSwitchId, cookie, pathNodes);
 
         SwitchId srcSwitchId = pathNodes.get(0).getSwitchId();
@@ -340,10 +346,13 @@ public class KildaEntryCacheService {
                     SwitchId yPointSwitchId = Optional.ofNullable(flow.getYFlow())
                             .map(YFlow::getYPoint)
                             .orElse(null);
+                    Map<Long, SwitchId> switchIdByMirrorGroupId = path.getFlowMirrorPointsSet().stream()
+                            .collect(Collectors.toMap(key -> key.getMirrorGroup().getGroupId().getValue(),
+                                    val -> val.getMirrorGroup().getSwitchId()));
                     updateCache(
                             cacheHandler, flow.getFlowId(), flow.getYFlowId(), yPointSwitchId, path.getCookie(),
                             path.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, path),
-                            flow.getVlanStatistics(), ingressMirror, egressMirror);
+                            flow.getVlanStatistics(), ingressMirror, egressMirror, switchIdByMirrorGroupId);
                 });
     }
 

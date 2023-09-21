@@ -29,6 +29,7 @@ import lombok.NonNull;
 import lombok.Value;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -46,10 +47,12 @@ public class RemoveFlowPathInfo extends BaseFlowPathInfo {
                               @JsonProperty("ypoint_switch_id") SwitchId yPointSwitchId,
                               @NonNull @JsonProperty("cookie") FlowSegmentCookie cookie,
                               @JsonProperty("meter_id") MeterId meterId,
+                              @JsonProperty("switch_id_by_group_id") Map<Long, SwitchId> switchIdByGroupId,
                               @NonNull @JsonProperty("path_nodes") List<PathNodePayload> pathNodes,
                               @JsonProperty("stat_vlans") Set<Integer> statVlans,
                               @JsonProperty("ingress_mirror") boolean ingressMirror,
                               @JsonProperty("egress_mirror") boolean egressMirror) {
-        super(flowId, yFlowId, yPointSwitchId, cookie, meterId, pathNodes, statVlans, ingressMirror, egressMirror);
+        super(flowId, yFlowId, yPointSwitchId, cookie, meterId, switchIdByGroupId,
+                pathNodes, statVlans, ingressMirror, egressMirror);
     }
 }
