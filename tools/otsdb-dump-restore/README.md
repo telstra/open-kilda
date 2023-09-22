@@ -110,25 +110,37 @@ docker run --rm -v opentsdb-data:/tmp kilda-otsdb-dump-restore kilda-otsdb-resto
 docker volume remove opentsdb-data
 ```
 
-### How to use the otsdb-to-vm script
-The otsdb-to-vm script is a wrapper around the kilda-otsdb-dump-restore tool. It is used to dump data from an OpenTSDB and restore it to a VictoriaMetrics service.
+### How to use the `otsdb-to-vm.sh` script
+The `otsdb-to-vm.sh` script is a bash wrapper around the `kilda-otsdb-dump-restore` tool. It is used to dump data from an OpenTSDB and restore it to a VictoriaMetrics service.
+Options `--opentsdb_endpoint`, `--victoria_metrics_endpoint`, `--start_date` and `--end_date` are **mandatory**.
+
+### Usage examples:
 ```bash
-Usage: otsdb-to-vm OPENTSDB_ENDPOINT VICTORIA_ENDPOINT TIME_START TIME_STOP [hour|day]
+# pump data using one day batch
+./otsdb-to-vm.sh -s http://opentsdb.example.com:4242 -d http://victoria-metrics.example.com:4242 --start_date 2022-01-01 --end_date 2022-01-31 --metrics_prefix 'kilda.' --interval day
 
-  This tool dumps the data from an OpenTSDB and restore it to a VictoriaMetrics service.
-
-  OPENTSDB_ENDPOINT openTSDB endpoint
-
-  VICTORIA_ENDPOINT VictoriaMetrics endpoint
-
-  TIME_START time since the data is dumped
-
-  DATE_STOP time where to stop dumping
-
-  [hour|day] time frame size
-
-  Examples:
-
-  ./otsdb-to-vm.sh opentsdb.example.com:4242 victoria-metrics.example.com:4242 2022-01-01 2022-01-31 kilda. day
-  ./otsdb-to-vm.sh opentsdb.example.com:4242 victoria-metrics.example.com:4242 2022-01-01T00:00:00 2022-01-01T23:59:59 kilda. hour
+# pump data using one hour batch
+./otsdb-to-vm.sh -s http://opentsdb.example.com:4242 -d http://victoria-metrics.example.com:4242 --start_date 2022-01-01T00:00:00 --end_date 2022-01-01T23:59:59 --metrics_prefix 'kilda.' --interval hour
 ```
+
+### How it working:
+Two processes are running simultaneously:
+* The `dump` process (foreground) is responsible for saving **batches** of data from OpenTSDB to the specified folder;
+* The `restore` process (background) is tasked with uploading dumped data to the remote Victoria metrics server;
+#
+The `dump` process runs batches in a loop, continually checking for available space/inodes to perform a dump. if it detects a lack of space, the dump cycle will wait until space become available. Once the dump successfully finishes current batch, the folder will be renamed to indicate it's ready for upload;
+
+1) When the `dump` process will complete all batches, it sends a `SIGUSR1` signal to the `restore` process and waits for the `restore` process to finish.
+2) Pressing `Ctrl+C` once increments an internal counter but doesn't take any immediate action.
+3) Pressing `Ctrl+C` twice will stop the `dump` process. The process will wait for all background `restore` tasks to finish before terminating.
+4) Pressing `Ctrl+C` three or more times will send stop signal `SIGTERM` to the background process, causing it to stop execution after completing the current upload task.
+#
+The `restore` process runs in the background, continously monitoring folders named with a 'ready' state marker and logging it's execution events to the 'background_log' file.
+
+1) During each loop cycle, the `restore` processes only one folder.
+2) If there are no new folders to process, it suspends execution and waits for a new folder to become available for upload (marker in the name).
+3) After a successfull restore operation, the folder is removed, freeing up space for use by the `dump` process.
+4) The `restore` process is prepared to capture a `Ctrl+C` or `SIGTERM` signal and terminate its loop execution after completing the current upload task.
+5) The `restore` process also listens for a `SIGUSR1` signal to gracefully finish it's loop execution.
+6) Upon receiving the `SIGUSR1` signal, the `restore` process assumes that the `dump` loop has finished. It processes and removes all ready folders and then terminates its execution.
+#
