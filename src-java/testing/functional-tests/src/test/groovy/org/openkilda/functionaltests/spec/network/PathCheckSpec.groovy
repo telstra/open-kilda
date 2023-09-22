@@ -4,6 +4,7 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.messaging.info.event.PathNode
 
 import spock.lang.See
@@ -103,29 +104,29 @@ class PathCheckSpec extends HealthCheckSpecification {
     @Tidy
     @Tags(LOW_PRIORITY)
     def "Path intersection check errors are returned for each segment of existing flow"() {
-        given: "Switch pair with two paths having minimal amount of intersecting segment"
-        def switchPair = topologyHelper.getAllSwitchPairs().sortedBySmallestPathsAmount().first()
-        def (flowPath, intersectingPath) = switchPair.paths.subsequences().findAll {
-            it.size() == 2 //all combinations of path pairs
-                    && [1, 2].contains(it[0].intersect(it[1]).size())
-        } //where path pair has one or two common segments
-                .first()
+        given: "Flow has been created successfully"
+        def switchPair = topologyHelper.getAllSwitchPairs().nonNeighbouring().first()
+        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair, false))
+        def flowPathDetails = northbound.getFlowPath(flow.flowId)
 
-        and: "Flow on the chosen path"
-        withPool {
-            switchPair.paths.findAll { it != flowPath }.eachParallel { pathHelper.makePathMorePreferable(flowPath, it) }
-        }
-        def flow = flowHelperV2.addFlow(
-                flowHelperV2.randomFlow(switchPair, false))
+        and: "Path with intersected segment(s) for verification has been collected"
+        def flowForwardPath = pathHelper.getPathNodes(flowPathDetails.forwardPath)
+        //at least one common ISl
+        def intersectingPath = switchPair.paths.findAll { it.size() > 4 && it.intersect(flowForwardPath).size() > 1 }.first()
+
+        and: "Involved ISls have been collected"
+        def flowInvolvedISLs = new Path(flowPathDetails.forwardPath + flowPathDetails.reversePath, topology).getInvolvedIsls()
+        def intersectedPathInvolvedISLs = new Path(pathHelper.convertToPathNodePayload(intersectingPath), topology).getInvolvedIsls()
+        def commonISLs = flowInvolvedISLs.intersect(intersectedPathInvolvedISLs)
+        assert !commonISLs.isEmpty(), "Path for verification has no intersected segment(s) with the flow."
 
         when: "Check if the potential path has intersections with existing one"
         def pathCheckResult = pathHelper.getPathCheckResult(intersectingPath, flow.getFlowId())
 
         then: "Path check reports expected amount of intersecting segments"
-        def expectedIntersectionCheckErrors = pathHelper.convertToPathNodePayload(flowPath).intersect(pathHelper.convertToPathNodePayload(intersectingPath)).size()
         verifyAll (pathCheckResult) {
             getValidationMessages().findAll { it.contains("The following segment intersects with the flow ${flow.getFlowId()}") }.size()
-                    == expectedIntersectionCheckErrors
+                    == commonISLs.size()
             getPceResponse() == PCE_PATH_COMPUTATION_SUCCESS_MESSAGE
         }
 
@@ -164,8 +165,8 @@ class PathCheckSpec extends HealthCheckSpecification {
 
         then: "Path check reports has ONLY one intersecting segment"
         verifyAll{
-            checkErrors.size() == 1
-            checkErrors.find { it.contains"The following segment intersects with the flow ${flow1.flowId}" }
+            checkErrors.getValidationMessages().size() == 1
+            checkErrors.getValidationMessages().find { it.contains"The following segment intersects with the flow ${flow1.flowId}" }
         }
 
         when: "Check potential path that has intersection with both flows from diverse group"
@@ -175,9 +176,9 @@ class PathCheckSpec extends HealthCheckSpecification {
 
         then: "Path check reports has intersecting segments with both flows from diverse group"
         verifyAll {
-            checkErrors.size() == 2
-            checkErrors.find { it.contains"The following segment intersects with the flow ${flow1.flowId}" }
-            checkErrors.find { it.contains"The following segment intersects with the flow ${flow2.flowId}" }
+            checkErrors.getValidationMessages().size() == 2
+            checkErrors.getValidationMessages().find { it.contains"The following segment intersects with the flow ${flow1.flowId}" }
+            checkErrors.getValidationMessages().find { it.contains"The following segment intersects with the flow ${flow2.flowId}" }
         }
 
         cleanup:
