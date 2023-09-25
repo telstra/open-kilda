@@ -1,5 +1,9 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+
+import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -9,11 +13,13 @@ import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
+import static org.openkilda.rulemanager.OfTable.EGRESS
+import static org.openkilda.rulemanager.OfTable.INPUT
+import static org.openkilda.rulemanager.OfTable.TRANSIT
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
-import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -26,9 +32,7 @@ import org.openkilda.rulemanager.FlowSpeakerData
 import org.openkilda.rulemanager.Instructions
 import org.openkilda.rulemanager.MeterFlag
 import org.openkilda.rulemanager.MeterSpeakerData
-import org.openkilda.rulemanager.OfTable
 import org.openkilda.rulemanager.OfVersion
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import com.google.common.collect.Sets
 import groovy.transform.Memoized
@@ -40,9 +44,9 @@ import org.springframework.beans.factory.annotation.Value
 import spock.lang.See
 
 @See(["https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-sync",
-"https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/switch-FSM.png"])
+        "https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/switch-FSM.png"])
 @Tags([SMOKE_SWITCHES])
-class SwitchSyncSpec extends BaseSpecification {
+class SwitchSyncSpec extends HealthCheckSpecification {
 
     @Value("#{kafkaTopicsConfig.getSpeakerSwitchManagerTopic()}")
     String speakerTopic
@@ -167,125 +171,69 @@ class SwitchSyncSpec extends BaseSpecification {
     }
 
     @Tidy
-    def "Able to synchronize switch (delete excess rules and meters)"() {
-        given: "Two active not neighboring switches"
-        def switches = topology.getActiveSwitches()
-        def allLinks = northbound.getAllLinks()
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allLinks.every { link -> !(link.source.switchId == src.dpId && link.destination.switchId == dst.dpId) }
-        } ?: assumeTrue(false, "No suiting switches found")
-
-        and: "Create an intermediate-switch flow"
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+    def "Able to synchronize #switchKind switch (delete excess rules and meters)"() {
+        given: "Flow with intermediate switches"
+        def switchPair = topologyHelper.getAllSwitchPairs().nonNeighbouring().random()
+        def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
+        def switchId = getSwitch(flow)
+        def ofVersion = topology.getActiveSwitches().find{it.getDpId() == switchId}.getOfVersion()
+        assert northboundV2.validateSwitch(switchId).isAsExpected()
 
-        and: "Reproduce situation when switches have excess rules and meters"
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
-        def cookiesMap = involvedSwitches.collectEntries { sw ->
-            [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                !(it.cookie in sw.defaultCookies)
-            }*.cookie]
-        }
-        Map<SwitchId, List<Long>> metersMap = involvedSwitches.collectEntries { sw ->
-            [sw.dpId, northbound.getAllMeters(sw.dpId).meterEntries*.meterId]
-        }
-
+        and: "Force install excess rules and meters on switch"
         def producer = new KafkaProducer(producerProps)
         def excessRuleCookie = 1234567890L
         def excessMeterId = ((MIN_FLOW_METER_ID..100)
-                - northbound.getAllMeters(srcSwitch.dpId).meterEntries*.meterId
-                - northbound.getAllMeters(dstSwitch.dpId).meterEntries*.meterId)[0]
-
-        producer.send(new ProducerRecord(speakerTopic, srcSwitch.dpId.toString(), buildMessage([
+                - northbound.getAllMeters(switchId).meterEntries*.meterId).first() as Long
+        producer.send(new ProducerRecord(speakerTopic, switchId.toString(), buildMessage([
                 FlowSpeakerData.builder()
-                        .switchId(srcSwitch.dpId)
-                        .ofVersion(OfVersion.of(srcSwitch.ofVersion))
+                        .switchId(switchId)
+                        .ofVersion(OfVersion.of(ofVersion))
                         .cookie(new Cookie(excessRuleCookie))
-                        .table(OfTable.INPUT)
+                        .table(table)
                         .priority(100)
                         .instructions(Instructions.builder().build())
                         .build(),
                 MeterSpeakerData.builder()
-                        .switchId(srcSwitch.dpId)
-                        .ofVersion(OfVersion.of(srcSwitch.ofVersion))
+                        .switchId(switchId)
+                        .ofVersion(OfVersion.of(ofVersion))
                         .meterId(new MeterId(excessMeterId))
                         .rate(flow.getMaximumBandwidth())
                         .burst(flow.getMaximumBandwidth())
                         .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
                         .build()]).toJson())).get()
-        involvedSwitches[1..-2].each { transitSw ->
-            producer.send(new ProducerRecord(speakerTopic, transitSw.toString(), buildMessage(
-                    FlowSpeakerData.builder()
-                            .switchId(transitSw.dpId)
-                            .ofVersion(OfVersion.of(transitSw.ofVersion))
-                            .cookie(new Cookie(excessRuleCookie))
-                            .table(OfTable.TRANSIT)
-                            .priority(100)
-                            .instructions(Instructions.builder().build())
-                            .build()).toJson())).get()
-        }
-        producer.send(new ProducerRecord(speakerTopic, dstSwitch.dpId.toString(), buildMessage([
-                FlowSpeakerData.builder()
-                        .switchId(dstSwitch.dpId)
-                        .ofVersion(OfVersion.of(dstSwitch.ofVersion))
-                        .cookie(new Cookie(excessRuleCookie))
-                        .table(OfTable.INPUT)
-                        .priority(100)
-                        .instructions(Instructions.builder().build())
-                        .build(),
-                MeterSpeakerData.builder()
-                        .switchId(dstSwitch.dpId)
-                        .ofVersion(OfVersion.of(dstSwitch.ofVersion))
-                        .meterId(new MeterId(excessMeterId))
-                        .rate(flow.getMaximumBandwidth())
-                        .burst(flow.getMaximumBandwidth())
-                        .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
-                        .build()]).toJson())).get()
-
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
-            involvedSwitches.each {
-                assert validationResultsMap[it.dpId].rules.excess.size() == 1
-                assert validationResultsMap[it.dpId].rules.excessHex.size() == 1
-            }
-            [srcSwitch, dstSwitch].each { assert validationResultsMap[it.dpId].meters.excess.size() == 1 }
+            !switchHelper.validate(switchId).getRules().getExcess().isEmpty()
         }
 
         when: "Try to synchronize all switches"
-        def syncResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.synchronizeSwitch(it.dpId, true)] }
-
-        then: "System detects excess rules and meters, then deletes them"
-        involvedSwitches.each {
-            assert syncResultsMap[it.dpId].rules.proper.containsAll(cookiesMap[it.dpId])
-            assert syncResultsMap[it.dpId].rules.excess == [excessRuleCookie]
-            assert syncResultsMap[it.dpId].rules.missing.size() == 0
-            assert syncResultsMap[it.dpId].rules.removed == [excessRuleCookie]
-            assert syncResultsMap[it.dpId].rules.installed.size() == 0
-        }
-        [srcSwitch, dstSwitch].each {
-            assert syncResultsMap[it.dpId].meters.proper*.meterId == metersMap[it.dpId].sort()
-            assert syncResultsMap[it.dpId].meters.excess*.meterId == [excessMeterId]
-            assert syncResultsMap[it.dpId].meters.missing.size() == 0
-            assert syncResultsMap[it.dpId].meters.removed*.meterId == [excessMeterId]
-            assert syncResultsMap[it.dpId].meters.installed.size() == 0
+        def syncResult = switchHelper.synchronize(switchId)
+        then: "System detects excess rules and meters"
+        verifyAll (syncResult) {
+            rules.excess == [excessRuleCookie]
+            rules.removed == [excessRuleCookie]
+            meters.excess*.meterId == [excessMeterId]
+            meters.removed*.meterId == [excessMeterId]
         }
 
         and: "Switch validation doesn't complain about excess rules and meters"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            involvedSwitches.each {
-                def validationResult = northbound.validateSwitch(it.dpId)
-                assert validationResult.rules.excess.size() == 0
-                assert validationResult.rules.excessHex.size() == 0
-                if(!it.dpId.description.contains("OF_12")) {
-                    assert validationResult.meters.missing.size() == 0
-                }
-            }
+            switchHelper.validate(switchId).isAsExpected()
         }
 
         cleanup: "Delete the flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        involvedSwitches && switchHelper.synchronize(involvedSwitches.dpId.asList())
+        switchHelper.synchronize([switchId])
+
+        where:
+        switchKind | getSwitch | table
+        "source"   | { FlowRequestV2 flowRequestV2 -> flowRequestV2.getSource().getSwitchId()} | INPUT
+        "destination"| {FlowRequestV2 flowRequestV2 -> flowRequestV2.getDestination().getSwitchId()}| EGRESS
+        "transit"| {FlowRequestV2 flowRequestV2 ->
+            def allSwitches = pathHelper.getInvolvedSwitches(flowRequestV2.getFlowId()).collect {it.getDpId()}
+            def transitSwitches = allSwitches - [flowRequestV2.getDestination().getSwitchId(),
+                                                 flowRequestV2.getSource().getSwitchId()]
+            return transitSwitches.shuffled().first() }| TRANSIT
     }
 
     @Tidy
