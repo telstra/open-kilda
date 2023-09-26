@@ -60,7 +60,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
 
     @Tidy
     @Tags([LOW_PRIORITY])
-    def "ISL RTT stats are available only if both global and switch toggles are 'on'"() {
+    def "ISL RTT stats are #testLabel available only if both global and switch toggles are 'on'"() {
         given: "An active ISL with both switches having server42"
         def server42switchesDpIds = topology.getActiveServer42Switches()*.dpId
         def isl = topology.islsForActiveSwitches.find {
@@ -68,74 +68,33 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         }
         assumeTrue(isl != null, "Was not able to find an ISL with a server42 connected")
 
-        when: "server42IslRtt feature toggle is turned off"
-        def islRttFeatureStartState = changeIslRttToggle(false)
+        when: "server42IslRtt feature toggle is set #featureToggle"
+        def islRttFeatureStartState = changeIslRttToggle(featureToggle)
 
-        and: "server42IslRtt is turned off on src and dst switches"
+        and: "server42IslRtt is set #switchToggle on src and dst switches"
         def initialSwitchRtt = [isl.srcSwitch, isl.dstSwitch].collectEntries {
-            [it, changeIslRttSwitch(it, false)]
+            [it, changeIslRttSwitch(it, switchToggle)]
         }
         def checkpointTime = new Date()
 
-        then: "Expect no ISL RTT forward stats"
+        then: "ISL RTT forward stats are #testLabel available"
         timedLoop(statsWaitSeconds) {
-            checkIslRttStats(isl, checkpointTime, false)
+            checkIslRttStats(isl, checkpointTime, statsAvailable)
             sleep(1000)
         }
 
-        and: "Expect no ISL RTT reverse stats"
-        checkIslRttStats(isl.reversed, checkpointTime, false)
-
-        when: "Enable global server42IslRtt feature toggle"
-        changeIslRttToggle(true)
-        checkpointTime = new Date()
-
-        then: "Expect no ISL RTT forward stats"
-        timedLoop(statsWaitSeconds) {
-            checkIslRttStats(isl, checkpointTime, false)
-            sleep(1000)
-        }
-
-        and: "Expect no ISL RTT reverse stats"
-        checkIslRttStats(isl.reversed, checkpointTime, false)
-
-        when: "Enable switch server42IslRtt toggle on src and dst"
-        changeIslRttSwitch(isl.srcSwitch, true)
-        changeIslRttSwitch(isl.dstSwitch, true)
-        checkpointTime = new Date()
-        withPool {
-            wait(RULES_INSTALLATION_TIME) {
-                [isl.srcSwitch, isl.dstSwitch].eachParallel { checkIslRttRules(it.dpId, true) }
-            }
-        }
-
-        then: "ISL RTT forward stats are available"
-        and: "ISL RTT reverse stats are available"
-        wait(islSyncWaitSeconds + WAIT_OFFSET, 2) {
-            checkIslRttStats(isl, checkpointTime, true)
-            checkIslRttStats(isl.reversed, checkpointTime, true)
-        }
-
-        when: "Disable global server42IslRtt feature toggle"
-        changeIslRttToggle(false)
-        withPool {
-            wait(RULES_DELETION_TIME) {
-                [isl.srcSwitch, isl.dstSwitch].eachParallel { checkIslRttRules(it.dpId, false) }
-            }
-        }
-        checkpointTime = new Date()
-
-        then: "Expect no ISL RTT forward stats"
-        timedLoop(statsWaitSeconds) {
-            checkIslRttStats(isl, checkpointTime, false)
-            sleep(1000)
-        }
-
-        and: "Expect no ISL RTT reverse stats"
-        checkIslRttStats(isl.reversed, checkpointTime, false)
+        and: "ISL RTT reverse stats are #testLabel available"
+        checkIslRttStats(isl.reversed, checkpointTime, statsAvailable)
 
         cleanup: "Revert system to original state"
         revertToOrigin(islRttFeatureStartState, initialSwitchRtt)
+
+        where:
+        featureToggle | switchToggle | statsAvailable | testLabel
+        true          | true         | true           | ""
+        false         | true         | false          | "not"
+        true          | false        | false          | "not"
+        false         | false        | false          | "not"
     }
 
     @Tidy
@@ -707,9 +666,14 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     }
 
     void checkIslRttStats(Isl isl, Date checkpointTime, Boolean statExist) {
+        //wait till near real-time stats arrive to TSDB
+        sleep(statsWaitSeconds * 1000)
         def stats = islStats.of(isl).get(ISL_RTT, SERVER_42)
-        assert statExist ? stats.hasNonZeroValuesAfter(checkpointTime.getTime())
-                : stats == null || !stats.hasNonZeroValuesAfter(checkpointTime.getTime())
+        if (statExist) {
+            assert stats.hasNonZeroValuesAfter(checkpointTime.getTime())
+        } else {
+            assert stats == null || !stats.hasNonZeroValuesAfter(checkpointTime.getTime())
+        }
     }
 
     void verifyLatencyValueIsCorrect(Isl isl) {

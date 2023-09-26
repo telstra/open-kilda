@@ -16,3 +16,6 @@ spouts:
 bolts:
   - id: "zookeeper.bolt"
     parallelism: 1
+  - id: "history-bolt"
+    parallelism: {{ getv "/kilda_storm_history_bolt_parallelism" }}
+    numTasks: {{ getv "/kilda_storm_history_bolt_num_tasks" }}

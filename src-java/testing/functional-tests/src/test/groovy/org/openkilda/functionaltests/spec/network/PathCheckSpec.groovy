@@ -4,6 +4,8 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.info.event.PathNode
+
 import spock.lang.See
 
 import static groovyx.gpars.GParsPool.withPool
@@ -130,5 +132,57 @@ class PathCheckSpec extends HealthCheckSpecification {
         cleanup:
         pathHelper."remove ISL properties artifacts after manipulating paths weights"()
         Wrappers.silent { flowHelperV2.deleteFlow(flow.getFlowId()) }
+    }
+
+    @Tidy
+    @Tags(LOW_PRIORITY)
+    def "Path intersection check errors are returned for each segment of each flow in diverse group"() {
+        given: "List of required neighbouring switches has been collected"
+        def firstSwitchPair = topologyHelper.getAllSwitchPairs().neighbouring().random()
+        def secondSwitchPair = topologyHelper.getAllSwitchPairs().neighbouring().excludePairs([firstSwitchPair])
+                .includeSwitch(firstSwitchPair.dst).random()
+
+        and:"Two flows in one diverse group have been created"
+        def flow1 = flowHelperV2.addFlow(flowHelperV2.randomFlow(firstSwitchPair, false))
+        def flow2 = flowHelperV2.addFlow(flowHelperV2.randomFlow(secondSwitchPair, false)
+                .tap {it.diverseFlowId = flow1.flowId})
+
+        and: "Paths for both flows have been collected"
+        def flow1Path = northbound.getFlowPath(flow1.flowId)
+        def flow2Path = northbound.getFlowPath(flow2.flowId)
+
+        when: "Check potential path that has intersection ONLY with one flow from diverse group"
+        LinkedList<PathNode> pathToCheck = topologyHelper.getAllSwitchPairs().neighbouring().excludePairs([firstSwitchPair, secondSwitchPair])
+              .includeSwitch(firstSwitchPair.src).random().paths.first()
+
+        if(pathToCheck.last().switchId != firstSwitchPair.src.dpId) {
+            pathToCheck = pathToCheck.reverse()
+        }
+        pathToCheck.addAll(pathHelper.getPathNodes(flow1Path.forwardPath))
+
+        def checkErrors = pathHelper.getPathCheckResult(pathToCheck, flow1.flowId)
+
+        then: "Path check reports has ONLY one intersecting segment"
+        verifyAll{
+            checkErrors.size() == 1
+            checkErrors.find { it.contains"The following segment intersects with the flow ${flow1.flowId}" }
+        }
+
+        when: "Check potential path that has intersection with both flows from diverse group"
+        flow2.source.switchId == flow1.destination.switchId ? pathToCheck.addAll(pathHelper.getPathNodes(flow2Path.forwardPath))
+                : pathToCheck.addAll(pathHelper.getPathNodes(flow2Path.reversePath))
+        checkErrors = pathHelper.getPathCheckResult(pathToCheck, flow1.flowId)
+
+        then: "Path check reports has intersecting segments with both flows from diverse group"
+        verifyAll {
+            checkErrors.size() == 2
+            checkErrors.find { it.contains"The following segment intersects with the flow ${flow1.flowId}" }
+            checkErrors.find { it.contains"The following segment intersects with the flow ${flow2.flowId}" }
+        }
+
+        cleanup:
+        [flow1, flow2]. each { flow ->
+            flow &&  Wrappers.silent{flowHelperV2.deleteFlow(flow.getFlowId())}
+        }
     }
 }

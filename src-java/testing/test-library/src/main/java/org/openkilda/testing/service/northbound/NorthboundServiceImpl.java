@@ -134,7 +134,7 @@ public class NorthboundServiceImpl implements NorthboundService {
             uriBuilder.queryParam("timeFrom", timeFrom);
         }
         if (timeTo != null) {
-            uriBuilder.queryParam("timeTo", timeTo);
+            uriBuilder.queryParam("timeTo", timeTo + 1 /* To not miss milliseconds*/);
         }
         if (maxCount != null) {
             uriBuilder.queryParam("max_count", maxCount);
