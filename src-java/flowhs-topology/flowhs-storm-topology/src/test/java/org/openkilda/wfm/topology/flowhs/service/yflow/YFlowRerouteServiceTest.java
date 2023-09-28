@@ -121,8 +121,37 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
     }
 
     /**
+     * y-flow reroute test for
+     * ''''''''/4\  -- possiblePath
+     * '''''/'''''\
+     * 3--2--------1
+     * There are two sub-paths: 3-2 and 3-2-1 (with 3-2-4-1 as better possible path). Where 2 is Y-point, and end-point.
+     * 1 is another endpoint. 3 is shared point.
+     */
+    @Test
+    public void rerouteYFlowPossiblePathForAffinity()
+            throws UnroutableFlowException, RecoverableException, DuplicateKeyException {
+        // given
+        YFlowRequest createYFlowRequest = createYFlowOneSharedPath3To2();
+        YFlowRerouteRequest request = new YFlowRerouteRequest(createYFlowRequest.getYFlowId(), "reason");
+
+        preparePathComputationForReroute("subflow3-2", buildFirstSubFlowPath3To2());
+        preparePathComputationForReroute("subflow3-1", buildSecondSubFlowPath3To2To4To1());
+        prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_TRANSIT);
+
+        // when
+        processRerouteRequestAndSpeakerCommands(request);
+
+        verifyNorthboundSuccessResponse(yFlowRerouteHubCarrier, YFlowRerouteResponse.class);
+        verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
+        verifyAffinity(request.getYFlowId());
+        verify(yFlowRerouteHubCarrier)
+                .sendYFlowRerouteResultStatus(eq(createYFlowRequest.getYFlowId()), eq(null), anyString());
+    }
+
+    /**
      * y-flow reroute test for one possible path exists for affinity group, and another already on the best path.
-     *         /5\  -- possiblePath
+     * /5\  -- possiblePath
      * '''''/-----2
      * 1--4
      * ''''\------3
@@ -154,7 +183,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
      * '''''/-----2
      * 1--4
      * ''''\------3
-     *       \5/  -- possiblePath
+     * \5/  -- possiblePath
      * There are two sub-paths: 1-4-2 and 1-4-3(with 1-4-5-3 as a possible path). 1 is share-point, 4 is y-point
      */
     @Test
@@ -180,7 +209,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
 
     /**
      * y-flow reroute test for one possible path exists for affinity group, and another path broken.
-     *         /5\  -- possiblePath
+     * /5\  -- possiblePath
      * '''''/-----2
      * 1--4
      * ''''\--x  x--3
@@ -214,7 +243,7 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
      * '''''/--x x--2
      * 1--4
      * ''''\------3
-     *       \5/  -- possiblePath
+     * \5/  -- possiblePath
      * There are two sub-paths: 1-4-2, switch 2 unreachable, and 1-4-3(with 1-4-5-3 as a possible path).
      * 1 is share-point, 4 is y-point.
      */
@@ -526,6 +555,24 @@ public class YFlowRerouteServiceTest extends AbstractYFlowTest<SpeakerRequest> {
         preparePathComputationForCreate("test_flow_1", buildFirstSubFlowPathPair());
         preparePathComputationForCreate("test_flow_2", buildSecondSubFlowPathPair());
         prepareYPointComputation(SWITCH_SHARED, SWITCH_FIRST_EP, SWITCH_SECOND_EP, SWITCH_TRANSIT);
+
+        processCreateRequestAndSpeakerCommands(request);
+
+        verifyNorthboundSuccessResponse(yFlowCreateHubCarrier, YFlowResponse.class);
+        verifyYFlowStatus(request.getYFlowId(), FlowStatus.UP);
+        verifyAffinity(request.getYFlowId());
+
+        return request;
+    }
+
+    private YFlowRequest createYFlowOneSharedPath3To2() throws UnroutableFlowException,
+            RecoverableException, DuplicateKeyException {
+
+        YFlowRequest request = buildYFlowOneSharedPath3To2Request("yflow3-2-1", "subflow3-2", "subflow3-1")
+                .build();
+        preparePathComputationForCreate("subflow3-2", buildFirstSubFlowPath3To2());
+        preparePathComputationForCreate("subflow3-1", buildSecondSubFlowPath3To2To1());
+        prepareYPointComputation(SWITCH_ID_3, SWITCH_ID_2, SWITCH_ID_1, SWITCH_ID_2);
 
         processCreateRequestAndSpeakerCommands(request);
 

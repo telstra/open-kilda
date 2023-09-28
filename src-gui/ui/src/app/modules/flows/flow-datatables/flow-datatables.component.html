@@ -13,6 +13,13 @@
           <i class="fa fa-search" (click)="toggleSearch($event,'expandedFlowId')"></i>
           <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedFlowId" id="expandedFlowId"/>
         </th>
+        <th class="">
+          <span title="Y-Flow ID">
+         Y-Flow ID
+        </span>
+          <i class="fa fa-search" (click)="toggleSearch($event,'expandedYFlowId')"></i>
+          <input  class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedYFlowId" id="expandedYFlowId"/>
+        </th>
         <th class="" >
           <span title="Source Switch">
             Src Switch
@@ -124,13 +131,21 @@
           <input [disabled]="row.status == 'UP' || row.status == 'IN PROGRESS' || (storeLinkSetting  && row.state) "  type="checkbox" class="large-checkbox" name="checkedFlow[row.flowid]" [checked]="checkedFlow[row.flowid]" (click) = "toggleSelection(row)" />
         </td>
         <td (click)="showFlow(row)" class="divTableCell" title="{{row.flowid }}" [contextMenu]="copyFLow"> 
-          {{row.flowid || "-"}} 
-          <context-menu #copyFLow>
+           {{row.flowid || "-"}} 
+           <context-menu #copyFLow>
               <ng-template contextMenuItem (execute)="copyToClip($event,'flowid',i);">
                 Copy to Clipboard
               </ng-template>
-            </context-menu>
+           </context-menu>
          </td>
+         <td (click)="showFlow(row)" class="divTableCell" title="{{row.y_flow_id }}" [contextMenu]="copyFLow">
+          {{row.y_flow_id || "-"}}
+          <context-menu #copyFLow>
+             <ng-template contextMenuItem (execute)="copyToClip($event,'y_flow_id',i);">
+               Copy to Clipboard
+             </ng-template>
+          </context-menu>
+        </td>
         <td (click)="showFlow(row)" title="{{row.source_switch_name}}" [contextMenu]="copySourceSwitch">
           {{row.source_switch_name || "-"}}
           <context-menu #copySourceSwitch>

@@ -30,6 +30,7 @@ import org.openkilda.model.FlowConnectedDevice;
 import org.openkilda.model.FlowHistory;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.model.FlowPath;
+import org.openkilda.model.YFlowRerouteResult;
 import org.openkilda.service.ApplicationService;
 import org.openkilda.utility.IoUtil;
 
@@ -47,6 +48,7 @@ import org.springframework.web.util.UriUtils;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
+import javax.validation.constraints.NotNull;
 
 /**
  * The Class FlowsIntegrationService.
@@ -196,6 +198,33 @@ public class FlowsIntegrationService {
             throw new IntegrationException(e);
         } catch (IOException e) {
             LOGGER.warn("Error occurred while rerouting flow by id:" + flowId, e);
+            throw new IntegrationException(e);
+        }
+    }
+
+    /**
+     * Reroute Y-flow.
+     *
+     * @param yFlowId y-flow id
+     * @return YFlowRerouteResult
+     */
+    public YFlowRerouteResult rerouteYFlow(@NotNull String yFlowId) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_Y_FLOW_REROUTE
+                            .replace("{y_flow_id}", UriUtils.encodePath(yFlowId, "UTF-8")),
+                    HttpMethod.POST, "", "", applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, YFlowRerouteResult.class);
+            } else {
+                String content = IoUtil.toString(response.getEntity().getContent());
+                throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while rerouting flow by id:" + yFlowId, e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (IOException e) {
+            LOGGER.warn("Error occurred while rerouting flow by id:" + yFlowId, e);
             throw new IntegrationException(e);
         }
     }

@@ -33,7 +33,6 @@ import org.openkilda.wfm.topology.flowhs.utils.YFlowUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
 import java.util.Optional;
 
 @Slf4j
@@ -79,11 +78,11 @@ public class HandleNotReroutedSubFlowAction
 
         stateMachine.setMainErrorAndDescription(context.getErrorType(), context.getError());
 
-        FlowRerouteRequest secondRerouteRequest = getSecondRerouteRequestOrNull(stateMachine);
+        Optional<FlowRerouteRequest> secondRerouteRequest = getForthcomingRerouteRequestIfExistOrNull(stateMachine,
+                isFirstError, subFlowId);
 
-        if (isForthcomingSubflowRequestLeft(isFirstError, secondRerouteRequest, subFlowId)) {
-            prepareAndSendSecondSubFlowRerouteRequest(secondRerouteRequest, stateMachine);
-        }
+        secondRerouteRequest.ifPresent(rerouteRequest ->
+                prepareAndSendSecondSubFlowRerouteRequest(rerouteRequest, stateMachine));
 
         if (stateMachine.getReroutingSubFlows().isEmpty()) {
             if (stateMachine.getFailedSubFlows().containsAll(stateMachine.getSubFlows())) {
@@ -109,16 +108,19 @@ public class HandleNotReroutedSubFlowAction
         return Optional.empty();
     }
 
-    private FlowRerouteRequest getSecondRerouteRequestOrNull(YFlowRerouteFsm stateMachine) {
-        return stateMachine.getRerouteRequests().size() == 2
-                ? ((ArrayList<FlowRerouteRequest>) stateMachine.getRerouteRequests()).get(1) : null;
-    }
-
-    private boolean isForthcomingSubflowRequestLeft(boolean isFirstError,
-                                                    FlowRerouteRequest secondRerouteRequest,
-                                                    String currentSubFlowId) {
-        return isFirstError && secondRerouteRequest != null
-                && !currentSubFlowId.equals(secondRerouteRequest.getFlowId());
+    private Optional<FlowRerouteRequest> getForthcomingRerouteRequestIfExistOrNull(YFlowRerouteFsm stateMachine,
+                                                                                   boolean isFirstError,
+                                                                                   String currentSubFlowId) {
+        if (isFirstError) {
+            if (isNotEmpty(stateMachine.getAllocatedSubFlows())) {
+                return Optional.empty();
+            } else {
+                return stateMachine.getRerouteRequests().stream()
+                        .filter(req -> !currentSubFlowId.equals(req.getFlowId())).findFirst();
+            }
+        } else {
+            return Optional.empty();
+        }
     }
 
     private void prepareAndSendSecondSubFlowRerouteRequest(FlowRerouteRequest secondRerouteRequest,

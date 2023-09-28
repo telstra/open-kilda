@@ -10,7 +10,7 @@
             <div class="clear clearfix"></div>
         </div>
       <p class="text-center flow-title" >Flow ID : <span [contextMenu]="copyFLow">{{flowDetail.flowid}}</span>
-      <a *ngIf="commonService.hasPermission('fw_flow_update') && (!storeLinkSetting || controllerFilter || (storeLinkSetting && flowDetail.hasOwnProperty('discrepancy') && flowDetail['discrepancy'].hasOwnProperty('controller-discrepancy') && !flowDetail['discrepancy']['controller-discrepancy']))" class="btn btn-dark btn-sm pull-right" role="button" aria-pressed="true" [routerLink]="['/flows/edit',flowDetail.flowid]">Edit</a>
+      <a *ngIf="!y_flow_id && commonService.hasPermission('fw_flow_update') && (!storeLinkSetting || controllerFilter || (storeLinkSetting && flowDetail.hasOwnProperty('discrepancy') && flowDetail['discrepancy'].hasOwnProperty('controller-discrepancy') && !flowDetail['discrepancy']['controller-discrepancy']))" class="btn btn-dark btn-sm pull-right" role="button" aria-pressed="true" [routerLink]="['/flows/edit',flowDetail.flowid]">Edit</a>
       </p>     
       </div>
     </div>
@@ -138,6 +138,12 @@
           <div class="row">
               <div class="col-sm-6">
                 <ul class="list-group list-group-no-border">
+                  <li *ngIf="y_flow_id" class="list-group-item">
+                    <div class="row">
+                      <div class="col-sm-4">Y-Flow ID:</div>
+                      <div class="col-sm-8">{{ y_flow_id }}</div>
+                    </div>
+                  </li>
                   <li class="list-group-item">
                     <div class="row">
                       <div class="col-sm-4">Status:</div>
@@ -289,8 +295,8 @@
           </div>
           <div class="tab-pane" *ngIf="openedTab == 'path'" [ngClass]="{'active': openedTab == 'path'}">
             <div class="text-right mb-2">
-              <button *ngIf="commonService.hasPermission('fw_permission_reroute')" class="btn btn-dark btn-sm" (click)="reRouteFlow()">Re-route
-                Flow</button>
+              <button *ngIf="commonService.hasPermission('fw_permission_reroute')" class="btn btn-dark btn-sm" (click)="reRouteFlow()">
+                Re-route {{ y_flow_id ? 'Y-Flow ' : 'Flow' }}</button>
             </div>
             <app-flow-path *ngIf="!reRoutingInProgress"  [flowId]="flowDetail.flowid"></app-flow-path>
           </div>
