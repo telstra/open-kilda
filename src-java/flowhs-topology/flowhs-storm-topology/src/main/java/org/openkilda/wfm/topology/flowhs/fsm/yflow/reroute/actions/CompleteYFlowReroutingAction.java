@@ -54,7 +54,8 @@ public class CompleteYFlowReroutingAction extends
         dashboardLogger.onYFlowStatusUpdate(yFlowId, flowStatus);
         stateMachine.saveActionToHistory(format("The y-flow status was set to %s", flowStatus));
 
-        if (stateMachine.getErrorReason() == null) {
+        if (stateMachine.getErrorReason() == null
+                || (stateMachine.getFailedSubFlows().size() == 1 && stateMachine.getSubFlows().size() > 1)) {
             stateMachine.fire(Event.NEXT);
         } else {
             stateMachine.fire(Event.ERROR);

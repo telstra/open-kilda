@@ -19,6 +19,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowStatus;
@@ -126,7 +127,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
         if (fromState == State.INITIALIZED || fromState == State.FLOW_VALIDATED) {
             ErrorData error = new ErrorData(ErrorType.INTERNAL_ERROR, "Could not reroute flow", errorMessage);
             Message message = new ErrorMessage(error, getCommandContext().getCreateTime(),
-                                               getCommandContext().getCorrelationId());
+                    getCommandContext().getCorrelationId());
             sendNorthboundResponse(message);
         }
 
@@ -436,10 +437,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                             fsm.getEventListeners().forEach(listener -> listener.onCompleted(fsm.getFlowId()));
                             break;
                         case FINISHED_WITH_ERROR:
-                            ErrorType errorType = Optional.ofNullable(fsm.getOperationResultMessage())
-                                    .filter(message -> message instanceof ErrorMessage)
-                                    .map(message -> ((ErrorMessage) message).getData())
-                                    .map(ErrorData::getErrorType).orElse(ErrorType.INTERNAL_ERROR);
+                            ErrorType errorType = extractErrorType(fsm);
                             fsm.getEventListeners().forEach(listener -> listener.onFailed(fsm.getFlowId(),
                                     fsm.getErrorReason(), errorType));
                             break;
@@ -465,6 +463,19 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
                 });
             });
             return fsm;
+        }
+
+        private ErrorType extractErrorType(FlowRerouteFsm fsm) {
+            return Optional.ofNullable(fsm.getOperationResultMessage())
+                    .filter(message -> message instanceof ErrorMessage || message instanceof InfoMessage)
+                    .map(message -> {
+                        if (message instanceof InfoMessage) {
+                            return ErrorType.ALREADY_ON_BEST_PATH;
+                        } else {
+                            return ((ErrorMessage) message).getData() == null
+                                    ? null : ((ErrorMessage) message).getData().getErrorType();
+                        }
+                    }).orElse(ErrorType.INTERNAL_ERROR);
         }
     }
 
