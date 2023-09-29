@@ -115,7 +115,7 @@ class TsdbSpec extends HealthCheckSpecification {
     }
 
     @Tidy
-    //@Tags(HARDWARE)
+    @Tags(HARDWARE)
     @Unroll("Stats are being logged for metric:#metric")
     def "Basic stats are being logged (10min interval)"(metric) {
         expect: "At least 1 result in the past 15 minutes"
@@ -133,7 +133,7 @@ class TsdbSpec extends HealthCheckSpecification {
         assumeTrue(northbound.getFeatureToggles().collectGrpcStats,
 "This test is skipped because 'collectGrpcStats' is disabled")
         expect: "At least 1 result in the past 15 minutes"
-        assert switchStats.of(sw, metric, 15).get(metric).getDataPoints().isEmpty()
+        assert !switchStats.of(sw.getDpId(), [metric], 15).get(metric).getDataPoints().isEmpty()
 
         where:
         [metric, sw] << ([hardwareOnlySwitchStats, getNoviflowSwitches()].combinations())

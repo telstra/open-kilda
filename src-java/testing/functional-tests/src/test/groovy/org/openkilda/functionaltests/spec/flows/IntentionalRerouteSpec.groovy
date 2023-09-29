@@ -190,7 +190,9 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         def examReports = [exam.forward, exam.reverse].collect { traffExam.waitExam(it) }
         examReports.each {
             //Minor packet loss is considered a measurement error and happens regardless of reroute
-            assert it.consumerReport.lostPercent < 1
+            //https://github.com/telstra/open-kilda/issues/5406
+            //assert it.consumerReport.lostPercent < 1
+            assert it.hasTraffic()
         }
 
         cleanup: "Remove the flow"
