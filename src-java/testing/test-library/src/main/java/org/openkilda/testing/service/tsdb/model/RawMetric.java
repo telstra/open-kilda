@@ -66,10 +66,10 @@ public class RawMetric {
         map.put("type", this.type);
         map.put("cookieHex", this.cookieHex);
         map.put("origin", this.origin);
-        map.put("srcSwitch", this.srcSwitch);
-        map.put("dstSwitch", this.dstSwitch);
-        map.put("srcPort", this.srcPort);
-        map.put("dstPort", this.dstPort);
+        map.put("src_switch", this.srcSwitch);
+        map.put("dst_switch", this.dstSwitch);
+        map.put("src_port", this.srcPort);
+        map.put("dst_port", this.dstPort);
         map.put("inPort", this.inPort);
         map.put("outPort", this.outPort);
         map.put("tableid", this.tableid);

@@ -32,7 +32,12 @@ import java.util.List;
 @JsonNaming(value = PropertyNamingStrategy.SnakeCaseStrategy.class)
 public class PathValidationResult extends InfoData {
     Boolean isValid;
-    @Singular
+
+    @Singular("addError")
     List<String> errors;
+
+    @Singular("addValidationMessage")
+    List<String> validationMessages;
+
     String pceResponse;
 }

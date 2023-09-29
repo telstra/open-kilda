@@ -33,5 +33,6 @@ import java.util.List;
 public class PathValidateResponse {
     Boolean isValid;
     List<String> errors;
+    List<String> validationMessages;
     String pceResponse;
 }

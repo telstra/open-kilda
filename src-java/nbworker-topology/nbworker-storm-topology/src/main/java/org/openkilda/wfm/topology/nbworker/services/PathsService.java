@@ -332,7 +332,7 @@ public class PathsService {
         } catch (RuntimeException e) {
             return Collections.singletonList(PathValidationResult.builder()
                             .isValid(false)
-                            .error(format("Could not create path validation data from the request. %s", e))
+                            .addError(format("Could not create path validation data from the request. %s", e))
                             .build());
         }
 

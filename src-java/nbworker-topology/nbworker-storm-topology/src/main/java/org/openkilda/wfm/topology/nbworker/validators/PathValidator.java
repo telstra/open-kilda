@@ -49,6 +49,7 @@ import com.google.common.collect.Sets;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.map.LazyMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.storm.shade.com.google.common.collect.Maps;
@@ -66,6 +67,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+@Slf4j
 public class PathValidator {
 
     private static final String LATENCY = "latency";
@@ -114,8 +116,7 @@ public class PathValidator {
                 .flatMap(Set::stream)
                 .collect(Collectors.toSet());
 
-        validationsResult.addAll(executeValidations(InputData.of(data),
-                getPerPathValidations(data)));
+        validationsResult.addAll(executeValidations(InputData.of(data), getPerPathValidations(data)));
 
         GetPathsResult pceResult = validatePathComputation(data);
         String pceResponse = pceResult.isSuccess() ? "The path has been computed successfully" :
@@ -123,8 +124,8 @@ public class PathValidator {
                         pceResult.getFailReasons().values());
 
         return PathValidationResult.builder()
-                .isValid(validationsResult.isEmpty() && pceResult.isSuccess())
-                .errors(new LinkedList<>(validationsResult))
+                .isValid(pceResult.isSuccess())
+                .validationMessages(new LinkedList<>(validationsResult))
                 .pceResponse(pceResponse)
                 .build();
     }
@@ -165,8 +166,15 @@ public class PathValidator {
                 .orElse(Collections.emptyList());
     }
 
-    private String getDiversityGroupId(String flowId) {
-        return flowRepository.findById(flowId).map(Flow::getDiverseGroupId).orElse("");
+    private String getDiversityGroupId(String requestedFlowId) {
+        Optional<Flow> flow = flowRepository.findById(requestedFlowId);
+        if (!flow.isPresent()) {
+            log.debug("PathValidator retrieve diverse group ID failed: couldn't find flow {} in repository",
+                    requestedFlowId);
+            return "";
+        }
+
+        return flow.get().getDiverseGroupId();
     }
 
     private Optional<Isl> findIslByEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId destSwitchId, int destPort) {
@@ -437,14 +445,18 @@ public class PathValidator {
             return Collections.singleton(getNoForwardIslError(inputData));
         }
 
-        Collection<Flow> diverseFlow = flowRepository.findByDiverseGroupId(
+        Collection<Flow> diverseFlows = flowRepository.findByDiverseGroupId(
                 getDiversityGroupId(inputData.getPath().getDiverseWithFlow()));
 
-        if (diverseFlow.isEmpty()) {
-            return Collections.singleton(getNoDiverseFlowFoundError(inputData));
+        if (diverseFlows.isEmpty()) {
+            Optional<Flow> flow = flowRepository.findById(inputData.getPath().getDiverseWithFlow());
+            if (!flow.isPresent()) {
+                return Collections.singleton(getNoDiverseFlowFoundError(inputData));
+            }
+            diverseFlows.add(flow.get());
         }
 
-        return diverseFlow.stream().map(flow -> collectIntersectionWithDiverseFlowErrors(flow, inputData))
+        return diverseFlows.stream().map(flow -> collectIntersectionWithDiverseFlowErrors(flow, inputData))
                 .flatMap(Collection::stream)
                 .collect(Collectors.toSet());
     }

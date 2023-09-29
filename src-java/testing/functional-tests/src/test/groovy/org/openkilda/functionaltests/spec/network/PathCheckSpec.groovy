@@ -29,9 +29,9 @@ class PathCheckSpec extends HealthCheckSpecification {
         when: "Check the path without limitations"
         def pathCheckResult = pathHelper.getPathCheckResult(path)
 
-        then: "Path check result doesn't have errors"
+        then: "Path check result doesn't have validation messages"
         verifyAll(pathCheckResult) {
-            getErrors().isEmpty()
+            getValidationMessages().isEmpty()
             getPceResponse() == PCE_PATH_COMPUTATION_SUCCESS_MESSAGE
         }
 
@@ -58,8 +58,8 @@ class PathCheckSpec extends HealthCheckSpecification {
 
         then: "Path check result has multiple lack of bandwidth errors and at least one encapsulation support one"
         verifyAll(pathCheckResult) {
-            !getErrors().findAll { it == "The switch ${srcSwitch.getDpId()} doesn\'t support the encapsulation type VXLAN." }.isEmpty()
-            getErrors().findAll { it.contains("not enough bandwidth") }.size() ==
+            !getValidationMessages().findAll { it == "The switch ${srcSwitch.getDpId()} doesn\'t support the encapsulation type VXLAN." }.isEmpty()
+            getValidationMessages().findAll { it.contains("not enough bandwidth") }.size() ==
                     pathHelper.getInvolvedIsls(path).size() * 2
             getPceResponse().contains("Failed to find path with requested bandwidth")
         }
@@ -89,8 +89,8 @@ class PathCheckSpec extends HealthCheckSpecification {
 
         then: "Path check result returns latency validation errors (1 per tier1 and tier 2, per forward and revers paths)"
         verifyAll(pathCheckResult) {
-            getErrors().findAll { it.contains("Requested latency is too low") }.size() == 2
-            getErrors().findAll { it.contains("Requested latency tier 2 is too low") }.size() == 2
+            getValidationMessages().findAll { it.contains("Requested latency is too low") }.size() == 2
+            getValidationMessages().findAll { it.contains("Requested latency tier 2 is too low") }.size() == 2
             getPceResponse().contains(
                     "Latency limit: Requested path must have latency 2ms or lower, but best path has latency")
         }
@@ -124,7 +124,7 @@ class PathCheckSpec extends HealthCheckSpecification {
         then: "Path check reports expected amount of intersecting segments"
         def expectedIntersectionCheckErrors = pathHelper.convertToPathNodePayload(flowPath).intersect(pathHelper.convertToPathNodePayload(intersectingPath)).size()
         verifyAll (pathCheckResult) {
-            getErrors().findAll { it.contains("The following segment intersects with the flow ${flow.getFlowId()}") }.size()
+            getValidationMessages().findAll { it.contains("The following segment intersects with the flow ${flow.getFlowId()}") }.size()
                     == expectedIntersectionCheckErrors
             getPceResponse() == PCE_PATH_COMPUTATION_SUCCESS_MESSAGE
         }
@@ -160,7 +160,7 @@ class PathCheckSpec extends HealthCheckSpecification {
         }
         pathToCheck.addAll(pathHelper.getPathNodes(flow1Path.forwardPath))
 
-        def checkErrors = pathHelper."get path check errors"(pathToCheck, flow1.flowId)
+        def checkErrors = pathHelper.getPathCheckResult(pathToCheck, flow1.flowId)
 
         then: "Path check reports has ONLY one intersecting segment"
         verifyAll{
@@ -171,7 +171,7 @@ class PathCheckSpec extends HealthCheckSpecification {
         when: "Check potential path that has intersection with both flows from diverse group"
         flow2.source.switchId == flow1.destination.switchId ? pathToCheck.addAll(pathHelper.getPathNodes(flow2Path.forwardPath))
                 : pathToCheck.addAll(pathHelper.getPathNodes(flow2Path.reversePath))
-        checkErrors = pathHelper."get path check errors"(pathToCheck, flow1.flowId)
+        checkErrors = pathHelper.getPathCheckResult(pathToCheck, flow1.flowId)
 
         then: "Path check reports has intersecting segments with both flows from diverse group"
         verifyAll {
