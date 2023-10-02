@@ -14,7 +14,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -34,7 +33,6 @@ Note: For now it is only runnable on virtual env due to no ability to disconnect
 """)
 class SwitchFailuresSpec extends HealthCheckSpecification {
 
-    @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])
     def "ISL is still able to properly fail even if switches have reconnected"() {
         given: "A flow"
@@ -91,13 +89,11 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/3398")
     def "System is able to finish the reroute if switch blinks in the middle of it"() {
         given: "A flow"
         def swPair = topologyHelper.allNotNeighboringSwitchPairs.find { it.paths.size() > 1 }
-        def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(swPair))
 
         when: "Current path breaks and reroute starts"
         lockKeeper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(3000))
@@ -127,12 +123,11 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
         cleanup:
         lockKeeper.cleanupTrafficShaperRules(swPair.dst.regions)
-        flowHelperV2.deleteFlow(flow.flowId)
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+        islToBreak && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "System can handle situation when switch reconnects while flow is being created"() {
         when: "Start creating a flow between switches and lose connection to src before rules are set"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches

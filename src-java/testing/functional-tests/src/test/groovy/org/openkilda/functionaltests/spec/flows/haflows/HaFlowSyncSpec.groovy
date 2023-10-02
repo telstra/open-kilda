@@ -11,7 +11,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -38,7 +37,6 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
     @Shared
     SwitchRulesFactory switchRulesFactory
 
-    @Tidy
     @Tags([SMOKE_SWITCHES, SMOKE])
     def "Able to synchronize an HA-flow (install missing rules, reinstall existing). protectedPath=#data.protectedPath"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
@@ -104,7 +102,6 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "Able to synchronize an HA-flow if HA-flow switch is inactive protectedPath=#data.protectedPath"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "An HA-flow with down shared endpoint"

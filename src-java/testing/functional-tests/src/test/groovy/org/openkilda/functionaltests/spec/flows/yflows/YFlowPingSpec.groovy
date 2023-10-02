@@ -11,7 +11,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.model.SwitchId
@@ -31,7 +30,6 @@ class YFlowPingSpec extends HealthCheckSpecification {
     @Value('${flow.ping.interval}')
     int pingInterval
 
-    @Tidy
     def "Able to turn on periodic pings on a y-flow"() {
         when: "Create a y-flow with periodic pings turned on"
         def swT = topologyHelper.switchTriplets.first()
@@ -61,7 +59,6 @@ class YFlowPingSpec extends HealthCheckSpecification {
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Able to ping y-flow when one of subflows is one-switch one (#5019)"() {
         given: "y-flow which has one-switch subflow"

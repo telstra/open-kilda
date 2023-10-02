@@ -10,7 +10,6 @@ import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.PortBlinker
@@ -63,7 +62,6 @@ class PortAntiflapSpec extends HealthCheckSpecification {
         getNorthbound().toggleFeature(FeatureTogglesDto.builder().floodlightRoutePeriodicSync(true).build())
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "Flapping port is brought down only after antiflap warmup and stable port is brought up only after cooldown \
 timeout"() {
@@ -113,7 +111,6 @@ timeout"() {
         }
     }
 
-    @Tidy
     def "Port goes down in 'antiflap.min' seconds if no flapping occurs"() {
         given: "Switch, port and ISL related to that port"
         def sw = topology.activeSwitches.first()
@@ -143,7 +140,6 @@ timeout"() {
      * directly to kafka, because currently it is the only way to simulate an incredibly rapid port flapping that
      * may sometimes occur on hardware switches(overheat?)
      */
-    @Tidy
     @Tags(SMOKE)
     def "System properly registers events order when port flaps incredibly fast (end with Up)"() {
 
@@ -180,7 +176,6 @@ timeout"() {
      * directly to kafka, because currently it is the only way to simulate an incredibly rapid port flapping that
      * may sometimes occur on hardware switches(overheat?)
      */
-    @Tidy
     @Tags(SMOKE)
     def "System properly registers events order when port flaps incredibly fast (end with Down)"() {
 
@@ -209,7 +204,6 @@ timeout"() {
         Wrappers.wait(WAIT_OFFSET) { islUtils.getIslInfo(isl).get().state == DISCOVERED }
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES, HARDWARE])
     def "A round-trip latency non-direct ISL goes UP according to antiflap"() {
         given: "An active round-trip a-switch link"

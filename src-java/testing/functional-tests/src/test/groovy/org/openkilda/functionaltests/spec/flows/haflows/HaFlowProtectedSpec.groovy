@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.model.SwitchId
@@ -29,7 +28,6 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
     @Shared
     YFlowHelper yFlowHelper
 
-    @Tidy
     def "Able to enable protected path on an HA-flow"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "A simple HA-flow"
@@ -77,7 +75,6 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }
 
-    @Tidy
     def "Able to disable protected path on an HA-flow via partial update"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "An HA-flow with protected path"
@@ -125,7 +122,6 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }
 
-    @Tidy
     def "User can update #data.descr of a ha-flow with protected path"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "An HA-flow with protected path"

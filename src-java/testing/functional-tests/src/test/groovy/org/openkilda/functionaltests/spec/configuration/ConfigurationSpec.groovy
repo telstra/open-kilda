@@ -13,7 +13,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.model.system.KildaConfigurationDto
@@ -36,7 +35,6 @@ class ConfigurationSpec extends HealthCheckSpecification {
     @Shared
     FlowEncapsulationType defaultEncapsulationType = FlowEncapsulationType.TRANSIT_VLAN
 
-    @Tidy
     def "System takes into account default flow encapsulation type while creating a flow"() {
         when: "Create a flow without encapsulation type"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
@@ -75,7 +73,6 @@ class ConfigurationSpec extends HealthCheckSpecification {
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.flowId) }
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "System doesn't allow to update kilda configuration with wrong flow encapsulation type"() {
         when: "Try to set wrong flow encapsulation type"
@@ -92,7 +89,6 @@ class ConfigurationSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags(VIRTUAL)
     def "System takes into account default multi table value while connecting a new switch"() {
         assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")

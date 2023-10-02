@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.network
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
@@ -29,7 +28,6 @@ import static org.springframework.http.HttpStatus.NOT_FOUND
 
 class PathsSpec extends HealthCheckSpecification {
 
-    @Tidy
     @Tags(SMOKE)
     def "Get paths between not neighboring switches"() {
         given: "Two active not neighboring switches"
@@ -62,7 +60,6 @@ class PathsSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to get paths between switches for the LATENCY strategy"() {
         given: "Two active not neighboring switches"
@@ -89,7 +86,6 @@ class PathsSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     @Unroll
     def "Unable to get paths for #problemDescription"() {
@@ -108,7 +104,6 @@ class PathsSpec extends HealthCheckSpecification {
         "non-existing switch" |{ Switch sw, NorthboundService nb -> SwitchPair.withNonExistingDstSwitch(sw, nb)} | NOT_FOUND
     }
 
-    @Tidy
     def "Unable to get paths with max_latency strategy without max latency parameter"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getAllSwitchPairs()
@@ -127,7 +122,6 @@ class PathsSpec extends HealthCheckSpecification {
                 "parameter. If max_latency will be equal to 0 LATENCY strategy will be used instead of MAX_LATENCY."
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to get a path for a 'vxlan' flowEncapsulationType when switches do not support it"() {
         given: "Two active not supported 'vxlan' flowEncapsulationType switches"
@@ -160,7 +154,6 @@ class PathsSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     @Unroll
     def "Protected path is #isIncludedString included into path list if #isIncludedString requested"() {
@@ -181,7 +174,6 @@ class PathsSpec extends HealthCheckSpecification {
         "not"            | false      | { it.getProtectedPath() != null }
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Protected path is null if it doesn't match criteria"() {
         given: "Two non-neighbouring switches with the one path shorter than others"

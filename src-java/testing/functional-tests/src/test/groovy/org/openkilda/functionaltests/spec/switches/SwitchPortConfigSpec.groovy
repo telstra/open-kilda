@@ -14,7 +14,6 @@ import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -28,7 +27,6 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
     @Autowired @Shared
     SwitchStats switchStats;
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Able to bring ISL-busy port down/up on an #isl.srcSwitch.ofVersion switch #isl.srcSwitch.dpId"() {
         when: "Bring port down on the switch"
@@ -79,7 +77,6 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
         isl << uniqueIsls
     }
 
-    @Tidy
     @Tags([HARDWARE, TOPOLOGY_DEPENDENT])
     def "Able to bring ISL-free port down/up on #sw.hwSwString"() {
         // Not checking OTSDB here, since Kilda won't log into OTSDB for isl-free ports, this is expected.

@@ -12,7 +12,6 @@ import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -47,7 +46,6 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
     @Autowired @Shared
     FlowStats flowStats
 
-    @Tidy
     def "Able to swap main and protected paths manually"() {
         given: "A y-flow with protected paths"
         def swT = findSwitchTripletForYFlowWithProtectedPaths()
@@ -147,7 +145,6 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
-    @Tidy
     def "System is able to switch a y-flow to protected paths"() {
         given: "A y-flow with protected paths"
         def swT = findSwitchTripletForYFlowWithProtectedPaths()
@@ -293,7 +290,6 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to perform the 'swap' request for a flow without protected path"() {
         given: "A y-flow without protected path"
@@ -318,7 +314,6 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to swap paths for a non-existent y-flow"() {
         when: "Try to swap path on a non-existent y-flow"
@@ -331,7 +326,6 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
                 "Y-flow $NON_EXISTENT_FLOW_ID not found"
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to swap paths for an inactive y-flow"() {
         given: "A y-flow with protected paths"

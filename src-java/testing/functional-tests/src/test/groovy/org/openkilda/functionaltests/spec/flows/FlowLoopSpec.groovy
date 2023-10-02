@@ -20,7 +20,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -53,7 +52,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
-    @Tidy
     @IterationTags([
             @IterationTag(tags = [SMOKE_SWITCHES, TOPOLOGY_DEPENDENT], iterationNameRegex = /protected/),
             //https://github.com/telstra/open-kilda/issues/4774
@@ -238,7 +236,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to delete a flow with created flowLoop on it"() {
         given: "A active multi switch flow"
@@ -290,7 +287,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "System is able to reroute a flow when flowLoop is created on it"() {
         given: "A multi switch flow with one alternative path at least"
         def allTraffGenSwIds = topology.activeTraffGens*.switchConnected*.dpId
@@ -358,7 +354,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "System is able to detect and sync missing flowLoop rules"() {
         given: "An active flow with created flowLoop on the src switch"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -397,7 +392,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         !testIsCompleted && northbound.synchronizeSwitch(switchPair.src.dpId, true)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Systems allows to get all flowLoops that goes through a switch"() {
         given: "Two active switches"
@@ -448,7 +442,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
-    @Tidy
     def "System is able to autoSwapPath for a protected flow when flowLoop is created on it"() {
         given: "Two active switches with three diverse paths at least"
         def allTraffGenSwIds = topology.activeTraffGens*.switchConnected*.dpId
@@ -529,7 +522,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to create flowLoop for a singleSwitch flow"() {
         given: "An active singleSwitch flow"
@@ -588,7 +580,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         !testIsCompleted && northbound.synchronizeSwitch(sw.dpId, true)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to create flowLoop for a singleSwitchSinglePort flow"() {
         given: "An active singleSwitchSinglePort flow"
@@ -633,7 +624,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         !testIsCompleted && northbound.synchronizeSwitch(sw.dpId, true)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Attempt to create the exact same flowLoop twice just reinstalls the rules"() {
         given: "An active multi switch flow with created flowLoop on the src switch"
@@ -677,7 +667,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to create flowLoop when a switch is deactivated"() {
         given: "An active flow"
@@ -714,7 +703,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         switchHelper.reviveSwitch(switchPair.src, blockData, true)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to create flowLoop on the src switch when it is already created on the dst switch"() {
         given: "An active flow with created flowLoop on the src switch"
@@ -735,7 +723,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to create flowLoop on a transit switch"() {
         given: "An active multi switch flow with transit switch"
@@ -760,7 +747,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to create flowLoop for a non existent flow"() {
         when: "Try to create flowLoop on the transit switch"
@@ -781,7 +767,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         !switchIsValid && northbound.synchronizeSwitch(sw.dpId, true)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to create flowLoop on a non existent switch"() {
         given: "An active multi switch flow"

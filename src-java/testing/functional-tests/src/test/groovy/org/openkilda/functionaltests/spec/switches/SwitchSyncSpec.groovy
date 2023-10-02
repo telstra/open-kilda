@@ -20,7 +20,6 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
@@ -55,7 +54,6 @@ class SwitchSyncSpec extends HealthCheckSpecification {
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
 
-    @Tidy
     def "Able to synchronize switch without any rule and meter discrepancies (removeExcess=#removeExcess)"() {
         given: "An active switch"
         def sw = topology.activeSwitches.first()
@@ -81,7 +79,6 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         removeExcess << [false, true]
     }
 
-    @Tidy
     def "Able to synchronize switch (install missing rules and meters)"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.allNotNeighboringSwitchPairs.find { it.src.ofVersion != "OF_12" &&
@@ -170,7 +167,6 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Able to synchronize #switchKind switch (delete excess rules and meters)"() {
         given: "Flow with intermediate switches"
         def switchPair = topologyHelper.getAllSwitchPairs().nonNeighbouring().random()
@@ -236,7 +232,6 @@ class SwitchSyncSpec extends HealthCheckSpecification {
             return transitSwitches.shuffled().first() }| TRANSIT
     }
 
-    @Tidy
     def "Able to synchronize switch with 'vxlan' rule(install missing rules and meters)"() {
         given: "Two active not neighboring Noviflow switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
@@ -349,7 +344,6 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([VIRTUAL, LOW_PRIORITY])
     def "Able to synchronize misconfigured default meter"() {
         given: "An active switch with valid default rules and one misconfigured default meter"
@@ -388,7 +382,6 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         sw && switchHelper.synchronize([sw.dpId])
     }
 
-    @Tidy
     @Tags([VIRTUAL, SMOKE])
     def "Able to synchronize misconfigured flow meter"() {
         given: "An active switch with flow on it"

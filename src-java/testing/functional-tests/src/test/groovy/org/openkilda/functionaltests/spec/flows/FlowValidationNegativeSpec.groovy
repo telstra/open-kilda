@@ -5,7 +5,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
@@ -28,7 +27,6 @@ import spock.lang.Narrative
             """)
 class FlowValidationNegativeSpec extends HealthCheckSpecification {
 
-    @Tidy
     @IterationTag(tags = [SMOKE], iterationNameRegex = /reverse/)
     def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration [#flowType]"() {
         given: "Two flows with #flowConfig configuration"
@@ -101,7 +99,6 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | -1   | "last"   | "reverse"
     }
 
-    @Tidy
     def "Unable to #data.description a non-existent flow"() {
         when: "Trying to #action a non-existent flow"
         data.operation.call()
@@ -155,7 +152,6 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "Able to detect discrepancies for a flow with protected path"() {
         when: "Create a flow with protected path"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {

@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.SwitchFeature
@@ -30,7 +29,6 @@ class DefaultFlowSpec extends HealthCheckSpecification {
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
-    @Tidy
     @Tags([SMOKE_SWITCHES])
    def "Systems allows to pass traffic via default/vlan and qinq flow when they are on the same port"() {
         given: "At least 3 traffGen switches"
@@ -117,7 +115,6 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES])
     def "System allows tagged traffic via default flow(0<->0)"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
@@ -160,7 +157,6 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         defaultFlow && flowHelperV2.deleteFlow(defaultFlow.flowId)
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES])
     def "Unable to send traffic from simple flow into default flow and vice versa"() {
         given: "At least 2 traffGen switches"
@@ -198,7 +194,6 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         [defaultFlow, simpleflow].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
-    @Tidy
     def "Unable to create two default flow on the same port"() {
         when: "Create first default flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches

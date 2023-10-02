@@ -7,7 +7,6 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -20,7 +19,6 @@ import java.util.concurrent.TimeUnit
 
 class SwitchMaintenanceSpec extends HealthCheckSpecification {
 
-    @Tidy
     @Tags(SMOKE)
     def "Maintenance mode can be set/unset for a particular switch"() {
         given: "An active switch"
@@ -66,7 +64,6 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         setMaintenance && !unsetMaintenance && northbound.setSwitchMaintenance(sw.dpId, false, false)
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "Flows can be evacuated (rerouted) from a particular switch when setting maintenance mode for it"() {
         given: "Two active not neighboring switches and a switch to be maintained"
@@ -122,7 +119,6 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
-    @Tidy
     def "Link discovered by a switch under maintenance is marked as maintained"() {
         given: "An active link"
         def isl = topology.islsForActiveSwitches.first()
