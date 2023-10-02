@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.nbworker.validators;
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
@@ -73,6 +74,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
     private static final SwitchId SWITCH_ID_2 = new SwitchId(2);
     private static final SwitchId SWITCH_ID_3 = new SwitchId(3);
     private static final SwitchId SWITCH_ID_4 = new SwitchId(4);
+    private static final String PCE_RESPONSE_COMPUTE_OK = "The path has been computed successfully";
     private static SwitchRepository switchRepository;
     private static SwitchPropertiesRepository switchPropertiesRepository;
     private static IslRepository islRepository;
@@ -106,7 +108,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
      * <pre>
      *  1 (6) ---- (6) 3 (7) ----- (7) 2
      * (12)
-     *  |
+     *  | - inactive link
      * (12)
      *  0              4 (not connected)
      * </pre>
@@ -171,15 +173,18 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
         assertFalse(responses.isEmpty());
         assertFalse(responses.get(0).getIsValid());
-        Set<String> actualErrorMessages = Sets.newHashSet(responses.get(0).getErrors());
-        Set<String> expectedErrorMessages = Sets.newHashSet(
+        assertNotEquals(PCE_RESPONSE_COMPUTE_OK, responses.get(0).getPceResponse());
+        assertFalse(responses.get(0).getValidationMessages().isEmpty());
+
+        Set<String> actualMessages = Sets.newHashSet(responses.get(0).getValidationMessages());
+        Set<String> expectedMessages = Sets.newHashSet(
                 "The ISL is not in ACTIVE state between end points: switch 00:00:00:00:00:00:00:00 port 12 and switch"
                         + " 00:00:00:00:00:00:00:01 port 12.",
                 "The ISL is not in ACTIVE state between end points: switch 00:00:00:00:00:00:00:01 port 12 and switch"
                         + " 00:00:00:00:00:00:00:00 port 12."
         );
 
-        assertEquals(expectedErrorMessages, actualErrorMessages);
+        assertEquals(expectedMessages, actualMessages);
     }
 
     @Test
@@ -215,15 +220,16 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
         assertFalse(responses.isEmpty());
         assertFalse(responses.get(0).getIsValid());
-        assertEquals(2, responses.get(0).getErrors().size(), "There must be 2 errors: forward and reverse paths");
+        assertEquals(2, responses.get(0).getValidationMessages().size(),
+                "There must be 2 messages: forward and reverse paths");
 
-        List<String> errors = new ArrayList<>(responses.get(0).getErrors());
-        Collections.sort(errors);
-        assertEquals(errors.get(0),
+        List<String> messages = new ArrayList<>(responses.get(0).getValidationMessages());
+        Collections.sort(messages);
+        assertEquals(messages.get(0),
                 "There is not enough bandwidth between end points: switch 00:00:00:00:00:00:00:01 port 6 and "
                         + "switch 00:00:00:00:00:00:00:03 port 6 (forward path). Requested bandwidth 1000000000,"
                         + " but the link supports 10000.");
-        assertEquals(errors.get(1),
+        assertEquals(messages.get(1),
                 "There is not enough bandwidth between end points: switch 00:00:00:00:00:00:00:03 port 6 and "
                         + "switch 00:00:00:00:00:00:00:01 port 6 (reverse path). Requested bandwidth 1000000000,"
                         + " but the link supports 10000.");
@@ -245,8 +251,8 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         assertFalse(responses.isEmpty());
         assertFalse(responses.get(0).getIsValid());
 
-        Set<String> actualErrorMessages = Sets.newHashSet(responses.get(0).getErrors());
-        Set<String> expectedErrorMessages = Sets.newHashSet(
+        Set<String> actualMessages = Sets.newHashSet(responses.get(0).getValidationMessages());
+        Set<String> expectedMessages = Sets.newHashSet(
                 "The following switch has not been found: 00:00:00:00:01:01:01:01.",
                 "The following switch properties have not been found: 00:00:00:00:01:01:01:01.",
                 "The following switch has not been found: 00:00:00:00:01:01:01:02.",
@@ -257,7 +263,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                         + " and switch 00:00:00:00:01:01:01:01 port 6."
         );
 
-        assertEquals(expectedErrorMessages, actualErrorMessages);
+        assertEquals(expectedMessages, actualMessages);
     }
 
     @Test
@@ -276,17 +282,18 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         List<PathValidationResult> responses = pathsService.validatePath(request);
 
         assertFalse(responses.isEmpty());
-        assertFalse(responses.get(0).getIsValid());
-        assertFalse(responses.get(0).getErrors().isEmpty());
+        assertTrue(responses.get(0).getIsValid());
+        assertEquals(PCE_RESPONSE_COMPUTE_OK, responses.get(0).getPceResponse());
+        assertFalse(responses.get(0).getValidationMessages().isEmpty());
 
-        Set<String> expectedErrorMessages = Sets.newHashSet(
+        Set<String> expectedMessages = Sets.newHashSet(
                 "Requested latency is too low on the path between: switch 00:00:00:00:00:00:00:01 and"
                         + " switch 00:00:00:00:00:00:00:02. Requested 1 ms, but the sum on the path is 5 ms.",
                 "Requested latency is too low on the path between: switch 00:00:00:00:00:00:00:02 and"
                         + " switch 00:00:00:00:00:00:00:01. Requested 1 ms, but the sum on the path is 5 ms.");
 
-        Set<String> actualErrorMessages = Sets.newHashSet(responses.get(0).getErrors());
-        assertEquals(expectedErrorMessages, actualErrorMessages);
+        Set<String> actualMessages = Sets.newHashSet(responses.get(0).getValidationMessages());
+        assertEquals(expectedMessages, actualMessages);
     }
 
     @Test
@@ -306,16 +313,17 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
         assertFalse(responses.isEmpty());
         assertFalse(responses.get(0).getIsValid());
-        assertFalse(responses.get(0).getErrors().isEmpty());
+        assertNotEquals(PCE_RESPONSE_COMPUTE_OK, responses.get(0).getPceResponse());
+        assertFalse(responses.get(0).getValidationMessages().isEmpty());
 
-        Set<String> expectedErrorMessages = Sets.newHashSet(
+        Set<String> expectedMessages = Sets.newHashSet(
                 "Requested latency is too low on the path between: switch 00:00:00:00:00:00:00:01 and"
                         + " switch 00:00:00:00:00:00:00:02. Requested 1 ms, but the sum on the path is 5 ms.",
                 "Requested latency is too low on the path between: switch 00:00:00:00:00:00:00:02 and"
                         + " switch 00:00:00:00:00:00:00:01. Requested 1 ms, but the sum on the path is 5 ms.");
 
-        Set<String> actualErrorMessages = Sets.newHashSet(responses.get(0).getErrors());
-        assertEquals(expectedErrorMessages, actualErrorMessages);
+        Set<String> actualMessages = Sets.newHashSet(responses.get(0).getValidationMessages());
+        assertEquals(expectedMessages, actualMessages);
     }
 
     @Test
@@ -334,17 +342,18 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         List<PathValidationResult> responses = pathsService.validatePath(request);
 
         assertFalse(responses.isEmpty());
-        assertFalse(responses.get(0).getIsValid());
-        assertFalse(responses.get(0).getErrors().isEmpty());
+        assertTrue(responses.get(0).getIsValid());
+        assertEquals(PCE_RESPONSE_COMPUTE_OK, responses.get(0).getPceResponse());
+        assertFalse(responses.get(0).getValidationMessages().isEmpty());
 
-        Set<String> expectedErrorMessages = Sets.newHashSet(
+        Set<String> expectedMessages = Sets.newHashSet(
                 "Requested latency tier 2 is too low on the path between: switch 00:00:00:00:00:00:00:01 and"
                         + " switch 00:00:00:00:00:00:00:02. Requested 1 ms, but the sum on the path is 5 ms.",
                 "Requested latency tier 2 is too low on the path between: switch 00:00:00:00:00:00:00:02 and"
                         + " switch 00:00:00:00:00:00:00:01. Requested 1 ms, but the sum on the path is 5 ms.");
 
-        Set<String> actualErrors = Sets.newHashSet(responses.get(0).getErrors());
-        assertEquals(expectedErrorMessages, actualErrors);
+        Set<String> actualErrors = Sets.newHashSet(responses.get(0).getValidationMessages());
+        assertEquals(expectedMessages, actualErrors);
     }
 
     @Test
@@ -361,12 +370,13 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
         assertFalse(responses.isEmpty());
         assertFalse(responses.get(0).getIsValid());
-        assertFalse(responses.get(0).getErrors().isEmpty());
-        Set<String> expectedErrors = Sets.newHashSet(
+        assertNotEquals(PCE_RESPONSE_COMPUTE_OK, responses.get(0).getPceResponse());
+        assertFalse(responses.get(0).getValidationMessages().isEmpty());
+        Set<String> expectedMessages = Sets.newHashSet(
                 "The switch 00:00:00:00:00:00:00:01 doesn't support the encapsulation type VXLAN.",
                 "The switch 00:00:00:00:00:00:00:03 doesn't support the encapsulation type VXLAN.");
-        Set<String> actualErrors = Sets.newHashSet(responses.get(0).getErrors());
-        assertEquals(expectedErrors, actualErrors);
+        Set<String> actualMessages = Sets.newHashSet(responses.get(0).getValidationMessages());
+        assertEquals(expectedMessages, actualMessages);
     }
 
     @Test
@@ -382,15 +392,16 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
         assertFalse(responses.isEmpty());
         assertFalse(responses.get(0).getIsValid());
-        assertFalse(responses.get(0).getErrors().isEmpty());
-        Set<String> expectedErrors = Sets.newHashSet(
+        assertNotEquals(PCE_RESPONSE_COMPUTE_OK, responses.get(0).getPceResponse());
+        assertFalse(responses.get(0).getValidationMessages().isEmpty());
+        Set<String> expectedMessages = Sets.newHashSet(
                 "The switch 00:00:00:00:00:00:00:04 doesn't support the encapsulation type TRANSIT_VLAN.",
                 "There is no ISL between end points: switch 00:00:00:00:00:00:00:01 port 6 and switch "
                         + "00:00:00:00:00:00:00:04 port 6.",
                 "There is no ISL between end points: switch 00:00:00:00:00:00:00:04 port 6 and switch "
                         + "00:00:00:00:00:00:00:01 port 6.");
-        Set<String> actualErrors = Sets.newHashSet(responses.get(0).getErrors());
-        assertEquals(expectedErrors, actualErrors);
+        Set<String> actualMessages = Sets.newHashSet(responses.get(0).getValidationMessages());
+        assertEquals(expectedMessages, actualMessages);
     }
 
     @Test
@@ -408,16 +419,16 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
         assertFalse(responses.isEmpty());
         assertFalse(responses.get(0).getIsValid());
-        assertFalse(responses.get(0).getErrors().isEmpty());
-        Set<String> expectedErrorMessages = Sets.newHashSet(
+        assertNotEquals(PCE_RESPONSE_COMPUTE_OK, responses.get(0).getPceResponse());
+        assertFalse(responses.get(0).getValidationMessages().isEmpty());
+        Set<String> expectedMessages = Sets.newHashSet(
                 "There is no ISL between end points: switch 00:00:00:00:00:00:00:02 port 0 and switch"
                         + " 00:00:00:00:00:00:00:01 port 1.",
                 "There is no ISL between end points: switch 00:00:00:00:00:00:00:01 port 1 and switch"
                         + " 00:00:00:00:00:00:00:02 port 0.");
 
-        Set<String> actualErrorMessages = Sets.newHashSet(responses.get(0).getErrors());
-        assertEquals(expectedErrorMessages, actualErrorMessages);
-
+        Set<String> actualMessages = Sets.newHashSet(responses.get(0).getValidationMessages());
+        assertEquals(expectedMessages, actualMessages);
     }
 
     @Test
@@ -436,16 +447,17 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
         assertFalse(responses.isEmpty());
         assertFalse(responses.get(0).getIsValid());
-        assertFalse(responses.get(0).getErrors().isEmpty());
-        Set<String> expectedErrorMessages = Sets.newHashSet(
+        assertNotEquals(PCE_RESPONSE_COMPUTE_OK, responses.get(0).getPceResponse());
+        assertFalse(responses.get(0).getValidationMessages().isEmpty());
+        Set<String> expectedMessages = Sets.newHashSet(
                 "There is no ISL between end points: switch 00:00:00:00:00:00:00:02 port 0 and switch"
                         + " 00:00:00:00:00:00:00:01 port 1.",
                 "There is no ISL between end points: switch 00:00:00:00:00:00:00:01 port 1 and switch"
                         + " 00:00:00:00:00:00:00:02 port 0.",
                 "Path latency cannot be calculated because there is no link at least at one path segment.");
 
-        Set<String> actualErrorMessages = Sets.newHashSet(responses.get(0).getErrors());
-        assertEquals(expectedErrorMessages, actualErrorMessages);
+        Set<String> actualMessages = Sets.newHashSet(responses.get(0).getValidationMessages());
+        assertEquals(expectedMessages, actualMessages);
     }
 
     @Test
@@ -469,19 +481,20 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         List<PathValidationResult> responses = pathsService.validatePath(request);
         assertFalse(responses.isEmpty());
         assertFalse(responses.get(0).getIsValid());
-        Set<String> expectedErrorMessages = Sets.newHashSet(
+        assertNotEquals(PCE_RESPONSE_COMPUTE_OK, responses.get(0).getPceResponse());
+        Set<String> expectedMessages = Sets.newHashSet(
                 "There is no ISL between end points: switch 00:00:00:00:00:00:00:03 port 7 and switch"
                         + " 00:00:00:00:00:00:00:00 port 7.",
                 "There is no ISL between end points: switch 00:00:00:00:00:00:00:00 port 7 and switch"
                         + " 00:00:00:00:00:00:00:03 port 7.",
                 "The following segment intersects with the flow flow_1: source switch 00:00:00:00:00:00:00:01"
                         + " port 6 and destination switch 00:00:00:00:00:00:00:03 port 6.");
-        Set<String> actualErrorMessages = Sets.newHashSet(responses.get(0).getErrors());
-        assertEquals(expectedErrorMessages, actualErrorMessages);
+        Set<String> actualMessages = Sets.newHashSet(responses.get(0).getValidationMessages());
+        assertEquals(expectedMessages, actualMessages);
     }
 
     @Test
-    public void whenDiverseWith_andExistsIntersection_validatePathReturnsError() {
+    public void whenDiverseWith_andExistsIntersection_validatePathReturnsMessageAndValidResponse() {
         createFlow("flow_1", switch1, 6, switch3, 6);
 
         assertTrue(flowRepository.findById("flow_1").isPresent());
@@ -500,15 +513,16 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .build());
         List<PathValidationResult> responses = pathsService.validatePath(request);
         assertFalse(responses.isEmpty());
-        assertFalse(responses.get(0).getIsValid());
-        assertEquals(1, responses.get(0).getErrors().size());
-        assertEquals(responses.get(0).getErrors().get(0),
+        assertTrue(responses.get(0).getIsValid());
+        assertEquals(PCE_RESPONSE_COMPUTE_OK, responses.get(0).getPceResponse());
+        assertEquals(1, responses.get(0).getValidationMessages().size());
+        assertEquals(responses.get(0).getValidationMessages().get(0),
                 "The following segment intersects with the flow flow_1: source switch 00:00:00:00:00:00:00:01"
                         + " port 6 and destination switch 00:00:00:00:00:00:00:03 port 6.");
     }
 
     @Test
-    void whenDiverseWith_andIntersectionWithGroup_validatePathReturnsAllIntersections() {
+    void whenDiverseWith_andIntersectionWithGroup_validatePathReturnsAllIntersectionsAndValidResponse() {
         String diverseFlow1 = "diverse_1";
         String diverseFlow2 = "diverse_2";
 
@@ -533,14 +547,16 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .build());
         List<PathValidationResult> responses = pathsService.validatePath(request);
         assertFalse(responses.isEmpty());
-        assertFalse(responses.get(0).getIsValid());
-        assertEquals(2, responses.get(0).getErrors().size());
-        assertEquals(responses.get(0).getErrors().get(0),
+        assertTrue(responses.get(0).getIsValid());
+        assertEquals(PCE_RESPONSE_COMPUTE_OK, responses.get(0).getPceResponse());
+
+        Set<String> expectedMessages = Sets.newHashSet(
                 "The following segment intersects with the flow diverse_2: source switch 00:00:00:00:00:00:00:01"
-                        + " port 6 and destination switch 00:00:00:00:00:00:00:03 port 6.");
-        assertEquals(responses.get(0).getErrors().get(1),
+                        + " port 6 and destination switch 00:00:00:00:00:00:00:03 port 6.",
                 "The following segment intersects with the flow diverse_1: source switch 00:00:00:00:00:00:00:03"
-                        + " port 7 and destination switch 00:00:00:00:00:00:00:02 port 7.");
+                        + " port 7 and destination switch 00:00:00:00:00:00:00:02 port 7."
+        );
+        assertEquals(expectedMessages, Sets.newHashSet(responses.get(0).getValidationMessages()));
     }
 
     @Test
@@ -560,12 +576,13 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
         assertFalse(responses.isEmpty());
         assertFalse(responses.get(0).getIsValid());
-        assertFalse(responses.get(0).getErrors().isEmpty());
+        assertNotEquals(PCE_RESPONSE_COMPUTE_OK, responses.get(0).getPceResponse());
+        assertFalse(responses.get(0).getValidationMessages().isEmpty());
 
-        assertEquals(7, responses.get(0).getErrors().size(),
+        assertEquals(7, responses.get(0).getValidationMessages().size(),
                 "There must be 7 errors in total: 2 not enough bandwidth (forward and reverse paths), "
                         + "2 link is not present, 2 latency, and 1 switch is not found");
-        Set<String> expectedErrorMessages = Sets.newHashSet(
+        Set<String> expectedMessages = Sets.newHashSet(
                 "The following switch has not been found: 00:00:00:00:00:00:00:ff.",
                 "The following switch properties have not been found: 00:00:00:00:00:00:00:ff.",
                 "There is not enough bandwidth between end points: switch 00:00:00:00:00:00:00:03"
@@ -579,11 +596,11 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 "There is no ISL between end points: switch 00:00:00:00:00:00:00:ff port 7 and"
                         + " switch 00:00:00:00:00:00:00:03 port 7.",
                 "Path latency cannot be calculated because there is no link at least at one path segment.");
-        assertEquals(expectedErrorMessages, Sets.newHashSet(responses.get(0).getErrors()));
+        assertEquals(expectedMessages, Sets.newHashSet(responses.get(0).getValidationMessages()));
     }
 
     @Test
-    public void whenValidPathAndDiverseFlowDoesNotExist_validatePathReturnsErrorResponseTest() {
+    public void whenValidPathAndDiverseFlowDoesNotExist_validatePathReturnsMessagesAndValidResponseTest() {
         List<PathNodePayload> nodes = new LinkedList<>();
         nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
         nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
@@ -599,10 +616,11 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         List<PathValidationResult> responses = pathsService.validatePath(request);
 
         assertFalse(responses.isEmpty());
-        assertFalse(responses.get(0).getIsValid());
-        assertFalse(responses.get(0).getErrors().isEmpty());
+        assertTrue(responses.get(0).getIsValid());
+        assertEquals(PCE_RESPONSE_COMPUTE_OK, responses.get(0).getPceResponse());
+        assertFalse(responses.get(0).getValidationMessages().isEmpty());
         assertEquals("Could not find the diverse flow with ID non_existing_flow_id.",
-                responses.get(0).getErrors().get(0));
+                responses.get(0).getValidationMessages().get(0));
     }
 
     @Test
@@ -682,14 +700,15 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         assertFalse(responsesAfter.isEmpty());
         assertFalse(responsesAfter.get(0).getIsValid(),
                 "The path must not be valid because the flow %s consumes bandwidth");
-        assertFalse(responsesAfter.get(0).getErrors().isEmpty());
-        assertEquals(2, responsesAfter.get(0).getErrors().size(),
+        assertNotEquals(PCE_RESPONSE_COMPUTE_OK, responsesAfter.get(0).getPceResponse());
+        assertFalse(responsesAfter.get(0).getValidationMessages().isEmpty());
+        assertEquals(2, responsesAfter.get(0).getValidationMessages().size(),
                 "There must be 2 errors in total: not enough bandwidth on forward and reverse paths");
-        assertEquals(responsesAfter.get(0).getErrors().get(0),
+        assertEquals(responsesAfter.get(0).getValidationMessages().get(0),
                 "There is not enough bandwidth between end points: switch 00:00:00:00:00:00:00:02 port 7 and"
                         + " switch 00:00:00:00:00:00:00:03 port 7 (reverse path). Requested bandwidth 1000, but the"
                         + " link supports 100.");
-        assertEquals(responsesAfter.get(0).getErrors().get(1),
+        assertEquals(responsesAfter.get(0).getValidationMessages().get(1),
                 "There is not enough bandwidth between end points: switch 00:00:00:00:00:00:00:03 port 7 and"
                         + " switch 00:00:00:00:00:00:00:02 port 7 (forward path). Requested bandwidth 1000, but the"
                         + " link supports 100.");
