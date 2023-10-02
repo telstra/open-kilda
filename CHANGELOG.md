@@ -1,6 +1,39 @@
 # Changelog
 
-## v1.142.0 (07/09/2023)
+## v1.143.0 (28/09/2023)
+
+### Features:
+-  [#5355](https://github.com/telstra/open-kilda/pull/5355) Update Flow graph in GUI for VictoriaMetrics #5295 (Issues: [#5295](https://github.com/telstra/open-kilda/issues/5295) [#5295](https://github.com/telstra/open-kilda/issues/5295))
+-  [#5361](https://github.com/telstra/open-kilda/pull/5361) Introduce getting actual paths from PCE when executing path check API.
+
+### Bug Fixes:
+-  [#5403](https://github.com/telstra/open-kilda/pull/5403) Fixed a typo in FlowHS template
+-  [#5364](https://github.com/telstra/open-kilda/pull/5364) Fix PathValidator to consider all flows in a diverse group (Issue: [#5351](https://github.com/telstra/open-kilda/issues/5351))
+
+### Improvements:
+-  [#5377](https://github.com/telstra/open-kilda/pull/5377) 5317 [TEST]: HA-Flow: History: Retrieving data by timestamp in milliseconds [**tests**]
+-  [#5322](https://github.com/telstra/open-kilda/pull/5322) Test/ha flow history - basic tests for ha flow history [**api**][**tests**]
+-  [#5388](https://github.com/telstra/open-kilda/pull/5388) [TEST]: Path check: Diverse: Check all flows from group [**tests**]
+-  [#5389](https://github.com/telstra/open-kilda/pull/5389) Added more options for topologies parallelism
+-  [#5392](https://github.com/telstra/open-kilda/pull/5392) #5390: [TEST] Stabilize flaky Switch sync test (Issues: [#5390](https://github.com/telstra/open-kilda/issues/5390) [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5394](https://github.com/telstra/open-kilda/pull/5394) [TEST]:Path check: Fix low-priority test [**tests**]
+-  [#5396](https://github.com/telstra/open-kilda/pull/5396) [TEST] Fix failing RC-1.143 tests [**tests**]
+-  [#5338](https://github.com/telstra/open-kilda/pull/5338) Allow to use epoch time in seconds or millisecond in history API. (Issue: [#5317](https://github.com/telstra/open-kilda/issues/5317)) [**api**]
+-  [#5358](https://github.com/telstra/open-kilda/pull/5358) #5250: [TEST] Ha-Flow latency stats (Issues: [#5250](https://github.com/telstra/open-kilda/issues/5250) [#5250](https://github.com/telstra/open-kilda/issues/5250)) [**tests**]
+-  [#5359](https://github.com/telstra/open-kilda/pull/5359) 5357: [TEST]: Add cleanup to make tests Tidy [**tests**]
+-  [#3440](https://github.com/telstra/open-kilda/pull/3440) Add first part of design for LACP support (Issue: [#3439](https://github.com/telstra/open-kilda/issues/3439)) [**docs**]
+-  [#5369](https://github.com/telstra/open-kilda/pull/5369) [TEST] Ha-Flow: History: Expanding suite [**tests**]
+-  [#5372](https://github.com/telstra/open-kilda/pull/5372) #5361: [TEST] PCE response in path check API (Issues: [#5361](https://github.com/telstra/open-kilda/issues/5361) [#5361](https://github.com/telstra/open-kilda/issues/5361)) [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.142.0...v1.143.0).
+
+### Affected Components:
+history
+
+---
+
+## v1.142.0 (19/09/2023)
 
 ### Features:
 -  [#5250](https://github.com/telstra/open-kilda/pull/5250) Add HA-Flows support to Flow Stats (Issue: [#5223](https://github.com/telstra/open-kilda/issues/5223))

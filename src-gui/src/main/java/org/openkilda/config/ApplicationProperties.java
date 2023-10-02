@@ -13,10 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.utility;
+package org.openkilda.config;
 
 import lombok.Getter;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +25,6 @@ import org.springframework.stereotype.Component;
  * .io/spring-boot/docs/current/reference/html/boot-features-external -config.html
  *
  * @author Gaurav Chugh
- *
  */
 @Component
 @Getter
@@ -38,8 +36,11 @@ public class ApplicationProperties {
     @Value("${opentsdb.base.url}")
     private String openTsdbBaseUrl;
 
+    @Value("${victoria.base.url}")
+    private String victoriaBaseUrl;
+
     @Value("${opentsdb.metric.prefix}")
-    private String openTsdbMetricPrefix;
+    private String metricPrefix;
 
     @Value("${kilda.username}")
     private String kildaUsername;
@@ -49,5 +50,4 @@ public class ApplicationProperties {
 
     @Value("${switch.data.file.path}")
     private String switchDataFilePath;
-    
 }

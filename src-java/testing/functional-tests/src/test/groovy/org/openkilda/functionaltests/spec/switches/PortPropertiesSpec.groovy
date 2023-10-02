@@ -18,7 +18,10 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.model.SwitchFeature
+import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse
+
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
@@ -116,6 +119,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         new PortNotFoundExpectedError(sw.dpId, nonExistentPort, ~/Port not found exception/).matches(exc)    }
 
+    @Tidy
     def "System doesn't discover link when port discovery property is disabled"() {
         given: "A deleted link"
         def sw = topology.activeSwitches.first()
@@ -125,7 +129,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
                 .any { it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
 
         // Bring port down on the src switch
-        antiflap.portDown(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
+        def portDown = antiflap.portDown(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
         TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getLink(islToManipulate).actualState == IslChangeType.FAILED
@@ -137,13 +141,11 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         !islUtils.getIslInfo(islToManipulate.reversed)
 
         when: "Disable port discovery property on the src and dst switches"
-        northboundV2.updatePortProperties(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort,
-                new PortPropertiesDto(discoveryEnabled: false))
-        northboundV2.updatePortProperties(islToManipulate.dstSwitch.dpId, islToManipulate.dstPort,
-                new PortPropertiesDto(discoveryEnabled: false))
+        def srcPortDiscoveryOff = disableDiscoveryOnPort(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
+        def dstPortDiscoveryOff = disableDiscoveryOnPort(islToManipulate.dstSwitch.dpId, islToManipulate.dstPort)
 
         and: "Bring port up on the src switch"
-        antiflap.portUp(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
+        def portUp = antiflap.portUp(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
 
         then: "Link is not detected"
         Wrappers.timedLoop(discoveryInterval + WAIT_OFFSET / 2) {
@@ -152,13 +154,16 @@ class PortPropertiesSpec extends HealthCheckSpecification {
 
         when: "Deactivate/activate src switch"
         def blockData = lockKeeper.knockoutSwitch(sw, RW)
+        def switchStatus
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
+            switchStatus = northbound.getSwitch(sw.dpId).state
+            assert switchStatus == SwitchChangeType.DEACTIVATED
         }
 
         lockKeeper.reviveSwitch(sw, blockData)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getSwitch(sw.dpId).state == SwitchChangeType.ACTIVATED
+            switchStatus = northbound.getSwitch(sw.dpId).state
+            assert switchStatus == SwitchChangeType.ACTIVATED
             def links = northbound.getAllLinks()
             (relatedIsls - islToManipulate).forEach {
                 assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED
@@ -171,8 +176,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         }
 
         when: "Enable port discovery property on the src switch"
-        northboundV2.updatePortProperties(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort,
-                new PortPropertiesDto(discoveryEnabled: true))
+        def srcPortDiscoveryOn = enableDiscoveryOnPort(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
 
         then: "Link is detected and status of one-way ISL is FAILED"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -186,14 +190,18 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         }
 
         when: "Enable port discovery property on the dst switch"
-        northboundV2.updatePortProperties(islToManipulate.dstSwitch.dpId, islToManipulate.dstPort,
-                new PortPropertiesDto(discoveryEnabled: true))
+        def dstPortDiscoveryOn = enableDiscoveryOnPort(islToManipulate.dstSwitch.dpId, islToManipulate.dstPort)
 
         then: "Link status is changed to DISCOVERED"
         Wrappers.wait(WAIT_OFFSET) {
             assert islUtils.getIslInfo(islToManipulate).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(islToManipulate.reversed).get().state == IslChangeType.DISCOVERED
         }
+        cleanup:
+        portDown && !portUp && antiflap.portUp(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
+        srcPortDiscoveryOff && !srcPortDiscoveryOn && enableDiscoveryOnPort(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
+        dstPortDiscoveryOff && !dstPortDiscoveryOn && enableDiscoveryOnPort(islToManipulate.dstSwitch.dpId, islToManipulate.dstPort)
+        switchStatus && switchStatus == SwitchChangeType.DEACTIVATED && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
     @Tidy
@@ -237,5 +245,13 @@ class PortPropertiesSpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(islToManipulate).get().state == IslChangeType.DISCOVERED
             }
         }
+    }
+
+    private PortPropertiesResponse enableDiscoveryOnPort(SwitchId switchId, Integer port) {
+        northboundV2.updatePortProperties(switchId, port, new PortPropertiesDto(discoveryEnabled: true))
+    }
+
+    private PortPropertiesResponse disableDiscoveryOnPort(SwitchId switchId, Integer port) {
+        northboundV2.updatePortProperties(switchId, port, new PortPropertiesDto(discoveryEnabled: false))
     }
 }

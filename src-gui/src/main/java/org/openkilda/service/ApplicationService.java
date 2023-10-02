@@ -17,7 +17,7 @@ package org.openkilda.service;
 
 import static java.util.Base64.getEncoder;
 
-import org.openkilda.utility.ApplicationProperties;
+import org.openkilda.config.ApplicationProperties;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

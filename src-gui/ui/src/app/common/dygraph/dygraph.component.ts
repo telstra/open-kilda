@@ -1,10 +1,8 @@
 import { Component, Output, OnInit, EventEmitter, Input, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { IslDataService } from '../services/isl-data.service';
 import { DygraphService } from '../services/dygraph.service';
-import * as _moment from 'moment';
-declare var moment: any;
-declare var Dygraph: any;
-
+import {FlowMetricTsdb} from '../data-models/flowMetricTsdb';
+import {VictoriaStatsRes} from '../data-models/flowMetricVictoria';
 @Component({
   selector: 'app-dygraph',
   templateUrl: './dygraph.component.html',
@@ -14,13 +12,8 @@ export class DygraphComponent implements OnInit, OnDestroy {
 
 
    @Output() zoomChange = new EventEmitter();
-  // @Input() dataObj: any;
-  // @Input() graphAPIFlag: boolean = false;
-  dataObj: any;
-  graphAPIFlag = false;
   message: {};
   data = [];
-  highestYaXis = null;
   labels: any;
   options: any = Object.assign({}, {
     width: 'auto',
@@ -33,14 +26,10 @@ export class DygraphComponent implements OnInit, OnDestroy {
   startDate: any;
   endDate: any;
   timezone: any;
-  frequency: any;
-  numOperator: number;
   count = 0;
   objectCount = 0;
   optionsObject = {};
   graphDataOptions: any;
-  dateMessage: string;
-
   constructor(
     private islDataService: IslDataService,
     private dygraphService: DygraphService,
@@ -48,111 +37,6 @@ export class DygraphComponent implements OnInit, OnDestroy {
   ) {
 
   }
-
-  constructGraphData(data, jsonResponse, startDate, endDate, timezone) {
-    this.numOperator = 0;
-    let metric1 = '';
-    let metric2 = '';
-    const direction1 = '';
-    const direction2 = '';
-    let labels = ['Time', 'X', 'Y'];
-    const graphData = [];
-    if (typeof startDate !== 'undefined' && startDate != null) {
-      const dat = new Date(startDate);
-      let startTime = dat.getTime();
-      const usedDate = new Date();
-
-       if (typeof timezone !== 'undefined' && timezone == 'UTC') {
-        startTime = startTime - usedDate.getTimezoneOffset() * 60 * 1000;
-      }
-
-      const arr = [new Date(startTime), null, null];
-      graphData.push(arr);
-    }
-
-    if (!jsonResponse) {
-      const getValue = typeof data[0] !== 'undefined' ? data[0].dps : {};
-      let fDps = [];
-      let rDps = [];
-      let getVal;
-      metric1 = typeof data[0] !== 'undefined' ? data[0].metric : '';
-      if (data.length == 2) {
-        getVal = typeof data[1] !== 'undefined' ? data[1].dps : {};
-        rDps = Object.keys(getVal);
-        metric2 = data[1].metric;
-
-        if (data[1].tags.direction) {
-          metric2 = data[1].metric + '(' + data[1].tags.direction + ')';
-        }
-        if (data[0].tags.direction) {
-          metric1 = data[0].metric + '(' + data[0].tags.direction + ')';
-        }
-      }
-
-      fDps = Object.keys(getValue);
-      let graphDps = fDps.concat(rDps);
-      graphDps.sort();
-      graphDps = graphDps.filter((v, i, a) => a.indexOf(v) === i);
-
-      if (graphDps.length <= 0 ) {
-        metric1 = 'F';
-        metric2 = 'R';
-      } else {
-
-        for (let index = 0; index < graphDps.length; index++) {
-          const i = graphDps[index];
-          this.numOperator = parseInt(i);
-          if (getValue[i] == null || typeof getValue[i] == 'undefined') {
-            getValue[i] = null;
-          } else if (getValue[i] < 0) {
-            getValue[i] = 0;
-          }
-
-          const temparr = [];
-          temparr[0] = new Date(Number(this.numOperator * 1000));
-          temparr[1] = getValue[i];
-          if (data.length == 2) {
-            if (getVal[i] == null || typeof getVal[i] == 'undefined') {
-              getVal[i] = null;
-            } else if (getVal[i] < 0) {
-              getVal[i] = 0;
-            }
-            temparr[2] = getVal[i];
-          }
-          graphData.push(temparr);
-          this.numOperator++;
-        }
-      }
-      if (metric1 && metric2) {
-        labels = ['Time', metric1, metric2];
-      } else if (metric1) {
-        labels = ['Time', metric1];
-      } else {
-        labels = ['Time', metric2];
-      }
-    } else {
-      metric1 = 'F';
-      metric2 = 'R';
-      labels = ['Time', metric1, metric2];
-    }
-    if (typeof endDate !== 'undefined' && endDate != null) {
-      const dat = new Date(endDate);
-      let lastTime = dat.getTime();
-      const usedDate =
-        graphData && graphData.length
-          ? new Date(graphData[graphData.length - 1][0])
-          : new Date();
-      if (typeof timezone !== 'undefined' && timezone == 'UTC') {
-        lastTime = lastTime - usedDate.getTimezoneOffset() * 60 * 1000;
-      }
-      const arr = [new Date(lastTime), null, null];
-      graphData.push(arr);
-      // graphData.shift();
-    }
-
-    return { data: graphData, labels: labels };
-  }
-
   ngOnInit() {
 
     this.islDataService.currentMessage.subscribe(message => {
@@ -381,13 +265,24 @@ export class DygraphComponent implements OnInit, OnDestroy {
   /** Start : Flow Graphs */
 
 
-  plotMeterGraph(data, startDate, endDate, timezone) {
-    const graph_data = this.dygraphService.computeMeterGraphData(
-      data,
-      startDate,
-      endDate,
-      timezone,
-    );
+  plotMeterGraph(data: VictoriaStatsRes | FlowMetricTsdb[], startDate, endDate, timezone) {
+    let graph_data;
+    if (this.isVictoriaStatsRes(data)) {
+      graph_data = this.dygraphService.constructVictoriaMeterGraphData(
+          data.dataList,
+          startDate,
+          endDate,
+          timezone
+      );
+    } else {
+      graph_data = this.dygraphService.constructMeterGraphData(
+          data,
+          startDate,
+          endDate,
+          timezone,
+      );
+    }
+
     const graphData = graph_data['data'];
     const labels = graph_data['labels'];
     const series = {};
@@ -399,7 +294,6 @@ export class DygraphComponent implements OnInit, OnDestroy {
         }
       }
     }
-
 
     this.data = graphData;
 
@@ -426,14 +320,24 @@ export class DygraphComponent implements OnInit, OnDestroy {
         });
     }
   }
-  plotFlowGraph(data, startDate, endDate, timezone) {
-    const graphData = this.dygraphService.constructGraphData(
-      data,
-      undefined,
-      startDate,
-      endDate,
-      timezone
-    );
+  plotFlowGraph(data: VictoriaStatsRes | FlowMetricTsdb[], startDate: string, endDate: string, timezone: string) {
+    let graphData;
+    if (this.isVictoriaStatsRes(data)) {
+      graphData = this.dygraphService.constructVictoriaGraphData(
+          data.dataList,
+          startDate,
+          endDate,
+          timezone
+      );
+    } else {
+      graphData = this.dygraphService.constructGraphData(
+          data,
+          undefined,
+          startDate,
+          endDate,
+          timezone
+      );
+    }
     try {
     this.data = graphData['data'];
     this.labels = graphData['labels'];
@@ -461,6 +365,10 @@ export class DygraphComponent implements OnInit, OnDestroy {
       });
     }
     } catch (err) {}
+  }
+
+  private isVictoriaStatsRes(data: any): data is VictoriaStatsRes {
+    return data && data.dataList !== undefined && data.status !== undefined;
   }
   /** End : Flow Graph Path */
 

@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.nbworker.validators;
 
+import static java.lang.String.format;
+
 import org.openkilda.messaging.info.network.PathValidationResult;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowEncapsulationType;
@@ -23,17 +25,25 @@ import org.openkilda.model.Isl;
 import org.openkilda.model.IslStatus;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.PathComputationStrategy;
+import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.PathValidationData;
 import org.openkilda.model.PathValidationData.PathSegmentValidationData;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
+import org.openkilda.pce.AvailableNetworkFactory;
+import org.openkilda.pce.GetPathsResult;
+import org.openkilda.pce.Path;
+import org.openkilda.pce.PathComputer;
+import org.openkilda.pce.finder.FailReason;
+import org.openkilda.pce.finder.FailReasonType;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslEndpoints;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.wfm.share.mappers.PathValidationDataMapper;
 
 import com.google.common.collect.Sets;
 import lombok.AccessLevel;
@@ -44,6 +54,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.storm.shade.com.google.common.collect.Maps;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -66,16 +77,21 @@ public class PathValidator {
     private final KildaConfiguration kildaConfiguration;
     private Map<IslEndpoints, Optional<Isl>> islCache;
     private Map<SwitchId, Optional<Switch>> switchCache;
+    private PathComputationValidator pathComputationValidator;
 
     public PathValidator(IslRepository islRepository,
                          FlowRepository flowRepository,
                          SwitchPropertiesRepository switchPropertiesRepository,
-                         SwitchRepository switchRepository, KildaConfiguration kildaConfiguration) {
+                         SwitchRepository switchRepository,
+                         KildaConfiguration kildaConfiguration,
+                         AvailableNetworkFactory availableNetworkFactory,
+                         PathComputer pathComputer) {
         this.islRepository = islRepository;
         this.flowRepository = flowRepository;
         this.switchPropertiesRepository = switchPropertiesRepository;
         this.switchRepository = switchRepository;
         this.kildaConfiguration = kildaConfiguration;
+        this.pathComputationValidator = new PathComputationValidator(availableNetworkFactory, pathComputer);
     }
 
     /**
@@ -83,25 +99,74 @@ public class PathValidator {
      * validator returns all errors found on each segment. For example, when there is a path 1-2-3-4 and there is
      * no link between 1 and 2, no sufficient latency between 2 and 3, and not enough bandwidth between 3-4, then
      * this validator returns all 3 errors.
-     *
+     * <p>A parameter pce_response contains the result of attempting to calculate the given path using the actual
+     * PCE methods, but without resource allocation.</p>
      * @param pathValidationData path parameters to validate.
      * @return a response object containing the validation result and errors if any
      */
     public PathValidationResult validatePath(PathValidationData pathValidationData) {
-        Set<String> result = pathValidationData.getPathSegments().stream()
+        PathValidationData data = setDefaultsIfDataNotPresent(pathValidationData);
+
+        Set<String> validationsResult = data.getPathSegments().stream()
                 .map(segment -> executeValidations(
-                        InputData.of(pathValidationData, segment),
-                        getPerSegmentValidations(pathValidationData)))
+                        InputData.of(data, segment),
+                        getPerSegmentValidations(data)))
                 .flatMap(Set::stream)
                 .collect(Collectors.toSet());
 
-        result.addAll(executeValidations(InputData.of(pathValidationData),
-                getPerPathValidations(pathValidationData)));
+        validationsResult.addAll(executeValidations(InputData.of(data),
+                getPerPathValidations(data)));
+
+        GetPathsResult pceResult = validatePathComputation(data);
+        String pceResponse = pceResult.isSuccess() ? "The path has been computed successfully" :
+                format("The path has not been computed successfully due to the following reasons: %s",
+                        pceResult.getFailReasons().values());
 
         return PathValidationResult.builder()
-                .isValid(result.isEmpty())
-                .errors(new LinkedList<>(result))
+                .isValid(validationsResult.isEmpty() && pceResult.isSuccess())
+                .errors(new LinkedList<>(validationsResult))
+                .pceResponse(pceResponse)
                 .build();
+    }
+
+    private PathValidationData setDefaultsIfDataNotPresent(PathValidationData pathValidationData) {
+        FlowEncapsulationType flowEncapsulationType = getOrDefaultFlowEncapsulationType(pathValidationData);
+        PathComputationStrategy pathComputationStrategy = getOrDefaultPathComputationStrategy(pathValidationData);
+
+        return new PathValidationData(pathValidationData, flowEncapsulationType, pathComputationStrategy);
+    }
+
+    private GetPathsResult validatePathComputation(PathValidationData pathValidationData) {
+        try {
+            return pathComputationValidator.validatePath(
+                    PathValidationDataMapper.INSTANCE.toFlow(pathValidationData,
+                            getDiversityGroupId(pathValidationData.getDiverseWithFlow())),
+                    Path.builder()
+                            .srcSwitchId(pathValidationData.getSrcSwitchId())
+                            .destSwitchId(pathValidationData.getDestSwitchId())
+                            .segments(PathValidationDataMapper.INSTANCE.extractSegments(pathValidationData))
+                            .build(),
+                    getReusableResources(pathValidationData.getReuseFlowResources()));
+        } catch (RuntimeException e) {
+            return GetPathsResult.builder().failReason(FailReasonType.RUNTIME_EXCEPTION,
+                    new FailReason(FailReasonType.RUNTIME_EXCEPTION,
+                        format("An exception occurred when trying to execute path computation validation: %s: %s",
+                        e.getClass().getSimpleName(), e.getMessage()))).build();
+        }
+    }
+
+    private Collection<PathId> getReusableResources(String flowId) {
+        if (flowId == null) {
+            return Collections.emptyList();
+        }
+
+        return flowRepository.findById(flowId)
+                .map(value -> value.getPaths().stream().map(FlowPath::getPathId).collect(Collectors.toList()))
+                .orElse(Collections.emptyList());
+    }
+
+    private String getDiversityGroupId(String flowId) {
+        return flowRepository.findById(flowId).map(Flow::getDiverseGroupId).orElse("");
     }
 
     private Optional<Isl> findIslByEndpoints(SwitchId srcSwitchId, int srcPort, SwitchId destSwitchId, int destPort) {
@@ -372,21 +437,28 @@ public class PathValidator {
             return Collections.singleton(getNoForwardIslError(inputData));
         }
 
-        Optional<Flow> diverseFlow = flowRepository.findById(inputData.getPath().getDiverseWithFlow());
-        if (!diverseFlow.isPresent()) {
+        Collection<Flow> diverseFlow = flowRepository.findByDiverseGroupId(
+                getDiversityGroupId(inputData.getPath().getDiverseWithFlow()));
+
+        if (diverseFlow.isEmpty()) {
             return Collections.singleton(getNoDiverseFlowFoundError(inputData));
         }
 
-        if (diverseFlow.get().getData().getPaths().stream()
+        return diverseFlow.stream().map(flow -> collectIntersectionWithDiverseFlowErrors(flow, inputData))
+                .flatMap(Collection::stream)
+                .collect(Collectors.toSet());
+    }
+
+    private Set<String> collectIntersectionWithDiverseFlowErrors(Flow flow, InputData inputData) {
+        if (flow.getData().getPaths().stream()
                 .map(FlowPath::getSegments)
                 .flatMap(List::stream)
                 .anyMatch(pathSegment -> inputData.getSegment().getSrcSwitchId().equals(pathSegment.getSrcSwitchId())
                         && inputData.getSegment().getDestSwitchId().equals(pathSegment.getDestSwitchId())
                         && inputData.getSegment().getSrcPort().equals(pathSegment.getSrcPort())
                         && inputData.getSegment().getDestPort().equals(pathSegment.getDestPort()))) {
-            return Collections.singleton(getNotDiverseSegmentError(inputData));
+            return Collections.singleton(getNotDiverseSegmentError(inputData, flow.getFlowId()));
         }
-
         return Collections.emptySet();
     }
 
@@ -455,7 +527,7 @@ public class PathValidator {
 
     private String getForwardLatencyErrorMessage(InputData data, Duration expectedLatency, String latencyType,
                                                  Duration actualLatency) {
-        return String.format(
+        return format(
                 "Requested %s is too low on the path between: switch %s and switch %s. "
                         + "Requested %d ms, but the sum on the path is %d ms.",
                 latencyType,
@@ -465,7 +537,7 @@ public class PathValidator {
 
     private String getReverseLatencyErrorMessage(InputData data, Duration expectedLatency, String latencyType,
                                                  Duration actualLatency) {
-        return String.format(
+        return format(
                 "Requested %s is too low on the path between: switch %s and switch %s. "
                         + "Requested %d ms, but the sum on the path is %d ms.",
                 latencyType,
@@ -474,7 +546,7 @@ public class PathValidator {
     }
 
     private String getForwardBandwidthErrorMessage(InputData data, long actualBandwidth) {
-        return String.format(
+        return format(
                 "There is not enough bandwidth between end points: switch %s port %d and switch %s port %d"
                         + " (forward path). Requested bandwidth %d, but the link supports %d.",
                 data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort(),
@@ -483,7 +555,7 @@ public class PathValidator {
     }
 
     private String getReverseBandwidthErrorMessage(InputData data, long actualBandwidth) {
-        return String.format(
+        return format(
                 "There is not enough bandwidth between end points: switch %s port %d and switch %s port %d"
                         + " (reverse path). Requested bandwidth %d, but the link supports %d.",
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort(),
@@ -496,70 +568,70 @@ public class PathValidator {
     }
 
     private String getNoForwardIslError(InputData data) {
-        return String.format(
+        return format(
                 "There is no ISL between end points: switch %s port %d and switch %s port %d.",
                 data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort(),
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort());
     }
 
     private String getNoReverseIslError(InputData data) {
-        return String.format(
+        return format(
                 "There is no ISL between end points: switch %s port %d and switch %s port %d.",
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort(),
                 data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort());
     }
 
     private String getForwardIslNotActiveError(InputData data) {
-        return String.format(
+        return format(
                 "The ISL is not in ACTIVE state between end points: switch %s port %d and switch %s port %d.",
                 data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort(),
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort());
     }
 
     private String getReverseIslNotActiveError(InputData data) {
-        return String.format(
+        return format(
                 "The ISL is not in ACTIVE state between end points: switch %s port %d and switch %s port %d.",
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort(),
                 data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort());
     }
 
     private String getNoDiverseFlowFoundError(InputData data) {
-        return String.format("Could not find the diverse flow with ID %s.", data.getPath().getDiverseWithFlow());
+        return format("Could not find the diverse flow with ID %s.", data.getPath().getDiverseWithFlow());
     }
 
-    private String getNotDiverseSegmentError(InputData data) {
-        return String.format("The following segment intersects with the flow %s: source switch %s port %d and "
+    private String getNotDiverseSegmentError(InputData data, String flowId) {
+        return format("The following segment intersects with the flow %s: source switch %s port %d and "
                         + "destination switch %s port %d.",
-                data.getPath().getDiverseWithFlow(),
+                flowId,
                 data.getSegment().getSrcSwitchId(), data.getSegment().getSrcPort(),
                 data.getSegment().getDestSwitchId(), data.getSegment().getDestPort());
     }
 
     private String getSrcSwitchNotFoundError(InputData data) {
-        return String.format("The following switch has not been found: %s.", data.getSegment().getSrcSwitchId());
+        return format("The following switch has not been found: %s.", data.getSegment().getSrcSwitchId());
     }
 
     private String getDestSwitchNotFoundError(InputData data) {
-        return String.format("The following switch has not been found: %s.", data.getSegment().getDestSwitchId());
+        return format("The following switch has not been found: %s.", data.getSegment().getDestSwitchId());
     }
 
     private String getSrcSwitchPropertiesNotFoundError(InputData data) {
-        return String.format("The following switch properties have not been found: %s.",
+        return format("The following switch properties have not been found: %s.",
                 data.getSegment().getSrcSwitchId());
     }
 
     private String getDestSwitchPropertiesNotFoundError(InputData data) {
-        return String.format("The following switch properties have not been found: %s.",
+        return format("The following switch properties have not been found: %s.",
                 data.getSegment().getDestSwitchId());
     }
 
     private String getSrcSwitchDoesNotSupportEncapsulationTypeError(InputData data) {
-        return String.format("The switch %s doesn't support the encapsulation type %s.",
+        return format("The switch %s doesn't support the encapsulation type %s.",
                 data.getSegment().getSrcSwitchId(), getOrDefaultFlowEncapsulationType(data));
     }
 
     private String getDestSwitchDoesNotSupportEncapsulationTypeError(InputData data) {
-        return String.format("The switch %s doesn't support the encapsulation type %s.",
+        return format("The switch %s doesn't support the encapsulation type %s.",
                 data.getSegment().getDestSwitchId(), getOrDefaultFlowEncapsulationType(data));
     }
 

@@ -23,6 +23,8 @@ import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
+import java.time.Instant;
+
 @ReadRequest
 @Value
 @Builder
@@ -30,7 +32,7 @@ import lombok.Value;
 @JsonNaming(value = SnakeCaseStrategy.class)
 public class GetFlowStatusTimestampsRequest extends HistoryRequest {
     String flowId;
-    long timestampFrom;
-    long timestampTo;
+    Instant timestampFrom;
+    Instant timestampTo;
     int maxCount;
 }

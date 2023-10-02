@@ -2,6 +2,8 @@ package org.openkilda.functionaltests.helpers.model
 
 import static org.junit.jupiter.api.Assumptions.assumeFalse
 
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+
 /**
  * Class which simplifies search for corresponding switch pair. Just chain existing methods to combine requirements
  * Usage: topologyHelper.getAllSwitchPairs()
@@ -29,9 +31,20 @@ class SwitchPairs {
     SwitchPairs nonNeighbouring() {
         return new SwitchPairs(switchPairs.findAll { it.paths.min { it.size() }?.size() > 2})
     }
+    SwitchPairs neighbouring() {
+        return new SwitchPairs(switchPairs.findAll { it.paths.min { it.size() }?.size() == 2})
+    }
+
+    SwitchPairs excludePairs(List<SwitchPair> excludePairs) {
+        return new SwitchPairs(switchPairs.findAll { !excludePairs.contains(it) })
+    }
 
     SwitchPairs sortedByShortestPathLengthAscending() {
         return new SwitchPairs(switchPairs.sort {it.paths.min { it.size() }?.size() > 2})
+    }
+
+    SwitchPairs sortedBySmallestPathsAmount() {
+        return new SwitchPairs(switchPairs.sort{it.paths.size()})
     }
 
     SwitchPair random() {
@@ -41,5 +54,9 @@ class SwitchPairs {
     SwitchPair first() {
         assumeFalse(switchPairs.isEmpty(), "No suiting switch pair found")
         return switchPairs.first()
+    }
+
+    SwitchPairs includeSwitch(Switch sw) {
+        return new SwitchPairs(switchPairs.findAll { it.src == sw || it.dst == sw})
     }
 }

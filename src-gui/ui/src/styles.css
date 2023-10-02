@@ -691,6 +691,14 @@ div.switch5 > input.switch:focus ~ label:before {
   text-align: right;
 }
 
+.onoffswitch-inner-stats-source::before{
+  content:'Victoria';
+}
+
+.onoffswitch-inner-stats-source::after{
+  content:'TSDB';
+}
+
 .onoffswitch-flow-ping {
   right: 93px; 
 }

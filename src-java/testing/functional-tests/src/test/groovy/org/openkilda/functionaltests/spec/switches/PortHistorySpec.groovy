@@ -201,6 +201,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         switchToDisconnect && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 
+    @Tidy
     def "System shows antiflap statistic in the ANTI_FLAP_DEACTIVATED event when antiflap is deactivated\
  before collecting ANTI_FLAP_PERIODIC_STATS"() {
         assumeTrue(antiflapCooldown + 3 < antiflapDumpingInterval,
@@ -214,6 +215,7 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         when: "Execute port DOWN on the src switch for activating antiflap"
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        def isPortDown = true
         Wrappers.wait(WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
             Long timestampAfterDown = System.currentTimeMillis()
@@ -224,7 +226,9 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         and: "Generate antiflap statistic"
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        isPortDown = false
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        isPortDown = true
 
         then: "Antiflap statistic is available in port history inside the ANTI_FLAP_DEACTIVATED event"
         Wrappers.wait(antiflapCooldown + WAIT_OFFSET) {
@@ -240,8 +244,8 @@ class PortHistorySpec extends HealthCheckSpecification {
             }
         }
 
-        and: "Cleanup: revert system to original state"
-        northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        cleanup: "revert system to original state"
+        isPortDown && northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }

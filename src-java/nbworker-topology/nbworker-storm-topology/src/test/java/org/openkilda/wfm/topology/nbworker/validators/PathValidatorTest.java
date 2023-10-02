@@ -15,8 +15,10 @@
 
 package org.openkilda.wfm.topology.nbworker.validators;
 
+import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
@@ -28,6 +30,7 @@ import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 import org.openkilda.config.provider.PropertiesBasedConfigurationProvider;
 import org.openkilda.messaging.command.flow.PathValidateRequest;
 import org.openkilda.messaging.info.network.PathValidationResult;
+import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.PathNodePayload;
 import org.openkilda.messaging.payload.network.PathValidationPayload;
 import org.openkilda.model.Flow;
@@ -57,6 +60,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -77,6 +81,12 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
     private boolean isSetupDone;
 
+    private final Switch switch0 = Switch.builder().switchId(SWITCH_ID_0).status(SwitchStatus.ACTIVE).build();
+    private final Switch switch1 = Switch.builder().switchId(SWITCH_ID_1).status(SwitchStatus.ACTIVE).build();
+    private final Switch switch2 = Switch.builder().switchId(SWITCH_ID_2).status(SwitchStatus.ACTIVE).build();
+    private final Switch switch3 = Switch.builder().switchId(SWITCH_ID_3).status(SwitchStatus.ACTIVE).build();
+    private final Switch switch4 = Switch.builder().switchId(SWITCH_ID_4).status(SwitchStatus.ACTIVE).build();
+
     @BeforeAll
     public static void setUpOnce() {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
@@ -91,50 +101,55 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         kildaConfiguration.setFlowEncapsulationType(TRANSIT_VLAN);
     }
 
+    /**
+     * Test topology. Ports in parentheses:
+     * <pre>
+     *  1 (6) ---- (6) 3 (7) ----- (7) 2
+     * (12)
+     *  |
+     * (12)
+     *  0              4 (not connected)
+     * </pre>
+     */
     @BeforeEach
     public void createTestTopology() {
         if (!isSetupDone) {
-            Switch switch0 = Switch.builder().switchId(SWITCH_ID_0).status(SwitchStatus.ACTIVE).build();
-            Switch switchA = Switch.builder().switchId(SWITCH_ID_1).status(SwitchStatus.ACTIVE).build();
-            Switch switchB = Switch.builder().switchId(SWITCH_ID_2).status(SwitchStatus.ACTIVE).build();
-            Switch switchC = Switch.builder().switchId(SWITCH_ID_4).status(SwitchStatus.ACTIVE).build();
-            Switch switchTransit = Switch.builder().switchId(SWITCH_ID_3).status(SwitchStatus.ACTIVE).build();
 
             switchRepository.add(switch0);
-            switchRepository.add(switchA);
-            switchRepository.add(switchB);
-            switchRepository.add(switchC);
-            switchRepository.add(switchTransit);
+            switchRepository.add(switch1);
+            switchRepository.add(switch2);
+            switchRepository.add(switch3);
+            switchRepository.add(switch4);
 
             switchPropertiesRepository.add(SwitchProperties.builder()
                     .switchObj(switch0)
                     .supportedTransitEncapsulation(Sets.newHashSet(TRANSIT_VLAN))
                     .build());
             switchPropertiesRepository.add(SwitchProperties.builder()
-                    .switchObj(switchA)
+                    .switchObj(switch1)
                     .supportedTransitEncapsulation(Sets.newHashSet(TRANSIT_VLAN))
                     .build());
             switchPropertiesRepository.add(SwitchProperties.builder()
-                    .switchObj(switchB)
+                    .switchObj(switch2)
                     .supportedTransitEncapsulation(Sets.newHashSet(TRANSIT_VLAN))
                     .build());
             switchPropertiesRepository.add(SwitchProperties.builder()
-                    .switchObj(switchTransit)
+                    .switchObj(switch3)
                     .supportedTransitEncapsulation(Sets.newHashSet(TRANSIT_VLAN))
                     .build());
             switchPropertiesRepository.add(SwitchProperties.builder()
-                    .switchObj(switchC)
+                    .switchObj(switch4)
                     .supportedTransitEncapsulation(Sets.newHashSet(VXLAN))
                     .build());
 
-            createOneWayIsl(switchA, 6, switchTransit, 6, 10, 2_000_000, 10_000, IslStatus.ACTIVE);
-            createOneWayIsl(switchTransit, 6, switchA, 6, 10, 2_000_000, 10_000, IslStatus.ACTIVE);
+            createOneWayIsl(switch1, 6, switch3, 6, 10, 2_000_000, 10_000, IslStatus.ACTIVE);
+            createOneWayIsl(switch3, 6, switch1, 6, 10, 2_000_000, 10_000, IslStatus.ACTIVE);
 
-            createOneWayIsl(switchB, 7, switchTransit, 7, 15, 3_000_000, 20_000, IslStatus.ACTIVE);
-            createOneWayIsl(switchTransit, 7, switchB, 7, 15, 3_000_000, 20_000, IslStatus.ACTIVE);
+            createOneWayIsl(switch2, 7, switch3, 7, 15, 3_000_000, 20_000, IslStatus.ACTIVE);
+            createOneWayIsl(switch3, 7, switch2, 7, 15, 3_000_000, 20_000, IslStatus.ACTIVE);
 
-            createOneWayIsl(switchA, 12, switch0, 12, 10, 2_000_000, 10_000, IslStatus.INACTIVE);
-            createOneWayIsl(switch0, 12, switchA, 12, 10, 2_000_000, 10_000, IslStatus.INACTIVE);
+            createOneWayIsl(switch1, 12, switch0, 12, 10, 2_000_000, 10_000, IslStatus.INACTIVE);
+            createOneWayIsl(switch0, 12, switch1, 12, 10, 2_000_000, 10_000, IslStatus.INACTIVE);
 
             isSetupDone = true;
         }
@@ -201,12 +216,14 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         assertFalse(responses.isEmpty());
         assertFalse(responses.get(0).getIsValid());
         assertEquals(2, responses.get(0).getErrors().size(), "There must be 2 errors: forward and reverse paths");
-        Collections.sort(responses.get(0).getErrors());
-        assertEquals(responses.get(0).getErrors().get(0),
+
+        List<String> errors = new ArrayList<>(responses.get(0).getErrors());
+        Collections.sort(errors);
+        assertEquals(errors.get(0),
                 "There is not enough bandwidth between end points: switch 00:00:00:00:00:00:00:01 port 6 and "
                         + "switch 00:00:00:00:00:00:00:03 port 6 (forward path). Requested bandwidth 1000000000,"
                         + " but the link supports 10000.");
-        assertEquals(responses.get(0).getErrors().get(1),
+        assertEquals(errors.get(1),
                 "There is not enough bandwidth between end points: switch 00:00:00:00:00:00:00:03 port 6 and "
                         + "switch 00:00:00:00:00:00:00:01 port 6 (reverse path). Requested bandwidth 1000000000,"
                         + " but the link supports 10000.");
@@ -433,9 +450,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
     @Test
     public void whenDiverseWith_andNoLinkExists_validatePathReturnsError() {
-        Switch switch1 = Switch.builder().switchId(SWITCH_ID_1).build();
-        Switch switch2 = Switch.builder().switchId(SWITCH_ID_3).build();
-        createFlow("flow_1", switch1, 6, switch2, 6);
+        createFlow("flow_1", switch1, 6, switch3, 6);
 
         assertTrue(flowRepository.findById("flow_1").isPresent());
         assertFalse(flowRepository.findById("flow_1").get().getData().getPaths().isEmpty());
@@ -467,9 +482,7 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
     @Test
     public void whenDiverseWith_andExistsIntersection_validatePathReturnsError() {
-        Switch switch1 = Switch.builder().switchId(SWITCH_ID_1).build();
-        Switch switch2 = Switch.builder().switchId(SWITCH_ID_3).build();
-        createFlow("flow_1", switch1, 6, switch2, 6);
+        createFlow("flow_1", switch1, 6, switch3, 6);
 
         assertTrue(flowRepository.findById("flow_1").isPresent());
         assertFalse(flowRepository.findById("flow_1").get().getData().getPaths().isEmpty());
@@ -492,6 +505,42 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
         assertEquals(responses.get(0).getErrors().get(0),
                 "The following segment intersects with the flow flow_1: source switch 00:00:00:00:00:00:00:01"
                         + " port 6 and destination switch 00:00:00:00:00:00:00:03 port 6.");
+    }
+
+    @Test
+    void whenDiverseWith_andIntersectionWithGroup_validatePathReturnsAllIntersections() {
+        String diverseFlow1 = "diverse_1";
+        String diverseFlow2 = "diverse_2";
+
+        createFlow(diverseFlow1, switch2, 7, switch3, 7);
+        createFlow(diverseFlow2, switch1, 6, switch3, 6);
+
+        assertTrue(flowRepository.findById(diverseFlow1).isPresent());
+        assertFalse(flowRepository.findById(diverseFlow1).get().getData().getPaths().isEmpty());
+        assertTrue(flowRepository.findById(diverseFlow2).isPresent());
+        assertFalse(flowRepository.findById(diverseFlow2).get().getData().getPaths().isEmpty());
+
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
+        nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
+        nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
+        PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .nodes(nodes)
+                .bandwidth(0L)
+                .latencyMs(0L)
+                .latencyTier2ms(0L)
+                .diverseWithFlow(diverseFlow1)
+                .build());
+        List<PathValidationResult> responses = pathsService.validatePath(request);
+        assertFalse(responses.isEmpty());
+        assertFalse(responses.get(0).getIsValid());
+        assertEquals(2, responses.get(0).getErrors().size());
+        assertEquals(responses.get(0).getErrors().get(0),
+                "The following segment intersects with the flow diverse_2: source switch 00:00:00:00:00:00:00:01"
+                        + " port 6 and destination switch 00:00:00:00:00:00:00:03 port 6.");
+        assertEquals(responses.get(0).getErrors().get(1),
+                "The following segment intersects with the flow diverse_1: source switch 00:00:00:00:00:00:00:03"
+                        + " port 7 and destination switch 00:00:00:00:00:00:00:02 port 7.");
     }
 
     @Test
@@ -586,11 +635,13 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .bandwidth(0L)
                 .latencyMs(0L)
                 .latencyTier2ms(0L)
+                .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build());
         List<PathValidationResult> responses = pathsService.validatePath(request);
 
         assertFalse(responses.isEmpty());
         assertTrue(responses.get(0).getIsValid());
+        assertEquals("The path has been computed successfully", responses.get(0).getPceResponse());
     }
 
     @Test
@@ -605,12 +656,14 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .latencyMs(0L)
                 .latencyTier2ms(0L)
                 .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
+                .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build());
         List<PathValidationResult> responsesBefore = pathsService.validatePath(request);
 
         assertFalse(responsesBefore.isEmpty());
         assertTrue(responsesBefore.get(0).getIsValid(),
                 "The path using default segments with bandwidth 1003 must be valid");
+        assertEquals("The path has been computed successfully", responsesBefore.get(0).getPceResponse());
 
         Optional<Isl> islForward = islRepository.findByEndpoints(SWITCH_ID_3, 7, SWITCH_ID_2, 7);
         assertTrue(islForward.isPresent());
@@ -648,14 +701,48 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .latencyTier2ms(0L)
                 .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
                 .reuseFlowResources(flowToReuse)
+                .flowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build());
 
         List<PathValidationResult> responseWithReuseResources = pathsService.validatePath(requestWithReuseResources);
 
         assertFalse(responseWithReuseResources.isEmpty());
+        assertEquals("The path has been computed successfully",
+                responseWithReuseResources.get(0).getPceResponse());
         assertTrue(responseWithReuseResources.get(0).getIsValid(),
-                "The path must be valid because, although the flow %s consumes bandwidth, the validator"
-                        + " includes the consumed bandwidth to available bandwidth");
+                format("The path must be valid because, although the flow %s consumes bandwidth, the validator"
+                        + " adds the consumed bandwidth to available bandwidth", flowToReuse));
+    }
+
+    @Test
+    void whenNotEnoughData_noExceptionThrown_andPceResponseIsPresent() {
+        List<PathNodePayload> nodes = new LinkedList<>();
+        nodes.add(new PathNodePayload(SWITCH_ID_1, null, 6));
+        nodes.add(new PathNodePayload(SWITCH_ID_3, 6, 7));
+        nodes.add(new PathNodePayload(SWITCH_ID_2, 7, null));
+        PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .nodes(nodes)
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
+                .build());
+        List<PathValidationResult> results = pathsService.validatePath(request);
+
+        assertEquals("The path has been computed successfully", results.get(0).getPceResponse());
+    }
+
+    @Test
+    void whenNoNodes_noExceptionThrown_andResponseContainsError() {
+        PathValidateRequest request = new PathValidateRequest(PathValidationPayload.builder()
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
+                .build());
+        List<PathValidationResult> results = pathsService.validatePath(request);
+
+        assertNotNull(results);
+        assertFalse(results.isEmpty());
+        assertFalse(results.get(0).getIsValid());
+        assertFalse(results.get(0).getErrors().isEmpty());
+        String errorMessage = "Could not create path validation data from the request. java.lang.IllegalArgumentExcep"
+                + "tion: Nodes are mandatory part of the path validation data";
+        assertEquals(errorMessage, results.get(0).getErrors().get(0));
     }
 
     private void createFlow(String flowId, Switch srcSwitch, int srcPort, Switch destSwitch, int destPort) {
@@ -670,18 +757,21 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
                 .srcPort(srcPort)
                 .destSwitch(destSwitch)
                 .destPort(destPort)
+                .encapsulationType(VXLAN)
+                .pathComputationStrategy(COST_AND_AVAILABLE_BANDWIDTH)
+                .diverseGroupId("All flows in this group")
                 .build();
         Optional.ofNullable(ignoreBandwidth).ifPresent(flow::setIgnoreBandwidth);
         Optional.ofNullable(bandwidth).ifPresent(flow::setBandwidth);
         FlowPath forwardPath = FlowPath.builder()
-                .pathId(new PathId("path_1"))
+                .pathId(new PathId("path_1" + flowId))
                 .srcSwitch(srcSwitch)
                 .destSwitch(destSwitch)
                 .cookie(new FlowSegmentCookie(FlowPathDirection.FORWARD, 1L))
                 .bandwidth(flow.getBandwidth())
                 .ignoreBandwidth(false)
                 .segments(Collections.singletonList(PathSegment.builder()
-                        .pathId(new PathId("forward_segment"))
+                        .pathId(new PathId("forward_segment" + flowId))
                         .srcSwitch(srcSwitch)
                         .srcPort(isl == null ? srcPort : isl.getSrcPort())
                         .destSwitch(destSwitch)
@@ -691,14 +781,14 @@ public class PathValidatorTest extends InMemoryGraphBasedTest {
 
         flow.setForwardPath(forwardPath);
         FlowPath reversePath = FlowPath.builder()
-                .pathId(new PathId("path_2"))
+                .pathId(new PathId("path_2" + flowId))
                 .srcSwitch(destSwitch)
                 .destSwitch(srcSwitch)
                 .cookie(new FlowSegmentCookie(FlowPathDirection.REVERSE, 1L))
                 .bandwidth(flow.getBandwidth())
                 .ignoreBandwidth(false)
                 .segments(Collections.singletonList(PathSegment.builder()
-                        .pathId(new PathId("reverse_segment"))
+                        .pathId(new PathId("reverse_segment" + flowId))
                         .srcSwitch(destSwitch)
                         .srcPort(isl == null ? destPort : isl.getDestPort())
                         .destSwitch(srcSwitch)

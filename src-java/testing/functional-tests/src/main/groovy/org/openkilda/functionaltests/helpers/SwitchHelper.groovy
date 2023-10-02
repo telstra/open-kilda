@@ -36,6 +36,7 @@ import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
@@ -697,6 +698,14 @@ class SwitchHelper {
         assert synchronizationResult.isEmpty()
     }
 
+    static void synchronizeAndValidateRulesInstallation(Switch srcSwitch, Switch dstSwitch) {
+        synchronize([srcSwitch.dpId, dstSwitch.dpId])
+        [srcSwitch, dstSwitch].each { sw ->
+            Wrappers.wait(RULES_INSTALLATION_TIME) {
+                validate(sw.dpId).verifyRuleSectionsAreEmpty()
+            }
+        }
+    }
     static SwitchValidationV2ExtendedResult validate(SwitchId switchId) {
         return northboundV2.get().validateSwitch(switchId)
     }

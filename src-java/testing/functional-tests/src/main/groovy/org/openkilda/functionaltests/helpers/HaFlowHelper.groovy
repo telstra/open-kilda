@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.functionaltests.helpers.model.HaFlowHistory
+
 import com.google.common.collect.ImmutableList
 import org.openkilda.functionaltests.helpers.model.traffic.ha.HaFlowBidirectionalExam
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -355,7 +357,7 @@ class HaFlowHelper {
                 .dest(sourceHost)
                 .destVlans(srcVlanId)
                 .build();
-        return new HaFlowBidirectionalExam(traffExam, forward1, reverse1, forward2, reverse2);
+        return new HaFlowBidirectionalExam(traffExam, forward1, forward2, reverse1, reverse2);
     }
 
     SwitchId getYPoint(HaFlow haFlow) {
@@ -396,5 +398,9 @@ class HaFlowHelper {
     private String generateDescription() {
         def methods = ["asYouLikeItQuote", "kingRichardIIIQuote", "romeoAndJulietQuote", "hamletQuote"]
         sprintf("autotest HA-Flow: %s", faker.shakespeare()."${methods[random.nextInt(methods.size())]}"())
+    }
+
+    HaFlowHistory getHistory (String id, Long timeFrom = null, Long timeTo = null, Integer maxCount = null){
+        return new HaFlowHistory (northboundV2.getHaFlowHistory(id, timeFrom, timeTo, maxCount))
     }
 }

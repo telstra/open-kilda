@@ -31,6 +31,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
 import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.utils.flowhistory.FlowHistoryHelper;
+import org.openkilda.northbound.utils.flowhistory.FlowHistoryRangeConstraints;
 import org.openkilda.northbound.validator.FlowRequestV2Validator;
 
 import io.swagger.annotations.ApiOperation;
@@ -221,9 +222,9 @@ public class FlowControllerV2 extends BaseController {
     @GetMapping(path = "/{flow_id}/history/statuses")
     public CompletableFuture<ResponseEntity<FlowHistoryStatusesResponse>> getFlowStatusTimestamps(
             @PathVariable("flow_id") String flowId,
-            @ApiParam(value = "default: 0 (1 January 1970 00:00:00).")
+            @ApiParam(value = "Linux epoch time in seconds or milliseconds. Default: 0 (1 January 1970 00:00:00).")
             @RequestParam(value = "timeFrom", required = false) Optional<Long> optionalTimeFrom,
-            @ApiParam(value = "default: now.")
+            @ApiParam(value = "Linux epoch time in seconds or milliseconds. Default: now.")
             @RequestParam(value = "timeTo", required = false) Optional<Long> optionalTimeTo,
             @ApiParam(value = "Return at most N latest records. "
                     + "Default: if `timeFrom` or/and `timeTo` parameters are presented default value of "
@@ -234,9 +235,10 @@ public class FlowControllerV2 extends BaseController {
             @Min(1)
             @Max(Integer.MAX_VALUE)
             Optional<Integer> optionalMaxCount) {
+        FlowHistoryRangeConstraints constraints =
+                new FlowHistoryRangeConstraints(optionalTimeFrom, optionalTimeTo, optionalMaxCount);
 
-        return FlowHistoryHelper
-                .getFlowStatuses(flowService, flowId, optionalTimeFrom, optionalTimeTo, optionalMaxCount);
+        return FlowHistoryHelper.getFlowStatuses(flowService, flowId, constraints);
     }
 
     /**
@@ -247,9 +249,9 @@ public class FlowControllerV2 extends BaseController {
     @GetMapping(path = "/{flow_id}/history")
     public CompletableFuture<ResponseEntity<List<FlowHistoryEntry>>> getHistory(
             @PathVariable("flow_id") String flowId,
-            @ApiParam(value = "default: 0 (1 January 1970 00:00:00).")
+            @ApiParam(value = "Linux epoch time in seconds or milliseconds. Default: 0 (1 January 1970 00:00:00).")
             @RequestParam(value = "timeFrom", required = false) Optional<Long> optionalTimeFrom,
-            @ApiParam(value = "default: now.")
+            @ApiParam(value = "Linux epoch time in seconds or milliseconds. Default: now.")
             @RequestParam(value = "timeTo", required = false) Optional<Long> optionalTimeTo,
             @ApiParam(value = "Return at most N latest records. "
                     + "Default: if `timeFrom` or/and `timeTo` parameters are presented default value of "
@@ -257,9 +259,10 @@ public class FlowControllerV2 extends BaseController {
                     + "Otherwise default value of `maxCount` will be equal to 100. In This case response will contain "
                     + "header 'Content-Range'.")
             @RequestParam(value = "max_count", required = false) Optional<Integer> optionalMaxCount) {
+        FlowHistoryRangeConstraints constraints =
+                new FlowHistoryRangeConstraints(optionalTimeFrom, optionalTimeTo, optionalMaxCount);
 
-        return FlowHistoryHelper
-                .getFlowHistoryEvents(flowService, flowId, optionalTimeFrom, optionalTimeTo, optionalMaxCount);
+        return FlowHistoryHelper.getFlowHistoryEvents(flowService, flowId, constraints);
     }
 
     @ApiOperation(value = "Creates a new flow mirror point", response = FlowMirrorPointResponseV2.class)

@@ -15,13 +15,13 @@
 
 package org.openkilda.integration.service;
 
+import org.openkilda.config.ApplicationProperties;
 import org.openkilda.constants.IConstants;
 import org.openkilda.helper.RestClientManager;
 import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.model.NetworkPathInfo;
 import org.openkilda.model.Path;
 import org.openkilda.service.ApplicationService;
-import org.openkilda.utility.ApplicationProperties;
 
 import org.apache.http.HttpResponse;
 import org.slf4j.Logger;
@@ -31,6 +31,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+
 /**
  * The Class NetworkIntegrationService.
  *
@@ -65,16 +66,14 @@ public class NetworkIntegrationService {
         if (networkPath != null) {
             List<Path> pathList = networkPath.getPaths();
             pathList.forEach(path -> {
-                path.getNode().forEach(node -> {
-                    node.setSwitchName(switchIntegrationService
-                                    .customSwitchName(switchIntegrationService.getSwitchNames(), node.getSwitchId()));
-                });
+                path.getNode().forEach(node -> node.setSwitchName(switchIntegrationService
+                        .customSwitchName(switchIntegrationService.getSwitchNames(), node.getSwitchId())));
             });
             return networkPath;
         }
         return null;
     }
-    
+
     /**
      * Gets the network path.
      *
@@ -84,10 +83,11 @@ public class NetworkIntegrationService {
                                           final int maxLatency) {
         try {
             HttpResponse response = restClientManager.invoke(
-                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_NETWORK_PATH
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_NETWORK_PATH
                             .replace("{src_switch}", srcSwitch).replace("{dst_switch}", dstSwitch)
-                            .replace("{strategy}", strategy).replace("{max_latency}", Integer.toString(maxLatency)),
-                     HttpMethod.GET, "", "application/json", applicationService.getAuthHeader());
+                            .replace("{strategy}", strategy).replace("{max_latency}",
+                                    Integer.toString(maxLatency)),
+                    HttpMethod.GET, "", "application/json", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponse(response, NetworkPathInfo.class);
             }

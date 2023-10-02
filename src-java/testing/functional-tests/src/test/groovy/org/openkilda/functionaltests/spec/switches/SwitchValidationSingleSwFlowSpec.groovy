@@ -104,8 +104,11 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
 
+        def testIsCompleted = true
+
         cleanup:
         flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
+        flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
         switchType         | switches
@@ -115,6 +118,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
+    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Switch validation is able to detect meter info into the 'misconfigured' section on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
@@ -208,7 +212,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deletedFlow = flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -216,6 +220,11 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
+        def testIsCompleted = true
+
+        cleanup:
+        flow && !deletedFlow && flowHelperV2.deleteFlow(flow.flowId)
+        flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
         switchType         | switches
@@ -225,6 +234,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
+    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Switch validation is able to detect meter info into the 'missing' section on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
@@ -285,12 +295,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         cleanup:
         flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
-        if (!testIsCompleted) {
-            northbound.synchronizeSwitch(sw.dpId, true)
-            Wrappers.wait(RULES_INSTALLATION_TIME) {
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
-            }
-        }
+        flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
         switchType         | switches
@@ -300,6 +305,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
+    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Switch validation is able to detect meter info into the 'excess' section on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
@@ -348,7 +354,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        def deletedFlow = flowHelperV2.deleteFlow(flow.flowId)
 
         and: "Delete excess meters"
         metersIds.each { northbound.deleteMeter(sw.dpId, it) }
@@ -359,6 +365,13 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
+
+        def testIsCompleted = true
+        cleanup:
+        flow && !deletedFlow && flowHelperV2.deleteFlow(flow.flowId)
+        flow && !testIsCompleted && synchronizeAndValidateRules(sw)
+
+
 
         where:
         switchType         | switches
@@ -412,16 +425,12 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
+
         def testIsCompleted = true
 
         cleanup:
         flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
-        if (!testIsCompleted) {
-            northbound.synchronizeSwitch(sw.dpId, true)
-            Wrappers.wait(RULES_INSTALLATION_TIME) {
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
-            }
-        }
+        flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
         switchType         | switches
@@ -431,6 +440,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
+    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Switch validation is able to detect rule/meter info into the 'excess' section on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
@@ -522,8 +532,11 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchValidateResponse.verifyMeterSectionsAreEmpty()
         }
 
+        def testIsCompleted = true
+
         cleanup:
         producer && producer.close()
+        !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
         switchType         | switches
@@ -586,16 +599,12 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             it.verifyRuleSectionsAreEmpty()
             it.verifyMeterSectionsAreEmpty()
         }
+
         def testIsCompleted = true
 
         cleanup:
         flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
-        if (!testIsCompleted) {
-            northbound.synchronizeSwitch(sw.dpId, true)
-            Wrappers.wait(RULES_INSTALLATION_TIME) {
-                assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
-            }
-        }
+        flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
         switchType         | sw
@@ -643,6 +652,13 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             assert Math.abs(expected - actual) <= expected * 0.01
         } else {
             assert expected == actual
+        }
+    }
+
+    private void synchronizeAndValidateRules(Switch sw) {
+        northbound.synchronizeSwitch(sw.dpId, true)
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
         }
     }
 }

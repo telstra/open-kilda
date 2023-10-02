@@ -5,6 +5,7 @@ import {AngularFontAwesomeModule} from 'angular-font-awesome';
 import {AppRoutingModule} from './app-routing.module';
 import {NgSelectModule} from '@ng-select/ng-select';
 import {ReactiveFormsModule} from '@angular/forms';
+import {FormsModule} from '@angular/forms';
 import {Select2Module} from 'ng-select2-component';
 import {HttpClientModule} from '@angular/common/http';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
@@ -122,7 +123,13 @@ import {FlowPingModalComponent} from './common/components/flow-ping-modal/flow-p
         SwitchesComponent,
         FooterComponent,
         DatatableComponent,
-        FlowLayoutComponent, FlowComponent, FlowSearchComponent, FlowListComponent, FlowAddComponent, FlowEditComponent, FlowDetailComponent,
+        FlowLayoutComponent,
+        FlowComponent,
+        FlowSearchComponent,
+        FlowListComponent,
+        FlowAddComponent,
+        FlowEditComponent,
+        FlowDetailComponent,
         UsermanagementComponent,
         UseractivityComponent,
         BreadcrumbComponent,
@@ -222,7 +229,8 @@ import {FlowPingModalComponent} from './common/components/flow-ping-modal/flow-p
         ContextMenuModule.forRoot({
             autoFocus: true
         }),
-        ClickOutsideModule
+        ClickOutsideModule,
+        FormsModule
     ],
     providers: [SwitchidmaskPipe, AlertifyService, Title, AppAuthProvider],
     bootstrap: [AppComponent],
@@ -244,5 +252,4 @@ import {FlowPingModalComponent} from './common/components/flow-ping-modal/flow-p
         FlowPingModalComponent,
     ]
 })
-export class AppModule {
-}
+export class AppModule { }
