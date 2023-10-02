@@ -15,6 +15,7 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlow
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
+import org.openkilda.testing.service.northbound.model.HaFlowActionType
 import org.openkilda.testing.service.northbound.model.HaFlowHistoryEntry
 
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -132,6 +133,12 @@ class HaFlowExtended {
             }
         }
         flowDetails
+    }
+
+    void waitForHistoryEvent(HaFlowActionType action) {
+        Wrappers.wait(WAIT_OFFSET) {
+            assert getHistory().getEntriesByType(action)[0].payloads.find {it.action == action.payloadLastAction }
+        }
     }
 
     HaFlowExtended partialUpdate(HaFlowPatchPayload updateRequest) {

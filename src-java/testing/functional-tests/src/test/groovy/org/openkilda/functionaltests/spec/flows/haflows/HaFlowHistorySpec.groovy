@@ -12,11 +12,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.messaging.payload.history.HaSubFlowPayload
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.SwitchId
 import org.openkilda.model.history.DumpType
-import org.openkilda.northbound.dto.v2.flows.BaseFlowEndpointV2
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
 import org.openkilda.testing.service.northbound.model.HaFlowActionType
 
@@ -27,68 +23,75 @@ import spock.lang.Narrative
 class HaFlowHistorySpec extends HealthCheckSpecification {
 
     @Tidy
-    def "History records with links details are created during link #type operations and can be retrieved without timeline"() {
+    def "History records with links details are created during link create operations and can be retrieved with timeline"() {
+        given: "HA-Flow has been created"
+        def swT = topologyHelper.switchTriplets[0]
+        def timeBeforeCreation = System.currentTimeSeconds()
+        HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        haFlow.waitForHistoryEvent(HaFlowActionType.CREATE)
+
+        when: "Request for history records"
+        def historyRecord = haFlow.getHistory(timeBeforeCreation, System.currentTimeSeconds())
+                .getEntriesByType(HaFlowActionType.CREATE)
+
+        then: "Correct event appears in HA-Flow history and can be retrieved without specifying timeline"
+        assert historyRecord.size() == 1
+//        https://github.com/telstra/open-kilda/issues/5366
+        historyRecord[0].verifyBasicFields(haFlow.haFlowId, HaFlowActionType.CREATE)
+
+        and: "Flow history contains all flow properties in the 'state_after' dump section"
+        historyRecord[0].verifyDumpSection(DumpType.STATE_AFTER, haFlow)
+
+        cleanup:
+        haFlow && haFlow.delete()
+    }
+
+    @Tidy
+    def "History records with links details are created during link #updateType operations and can be retrieved without timeline"() {
         given: "HA-Flow has been created"
         def swT = topologyHelper.switchTriplets[0]
         HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
 
         when: "#type action has been executed"
-        action(haFlow)
+        HaFlowExtended haFlowAfterUpdating = update(haFlow)
+        haFlow.waitForHistoryEvent(updateType)
 
         then: "Correct event appears in HA-Flow history and can be retrieved without specifying timeline"
-        def historyRecord = haFlow.getHistory().getEntriesByType(type)
-//        https://github.com/telstra/open-kilda/issues/5320
-        if (type != HaFlowActionType.UPDATE) {
-            assert historyRecord.size() == 1
+        def historyRecords = haFlow.getHistory()
+//        partial update with the following full updating is saved as partial and regular update events (orientdb), not applicable to mysql
+//        https://github.com/telstra/open-kilda/pull/5376
+        if (updateType != HaFlowActionType.PARTIAL_UPDATE_FULL) {
+            assert historyRecords.entries.size() == 2
         }
 
-        verifyAll {
-            historyRecord[0].haFlowId == haFlow.haFlowId
-            historyRecord[0].taskId
-            historyRecord[0].timestampIso
+        def updateHistoryRecord = historyRecords.getEntriesByType(updateType)
+        updateHistoryRecord.size() == 1
+        updateHistoryRecord[0].verifyBasicFields(haFlow.haFlowId, updateType)
 
-//            https://github.com/telstra/open-kilda/issues/5366
-//            expectedHistoryRecord[0].payloads.action.find {it == type.getPayloadLastAction()}
-            historyRecord[0].payloads.every { it.timestampIso }
-        }
+        and: "Flow history contains all flow properties in the 'state_before' dump section"
+        updateHistoryRecord[0].verifyDumpSection(DumpType.STATE_BEFORE, haFlow)
 
-        and: "Flow history contains all flow properties in the dump section"
-        verifyAll {
-            with(historyRecord.first().dumps[0]) { dump ->
-                dump.dumpType == DumpType.STATE_AFTER
-                dump.haFlowId == haFlow.haFlowId
-
-                dump.maximumBandwidth == haFlow.maximumBandwidth
-                dump.ignoreBandwidth == haFlow.ignoreBandwidth
-                dump.allocateProtectedPath == haFlow.allocateProtectedPath
-                dump.encapsulationType.toString() == FlowEncapsulationType.TRANSIT_VLAN.toString()
-                dump.pathComputationStrategy.toString() == haFlow.pathComputationStrategy.toUpperCase()
-                haFlow.maxLatency ? dump.maxLatency == haFlow.maxLatency * 1000000 : true
-                dump.periodicPings == haFlow.periodicPings
-
-                dump.sharedSwitchId == haFlow.sharedEndpoint.switchId.toString()
-                dump.sharedOuterVlan == haFlow.sharedEndpoint.vlanId
-                dump.sharedInnerVlan == haFlow.sharedEndpoint.innerVlanId
-
-                getSubFlowsEndpoints(dump.haSubFlows).sort() == haFlow.subFlows.endpoint.sort()
-
-            }
-        }
+        and: "Flow history contains all flow properties in the 'state_after' dump section"
+        updateHistoryRecord[0].verifyDumpSection(DumpType.STATE_AFTER, haFlowAfterUpdating)
 
         cleanup:
         haFlow && haFlow.delete()
 
         where:
-        type                    | action
-        HaFlowActionType.CREATE | {}
-//      https://github.com/telstra/open-kilda/issues/5320
-        HaFlowActionType.UPDATE | { HaFlowExtended flow ->
-            flow.maximumBandwidth = 12345
-            flow.update(flow.convertToUpdateRequest())
+        updateType                            | update
+        HaFlowActionType.UPDATE               | { HaFlowExtended flow ->
+            def flowUpdateRequest = flow.clone()
+            flowUpdateRequest.maximumBandwidth = 12345
+            flow.update(flowUpdateRequest.convertToUpdateRequest())
         }
-        HaFlowActionType.UPDATE | { HaFlowExtended flow ->
-            flow.maximumBandwidth = 23455
-            flow.partialUpdate(HaFlowPatchPayload.builder().maximumBandwidth(flow.maximumBandwidth).build())
+        HaFlowActionType.PARTIAL_UPDATE_FULL  | { HaFlowExtended flow ->
+            flow.partialUpdate(HaFlowPatchPayload.builder().maximumBandwidth(2345).build())
+        }
+        HaFlowActionType.PARTIAL_UPDATE_IN_DB | { HaFlowExtended flow ->
+            flow.partialUpdate(HaFlowPatchPayload.builder().priority(1).build())
+        }
+        HaFlowActionType.PARTIAL_UPDATE_FULL  | { HaFlowExtended flow ->
+            flow.partialUpdate(HaFlowPatchPayload.builder().priority(1).maximumBandwidth(3425).build())
         }
     }
 
@@ -102,6 +105,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
 
         when: "Delete Ha-Flow"
         def deletedFlow = haFlow.delete()
+        haFlow.waitForHistoryEvent(HaFlowActionType.DELETE)
 
         then: "Correct event appears in HA-Flow history and can be retrieved with specifying timeline"
         def historyRecord = haFlow.getHistory(timeBeforeOperation, System.currentTimeSeconds())
@@ -109,16 +113,9 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         historyRecord.size() == 1
 
         and: "All basic fields are correct"
-        verifyAll {
-            historyRecord[0].haFlowId == haFlow.haFlowId
-            historyRecord[0].taskId
-            historyRecord[0].timestampIso
-
-//            https://github.com/telstra/open-kilda/issues/5367
-//            historyRecordWithoutTimeline[0].payloads.action.find {it == type.getPayloadLastAction()}
-            historyRecord[0].payloads.every { it.timestampIso }
-            historyRecord.dumps.flatten().isEmpty()
-        }
+//        https://github.com/telstra/open-kilda/issues/5367
+        historyRecord[0].verifyBasicFields(haFlow.haFlowId, HaFlowActionType.DELETE)
+        historyRecord.dumps.flatten().isEmpty()
 
         cleanup:
         haFlow && !deletedFlow && haFlow.delete()
@@ -167,24 +164,15 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         haFlow.waitForBeingInState(FlowState.DOWN)
 
         then: "Correct event appears in HA-Flow history and can be retrieved without specifying timeline"
-        Wrappers.wait(WAIT_OFFSET) {
-            assert haFlow.getHistory().getEntriesByType(HaFlowActionType.REROUTE_FAIL)[0].payloads.find {
-                it.action == HaFlowActionType.REROUTE_FAIL.payloadLastAction
-            }
-        }
+        haFlow.waitForHistoryEvent(HaFlowActionType.REROUTE_FAIL)
 
         def historyRecordWithoutTimeline = haFlow.getHistory().getEntriesByType(HaFlowActionType.REROUTE_FAIL)
         historyRecordWithoutTimeline.size() == 1
 
         and: "All basic fields are correct and rerouting failure details are available"
+        historyRecordWithoutTimeline[0].verifyBasicFields(haFlow.haFlowId, HaFlowActionType.REROUTE_FAIL)
         verifyAll {
-            historyRecordWithoutTimeline[0].haFlowId == haFlow.haFlowId
-            historyRecordWithoutTimeline[0].taskId
-            historyRecordWithoutTimeline[0].timestampIso
-            historyRecordWithoutTimeline[0].payloads.every { it.timestampIso }
             historyRecordWithoutTimeline.dumps.flatten().isEmpty()
-            historyRecordWithoutTimeline[0].payloads[-1].action == HaFlowActionType.REROUTE_FAIL.getPayloadLastAction()
-
             historyRecordWithoutTimeline[0].payloads[-1].details == "ValidateHaFlowAction failed: HA-flow's $haFlow.haFlowId src switch ${swT.shared.dpId} is not active"
         }
 
@@ -226,7 +214,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
 
         and: "Ha-Flow has been updated"
-        haFlow.partialUpdate(HaFlowPatchPayload.builder().maximumBandwidth(12345).build())
+        haFlow.partialUpdate(HaFlowPatchPayload.builder().priority(1).build())
 
         and: "All history records have been retrieved"
         def allHistoryRecordsWithoutFiltering = haFlow.getHistory()
@@ -236,7 +224,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
 
         then: "The appropriate number of record has been returned"
         historyRecord.entries.size() == 1
-        historyRecord.getEntriesByType(HaFlowActionType.UPDATE)
+        historyRecord.getEntriesByType(HaFlowActionType.PARTIAL_UPDATE_IN_DB)
 
         when: "Requested amount of history record is bigger than actual existing records"
         def historyRecords = haFlow.getHistory(timeBeforeOperation, null, allHistoryRecordsWithoutFiltering.entries.size() + 10)
@@ -257,12 +245,5 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         then: "Error due to invalid max_count returned"
         def e = thrown(HttpClientErrorException)
         new HistoryMaxCountExpectedError(0).matches(e)
-    }
-
-    List<BaseFlowEndpointV2> getSubFlowsEndpoints(List<HaSubFlowPayload> dumpSubFlowsDetails) {
-        dumpSubFlowsDetails.collect { it ->
-            new BaseFlowEndpointV2(switchId: new SwitchId(it.endpointSwitchId), portNumber: it.endpointPort,
-                    vlanId: it.endpointVlan, innerVlanId: it.endpointInnerVlan)
-        }
     }
 }

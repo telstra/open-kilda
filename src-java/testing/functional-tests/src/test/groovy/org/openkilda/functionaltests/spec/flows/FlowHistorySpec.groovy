@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ONLY_IN_DB
+
 import org.openkilda.functionaltests.error.HistoryMaxCountExpectedError
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -25,6 +28,7 @@ import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.history.FlowEvent
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import com.github.javafaker.Faker
@@ -217,6 +221,66 @@ class FlowHistorySpec extends HealthCheckSpecification {
 
         cleanup:
         !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
+    }
+
+    @Tidy
+    def "History records are created for the partial update actions #partialUpdateType"() {
+        given: "Flow has been created"
+        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
+        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+                .tap { it.pathComputationStrategy = PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH })
+
+        when: "Update the created flow"
+        def updatedFlow = partialUpdate(flow.flowId)
+
+        then: "History record is created after partial flow update"
+        def flowHistory = northbound.getFlowHistory(flow.flowId)
+        verifyAll {
+            flowHistory.size() == 2
+            flowHistory.last().action == PARTIAL_UPDATE_ACTION
+            flowHistory.last().payload.last().action == historyAction
+        }
+        checkHistoryCommonStuff(flowHistory.last(), flow.flowId)
+
+        and: "History records are with correct flow details in the dump section"
+        verifyAll(flowHistory.last().dumps.find { it.type == "stateBefore" }) {
+            it.bandwidth == flow.maximumBandwidth
+            it.priority == flow.priority
+            it.pinned == flow.pinned
+            it.periodicPings == flow.periodicPings
+            it.sourceVlan == flow.source.vlanId
+            it.destinationVlan == flow.destination.vlanId
+            it.ignoreBandwidth == flow.ignoreBandwidth
+            it.pathComputationStrategy == PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH
+//          https://github.com/telstra/open-kilda/issues/5373 (full update: IN_PROGRESS)
+//           it.forwardStatus == "ACTIVE"
+//           it.reverseStatus == "ACTIVE"
+        }
+
+        verifyAll(flowHistory.last().dumps.find { it.type == "stateAfter" }) {
+            it.bandwidth == updatedFlow.maximumBandwidth
+            it.priority == updatedFlow.priority
+            it.pinned == updatedFlow.pinned
+            it.periodicPings == updatedFlow.periodicPings
+            it.sourceVlan == updatedFlow.source.vlanId
+            it.destinationVlan == updatedFlow.destination.vlanId
+            it.ignoreBandwidth == updatedFlow.ignoreBandwidth
+            it.pathComputationStrategy == PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH
+//            https://github.com/telstra/open-kilda/issues/5373 (full update: IN_PROGRESS)
+//            it.forwardStatus == "ACTIVE"
+//            it.reverseStatus == "ACTIVE"
+        }
+
+        cleanup:
+        flow && flowHelperV2.deleteFlow(flow.flowId)
+
+        where:
+        partialUpdateType                | historyAction             | partialUpdate
+        "without the consecutive update" | PARTIAL_UPDATE_ONLY_IN_DB |
+                { String flowId -> flowHelperV2.partialUpdate(flowId, new FlowPatchV2().tap { priority = 1 }, false) }
+
+        "with the consecutive update"    | UPDATE_SUCCESS            |
+                { String flowId -> flowHelperV2.partialUpdate(flowId, new FlowPatchV2().tap { maximumBandwidth = 12345 }, true) }
     }
 
     @Tidy
