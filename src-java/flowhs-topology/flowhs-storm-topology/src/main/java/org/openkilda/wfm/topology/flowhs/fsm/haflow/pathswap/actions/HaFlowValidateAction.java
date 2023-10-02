@@ -33,7 +33,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapConte
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -99,7 +99,7 @@ public class HaFlowValidateAction extends
     }
 
     private void saveNewEventToHistory(HaFlowPathSwapFsm stateMachine) {
-        HaFlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
+        FlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
                         .action("HA-flow has been validated successfully")
                         .event(HaFlowEventData.Event.PATH_SWAP)
                         .haFlowId(stateMachine.getHaFlowId())

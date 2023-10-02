@@ -21,8 +21,8 @@ import org.openkilda.wfm.share.flow.resources.HaFlowResources;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -44,8 +44,8 @@ public class HandleNotRevertedResourceAllocationAction<T extends HaFlowPathSwapp
     }
 
     private void saveErrorToHistory(T stateMachine, HaFlowResources resourceType) {
-        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+        FlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                .of(stateMachine.getCommandContext().getCorrelationId())
                 .withAction("Failed to revert resource allocation")
                 .withDescription(format("Failed to revert resource allocation: %s", resourceType))
                 .withHaFlowId(stateMachine.getHaFlowId()));

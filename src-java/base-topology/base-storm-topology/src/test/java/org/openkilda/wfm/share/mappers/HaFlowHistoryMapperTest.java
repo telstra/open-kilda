@@ -112,13 +112,15 @@ public class HaFlowHistoryMapperTest {
                 .haFlowId(HA_FLOW_ID)
                 .time(TIME_CREATE)
                 .build();
-        HaFlowEvent result = mapper.createHaFlowEvent(source);
+        String taskId = "task ID";
+        HaFlowEvent result = mapper.createHaFlowEvent(source, taskId);
 
         assertEquals(source.getHaFlowId(), result.getHaFlowId());
         assertEquals(source.getDetails(), result.getDetails());
         assertEquals(source.getInitiator().toString(), result.getActor());
         assertEquals(source.getTime(), result.getTimestamp());
         assertEquals(source.getEvent().getDescription(), result.getAction());
+        assertEquals(taskId, result.getTaskId());
     }
 
     @Test
@@ -130,11 +132,13 @@ public class HaFlowHistoryMapperTest {
                 .time(TIME_CREATE)
                 .build();
 
-        HaFlowEventAction result = mapper.createHaFlowEventAction(source);
+        String taskId = "taskID";
+        HaFlowEventAction result = mapper.createHaFlowEventAction(source, taskId);
 
         assertEquals(source.getTime(), result.getTimestamp());
         assertEquals(source.getAction(), result.getAction());
         assertEquals(source.getDescription(), result.getDetails());
+        assertEquals(taskId, result.getTaskId());
     }
 
     @Test

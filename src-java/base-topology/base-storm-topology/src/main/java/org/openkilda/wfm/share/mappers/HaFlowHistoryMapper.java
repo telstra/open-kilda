@@ -62,15 +62,15 @@ public abstract class HaFlowHistoryMapper {
 
     @Mapping(source = "haFlowEventData.initiator", target = "actor")
     @Mapping(source = "haFlowEventData.event.description", target = "action")
-    @Mapping(source = "time", target = "timestamp")
-    @Mapping(target = "taskId", ignore = true)
-    public abstract HaFlowEvent createHaFlowEvent(HaFlowEventData haFlowEventData);
+    @Mapping(source = "haFlowEventData.time", target = "timestamp")
+    @Mapping(source = "taskId", target = "taskId")
+    public abstract HaFlowEvent createHaFlowEvent(HaFlowEventData haFlowEventData, String taskId);
 
-    @Mapping(source = "time", target = "timestamp")
-    @Mapping(source = "description", target = "details")
-    @Mapping(target = "taskId", ignore = true)
+    @Mapping(source = "haFlowHistoryData.time", target = "timestamp")
+    @Mapping(source = "haFlowHistoryData.description", target = "details")
+    @Mapping(source = "taskId", target = "taskId")
     @Mapping(target = "data", ignore = true)
-    public abstract HaFlowEventAction createHaFlowEventAction(HaFlowHistoryData haFlowHistoryData);
+    public abstract HaFlowEventAction createHaFlowEventAction(HaFlowHistoryData haFlowHistoryData, String taskId);
 
     @Mapping(source = "payloads", target = "payloads")
     @Mapping(source = "dumps", target = "dumps")

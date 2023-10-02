@@ -17,8 +17,9 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.info.InfoData;
+import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 
-public interface FlowOperationsCarrier {
+public interface FlowOperationsCarrier extends HistoryUpdateCarrier {
     /**
      * Sends update for periodic ping.
      * @param flowId flow id

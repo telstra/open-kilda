@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.service.haflow.history;
+package org.openkilda.wfm.topology.flowhs.service.history;
 
 import static org.openkilda.wfm.share.history.model.DumpType.STATE_AFTER;
 import static org.openkilda.wfm.share.history.model.DumpType.STATE_BEFORE;
@@ -40,7 +40,7 @@ public final class HaFlowHistory {
         this.taskId = taskId;
     }
 
-    public static HaFlowHistory withTaskId(String taskId) {
+    public static HaFlowHistory of(String taskId) {
         return new HaFlowHistory(taskId);
     }
 

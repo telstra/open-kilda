@@ -52,8 +52,8 @@ import org.openkilda.wfm.topology.flow.model.HaFlowPathPair;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseResourceAllocationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import com.google.common.base.Suppliers;
 import lombok.SneakyThrows;
@@ -278,8 +278,8 @@ public abstract class BaseHaResourceAllocationAction<T extends HaFlowPathSwappin
 
     protected void saveAllocationActionToHistory(T stateMachine, HaFlow haFlow, String pathsType,
                                                  HaFlowPathPair newHaFlowPaths) {
-        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+        FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .of(stateMachine.getCommandContext().getCorrelationId())
                 .withAction(format("%s paths have been allocated", StringUtils.capitalize(pathsType)))
                 .withDescription(
                         format("The following paths have been allocated for HA-flow %s: forward: %s, reverse: %s",

@@ -24,8 +24,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowProcessingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
 import org.openkilda.wfm.topology.flowhs.service.FlowGenericCarrier;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -54,11 +54,13 @@ public abstract class BaseReceivedResponseAction<T extends HaFlowProcessingFsm<T
             return;
         }
 
+        FlowHistoryService flowHistoryService = FlowHistoryService.using(stateMachine.getCarrier());
+
         if (response.isSuccess()) {
             stateMachine.removePendingCommand(commandId);
 
-            HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+            flowHistoryService.saveError(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
                     .withHaFlowId(stateMachine.getHaFlowId())
                     .withAction(format("%s rules operation was successful", actionName))
                     .withDescription(format("%s rules operation was successful. Rules count: "
@@ -76,8 +78,8 @@ public abstract class BaseReceivedResponseAction<T extends HaFlowProcessingFsm<T
                     if (stateMachine.getCommandContext().getCorrelationId() == null) {
                         log.error("Correlation ID is null. It's not possible to write history.");
                     } else {
-                        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                        flowHistoryService.saveError(HaFlowHistory
+                                .of(stateMachine.getCommandContext().getCorrelationId())
                                 .withAction(format(FAILED_ACTION_TEMPLATE, actionName))
                                 .withDescription(errorDescription));
                     }
@@ -91,8 +93,8 @@ public abstract class BaseReceivedResponseAction<T extends HaFlowProcessingFsm<T
 
 
                 response.getFailedCommandIds().forEach((uuid, message) ->
-                        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                        flowHistoryService.saveError(HaFlowHistory
+                                .of(stateMachine.getCommandContext().getCorrelationId())
                                 .withAction(format(FAILED_ACTION_TEMPLATE, actionName))
                                 .withDescription(
                                         format("Failed to %s the rule: commandId %s, ruleId %s, switch %s. Error: %s",
@@ -110,8 +112,8 @@ public abstract class BaseReceivedResponseAction<T extends HaFlowProcessingFsm<T
             } else {
                 String errorMessage = format("Received error response(s) for %d %s commands",
                         stateMachine.getFailedCommands().size(), actionName);
-                HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                        .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                flowHistoryService.saveError(HaFlowHistory
+                        .of(stateMachine.getCommandContext().getCorrelationId())
                         .withAction(errorMessage)
                         .withHaFlowId(stateMachine.getHaFlowId()));
                 stateMachine.fireError(errorMessage);

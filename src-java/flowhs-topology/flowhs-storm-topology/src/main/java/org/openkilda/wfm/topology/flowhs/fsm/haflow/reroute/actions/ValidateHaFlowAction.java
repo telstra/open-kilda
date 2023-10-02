@@ -44,8 +44,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteContext
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -80,7 +80,7 @@ public class ValidateHaFlowAction extends
 
         String rerouteReason = context.getRerouteReason();
 
-        HaFlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
+        FlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
                 .taskId(stateMachine.getCommandContext().getCorrelationId())
                 .event(HaFlowEventData.Event.REROUTE)
                 .haFlowId(stateMachine.getHaFlowId())
@@ -175,8 +175,8 @@ public class ValidateHaFlowAction extends
         stateMachine.setIgnoreBandwidth(context.isIgnoreBandwidth());
         stateMachine.saveOldPathIds(stateMachine.getOriginalHaFlow());
 
-        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+        FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .of(stateMachine.getCommandContext().getCorrelationId())
                 .withAction("HA-flow has been validated successfully")
                 .withHaFlowId(stateMachine.getHaFlowId()));
 

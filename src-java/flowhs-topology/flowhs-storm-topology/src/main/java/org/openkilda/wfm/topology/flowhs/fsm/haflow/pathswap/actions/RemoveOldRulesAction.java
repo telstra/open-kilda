@@ -29,8 +29,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapConte
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -84,8 +84,8 @@ public class RemoveOldRulesAction extends HaFlowRuleManagerProcessingAction<
     }
 
     private void saveActionToHistory(HaFlowPathSwapFsm stateMachine, String action) {
-        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+        FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .of(stateMachine.getCommandContext().getCorrelationId())
                 .withAction(action)
                 .withHaFlowId(stateMachine.getHaFlowId()));
     }

@@ -120,7 +120,8 @@ public class HistoryOperationsBoltTest {
     @BeforeEach
     public void setUp() {
         HistoryService historyService = mock(HistoryService.class);
-        when(historyService.getHaFlowHistoryEvents(any(), any(), any(), anyInt())).thenReturn(getHaFlowEventList());
+        when(historyService.getHaFlowHistoryEvents(any(), any(), any(),
+                anyInt())).thenReturn(getHaFlowEventList());
         historyOperationsBolt = new HistoryOperationsBolt(null, historyService);
     }
 

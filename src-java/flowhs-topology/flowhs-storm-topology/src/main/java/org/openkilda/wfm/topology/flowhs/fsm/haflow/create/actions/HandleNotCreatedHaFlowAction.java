@@ -24,8 +24,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -48,8 +48,8 @@ public class HandleNotCreatedHaFlowAction extends HistoryRecordingAction<
         // TODO status info
         haFlowRepository.updateStatus(haFlowId, FlowStatus.DOWN);
 
-        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+        FlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                .of(stateMachine.getCommandContext().getCorrelationId())
                 .withAction("Failed to create the flow")
                 .withDescription(stateMachine.getErrorReason())
                 .withHaFlowId(stateMachine.getHaFlowId()));

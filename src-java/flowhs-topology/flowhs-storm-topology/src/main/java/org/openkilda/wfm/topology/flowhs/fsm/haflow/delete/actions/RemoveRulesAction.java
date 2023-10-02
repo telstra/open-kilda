@@ -36,8 +36,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -95,8 +95,8 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
                 commands, stateMachine.getCommandContext());
 
         if (deleteRequests.isEmpty()) {
-            HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                    .withTaskId(stateMachine.getHaFlowId())
+            FlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
                     .withAction("Remove HA-flow rules has been invoked, but there are no delete requests")
                     .withHaFlowId(stateMachine.getHaFlowId()));
             stateMachine.fire(Event.RULES_REMOVED);
@@ -108,8 +108,8 @@ public class RemoveRulesAction extends HaFlowRuleManagerProcessingAction<
                 stateMachine.addPendingCommand(request.getCommandId(), request.getSwitchId());
             });
 
-            HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                    .withTaskId(stateMachine.getHaFlowId())
+            FlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
                     .withAction("Commands for removing ha-flow rules have been sent")
                     .withHaFlowId(stateMachine.getHaFlowId()));
         }

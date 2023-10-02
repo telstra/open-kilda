@@ -29,8 +29,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapConte
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -61,8 +61,8 @@ public class RevertNewRulesAction extends HaFlowRuleManagerProcessingAction<
         installOldRules(stateMachine, haFlow, overlappingPathIds);
         removeNewRules(stateMachine, haFlow, overlappingPathIds);
 
-        HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+        FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .of(stateMachine.getCommandContext().getCorrelationId())
                 .withAction("Commands for removing new rules and re-installing original ingress rule have been sent")
                 .withHaFlowId(stateMachine.getHaFlowId()));
     }

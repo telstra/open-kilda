@@ -25,8 +25,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -56,8 +56,8 @@ public class OnReceivedResponseAction extends HistoryRecordingAction<
 
         if (response.isSuccess()) {
             stateMachine.removePendingCommand(commandId);
-            HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                    .withTaskId(stateMachine.getHaFlowId())
+            FlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
                     .withAction("Rule was deleted")
                     .withDescription(format("The rule with command ID %s has been removed: switch %s",
                             commandId, response.getSwitchId()))
@@ -68,8 +68,8 @@ public class OnReceivedResponseAction extends HistoryRecordingAction<
             int attempt = stateMachine.doRetryForCommand(commandId);
             if (attempt <= speakerCommandRetriesLimit && command.isPresent()) {
                 response.getFailedCommandIds().forEach((uuid, message) ->
-                        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                                .withTaskId(stateMachine.getHaFlowId())
+                        FlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                                .of(stateMachine.getCommandContext().getCorrelationId())
                                 .withAction(FAILED_TO_REMOVE_RULE_ACTION)
                                 .withDescription(format("Failed to remove the rule: commandId %s, ruleId %s,"
                                                 + " switch %s. Error: %s. Retrying (attempt %d)",
@@ -83,8 +83,8 @@ public class OnReceivedResponseAction extends HistoryRecordingAction<
                 stateMachine.addFailedCommand(commandId, response);
                 stateMachine.removePendingCommand(commandId);
                 response.getFailedCommandIds().forEach((uuid, message) ->
-                        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                                .withTaskId(stateMachine.getHaFlowId())
+                        FlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                                .of(stateMachine.getCommandContext().getCorrelationId())
                                 .withAction(FAILED_TO_REMOVE_RULE_ACTION)
                                 .withDescription(
                                     format("Failed to remove the rule: commandId %s, ruleId %s, switch %s. Error: %s",
@@ -101,8 +101,8 @@ public class OnReceivedResponseAction extends HistoryRecordingAction<
             } else {
                 String errorMessage = format("Received error response(s) for %d remove commands",
                         stateMachine.getFailedCommands().size());
-                HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                        .withTaskId(stateMachine.getHaFlowId())
+                FlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                        .of(stateMachine.getCommandContext().getCorrelationId())
                         .withAction(errorMessage)
                         .withDescription(stateMachine.getErrorReason())
                         .withHaFlowId(stateMachine.getHaFlowId()));
