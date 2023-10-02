@@ -37,6 +37,9 @@ opentsdb.metric.prefix = kilda.
 #VICTORIA METRICS Base URL
 victoria.base.url=http://victoriametrics.pendev:8428/prometheus
 
+victoria.trust.store=file:./victoria-keystore-kilda.jks
+victoria.trust.store.password=openkilda
+
 #Kilda username and password
 kilda.username = kilda
 kilda.password = kilda
