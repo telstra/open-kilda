@@ -344,7 +344,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         where:
         srcInnerVlanId | dstInnerVlanId | expectedErrorDescription
-        4096           | 10             | ~/Errors: InnerVlanId must be less than 4095/
+        4096           | 10             | ~/Errors: InnerVlanId must be less than 4096/
         10             | -1             | ~/Errors: InnerVlanId must be non-negative/
     }
 

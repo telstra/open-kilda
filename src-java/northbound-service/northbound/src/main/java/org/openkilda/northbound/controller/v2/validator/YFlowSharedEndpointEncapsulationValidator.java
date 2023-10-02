@@ -51,8 +51,8 @@ public final class YFlowSharedEndpointEncapsulationValidator {
         }
 
         //validate flowSharedEndpointEncapsulation vlanId is not more than 4095
-        if (flowSharedEndpointEncapsulation.getVlanId() > 4094) {
-            return Optional.of("VlanId must be less than 4095");
+        if (flowSharedEndpointEncapsulation.getVlanId() > 4095) {
+            return Optional.of("VlanId must be less than 4096");
         }
         return Optional.empty();
     }
@@ -65,8 +65,8 @@ public final class YFlowSharedEndpointEncapsulationValidator {
         }
 
         //validate flowSharedEndpointEncapsulation innerVlanId is not more than 4095
-        if (flowSharedEndpointEncapsulation.getInnerVlanId() > 4094) {
-            return Optional.of("InnerVlanId must be less than 4095");
+        if (flowSharedEndpointEncapsulation.getInnerVlanId() > 4095) {
+            return Optional.of("InnerVlanId must be less than 4096");
         }
         return Optional.empty();
     }

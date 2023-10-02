@@ -117,6 +117,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -272,6 +273,12 @@ class RecordHandler implements Runnable {
                     .withTopic(replyToTopic)
                     .withKey(record.key())
                     .sendVia(producerService);
+        } catch (IllegalArgumentException e) {
+            logger.error(format("Failed to delete switch rules. %s", e.getMessage()), e);
+            SwitchRulesResponse response = new SwitchRulesResponse(Collections.emptyList());
+            InfoMessage infoMessage = new InfoMessage(response,
+                    System.currentTimeMillis(), message.getCorrelationId());
+            producerService.sendMessageAndTrack(replyToTopic, record.key(), infoMessage);
         }
     }
 

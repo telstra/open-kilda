@@ -616,7 +616,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                     flowToSpoil.setSource(source)
                     return flowToSpoil
                 }                                                                                          |
-                new FlowNotCreatedExpectedError(~/To collect vlan statistics, the vlan IDs must be from 1 up to 4094/)
+                new FlowNotCreatedExpectedError(~/To collect vlan statistics, the vlan IDs must be from 1 up to 4095/)
     }
 
     @Tidy
