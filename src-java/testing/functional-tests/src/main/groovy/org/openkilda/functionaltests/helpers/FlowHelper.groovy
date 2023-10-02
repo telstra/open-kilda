@@ -51,8 +51,7 @@ class FlowHelper {
     def random = new Random()
     def faker = new Faker()
     //Kilda allows user to pass reserved VLAN IDs 1 and 4095 if they want.
-    //VLAN 4095 is not allowed at the moment because of https://github.com/telstra/open-kilda/issues/5230
-    static final IntRange KILDA_ALLOWED_VLANS = 1..4094
+    static final IntRange KILDA_ALLOWED_VLANS = 1..4095
 
     /**
      * Creates a FlowCreatePayload instance with random vlan and flow id. Will try to build over traffgen ports or use
