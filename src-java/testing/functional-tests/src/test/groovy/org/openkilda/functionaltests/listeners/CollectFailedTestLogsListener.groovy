@@ -28,14 +28,18 @@ class CollectFailedTestLogsListener extends AbstractSpringListener{
 
     @Override
     void error(ErrorInfo error) {
-        def objectMapper = new ObjectMapper()
-        def startTime = startTime.get(error.getMethod().getIteration().getDisplayName())
-        def endTime = utcTimeNow()
-        def logs = new RestTemplate().getForEntity(
+        if (!isFailedInPreTest(error)) {
+            def objectMapper = new ObjectMapper()
+            def startTime = startTime.get(error.getMethod().getIteration().getDisplayName())
+            def endTime = utcTimeNow()
+            def logs = new RestTemplate().getForEntity(
                     "${elasticSearchEndpoint}${elasticSearchIndex}/_search?q=" +
                             "@timestamp:[${startTime} TO ${endTime}]&size=10000", String.class).getBody()
-        def beautifiedString = objectMapper.readValue(logs, Object.class)
-        objectMapper.writerWithDefaultPrettyPrinter().writeValue(getTargetLogFile(error), beautifiedString)
+            def beautifiedString = objectMapper.readValue(logs, Object.class)
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(getTargetLogFile(error), beautifiedString)
+        } else {
+            throw error.getException()
+        }
     }
 
     private static String utcTimeNow() {
@@ -44,5 +48,9 @@ class CollectFailedTestLogsListener extends AbstractSpringListener{
 
     private static File getTargetLogFile(ErrorInfo error) {
         return new File("build/logs/${getIterationPath(error.getMethod().getIteration())}.server.log.json")
+    }
+
+    private static Boolean isFailedInPreTest(ErrorInfo error) {
+        return error.getMethod().getIteration() == null
     }
 }

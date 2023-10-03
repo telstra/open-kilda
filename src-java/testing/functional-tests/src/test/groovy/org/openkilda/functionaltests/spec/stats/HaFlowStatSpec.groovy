@@ -4,7 +4,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowHelper
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.functionaltests.model.stats.HaFlowStats
@@ -20,11 +19,17 @@ import spock.lang.Unroll
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
+import static org.openkilda.functionaltests.model.stats.HaFlowStatsMetric.HA_FLOW_EGRESS_BITS
+import static org.openkilda.functionaltests.model.stats.HaFlowStatsMetric.HA_FLOW_INGRESS_BITS
 import static org.openkilda.functionaltests.model.stats.HaFlowStatsMetric.HA_FLOW_RAW_BITS
+import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
+@Tags(LOW_PRIORITY)
 @Narrative("Verify that statistic is collected for different type of Ha-Flow")
 class HaFlowStatSpec extends HealthCheckSpecification {
     @Autowired
@@ -53,12 +58,14 @@ class HaFlowStatSpec extends HealthCheckSpecification {
         } ?: assumeTrue(false, "No suiting switches found")
         haFlow = haFlowHelper.addHaFlow(haFlowHelper.randomHaFlow(switchTriplet))
         def exam = haFlowHelper.getTraffExam(haFlow, haFlow.getMaximumBandwidth() + 1000, traffgenRunDuration)
-        Wrappers.wait(statsRouterRequestInterval * 4) {
+        wait(statsRouterRequestInterval * 3 + WAIT_OFFSET) {
             exam.run()
             statsHelper."force kilda to collect stats"()
-            haFlowStats.of(haFlow.getHaFlowId()).get(HA_FLOW_RAW_BITS, FORWARD).getDataPoints().size() > 2
+            stats = haFlowStats.of(haFlow.getHaFlowId())
+            stats.get(HA_FLOW_EGRESS_BITS, REVERSE).getDataPoints().size() > 2
+            stats.get(HA_FLOW_INGRESS_BITS, REVERSE).getDataPoints().size() > 2
         }
-         stats = haFlowStats.of(haFlow.getHaFlowId())
+
     }
 
     @Tidy
@@ -86,7 +93,7 @@ class HaFlowStatSpec extends HealthCheckSpecification {
     @Unroll
     def "System is able to collect latency stats for subflows"() {
         expect: "#stat stats is available"
-        Wrappers.wait(statsRouterRequestInterval) {
+        wait(statsRouterRequestInterval) {
             assert flowStats.rttOf(subFlow).get(FLOW_RTT, direction).hasNonZeroValues()
         }
 
@@ -130,7 +137,7 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
         statsHelper."force kilda to collect stats"()
 
         then: "Stats are collected"
-        Wrappers.wait(Constants.STATS_LOGGING_TIMEOUT) {
+        wait(STATS_LOGGING_TIMEOUT) {
             haFlowStats.of(haFlow.getHaFlowId()).get(HA_FLOW_RAW_BITS, REVERSE,
                     haFlow.getSubFlows().shuffled().first().getEndpoint())
                     .hasNonZeroValues()
@@ -195,7 +202,7 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
         statsHelper."force kilda to collect stats"()
 
         then: "Stats are collected"
-        Wrappers.wait(Constants.STATS_LOGGING_TIMEOUT) {
+        wait(STATS_LOGGING_TIMEOUT) {
             haFlowStats.of(haFlow.getHaFlowId()).get(HA_FLOW_RAW_BITS,
                     REVERSE,
                     haFlow.getSubFlows().shuffled().first().getEndpoint()).hasNonZeroValuesAfter(timeAfterUpdate)
