@@ -57,7 +57,8 @@ public class HaFlowStatsInfoFactory {
         List<UpdateFlowPathInfo> result = new ArrayList<>();
         for (SubFlowPathInfo path : subPaths) {
             result.add(new UpdateFlowPathInfo(path.flowId, blank.yFlowId, blank.yPointResources.getSwitchId(),
-                    path.cookie, path.meterId, path.pathNodes, path.statVlans, path.ingressMirror, path.egressMirror));
+                    path.cookie, path.meterId, null,
+                    path.pathNodes, path.statVlans, path.ingressMirror, path.egressMirror));
         }
         return result;
     }

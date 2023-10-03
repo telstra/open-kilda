@@ -32,6 +32,7 @@ import org.openkilda.wfm.topology.stats.model.HaFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptorHandler;
 import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
+import org.openkilda.wfm.topology.stats.model.MirrorGroupDescriptor;
 import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowSubDescriptor;
@@ -119,6 +120,11 @@ abstract class BaseCacheChangeHandler implements KildaEntryDescriptorHandler {
     @Override
     public void handleStatsEntry(DummyGroupDescriptor descriptor) {
         throw new IllegalArgumentException(formatUnexpectedArgumentMessage(descriptor.getClass()));
+    }
+
+    @Override
+    public void handleStatsEntry(MirrorGroupDescriptor descriptor) {
+        cacheAction(new GroupCacheKey(descriptor.getSwitchId(), descriptor.getMirrorGroupId().getValue()), descriptor);
     }
 
     private void handleHaFlowStatsEntry(SwitchId switchId, FlowSegmentCookie cookie, MeterId meterId,
