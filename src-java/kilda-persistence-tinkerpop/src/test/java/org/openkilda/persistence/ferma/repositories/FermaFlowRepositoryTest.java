@@ -36,6 +36,7 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.persistence.ferma.frames.FlowFrame;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -47,6 +48,11 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -654,6 +660,29 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
             updatedFlow = flowRepository.findById(TEST_FLOW_ID).get();
             assertNull(updatedFlow.getStatusInfo());
         });
+    }
+
+    @Test
+    public void serializeAndDeserializeDetachedHaFlow() throws IOException, ClassNotFoundException {
+        Flow flow = createTestFlow(TEST_FLOW_ID, switchA, PORT_1, VLAN_1, switchB, PORT_2, VLAN_2, true);
+        assertTrue(flow.getData() instanceof FlowFrame);
+        flowRepository.detach(flow);
+
+        ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+        ObjectOutputStream outputStream = new ObjectOutputStream(byteOutputStream);
+        outputStream.writeObject(flow);
+        outputStream.flush();
+        byte[] serializedHaFlow = byteOutputStream.toByteArray();
+        byteOutputStream.close();
+        outputStream.close();
+
+        ByteArrayInputStream byteInputStream = new ByteArrayInputStream(serializedHaFlow);
+        ObjectInputStream inputStream = new ObjectInputStream(byteInputStream);
+        Flow deserializedFlow = (Flow) inputStream.readObject();
+        byteInputStream.close();
+        inputStream.close();
+
+        assertEquals(flow, deserializedFlow);
     }
 
     @Test

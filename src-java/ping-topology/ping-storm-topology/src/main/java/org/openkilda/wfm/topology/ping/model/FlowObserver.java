@@ -19,6 +19,7 @@ import org.openkilda.messaging.model.PingReport;
 
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -26,7 +27,7 @@ import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class FlowObserver {
+public class FlowObserver implements Serializable {
     private final String flowId;
     private final PingObserver.PingObserverBuilder pingStatusBuilder;
 

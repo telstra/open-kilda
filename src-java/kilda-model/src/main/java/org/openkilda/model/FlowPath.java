@@ -449,7 +449,10 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
 
         @Override
         public String getFlowId() {
-            return flow != null ? flow.getFlowId() : null;
+            if (flow == null || flow.getData() == null) {
+                return null;
+            }
+            return flow.getFlowId();
         }
 
         @Override
