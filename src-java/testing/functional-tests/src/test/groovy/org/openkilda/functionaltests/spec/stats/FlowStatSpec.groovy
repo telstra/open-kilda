@@ -97,7 +97,17 @@ class FlowStatSpec extends HealthCheckSpecification {
             assert pathHelper.convert(newFlowPathInfo) == currentProtectedPath
             assert pathHelper.convert(newFlowPathInfo.protectedPath) == currentPath
         }
-        def timeAfterSwap = new Date().getTime()
+
+        and: "Wait till stats from old main path are collected"
+        Wrappers.wait(WAIT_OFFSET, 3) {
+            statsHelper."force kilda to collect stats"()
+            def newStats = flowStats.of(flow.getFlowId())
+            assert newStats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).getNewestTimeStamp() ==
+                    stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).getNewestTimeStamp() &&
+            newStats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).getNewestTimeStamp() ==
+                    stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).getNewestTimeStamp()
+            stats = newStats
+        }
 
         and: "Generate traffic on the flow"
         //generate two points of stat to be sure that stat is not collected for a new protected path(after swapping)
@@ -110,10 +120,6 @@ class FlowStatSpec extends HealthCheckSpecification {
         then: "System collects stats for previous egress cookie of protected path with non zero value"
         def newFlowStats = stats.of(flow.getFlowId())
         newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, protectedReverseCookie).hasNonZeroValues()
-
-        and: "System doesn't collect stats anymore for previous ingress/egress cookie of main path"
-        !newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValuesAfter(timeAfterSwap)
-        !newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValuesAfter(timeAfterSwap)
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)

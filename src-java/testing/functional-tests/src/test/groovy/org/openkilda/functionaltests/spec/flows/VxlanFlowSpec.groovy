@@ -112,13 +112,15 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def exam
         if (swPair.isTraffExamCapable()) {
-            exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 1000, 5)
+            exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 50, 5)
             withPool {
-                [exam.forward, exam.reverse].eachParallel { direction ->
+                assert [exam.forward, exam.reverse].collectParallel { direction ->
                     def resources = traffExam.startExam(direction)
                     direction.setResources(resources)
-                    assert traffExam.waitExam(direction).hasTraffic()
-                }
+                    traffExam.waitExam(direction)
+                }.every {
+                    it.hasTraffic()
+                }, northbound.getSwitchRules(swPair.getSrc().getDpId())
             }
         }
 
@@ -139,17 +141,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         and: "Flow is valid"
         Wrappers.wait(PATH_INSTALLATION_TIME) {
             northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        }
-
-        and: "The flow allows traffic"
-        if(exam) {
-            withPool {
-                [exam.forward, exam.reverse].eachParallel { direction ->
-                    def resources = traffExam.startExam(direction)
-                    direction.setResources(resources)
-                    assert traffExam.waitExam(direction).hasTraffic()
-                }
-            }
         }
 
         and: "Flow is pingable"
@@ -184,9 +175,20 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             }
         }
 
+        and: "The flow allows traffic"
+        if(exam) {
+            withPool {
+                assert [exam.forward, exam.reverse].collectParallel { direction ->
+                    def resources = traffExam.startExam(direction)
+                    direction.setResources(resources)
+                    traffExam.waitExam(direction)
+                }.every {it.hasTraffic()}, northbound.getSwitchRules(swPair.getSrc().getDpId())
+            }
+        }
+
         cleanup: "Delete the flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        sleep(7000) //subsequent test fails due to traffexam. Was not able to track down the reason
+        sleep(10000) //subsequent test fails due to traffexam. Was not able to track down the reason
 
         where:
         [data, swPair] << ([

@@ -51,13 +51,15 @@ class HaFlowStatSpec extends HealthCheckSpecification {
     FlowStats flowStats
 
     def setupSpec() {
-        switchTriplet = topologyHelper.getSwitchTriplets(false, false).find {
+        switchTriplet = topologyHelper.getSwitchTriplets(true, false).find {
             it.ep1 != it.ep2 && it.ep1 != it.shared && it.ep2 != it.shared &&
                     [it.shared, it.ep1, it.ep2].every { it.traffGens }
                     && it.ep2.getTraffGens().size() > 1 // needed for update flow test
         } ?: assumeTrue(false, "No suiting switches found")
-        haFlow = haFlowHelper.addHaFlow(haFlowHelper.randomHaFlow(switchTriplet))
-        def exam = haFlowHelper.getTraffExam(haFlow, haFlow.getMaximumBandwidth() + 1000, traffgenRunDuration)
+        // Flow with low maxBandwidth to make meters to drop packets when traffgens can't generate high load
+        haFlow = haFlowHelper.addHaFlow(
+                haFlowHelper.randomHaFlow(switchTriplet).tap {maximumBandwidth = 10})
+        def exam = haFlowHelper.getTraffExam(haFlow, haFlow.getMaximumBandwidth() * 10, traffgenRunDuration)
         wait(statsRouterRequestInterval * 3 + WAIT_OFFSET) {
             exam.run()
             statsHelper."force kilda to collect stats"()
