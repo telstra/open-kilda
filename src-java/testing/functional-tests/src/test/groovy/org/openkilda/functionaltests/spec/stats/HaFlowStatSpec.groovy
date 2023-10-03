@@ -105,8 +105,6 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     HaFlowHelper haFlowHelper
-    @Shared
-    HaFlow haFlow
     @Autowired
     @Shared
     HaFlowStats haFlowStats
