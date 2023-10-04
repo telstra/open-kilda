@@ -33,15 +33,14 @@ import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
-import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.EndpointUpdate;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.FlowLoopOperation;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
+import org.openkilda.wfm.topology.flowhs.utils.EndpointUpdateType;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.storm.shade.com.google.common.base.Objects;
 
 import java.util.Optional;
 
@@ -77,12 +76,12 @@ public class UpdateFlowAction extends
             // Complete target flow in FSM with values from original flow
             stateMachine.setTargetFlow(updateFlow(flow, targetFlow));
 
-            EndpointUpdate endpointUpdate = updateEndpointRulesOnly(originalFlow, targetFlow,
+            EndpointUpdateType endpointUpdateType = EndpointUpdateType.determineUpdateType(originalFlow, targetFlow,
                     stateMachine.getOriginalDiverseFlowGroup(), flow.getDiverseGroupId(),
                     stateMachine.getOriginalAffinityFlowGroup(), flow.getAffinityGroupId());
-            stateMachine.setEndpointUpdate(endpointUpdate);
+            stateMachine.setEndpointUpdateType(endpointUpdateType);
 
-            if (endpointUpdate.isPartialUpdate()) {
+            if (endpointUpdateType.isPartialUpdate()) {
                 FlowLoopOperation flowLoopOperation = detectFlowLoopOperation(originalFlow, targetFlow);
                 stateMachine.setFlowLoopOperation(flowLoopOperation);
 
@@ -101,7 +100,7 @@ public class UpdateFlowAction extends
 
         stateMachine.saveActionToHistory("The flow properties were updated");
 
-        if (stateMachine.getEndpointUpdate().isPartialUpdate()) {
+        if (stateMachine.getEndpointUpdateType().isPartialUpdate()) {
             stateMachine.saveActionToHistory("Skip paths and resources allocation");
             stateMachine.fire(Event.UPDATE_ENDPOINT_RULES_ONLY);
         }
@@ -207,59 +206,6 @@ public class UpdateFlowAction extends
         return flowRepository.getOrCreateAffinityFlowGroupId(flowId)
                 .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                         format("Flow %s not found", flowId)));
-    }
-
-    private FlowUpdateFsm.EndpointUpdate updateEndpointRulesOnly(RequestedFlow originalFlow, RequestedFlow targetFlow,
-                                                                 String originalDiverseGroupId,
-                                                                 String targetDiverseGroupId,
-                                                                 String originalAffinityGroupId,
-                                                                 String targetAffinityGroupId) {
-        boolean updateEndpointOnly = originalFlow.getSrcSwitch().equals(targetFlow.getSrcSwitch());
-        updateEndpointOnly &= originalFlow.getDestSwitch().equals(targetFlow.getDestSwitch());
-
-        updateEndpointOnly &= originalFlow.isAllocateProtectedPath() == targetFlow.isAllocateProtectedPath();
-        updateEndpointOnly &= originalFlow.getBandwidth() == targetFlow.getBandwidth();
-        updateEndpointOnly &= originalFlow.isIgnoreBandwidth() == targetFlow.isIgnoreBandwidth();
-        updateEndpointOnly &= originalFlow.isStrictBandwidth() == targetFlow.isStrictBandwidth();
-
-        updateEndpointOnly &= Objects.equal(originalFlow.getMaxLatency(), targetFlow.getMaxLatency());
-        updateEndpointOnly &= Objects.equal(originalFlow.getFlowEncapsulationType(),
-                targetFlow.getFlowEncapsulationType());
-        updateEndpointOnly &= Objects.equal(originalFlow.getPathComputationStrategy(),
-                targetFlow.getPathComputationStrategy());
-
-        updateEndpointOnly &= Objects.equal(originalDiverseGroupId, targetDiverseGroupId);
-        updateEndpointOnly &= Objects.equal(originalAffinityGroupId, targetAffinityGroupId);
-
-        // TODO(tdurakov): check connected devices as well
-        boolean srcEndpointChanged = originalFlow.getSrcPort() != targetFlow.getSrcPort();
-        srcEndpointChanged |= originalFlow.getSrcVlan() != targetFlow.getSrcVlan();
-        srcEndpointChanged |= originalFlow.getSrcInnerVlan() != targetFlow.getSrcInnerVlan();
-
-        // TODO(tdurakov): check connected devices as well
-        boolean dstEndpointChanged = originalFlow.getDestPort() != targetFlow.getDestPort();
-        dstEndpointChanged |= originalFlow.getDestVlan() != targetFlow.getDestVlan();
-        dstEndpointChanged |= originalFlow.getDestInnerVlan() != targetFlow.getDestInnerVlan();
-
-        if (originalFlow.getLoopSwitchId() != targetFlow.getLoopSwitchId()) {
-            srcEndpointChanged |= originalFlow.getSrcSwitch().equals(originalFlow.getLoopSwitchId());
-            srcEndpointChanged |= originalFlow.getSrcSwitch().equals(targetFlow.getLoopSwitchId());
-            dstEndpointChanged |= originalFlow.getDestSwitch().equals(originalFlow.getLoopSwitchId());
-            dstEndpointChanged |= originalFlow.getDestSwitch().equals(targetFlow.getLoopSwitchId());
-        }
-
-        if (updateEndpointOnly) {
-            if (srcEndpointChanged && dstEndpointChanged) {
-                return EndpointUpdate.BOTH;
-            } else if (srcEndpointChanged) {
-                return EndpointUpdate.SOURCE;
-            } else if (dstEndpointChanged) {
-                return EndpointUpdate.DESTINATION;
-            } else {
-                return EndpointUpdate.NONE;
-            }
-        }
-        return EndpointUpdate.NONE;
     }
 
     private FlowLoopOperation detectFlowLoopOperation(RequestedFlow originalFlow, RequestedFlow targetFlow) {

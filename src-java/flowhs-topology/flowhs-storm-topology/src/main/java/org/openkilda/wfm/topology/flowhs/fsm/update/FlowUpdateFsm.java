@@ -70,6 +70,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.update.actions.ValidateNonIngressRu
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowUpdateEventListener;
 import org.openkilda.wfm.topology.flowhs.service.FlowUpdateHubCarrier;
+import org.openkilda.wfm.topology.flowhs.utils.EndpointUpdateType;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
@@ -106,7 +107,7 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
     private Set<String> bulkUpdateFlowIds;
     private boolean doNotRevert;
 
-    private EndpointUpdate endpointUpdate = EndpointUpdate.NONE;
+    private EndpointUpdateType endpointUpdateType = EndpointUpdateType.NONE;
     private FlowLoopOperation flowLoopOperation = FlowLoopOperation.NONE;
 
     public FlowUpdateFsm(@NonNull CommandContext commandContext, @NonNull FlowUpdateHubCarrier carrier,
@@ -451,23 +452,6 @@ public final class FlowUpdateFsm extends FlowPathSwappingFsm<FlowUpdateFsm, Stat
                 });
             });
             return fsm;
-        }
-    }
-
-    public enum EndpointUpdate {
-        NONE(false),
-        SOURCE(true),
-        DESTINATION(true),
-        BOTH(true);
-
-        private boolean partialUpdate;
-
-        EndpointUpdate(boolean partialUpdate) {
-            this.partialUpdate = partialUpdate;
-        }
-
-        public boolean isPartialUpdate() {
-            return partialUpdate;
         }
     }
 

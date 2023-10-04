@@ -90,8 +90,8 @@ public class InstallNonIngressRulesAction
                                                                 FlowUpdateFsm stateMachine, Flow flow,
                                                                 FlowPath path, FlowPath oppositePath) {
         CommandContext context = stateMachine.getCommandContext();
-        switch (stateMachine.getEndpointUpdate()) {
-            case BOTH:
+        switch (stateMachine.getEndpointUpdateType()) {
+            case ALL:
                 return new ArrayList<>(commandBuilder.buildEgressOnly(context, flow, path, oppositePath));
             case SOURCE:
                 return buildCommandsForSourceUpdate(commandBuilder, stateMachine, flow, path, oppositePath, context);

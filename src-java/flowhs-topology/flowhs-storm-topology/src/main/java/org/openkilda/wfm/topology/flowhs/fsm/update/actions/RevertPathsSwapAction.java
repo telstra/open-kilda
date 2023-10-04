@@ -38,7 +38,7 @@ public class RevertPathsSwapAction extends
 
     @Override
     protected void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        if (stateMachine.getEndpointUpdate().isPartialUpdate()) {
+        if (stateMachine.getEndpointUpdateType().isPartialUpdate()) {
             stateMachine.saveActionToHistory("Skip paths swap");
             return;
         }
