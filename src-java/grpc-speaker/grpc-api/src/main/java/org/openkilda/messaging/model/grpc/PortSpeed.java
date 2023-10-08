@@ -15,7 +15,9 @@
 
 package org.openkilda.messaging.model.grpc;
 
-public enum PortSpeed {
+import java.io.Serializable;
+
+public enum PortSpeed implements Serializable {
     PORT_SPEED_RESERVED(0),
 
     PORT_SPEED_10MBFD(1),

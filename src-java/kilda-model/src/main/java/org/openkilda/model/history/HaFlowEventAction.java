@@ -19,6 +19,7 @@ import org.openkilda.model.CompositeDataEntity;
 import org.openkilda.model.history.HaFlowEventAction.HaFlowEventActionData;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.BeanSerializer;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -38,7 +39,7 @@ import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
 
-@DefaultSerializer
+@DefaultSerializer(BeanSerializer.class)
 @ToString
 public class HaFlowEventAction implements CompositeDataEntity<HaFlowEventActionData> {
 

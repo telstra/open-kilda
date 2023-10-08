@@ -21,11 +21,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class PacketInOutStatsDto {
+public class PacketInOutStatsDto implements Serializable {
 
     private long packetInTotalPackets;
     private long packetInTotalPacketsDataplane;

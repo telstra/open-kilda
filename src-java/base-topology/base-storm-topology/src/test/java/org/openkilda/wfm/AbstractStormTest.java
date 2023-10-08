@@ -145,7 +145,8 @@ public abstract class AbstractStormTest {
         Config config = new Config();
         config.setDebug(false);
         config.setMaxTaskParallelism(1);
-        config.setNumWorkers(1);
+        config.setNumWorkers(2);
+        config.put(Config.TOPOLOGY_TESTING_ALWAYS_TRY_SERIALIZE, true);
         return config;
     }
 

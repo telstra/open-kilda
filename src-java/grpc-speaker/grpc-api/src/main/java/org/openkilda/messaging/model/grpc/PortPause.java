@@ -15,7 +15,9 @@
 
 package org.openkilda.messaging.model.grpc;
 
-public enum PortPause {
+import java.io.Serializable;
+
+public enum PortPause implements Serializable {
 
     PORT_PAUSE_RESERVED(0),
 
