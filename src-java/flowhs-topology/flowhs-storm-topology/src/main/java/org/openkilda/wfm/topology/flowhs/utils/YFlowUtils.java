@@ -18,8 +18,11 @@ package org.openkilda.wfm.topology.flowhs.utils;
 import static java.lang.String.format;
 import static java.util.Collections.emptyList;
 
+import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.yflow.SubFlowPathDto;
+import org.openkilda.messaging.command.yflow.YFlowRerouteResponse;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -30,9 +33,11 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.tx.TransactionManager;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
+import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.model.CrossingPaths;
 
 import java.util.ArrayList;
@@ -49,6 +54,27 @@ public class YFlowUtils {
         transactionManager = persistenceManager.getTransactionManager();
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.yFlowRepository = repositoryFactory.createYFlowRepository();
+    }
+
+    /**
+     * Builds a response message for the rerouting of a YFlow, based on the provided state machine.
+     * This method calculates the paths for the rerouted YFlow, checks if the flow has been rerouted,
+     * and constructs a response message accordingly.
+     *
+     * @param stateMachine The state machine representing the YFlow rerouting process.
+     * @return An InfoMessage containing the YFlowRerouteResponse, creation time, and correlation ID.
+     * @throws NullPointerException if 'stateMachine' or its required properties are null.
+     */
+    public Message buildRerouteResponseMessage(YFlowRerouteFsm stateMachine) {
+        CrossingPaths paths = definePaths(stateMachine.getYFlowId(), stateMachine.getOldYFlowPathCookies());
+        boolean rerouted = !(
+                paths.getSharedPath().equals(stateMachine.getOldSharedPath())
+                        && paths.getSubFlowPaths().equals(stateMachine.getOldSubFlowPathDtos()));
+        YFlowRerouteResponse response = new YFlowRerouteResponse(
+                paths.getSharedPath(), paths.getSubFlowPaths(), rerouted);
+        CommandContext commandContext = stateMachine.getCommandContext();
+        return new InfoMessage(response, commandContext.getCreateTime(),
+                commandContext.getCorrelationId());
     }
 
     public CrossingPaths definePaths(String yFlowId, List<Long> ignoredPathsCookies) {

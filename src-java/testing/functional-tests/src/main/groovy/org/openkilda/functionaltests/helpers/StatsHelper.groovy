@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
+import static java.util.concurrent.TimeUnit.SECONDS
+
 @Component
 class StatsHelper {
     @Autowired
@@ -27,6 +29,7 @@ class StatsHelper {
     @Value('${tsdb.metric.prefix}')
     String metricPrefix
     final String KAFKA_STORM_SPEAKER_TOPIC = "kilda.speaker.storm"
+    final int KAFKA_MESSAGE_SEND_TIMEOUT = 5 //seconds
 
     KafkaProducer kafkaProducer = null
 
@@ -39,7 +42,8 @@ class StatsHelper {
                 new CommandMessage(
                         new StatsRequest(),
                         System.currentTimeMillis(),
-                        "artificial autotest stats collection enforcement for flow ${flowId}").toJson())).get()
+                        "artificial autotest stats collection enforcement for flow ${flowId}").toJson()))
+                .get(KAFKA_MESSAGE_SEND_TIMEOUT, SECONDS)
     }
 
     //Something like singleton here. If you know the better approach, please, suggest in comments or refactor

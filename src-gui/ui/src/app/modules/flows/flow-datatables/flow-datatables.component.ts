@@ -48,6 +48,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
 
   expandedBandwidth = false;
   expandedFlowId = false;
+  expandedYFlowId = false;
   expandedState = false;
   expandedStatus = false;
   expandedDescription = false;
@@ -99,6 +100,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
       'aoColumns': [
         { sWidth: '7%' , 'bSortable': false},
         { sWidth: '15%' },
+        { sWidth: '10%' },
         { sWidth:  '13%', 'sType': 'name', 'bSortable': true },
         { sWidth: '8%' },
         { sWidth: '8%' },
@@ -203,7 +205,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
 
   toggleSearch(e, inputContainer) {
 
-    this[inputContainer] = this[inputContainer] ? false : true;
+    this[inputContainer] = !this[inputContainer];
     if (this[inputContainer]) {
       setTimeout(() => {
         this.renderer.selectRootElement('#' + inputContainer).focus();

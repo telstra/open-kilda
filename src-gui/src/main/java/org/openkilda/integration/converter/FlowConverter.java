@@ -242,6 +242,7 @@ public class FlowConverter {
     public FlowInfo toFlowV2Info(final FlowV2 flow, Map<String, String> csNames) {
         FlowInfo flowInfo = new FlowInfo();
         flowInfo.setFlowid(flow.getId());
+        flowInfo.setYFlowId(flow.getYFlowId());
         flowInfo.setMaximumBandwidth(flow.getMaximumBandwidth());
         flowInfo.setAllocateProtectedPath(flow.isAllocateProtectedPath());
         flowInfo.setDescription(flow.getDescription());

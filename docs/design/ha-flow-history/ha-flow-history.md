@@ -42,7 +42,7 @@ When an event has been created and the specific steps are executed, we can save 
 following way:
 ```java
 HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .of(stateMachine.getCommandContext().getCorrelationId())
                 .withAction("HA-flow paths have been installed")
                 .withDescription(format("The HA-flow paths %s / %s have been installed",
                         newPrimaryForwardPathId, newPrimaryReversePathId))
@@ -68,7 +68,7 @@ Errors are actions; they just have negative results. It is possible to save an e
 but it is advised to use the syntactic sugar: 
 ```java
 HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                .of(stateMachine.getCommandContext().getCorrelationId())
                 .withAction("Failed to create the flow")
                 .withDescription(stateMachine.getErrorReason())
                 .withHaFlowId(stateMachine.getHaFlowId()));

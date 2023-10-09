@@ -170,25 +170,29 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = mirrorTg ? new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId]) : null
         def rxPacketsBefore = mirrorPortStats?.get()?.rxPackets
-        verifyTraffic(traffExam, flow, mirrorDirection)
-        statsHelper."force kilda to collect stats"()
+        if (!trafficDisclaimer) {
+            verifyTraffic(traffExam, flow, mirrorDirection)
+            statsHelper."force kilda to collect stats"()
+        }
 
         then: "OF group reports same amount of packets sent both to mirror and to main paths"
         def fl = flHelper.getFlsByRegions(swPair.src.getRegions())[0].floodlightService
-        Wrappers.wait(2) { //leftover packets after traffexam may not be counted still, require a retry sometimes
-            mirrorRule = findMirrorRule(getFlowRules(swPair.src.dpId), mirrorDirection)
-            assert mirrorRule.packetCount > 0
-            def mirrorGroup = fl.getGroupsStats(swPair.src.dpId).group.find { it.groupNumber == groupId }
-            mirrorGroup.bucketCounters.each { assert it.packetCount.toLong() == mirrorRule.packetCount }
+        if (!trafficDisclaimer) {
+            Wrappers.wait(2) { //leftover packets after traffexam may not be counted still, require a retry sometimes
+                mirrorRule = findMirrorRule(getFlowRules(swPair.src.dpId), mirrorDirection)
+                assert mirrorRule.packetCount > 0
+                def mirrorGroup = fl.getGroupsStats(swPair.src.dpId).group.find { it.groupNumber == groupId }
+                mirrorGroup.bucketCounters.each { assert it.packetCount.toLong() == mirrorRule.packetCount }
+            }
         }
 
         and: "Original flow rule counter is not increased"
         flowRule.packetCount == findFlowRule(getFlowRules(swPair.src.dpId), mirrorDirection).packetCount
 
         and: "System collects stat for mirror cookie in tsdb"
-        if (trafficDisclaimer) {
+        if (!trafficDisclaimer) {
             Wrappers.wait(statsRouterRequestInterval) {
-                flowStats.of(flow.getFlowId()).get(FLOW_RAW_BYTES, FORWARD).hasNonZeroValues()
+                flowStats.of(flow.getFlowId()).get(FLOW_RAW_BYTES, mirrorRule.cookie).hasNonZeroValues()
             }
         }
 

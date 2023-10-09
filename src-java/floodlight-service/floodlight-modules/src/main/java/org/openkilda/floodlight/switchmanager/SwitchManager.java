@@ -649,6 +649,9 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     }
 
     private void matchVlan(final OFFactory ofFactory, final Match.Builder matchBuilder, final int vlanId) {
+        if ((vlanId & OF10_VLAN_MASK) != vlanId) {
+            throw new IllegalArgumentException(String.format("Illegal VLAN value: 0x%x", vlanId));
+        }
         if (0 <= OF_12.compareTo(ofFactory.getVersion())) {
             matchBuilder.setMasked(MatchField.VLAN_VID, OFVlanVidMatch.ofVlan(vlanId),
                     OFVlanVidMatch.ofRawVid(OF10_VLAN_MASK));
@@ -671,8 +674,8 @@ public class SwitchManager implements IFloodlightModule, IFloodlightService, ISw
     /**
      * Pushes a single flow modification command to the switch with the given datapath ID.
      *
-     * @param sw open flow switch descriptor
-     * @param flowId flow name, for logging
+     * @param sw      open flow switch descriptor
+     * @param flowId  flow name, for logging
      * @param flowMod command to send
      * @return OF transaction Id (???)
      * @throws OfInstallException openflow install exception

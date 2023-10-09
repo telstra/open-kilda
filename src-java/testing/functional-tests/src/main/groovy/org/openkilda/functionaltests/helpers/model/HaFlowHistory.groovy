@@ -11,13 +11,14 @@ import groovy.transform.TupleConstructor
 @EqualsAndHashCode
 class HaFlowHistory {
     HaFlowHistory(List<HaFlowHistoryEntry> entries) {
-        this.entries = entries
+        this.entries = entries.collect {
+            new HaFlowHistoryEventExtension(it)
+        }
     }
 
-    List<HaFlowHistoryEntry> entries;
+    List<HaFlowHistoryEventExtension> entries;
 
-
-    List<HaFlowHistoryEntry> getEntriesByType(HaFlowActionType type) {
+    List<HaFlowHistoryEventExtension> getEntriesByType(HaFlowActionType type) {
         return entries.findAll({ it -> it.action == type.getValue() })
     }
 }

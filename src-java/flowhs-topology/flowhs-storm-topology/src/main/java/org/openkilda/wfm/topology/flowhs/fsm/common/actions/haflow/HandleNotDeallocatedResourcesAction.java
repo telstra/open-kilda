@@ -20,8 +20,8 @@ import static java.lang.String.format;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,9 +30,11 @@ public class HandleNotDeallocatedResourcesAction<T extends HaFlowPathSwappingFsm
         C extends SpeakerResponseContext> extends HistoryRecordingAction<T, S, E, C> {
     @Override
     public void perform(S from, S to, E event, C context, T stateMachine) {
+        FlowHistoryService flowHistoryService = FlowHistoryService.using(stateMachine.getCarrier());
+
         stateMachine.getOldResources().forEach(haFlowResources ->
-                HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                        .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+                flowHistoryService.saveError(HaFlowHistory
+                        .of(stateMachine.getCommandContext().getCorrelationId())
                         .withAction("Failed to deallocate resources")
                         .withDescription(format("Failed to deallocate resources: %s", haFlowResources))
                         .withHaFlowId(stateMachine.getHaFlowId())));

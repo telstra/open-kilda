@@ -31,6 +31,7 @@ public class FlowEventData implements Serializable {
     Event event;
     String details;
     Instant time;
+    String taskId;
 
     @Getter
     public enum Initiator {
@@ -43,6 +44,7 @@ public class FlowEventData implements Serializable {
     public enum Event {
         CREATE("Flow creating"),
         UPDATE("Flow updating"),
+        PATCH("Flow partial updating"),
         REROUTE("Flow rerouting"),
         DELETE("Flow deleting"),
         SYNC("Flow paths sync"),

@@ -42,6 +42,7 @@ import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.history.model.HaFlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.utils.FsmExecutor;
 import org.openkilda.wfm.topology.flowhs.exception.DuplicateKeyException;
@@ -54,6 +55,8 @@ import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingFsmRegister;
 import org.openkilda.wfm.topology.flowhs.service.common.FlowProcessingService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 import org.openkilda.wfm.topology.flowhs.validation.HaFlowValidator;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -148,9 +151,15 @@ public class HaFlowUpdateService extends FlowProcessingService<HaFlowUpdateFsm, 
         }
         String haFlowId = request.getHaFlowId();
         flowDashboardLogger.onHaFlowPatchUpdate(haFlowId);
+        saveNewHistoryEvent(haFlowId, commandContext);
+
         UpdateHaFlowResult updateHaFlowResult = updateHaFlow(request, haFlowId);
 
-        if (updateHaFlowResult.isFullUpdateRequired) {
+        if (updateHaFlowResult.isFullUpdateRequired()) {
+            FlowHistoryService.using(carrier).save(HaFlowHistory
+                            .of(commandContext.getCorrelationId())
+                            .withAction("Full update is required. Executing the UPDATE operation.")
+                            .withDescription("Partial update request: " + request));
             HaFlowRequest updateRequest = HaFlowMapper.INSTANCE.toHaFlowRequest(
                     updateHaFlowResult.originalHaFlow, request.getDiverseFlowId(), Type.UPDATE);
             updateChangedFields(updateRequest, request);
@@ -162,7 +171,26 @@ public class HaFlowUpdateService extends FlowProcessingService<HaFlowUpdateFsm, 
             }
             carrier.sendNorthboundResponse(buildResponseMessage(
                     updateHaFlowResult.partiallyUpdatedHaFlow, commandContext));
+            FlowHistoryService.using(carrier).save(HaFlowHistory
+                    .of(commandContext.getCorrelationId())
+                    .withAction("Saving the original HA-Flow on partial completing")
+                    .withDescription("Partial update request: " + request)
+                    .withHaFlowDumpBefore(updateHaFlowResult.getOriginalHaFlow()));
+
+            FlowHistoryService.using(carrier).save(HaFlowHistory
+                    .of(commandContext.getCorrelationId())
+                    .withAction("HA-Flow partial update has been completed")
+                    .withHaFlowDumpAfter(updateHaFlowResult.getPartiallyUpdatedHaFlow()));
         }
+    }
+
+    private void saveNewHistoryEvent(@NonNull String haFlowId, @NonNull CommandContext commandContext) {
+        FlowHistoryService.using(carrier).saveNewHaFlowEvent(HaFlowEventData.builder()
+                        .taskId(commandContext.getCorrelationId())
+                        .haFlowId(haFlowId)
+                        .event(HaFlowEventData.Event.PARTIAL_UPDATE)
+                        .action("HA-Flow partial update is invoked")
+                .build());
     }
 
     private UpdateHaFlowResult updateHaFlow(HaFlowPartialUpdateRequest request, String haFlowId)

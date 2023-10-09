@@ -19,7 +19,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -34,123 +35,61 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({"flowid", "source_switch", "src_port", "src_vlan", "target_switch", "dst_port", "dst_vlan",
         "maximum_bandwidth", "status", "description", "diverse-flowid", "last-updated", "discrepancy"})
+@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
 @Data
 public class FlowInfo implements Serializable {
+    private static final long serialVersionUID = -7015976328478701934L;
 
     @JsonProperty("flowid")
     private String flowid;
-
-    @JsonProperty("source_switch")
+    @JsonProperty("y_flow_id")
+    private String yFlowId;
     private String sourceSwitch;
-
-    @JsonProperty("src_port")
     private int srcPort;
-
-    @JsonProperty("src_vlan")
     private int srcVlan;
-    
-    @JsonProperty("src_inner_vlan")
     private int srcInnerVlan;
-
-    @JsonProperty("target_switch_name")
     private String targetSwitchName;
-
-    @JsonProperty("source_switch_name")
     private String sourceSwitchName;
-
-    @JsonProperty("target_switch")
     private String targetSwitch;
-
-    @JsonProperty("dst_port")
     private int dstPort;
-
-    @JsonProperty("dst_vlan")
     private int dstVlan;
-
-    @JsonProperty("dst_inner_vlan")
     private int dstInnerVlan;
-    
     @JsonProperty("diverse-flowid")
     private String diverseFlowid;
-
-    @JsonProperty("maximum_bandwidth")
     private int maximumBandwidth;
-    
-    @JsonProperty("allocate_protected_path")
     private boolean allocateProtectedPath;
-
-    @JsonProperty("status")
     private String status;
-
-    @JsonProperty("description")
     private String description;
-
     @JsonProperty("last-updated")
     private String lastUpdated;
-    
-    @JsonProperty("discrepancy")
     private FlowDiscrepancy discrepancy;
-
-    @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth;
-
-    @JsonProperty("state")
     private String state;
-    
     @JsonProperty("controller-flow")
     private boolean controllerFlow;
-    
     @JsonProperty("inventory-flow")
     private boolean inventoryFlow;
-    
-    @JsonProperty("pinned")
     private boolean pinned;
-    
     @JsonProperty("encapsulation-type")
     private String encapsulationType;
-    
     @JsonProperty("path-computation-strategy")
     private String pathComputationStrategy;
-    
     @JsonProperty("periodic-pings")
     private boolean periodicPings;
-
-    @JsonProperty("created")
     private String created;
-    
-    @JsonProperty("src_lldp")
     private boolean srcLldp;
-
-    @JsonProperty("src_arp")
     private boolean srcArp;
-
-    @JsonProperty("dst_lldp")
     private boolean dstLldp;
-
-    @JsonProperty("dst_arp")
     private boolean dstArp;
-    
-    @JsonProperty("diverse_with")
     private List<String> diverseWith;
-    
     @JsonProperty("max-latency")
     private Long maxLatency;
-
     @JsonProperty("max-latency-tier2")
     private Long maxLatencyTier2;
-    
-    @JsonProperty("priority")
     private int priority;
-    
-    @JsonProperty("status_info")
     private String statusInfo;
-    
     @JsonProperty("target-path-computation_strategy")
     private String targetPathComputationStrategy;
-    
     @JsonProperty("status-details")
     private StatusDetail statusDetails;
-
-    private static final long serialVersionUID = -7015976328478701934L;
-
 }

@@ -127,8 +127,10 @@ public abstract class IConstants {
         public static final String VERSION_TWO = "/v2";
         public static final String GET_FLOW = VERSION_ONE + "/flows";
         public static final String GET_FLOW_V2 = VERSION_TWO + "/flows";
+        public static final String GET_Y_FLOW_V2 = VERSION_TWO + "/y-flows";
         public static final String GET_FLOW_STATUS = GET_FLOW_V2 + "/status/";
         public static final String GET_FLOW_REROUTE = GET_FLOW_V2 + "/{flow_id}/reroute";
+        public static final String GET_Y_FLOW_REROUTE = GET_Y_FLOW_V2 + "/{y_flow_id}/reroute";
         public static final String GET_FLOW_VALIDATE = GET_FLOW + "/{flow_id}/validate";
         public static final String GET_PATH_FLOW = GET_FLOW + "/path";
         public static final String GET_SWITCHES = VERSION_ONE + "/switches";

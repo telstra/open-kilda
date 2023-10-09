@@ -19,6 +19,8 @@ public enum HaFlowActionType {
     CREATE("HA-Flow create", "HA-flow has been created successfully"),
     DELETE("HA-Flow delete", "HA-flow has been deleted successfully"),
     UPDATE("HA-Flow update", "HA-flow has been updated successfully"),
+    PARTIAL_UPDATE_IN_DB("HA-Flow partial update", "HA-Flow partial update has been completed"),
+    PARTIAL_UPDATE_FULL("HA-Flow partial update", "HA-flow has been updated successfully"),
     REROUTE("HA-Flow reroute", "HA-flow has been rerouted successfully"),
     REROUTE_FAIL("HA-Flow reroute", "Failed to reroute the HA-flow");
 

@@ -16,14 +16,20 @@
 package org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.actions;
 
 import static java.lang.String.format;
+import static org.apache.commons.collections4.CollectionUtils.isEmpty;
+import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteContext;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.FlowRerouteService;
+import org.openkilda.wfm.topology.flowhs.utils.YFlowUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,8 +38,15 @@ import java.util.Optional;
 @Slf4j
 public class HandleNotReroutedSubFlowAction
         extends NbTrackableWithHistorySupportAction<YFlowRerouteFsm, State, Event, YFlowRerouteContext> {
-    public HandleNotReroutedSubFlowAction(PersistenceManager persistenceManager) {
+
+    private final YFlowUtils utils;
+    private final FlowRerouteService flowRerouteService;
+
+    public HandleNotReroutedSubFlowAction(PersistenceManager persistenceManager,
+                                          FlowRerouteService flowRerouteService) {
         super(persistenceManager);
+        utils = new YFlowUtils(persistenceManager);
+        this.flowRerouteService = flowRerouteService;
     }
 
     @Override
@@ -63,6 +76,14 @@ public class HandleNotReroutedSubFlowAction
         stateMachine.notifyEventListeners(listener ->
                 listener.onSubFlowProcessingFinished(stateMachine.getYFlowId(), subFlowId));
 
+        stateMachine.setMainErrorAndDescription(context.getErrorType(), context.getError());
+
+        Optional<FlowRerouteRequest> secondRerouteRequest = getForthcomingRerouteRequestIfExistOrNull(stateMachine,
+                isFirstError, subFlowId);
+
+        secondRerouteRequest.ifPresent(rerouteRequest ->
+                prepareAndSendSecondSubFlowRerouteRequest(rerouteRequest, stateMachine));
+
         if (stateMachine.getReroutingSubFlows().isEmpty()) {
             if (stateMachine.getFailedSubFlows().containsAll(stateMachine.getSubFlows())) {
                 stateMachine.fire(Event.YFLOW_REROUTE_SKIPPED);
@@ -75,13 +96,50 @@ public class HandleNotReroutedSubFlowAction
             }
         }
 
-        if (isFirstError) {
-            Message message = stateMachine.buildErrorMessage(context.getErrorType(), getGenericErrorMessage(),
-                    context.getError());
-            return Optional.of(message);
+        if (isNoSuccessAndNoMoreRequests(isFirstError, stateMachine)) {
+            return Optional.of(stateMachine.buildErrorMessage(stateMachine.getMainError(),
+                    getGenericErrorMessage(), stateMachine.getMainErrorDescription()));
+        }
+
+        if (isAnySuccessAndNoForthcomingRequests(stateMachine)) {
+            return Optional.of(utils.buildRerouteResponseMessage(stateMachine));
         }
 
         return Optional.empty();
+    }
+
+    private Optional<FlowRerouteRequest> getForthcomingRerouteRequestIfExistOrNull(YFlowRerouteFsm stateMachine,
+                                                                                   boolean isFirstError,
+                                                                                   String currentSubFlowId) {
+        if (isFirstError) {
+            if (isNotEmpty(stateMachine.getAllocatedSubFlows())) {
+                return Optional.empty();
+            } else {
+                return stateMachine.getRerouteRequests().stream()
+                        .filter(req -> !currentSubFlowId.equals(req.getFlowId())).findFirst();
+            }
+        } else {
+            return Optional.empty();
+        }
+    }
+
+    private void prepareAndSendSecondSubFlowRerouteRequest(FlowRerouteRequest secondRerouteRequest,
+                                                           YFlowRerouteFsm stateMachine) {
+        secondRerouteRequest.getAffectedIsls().clear();
+        stateMachine.addReroutingSubFlow(secondRerouteRequest.getFlowId());
+        stateMachine.notifyEventListeners(listener -> listener.onSubFlowProcessingStart(stateMachine.getYFlowId(),
+                secondRerouteRequest.getFlowId()));
+        CommandContext flowContext = stateMachine.getCommandContext().fork(secondRerouteRequest.getFlowId());
+        flowRerouteService.startFlowRerouting(secondRerouteRequest, flowContext, stateMachine.getYFlowId());
+    }
+
+    private boolean isNoSuccessAndNoMoreRequests(boolean isFirstError, YFlowRerouteFsm stateMachine) {
+        return !isFirstError || (isEmpty(stateMachine.getAllocatedSubFlows())
+                && stateMachine.getReroutingSubFlows().isEmpty());
+    }
+
+    private boolean isAnySuccessAndNoForthcomingRequests(YFlowRerouteFsm stateMachine) {
+        return isNotEmpty(stateMachine.getAllocatedSubFlows()) && isEmpty(stateMachine.getReroutingSubFlows());
     }
 
     @Override

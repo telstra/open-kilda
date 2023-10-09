@@ -21,8 +21,8 @@ import org.openkilda.model.PathId;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -59,8 +59,8 @@ public class HandleNotRemovedPathsAction<T extends HaFlowPathSwappingFsm<T, S, E
     }
 
     private void saveErrorToHistory(T stateMachine, String action) {
-        HaFlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
-                .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+        FlowHistoryService.using(stateMachine.getCarrier()).saveError(HaFlowHistory
+                .of(stateMachine.getCommandContext().getCorrelationId())
                 .withAction(action)
                 .withHaFlowId(stateMachine.getHaFlowId()));
     }

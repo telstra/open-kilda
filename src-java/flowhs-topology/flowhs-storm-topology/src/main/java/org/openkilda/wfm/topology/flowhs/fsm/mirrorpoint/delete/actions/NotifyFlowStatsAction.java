@@ -15,8 +15,9 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.actions;
 
-import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
+import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
 import org.openkilda.model.Flow;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
@@ -24,6 +25,9 @@ import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointD
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.delete.FlowMirrorPointDeleteFsm.State;
+
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class NotifyFlowStatsAction extends FlowProcessingWithHistorySupportAction<
         FlowMirrorPointDeleteFsm, State, Event, FlowMirrorPointDeleteContext> {
@@ -37,9 +41,12 @@ public class NotifyFlowStatsAction extends FlowProcessingWithHistorySupportActio
                            FlowMirrorPointDeleteFsm stateMachine) {
         flowPathRepository.findById(stateMachine.getFlowPathId()).ifPresent(flowPath -> {
             Flow flow = flowPath.getFlow();
-            UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
+            Map<Long, SwitchId> switchIdByGroupId = flowPath.getFlowMirrorPointsSet().stream()
+                    .collect(Collectors.toMap(key -> key.getMirrorGroup().getGroupId().getValue(),
+                            val -> val.getMirrorGroup().getSwitchId()));
+            RemoveFlowPathInfo pathInfo = new RemoveFlowPathInfo(
                     flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), flowPath.getCookie(),
-                    flowPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, flowPath),
+                    flowPath.getMeterId(), switchIdByGroupId, FlowPathMapper.INSTANCE.mapToPathNodes(flow, flowPath),
                     flow.getVlanStatistics(), flowPath.hasIngressMirror(), flowPath.hasEgressMirror());
             stateMachine.getCarrier().sendNotifyFlowStats(pathInfo);
         });

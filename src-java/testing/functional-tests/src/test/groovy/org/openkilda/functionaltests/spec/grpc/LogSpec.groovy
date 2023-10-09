@@ -85,9 +85,10 @@ class LogSpec extends GrpcBaseSpecification {
         then: "Current remote log server configuration is deleted"
         response.deleted
 
+        /* https://github.com/telstra/open-kilda/issues/5408
         def response1 = grpc.getRemoteLogServerForSwitch(sw.address)
         response1.ipAddress == ""
-        response1.port == 0
+        response1.port == 0*/
 
         when: "Try to set custom remote log server"
         def response2 = grpc.setRemoteLogServerForSwitch(sw.address,

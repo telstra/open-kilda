@@ -2637,7 +2637,7 @@ public class StatsTopologyTest extends AbstractStormTest {
             FlowPath flowPath, Set<Integer> vlanStatistics, boolean ingressMirror,
             boolean egressMirror, String yFlowId, SwitchId yPointSwitchId) {
         RemoveFlowPathInfo pathInfo = new RemoveFlowPathInfo(
-                flowPath.getFlowId(), yFlowId, yPointSwitchId, flowPath.getCookie(), flowPath.getMeterId(),
+                flowPath.getFlowId(), yFlowId, yPointSwitchId, flowPath.getCookie(), flowPath.getMeterId(), null,
                 FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath), vlanStatistics, ingressMirror,
                 egressMirror);
         sendNotification(pathInfo);
@@ -2652,6 +2652,7 @@ public class StatsTopologyTest extends AbstractStormTest {
             FlowPath flowPath, Set<Integer> vlanStatistics, boolean ingressMirror, boolean egressMirror) {
         UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
                 flowPath.getFlowId(), null, null, flowPath.getCookie(), flowPath.getMeterId(),
+                null,
                 FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath), vlanStatistics, ingressMirror,
                 egressMirror);
         sendNotification(pathInfo);
@@ -2681,7 +2682,8 @@ public class StatsTopologyTest extends AbstractStormTest {
     private void sendUpdateSubFlowPathInfo(FlowPath flowPath, Flow flow) {
         UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
                 flowPath.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), flowPath.getCookie(),
-                flowPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath),
+                flowPath.getMeterId(), null,
+                FlowPathMapper.INSTANCE.mapToPathNodes(flowPath.getFlow(), flowPath),
                 flow.getVlanStatistics(), false, false);
         sendNotification(pathInfo);
     }

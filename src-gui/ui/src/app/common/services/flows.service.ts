@@ -79,6 +79,10 @@ export class FlowsService {
     return this.httpClient.get(`${environment.apiEndPoint}/flows/${flowId}/reroute`);
   }
 
+    getYFlowReRoutedPath(yFlowId): Observable<any> {
+        return this.httpClient.get(`${environment.apiEndPoint}/y-flows/${yFlowId}/reroute`);
+    }
+
   getFlowPathStats(jsonPayload): Observable<any> {
     return this.httpClient.post(`${environment.apiEndPoint}/stats/flowpath`, jsonPayload);
   }

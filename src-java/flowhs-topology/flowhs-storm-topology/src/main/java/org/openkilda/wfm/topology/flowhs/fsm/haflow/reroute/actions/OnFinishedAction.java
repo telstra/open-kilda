@@ -25,8 +25,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowRerouteHubCarrier;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -46,15 +46,15 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowRerouteFsm, S
             State from, State to, Event event, HaFlowRerouteContext context, HaFlowRerouteFsm stateMachine) {
         if (stateMachine.getNewHaFlowStatus() == FlowStatus.UP) {
             dashboardLogger.onSuccessfulHaFlowReroute(stateMachine.getHaFlowId());
-            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
                     .withAction("HA-flow has been rerouted successfully")
                     .withHaFlowId(stateMachine.getHaFlowId()));
 
             sendPeriodicPingNotification(stateMachine);
         } else {
-            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
                     .withAction("HA-flow reroute completed")
                     .withDescription(format("HA-flow reroute completed with status %s and error %s",
                             stateMachine.getNewHaFlowStatus(), stateMachine.getErrorReason()))

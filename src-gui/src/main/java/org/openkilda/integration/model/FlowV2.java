@@ -21,7 +21,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
 import lombok.Data;
 
 import java.util.List;
@@ -37,6 +36,9 @@ public class FlowV2 {
     @JsonProperty("flow_id")
     private String id;
 
+    @JsonProperty("y_flow_id")
+    private String yFlowId;
+
     @JsonProperty("source")
     private FlowV2Endpoint source;
 
@@ -45,7 +47,7 @@ public class FlowV2 {
 
     @JsonProperty("ignore_bandwidth")
     private boolean ignoreBandwidth;
-    
+
     @JsonProperty("maximum_bandwidth")
     private int maximumBandwidth;
 
@@ -54,56 +56,56 @@ public class FlowV2 {
 
     @JsonProperty("last_updated")
     private String lastUpdated;
-    
+
     @JsonProperty("status")
     private String status;
-    
+
     @JsonProperty("timeout")
     private int timeout;
-    
+
     @JsonProperty("diverse_flow_id")
     private String diverseFlowId;
-    
+
     @JsonProperty("allocate_protected_path")
     private boolean allocateProtectedPath;
-    
+
     @JsonProperty("pinned")
     private boolean pinned;
-    
+
     @JsonProperty("encapsulation_type")
     private String encapsulationType;
-    
+
     @JsonProperty("path_computation_strategy")
     private String pathComputationStrategy;
-    
+
     @JsonProperty("periodic_pings")
     private boolean periodicPings;
 
     @JsonProperty("created")
     private String created;
-    
+
     @JsonProperty("diverse_with")
     private List<String> diverseWith;
-    
+
     @JsonProperty("max_latency")
     private Long maxLatency;
-    
+
     @JsonProperty("max_latency_tier2")
     private Long maxLatencyTier2;
 
     @JsonProperty("priority")
     private int priority;
-    
+
     @JsonProperty("status_info")
     private String statusInfo;
-    
+
     @JsonProperty("target_path_computation_strategy")
     private String targetPathComputationStrategy;
-    
+
     @JsonProperty("status_details")
     private StatusDetail statusDetails;
-    
-    
+
+
     public String getId() {
         return id;
     }
@@ -163,16 +165,17 @@ public class FlowV2 {
     public int getTimeout() {
         return timeout;
     }
-    
+
 
     public void setTimeout(int timeout) {
         this.timeout = timeout;
     }
-    
+
 
     @Override
     public String toString() {
-        return "Flow [id=" + id + ", source=" + source + ", destination=" + destination
+        return "Flow [id=" + id + (yFlowId == null ? "" : "yflow=" + yFlowId) + ", source=" + source
+                + ", destination=" + destination
                 + ", maximumBandwidth=" + maximumBandwidth + ", description=" + description
                 + ", lastUpdated=" + lastUpdated + ", status=" + status + "]";
     }

@@ -32,8 +32,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
 import org.openkilda.wfm.topology.flowhs.model.Segment;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -75,8 +75,8 @@ public class CompleteHaFlowPathRemovalAction extends
 
         for (PathId haFlowPathId : pathIds) {
             haFlowPathRepository.remove(haFlowPathId);
-            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
                     .withAction("HA-flow path has been removed")
                     .withDescription(format("The following HA-path has been removed: %s", haFlowPathId))
                     .withHaFlowId(stateMachine.getHaFlowId()));

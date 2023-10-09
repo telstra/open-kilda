@@ -52,6 +52,7 @@ public class HaFlowEventData implements Serializable {
     public enum Event {
         CREATE("HA-Flow create"),
         UPDATE("HA-Flow update"),
+        PARTIAL_UPDATE("HA-Flow partial update"),
         REROUTE("HA-Flow reroute"),
         DELETE("HA-Flow delete"),
         PATH_SWAP("HA-flow path swap");

@@ -28,8 +28,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -50,8 +50,8 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowUpdateFsm, St
             sendPeriodicPingNotification(stateMachine);
             updateFlowMonitoring(stateMachine);
             dashboardLogger.onSuccessfulHaFlowUpdate(stateMachine.getHaFlowId());
-            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                    .withTaskId(stateMachine.getHaFlowId())
+            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
                     .withAction("HA-flow has been updated successfully")
                     .withHaFlowId(stateMachine.getHaFlowId()));
         } else if (stateMachine.getNewFlowStatus() == FlowStatus.DEGRADED) {
@@ -60,8 +60,8 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowUpdateFsm, St
             dashboardLogger.onFailedHaFlowUpdate(stateMachine.getFlowId(), DEGRADED_FAIL_REASON);
             stateMachine.saveActionToHistory(DEGRADED_FAIL_REASON);
         } else {
-            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                    .withTaskId(stateMachine.getHaFlowId())
+            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
                     .withAction("HA-flow update has been completed")
                     .withDescription(format("HA-flow update has been completed with status %s and error %s",
                             stateMachine.getNewFlowStatus(), stateMachine.getErrorReason()))

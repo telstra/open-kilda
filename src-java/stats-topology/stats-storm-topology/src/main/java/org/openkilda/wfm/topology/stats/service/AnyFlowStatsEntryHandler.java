@@ -30,6 +30,7 @@ import org.openkilda.wfm.topology.stats.model.DummyMeterDescriptor;
 import org.openkilda.wfm.topology.stats.model.EndpointFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.HaFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
+import org.openkilda.wfm.topology.stats.model.MirrorGroupDescriptor;
 import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowSubDescriptor;
@@ -105,6 +106,11 @@ public final class AnyFlowStatsEntryHandler extends BaseFlowStatsEntryHandler {
 
     @Override
     public void handleStatsEntry(DummyGroupDescriptor descriptor) {
+        throw new IllegalArgumentException(formatUnexpectedDescriptorMessage(descriptor.getClass()));
+    }
+
+    @Override
+    public void handleStatsEntry(MirrorGroupDescriptor descriptor) {
         throw new IllegalArgumentException(formatUnexpectedDescriptorMessage(descriptor.getClass()));
     }
 

@@ -589,7 +589,8 @@ public class KildaEntryCacheServiceTest {
         FlowPath forwardPath = flow.getForwardPath();
         UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
                 flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), forwardPath.getCookie(),
-                forwardPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, forwardPath), STAT_VLANS,
+                forwardPath.getMeterId(), null,
+                FlowPathMapper.INSTANCE.mapToPathNodes(flow, forwardPath), STAT_VLANS,
                 false, false);
         service.addOrUpdateCache(pathInfo);
 
@@ -607,7 +608,8 @@ public class KildaEntryCacheServiceTest {
         FlowPath reversePath = flow.getReversePath();
         UpdateFlowPathInfo pathInfo2 = new UpdateFlowPathInfo(
                 flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), reversePath.getCookie(),
-                reversePath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, reversePath), STAT_VLANS,
+                reversePath.getMeterId(), null,
+                FlowPathMapper.INSTANCE.mapToPathNodes(flow, reversePath), STAT_VLANS,
                 false, false);
         service.addOrUpdateCache(pathInfo2);
 
@@ -629,7 +631,8 @@ public class KildaEntryCacheServiceTest {
         FlowPath protectedReversePath = flow.getProtectedReversePath();
         UpdateFlowPathInfo pathInfo3 = new UpdateFlowPathInfo(
                 flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), protectedReversePath.getCookie(),
-                protectedReversePath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, protectedReversePath),
+                protectedReversePath.getMeterId(), null,
+                FlowPathMapper.INSTANCE.mapToPathNodes(flow, protectedReversePath),
                 STAT_VLANS, false, false);
         service.addOrUpdateCache(pathInfo3);
 
@@ -668,7 +671,8 @@ public class KildaEntryCacheServiceTest {
         FlowPath forwardPath = flow.getForwardPath();
         UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
                 flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), forwardPath.getCookie(),
-                forwardPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, forwardPath), STAT_VLANS,
+                forwardPath.getMeterId(), null,
+                FlowPathMapper.INSTANCE.mapToPathNodes(flow, forwardPath), STAT_VLANS,
                 false, false);
         service.addOrUpdateCache(pathInfo);
 
@@ -685,7 +689,8 @@ public class KildaEntryCacheServiceTest {
 
         RemoveFlowPathInfo pathInfo2 = new RemoveFlowPathInfo(
                 flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), forwardPath.getCookie(),
-                forwardPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, forwardPath), STAT_VLANS,
+                forwardPath.getMeterId(), null,
+                FlowPathMapper.INSTANCE.mapToPathNodes(flow, forwardPath), STAT_VLANS,
                 false, false);
         service.removeCached(pathInfo2);
 
@@ -710,7 +715,8 @@ public class KildaEntryCacheServiceTest {
         FlowPath forwardPath = flow.getForwardPath();
         UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
                 flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), forwardPath.getCookie(),
-                forwardPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, forwardPath), STAT_VLANS,
+                forwardPath.getMeterId(), null,
+                FlowPathMapper.INSTANCE.mapToPathNodes(flow, forwardPath), STAT_VLANS,
                 false, false);
         service.addOrUpdateCache(pathInfo);
 
@@ -728,7 +734,8 @@ public class KildaEntryCacheServiceTest {
         FlowPath protectedForwardPath = flow.getProtectedForwardPath();
         UpdateFlowPathInfo pathInfo2 = new UpdateFlowPathInfo(
                 flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), protectedForwardPath.getCookie(),
-                protectedForwardPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, protectedForwardPath),
+                protectedForwardPath.getMeterId(), null,
+                FlowPathMapper.INSTANCE.mapToPathNodes(flow, protectedForwardPath),
                 STAT_VLANS, false, false);
         service.addOrUpdateCache(pathInfo2);
 
@@ -763,7 +770,8 @@ public class KildaEntryCacheServiceTest {
         FlowPath forwardPath = flow.getForwardPath();
         UpdateFlowPathInfo pathInfo = new UpdateFlowPathInfo(
                 flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), forwardPath.getCookie(),
-                forwardPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, forwardPath), STAT_VLANS,
+                forwardPath.getMeterId(), null,
+                FlowPathMapper.INSTANCE.mapToPathNodes(flow, forwardPath), STAT_VLANS,
                 false, false);
         service.addOrUpdateCache(pathInfo);
 
@@ -780,7 +788,8 @@ public class KildaEntryCacheServiceTest {
 
         RemoveFlowPathInfo pathInfo2 = new RemoveFlowPathInfo(
                 flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), forwardPath.getCookie(),
-                forwardPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, forwardPath), STAT_VLANS,
+                forwardPath.getMeterId(), null,
+                FlowPathMapper.INSTANCE.mapToPathNodes(flow, forwardPath), STAT_VLANS,
                 false, false);
         service.removeCached(pathInfo2);
 

@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.flowhs.service.haflow.history;
+package org.openkilda.wfm.topology.flowhs.service.history;
 
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.openkilda.wfm.share.history.model.FlowDumpData;
+import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.history.model.FlowHistoryHolder;
 import org.openkilda.wfm.share.history.model.HaFlowDumpData;
 import org.openkilda.wfm.share.history.model.HaFlowEventData;
@@ -38,12 +40,13 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
-public class HaFlowHistoryServiceTest {
+public class FlowHistoryServiceTest {
 
     public static final String TASK_ID = "task ID";
     public static final String ACTION = "action";
     public static final String DESCRIPTION = "description";
     public static final String HA_FLOW_ID = "HA-flow ID";
+    public static final String FLOW_ID = "flow ID";
     private FakeCarrier fakeCarrier;
 
     @BeforeEach
@@ -53,12 +56,12 @@ public class HaFlowHistoryServiceTest {
 
     @Test
     public void using() {
-        assertThrows(RuntimeException.class, () -> HaFlowHistoryService.using(null));
+        assertThrows(RuntimeException.class, () -> FlowHistoryService.using(null));
     }
 
     @Test
-    public void save() {
-        HaFlowHistoryService.using(fakeCarrier).save(HaFlowHistory.withTaskId(TASK_ID)
+    public void saveHaFlow() {
+        FlowHistoryService.using(fakeCarrier).save(HaFlowHistory.of(TASK_ID)
                 .withAction(ACTION)
                 .withDescription(DESCRIPTION)
                 .withHaFlowId(HA_FLOW_ID));
@@ -77,8 +80,28 @@ public class HaFlowHistoryServiceTest {
     }
 
     @Test
-    public void saveWithDump() {
-        HaFlowHistoryService.using(fakeCarrier).save(HaFlowHistory.withTaskId(TASK_ID)
+    public void saveSimpleFlow() {
+        FlowHistoryService.using(fakeCarrier).save(FlowHistory.of(TASK_ID)
+                .withAction(ACTION)
+                .withDescription(DESCRIPTION)
+                .withFlowId(FLOW_ID));
+
+        assertEquals(1, fakeCarrier.getHistoryHolderList().size());
+        assertEquals(TASK_ID, fakeCarrier.getHistoryHolderList().get(0).getTaskId());
+        assertEquals(ACTION, fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData().getAction());
+        assertEquals(DESCRIPTION, fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData().getDescription());
+        assertEquals(FLOW_ID, fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData().getFlowId());
+        assertTrue(Instant.now().plus(1, ChronoUnit.SECONDS).isAfter(
+                fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData().getTime()));
+
+        assertNull(fakeCarrier.getHistoryHolderList().get(0).getHaFlowDumpData());
+        assertNull(fakeCarrier.getHistoryHolderList().get(0).getHaFlowEventData());
+        assertNull(fakeCarrier.getHistoryHolderList().get(0).getHaFlowHistoryData());
+    }
+
+    @Test
+    public void saveHaFlowHistoryWithDump() {
+        FlowHistoryService.using(fakeCarrier).save(HaFlowHistory.of(TASK_ID)
                 .withAction(ACTION)
                 .withDescription(DESCRIPTION)
                 .withHaFlowDump(HaFlowDumpData.builder().haFlowId(HA_FLOW_ID).build())
@@ -100,8 +123,31 @@ public class HaFlowHistoryServiceTest {
     }
 
     @Test
+    public void saveSimpleFlowHistoryWithDump() {
+        FlowHistoryService.using(fakeCarrier).save(FlowHistory.of(TASK_ID)
+                .withAction(ACTION)
+                .withDescription(DESCRIPTION)
+                .withFlowDump(FlowDumpData.builder().flowId(HA_FLOW_ID).build())
+                .withFlowId(HA_FLOW_ID));
+
+        assertEquals(1, fakeCarrier.getHistoryHolderList().size());
+        assertEquals(TASK_ID, fakeCarrier.getHistoryHolderList().get(0).getTaskId());
+        assertEquals(ACTION, fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData().getAction());
+        assertEquals(DESCRIPTION, fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData().getDescription());
+        assertEquals(HA_FLOW_ID, fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData().getFlowId());
+        assertTrue(Instant.now().plus(1, ChronoUnit.SECONDS).isAfter(
+                fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData().getTime()));
+
+        assertNotNull(fakeCarrier.getHistoryHolderList().get(0).getFlowDumpData());
+        assertEquals(HA_FLOW_ID, fakeCarrier.getHistoryHolderList().get(0).getFlowDumpData().getFlowId());
+
+        assertNull(fakeCarrier.getHistoryHolderList().get(0).getFlowEventData());
+        assertNull(fakeCarrier.getHistoryHolderList().get(0).getHaFlowHistoryData());
+    }
+
+    @Test
     public void saveNewHaFlowEvent() {
-        HaFlowHistoryService.using(fakeCarrier).saveNewHaFlowEvent(HaFlowEventData.builder()
+        FlowHistoryService.using(fakeCarrier).saveNewHaFlowEvent(HaFlowEventData.builder()
                 .action(ACTION)
                 .details(DESCRIPTION)
                 .event(HaFlowEventData.Event.CREATE)
@@ -135,8 +181,43 @@ public class HaFlowHistoryServiceTest {
     }
 
     @Test
+    public void saveNewSimpleFlowEvent() {
+        FlowHistoryService.using(fakeCarrier).saveNewFlowEvent(FlowEventData.builder()
+                .details(DESCRIPTION)
+                .event(FlowEventData.Event.CREATE)
+                .taskId(TASK_ID)
+                .flowId(FLOW_ID)
+                .initiator(FlowEventData.Initiator.AUTO)
+                .build());
+
+        assertEquals(1, fakeCarrier.getHistoryHolderList().size());
+        assertEquals(TASK_ID, fakeCarrier.getHistoryHolderList().get(0).getTaskId());
+        assertEquals(FlowEventData.Event.CREATE.getDescription(),
+                fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData().getAction());
+        assertEquals(FLOW_ID, fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData().getFlowId());
+
+        assertTrue(Instant.now().plus(1, ChronoUnit.SECONDS).isAfter(
+                fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData().getTime()));
+        assertTrue(Instant.now().plus(1, ChronoUnit.SECONDS).isAfter(
+                fakeCarrier.getHistoryHolderList().get(0).getFlowEventData().getTime()));
+
+        assertNotNull(fakeCarrier.getHistoryHolderList().get(0).getFlowEventData());
+        assertEquals(FLOW_ID, fakeCarrier.getHistoryHolderList().get(0).getFlowEventData().getFlowId());
+        assertEquals(FlowEventData.Event.CREATE,
+                fakeCarrier.getHistoryHolderList().get(0).getFlowEventData().getEvent());
+
+        assertEquals(FlowEventData.Initiator.AUTO,
+                fakeCarrier.getHistoryHolderList().get(0).getFlowEventData().getInitiator());
+        assertEquals(DESCRIPTION, fakeCarrier.getHistoryHolderList().get(0).getFlowEventData().getDetails());
+        assertEquals(TASK_ID, fakeCarrier.getHistoryHolderList().get(0).getTaskId());
+
+        assertNull(fakeCarrier.getHistoryHolderList().get(0).getHaFlowDumpData());
+        assertNull(fakeCarrier.getHistoryHolderList().get(0).getHaFlowHistoryData());
+    }
+
+    @Test
     public void whenInvalidEventData_returnFalseAndLogTheError() {
-        assertFalse(HaFlowHistoryService.using(fakeCarrier).saveNewHaFlowEvent(HaFlowEventData.builder()
+        assertFalse(FlowHistoryService.using(fakeCarrier).saveNewHaFlowEvent(HaFlowEventData.builder()
                 .action(ACTION)
                 .details(DESCRIPTION)
                 .event(HaFlowEventData.Event.CREATE)
@@ -145,7 +226,7 @@ public class HaFlowHistoryServiceTest {
                 .initiator(Initiator.AUTO)
                 .build()));
 
-        assertFalse(HaFlowHistoryService.using(fakeCarrier).saveNewHaFlowEvent(HaFlowEventData.builder()
+        assertFalse(FlowHistoryService.using(fakeCarrier).saveNewHaFlowEvent(HaFlowEventData.builder()
                         .action(ACTION)
                         .details(DESCRIPTION)
                         .event(HaFlowEventData.Event.CREATE)
@@ -153,12 +234,28 @@ public class HaFlowHistoryServiceTest {
                         .haFlowId(null)
                         .initiator(Initiator.AUTO)
                         .build()));
+
+        assertFalse(FlowHistoryService.using(fakeCarrier).saveNewFlowEvent(FlowEventData.builder()
+                .details(DESCRIPTION)
+                .event(FlowEventData.Event.CREATE)
+                .taskId(null)
+                .flowId(HA_FLOW_ID)
+                .initiator(FlowEventData.Initiator.AUTO)
+                .build()));
+
+        assertFalse(FlowHistoryService.using(fakeCarrier).saveNewFlowEvent(FlowEventData.builder()
+                .details(DESCRIPTION)
+                .event(FlowEventData.Event.CREATE)
+                .taskId(TASK_ID)
+                .flowId(null)
+                .initiator(FlowEventData.Initiator.AUTO)
+                .build()));
     }
 
     @Test
-    public void saveError() {
-        HaFlowHistoryService.using(fakeCarrier).saveError(HaFlowHistory
-                .withTaskId(TASK_ID)
+    public void saveHaFlowError() {
+        FlowHistoryService.using(fakeCarrier).saveError(HaFlowHistory
+                .of(TASK_ID)
                 .withAction(ACTION)
                 .withDescription(DESCRIPTION)
                 .withHaFlowId(HA_FLOW_ID));
@@ -174,6 +271,27 @@ public class HaFlowHistoryServiceTest {
         assertNull(fakeCarrier.getHistoryHolderList().get(0).getHaFlowDumpData());
         assertNull(fakeCarrier.getHistoryHolderList().get(0).getHaFlowEventData());
         assertNull(fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData());
+    }
+
+    @Test
+    public void saveSimpleFlowError() {
+        FlowHistoryService.using(fakeCarrier).saveError(FlowHistory
+                .of(TASK_ID)
+                .withAction(ACTION)
+                .withDescription(DESCRIPTION)
+                .withFlowId(FLOW_ID));
+
+        assertEquals(1, fakeCarrier.getHistoryHolderList().size());
+        assertEquals(TASK_ID, fakeCarrier.getHistoryHolderList().get(0).getTaskId());
+        assertEquals(ACTION, fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData().getAction());
+        assertEquals(DESCRIPTION, fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData().getDescription());
+        assertEquals(FLOW_ID, fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData().getFlowId());
+        assertTrue(Instant.now().plus(1, ChronoUnit.SECONDS).isAfter(
+                fakeCarrier.getHistoryHolderList().get(0).getFlowHistoryData().getTime()));
+
+        assertNull(fakeCarrier.getHistoryHolderList().get(0).getFlowDumpData());
+        assertNull(fakeCarrier.getHistoryHolderList().get(0).getFlowEventData());
+        assertNull(fakeCarrier.getHistoryHolderList().get(0).getHaFlowHistoryData());
     }
 
     private static class FakeCarrier implements HistoryUpdateCarrier {

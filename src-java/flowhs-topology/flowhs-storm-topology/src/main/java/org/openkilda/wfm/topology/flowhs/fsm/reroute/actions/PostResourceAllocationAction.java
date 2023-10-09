@@ -62,10 +62,12 @@ public class PostResourceAllocationAction extends
             currentForwardId = flow.getForwardPathId();
         }
         FlowPath currentForwardPath = currentForwardId != null ? getFlowPath(currentForwardId) : null;
-
+        Message rerouteResponse = buildRerouteResponseMessage(currentForwardPath, newForwardPath,
+                stateMachine.getCommandContext());
         if (stateMachine.getNewPrimaryForwardPath() == null && stateMachine.getNewPrimaryReversePath() == null
                 && stateMachine.getNewProtectedForwardPath() == null
                 && stateMachine.getNewProtectedReversePath() == null) {
+            stateMachine.setOperationResultMessage(rerouteResponse);
             stateMachine.fireRerouteIsSkipped("Reroute is unsuccessful. Couldn't find new path(s)");
         } else {
             if (stateMachine.isEffectivelyDown()) {
@@ -78,8 +80,7 @@ public class PostResourceAllocationAction extends
             stateMachine.notifyEventListeners(listener -> listener.onResourcesAllocated(flowId));
         }
 
-        return Optional.of(buildRerouteResponseMessage(currentForwardPath, newForwardPath,
-                stateMachine.getCommandContext()));
+        return Optional.of(rerouteResponse);
     }
 
     private Message buildRerouteResponseMessage(FlowPath currentForward, FlowPath newForward,

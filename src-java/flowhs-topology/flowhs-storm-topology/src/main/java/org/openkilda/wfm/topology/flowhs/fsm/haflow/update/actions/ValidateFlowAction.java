@@ -36,7 +36,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 import org.openkilda.wfm.topology.flowhs.validation.HaFlowValidator;
 import org.openkilda.wfm.topology.flowhs.validation.UnavailableFlowEndpointException;
 
@@ -85,7 +86,7 @@ public class ValidateFlowAction extends
         }
         Set<String> targetSubFlowIds = targetHaFlow.getSubFlows().stream()
                 .map(HaSubFlowDto::getFlowId).collect(Collectors.toSet());
-        transactionManager.doInTransaction(() -> {
+        HaFlow haFlow = transactionManager.doInTransaction(() -> {
             HaFlow foundHaFlow = getHaFlow(haFlowId);
             if (foundHaFlow.getStatus() == FlowStatus.IN_PROGRESS) {
                 throw new FlowProcessingException(ErrorType.REQUEST_INVALID,
@@ -117,12 +118,7 @@ public class ValidateFlowAction extends
 
         stateMachine.saveOldPathIds(stateMachine.getOriginalHaFlow());
 
-        HaFlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
-                        .action("HA-flow has been validated successfully")
-                        .event(HaFlowEventData.Event.UPDATE)
-                        .taskId(stateMachine.getCommandContext().getCorrelationId())
-                        .haFlowId(stateMachine.getHaFlowId())
-                .build());
+        saveNewHistoryEventWithDump(stateMachine, haFlow);
 
         return Optional.empty();
     }
@@ -138,5 +134,22 @@ public class ValidateFlowAction extends
 
         // Notify about failed validation.
         stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
+    }
+
+    private void saveNewHistoryEventWithDump(HaFlowUpdateFsm stateMachine, HaFlow haFlow) {
+        FlowHistoryService flowHistoryService = FlowHistoryService.using(stateMachine.getCarrier());
+
+        flowHistoryService.saveNewHaFlowEvent(HaFlowEventData.builder()
+                .action("HA-flow has been validated successfully")
+                .event(HaFlowEventData.Event.UPDATE)
+                .taskId(stateMachine.getCommandContext().getCorrelationId())
+                .haFlowId(stateMachine.getHaFlowId())
+                .build());
+
+        flowHistoryService.save(HaFlowHistory
+                .of(stateMachine.getCommandContext().getCorrelationId())
+                .withHaFlowId(haFlow.getHaFlowId())
+                .withAction("HA-flow has been validated successfully")
+                .withHaFlowDumpBefore(haFlow));
     }
 }

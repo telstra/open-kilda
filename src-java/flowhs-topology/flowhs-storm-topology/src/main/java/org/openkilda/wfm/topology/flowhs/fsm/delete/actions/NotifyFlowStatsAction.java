@@ -42,7 +42,8 @@ public class NotifyFlowStatsAction extends
             Flow flow = flowPath.getFlow();
             RemoveFlowPathInfo pathInfo = new RemoveFlowPathInfo(
                     flow.getFlowId(), flow.getYFlowId(), flow.getYPointSwitchId(), flowPath.getCookie(),
-                    flowPath.getMeterId(), FlowPathMapper.INSTANCE.mapToPathNodes(flow, flowPath),
+                    flowPath.getMeterId(), null,
+                    FlowPathMapper.INSTANCE.mapToPathNodes(flow, flowPath),
                     flow.getVlanStatistics(), flowPath.hasIngressMirror(), flowPath.hasEgressMirror());
             carrier.sendNotifyFlowStats(pathInfo);
         });

@@ -30,6 +30,7 @@ public enum StreamType {
     DISCO,
     ERROR,
     HISTORY,
+    HISTORY_WRITER,
     FLOW_VALIDATION_WORKER,
     METER_MODIFY_WORKER,
     PING,

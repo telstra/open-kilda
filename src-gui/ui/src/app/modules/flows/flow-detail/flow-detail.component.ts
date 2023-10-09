@@ -25,6 +25,7 @@ declare var moment: any;
 export class FlowDetailComponent implements OnInit {
   openedTab = 'graph';
   flowDetail: any;
+  y_flow_id: string;
   hasConnectedDevices = false;
   controllerFilter = false;
   graphOptions = {
@@ -52,12 +53,6 @@ export class FlowDetailComponent implements OnInit {
   forceSimulation: any;
   isDragMove: true;
   size: any;
-  min_zoom = 0.15;
-  max_zoom = 3;
-  zoomLevel = 0.15;
-  zoomStep = 0.15;
-  translateX = 0;
-  translateY = 0;
   validatedFlow: any = [];
   resyncedFlow: any = [];
   pingedFlow: any = [];
@@ -533,6 +528,9 @@ export class FlowDetailComponent implements OnInit {
        flowDetail['source_switch'] = this.convertSwitchPattern(flowDetail['source_switch']);
         flowDetail['target_switch'] = this.convertSwitchPattern(flowDetail['target_switch']);
         this.flowDetail = flowDetail;
+      if (this.isSubflowForYFlow(this.flowDetail)) {
+          this.y_flow_id = this.flowDetail.y_flow_id;
+      }
         this.hasConnectedDevices = (flowDetail.src_lldp || flowDetail.src_arp) || (flowDetail.dst_lldp || flowDetail.dst_arp);
         this.clipBoardItems = Object.assign(this.clipBoardItems, {
           flowName: flowDetail.flowid,
@@ -566,6 +564,9 @@ export class FlowDetailComponent implements OnInit {
         flow['source_switch'] = this.convertSwitchPattern(flow['source_switch']);
         flow['target_switch'] = this.convertSwitchPattern(flow['target_switch']);
         this.flowDetail = flow;
+          if (this.isSubflowForYFlow(this.flowDetail)) {
+              this.y_flow_id = this.flowDetail.y_flow_id;
+          }
         this.hasConnectedDevices = this.flowDetail.src_lldp || this.flowDetail.dst_lldp;
         this.clipBoardItems = Object.assign(this.clipBoardItems, {
           flowName: flow.flowid,
@@ -603,8 +604,9 @@ export class FlowDetailComponent implements OnInit {
       }
     );
   }
-
-
+   if (this.isSubflowForYFlow(this.flowDetail)) {
+       this.y_flow_id = this.flowDetail.y_flow_id;
+   }
 
   }
 
@@ -747,37 +749,57 @@ export class FlowDetailComponent implements OnInit {
   reRouteFlow() {
     this.reRoutingInProgress = true;
     this.loaderService.show(MessageObj.re_routing);
-    this.flowService.getReRoutedPath(this.flowDetail.flowid).subscribe(
-      data => {
-        this.loaderService.hide();
-        if (data && typeof(data.rerouted) !== 'undefined' && data.rerouted) {
+    if (this.isSubflowForYFlow(this.flowDetail)) {
+        this.flowService.getYFlowReRoutedPath(this.y_flow_id)
+            .subscribe(data => this.processRerouteResult(data),
+                error => {
+                    this.processErrorResult(error);
+                });
+    } else {
+        this.flowService.getReRoutedPath(this.flowDetail.flowid)
+            .subscribe(data => this.processRerouteResult(data),
+                error => {
+                    this.processErrorResult(error);
+                });
+    }
+  }
+
+  isSubflowForYFlow(flowDetail): boolean {
+      return typeof flowDetail.y_flow_id === 'string' && flowDetail.y_flow_id !== '';
+  }
+
+  processRerouteResult( data: any) {
+      this.loaderService.hide();
+      if (data && typeof(data.rerouted) !== 'undefined' && data.rerouted) {
           this.toaster.success('Flow : ' + this.flowDetail.flowid + ' successfully re-routed!', 'success');
-        } else {
+      } else {
           this.toaster.info('Flow : ' + this.flowDetail.flowid + ' already on best route!');
-        }
-        this.loaderService.show(MessageObj.reloading_status_and_flow_path);
-        /** Re-load flow path components */
-        setTimeout(() => {
+      }
+      this.loaderService.show(MessageObj.reloading_status_and_flow_path);
+      /** Re-load flow path components */
+      setTimeout(() => {
           this.reRoutingInProgress = false;
           this.loaderService.hide();
           this.flowService.getFlowStatus(this.flowDetail.flowid).subscribe(
-            flowStatus => {
-              this.flowDetail.status = (flowStatus && flowStatus.status) ?  flowStatus.status : this.flowDetail.status;
-            },
-            error => {
-              const errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message'] : 'No Flow found';
-              // this.toaster.error(errorMsg, "Error");
-             }
+              flowStatus => {
+                  this.flowDetail.status = (flowStatus && flowStatus.status) ?  flowStatus.status : this.flowDetail.status;
+              },
+              error => {
+                  const errorMsg = error && error.error && error.error['error-auxiliary-message']
+                      ? error.error['error-auxiliary-message'] : 'No Flow found';
+                  console.log('error: ', errorMsg);
+              }
           );
-        }, 10000);
-      },
-      error => {
-        this.loaderService.hide();
-        this.toaster.error(error['error-auxiliary-message'], 'Error!');
-      }
-    );
-
+      }, 10000);
   }
+
+  processErrorResult(error: any) {
+      this.loaderService.hide();
+      const { 'error-auxiliary-message': auxMessage, 'error-description': description, 'error-message': message } = error.error;
+      this.toaster.error(`${auxMessage} ${description} ${message}`, 'Error!');
+      this.reRoutingInProgress = false;
+  }
+
   addPingToLinks() {
     this.links.forEach(function(d, index) {
       $('#link' + index).addClass('flowline');

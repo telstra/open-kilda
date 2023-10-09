@@ -131,14 +131,19 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def allPotentialPaths = swT.pathsEp1 + swT.pathsEp2
         def oldPaths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
         def firstIslPorts = oldPaths.subFlowPaths*.forward*.first().outputPort as Set
+        def firstIslSwitch = oldPaths.subFlowPaths*.forward*.first().switchId as Set
 
         when: "Bring all ports down on the shared switch that are involved in the current and alternative paths"
         List<PathNode> broughtDownPorts = []
         allPotentialPaths.unique { it.first() }.each { path ->
             def src = path.first()
             broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
+            if(src.switchId != firstIslSwitch.first() &&  src.portNo != firstIslPorts.first()) {
+                antiflap.portDown(src.switchId, src.portNo)
+            }
         }
+        //to avoid automatic rerouting an actual flow port is the last one to swicth off.
+        antiflap.portDown(firstIslSwitch.first(), firstIslPorts.first())
 
         then: "The HA-flow goes to 'Down' status"
         wait(rerouteDelay + WAIT_OFFSET) {

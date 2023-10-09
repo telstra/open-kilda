@@ -101,6 +101,21 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
     protected static final SwitchId SWITCH_NEW_ALT_TRANSIT = new SwitchId(8);
     protected static final SwitchId SWITCH_NEW_TRANSIT = new SwitchId(9);
 
+    protected final IslDirectionalReference islSw3ToSw2 = new IslDirectionalReference(
+            new IslEndpoint(SWITCH_ID_3, 34),
+            new IslEndpoint(SWITCH_ID_2, 34));
+
+    protected final IslDirectionalReference islSw2ToSw1 = new IslDirectionalReference(
+            new IslEndpoint(SWITCH_ID_2, 45),
+            new IslEndpoint(SWITCH_ID_1, 45));
+
+    protected final IslDirectionalReference islSw2ToSw4 = new IslDirectionalReference(
+            new IslEndpoint(SWITCH_ID_2, 56),
+            new IslEndpoint(SWITCH_ID_4, 56));
+
+    protected final IslDirectionalReference islSw4ToSw1 = new IslDirectionalReference(
+            new IslEndpoint(SWITCH_ID_4, 66),
+            new IslEndpoint(SWITCH_ID_1, 66));
     protected final IslDirectionalReference islSharedToFirst = new IslDirectionalReference(
             new IslEndpoint(SWITCH_SHARED, 24),
             new IslEndpoint(SWITCH_FIRST_EP, 24));
@@ -110,6 +125,9 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
     protected final IslDirectionalReference islSharedToTransit = new IslDirectionalReference(
             new IslEndpoint(SWITCH_SHARED, 25),
             new IslEndpoint(SWITCH_TRANSIT, 25));
+    protected final IslDirectionalReference islTransitToSw5 = new IslDirectionalReference(
+            new IslEndpoint(SWITCH_TRANSIT, 25),
+            new IslEndpoint(SWITCH_ALT_TRANSIT, 25));
     protected final IslDirectionalReference islTransitToFirst = new IslDirectionalReference(
             new IslEndpoint(SWITCH_TRANSIT, 26),
             new IslEndpoint(SWITCH_FIRST_EP, 26));
@@ -151,6 +169,10 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
             new IslEndpoint(SWITCH_SECOND_EP, 72));
 
     protected final FlowEndpoint firstSharedEndpoint = new FlowEndpoint(SWITCH_SHARED, 1, 101);
+    protected final FlowEndpoint endpointSw3Vlan101 = new FlowEndpoint(SWITCH_ID_3, 1, 101);
+    protected final FlowEndpoint endpointSw3Vlan102 = new FlowEndpoint(SWITCH_ID_3, 1, 102);
+    protected final FlowEndpoint endpointSw2 = new FlowEndpoint(SWITCH_ID_2, 2, 103);
+    protected final FlowEndpoint endpointSw1 = new FlowEndpoint(SWITCH_ID_1, 3, 104);
     protected final FlowEndpoint secondSharedEndpoint = new FlowEndpoint(SWITCH_SHARED, 1, 102);
     protected final FlowEndpoint firstEndpoint = new FlowEndpoint(SWITCH_FIRST_EP, 2, 103);
     protected final FlowEndpoint secondEndpoint = new FlowEndpoint(SWITCH_SECOND_EP, 3, 104);
@@ -192,10 +214,11 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
         dummyFactory.makeSwitch(SWITCH_NEW_FIRST_EP);
         dummyFactory.makeSwitch(SWITCH_NEW_SECOND_EP);
         for (IslDirectionalReference reference : new IslDirectionalReference[]{
-                islSharedToFirst, islSharedToSecond, islSharedToTransit, islTransitToFirst, islTransitToSecond,
-                islSharedToAltTransit, islAltTransitToFirst, islAltTransitToSecond, islTransitToNewFirst,
-                islTransitToNewSecond, islSharedToNewAltTransit, islNewAltTransitToFirst, islNewAltTransitToSecond,
-                islSharedToNewTransit, islNewTransitToFirst, islNewTransitToSecond}) {
+                islSharedToFirst, islSharedToSecond, islSharedToTransit, islTransitToSw5, islTransitToFirst,
+                islTransitToSecond, islSharedToAltTransit, islAltTransitToFirst, islAltTransitToSecond,
+                islTransitToNewFirst, islTransitToNewSecond, islSharedToNewAltTransit, islNewAltTransitToFirst,
+                islNewAltTransitToSecond, islSharedToNewTransit, islNewTransitToFirst, islNewTransitToSecond,
+                islSw3ToSw2, islSw2ToSw1, islSw2ToSw4, islSw4ToSw1}) {
             dummyFactory.makeIsl(reference.getSourceEndpoint(), reference.getDestEndpoint());
             dummyFactory.makeIsl(reference.getDestEndpoint(), reference.getSourceEndpoint());
         }
@@ -410,6 +433,96 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
                 .subFlows(subFlows);
     }
 
+    protected YFlowRequest.YFlowRequestBuilder buildYFlowOneSharedPath3To2Request(String yFlowId, String firstSubFlowId,
+                                                                                  String secondSubFlowId) {
+
+        List<SubFlowDto> subFlows = asList(
+                SubFlowDto.builder()
+                        .flowId(firstSubFlowId)
+                        .endpoint(endpointSw2)
+                        .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(endpointSw3Vlan101.getOuterVlanId(),
+                                endpointSw3Vlan101.getInnerVlanId()))
+                        .build(),
+                SubFlowDto.builder()
+                        .flowId(secondSubFlowId)
+                        .endpoint(endpointSw1)
+                        .sharedEndpoint(new SubFlowSharedEndpointEncapsulation(endpointSw3Vlan102.getOuterVlanId(),
+                                endpointSw3Vlan102.getInnerVlanId()))
+                        .build());
+        return YFlowRequest.builder()
+                .yFlowId(yFlowId)
+                .maximumBandwidth(1000L)
+                .sharedEndpoint(new FlowEndpoint(endpointSw3Vlan101.getSwitchId(),
+                        endpointSw3Vlan101.getPortNumber()))
+                .subFlows(subFlows);
+
+    }
+
+    protected GetPathsResult buildFirstSubFlowPath3To2() {
+        List<Segment> forwardSegments = ImmutableList.of(buildPathSegment(islSw3ToSw2));
+        List<Segment> reverseSegments = ImmutableList.of(buildPathSegment(islSw3ToSw2.makeOpposite()));
+
+        return GetPathsResult.builder()
+                .forward(Path.builder()
+                        .srcSwitchId(SWITCH_ID_3)
+                        .destSwitchId(SWITCH_ID_2)
+                        .segments(forwardSegments)
+                        .build())
+                .reverse(Path.builder()
+                        .srcSwitchId(SWITCH_ID_2)
+                        .destSwitchId(SWITCH_ID_3)
+                        .segments(reverseSegments)
+                        .build())
+                .backUpPathComputationWayUsed(false)
+                .build();
+    }
+
+    protected GetPathsResult buildSecondSubFlowPath3To2To1() {
+        List<Segment> forwardSegments = ImmutableList.of(
+                buildPathSegment(islSw3ToSw2),
+                buildPathSegment(islSw2ToSw1));
+        List<Segment> reverseSegments = ImmutableList.of(
+                buildPathSegment(islSw2ToSw1.makeOpposite()),
+                buildPathSegment(islSw3ToSw2.makeOpposite()));
+        return GetPathsResult.builder()
+                .forward(Path.builder()
+                        .srcSwitchId(SWITCH_ID_3)
+                        .destSwitchId(SWITCH_ID_1)
+                        .segments(forwardSegments)
+                        .build())
+                .reverse(Path.builder()
+                        .srcSwitchId(SWITCH_ID_1)
+                        .destSwitchId(SWITCH_ID_3)
+                        .segments(reverseSegments)
+                        .build())
+                .backUpPathComputationWayUsed(false)
+                .build();
+    }
+
+    protected GetPathsResult buildSecondSubFlowPath3To2To4To1() {
+        List<Segment> forwardSegments = ImmutableList.of(
+                buildPathSegment(islSw3ToSw2),
+                buildPathSegment(islSw2ToSw4),
+                buildPathSegment(islSw4ToSw1));
+        List<Segment> reverseSegments = ImmutableList.of(
+                buildPathSegment(islSw4ToSw1.makeOpposite()),
+                buildPathSegment(islSw2ToSw4.makeOpposite()),
+                buildPathSegment(islSw3ToSw2.makeOpposite()));
+        return GetPathsResult.builder()
+                .forward(Path.builder()
+                        .srcSwitchId(SWITCH_ID_3)
+                        .destSwitchId(SWITCH_ID_1)
+                        .segments(forwardSegments)
+                        .build())
+                .reverse(Path.builder()
+                        .srcSwitchId(SWITCH_ID_1)
+                        .destSwitchId(SWITCH_ID_3)
+                        .segments(reverseSegments)
+                        .build())
+                .backUpPathComputationWayUsed(false)
+                .build();
+    }
+
     protected GetPathsResult buildFirstSubFlowPathPair() {
         List<Segment> forwardSegments = ImmutableList.of(
                 buildPathSegment(islSharedToTransit),
@@ -610,6 +723,66 @@ public abstract class AbstractYFlowTest<T> extends InMemoryGraphBasedTest {
                         .build())
                 .reverse(Path.builder()
                         .srcSwitchId(SWITCH_FIRST_EP)
+                        .destSwitchId(SWITCH_SHARED)
+                        .segments(reverseSegments)
+                        .build())
+                .backUpPathComputationWayUsed(false)
+                .build();
+    }
+
+    /**
+     * Path with the following switches 1-4-5-2.
+     *
+     * @return GetPathsResult
+     */
+    protected GetPathsResult buildFirstSubFlowPathPairWithNewSwitch5Transit() {
+        List<Segment> forwardSegments = ImmutableList.of(
+                buildPathSegment(islSharedToTransit), //1-4
+                buildPathSegment(islTransitToSw5),  //4-5
+                buildPathSegment(islAltTransitToFirst)); // 5-2
+        List<Segment> reverseSegments = ImmutableList.of(
+                buildPathSegment(islAltTransitToFirst.makeOpposite()),
+                buildPathSegment(islTransitToSw5.makeOpposite()),
+                buildPathSegment(islSharedToTransit.makeOpposite()));
+
+        return GetPathsResult.builder()
+                .forward(Path.builder()
+                        .srcSwitchId(SWITCH_SHARED)
+                        .destSwitchId(SWITCH_FIRST_EP)
+                        .segments(forwardSegments)
+                        .build())
+                .reverse(Path.builder()
+                        .srcSwitchId(SWITCH_FIRST_EP)
+                        .destSwitchId(SWITCH_SHARED)
+                        .segments(reverseSegments)
+                        .build())
+                .backUpPathComputationWayUsed(false)
+                .build();
+    }
+
+    /**
+     * Path with the following switches 1-4-5-3.
+     *
+     * @return GetPathsResult
+     */
+    protected GetPathsResult buildSecondSubFlowPathPairWithNewSwitch5Transit() {
+        List<Segment> forwardSegments = ImmutableList.of(
+                buildPathSegment(islSharedToTransit), //1-4
+                buildPathSegment(islTransitToSw5),  //4-5
+                buildPathSegment(islAltTransitToSecond)); // 5-3
+        List<Segment> reverseSegments = ImmutableList.of(
+                buildPathSegment(islAltTransitToSecond.makeOpposite()),
+                buildPathSegment(islTransitToSw5.makeOpposite()),
+                buildPathSegment(islSharedToTransit.makeOpposite()));
+
+        return GetPathsResult.builder()
+                .forward(Path.builder()
+                        .srcSwitchId(SWITCH_SHARED)
+                        .destSwitchId(SWITCH_SECOND_EP)
+                        .segments(forwardSegments)
+                        .build())
+                .reverse(Path.builder()
+                        .srcSwitchId(SWITCH_SECOND_EP)
                         .destSwitchId(SWITCH_SHARED)
                         .segments(reverseSegments)
                         .build())

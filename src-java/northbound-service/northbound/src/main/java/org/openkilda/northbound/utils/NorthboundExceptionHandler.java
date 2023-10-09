@@ -54,6 +54,7 @@ public class NorthboundExceptionHandler extends ResponseEntityExceptionHandler {
 
         switch (exception.getErrorType()) {
             case NOT_FOUND:
+            case ALREADY_ON_BEST_PATH:
                 status = HttpStatus.NOT_FOUND;
                 break;
             case DATA_INVALID:

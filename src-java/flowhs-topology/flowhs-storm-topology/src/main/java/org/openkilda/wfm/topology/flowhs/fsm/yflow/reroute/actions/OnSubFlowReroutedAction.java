@@ -66,7 +66,7 @@ public class OnSubFlowReroutedAction extends
         }
 
         if (stateMachine.getReroutingSubFlows().isEmpty()) {
-            if (stateMachine.getFailedSubFlows().isEmpty()) {
+            if (stateMachine.getFailedSubFlows().isEmpty() || !stateMachine.getAllocatedSubFlows().isEmpty()) {
                 stateMachine.fire(Event.ALL_SUB_FLOWS_REROUTED);
             } else {
                 if (stateMachine.getFailedSubFlows().containsAll(stateMachine.getSubFlows())) {

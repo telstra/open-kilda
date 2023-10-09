@@ -23,8 +23,8 @@ import org.openkilda.wfm.share.metrics.TimedExecution;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.context.SpeakerResponseContext;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistory;
-import org.openkilda.wfm.topology.flowhs.service.haflow.history.HaFlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -44,8 +44,8 @@ public class DeallocateResourcesAction<T extends HaFlowPathSwappingFsm<T, S, E, 
         stateMachine.getOldResources().forEach(haFlowResources -> {
             transactionManager.doInTransaction(() ->
                     resourcesManager.deallocateHaFlowResources(haFlowResources));
-            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
                             .withAction("Ha-flow resources have been deallocated")
                             .withDescription(format("The ha-flow resources for %s / %s have been deallocated",
                                     haFlowResources.getForward().getPathId(), haFlowResources.getReverse().getPathId()))
@@ -56,8 +56,8 @@ public class DeallocateResourcesAction<T extends HaFlowPathSwappingFsm<T, S, E, 
             transactionManager.doInTransaction(() ->
                     resourcesManager.deallocateHaFlowResources(haFlowResources));
 
-            HaFlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                    .withTaskId(stateMachine.getCommandContext().getCorrelationId())
+            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
                     .withAction("Rejected ha-flow resources have been deallocated")
                     .withDescription(format("The ha-flow resources for %s / %s have been deallocated",
                             haFlowResources.getForward().getPathId(), haFlowResources.getReverse().getPathId()))

@@ -15,9 +15,11 @@
 
 package org.openkilda.wfm.topology.nbworker;
 
+import org.openkilda.messaging.Message;
 import org.openkilda.pce.PathComputerConfig;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.LaunchEnvironment;
+import org.openkilda.wfm.kafka.MessageSerializer;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorBolt;
 import org.openkilda.wfm.share.hubandspoke.CoordinatorSpout;
 import org.openkilda.wfm.share.hubandspoke.HubBolt;
@@ -41,6 +43,7 @@ import org.openkilda.wfm.topology.nbworker.bolts.RouterBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.Server42EncoderBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.SpeakerWorkerBolt;
 import org.openkilda.wfm.topology.nbworker.bolts.SwitchOperationsBolt;
+import org.openkilda.wfm.topology.utils.KafkaRecordTranslator;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import org.apache.storm.generated.StormTopology;
@@ -81,6 +84,7 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
     private static final String DISCO_KAFKA_BOLT_NAME = "disco-kafka-bolt";
     private static final String PING_KAFKA_BOLT_NAME = "ping-kafka-bolt";
     private static final String HISTORY_BOLT_NAME = "history-operations-bolt";
+    private static final String HISTORY_WRITER_BOLT_NAME = "history-writer-bolt";
     public static final String NB_SPOUT_ID = "nb-spout";
     private static final String SPEAKER_KAFKA_BOLT = "speaker-bolt";
     private static final String SWITCH_MANAGER_KAFKA_BOLT = "switch-manger-bolt";
@@ -262,12 +266,22 @@ public class NbWorkerTopology extends AbstractTopology<NbWorkerTopologyConfig> {
 
         metrics(tb);
 
+        declareHistoryWriterBolt(tb);
+
         return tb.createTopology();
     }
 
     @Override
     protected String getZkTopoName() {
         return "nbworker";
+    }
+
+    private void declareHistoryWriterBolt(TopologyBuilder topologyBuilder) {
+        KafkaBolt<String, Message> kafkaBolt = makeKafkaBolt(
+                topologyConfig.getKafkaHistoryTopic(), MessageSerializer.class);
+        Fields grouping = new Fields(KafkaRecordTranslator.FIELD_ID_KEY);
+        declareBolt(topologyBuilder, kafkaBolt, HISTORY_WRITER_BOLT_NAME)
+                .fieldsGrouping(FLOW_PATCH_BOLT_NAME, StreamType.HISTORY_WRITER.name(), grouping);
     }
 
     private void metrics(TopologyBuilder topologyBuilder) {

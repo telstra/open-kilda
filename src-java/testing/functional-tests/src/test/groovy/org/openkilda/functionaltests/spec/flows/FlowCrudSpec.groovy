@@ -76,7 +76,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     final static Integer IMPOSSIBLY_LOW_LATENCY = 1
     final static Long IMPOSSIBLY_HIGH_BANDWIDTH = Long.MAX_VALUE
     final static FlowStatistics FLOW_STATISTICS_CAUSING_ERROR =
-            new FlowStatistics([[4095, 0].shuffled().first(), 2001] as Set)
+            new FlowStatistics([[4096, 0].shuffled().first(), 2001] as Set)
     @Autowired
     @Shared
     Provider<TraffExamService> traffExamProvider
@@ -616,7 +616,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                     flowToSpoil.setSource(source)
                     return flowToSpoil
                 }                                                                                          |
-                new FlowNotCreatedExpectedError(~/To collect vlan statistics, the vlan IDs must be from 1 up to 4094/)
+                new FlowNotCreatedExpectedError(~/To collect vlan statistics, the vlan IDs must be from 1 up to 4095/)
     }
 
     @Tidy
@@ -644,16 +644,16 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 new FlowNotUpdatedWithMissingPathExpectedError(~/Not enough bandwidth or no path found. \
 Switch .* doesn't have links with enough bandwidth, \
 Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
-        "vlan id is above 4094" |
+        "vlan id is above 4095" |
                 {FlowResponseV2 flowResponseV2 -> flowResponseV2.source =
                         flowResponseV2.getSource().tap {it.vlanId = 4096}}|
-        new FlowNotUpdatedExpectedError(~/Errors: VlanId must be less than 4095/)
+        new FlowNotUpdatedExpectedError(~/Errors: VlanId must be less than 4096/)
 
     }
 
     @Tidy
     @Tags([LOW_PRIORITY])
-    def "Unable to partially update to a flow with statistics vlan set to 0 or above 4094"() {
+    def "Unable to partially update to a flow with statistics vlan set to 0 or above 4095"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flowRequest = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
@@ -667,7 +667,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
         then: "Flow is not updated"
         def actualException = thrown(HttpClientErrorException)
-        new FlowNotUpdatedExpectedError(~/To collect vlan statistics, the vlan IDs must be from 1 up to 4094/)
+        new FlowNotUpdatedExpectedError(~/To collect vlan statistics, the vlan IDs must be from 1 up to 4095/)
                 .matches(actualException)
 
         cleanup: "Remove the flow"

@@ -90,7 +90,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def initialSwitchRtt = [server42Switch, switchPair.dst].collectEntries { [it, changeFlowRttSwitch(it, true)] }
 
         and: "Create a flow"
-        def flowCreateTime = new Date()
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.tap(data.flowTap)
         flowHelperV2.addFlow(flow)
@@ -357,12 +356,12 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Stats are available in forward direction"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValuesAfter(checkpointTime)
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
 
         }
 
         and: "Stats are not available in reverse direction"
-        !flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE).hasNonZeroValuesAfter(checkpointTime)
+        !flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
 
         cleanup: "Revert system to original state"
         revertToOrigin([flow], flowRttFeatureStartState, initialSwitchRtt)

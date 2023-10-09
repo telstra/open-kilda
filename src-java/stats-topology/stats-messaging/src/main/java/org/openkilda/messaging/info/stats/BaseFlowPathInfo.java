@@ -26,6 +26,7 @@ import lombok.NonNull;
 import lombok.ToString;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -40,6 +41,7 @@ public abstract class BaseFlowPathInfo extends StatsNotification {
     SwitchId yPointSwitchId;
     @NonNull FlowSegmentCookie cookie;
     MeterId meterId;
+    Map<Long, SwitchId> switchIdByGroupId;
     @NonNull List<PathNodePayload> pathNodes;
     Set<Integer> statVlans;
     boolean ingressMirror;
