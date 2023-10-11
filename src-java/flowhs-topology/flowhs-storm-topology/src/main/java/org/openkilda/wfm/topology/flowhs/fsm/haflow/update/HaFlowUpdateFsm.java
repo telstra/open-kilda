@@ -238,7 +238,7 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
                     .onEach(Event.TIMEOUT, Event.ERROR)
                     .perform(new HandleNotCompletedCommandsAction<>());
 
-            builder.transition().from(State.OLD_RULES_REMOVED)
+            builder.transition().from(State.DETERMINE_OLD_RESOURCE_REMOVAL_REQUIRED)
                     .to(State.NOTIFY_FLOW_STATS_ON_REMOVED_PATHS).on(Event.NEXT)
                     .perform(new NotifyHaFlowStatsOnRemovedPathsAction<>(persistenceManager, carrier));
 
@@ -296,13 +296,13 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
                     .perform(new HandleNotCompletedCommandsAction<>());
 
             builder.transition().from(State.NEW_RULES_REVERTED)
-                    .to(State.SKIP_REVERTING_RESOURCES_ALLOCATION)
-                    .on(Event.NEXT);
-
-            builder.transitions().from(State.SKIP_REVERTING_RESOURCES_ALLOCATION)
-                    .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_FLOW)
-                    .onEach(Event.NEXT, Event.UPDATE_ENDPOINTS_ONLY)
+                    .to(State.DETERMINE_RESOURCE_REVERTING_REQUIRED)
+                    .on(Event.NEXT)
                     .perform(new SkipResourceManagementOnEndpointsUpdateAction(persistenceManager));
+
+            builder.transitions().from(State.DETERMINE_RESOURCE_REVERTING_REQUIRED)
+                    .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_FLOW)
+                    .onEach(Event.NEXT, Event.UPDATE_ENDPOINTS_ONLY);
 
             builder.onEntry(State.REVERTING_ALLOCATED_RESOURCES)
                     .perform(reportErrorAction);
@@ -351,9 +351,14 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
 
             builder.transition()
                     .from(State.OLD_RULES_REMOVED)
-                    .to(State.UPDATING_FLOW_STATUS)
-                    .on(Event.UPDATE_ENDPOINTS_ONLY)
+                    .to(State.DETERMINE_OLD_RESOURCE_REMOVAL_REQUIRED)
+                    .on(Event.NEXT)
                     .perform(new SkipResourceManagementOnEndpointsUpdateAction(persistenceManager));
+
+            builder.transition()
+                    .from(State.DETERMINE_RESOURCE_REVERTING_REQUIRED)
+                    .to(State.UPDATING_FLOW_STATUS)
+                    .on(Event.UPDATE_ENDPOINTS_ONLY);
 
             builder.defineFinalState(State.FINISHED)
                     .addEntryAction(new OnFinishedAction(dashboardLogger));
@@ -438,7 +443,8 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
 
         NOTIFY_FLOW_STATS_ON_NEW_PATHS,
         NOTIFY_FLOW_STATS_ON_REMOVED_PATHS,
-        SKIP_REVERTING_RESOURCES_ALLOCATION
+        DETERMINE_RESOURCE_REVERTING_REQUIRED,
+        DETERMINE_OLD_RESOURCE_REMOVAL_REQUIRED
     }
 
     public enum Event {
