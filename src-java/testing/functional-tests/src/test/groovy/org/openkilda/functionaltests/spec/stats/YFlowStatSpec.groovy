@@ -60,10 +60,10 @@ class YFlowStatSpec extends HealthCheckSpecification {
             it.ep1 != it.ep2 && it.ep1 != it.shared && it.ep2 != it.shared &&
                     [it.shared, it.ep1, it.ep2].every { it.traffGens }
         } ?: assumeTrue(false, "No suiting switches found")
-        yFlow = yFlowHelper.addYFlow(yFlowHelper.randomYFlow(switchTriplet))
+        yFlow = yFlowHelper.addYFlow(yFlowHelper.randomYFlow(switchTriplet).tap {maximumBandwidth = 10})
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildYFlowExam(yFlow, yFlow.maximumBandwidth + 1000, traffgenRunDuration)
+                .buildYFlowExam(yFlow, yFlow.maximumBandwidth * 10, traffgenRunDuration)
         Wrappers.wait(statsRouterRequestInterval * 4) {
             withPool {
                 [exam.forward1, exam.forward2, exam.reverse1, exam.reverse2].collectParallel { Exam direction ->

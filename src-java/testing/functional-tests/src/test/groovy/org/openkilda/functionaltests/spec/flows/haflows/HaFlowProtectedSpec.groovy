@@ -137,7 +137,13 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
 
         when: "Update the ha-flow"
         def updateResponse = haFlowHelper.updateHaFlow(haFlow.haFlowId, update)
-        def ignores = ["subFlows.timeUpdate", "subFlows.status", "timeUpdate", "status"]
+        def ignores = ["subFlows.timeUpdate",
+                       "subFlows.status",
+                       "subFlows.forwardLatency",
+                       "subFlows.reverseLatency",
+                       "subFlows.latencyLastModifiedTime",
+                       "timeUpdate",
+                       "status"]
 
         then: "Requested updates are reflected in the response and in 'get' API"
         expect updateResponse, sameBeanAs(haFlow, ignores)
