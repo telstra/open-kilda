@@ -64,4 +64,5 @@ artifacts {
 
 test {
     useJUnitPlatform()
+    maxParallelForks 4
 }
