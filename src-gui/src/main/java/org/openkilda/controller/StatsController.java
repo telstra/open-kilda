@@ -144,7 +144,7 @@ public class StatsController {
      * @param downsample the downsample
      * @return the flow stats
      */
-    @RequestMapping(value = "flowid/{flowid}/{startDate}/{endDate}/{downsample}/{metric}",
+    @RequestMapping(value = "flowid/{flowid:.+}/{startDate}/{endDate}/{downsample}/{metric}",
             method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = {IConstants.Permission.MENU_FLOWS})
@@ -263,7 +263,7 @@ public class StatsController {
      * @param direction  the direction
      * @return the flow loss packet stats
      */
-    @RequestMapping(value = "flow/losspackets/{flowid}/{startDate}/{endDate}/{downsample}/{direction}",
+    @RequestMapping(value = "flow/losspackets/{flowid:.+}/{startDate}/{endDate}/{downsample}/{direction}",
             method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = {IConstants.Permission.MENU_FLOWS})
@@ -325,7 +325,7 @@ public class StatsController {
      * @param metric     the metric
      * @return the meter stats
      */
-    @RequestMapping(value = "meter/{flowid}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
+    @RequestMapping(value = "meter/{flowid:.+}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
             method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = {IConstants.Permission.MENU_FLOWS})

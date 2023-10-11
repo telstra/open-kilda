@@ -63,7 +63,7 @@ public class ContractController {
     /**
      * Returns delete contract exists in the system.
      */
-    @RequestMapping(value = "/delete/{flowId}/{contractid:.+}", method = RequestMethod.DELETE)
+    @RequestMapping(value = "/delete/{flowId:.+}/{contractid:.+}", method = RequestMethod.DELETE)
     @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public boolean deleteContract(@PathVariable(name = "flowId", required = false) String flowId,
