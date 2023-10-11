@@ -66,7 +66,9 @@ public enum ActivityType {
     UNLOCK_USER_ACCOUNT(48L),
     UPDATE_SWITCH_LOCATION(43L),
     UPDATE_ISL_BFD_PROPERTIES(44L),
-    DELETE_ISL_BFD(45L);
+    DELETE_ISL_BFD(45L),
+    CREATE_LOGICAL_PORT(49L),
+    DELETE_LOGICAL_PORT(50L);
     private Long id;
     private ActivityTypeEntity activityTypeEntity;
 

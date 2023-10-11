@@ -34,6 +34,7 @@ import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.SwitchFlowsInfoPerPort;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.model.SwitchLocation;
+import org.openkilda.model.SwitchLogicalPort;
 import org.openkilda.model.SwitchMeter;
 import org.openkilda.model.SwitchProperty;
 import org.openkilda.service.SwitchService;
@@ -490,5 +491,39 @@ public class SwitchController {
         activityLogger.log(ActivityType.DELETE_ISL_BFD, "Src_SW_" + srcSwitch + "\nSrc_PORT_"
                 + srcPort + "\nDst_SW_" + dstSwitch + "\nDst_PORT_" + dstPort);
         return serviceSwitch.deleteLinkBfd(srcSwitch, srcPort, dstSwitch, dstPort);
+    }
+    
+    /**
+     * Creates switch logical port.
+     *
+     * @param switchId the switch id
+     * @param switchLogicalPort the switch logical port
+     * @return the SwitchLogicalPort
+     */
+    @RequestMapping(value = "/{switch_id}/lags", method = RequestMethod.POST)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = IConstants.Permission.SW_CREATE_LOGICAL_PORT)
+    public @ResponseBody SwitchLogicalPort createLogicalPort(@PathVariable("switch_id") final String switchId,
+            @RequestBody(required = true) SwitchLogicalPort switchLogicalPort) {
+        activityLogger.log(ActivityType.CREATE_LOGICAL_PORT, "SW_" + switchId + ", "
+                + "PORT_" + switchLogicalPort.getPortNumbers());
+        return serviceSwitch.createLogicalPort(switchId, switchLogicalPort);
+    }
+    
+    /**
+     * Deletes switch logical port.
+     *
+     * @param switchId the switch id
+     * @param logicalPortNumber the switch logical port
+     * @return the SwitchLogicalPort
+     */
+    @RequestMapping(value = "/{switch_id}/lags/{logical_port_number}", method = RequestMethod.DELETE)
+    @ResponseStatus(HttpStatus.OK)
+    @Permissions(values = IConstants.Permission.SW_DELETE_LOGICAL_PORT)
+    public @ResponseBody SwitchLogicalPort deleteLogicalPort(@PathVariable("switch_id") final String switchId,
+            @PathVariable("logical_port_number") final String logicalPortNumber) {
+        activityLogger.log(ActivityType.DELETE_LOGICAL_PORT, "SW_" + switchId + ", "
+                + "L-PORT_" + logicalPortNumber);
+        return serviceSwitch.deleteLogicalPort(switchId, logicalPortNumber);
     }
 }
