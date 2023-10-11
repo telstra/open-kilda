@@ -16,7 +16,6 @@ import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -63,7 +62,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to create a flow with protected path when maximumBandwidth=#bandwidth, vlan=#vlanId"() {
         given: "Two active not neighboring switches with two diverse paths at least"
@@ -102,7 +100,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         0         | 0
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES, SMOKE])
     def "Able to enable/disable protected path on a flow"() {
         given: "Two active not neighboring switches with two diverse paths at least"
@@ -160,7 +157,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "Able to swap main and protected paths manually"() {
         given: "A simple flow"
@@ -328,7 +324,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "System is able to switch #flowDescription flows to protected paths"() {
         given: "Two active not neighboring switches with three diverse paths at least"
         def initialIsls = northbound.getAllLinks()
@@ -418,7 +413,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
-    @Tidy
     def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute(no bw)"() {
         given: "Two switches with 2 diverse paths at least"
         def switchPair = topologyHelper.switchPairs.find {
@@ -479,7 +473,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute(no path)"() {
         given: "Two switches with 2 diverse paths at least"
         def switchPair = topologyHelper.switchPairs.find {
@@ -544,7 +537,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "System reroutes #flowDescription flow to more preferable path and ignores protected path when reroute\
  is intentional"() {
         // 'and ignores protected path' means that the main path won't changed to protected
@@ -602,7 +594,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         "an unmetered"  | 0
     }
 
-    @Tidy
     def "System is able to switch #flowDescription flow to protected path and ignores more preferable path when reroute\
  is automatical"() {
         given: "Two active not neighboring switches with three diverse paths at least"
@@ -676,7 +667,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         "an unmetered"  | 0
     }
 
-    @Tidy
     def "A flow with protected path does not get rerouted if already on the best path"() {
         given: "Two active neighboring switches and a flow"
         def isls = topology.getIslsForActiveSwitches()
@@ -705,7 +695,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to update a flow to enable protected path when there is not enough bandwidth"() {
         given: "Two active neighboring switches"
@@ -740,7 +729,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         isls.each { database.resetIslBandwidth(it) }
     }
 
-    @Tidy
     def "Able to create a flow with protected path when there is not enough bandwidth and ignoreBandwidth=true"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -770,7 +758,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         isls.each { database.resetIslBandwidth(it) }
     }
 
-    @Tidy
     def "System is able to recalculate protected path when protected path is broken"() {
         given: "Two active not neighboring switches with two diverse paths at least"
         def allIsls = northbound.getAllLinks()
@@ -866,7 +853,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "Able to update #flowDescription flow to enable protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
@@ -918,7 +904,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         "an unmetered"  | 0
     }
 
-    @Tidy
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "#flowDescription flow is DEGRADED when protected and alternative paths are not available"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
@@ -984,7 +969,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         "An unmetered"  | 0
     }
 
-    @Tidy
     def "System properly reroutes both paths if protected path breaks during auto-swap"() {
         given: "Switch pair with at least 4 diverse paths"
         def switchPair = topologyHelper.switchPairs.find {
@@ -1039,7 +1023,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         }
     }
 
-    @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/2762")
     def "System reuses current protected path when can't find new non overlapping protected path while intentional\
  rerouting"() {
@@ -1094,7 +1077,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
-    @Tidy
     def "Protected path is created in different POP even if this path is not preferable"(){
         given: "Not neighboring switch pair with three diverse paths at least"
         def allPaths // all possible paths
@@ -1225,7 +1207,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         broughtDownPorts && database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to perform the 'swap' request for a flow without protected path"() {
         given: "Two active neighboring switches"
@@ -1251,7 +1232,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to swap paths for a non-existent flow"() {
         when: "Try to swap path on a non-existent flow"
@@ -1264,7 +1244,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
                 "Could not swap paths: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 
-    @Tidy
     def "Unable to create a flow with protected path when there is not enough bandwidth"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -1293,7 +1272,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to swap paths for an inactive flow"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
@@ -1407,7 +1385,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to create a single switch flow with protected path"() {
         given: "A switch"
@@ -1429,7 +1406,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to update a single switch flow to enable protected path"() {
         given: "A switch"
@@ -1453,7 +1429,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "Unable to create #flowDescription flow with protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches without alt paths"
@@ -1502,7 +1477,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         "an unmetered"  | 0
     }
 
-    @Tidy
     def "System doesn't reroute main flow path when protected path is broken and new alt path is available\
 (altPath is more preferable than mainPath)"() {
         given: "Two active neighboring switches with three diverse paths at least"
@@ -1574,7 +1548,6 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "System doesn't allow to enable the pinned flag on a protected flow"() {
         given: "A protected flow"

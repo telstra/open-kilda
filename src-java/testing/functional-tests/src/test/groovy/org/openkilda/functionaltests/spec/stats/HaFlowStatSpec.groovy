@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.stats
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
@@ -68,7 +67,6 @@ class HaFlowStatSpec extends HealthCheckSpecification {
 
     }
 
-    @Tidy
     @Unroll
     def "System is able to collect #stat meter stats"() {
         expect: "#stat stats is available"
@@ -78,7 +76,6 @@ class HaFlowStatSpec extends HealthCheckSpecification {
         stat << HaFlowStatsMetric.values().findAll { it.getValue().contains("meter.") }
     }
 
-    @Tidy
     @Unroll
     def "System is able to collect #stat stats and they grow monotonically"() {
         expect: "#stat stats is available"
@@ -89,7 +86,6 @@ class HaFlowStatSpec extends HealthCheckSpecification {
                               [FORWARD, REVERSE]].combinations()
     }
 
-    @Tidy
     @Unroll
     def "System is able to collect latency stats for subflows"() {
         expect: "#stat stats is available"
@@ -116,7 +112,6 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
     @Shared
     HaFlowStats haFlowStats
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Stats are collected after #data.descr of Ha-Flow are updated"() {
         given: "Ha-Flow"
@@ -178,7 +173,6 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Stats are collected after partial update (shared endpoint VLAN id) of Ha-Flow"() {
         given: "Ha-Flow"

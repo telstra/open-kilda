@@ -16,7 +16,6 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.Message
 import org.openkilda.messaging.command.CommandData
@@ -32,7 +31,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import spock.lang.Unroll
 
 class DefaultRulesSpec extends HealthCheckSpecification {
-    @Tidy
     @Unroll("Default rules are installed on #sw.hwSwString")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Default rules are installed on switches"() {
@@ -44,7 +42,6 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         sw << getTopology().getActiveSwitches().unique { sw -> sw.description }
     }
 
-    @Tidy
     @Tags([SMOKE])
     def "Default rules are installed when a new switch is connected"() {
         given: "A switch with no rules installed and not connected to the controller"
@@ -74,7 +71,6 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to install default rule on #sw.hwSwString [install-action=#data.installRulesAction]"(
             Map data, Switch sw) {
@@ -149,7 +145,6 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to install default multitable rule on #sw.hwSwString [install-action=#data.installRulesAction]"(
             Map data, Switch sw) {
@@ -210,7 +205,6 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         ].combinations()
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Able to install default rules on #sw.hwSwString [install-action=INSTALL_DEFAULTS]"() {
         given: "A switch without any rules"
@@ -243,7 +237,6 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         sw << getTopology().getActiveSwitches().unique { sw -> sw.description }
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Able to delete default rule from #sw.hwSwString[delete-action=#data.deleteRulesAction]"(
             Map data, Switch sw) {
@@ -308,7 +301,6 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to delete default multitable rule from #sw.hwSwString [delete-action=#data.deleteRulesAction]"(Map data, Switch sw) {
         when: "Delete rule from the switch"
@@ -377,7 +369,6 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         ].combinations()
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to delete/install the server42 Flow RTT turning rule on a switch"() {
         setup: "Select a switch which support server42 turning rule"
@@ -425,7 +416,6 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to delete/install the server42 ISL RTT turning rule on a switch"() {
         setup: "Select a switch which support server42 turning rule"

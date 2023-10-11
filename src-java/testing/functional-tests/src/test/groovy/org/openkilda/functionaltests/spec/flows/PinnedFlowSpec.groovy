@@ -8,7 +8,6 @@ import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -29,7 +28,6 @@ import java.util.concurrent.TimeUnit
   Instead kilda should verify that it's path is online and mark flow as UP.""")
 class PinnedFlowSpec extends HealthCheckSpecification {
 
-    @Tidy
     def "Able to CRUD pinned flow"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -53,7 +51,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Able to CRUD unmetered one-switch pinned flow"() {
         when: "Create a flow"
         def sw = topology.getActiveSwitches().first()
@@ -79,7 +76,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "System doesn't reroute(automatically) pinned flow when flow path is partially broken"() {
         given: "A pinned flow going through a long not preferable path"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -176,7 +172,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "System is not rerouting pinned flow when 'reroute link flows' is called"() {
         given: "A pinned flow with alt path available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -206,7 +201,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "System returns error if trying to intentionally reroute a pinned flow"() {
         given: "A pinned flow with alt path available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -230,7 +224,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
-    @Tidy
     def "System doesn't allow to create pinned and protected flow at the same time"() {
         when: "Try to create pinned and protected flow"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -251,7 +244,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "System doesn't allow to enable the protected path flag on a pinned flow"() {
         given: "A pinned flow"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -274,7 +266,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "System doesn't allow to create pinned and protected flow at the same time [v1 api]"() {
         when: "Try to create pinned and protected flow"
@@ -296,7 +287,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         !exc && flowHelper.deleteFlow(flow.id)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "System doesn't allow to enable the protected path flag on a pinned flow [v1 api]"() {
         given: "A pinned flow"

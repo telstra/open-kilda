@@ -14,7 +14,6 @@ import static org.openkilda.testing.tools.KafkaUtils.buildCookie
 import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
@@ -42,7 +41,6 @@ class SwitchActivationSpec extends HealthCheckSpecification {
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
 
-    @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])
     def "Missing flow rules/meters are installed on a new switch before connecting to the controller"() {
         given: "A switch with missing flow rules/meters and not connected to the controller"
@@ -100,7 +98,6 @@ class SwitchActivationSpec extends HealthCheckSpecification {
 
     }
 
-    @Tidy
     @Tags([HARDWARE])
     def "Excess transitVlanRules/meters are synced from a new switch before connecting to the controller"() {
         given: "A switch with excess rules/meters and not connected to the controller"
@@ -175,7 +172,6 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         blockData && !switchValidationInfo && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
-    @Tidy
     @Tags([HARDWARE])
     def "Excess vxlanRules/meters are synced from a new switch before connecting to the controller"() {
         given: "A switch with excess rules/meters and not connected to the controller"
@@ -250,7 +246,6 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         blockData && !switchValidationInfo && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
-    @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])
     def "New connected switch is properly discovered with related ISLs in a reasonable time"() {
         setup: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"

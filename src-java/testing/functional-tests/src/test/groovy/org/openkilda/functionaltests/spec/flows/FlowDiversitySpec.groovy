@@ -10,7 +10,6 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -47,7 +46,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
     @Value('${diversity.switch.cost}')
     int diversitySwitchCost
 
-    @Tidy
     @Tags(SMOKE)
     def "Able to create diverse flows"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
@@ -102,7 +100,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         !flowsAreDeleted && [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
-    @Tidy
     def "Able to update flows to become diverse"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
         def switchPair = getSwitchPair(3)
@@ -156,7 +153,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "Able to update flows to become not diverse"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
@@ -212,7 +208,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "Diverse flows are built through the same path if there are no alternative paths available"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
@@ -253,7 +248,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "Links and switches get extra cost that is considered while calculating diverse flow paths"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
@@ -303,7 +297,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
-    @Tidy
     def "Able to get flow paths with correct overlapping segments stats (casual flows)"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
         def switchPair = getSwitchPair(3)
@@ -327,7 +320,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
-    @Tidy
     def "Able to get flow paths with correct overlapping segments stats (casual + single-switch flows)"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getNotNeighboringSwitchPair()
@@ -361,7 +353,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         switchHelper.synchronize([switchPair.getSrc().getDpId(), switchPair.getDst().getDpId()])
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Able to update flow to become diverse and single-switch"() {
         given: "Three switches"
@@ -394,7 +385,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Deprecated //there is a v2 version
     @Tags([LOW_PRIORITY])
     def "Able to create diverse flows [v1 api]"() {

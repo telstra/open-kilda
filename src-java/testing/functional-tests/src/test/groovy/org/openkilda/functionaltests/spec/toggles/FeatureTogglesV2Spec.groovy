@@ -16,7 +16,6 @@ import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -46,7 +45,6 @@ flow_latency_monitoring_reactions toggle is tested in FlowMonitoringSpec
 @Isolated
 class FeatureTogglesV2Spec extends HealthCheckSpecification {
 
-    @Tidy
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"
         def flowRequest = flowHelperV2.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
@@ -72,7 +70,6 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
         flow && !deletedFlow && flowHelper.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "System forbids updating flows when 'update_flow' toggle is set to false"() {
         given: "Existing flow"
         def flowRequest = flowHelperV2.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
@@ -97,7 +94,6 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
         disableFlowUpdating && northbound.toggleFeature(FeatureTogglesDto.builder().updateFlowEnabled(true).build())
     }
 
-    @Tidy
     def "System forbids deleting flows when 'delete_flow' toggle is set to false"() {
         given: "Existing flow"
         def flowRequest = flowHelperV2.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
@@ -131,7 +127,6 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
         newFlow && !deletedNewFlow && flowHelper.deleteFlow(newFlow.id)
     }
 
-    @Tidy
     @Tags(HARDWARE)
     @ResourceLock(DEFAULT_FLOW_ENCAP)
     def "Flow encapsulation type is changed while auto rerouting according to 'flows_reroute_using_default_encap_type' \
@@ -219,7 +214,6 @@ feature toggle"() {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/2955")
     @Tags(HARDWARE)
     @ResourceLock(DEFAULT_FLOW_ENCAP)
@@ -309,7 +303,6 @@ feature toggle"() {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "System doesn't reroute flow when flows_reroute_on_isl_discovery: false"() {
         given: "A flow with alternative paths"

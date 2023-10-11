@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.flows
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithMissingPathExpectedError
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.IslChangeType
@@ -71,7 +70,6 @@ class MaxLatencySpec extends HealthCheckSpecification {
         islsToBreak.each { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
     }
 
-    @Tidy
     def "Able to create protected flow with max_latency strategy if both paths satisfy SLA"() {
         given: "2 non-overlapping paths with 10 and 15 latency"
         setLatencyForPaths(10, 15)
@@ -94,7 +92,6 @@ class MaxLatencySpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Unable to create protected flow with max_latency strategy if #condition"() {
         given: "2 non-overlapping paths with 10 and 9 latency"
@@ -120,7 +117,6 @@ class MaxLatencySpec extends HealthCheckSpecification {
         9              | "both paths do not satisfy SLA"
     }
 
-    @Tidy
     def "Able to create DEGRADED protected flow with max_latency strategy if maxLatency < protectedPathLatency < maxLatencyTier2"() {
         given: "2 non-overlapping paths with 10 and 15 latency"
         setLatencyForPaths(10, 15)
@@ -151,7 +147,6 @@ class MaxLatencySpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Able to create DEGRADED flow with max_latency strategy if maxLatencyTier2 > pathLatency > maxLatency"() {
         given: "2 non-overlapping paths with 11 and 15 latency"
@@ -179,7 +174,6 @@ class MaxLatencySpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Able to update DEGRADED flow with max_latency strategy if maxLatencyTier2 > pathLatency > maxLatency"() {
         given: "2 non-overlapping paths with 10 and 15 latency"
@@ -216,7 +210,6 @@ class MaxLatencySpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Able to reroute a MAX_LATENCY flow if maxLatencyTier2 > pathLatency > maxLatency"() {
         given: "2 non-overlapping paths with 10 and 15 latency"
         setLatencyForPaths(10, 15)
@@ -256,7 +249,6 @@ class MaxLatencySpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "Able to create DEGRADED flow with LATENCY strategy if max_latency_tier_2 > flowPath > max_latency"() {
         given: "2 non-overlapping paths with 11 and 15 latency"
         setLatencyForPaths(11, 15)
@@ -284,7 +276,6 @@ but satisfies max_latency_tier2"
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Able to create a flow with LATENCY strategy when max_latency = pathLatency"() {
         given: "2 non-overlapping paths with 9 and 15 latency"
@@ -308,7 +299,6 @@ but satisfies max_latency_tier2"
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Unable to create a flow with LATENCY strategy when pathLatency > max_latency_tier2"() {
         given: "2 non-overlapping paths with 12 and 13 latency"
@@ -330,7 +320,6 @@ but satisfies max_latency_tier2"
         !e && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "A flow with LATENCY strategy is DOWN after attempt to reroute in case pathLatency > max_latency_tier2"() {
         given: "2 non-overlapping paths with 11 and 15 latency"

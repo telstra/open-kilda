@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.stats
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.YFlowHelper
@@ -81,7 +80,6 @@ class YFlowStatSpec extends HealthCheckSpecification {
         subflow2Stats = flowStats.of(yFlow.getSubFlows().get(1).getFlowId())
     }
 
-    @Tidy
     @Unroll
     def "System is able to collect #stat meter stats and they grow monotonically"() {
         when: "Stats were collected"
@@ -93,7 +91,6 @@ class YFlowStatSpec extends HealthCheckSpecification {
         stat << YFlowStatsMetric.getEnumConstants()
     }
 
-    @Tidy
     @Unroll
     def "System is able to collect subflow #stat-#direction stats and they grow monotonically"() {
         when: "Stats were collected"

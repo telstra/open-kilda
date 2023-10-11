@@ -16,7 +16,6 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.grpc.speaker.model.LogicalPortDto
 import org.openkilda.messaging.error.MessageError
@@ -36,15 +35,12 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
 import javax.inject.Provider
-
-import static org.springframework.http.HttpStatus.BAD_REQUEST
 
 @See("https://github.com/telstra/open-kilda/blob/develop/docs/design/LAG-for-ports/README.md")
 @Narrative("Verify that flow can be created on a LAG port.")
@@ -64,7 +60,6 @@ class LagPortSpec extends HealthCheckSpecification {
     @Shared
     Integer lagOffset = 2000
 
-    @Tidy
     def "Able to CRUD LAG port with lacp_reply=#lacpReply on #sw.hwSwString"() {
         given: "A switch"
         def portsArrayCreate = topology.getAllowedPortsForSwitch(sw)[-2, -1] as Set<Integer>
@@ -164,7 +159,6 @@ class LagPortSpec extends HealthCheckSpecification {
                 ].combinations()
     }
 
-    @Tidy
     def "Able to create a flow on a LAG port"() {
         given: "A switchPair with a LAG port on the src switch"
         def allTraffGenSwitchIds = topology.activeTraffGens*.switchConnected*.dpId
@@ -205,7 +199,6 @@ class LagPortSpec extends HealthCheckSpecification {
         lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
     }
 
-    @Tidy
     def "Able to create a singleSwitchFlow on a LAG port"() {
         given: "A switch with two traffgens and one LAG port"
         and: "A flow on the LAG port"
@@ -247,7 +240,6 @@ class LagPortSpec extends HealthCheckSpecification {
         lagPort && northboundV2.deleteLagLogicalPort(swPair.src.dpId, lagPort)
     }
 
-    @Tidy
     def "LAG port is not deleted after switch reconnecting"() {
         given: "A switch with a LAG port"
         def sw = topology.getActiveSwitches().first()
@@ -279,7 +271,6 @@ class LagPortSpec extends HealthCheckSpecification {
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
     }
 
-    @Tidy
     def "Unable to delete a LAG port in case flow on it"() {
         given: "A flow on a LAG port"
         def switchPair = topologyHelper.getSwitchPairs().first()
@@ -302,7 +293,6 @@ because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
         lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
     }
 
-    @Tidy
     def "Unable to create LAG on a port with flow on it"() {
         given: "Active switch with flow on it"
         def sw = topology.activeSwitches.first()
@@ -321,7 +311,6 @@ because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
         !exc && deleteAllLagPorts(sw.dpId)
     }
 
-    @Tidy
     def "Unable to create a flow on port which is inside LAG group"() {
         given: "An active switch with LAG port on it"
         def sw = topology.activeSwitches.first()
@@ -346,7 +335,6 @@ on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
 
     }
 
-    @Tidy
     def "Unable to create a LAG port with port which is used as mirrorPort"() {
         given: "A flow with mirrorPoint"
         def swP = topologyHelper.getNeighboringSwitchPair()
@@ -377,7 +365,6 @@ on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
         !exc && swP && deleteAllLagPorts(swP.src.dpId)
     }
 
-    @Tidy
     def "Unable to create a LAG port in case port is #data.description"() {
         when: "Create a LAG port on a occupied port"
         def sw = topology.getActiveServer42Switches().first()
@@ -415,7 +402,6 @@ on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
         ]
     }
 
-    @Tidy
     def "Unable to create two LAG ports with the same physical port inside at the same time"() {
         given: "A switch with a LAG port"
         def sw = topology.getActiveSwitches().first()
@@ -436,7 +422,6 @@ occupied by other LAG group\(s\)./).matches(exc)
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
     }
 
-    @Tidy
     def "Unable to proceed incorrect delete LAG port request (#data.description)"() {
         when: "Send invalid delete LAG port request"
         getNorthboundV2().deleteLagLogicalPort(data.swIdForRequest(), data.logicalPortNumber)
@@ -461,7 +446,6 @@ occupied by other LAG group\(s\)./).matches(exc)
         ]
     }
 
-    @Tidy
     def "System is able to detect and sync missed LAG port"() {
         given: "A switch with a LAG port"
         def sw = topology.getActiveSwitches().first()
@@ -491,7 +475,6 @@ occupied by other LAG group\(s\)./).matches(exc)
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
     }
 
-    @Tidy
     def "System is able to detect misconfigured LAG port"() {
         //system can't re-install misconfigured LAG port
         given: "A switch with a LAG port"
@@ -513,7 +496,6 @@ occupied by other LAG group\(s\)./).matches(exc)
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
     }
 
-    @Tidy
     def "Able to create/update LAG port with duplicated port numbers on the #sw.hwSwString switch"() {
         given: "Switch and two ports"
         def sw = getTopology().getActiveSwitches().get(0)
@@ -578,7 +560,6 @@ occupied by other LAG group\(s\)./).matches(exc)
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
     }
 
-    @Tidy
     def "Able to create and delete single LAG port with lacp_reply=#data.portLacpReply"() {
         given: "A switch"
         def sw = topology.getActiveSwitches().first()
@@ -633,7 +614,6 @@ occupied by other LAG group\(s\)./).matches(exc)
         ]
     }
 
-    @Tidy
     def "Able to create and delete LAG port with #data.description"() {
         given: "A switch with LAG port"
         def sw = topology.getActiveSwitches().first()
@@ -720,7 +700,6 @@ occupied by other LAG group\(s\)./).matches(exc)
         ]
     }
 
-    @Tidy
     def "Able to update #data.description for single LAG port"() {
         given: "A switch"
         def sw = topology.getActiveSwitches().first()
@@ -814,7 +793,6 @@ occupied by other LAG group\(s\)./).matches(exc)
         ]
     }
 
-    @Tidy
     def "Able to update #data.description near to existing LAG port with lacp_reply=#data.existingPortLacpReply"() {
         given: "A switch"
         def sw = topology.getActiveSwitches().first()
@@ -964,7 +942,6 @@ occupied by other LAG group\(s\)./).matches(exc)
         }
     }
 
-    @Tidy
     def "Unable decrease bandwidth on LAG port lower than connected flows bandwidth sum"() {
         given: "Flows on a LAG port with switch ports"
         def switchPair = topologyHelper.getSwitchPairs().first()
@@ -998,7 +975,6 @@ occupied by other LAG group\(s\)./).matches(exc)
         lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
     }
 
-    @Tidy
     def "Able to delete LAG port if it is already removed from switch"() {
         given: "A switch with a LAG port"
         def sw = topology.getActiveSwitches().first()

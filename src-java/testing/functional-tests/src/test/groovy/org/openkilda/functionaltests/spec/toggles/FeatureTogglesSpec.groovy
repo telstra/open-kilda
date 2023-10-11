@@ -8,7 +8,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 
@@ -27,7 +26,6 @@ BFD toggle is tested in BfdSpec*/
 @Isolated
 class FeatureTogglesSpec extends HealthCheckSpecification {
 
-    @Tidy
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"
         def flowRequest = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
@@ -53,7 +51,6 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         flow && !deletedFlow && flowHelper.deleteFlow(flow.id)
     }
 
-    @Tidy
     def "System forbids updating flows when 'update_flow' toggle is set to false"() {
         given: "Existing flow"
         def flowRequest = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
@@ -78,7 +75,6 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         disableFlowUpdating && northbound.toggleFeature(FeatureTogglesDto.builder().updateFlowEnabled(true).build())
     }
 
-    @Tidy
     def "System forbids deleting flows when 'delete_flow' toggle is set to false"() {
         given: "Existing flow"
         def flowRequest = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])

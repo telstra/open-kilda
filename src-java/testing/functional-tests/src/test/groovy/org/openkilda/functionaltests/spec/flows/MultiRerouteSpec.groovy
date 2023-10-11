@@ -5,7 +5,6 @@ import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
@@ -15,7 +14,6 @@ import java.util.concurrent.TimeUnit
 
 class MultiRerouteSpec extends HealthCheckSpecification {
 
-    @Tidy
     def "Simultaneous reroute of multiple flows should not oversubscribe any ISLs"() {
         given: "Many flows on the same path, with alt paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 2 } ?:

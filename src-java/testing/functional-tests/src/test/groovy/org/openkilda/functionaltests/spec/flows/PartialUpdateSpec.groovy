@@ -14,7 +14,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -48,7 +47,6 @@ Depending on changed fields flow will be either updated+rerouted or just have it
 class PartialUpdateSpec extends HealthCheckSpecification {
     def amountOfFlowRules = 2
 
-    @Tidy
     def "Able to partially update flow '#data.field' without reinstalling its rules"() {
         given: "A flow"
         def swPair = topologyHelper.switchPairs.first()
@@ -120,7 +118,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Able to partially update flow #data.field without reinstalling its rules(v1)"() {
         given: "A flow"
@@ -169,7 +166,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "Able to partially update flow #data.field which causes a reroute"() {
         given: "A flow"
         def swPair = topologyHelper.switchPairs.first()
@@ -212,7 +208,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "Able to turn on diversity feature using partial update"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
         def switchPair = topologyHelper.switchPairs.find {
@@ -240,7 +235,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
-    @Tidy
     def "Able to do partial update on a single-switch flow"() {
         given: "A single-switch flow"
         def swPair = topologyHelper.singleSwitchPair
@@ -269,7 +263,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Able to update a flow port and vlan using partial update"() {
         given: "Three active switches"
         def allSwitches = topology.activeSwitches
@@ -316,7 +309,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Able to update a flow endpoint using partial update"() {
         given: "Three active switches"
         def allSwitches = topology.activeSwitches
@@ -376,7 +368,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         !dstSwitchesAreFine && [dstSwitch, newDstSwitch]*.dpId.each { northbound.synchronizeSwitch(it, true) }
     }
 
-    @Tidy
     def "Able to update flow encapsulationType using partial update"() {
         given: "A flow with a 'transit_vlan' encapsulation"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
@@ -413,7 +404,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to update a flow port and vlan for a single-switch flow using partial update"() {
         given: "An active single-switch flow (different ports)"
@@ -470,7 +460,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to update a flow port and vlan for a single-switch single-port flow using partial update"() {
         given: "An active single-switch single-port flow"
@@ -531,7 +520,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Partial update with empty body does not actually update flow in any way(v1)"() {
         given: "A flow"
@@ -562,7 +550,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Partial update with empty body does not actually update flow in any way"() {
         given: "A flow"
         def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -599,7 +586,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         [flow, helperFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
-    @Tidy
     def "Unable to partial update a flow in case new port is an isl port on a #data.switchType switch"() {
         given: "An isl"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -639,7 +625,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Unroll("Unable to partial update flow (#data.conflict)")
     def "Unable to partial update flow when there are conflicting vlans"() {
         given: "Two potential flows"
@@ -721,7 +706,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "Unable to update a flow to have both strict_bandwidth and ignore_bandwidth flags at the same time"() {
         given: "An existing flow without flag conflicts"
         def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0]).tap {
@@ -751,7 +735,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         false           | true          | true          | null
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to update vlanId via partialUpdate in case vlanId==0 and innerVlanId!=0"() {
         given: "A default flow"
@@ -786,7 +769,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         defaultFlow && flowHelperV2.deleteFlow(defaultFlow.flowId)
     }
 
-    @Tidy
     @Unroll("Unable to partial update flow (maxLatency #maxLatencyAfter and maxLatencyTier2 #maxLatencyT2After)")
     def "Unable to partial update flow with maxLatency incorrect value"() {
         given: "Two potential flows"

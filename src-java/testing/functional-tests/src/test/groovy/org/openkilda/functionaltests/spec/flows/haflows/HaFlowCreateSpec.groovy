@@ -10,7 +10,6 @@ import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -37,7 +36,6 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
     @Shared
     HaFlowHelper haFlowHelper
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Valid HA-Flow can be created#trafficDisclaimer, covered cases: #coveredCases"() {
         assumeTrue(useMultitable, "HA-Flow operations require multiTable switch mode")
@@ -98,7 +96,6 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         trafficDisclaimer = swT && swT.isHaTraffExamAvailable() ? " and pass traffic" : " [!NO TRAFFIC CHECK!]"
     }
 
-    @Tidy
     def "User cannot create a HA-Flow with existent ha_flow_id"() {
         assumeTrue(useMultitable, "HA-Flow operations require multiTable switch mode")
         given: "Existing HA-Flow"
@@ -117,7 +114,6 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }
 
-    @Tidy
     def "User cannot create a HA-Flow with equal A-B endpoints and different inner vlans at these endpoints"() {
         assumeTrue(useMultitable, "HA-Flow operations require multiTable switch mode")
         given: "A switch triplet with equal A-B endpoint switches"
@@ -142,7 +138,6 @@ and ${haFlowRequest.subFlows[1].endpoint.innerVlanId}./).matches(exc)
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }
 
-    @Tidy
     def "User cannot create a one switch HA-Flow"() {
         assumeTrue(useMultitable, "HA-Flow operations require multiTable switch mode")
         given: "A switch"

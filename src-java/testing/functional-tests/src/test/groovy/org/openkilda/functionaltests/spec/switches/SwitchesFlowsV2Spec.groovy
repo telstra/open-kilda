@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.YFlowHelper
@@ -74,7 +73,6 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         yFlowSubFlow2Id = yFlow.getSubFlows().get(1).getFlowId()
     }
 
-    @Tidy
     @Tags([SMOKE])
     def "System allows to get flows on particular ports on switch"() {
         given: "YFlow subflow which starts on switch"
@@ -91,7 +89,6 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Unroll
     def "System allows to get a flow that #switchRole switch"() {
         given: "Flow that #switchRole switch"
@@ -109,7 +106,6 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         "ends on"       | switchPair.getDst()
     }
 
-    @Tidy
     @Unroll
     def "System allows to get a flow which protected path that goes through switch"() {
         given: "Flow which protected path goes through switch"
@@ -121,7 +117,6 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
                 .contains(flowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Mirror sink endpoint port is not listed in list of the ports used"() {
         given: "Switch with flow on it and a free port"
@@ -149,7 +144,6 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         Wrappers.silent {northboundV2.deleteMirrorPoint(flowId, mirrorEndpoint.getMirrorPointId())}
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Empty list is returned if none of requested ports is busy with any flow"() {
         given: "Switch with flow on it and ports this flow uses"
@@ -163,7 +157,6 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         switchHelper.getFlowsV2(switchUnderTest, unusedPortsList.subList(0, 3)).getFlowsByPort().isEmpty()
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "One-switch YFlow subflows are listed in flows list"() {
         given: "One switch YFlow"

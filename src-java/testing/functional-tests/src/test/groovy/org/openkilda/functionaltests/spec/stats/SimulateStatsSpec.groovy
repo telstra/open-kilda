@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.stats
 
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.Destination
 import org.openkilda.messaging.Message
@@ -107,7 +106,6 @@ class SimulateStatsSpec extends HealthCheckSpecification {
 
     }
 
-    @Tidy
     @Unroll
     def "Flow stats #metric with big values are properly being saved to stats db (noviflow boundaries)"() {
         expect: "Corresponding entries appear in tsdb"

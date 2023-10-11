@@ -9,7 +9,6 @@ import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.yflows.SubFlowPatchPayload
@@ -33,7 +32,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
     @Autowired @Shared
     YFlowHelper yFlowHelper
 
-    @Tidy
     def "User can update #data.descr of a y-flow"() {
         given: "Existing y-flow"
         def swT = topologyHelper.switchTriplets[0]
@@ -111,7 +109,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "User can update y-flow where one of subflows has both ends on shared switch"() {
         given: "Existing y-flow where one of subflows has both ends on shared switch"
         def switchTriplet = topologyHelper.getSwitchTriplets(true, true)
@@ -146,7 +143,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
-    @Tidy
     def "User can partially update fields of one-switch y-flow"() {
         given: "Existing one-switch y-flow"
         def singleSwitch = topologyHelper.getRandomSwitch()
@@ -196,7 +192,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
-    @Tidy
     def "User can partially update #data.descr of a y-flow"() {
         given: "Existing y-flow"
         def swT = topologyHelper.switchTriplets.find { it.ep1 != it.ep2 }
@@ -314,7 +309,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "User cannot update a y-flow with #data.descr"() {
         given: "Existing y-flow"
         def swT = topologyHelper.switchTriplets[0]
@@ -378,7 +372,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "User cannot partial update a y-flow with #data.descr"() {
         given: "Existing y-flow"
         def swT = topologyHelper.switchTriplets[0]

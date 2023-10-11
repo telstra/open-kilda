@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -55,7 +54,6 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     @Shared
     FlowStats flowStats
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Able to turn off periodic pings on a HA-flow"() {
         given: "An HA-flow with periodic pings turned on"
@@ -92,7 +90,6 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Unable to ping HA-flow via periodic pings if ISL is broken"() {
         given: "Pinned HA-flow with periodic pings turned on which won't be rerouted after ISL fails"
@@ -131,7 +128,6 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "Able to turn on periodic pings on a HA-flow"() {
         when: "Create a HA-flow with periodic pings turned on"
         def swT = topologyHelper.findSwitchTripletWithDifferentEndpoints()
@@ -161,7 +157,6 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }
 
-    @Tidy
     @Ignore("unignore after https://github.com/telstra/open-kilda/issues/5224")
     @Tags([LOW_PRIORITY])
     def "Able to ping HA-flow when one of subflows is one-switch one"() {
