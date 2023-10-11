@@ -64,8 +64,15 @@ class PathHelper {
     void makePathNotPreferable(List<PathNode> path) {
         def notPreferableIsls = getInvolvedIsls(path)
         log.debug "ISLs to avoid: $notPreferableIsls"
-        northbound.updateLinkProps(notPreferableIsls.collectMany { isl ->
-            [islUtils.toLinkProps(isl, ["cost": (NOT_PREFERABLE_COST * 3).toString()])]
+        updateIslsCost(notPreferableIsls, NOT_PREFERABLE_COST * 3)
+    }
+
+    /**
+     * All ISLs will have their cost set to the specified value.
+     */
+    void updateIslsCost(List<Isl> isls, Integer newCost) {
+        northbound.updateLinkProps(isls.collectMany { isl ->
+            [islUtils.toLinkProps(isl, ["cost": (newCost).toString()])]
         })
     }
 
