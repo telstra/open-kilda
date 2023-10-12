@@ -6,7 +6,6 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.messaging.payload.flow.FlowState
@@ -29,7 +28,6 @@ class SubFlowSpec extends HealthCheckSpecification {
     @Shared
     YFlowHelper yFlowHelper
 
-    @Tidy
     def "Unable to #data.action a sub-flow"() {
         given: "Existing y-flow"
         def swT = topologyHelper.switchTriplets[0]

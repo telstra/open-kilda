@@ -16,9 +16,11 @@
 package org.openkilda.testing.service.traffexam.model;
 
 import lombok.Getter;
+import lombok.ToString;
 import org.apache.logging.log4j.util.Strings;
 
 @Getter
+@ToString
 public class EndpointReport {
     private Long packets = 0L;
     private Long bytes = 0L;

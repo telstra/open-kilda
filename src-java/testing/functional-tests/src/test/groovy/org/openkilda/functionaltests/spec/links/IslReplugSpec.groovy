@@ -1,9 +1,5 @@
 package org.openkilda.functionaltests.spec.links
 
-import org.openkilda.functionaltests.model.stats.SwitchStats
-import org.springframework.beans.factory.annotation.Autowired
-import spock.lang.Shared
-
 import static org.junit.Assume.assumeNotNull
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -13,22 +9,19 @@ import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.testing.Constants.DefaultRule.DROP_LOOP_RULE
-import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.stats.SwitchStats
 import org.openkilda.model.SwitchFeature
-import org.openkilda.testing.Constants.DefaultRule
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
-import org.springframework.beans.factory.annotation.Value
+import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Ignore
 import spock.lang.Narrative
-
-import java.util.concurrent.TimeUnit
+import spock.lang.Shared
 
 @Narrative("Verify scenarios around replugging ISLs between different switches/ports.")
 @Tags([TOPOLOGY_DEPENDENT])
@@ -37,7 +30,6 @@ class IslReplugSpec extends HealthCheckSpecification {
     @Autowired @Shared
     SwitchStats switchStats
 
-    @Tidy
     def "Round-trip ISL status changes to MOVED when replugging it into another switch"() {
         given: "A connected a-switch link, round-trip-enabled"
         and: "A non-connected a-switch link with round-trip support"
@@ -117,7 +109,6 @@ class IslReplugSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "ISL status changes to MOVED when replugging ISL into another switch"() {
         given: "A connected a-switch link"
         def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
@@ -186,7 +177,6 @@ class IslReplugSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "New potential self-loop ISL (the same port on the same switch) is not getting discovered when replugging"() {
         given: "A connected a-switch link"
         def isl = topology.islsForActiveSwitches.find { it.getAswitch()?.inPort && it.getAswitch()?.outPort }
@@ -237,9 +227,6 @@ class IslReplugSpec extends HealthCheckSpecification {
 
         when: "Plug an ISL between two ports on the same switch"
         def beforeReplugTime = new Date()
-        def dropCounterBefore = northbound.getSwitchRules(islToPlugInto.srcSwitch.dpId).flowEntries.find {
-            it.cookie == DROP_LOOP_RULE.cookie
-        }.packetCount
         def expectedIsl = islUtils.replug(islToPlug, true, islToPlugInto, true, true)
 
         then: "The potential self-loop ISL is not present in the list of ISLs (wait for discovery interval)"
@@ -256,8 +243,7 @@ class IslReplugSpec extends HealthCheckSpecification {
                     .hasNonZeroValuesAfter(beforeReplugTime.getTime())
         }
 
-
-        and: "Unplug the link how it was before"
+        cleanup:
         lockKeeper.removeFlows([expectedIsl.aswitch, expectedIsl.aswitch.reversed])
         def connectedIsls = [islToPlug, islToPlugInto].findAll { it.aswitch?.outPort }
         lockKeeper.addFlows(connectedIsls.collectMany { [it.aswitch, it.aswitch.reversed] })
@@ -266,8 +252,6 @@ class IslReplugSpec extends HealthCheckSpecification {
             connectedIsls.each { assert islUtils.getIslInfo(links, it).get().state == DISCOVERED }
             assert links.size() == topology.islsForActiveSwitches.size() * 2
         }
-
-        cleanup:
         database.resetCosts(topology.isls)
     }
 

@@ -10,7 +10,6 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -42,7 +41,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
     @Value('${reroute.hardtimeout}')
     int rerouteHardTimeout
 
-    @Tidy
     @Tags(SMOKE)
     //    unignored. Tests needs supervision next builds
     def "Reroute is not performed while new reroutes are being issued"() {
@@ -171,10 +169,8 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
             assert flowPathsClone.empty
         }
 
-        and: "cleanup: delete flows"
-        flows.each { flowHelperV2.deleteFlow(it.flowId) }
-
-        cleanup: "revive all paths"
+        cleanup:
+        flows && flows.each { flowHelperV2.deleteFlow(it.flowId) }
         stop = true
         starter.join()
         rerouteTriggers.each { it.join() } //each thread revives ISL after itself
@@ -183,7 +179,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "Flow can be safely deleted while it is in the reroute window waiting for reroute"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches

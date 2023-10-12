@@ -4,7 +4,6 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
@@ -19,7 +18,6 @@ import spock.lang.Narrative
  environment (using v2 APIs)""")
 class ContentionSpec extends BaseSpecification {
 
-    @Tidy
     def "Parallel flow creation requests with the same name creates only 1 flow"() {
         when: "Create the same flow in parallel multiple times"
         def flowsAmount = 20
@@ -88,7 +86,6 @@ class ContentionSpec extends BaseSpecification {
         }
     }
 
-    @Tidy
     def "Reroute can be simultaneously performed with sync rules requests, removeExcess=#removeExcess"() {
         given: "A flow with reroute potential"
         def switches = topologyHelper.getNotNeighboringSwitchPair()

@@ -26,7 +26,6 @@ import static org.openkilda.testing.Constants.STATS_FROM_SERVER42_LOGGING_TIMEOU
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
@@ -73,7 +72,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     @Value('${flow.sla.check.interval.seconds}')
     Integer flowSlaCheckIntervalSeconds
 
-    @Tidy
     def "Create a #data.flowDescription flow with server42 Rtt feature and check datapoints in tsdb"() {
         given: "Two active switches, src has server42 connected"
         def server42switches = topology.getActiveServer42Switches();
@@ -142,7 +140,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "Flow rtt stats are available in forward and reverse directions for new flows"() {
         given: "Two active switches with switch having server42"
         def server42switches = topology.getActiveServer42Switches()
@@ -210,7 +207,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         revertToOrigin([flow, reversedFlow], flowRttFeatureStartState, initialSwitchRtt)
     }
 
-    @Tidy
     def "Flow rtt stats are available only if both global and switch toggles are 'on' on both endpoints"() {
         given: "Two active switches with having server42"
         def server42switches = topology.getActiveServer42Switches()
@@ -312,7 +308,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         revertToOrigin([flow, reversedFlow], flowRttFeatureStartState, initialSwitchRtt)
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Flow rtt stats are available if both endpoints are connected to the same server42, same pop"() {
         given: "Two active switches connected to the same server42 instance"
@@ -367,7 +362,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         revertToOrigin([flow], flowRttFeatureStartState, initialSwitchRtt)
     }
 
-    @Tidy
     @Tags(HARDWARE) //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
     def "Able to synchronize a flow (install missing server42 rules)"() {
         given: "A switch pair connected to server42"
@@ -444,7 +438,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         revertToOrigin([flow], flowRttFeatureStartState, initialSwitchRtt)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to swapEndpoint for a flow with enabled server42 on it"() {
         given: "Two switch pairs with different src switches and the same dst switch"
@@ -532,7 +525,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         fl1SwPair && changeFlowRttSwitch(fl1SwPair.src, true)
     }
 
-    @Tidy
     def "Rtt statistic is available for a flow in case switch is not connected to server42"() {
         given: "Two active switches, only src has server42 connected"
         def server42SwIds = topology.getActiveServer42Switches()*.dpId
@@ -579,7 +571,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         initialSrcSwS42Props && changeFlowRttSwitch(switchPair.src, initialSrcSwS42Props)
     }
 
-    @Tidy
     @Tags(HARDWARE) //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
     def "Flow rtt stats are still available after updating a #data.flowDescription flow"() {
         given: "Two active switches, connected to the server42"
@@ -658,7 +649,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/3814")
     @Tags(HARDWARE) //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
     def "Flow rtt stats are available after updating switch properties related to server42"(){
@@ -750,8 +740,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         swPropIsWrong && northbound.updateSwitchProperties(switchPair.src.dpId, originalSrcSwPros)
     }
 
-
-    @Tidy
     @Tags(HARDWARE)
     def "Rtt statistic is available for a flow on a LAG port"() {
         given: "Two active switches, both have server42 connected"

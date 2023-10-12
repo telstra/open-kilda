@@ -18,7 +18,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -74,7 +73,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
         assert  bigHistory.size() == 102
     }
 
-    @Tidy
     def "History records are created for the create/update actions using custom timeline"() {
         when: "Create a flow"
         assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
@@ -191,7 +189,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
         !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "History records are created for the create/update actions using default timeline"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -223,7 +220,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
         !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "History records are created for the partial update actions #partialUpdateType"() {
         given: "Flow has been created"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -283,7 +279,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
                 { String flowId -> flowHelperV2.partialUpdate(flowId, new FlowPatchV2().tap { maximumBandwidth = 12345 }, true) }
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "History max_count cannot be <1"() {
         when: "Try to get history with max_count 0"
@@ -293,7 +288,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         new HistoryMaxCountExpectedError(0).matches(e)    }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Check history: #data.descr"() {
         expect: "#data.descr"
@@ -343,7 +337,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Root cause is registered in flow history while rerouting"() {
         given: "An active flow"
@@ -391,7 +384,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "History records are created for the create/update actions using custom timeline [v1 api]"() {
         when: "Create a flow"

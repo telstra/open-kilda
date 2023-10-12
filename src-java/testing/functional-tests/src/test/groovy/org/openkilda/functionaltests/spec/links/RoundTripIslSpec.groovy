@@ -13,7 +13,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
@@ -35,7 +34,6 @@ class RoundTripIslSpec extends HealthCheckSpecification {
     via the 'knockoutSwitch' method on the stage env*/
     Integer customWaitOffset = WAIT_OFFSET * 4
 
-    @Tidy
     def "Isl with round-trip properly changes status after port events(#descr)"() {
         given: "Round-trip ISL with a-switch"
         def cleanupActions = []
@@ -95,7 +93,6 @@ class RoundTripIslSpec extends HealthCheckSpecification {
         descr = "with${bfd ? '': 'out'} bfd"
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "A round trip latency ISL doesn't go down when one switch lose connection to FL"() {
         given: "A switch with/without round trip latency ISLs"
@@ -149,7 +146,6 @@ for ISL alive confirmation)"
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "A round trip latency ISL goes down when both switches lose connection to FL"() {
         given: "A round trip latency ISL"
@@ -195,7 +191,6 @@ on both switches)"
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "A round trip latency ISL goes down when the src switch lose connection to FL and \
 round trip latency rule is removed on the dst switch"() {
@@ -296,7 +291,6 @@ round trip latency rule is removed on the dst switch"() {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES])
     def "A round trip latency ISL goes down when portDiscovery property is disabled on the src/dst ports"() {
         given: "A round trip latency ISL"
@@ -368,7 +362,6 @@ round trip latency rule is removed on the dst switch"() {
         }
     }
 
-    @Tidy
     def "Able to delete failed ISL without force if it was discovered with disabled portDiscovery on a switch"() {
         given: "A deleted round trip latency ISL"
         Isl roundTripIsl = topology.islsForActiveSwitches.find {

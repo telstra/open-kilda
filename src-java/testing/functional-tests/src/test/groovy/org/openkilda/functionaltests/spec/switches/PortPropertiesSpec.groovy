@@ -12,7 +12,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -37,7 +36,6 @@ This spec assumes that port discovery property is enabled for all available port
 """)
 class PortPropertiesSpec extends HealthCheckSpecification {
 
-    @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Able to manipulate port properties"() {
         given: "A port with port properties"
@@ -79,7 +77,6 @@ class PortPropertiesSpec extends HealthCheckSpecification {
                 new PortPropertiesDto(discoveryEnabled: DISCOVERY_ENABLED_DEFAULT))
     }
 
-    @Tidy
     def "Informative error is returned when trying to get/update port properties with non-existing switch"() {
         when: "Try to get port properties info for non-existing switch"
         //assume port 10 is always exist on a switch
@@ -97,7 +94,6 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         new SwitchNotFoundExpectedError("Could not update port properties for \
 '${NON_EXISTENT_SWITCH_ID}_${port}': Switch ${NON_EXISTENT_SWITCH_ID} not found.", ~/Persistence exception/).matches(exc)    }
 
-    @Tidy
     def "Informative error is returned when trying to update port properties with non-existing port number"() {
         when: "Try to get port properties info for non-existing port"
         // Actually we have strange behaviour here, we can get port property for a non-existent port, but can't update
@@ -119,7 +115,6 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         new PortNotFoundExpectedError(sw.dpId, nonExistentPort, ~/Port not found exception/).matches(exc)    }
 
-    @Tidy
     def "System doesn't discover link when port discovery property is disabled"() {
         given: "A deleted link"
         def sw = topology.activeSwitches.first()
@@ -204,7 +199,6 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         switchStatus && switchStatus == SwitchChangeType.DEACTIVATED && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
-    @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Link is stopped from being discovered after disabling port discovery property"() {
         given: "An active link"

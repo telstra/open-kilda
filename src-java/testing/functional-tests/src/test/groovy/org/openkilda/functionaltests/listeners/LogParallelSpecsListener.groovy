@@ -46,7 +46,7 @@ class LogParallelSpecsListener extends AbstractRunListener {
 
     static String getIterationPath(IterationInfo iteration) {
         return getSpecPath(iteration.feature.spec) + iteration.displayName
-                .replaceAll(/[!@#%^&*(),.?":{}|<>\s\[\]]/, "_").truncate(200)
+                .replaceAll(/[!@#%^&*(),.?":{}|<>\s\[\]\/]/, "_").truncate(200)
     }
 
     static String getCommonSpecPath(SpecInfo spec) {

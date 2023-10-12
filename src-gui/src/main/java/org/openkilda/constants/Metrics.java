@@ -15,6 +15,7 @@
 
 package org.openkilda.constants;
 
+import lombok.AccessLevel;
 import lombok.Getter;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
@@ -90,6 +91,7 @@ public enum Metrics {
 
     private final String tag;
 
+    @Getter(AccessLevel.NONE)
     private final String metricName;
 
     private static final Map<String, List<Metrics>> TAG_TO_METRICS_MAP = new HashMap<>();
@@ -117,6 +119,10 @@ public enum Metrics {
         this.metricName = metricName;
     }
 
+    public final String getMetricName(String prefix) {
+        return prefix + this.metricName;
+    }
+
     /**
      * Flow value.
      *
@@ -131,9 +137,9 @@ public enum Metrics {
             return metricNames;
         }
         metrics.forEach(metric -> {
-            metricNames.add(prefix + metric.getMetricName());
+            metricNames.add(metric.getMetricName(prefix));
             if (uniDirectional) {
-                metricNames.add(prefix + metric.getMetricName());
+                metricNames.add(metric.getMetricName(prefix));
             }
         });
         return metricNames;
@@ -150,7 +156,7 @@ public enum Metrics {
             return StringUtils.EMPTY;
         }
         Optional<Metrics> metric = TAG_TO_METRICS_MAP.get("Flow_" + metricPart.toLowerCase()).stream().findFirst();
-        return metric.map(metrics -> prefix + metrics.getMetricName()).orElse(StringUtils.EMPTY);
+        return metric.map(metrics -> metrics.getMetricName(prefix)).orElse(StringUtils.EMPTY);
     }
 
     /**
@@ -164,7 +170,7 @@ public enum Metrics {
             return StringUtils.EMPTY;
         }
         Optional<Metrics> metric = TAG_TO_METRICS_MAP.get("Meter_" + metricPart.toLowerCase()).stream().findFirst();
-        return metric.map(metrics -> prefix + metrics.getMetricName()).orElse(StringUtils.EMPTY);
+        return metric.map(metrics -> metrics.getMetricName(prefix)).orElse(StringUtils.EMPTY);
     }
 
     /**
@@ -178,7 +184,7 @@ public enum Metrics {
         tag = "Flow_raw_" + tag;
         for (Metrics metric : values()) {
             if (metric.getTag().equalsIgnoreCase(tag)) {
-                list.add(prefix + metric.getMetricName());
+                list.add(metric.getMetricName(prefix));
             }
         }
         return list;
@@ -202,7 +208,7 @@ public enum Metrics {
         }
         for (Metrics metric : values()) {
             if (metric.getTag().equalsIgnoreCase(tag)) {
-                list.add(prefix + metric.getMetricName());
+                list.add(metric.getMetricName(prefix));
             }
         }
         return list;
@@ -218,7 +224,7 @@ public enum Metrics {
         List<String> list = new ArrayList<>();
         for (Metrics metric : values()) {
             if (metric.getTag().startsWith(tag)) {
-                list.add(prefix + metric.getMetricName());
+                list.add(metric.getMetricName(prefix));
             }
         }
         return list;
@@ -236,7 +242,7 @@ public enum Metrics {
         if (CollectionUtils.isEmpty(metrics)) {
             return metricNames;
         }
-        metrics.forEach(metric -> metricNames.add(prefix + metric.getMetricName()));
+        metrics.forEach(metric -> metricNames.add(metric.getMetricName(prefix)));
         return metricNames;
     }
 
@@ -246,7 +252,7 @@ public enum Metrics {
      * @return the list
      */
     public static List<String> list(String prefix) {
-        return Arrays.stream(values()).map(metric -> prefix + metric.getMetricName()).collect(Collectors.toList());
+        return Arrays.stream(values()).map(metric -> metric.getMetricName(prefix)).collect(Collectors.toList());
     }
 
     /**

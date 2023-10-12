@@ -14,7 +14,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -37,7 +36,6 @@ class LinkSpec extends HealthCheckSpecification {
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
 
-    @Tidy
     @Tags([SMOKE_SWITCHES, SMOKE, LOCKKEEPER])
     def "Link (not BFD) status is properly changed when link connectivity is broken (not port down)"() {
         given: "A link going through a-switch"
@@ -131,7 +129,6 @@ class LinkSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "Get all flows (UP/DOWN) going through a particular link"() {
         given: "Two active not neighboring switches"
@@ -230,7 +227,6 @@ class LinkSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "ISL should immediately fail if the port went down while switch was disconnected"() {
         when: "A switch disconnects"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
@@ -284,7 +280,6 @@ class LinkSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "Unable to get flows for NOT existing link (#item doesn't exist)"() {
         when: "Get flows for NOT existing link"
         northbound.getLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -303,7 +298,6 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | 4096             | "dst_port"
     }
 
-    @Tidy
     def "Unable to get flows with specifying invalid query parameters (#item is invalid)"() {
         when: "Get flows with specifying invalid #item"
         northbound.getLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -320,7 +314,6 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
     }
 
-    @Tidy
     def "Unable to get flows without full specifying a particular link (#item is missing)"() {
         when: "Get flows without specifying #item"
         northbound.getLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -338,7 +331,6 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
     }
 
-    @Tidy
     def "Unable to delete a nonexistent link"() {
         given: "Parameters of nonexistent link"
         def parameters = new LinkParametersDto(new SwitchId(1).toString(), 100, new SwitchId(2).toString(), 100)
@@ -352,7 +344,6 @@ class LinkSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.contains("ISL was not found")
     }
 
-    @Tidy
     def "Unable to delete an active link"() {
         given: "An active link"
         def isl = topology.getIslsForActiveSwitches()[0]
@@ -366,7 +357,6 @@ class LinkSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.contains("ISL must NOT be in active state")
     }
 
-    @Tidy
     def "Able to delete an inactive #islDescription link and re-discover it back afterwards"() {
         given: "An inactive link"
         assumeTrue(isl as boolean, "Unable to locate $islDescription ISL for this test")
@@ -416,7 +406,6 @@ class LinkSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "Reroute all flows going through a particular link"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -460,7 +449,6 @@ class LinkSpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
-    @Tidy
     def "Unable to reroute flows with specifying NOT existing link (#item doesn't exist)"() {
         when: "Reroute flows with specifying NOT existing link"
         northbound.rerouteLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -479,7 +467,6 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | 4096             | "dst_port"
     }
 
-    @Tidy
     def "Unable to reroute flows with specifying invalid query parameters (#item is invalid)"() {
         when: "Reroute flows with specifying invalid #item"
         northbound.rerouteLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -496,7 +483,6 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
     }
 
-    @Tidy
     def "Unable to reroute flows without full specifying a particular link (#item is missing)"() {
         when: "Reroute flows without specifying #item"
         northbound.rerouteLinkFlows(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -514,7 +500,6 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
     }
 
-    @Tidy
     def "Get links with specifying query parameters"() {
         when: "Get links with specifying query parameters"
         def links = northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -538,7 +523,6 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | getIsl().dstPort
     }
 
-    @Tidy
     def "Get links with specifying NOT existing query parameters (#item doesn't exist)"() {
         when: "Get links with specifying NOT existing query parameters"
         def links = northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -554,7 +538,6 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | 4096             | "dst_port"
     }
 
-    @Tidy
     def "Unable to get links with specifying invalid query parameters (#item is invalid)"() {
         when: "Get links with specifying invalid #item"
         northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
@@ -571,7 +554,6 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
     }
 
-    @Tidy
     @Tags([SMOKE])
     def "ISL is able to properly fail when both src and dst switches suddenly disconnect"() {
         given: "An active ISL"
@@ -599,7 +581,6 @@ class LinkSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "Able to update max bandwidth for a link"() {
         given: "An active ISL"
@@ -701,7 +682,6 @@ class LinkSpec extends HealthCheckSpecification {
                 isl.dstSwitch.dpId, isl.dstPort, initialMaxBandwidth)
     }
 
-    @Tidy
     def "Unable to update max bandwidth with specifying invalid query parameters (#item is invalid)"() {
         when: "Update max bandwidth with specifying invalid #item"
         northbound.updateLinkMaxBandwidth(srcSwId, srcSwPort, dstSwId, dstSwPort, 1000000)
@@ -718,7 +698,6 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
     }
 
-    @Tidy
     def "Unable to update max bandwidth without full specifying a particular link (#item is missing)"() {
         when: "Update max bandwidth without specifying #item"
         northbound.updateLinkMaxBandwidth(srcSwId, srcSwPort, dstSwId, dstSwPort, 1000000)
@@ -736,7 +715,6 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
     }
 
-    @Tidy
     def "Unable to delete inactive link with flowPath"() {
         given: "An inactive link with flow on it"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -770,7 +748,6 @@ class LinkSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "Able to delete an active link with flowPath if using force delete"() {
         given: "Two active neighboring switches and two possible paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -835,7 +812,6 @@ class LinkSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "System detects a 1-way ISL as a Failed ISL"() {
         given: "A deleted a-switch ISL"
         def isl = topology.islsForActiveSwitches.find {

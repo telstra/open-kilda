@@ -32,7 +32,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -86,7 +85,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         ~/The port $port on the switch \'$swId\' is occupied by an ISL \($endpoint endpoint collision\)./
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTags([
             @IterationTag(tags = [SMOKE], iterationNameRegex = /vlan /),
@@ -162,7 +160,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         srcDstStr = "src:${topology.find(flow.source.switchId).hwSwString}->dst:${topology.find(flow.destination.switchId).hwSwString}"
     }
 
-    @Tidy
     @Unroll("Able to create a second flow if #data.description")
     def "Able to create multiple flows on certain combinations of switch-port-vlans"() {
         given: "Two potential flows that should not conflict"
@@ -342,7 +339,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to create single switch single port flow with different vlan (#flow.source.switchId)"(
             FlowRequestV2 flow) {
@@ -372,7 +368,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         flow << getSingleSwitchSinglePortFlows()
     }
 
-    @Tidy
     def "Able to validate flow with zero bandwidth"() {
         given: "A flow with zero bandwidth"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -389,7 +384,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Unable to create single-switch flow with the same ports and vlans on both sides"() {
         given: "Potential single-switch flow with the same ports and vlans on both sides"
         def flow = flowHelperV2.singleSwitchSinglePortFlow(topology.activeSwitches.first())
@@ -407,7 +401,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         !error && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Unroll("Unable to create flow with #data.conflict")
     def "Unable to create flow with conflicting vlans or flow IDs"() {
         given: "A potential flow"
@@ -436,7 +429,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         data << getConflictingData()
     }
 
-    @Tidy
     def "A flow cannot be created with asymmetric forward and reverse paths"() {
         given: "Two active neighboring switches with two possible flow paths at least and different number of hops"
         List<List<PathNode>> possibleFlowPaths = []
@@ -472,7 +464,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "Error is returned if there is no available path to #data.isolatedSwitchType switch"() {
         given: "A switch that has no connection to other switches"
         def isolatedSwitch = topologyHelper.notNeighboringSwitchPair.src
@@ -529,7 +520,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "Removing flow while it is still in progress of being set up should not cause rule discrepancies"() {
         given: "A potential flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -575,7 +565,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         Wrappers.silent{flow && flowHelperV2.deleteFlow(flow.flowId)}
     }
 
-    @Tidy
     def "Unable to create a flow with #problem"() {
         given: "A flow with #problem"
         def switchPair = topologyHelper.getNotNeighboringSwitchPair()
@@ -619,7 +608,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 new FlowNotCreatedExpectedError(~/To collect vlan statistics, the vlan IDs must be from 1 up to 4095/)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Unable to update to a flow with #problem"() {
         given: "A flow"
@@ -651,7 +639,6 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Unable to partially update to a flow with statistics vlan set to 0 or above 4095"() {
         given: "A flow"
@@ -674,7 +661,6 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         Wrappers.silent { flowHelperV2.deleteFlow(flow.flowId) }
     }
 
-    @Tidy
     def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {
         given: "An isl"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -710,7 +696,6 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         ]
     }
 
-    @Tidy
     def "Unable to create a flow on an isl port when ISL status is FAILED"() {
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -735,7 +720,6 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "Unable to create a flow on an isl port when ISL status is MOVED"() {
         given: "An inactive isl with moved state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -771,7 +755,6 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
         given: "Disconnected switch"
         def sw = topology.getActiveSwitches()[0]
@@ -790,7 +773,6 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "System allows to CRUD protected flow"() {
         given: "Two active not neighboring switches with two diverse paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
@@ -839,7 +821,6 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "System allows to set/update description/priority/max-latency for a flow"() {
         given: "Two active neighboring switches"
@@ -894,7 +875,6 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "System doesn't ignore encapsulationType when flow is created with ignoreBandwidth = true"() {
         given: "Two active switches"
         def swPair = topologyHelper.getNeighboringSwitchPair().find {
@@ -930,7 +910,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
         !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Flow status accurately represents the actual state of the flow and flow rules"() {
         when: "Create a flow on a long path"
         def swPair = topologyHelper.switchPairs.first()
@@ -975,7 +954,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
         flow && !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to update a flow endpoint"() {
         given: "Three active switches"
@@ -1110,7 +1088,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "System reroutes flow to more preferable path while updating"() {
         given: "Two active not neighboring switches with two possible paths at least"
@@ -1157,7 +1134,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
-    @Tidy
     def "System doesn't rebuild path for a flow to more preferable path while updating portNumber/vlanId"() {
         given: "Two active switches connected to traffgens with two possible paths at least"
         def activeTraffGens = topology.activeTraffGens
@@ -1264,7 +1240,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])
     def "System allows to update single switch flow to multi switch flow"() {
         given: "A single switch flow with enabled lldp/arp on the dst side"
@@ -1310,7 +1285,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Unable to create a flow with both strict_bandwidth and ignore_bandwidth flags"() {
         when: "Try to create a flow with strict_bandwidth:true and ignore_bandwidth:true"
         def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0]).tap {
@@ -1328,7 +1302,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
         !error && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Unable to update flow with incorrect id in request body"() {
         given:"A flow"
@@ -1350,7 +1323,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Unable to update flow with incorrect id in request path"() {
         given: "A flow"
@@ -1373,7 +1345,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
     }
 
     @Tags(LOW_PRIORITY)
-    @Tidy
     def "Able to #method update with empty VLAN stats and non-zero VLANs (#5063)"() {
         given: "A flow with non empty vlans stats and with src and dst vlans set to '0'"
         def switches = topologyHelper.getSwitchPairs().shuffled().first()
@@ -1426,7 +1397,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to update to a flow with maxLatencyTier2 higher as maxLatency)"() {
         given: "A flow"

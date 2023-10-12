@@ -169,6 +169,9 @@ public abstract class IConstants {
         public static final String UPDATE_SWITCH_LOCATION = VERSION_TWO + "/switches/{switch_id}";
         public static final String GET_LINK_BFD_PROPERTIES = VERSION_TWO
                 + "/links/{src-switch}_{src-port}/{dst-switch}_{dst-port}/bfd";
+        public static final String SWITCH_LOGICAL_PORT = VERSION_TWO + "/switches/{switch_id}/lags";
+        public static final String DELETE_SWITCH_LOGICAL_PORT = VERSION_TWO
+                + "/switches/{switch_id}/lags/{logical_port_number}";
     }
 
     public static final class OpenTsDbUrl {
@@ -315,6 +318,10 @@ public abstract class IConstants {
         public static final String ISL_UPDATE_BFD_PROPERTIES = "isl_update_bfd_properties";
 
         public static final String ISL_DELETE_BFD = "isl_delete_bfd";
+
+        public static final String SW_CREATE_LOGICAL_PORT = "sw_create_logical_port";
+
+        public static final String SW_DELETE_LOGICAL_PORT = "sw_delete_logical_port";
     }
 
     public static final class Settings {

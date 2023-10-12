@@ -43,6 +43,7 @@ import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.SwitchFlowsInfoPerPort;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.model.SwitchLocation;
+import org.openkilda.model.SwitchLogicalPort;
 import org.openkilda.model.SwitchMeter;
 import org.openkilda.model.SwitchProperty;
 import org.openkilda.service.ApplicationService;
@@ -875,6 +876,81 @@ public class SwitchIntegrationService {
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         } catch (UnsupportedOperationException e) {
             e.printStackTrace();
+        }
+        return null;
+    }
+    
+    /**
+     * Creates switch logical port.
+     *
+     * @param switchId the switch id
+     * @param switchLogicalPort the switch logical port
+     * @return the SwitchLogicalPort
+     */
+    public SwitchLogicalPort createLogicalPort(String switchId, SwitchLogicalPort switchLogicalPort) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
+                    .SWITCH_LOGICAL_PORT.replace("{switch_id}", switchId), 
+                    HttpMethod.POST, objectMapper.writeValueAsString(switchLogicalPort), "application/json", 
+                    applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, SwitchLogicalPort.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while creating switch logical port:" + switchId, e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (JsonProcessingException e) {
+            LOGGER.warn("Error occurred while creating switch logical port:" + switchId, e);
+            throw new IntegrationException(e.getMessage(), e);
+        }
+        return null;
+    }
+    
+    /**
+     * Deletes switch logical port.
+     *
+     * @param switchId the switch id
+     * @param logicalPortNumber the switch logical port number
+     * @return the SwitchLogicalPort
+     */
+    public SwitchLogicalPort deleteLogicalPort(String switchId, String logicalPortNumber) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
+                    .DELETE_SWITCH_LOGICAL_PORT.replace("{switch_id}", switchId)
+                    .replace("{logical_port_number}", logicalPortNumber), 
+                    HttpMethod.DELETE, "", "application/json", 
+                    applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponse(response, SwitchLogicalPort.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while deleting switch logical port:" + switchId, e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
+        }
+        return null;
+    }
+    
+    /**
+     * Gets switch logical ports.
+     *
+     * @param switchId the switch id
+     * @return the SwitchLogicalPort
+     */
+    public List<SwitchLogicalPort> getLogicalPort(String switchId) {
+        try {
+            HttpResponse response = restClientManager.invoke(
+                    applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
+                    .SWITCH_LOGICAL_PORT.replace("{switch_id}", switchId), 
+                    HttpMethod.GET, "", "application/json", 
+                    applicationService.getAuthHeader());
+            if (RestClientManager.isValidResponse(response)) {
+                return restClientManager.getResponseList(response, SwitchLogicalPort.class);
+            }
+        } catch (InvalidResponseException e) {
+            LOGGER.error("Error occurred while getting switch logical port:" + switchId, e);
+            throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
         return null;
     }

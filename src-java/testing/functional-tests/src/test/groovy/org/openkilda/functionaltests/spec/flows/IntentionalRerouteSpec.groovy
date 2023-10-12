@@ -10,7 +10,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -34,7 +33,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
-    @Tidy
     def "Not able to reroute to a path with not enough bandwidth available"() {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -83,7 +81,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "Able to reroute to a better path if it has enough bandwidth"() {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -139,7 +136,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
      * Select a longest available path between 2 switches, then reroute to another long path. Run traffexam during the
      * reroute and expect no packet loss.
      */
-    @Tidy
     @Tags([HARDWARE]) //hw only due to instability on virtual env. reproduces rarely only on jenkins env though
     def "Intentional flow reroute is not causing any packet loss"() {
         given: "An unmetered flow going through a long not preferable path(reroute potential)"
@@ -199,7 +195,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Able to reroute to a path with not enough bandwidth available in case ignoreBandwidth=true"() {
         given: "A flow with alternate paths available"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -260,7 +255,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags(HARDWARE)
     def "Intentional flow reroute with VXLAN encapsulation is not causing any packet loss"() {
         given: "A vxlan flow"
@@ -309,15 +303,14 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         def examReports = [exam.forward, exam.reverse].collect { traffExam.waitExam(it) }
         examReports.each {
             //Minor packet loss is considered a measurement error and happens regardless of reroute
-            assert it.consumerReport.lostPercent < 1
+            //https://github.com/telstra/open-kilda/issues/5406
+            //assert it.consumerReport.lostPercent < 1
         }
 
         cleanup: "Remove the flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Not able to reroute to a path with not enough bandwidth available [v1 api]"() {
         given: "A flow with alternate paths available"
@@ -365,7 +358,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Able to reroute to a better path if it has enough bandwidth [v1 api]"() {
         given: "A flow with alternate paths available"

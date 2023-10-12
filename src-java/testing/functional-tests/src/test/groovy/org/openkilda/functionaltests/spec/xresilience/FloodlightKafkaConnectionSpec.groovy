@@ -8,7 +8,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
@@ -28,7 +27,6 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
 
-    @Tidy
     def "System properly handles ISL statuses during connection problems between Floodlights and Kafka"() {
         setup: "All switches that have multiple management floodlights now remain with only 1"
         def updatedRegions = topology.switches.collectEntries{ [(it.dpId): it.regions] }
@@ -125,7 +123,6 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "System can detect switch port changes if they happen while Floodlight was disconnected after it reconnects"() {
         when: "Controllers lose connection to kafka"
         def regions = flHelper.fls*.region
@@ -161,7 +158,6 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "System can detect switch state changes if they happen while Floodlight was disconnected after it reconnects"() {
         when: "Controllers lose connection to kafka"
         def regions = flHelper.fls*.region

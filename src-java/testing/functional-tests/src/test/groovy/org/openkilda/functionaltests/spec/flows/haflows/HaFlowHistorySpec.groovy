@@ -6,7 +6,6 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.HistoryMaxCountExpectedError
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
@@ -22,7 +21,6 @@ import spock.lang.Narrative
 @Narrative("""Verify that history records are created for the basic actions applied to Ha-Flow.""")
 class HaFlowHistorySpec extends HealthCheckSpecification {
 
-    @Tidy
     def "History records with links details are created during link create operations and can be retrieved with timeline"() {
         given: "HA-Flow has been created"
         def swT = topologyHelper.switchTriplets[0]
@@ -46,7 +44,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         haFlow && haFlow.delete()
     }
 
-    @Tidy
     def "History records with links details are created during link #updateType operations and can be retrieved without timeline"() {
         given: "HA-Flow has been created"
         def swT = topologyHelper.switchTriplets[0]
@@ -95,7 +92,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "History records without links details are created during link deletion and can be retrieved with timeline"() {
         given: "HA-Flow has been created"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
@@ -121,7 +117,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         haFlow && !deletedFlow && haFlow.delete()
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "History records can be retrieved with timeline in milliseconds format"() {
         given: "HA-Flow"
@@ -143,7 +138,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
     }
 
     @Tags(LOW_PRIORITY)
-    @Tidy
     def "History records are created during link unsuccessful rerouting with root cause details and can be retrieved with or without timeline"() {
         given: "HA-Flow has been created"
         def swT = topologyHelper.switchTriplets[0]
@@ -188,7 +182,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         haFlow && haFlow.delete()
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Empty history returned in case filters return no results"() {
         given: "HA-Flow"
@@ -205,7 +198,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         haFlow && haFlow.delete()
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Only requested amount of history records are returned"() {
         given: "HA-Flow has been created"
@@ -236,7 +228,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         haFlow && haFlow.delete()
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "History max_count cannot be <1"() {
         when: "Try to get history with max_count 0"

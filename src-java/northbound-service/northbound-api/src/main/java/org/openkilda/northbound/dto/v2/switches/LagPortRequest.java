@@ -42,6 +42,6 @@ public class LagPortRequest {
     }
 
     public void setLacpReply(Boolean lacpReply) {
-        this.lacpReply = lacpReply == null ? true : lacpReply;
+        this.lacpReply = lacpReply == null || lacpReply;
     }
 }

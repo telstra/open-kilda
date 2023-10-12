@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.stats
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
@@ -51,13 +50,15 @@ class HaFlowStatSpec extends HealthCheckSpecification {
     FlowStats flowStats
 
     def setupSpec() {
-        switchTriplet = topologyHelper.getSwitchTriplets(false, false).find {
+        switchTriplet = topologyHelper.getSwitchTriplets(true, false).find {
             it.ep1 != it.ep2 && it.ep1 != it.shared && it.ep2 != it.shared &&
                     [it.shared, it.ep1, it.ep2].every { it.traffGens }
                     && it.ep2.getTraffGens().size() > 1 // needed for update flow test
         } ?: assumeTrue(false, "No suiting switches found")
-        haFlow = haFlowHelper.addHaFlow(haFlowHelper.randomHaFlow(switchTriplet))
-        def exam = haFlowHelper.getTraffExam(haFlow, haFlow.getMaximumBandwidth() + 1000, traffgenRunDuration)
+        // Flow with low maxBandwidth to make meters to drop packets when traffgens can't generate high load
+        haFlow = haFlowHelper.addHaFlow(
+                haFlowHelper.randomHaFlow(switchTriplet).tap {maximumBandwidth = 10})
+        def exam = haFlowHelper.getTraffExam(haFlow, haFlow.getMaximumBandwidth() * 10, traffgenRunDuration)
         wait(statsRouterRequestInterval * 3 + WAIT_OFFSET) {
             exam.run()
             statsHelper."force kilda to collect stats"()
@@ -68,7 +69,6 @@ class HaFlowStatSpec extends HealthCheckSpecification {
 
     }
 
-    @Tidy
     @Unroll
     def "System is able to collect #stat meter stats"() {
         expect: "#stat stats is available"
@@ -78,7 +78,6 @@ class HaFlowStatSpec extends HealthCheckSpecification {
         stat << HaFlowStatsMetric.values().findAll { it.getValue().contains("meter.") }
     }
 
-    @Tidy
     @Unroll
     def "System is able to collect #stat stats and they grow monotonically"() {
         expect: "#stat stats is available"
@@ -89,7 +88,6 @@ class HaFlowStatSpec extends HealthCheckSpecification {
                               [FORWARD, REVERSE]].combinations()
     }
 
-    @Tidy
     @Unroll
     def "System is able to collect latency stats for subflows"() {
         expect: "#stat stats is available"
@@ -116,7 +114,6 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
     @Shared
     HaFlowStats haFlowStats
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Stats are collected after #data.descr of Ha-Flow are updated"() {
         given: "Ha-Flow"
@@ -178,7 +175,6 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Stats are collected after partial update (shared endpoint VLAN id) of Ha-Flow"() {
         given: "Ha-Flow"

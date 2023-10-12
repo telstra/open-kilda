@@ -7,7 +7,6 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -17,7 +16,6 @@ import org.openkilda.messaging.payload.flow.FlowState
 
 class LinkMaintenanceSpec extends HealthCheckSpecification {
 
-    @Tidy
     @Tags(SMOKE)
     def "Maintenance mode can be set/unset for a particular link"() {
         given: "An active link"
@@ -49,7 +47,6 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         linkIsUnderMaintenance && northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, false, false))
     }
 
-    @Tidy
     def "Flows can be evacuated (rerouted) from a particular link when setting maintenance mode for it"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -98,7 +95,6 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         isl && northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, false, false))
     }
 
-    @Tidy
     def "Flows are rerouted to a path with link under maintenance when there are no other paths available"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:

@@ -1,14 +1,10 @@
 package org.openkilda.functionaltests.spec.flows
 
-import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
-import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
-
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
@@ -16,11 +12,11 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.command.switches.DeleteRulesAction
@@ -52,7 +48,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         assumeTrue(useMultitable)
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
     def "System allows to manipulate with QinQ flow\
 [srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.hwSwString()]#trafficDisclaimer"() {
@@ -243,7 +238,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         trafficDisclaimer = swPair.src.traffGens && swPair.dst.traffGens ? "" : " !WARN: No traffic check!"
     }
 
-    @Tidy
     def "System allows to create a single switch QinQ flow\
 [srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.src.hwSwString]#trafficDisclaimer"() {
         when: "Create a single switch QinQ flow"
@@ -324,7 +318,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         trafficDisclaimer = swPair.src.traffGens.size > 1 ? "" : " !WARN: No traffic check!"
     }
 
-    @Tidy
     def "System doesn't allow to create a QinQ flow with incorrect innerVlanIds\
 (src:#srcInnerVlanId, dst:#dstInnerVlanId)"() {
         given: "A switch pair with enabled multi table mode"
@@ -353,7 +346,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
      * vlan == 0 and innerVlan != 0,
      * then flow will be created with vlan != 0 and innerVlan == 0
      */
-    @Tidy
     def "Flow with innerVlan and vlanId=0 is transformed into a regular vlan flow without innerVlan"() {
         when: "Create a flow with vlanId=0 and innerVlanId!=0"
         def swP = topologyHelper.switchPairs[0]
@@ -375,7 +367,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.id)
     }
 
-    @Tidy
     def "System allow to create/update/delete a protected QinQ flow via APIv1"() {
         given: "Two switches with enabled multi table mode"
         def swP = topologyHelper.getSwitchPairs().find {
@@ -446,7 +437,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         !flowIsDeleted && flowHelperV2.deleteFlow(flow.id)
     }
 
-    @Tidy
     def "System allows to create QinQ flow and vlan flow with the same vlan on the same port"() {
         given: "Two switches with enabled multi table mode"
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -485,7 +475,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         flowWithoutQinQ && flowHelperV2.deleteFlow(flowWithoutQinQ.flowId)
     }
 
-    @Tidy
     def "System detects conflict QinQ flows(oVlan: #conflictVlan, iVlan: #conflictInnerVlanId)"() {
         given: "Two switches with enabled multi table mode"
         def swP = topologyHelper.getAllNeighboringSwitchPairs()[0]
@@ -517,7 +506,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         10   | 0         | 0            | 10
     }
 
-    @Tidy
     def "System allows to create more than one QinQ flow on the same port and with the same vlan"() {
         given: "Two switches connected to traffgen and enabled multiTable mode"
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -587,7 +575,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         !flow2IsDeleted && flowHelperV2.deleteFlow(flow2.flowId)
     }
 
-    @Tidy
     def "System allows to create a single-switch-port QinQ flow\
 (srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
         given: "A switch with enabled multiTable mode"
@@ -646,7 +633,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         10        | 20             | 0         | 0
     }
 
-    @Tidy
     @Tags(HARDWARE) //https://github.com/telstra/open-kilda/issues/4783
     @IterationTags([
             @IterationTag(tags=[SMOKE_SWITCHES],
@@ -836,7 +822,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         trafficDisclaimer = swPair.src.traffGens && swPair.dst.traffGens ? "" : " !WARN: No traffic check!"
     }
 
-    @Tidy
     def "System is able to synchronize switch(flow rules)"() {
         given: "Two switches connected to traffgen and enabled multiTable mode"
         def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -889,7 +874,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "System doesn't rebuild flow path to more preferable path while updating innerVlanId"() {
         given: "Two active switches connected to traffgens with two possible paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {

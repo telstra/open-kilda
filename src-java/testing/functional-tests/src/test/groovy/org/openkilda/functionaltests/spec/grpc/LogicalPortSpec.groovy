@@ -5,7 +5,6 @@ import org.openkilda.functionaltests.error.LogicalPortNotFoundExpectedError
 
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.grpc.speaker.model.LogicalPortDto
 import org.openkilda.messaging.model.grpc.LogicalPortType
@@ -21,7 +20,6 @@ a list of BFD ports to them to create a LAG for fast-failover for BFD sessions.
 NOTE: The GRPC implementation supports the LAG type only and it is set by default.""")
 class LogicalPortSpec extends GrpcBaseSpecification {
 
-    @Tidy
     def "Able to create/read/delete logicalport on the #sw.hwSwString switch"() {
         when: "Create logical port"
         def switchPort
@@ -71,7 +69,6 @@ class LogicalPortSpec extends GrpcBaseSpecification {
         sw << getNoviflowSwitches()
     }
 
-    @Tidy
     @Tags(HARDWARE)
     def "Not able to create logical port with incorrect port number(lPort/sPort): \
 #data.logicalPortNumber/#data.portNumber on the #sw.hwSwString switch"() {
@@ -101,7 +98,6 @@ class LogicalPortSpec extends GrpcBaseSpecification {
                 ], noviflowSwitches].combinations()
     }
 
-    @Tidy
     @Tags(HARDWARE)
     def "Not able to delete non-existent logical port number on the #sw.hwSwString switch"() {
         when: "Try to delete incorrect logicalPortNumber"

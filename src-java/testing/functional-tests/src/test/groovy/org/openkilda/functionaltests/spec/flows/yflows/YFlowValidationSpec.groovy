@@ -9,7 +9,6 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.YFlowHelper
@@ -28,7 +27,6 @@ class YFlowValidationSpec extends HealthCheckSpecification {
     @Shared
     YFlowHelper yFlowHelper
 
-    @Tidy
     def "Y-Flow validation should fail in case of missing y-flow shared rule (#data.description)"() {
         given: "Existing y-flow"
         def swT = topologyHelper.switchTriplets[0]
@@ -89,7 +87,6 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Y-Flow/flow validation should fail in case of missing subFlow rule (#data.description)"() {
         given: "Existing y-flow"
@@ -155,7 +152,6 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "Unable to #data.action a non-existent y-flow"() {
         when: "Invoke a certain action for a non-existent y-flow"
         data.method()

@@ -19,6 +19,8 @@ class CollectFailedTestLogsListener extends AbstractSpringListener{
     private String elasticSearchEndpoint
     @Value('${elasticsearch.index}')
     private String elasticSearchIndex
+    @Value('${spring.profiles.active}')
+    String profile
 
 
     @Override
@@ -28,7 +30,7 @@ class CollectFailedTestLogsListener extends AbstractSpringListener{
 
     @Override
     void error(ErrorInfo error) {
-        if (!isFailedInPreTest(error)) {
+        if (!isFailedInPreTest(error) && profile == "virtual") {
             def objectMapper = new ObjectMapper()
             def startTime = startTime.get(error.getMethod().getIteration().getDisplayName())
             def endTime = utcTimeNow()
