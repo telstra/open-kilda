@@ -1,6 +1,28 @@
 # Changelog
+## v1.145.0 (16/10/2023)
 
-## v1.144.0 (04/10/2023)
+### Bug Fixes:
+-  [#5427](https://github.com/telstra/open-kilda/pull/5427) 5424 GUI: enable to get flow path if flow name contains a dot (Issue: [#5424](https://github.com/telstra/open-kilda/issues/5424)) [**gui**]
+
+### Improvements:
+-  [#5414](https://github.com/telstra/open-kilda/pull/5414) [TEST]: 5357: Improvement: Remove Tidy annotation [**tests**]
+-  [#5416](https://github.com/telstra/open-kilda/pull/5416) [TEST]: Fix victoria metrics key(query_path) [**tests**]
+-  [#5421](https://github.com/telstra/open-kilda/pull/5421) #5390: [TEST] Fix flaky VXLAN flow test (Issue: [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5433](https://github.com/telstra/open-kilda/pull/5433) Update requirements of changelog generator
+
+### Other changes:
+-  [#4667](https://github.com/telstra/open-kilda/pull/4667) Feature/create lag port (Issue: [#4666](https://github.com/telstra/open-kilda/issues/4666)) [**gui**]
+-  [#5404](https://github.com/telstra/open-kilda/pull/5404) [TEST] Wait for lab to become operational between test runs [**tests**]
+-  [#5407](https://github.com/telstra/open-kilda/pull/5407) [TEST]: 5303: Y-Flow: Reroute [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.144.0...v1.145.0).
+
+### Affected Components:
+gui
+
+---
+
+## v1.144.0 (09/10/2023)
 
 ### Features:
 -  [#5340](https://github.com/telstra/open-kilda/pull/5340) Add ability to save history on flow PATCH operation. (Issues: [#5237](https://github.com/telstra/open-kilda/issues/5237) [#5385](https://github.com/telstra/open-kilda/issues/5385))
@@ -31,7 +53,7 @@ For the complete list of changes, check out [the commit log](https://github.com/
 ### Affected Components:
 history
 
-## v1.143.0 (28/09/2023)
+## v1.143.0 (02/10/2023)
 
 ### Features:
 -  [#5355](https://github.com/telstra/open-kilda/pull/5355) Update Flow graph in GUI for VictoriaMetrics #5295 (Issues: [#5295](https://github.com/telstra/open-kilda/issues/5295) [#5295](https://github.com/telstra/open-kilda/issues/5295))
