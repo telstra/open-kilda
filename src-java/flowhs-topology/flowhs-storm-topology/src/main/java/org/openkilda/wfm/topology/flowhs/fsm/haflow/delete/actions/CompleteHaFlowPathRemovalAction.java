@@ -63,10 +63,6 @@ public class CompleteHaFlowPathRemovalAction extends
 
         Set<PathId> pathIds = transactionManager.doInTransaction(() -> {
             HaFlow haFlow = getHaFlow(stateMachine.getHaFlowId());
-            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                    .of(stateMachine.getCommandContext().getCorrelationId())
-                    .withAction("Saving an HA-flow dump before removing the paths")
-                    .withHaFlowDumpAfter(haFlow));
 
             for (HaFlowPath haFlowPath : haFlow.getPaths()) {
                 for (FlowPath subPath : haFlowPath.getSubPaths()) {
