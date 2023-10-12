@@ -10,7 +10,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -18,7 +17,6 @@ import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.links.BfdProperties
 
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.ResourceLock
@@ -36,7 +34,6 @@ class BfdSpec extends HealthCheckSpecification {
     @Shared
     BfdProperties defaultBfdProps = new BfdProperties(350, (short)3)
 
-    @Tidy
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "Able to create a valid BFD session between two Noviflow switches"() {
         given: "An a-switch ISL between two Noviflow switches with BFD and RTL"
@@ -151,7 +148,6 @@ class BfdSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @ResourceLock(BFD_TOGGLE)
     def "Reacting on BFD events can be turned on/off by a feature toggle"() {
         given: "An a-switch ISL between two Noviflow switches with BFD enabled"
@@ -212,7 +208,6 @@ class BfdSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "Deleting a failed BFD link also removes the BFD session from it"() {
         given: "An inactive a-switch link with BFD session"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow &&
@@ -264,7 +259,6 @@ class BfdSpec extends HealthCheckSpecification {
         !isBfdDisabled && northboundV2.deleteLinkBfd(isl)
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "System is able to rediscover failed link after deleting BFD session"() {
         given: "An interrupted a-switch ISL with BFD session"
@@ -306,7 +300,6 @@ class BfdSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "Able to create/update BFD session with custom properties"() {
         given: "An ISL between two Noviflow switches"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow }
@@ -354,7 +347,6 @@ class BfdSpec extends HealthCheckSpecification {
         bfdProps && northboundV2.deleteLinkBfd(isl)
     }
 
-    @Tidy
     def "Unable to create bfd with #data.descr"() {
         given: "An ISL between two Noviflow switches"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow }
@@ -384,7 +376,6 @@ class BfdSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "Able to CRUD BFD sessions using v1 API"() {
         given: "An ISL between two Noviflow switches"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow }

@@ -26,6 +26,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -96,6 +97,15 @@ public class PortInfo implements Serializable, Comparable<PortInfo> {
 
     @JsonProperty("is-active")
     private String isActive;
+    
+    @JsonProperty("is_logical_port")
+    private boolean logicalPort;
+    
+    @JsonProperty("logical_group_name")
+    private String logicalGroupName;
+    
+    @JsonProperty("lag_group")
+    private List<String> portNumbers;
     
     @JsonProperty("discrepancy")
     private PortDiscrepancy discrepancy;

@@ -16,7 +16,6 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -81,7 +80,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         dstSwDefaultRules = northbound.getSwitchRules(dstSwitch.dpId).flowEntries
     }
 
-    @Tidy
     @Tags([VIRTUAL, SMOKE])
     def "Pre-installed flow rules are not deleted from a new switch connected to the controller"() {
         given: "A switch with proper flow rules installed (including default) and not connected to the controller"
@@ -110,7 +108,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([SMOKE, LOW_PRIORITY])
     @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /delete-action=DROP_ALL\)/)
     def "Able to delete rules from a single-table mode switch (delete-action=#data.deleteRulesAction)"() {
@@ -176,7 +173,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Tags([SMOKE])
     @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /delete-action=DROP_ALL\)/)
     def "Able to delete rules from a switch with multi table mode (delete-action=#data.deleteRulesAction)"() {
@@ -269,7 +265,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Unroll("Able to delete switch rules by #data.identifier")
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Able to delete switch rules by cookie/priority"() {
@@ -306,7 +301,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Unroll("Attempt to delete switch rules by supplying non-existing #data.description leaves all rules intact")
     def "Attempt to delete switch rules by supplying non-existing cookie/priority leaves all rules intact"() {
         given: "A switch with some flow rules installed"
@@ -349,7 +343,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Unroll("Able to delete switch rules by #data.description")
     @Tags(SMOKE_SWITCHES)
     @IterationTag(tags = [SMOKE], iterationNameRegex = /inPort/)
@@ -414,7 +407,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flow = data.flow as FlowRequestV2
     }
 
-    @Tidy
     @Unroll("Attempt to delete switch rules by supplying non-existing #data.description leaves all rules intact")
     @IterationTag(tags = [SMOKE], iterationNameRegex = /inVlan/)
     def "Attempt to delete switch rules by supplying non-existing inPort/inVlan/outPort leaves all rules intact"() {
@@ -470,7 +462,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to validate and sync missing rules for #description on terminating/transit switches"() {
         given: "Two active not neighboring switches with the longest available path"
@@ -547,7 +538,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         "an unmetered flow" | 0
     }
 
-    @Tidy
     def "Unable to #action rules on a non-existent switch"() {
         when: "Try to #action rules on a non-existent switch"
         northbound."$method"(NON_EXISTENT_SWITCH_ID)
@@ -563,7 +553,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         "validate"    | "validateSwitchRules"
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
     def "Able to synchronize rules for a flow with protected path"() {
         given: "Two active not neighboring switches"
@@ -637,7 +626,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES, LOW_PRIORITY])
     def "Traffic counters in ingress rule are reset on flow rerouting(singleTable mode)"() {
         given: "Two active neighboring switches and two possible flow paths at least"
@@ -699,7 +687,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Traffic counters in ingress rule are reset on flow rerouting(multiTable mode)"() {
         given: "Two active neighboring switches and two possible flow paths at least"
@@ -853,7 +840,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY, SMOKE_SWITCHES])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
     def "Able to synchronize rules for a flow with VXLAN encapsulation"() {
         given: "Two active not neighboring Noviflow switches"

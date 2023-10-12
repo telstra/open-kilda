@@ -10,7 +10,6 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static groovyx.gpars.GParsPool.withPool
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.PathNode
 import org.springframework.web.client.HttpClientErrorException
@@ -19,7 +18,6 @@ import spock.lang.Narrative
 @Narrative("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/pce-affinity-flows/")
 class FlowAffinitySpec extends HealthCheckSpecification {
 
-    @Tidy
     def "Can create more than 2 affinity flows"() {
         when: "Create flow1"
         def swPair = topologyHelper.getSwitchPairs()[0]
@@ -68,7 +66,6 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         !flowsAreDeleted && [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
-    @Tidy
     def "Affinity flows are created close even if cost is not optimal, same dst"() {
         given: "Two switch pairs with same dst and diverse paths available"
         SwitchPair swPair1, swPair2
@@ -125,7 +122,6 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
     }
 
-    @Tidy
     def "Affinity flows can have no overlapping switches at all"() {
         given: "Two switch pairs with not overlapping short paths available"
         SwitchPair swPair1, swPair2
@@ -154,7 +150,6 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         [flow, affinityFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
-    @Tidy
     def "Affinity flow on the same endpoints #willOrNot take the same path if main path cost #exceedsOrNot affinity penalty"() {
         given: "A neighboring switch pair with parallel ISLs"
         def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -190,7 +185,6 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         exceedsOrNot = expectSamePaths ? "does not exceed" : "exceeds"
     }
 
-    @Tidy
     def "Cannot create affinity flow if target flow has affinity with diverse flow"() {
         given: "Existing flows with diversity"
         def swPair = topologyHelper.getSwitchPairs()[0]
@@ -222,7 +216,6 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         !e2 && affinityFlow3 && flowHelperV2.deleteFlow(affinityFlow3.flowId)
     }
 
-    @Tidy
     def "Cannot create affinity flow if target flow has another diverse group"() {
         given: "Existing flows with diversity"
         def swPair = topologyHelper.getSwitchPairs()[0]
@@ -248,7 +241,6 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         !e && flowHelperV2.deleteFlow(affinityFlow2.flowId)
     }
 
-    @Tidy
     def "Able to create an affinity flow with a 1-switch flow"() {
         given: "A one-switch flow"
         def sw = topology.activeSwitches[0]
@@ -277,7 +269,6 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         affinityFlow && flowHelperV2.deleteFlow(affinityFlow.flowId)
     }
 
-    @Tidy
     def "Error is returned if affinity_with references a non existing flow"() {
         when: "Create an affinity flow that targets non-existing flow"
         def swPair = topologyHelper.getSwitchPairs()[0]

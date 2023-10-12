@@ -14,7 +14,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -49,7 +48,6 @@ class SwapEndpointSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
-    @Tidy
     def "Able to swap endpoints(#data.description)"() {
         given: "Some flows in the system according to preconditions"
         flows.each { flowHelper.addFlow(it) }
@@ -218,7 +216,6 @@ class SwapEndpointSpec extends HealthCheckSpecification {
         secondSwap = data.secondSwap as SwapFlowPayload
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Able to swap #data.endpointsPart (src1 <-> dst2, dst1 <-> src2) for two flows with the same source and different destination \
 switches"() {
@@ -281,7 +278,6 @@ switches"() {
         }
     }
 
-    @Tidy
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /src1/)
     def "Able to swap endpoints (#data.description) for two flows with the same source and different destination \
 switches"() {
@@ -351,7 +347,6 @@ switches"() {
         }
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to swap #endpointsPart (#description) for two flows with different source and the same destination \
 switches"() {
@@ -398,7 +393,6 @@ switches"() {
         flow2Dst = changePropertyValue(flow2.destination, proprtyName, flow1.source."$proprtyName")
     }
 
-    @Tidy
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /dst1/)
     def "Able to swap #endpointsPart (#description) for two flows with different source and destination switches"() {
         given: "Two flows with different source and destination switches"
@@ -440,7 +434,6 @@ switches"() {
         flow2Dst = changePropertyValue(flow2.destination, proprtyName, flow1.source."$proprtyName")
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to swap endpoints (#data.description) for two flows with different source and destination switches"() {
         given: "Two flows with different source and destination switches"
@@ -520,7 +513,6 @@ switches"() {
         flow2SwitchPair = data.flow2SwitchPair as SwitchPair
     }
 
-    @Tidy
     def "Unable to swap endpoints for existing flow and non-existing flow"() {
         given: "An active flow"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -549,7 +541,6 @@ switches"() {
         !isTestComplete && [switchPair.src.dpId, switchPair.dst.dpId].each { northbound.synchronizeSwitch(it, true) }
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to swap #data.endpointsPart for two flows: #data.description"() {
         given: "Three active flows"
@@ -668,7 +659,6 @@ switches"() {
         flow3 = data.flow3 as FlowCreatePayload
     }
 
-    @Tidy
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /the same src endpoint for flows/)
     def "Unable to swap endpoints for two flows (#data.description)"() {
         given: "Two active flows"
@@ -724,7 +714,6 @@ switches"() {
         flow2SwitchPair = data.flow2SwitchPair as SwitchPair
     }
 
-    @Tidy
     def "Unable to swap ports for two flows (port is occupied by ISL on src switch)"() {
         given: "Two active flows"
         def islPort
@@ -761,7 +750,6 @@ switches"() {
         !isTestCompleted && [swPair.src.dpId, swPair.dst.dpId].each { northbound.synchronizeSwitch(it, true) }
     }
 
-    @Tidy
     def "Able to swap endpoints for two flows when all bandwidth on ISL is consumed"() {
         setup: "Create two flows with different source and the same destination switches"
         List<SwitchPair> switchPairs = topologyHelper.allNeighboringSwitchPairs.inject(null) { result, switchPair ->
@@ -855,7 +843,6 @@ switches"() {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "Unable to swap endpoints for two flows when not enough bandwidth on ISL"() {
         setup: "Create two flows with different source and the same destination switches"
         List<SwitchPair> switchPairs = topologyHelper.allNeighboringSwitchPairs.inject(null) { result, switchPair ->
@@ -945,7 +932,6 @@ switches"() {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to swap endpoints for two flows when not enough bandwidth on ISL and ignore_bandwidth=true"() {
         setup: "Create two flows with different source and the same destination switches"
@@ -1040,7 +1026,6 @@ switches"() {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/3770")
     def "Unable to swap endpoints for two flows when one of them is inactive"() {
         setup: "Create two flows with different source and the same destination switches"
@@ -1122,7 +1107,6 @@ switches"() {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to swap endpoints (#data.description) for two protected flows"() {
         given: "Two protected flows with different source and destination switches"
@@ -1199,7 +1183,6 @@ switches"() {
         flow2SwitchPair = data.flow2SwitchPair as SwitchPair
     }
 
-    @Tidy
     def "A protected flow with swapped endpoint allows traffic on main and protected paths"() {
         given: "Two protected flows with different source and destination switches"
         def tgSwitches = topology.getActiveTraffGens()*.getSwitchConnected()
@@ -1272,7 +1255,6 @@ switches"() {
         }
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to swap endpoints (#data.description) for two vxlan flows with the same source and destination switches"() {
         given: "Two flows with the same source and destination switches"
@@ -1331,7 +1313,6 @@ switches"() {
         flow2 = data.flow2 as FlowCreatePayload
     }
 
-    @Tidy
     def "Able to swap endpoints (#data.description) for two qinq flows with the same source and destination switches"() {
         given: "Two flows with the same source and destination switches"
         flow1.source.innerVlanId = 300
@@ -1398,7 +1379,6 @@ switches"() {
         flow2 = data.flow2 as FlowCreatePayload
     }
 
-    @Tidy
     def "System reverts both flows if fails during rule installation when swapping endpoints"() {
         given: "Two flows with different src switches and same dst"
         def swPair1
@@ -1482,7 +1462,6 @@ switches"() {
         !isSwitchValid && switches.each { northbound.synchronizeSwitch(it.dpId, true) }
     }
 
-    @Tidy
     def "Able to swap endpoints for a flow with flowLoop"() {
         setup: "Create two flows with the same src and different dst switches"
         def tgSwitchIds = topology.getActiveTraffGens()*.switchConnected*.dpId

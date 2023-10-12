@@ -1,0 +1,18 @@
+INSERT INTO VERSION_ENTITY (Version_ID, Version_Number, Version_Deployment_Date)
+VALUES (33, 33, CURRENT_TIMESTAMP);
+
+INSERT INTO KILDA_PERMISSION (PERMISSION_ID, PERMISSION, IS_EDITABLE, IS_ADMIN_PERMISSION, STATUS_ID, CREATED_BY, CREATED_DATE, UPDATED_BY, UPDATED_DATE,DESCRIPTION) VALUES 
+	(363, 'sw_create_logical_port', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission to create switch logical port'),
+	(364, 'sw_delete_logical_port', false, false, 1, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 'Permission to delete switch logical port');
+	
+INSERT INTO ROLE_PERMISSION (ROLE_ID,PERMISSION_ID) VALUES 
+	(2, 363),
+	(2, 364);
+	
+INSERT  INTO ACTIVITY_TYPE (activity_type_id, activity_name) VALUES 
+	(49, 'CREATE_LOGICAL_PORT'),
+	(50, 'DELETE_LOGICAL_PORT');
+	
+
+	
+

@@ -18,7 +18,6 @@ import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.PathNode
@@ -75,7 +74,6 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         islsToBreak.each { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
     }
 
-    @Tidy
     @ResourceLock(S42_TOGGLE)
     @ResourceLock(FLOW_MON_TOGGLE)
     def "Able to detect and reroute a flow with MAX_LATENCY strategy when main path does not satisfy latency SLA"() {
@@ -138,7 +136,6 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         initFeatureToggle && northbound.toggleFeature(initFeatureToggle)
     }
 
-    @Tidy
     @ResourceLock(S42_TOGGLE)
     @ResourceLock(FLOW_MON_TOGGLE)
     def "System doesn't try to reroute a MAX_LATENCY flow when a flow path doesn't satisfy latency SLA \

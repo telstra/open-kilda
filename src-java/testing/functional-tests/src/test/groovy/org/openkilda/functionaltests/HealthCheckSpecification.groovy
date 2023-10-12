@@ -21,9 +21,9 @@ import org.springframework.beans.factory.annotation.Value
 @Slf4j
 class HealthCheckSpecification extends HealthCheckBaseSpecification {
 
+    private static final int WAIT_FOR_LAB_TO_BE_OPERATIONAL = 120 //sec
     static Throwable healthCheckError
     static boolean healthCheckRan = false
-
     @Value('${health_check.verifier:true}')
     boolean enable
 
@@ -54,27 +54,21 @@ class HealthCheckSpecification extends HealthCheckBaseSpecification {
         }
 
         Closure allSwitchesAreActive = {
-            Wrappers.wait(WAIT_OFFSET) {
-                assert northbound.activeSwitches.size() == topology.switches.findAll { it.status != Status.Inactive }.size()
-            }
+            assert northbound.activeSwitches.size() == topology.switches.findAll { it.status != Status.Inactive }.size()
         }
 
         Closure allLinksAreActive = {
-            def links = null
-            verifyAll {
-                Wrappers.wait(WAIT_OFFSET) {
-                    links = northbound.getAllLinks()
-                    assert links.findAll { it.state != IslChangeType.DISCOVERED }.empty
-                }
-                def topoLinks = topology.islsForActiveSwitches.collectMany { isl ->
-                    [islUtils.getIslInfo(links, isl).orElseThrow { new IslNotFoundException(isl.toString()) },
-                     islUtils.getIslInfo(links, isl.reversed).orElseThrow {
-                         new IslNotFoundException(isl.reversed.toString())
-                     }]
-                }
-                def missingLinks = links.findAll { it.state == IslChangeType.DISCOVERED } - topoLinks
-                assert missingLinks.empty, "These links are missing in topology.yaml"
+            def links = northbound.getAllLinks()
+            assert links.findAll { it.state != IslChangeType.DISCOVERED }.empty
+
+            def topoLinks = topology.islsForActiveSwitches.collectMany { isl ->
+                [islUtils.getIslInfo(links, isl).orElseThrow { new IslNotFoundException(isl.toString()) },
+                 islUtils.getIslInfo(links, isl.reversed).orElseThrow {
+                     new IslNotFoundException(isl.reversed.toString())
+                 }]
             }
+            def missingLinks = links.findAll { it.state == IslChangeType.DISCOVERED } - topoLinks
+            assert missingLinks.empty, "These links are missing in topology.yaml"
         }
 
         Closure noFlowsLeft = {
@@ -151,18 +145,20 @@ class HealthCheckSpecification extends HealthCheckBaseSpecification {
         }
 
         if(enable) {
-            withPool {
-                [healthCheckEndpoint,
-                 allZookeeperNodesInExpectedState,
-                 allSwitchesAreActive,
-                 allLinksAreActive,
-                 noFlowsLeft,
-                 noLinkPropertiesLeft,
-                 linksBandwidthAndSpeedMatch,
-                 noExcessRulesMeters,
-                 allSwitchesConnectedToExpectedRegion,
-                 featureTogglesInExpectedState,
-                 switchesConfigurationIsCorrect].eachParallel { it() }
+            Wrappers.wait(WAIT_FOR_LAB_TO_BE_OPERATIONAL) {
+                withPool {
+                    [healthCheckEndpoint,
+                     allZookeeperNodesInExpectedState,
+                     allSwitchesAreActive,
+                     allLinksAreActive,
+                     noFlowsLeft,
+                     noLinkPropertiesLeft,
+                     linksBandwidthAndSpeedMatch,
+                     noExcessRulesMeters,
+                     allSwitchesConnectedToExpectedRegion,
+                     featureTogglesInExpectedState,
+                     switchesConfigurationIsCorrect].eachParallel { it() }
+                }
             }
         } else {
             withPool {

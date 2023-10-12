@@ -6,7 +6,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -28,7 +27,6 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
     test coverage is only provided on unit-test level (ValidationServiceImplTest)
      */
 
-    @Tidy
     @Tags(SMOKE)
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /single-table/)
     def "Switch and rule validation can properly detect default rules to 'proper' section (#sw.hwSwString #propsDescr)"(

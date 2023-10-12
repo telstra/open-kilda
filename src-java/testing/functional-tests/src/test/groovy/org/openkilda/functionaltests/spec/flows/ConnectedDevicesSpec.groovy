@@ -20,7 +20,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -67,7 +66,6 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTags([
             @IterationTag(tags = [SMOKE, SMOKE_SWITCHES], iterationNameRegex = /srcLldp=true and dstLldp=true/),
@@ -195,7 +193,6 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         SwitchPair switchPair
     }
 
-    @Tidy
     def "Able to update flow from srcDevices=#oldSrcEnabled, dstDevices=#oldDstEnabled to \
 srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         given: "Switches with turned 'on' multiTable property"
@@ -264,7 +261,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         ]
     }
 
-    @Tidy
     /**
      * This is an edge case. Other tests for 'oneSwitch' only test single-switch single-port scenarios
      */
@@ -315,7 +311,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         lldpData && database.removeConnectedDevices(sw.dpId)
     }
 
-    @Tidy
     def "Able to swap flow paths with connected devices (srcDevices=#srcEnabled, dstDevices=#dstEnabled)"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(true, false, srcEnabled, dstEnabled)
@@ -378,7 +373,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         ]
     }
 
-    @Tidy
     def "Able to handle 'timeLastSeen' field when receive repeating LLDP packets from the same device"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(false, false, true, false)
@@ -423,7 +417,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         initialSrcProps && restoreSwitchProperties(flow.source.switchId, initialSrcProps)
     }
 
-    @Tidy
     def "Able to handle 'timeLastSeen' field when receive repeating ARP packets from the same device"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(false, false, true, false)
@@ -468,7 +461,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         initialSrcProps && restoreSwitchProperties(flow.source.switchId, initialSrcProps)
     }
 
-    @Tidy
     def "Able to detect different devices on the same port (LLDP)"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(false, false, false, true)
@@ -521,7 +513,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         initialDstProps && restoreSwitchProperties(flow.destination.switchId, initialDstProps)
     }
 
-    @Tidy
     def "Able to detect different devices on the same port (ARP)"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(false, false, false, true)
@@ -575,7 +566,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         initialDstProps && restoreSwitchProperties(flow.destination.switchId, initialDstProps)
     }
 
-    @Tidy
     def "System properly detects devices if feature is 'off' on switch level and 'on' on flow level"() {
         given: "A switch with devices feature turned off"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
@@ -643,7 +633,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         initialProps && restoreSwitchProperties(sw.dpId, initialProps)
     }
 
-    @Tidy
     def "System properly detects devices if feature is 'on' on switch level and 'off' on flow level"() {
         given: "A switch with devices feature turned on"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
@@ -699,7 +688,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES])
     def "Able to detect devices on free switch port (no flow or isl)"() {
         given: "A switch with devices feature turned on"
@@ -738,7 +726,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         lldpData && database.removeConnectedDevices(sw.dpId)
     }
 
-    @Tidy
     def "Able to distinguish devices between default and non-default single-switch flows (#descr)"() {
         given: "A switch with devices feature turned on"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
@@ -898,7 +885,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         descr = "default ${getDescr(srcDefault, dstDefault)}"
     }
 
-    @Tidy
     def "System properly detects device vlan in case of #descr"() {
         given: "Switches with turned 'on' multiTable property"
         def flow = getFlowWithConnectedDevices(true, false, true, true).tap {
@@ -988,7 +974,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         descr = "default(no-vlan) flow endpoints on ${getDescr(srcDefault, dstDefault)}"
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTag(tags = [HARDWARE], iterationNameRegex = /VXLAN/)
     def "System detects devices for a qinq(iVlan=#vlanId oVlan=#innerVlanId) flow with lldp and arp enabled on the src switch"() {
@@ -1092,7 +1077,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         100    | 200         | FlowEncapsulationType.VXLAN
     }
 
-    @Tidy
     def "System doesn't detect devices only if vlan match with outerVlan of qinq flow"() {
         given: "Two switches connected to traffgen and they support enabled multiTable mode"
         def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
@@ -1153,7 +1137,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         initialDstProps && restoreSwitchProperties(swP.dst.dpId, initialDstProps)
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES])
     def "Able to detect devices on a qinq single-switch different-port flow"() {
         given: "A flow between different ports on the same switch"
@@ -1218,7 +1201,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         100    | 200         | FlowEncapsulationType.VXLAN
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES])
     def "Able to detect devices when two qinq single-switch different-port flows exist with the same outerVlanId"() {
         given: "Two flows between different ports on the same switch with the same outerVlanId"
@@ -1298,7 +1280,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         1                 | 3                | 5                | FlowEncapsulationType.VXLAN
     }
 
-    @Tidy
     def "Switch is not containing extra rules after connected devices removal"() {
 
         given: "A switch with devices feature turned on"
@@ -1338,7 +1319,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
     }
 
-    @Tidy
     def "System starts detect connected after device properties turned on"() {
         given: "A switch with devices feature turned off"
         def tgService = traffExamProvider.get()
@@ -1403,7 +1383,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         database.removeConnectedDevices(sw.dpId)
     }
 
-    @Tidy
     def "System stops receiving statistics if config is changed to 'off'"() {
         given: "A switch with devices feature turned on"
         def tgService = traffExamProvider.get()

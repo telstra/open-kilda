@@ -1,23 +1,19 @@
 package org.openkilda.functionaltests.spec.grpc
 
-import org.openkilda.functionaltests.error.LogServerNotSetExpectedError
-
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.testing.ConstantsGrpc.DEFAULT_LOG_MESSAGES_STATE
 import static org.openkilda.testing.ConstantsGrpc.DEFAULT_LOG_OF_MESSAGES_STATE
 import static org.openkilda.testing.ConstantsGrpc.REMOTE_LOG_IP
 import static org.openkilda.testing.ConstantsGrpc.REMOTE_LOG_PORT
 
-import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.error.LogServerNotSetExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.grpc.speaker.model.LogMessagesDto
 import org.openkilda.grpc.speaker.model.LogOferrorsDto
 import org.openkilda.grpc.speaker.model.RemoteLogServerDto
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.model.grpc.OnOffState
 
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
@@ -32,7 +28,6 @@ class LogSpec extends GrpcBaseSpecification {
     @Value('${grpc.remote.log.server.port}')
     Integer defaultRemoteLogServerPort
 
-    @Tidy
     def "Able to enable 'log messages' on the #sw.hwSwString switch"() {
         when: "Try to turn on 'log messages'"
         def responseAfterTurningOn = grpc.enableLogMessagesOnSwitch(sw.address, new LogMessagesDto(OnOffState.ON))
@@ -54,7 +49,6 @@ class LogSpec extends GrpcBaseSpecification {
         sw << getNoviflowSwitches()
     }
 
-    @Tidy
     def "Able to enable 'OF log messages' on #sw.hwSwString"() {
         when: "Try to turn on 'OF log messages'"
         def responseAfterTurningOn = grpc.enableLogOfErrorsOnSwitch(sw.address,
@@ -77,7 +71,6 @@ class LogSpec extends GrpcBaseSpecification {
         sw << getNoviflowSwitches()
     }
 
-    @Tidy
     def "Able to manipulate(CRUD) with a remote log server on #sw.hwSwString"() {
         when: "Remove current remote log server configuration"
         def response = grpc.deleteRemoteLogServerForSwitch(sw.address)
@@ -109,7 +102,6 @@ class LogSpec extends GrpcBaseSpecification {
         sw << getNoviflowSwitches()
     }
 
-    @Tidy
     @Tags(HARDWARE)
     @Ignore("https://github.com/telstra/open-kilda/issues/3972")
     def "Not able to set incorrect remote log server configuration(ip/port): #data.remoteIp/#data.remotePort \

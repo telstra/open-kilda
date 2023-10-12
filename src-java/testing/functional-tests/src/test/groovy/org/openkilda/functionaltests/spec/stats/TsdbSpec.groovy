@@ -15,7 +15,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 
 import groovy.time.TimeCategory
@@ -83,7 +82,6 @@ class TsdbSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Unroll("Stats are being logged for TX/RX metric:#metric")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Basic stats are being logged"(switchId, metric) {
@@ -100,7 +98,6 @@ class TsdbSpec extends HealthCheckSpecification {
          TX_BITS], getUniqueSwitches()].combinations())
     }
 
-    @Tidy
     @Unroll("Stats are being logged for verification broadcast rule metric:#metric")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Basic stats are being logged"(switchId, metric) {
@@ -114,7 +111,6 @@ class TsdbSpec extends HealthCheckSpecification {
                   SwitchStatsMetric.FLOW_SYSTEM_BITS], getUniqueSwitches()].combinations())
     }
 
-    @Tidy
     @Tags(HARDWARE)
     @Unroll("Stats are being logged for metric:#metric")
     def "Basic stats are being logged (10min interval)"(metric) {
@@ -126,7 +122,6 @@ class TsdbSpec extends HealthCheckSpecification {
 
     }
 
-    @Tidy
     @Unroll("GRPC stats are being logged for metric:#metric, sw:#sw.hwSwString")
     @Tags([HARDWARE])
     def "GRPC stats are being logged"(metric, sw) {

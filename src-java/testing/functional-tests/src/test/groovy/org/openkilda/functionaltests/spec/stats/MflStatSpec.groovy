@@ -11,7 +11,6 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -46,7 +45,6 @@ class MflStatSpec extends HealthCheckSpecification {
 
     //TODO: split these long tests into set of the smaller ones after https://github.com/telstra/open-kilda/pull/5256
     // is merged into development
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "System is able to collect stats from the statistic and management controllers"() {
         given: "A flow"
@@ -153,7 +151,6 @@ class MflStatSpec extends HealthCheckSpecification {
 
     //TODO: split these long tests into set of the smaller ones after https://github.com/telstra/open-kilda/pull/5256
     // is merged into development
-    @Tidy
     def "System is able to collect stats from the statistic and management controllers (v2)"() {
         given: "A flow"
         assumeTrue(topology.activeTraffGens.size() > 1, "Require at least 2 switches with connected traffgen")
@@ -268,7 +265,6 @@ class MflStatSpec extends HealthCheckSpecification {
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
-    @Tidy
     def "System is able to collect stats if at least 1 stats or management controller is available"() {
         given: "A flow, src switch is connected to 2 RW and 2 RO floodlights"
         assumeTrue(topology.activeTraffGens.size() > 1, "Require at least 2 switches with connected traffgen")

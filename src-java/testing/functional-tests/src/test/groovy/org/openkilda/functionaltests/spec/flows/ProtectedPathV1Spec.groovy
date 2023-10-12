@@ -13,7 +13,6 @@ import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -54,7 +53,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
-    @Tidy
     def "Able to create a flow with protected path when maximumBandwidth=#bandwidth, vlan=#vlanId"() {
         given: "Two active not neighboring switches with two diverse paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
@@ -90,7 +88,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         0         | 0
     }
 
-    @Tidy
     def "Able to enable/disable protected path on a flow"() {
         given: "Two active not neighboring switches with two diverse paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
@@ -147,7 +144,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         flow && flowHelper.deleteFlow(flow.id)
     }
 
-    @Tidy
     def "Unable to create a single switch flow with protected path"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -168,7 +164,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         !exc && flowHelper.deleteFlow(flow.id)
     }
 
-    @Tidy
     def "Unable to update a single switch flow to enable protected path"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -191,7 +186,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
-    @Tidy
     def "Unable to create a flow with protected path when there is not enough bandwidth"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -221,7 +215,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         !exc && flowHelper.deleteFlow(flow.id)
     }
 
-    @Tidy
     def "Unable to create #flowDescription flow with protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches without alt paths"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -269,7 +262,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
-    @Tidy
     def "Able to swap main and protected paths manually"() {
         given: "A simple flow"
         def tgSwitches = topology.getActiveTraffGens()*.getSwitchConnected()
@@ -436,7 +428,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         flow && flowHelper.deleteFlow(flow.id)
     }
 
-    @Tidy
     def "Unable to perform the 'swap' request for a flow without protected path"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -461,7 +452,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         flow && flowHelper.deleteFlow(flow.id)
     }
 
-    @Tidy
     def "Unable to swap paths for a non-existent flow"() {
         when: "Try to swap path on a non-existent flow"
         northbound.swapFlowPath(NON_EXISTENT_FLOW_ID)
@@ -473,7 +463,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 "Could not swap paths: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 
-    @Tidy
     def "Unable to swap paths for an inactive flow"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -586,7 +575,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "System doesn't allow to enable the pinned flag on a protected flow"() {
         given: "A protected flow"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:

@@ -25,7 +25,6 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
@@ -58,7 +57,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     int islSyncWaitSeconds = 60 //server42.control.rtt.sync.interval.seconds
     int statsWaitSeconds = 4
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "ISL RTT stats are #testLabel available only if both global and switch toggles are 'on'"() {
         given: "An active ISL with both switches having server42"
@@ -97,7 +95,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         false         | false        | false          | "not"
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT,
     HARDWARE //Temporarily disable for virtual. wait for real virtual s42
     ])
@@ -143,7 +140,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         revertToOrigin(islRttFeatureStartState, initialSwitchRtt)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "ISL RTT stats are not available for a moved link and available for a new link"() {
         given: "An active a-switch ISL with both switches having server42"
@@ -248,7 +244,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags([HARDWARE])
     def "No ISL RTT stats in both directions in case link is UP in forward direction only"() {
         given: "An active a-switch ISL with both switches having server42 and with broken reverse direction"
@@ -317,7 +312,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "SERVER_42_ISL_RTT rules are updated according to changes in swProps"() {
         def server42switchIds = topology.getActiveServer42Switches()*.dpId
         def sw = topology.getActiveServer42Switches().find { it.wb5164 && it.dpId in server42switchIds }
@@ -438,7 +432,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         changeIslRttToggle(islRttFeatureStartState)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "ISL Rtt stats are available in case link and switch are under maintenance"() {
         given: "An active ISL under maintenance with both switches having server42, dst switch is under maintenance"
@@ -478,7 +471,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         revertToOrigin(islRttFeatureStartState, initialSwitchRtt)
     }
 
-    @Tidy
     @Tags([HARDWARE])
     def "ISL Rtt stats are available in case link is RTL and a switch is disconnected"() {
         given: "An active RTL ISL with both switches having server42"
@@ -548,7 +540,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags([HARDWARE])
     def "System is able to detect and sync missing ISL Rtt rules"() {
         given: "An active ISL with both switches having server42"

@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.network
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.Path
@@ -20,7 +19,6 @@ import static org.openkilda.model.PathComputationStrategy.COST
 class PathCheckSpec extends HealthCheckSpecification {
 
     private static final String PCE_PATH_COMPUTATION_SUCCESS_MESSAGE = "The path has been computed successfully"
-    @Tidy
     @Tags(SMOKE)
     def "No path validation errors for valid path without limitations"() {
         given: "Path for non-neighbouring switches"
@@ -38,7 +36,6 @@ class PathCheckSpec extends HealthCheckSpecification {
 
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "Path check errors returned for each segment and each type of problem"() {
         given: "Path of at least three switches"
@@ -69,7 +66,6 @@ class PathCheckSpec extends HealthCheckSpecification {
         switchHelper.updateSwitchProperties(srcSwitch, backupSwitchProperties)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Latency check errors are returned for the whole existing flow"() {
         given: "Path of at least three switches"
@@ -101,7 +97,6 @@ class PathCheckSpec extends HealthCheckSpecification {
         Wrappers.silent { flowHelperV2.deleteFlow(flow.getFlowId()) }
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Path intersection check errors are returned for each segment of existing flow"() {
         given: "Flow has been created successfully"
@@ -135,7 +130,6 @@ class PathCheckSpec extends HealthCheckSpecification {
         Wrappers.silent { flowHelperV2.deleteFlow(flow.getFlowId()) }
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Path intersection check errors are returned for each segment of each flow in diverse group"() {
         given: "List of required neighbouring switches has been collected"

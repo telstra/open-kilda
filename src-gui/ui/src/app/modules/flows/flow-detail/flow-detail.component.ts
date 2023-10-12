@@ -485,7 +485,7 @@ export class FlowDetailComponent implements OnInit {
       },
       error => {
         const errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message'] : 'No Flow found';
-        // this.toaster.error(errorMsg, "Error");
+        this.toaster.error(errorMsg, 'Error');
        }
     );
   }

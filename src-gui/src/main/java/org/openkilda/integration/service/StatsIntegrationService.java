@@ -248,7 +248,8 @@ public class StatsIntegrationService {
         if (!statsType.equals(StatsType.ISL)) {
             query.setRate(OpenTsDb.RATE);
         }
-        if (statsType.equals(StatsType.SWITCH_PORT) && Metrics.SWITCH_STATE.getMetricName().equals(metric)) {
+        if (statsType.equals(StatsType.SWITCH_PORT)
+                && Metrics.SWITCH_STATE.getMetricName(appProps.getMetricPrefix()).equals(metric)) {
             query.setRate(false);
         } else {
             if (validateDownSample(paramDownSample)) {

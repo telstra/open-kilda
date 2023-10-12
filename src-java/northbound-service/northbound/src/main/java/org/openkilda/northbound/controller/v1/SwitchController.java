@@ -110,7 +110,7 @@ public class SwitchController extends BaseController {
      * Get switch rules.
      *
      * @param switchId the switch
-     * @param cookie filter the response based on this cookie
+     * @param cookie   filter the response based on this cookie
      * @return list of the cookies of the rules that have been deleted
      */
     @ApiOperation(value = "Get switch rules from the switch", response = SwitchFlowEntries.class)
@@ -128,12 +128,12 @@ public class SwitchController extends BaseController {
     /**
      * Delete switch rules.
      *
-     * @param switchId switch id to delete rules from
+     * @param switchId     switch id to delete rules from
      * @param deleteAction defines what to do about the default rules
-     * @param cookie the cookie to use if deleting a rule (could be any rule)
-     * @param inPort the in port to use if deleting a rule
-     * @param inVlan the in vlan to use if deleting a rule
-     * @param outPort the out port to use if deleting a rule
+     * @param cookie       the cookie to use if deleting a rule (could be any rule)
+     * @param inPort       the in port to use if deleting a rule
+     * @param inVlan       the in vlan to use if deleting a rule
+     * @param outPort      the out port to use if deleting a rule
      * @return list of the cookies of the rules that have been deleted
      */
     @ApiOperation(value = "Delete switch rules. Requires special authorization",
@@ -213,7 +213,7 @@ public class SwitchController extends BaseController {
     /**
      * Install switch rules.
      *
-     * @param switchId switch id to delete rules from
+     * @param switchId      switch id to delete rules from
      * @param installAction defines what to do about the default rules
      * @return list of the cookies of the rules that have been installed
      */
@@ -308,6 +308,7 @@ public class SwitchController extends BaseController {
 
     /**
      * Gets meters from the switch.
+     *
      * @param switchId switch dpid.
      * @return list of meters exists on the switch
      */
@@ -320,8 +321,9 @@ public class SwitchController extends BaseController {
 
     /**
      * Remove the meter from specific switch.
+     *
      * @param switchId switch dpid.
-     * @param meterId id of the meter to be deleted.
+     * @param meterId  id of the meter to be deleted.
      * @return result of the operation wrapped into {@link DeleteMeterResult}. True means no errors is occurred.
      */
     @ApiOperation(value = "Delete meter from the switch", response = DeleteMeterResult.class)
@@ -335,8 +337,8 @@ public class SwitchController extends BaseController {
     /**
      * Configure port.
      *
-     * @param switchId the switch id
-     * @param portNo the port no
+     * @param switchId   the switch id
+     * @param portNo     the port no
      * @param portConfig the port configuration payload
      * @return the response entity
      */
@@ -368,7 +370,7 @@ public class SwitchController extends BaseController {
      * Get a description of the switch port.
      *
      * @param switchId the switch id.
-     * @param port the port of the switch.
+     * @param port     the port of the switch.
      * @return port description.
      */
     @ApiOperation(value = "Get port description from the switch", response = PortDescription.class)
@@ -383,7 +385,7 @@ public class SwitchController extends BaseController {
     /**
      * Update "Under maintenance" flag for the switch.
      *
-     * @param switchId the switch id.
+     * @param switchId            the switch id.
      * @param underMaintenanceDto under maintenance flag.
      * @return updated switch.
      */
@@ -391,7 +393,8 @@ public class SwitchController extends BaseController {
     @PostMapping(path = "/{switch-id}/under-maintenance",
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<SwitchDto> updateLinkUnderMaintenance(@PathVariable("switch-id") SwitchId switchId,
+    public CompletableFuture<SwitchDto> updateLinkUnderMaintenance(
+            @PathVariable("switch-id") SwitchId switchId,
             @RequestBody UnderMaintenanceDto underMaintenanceDto) {
         return switchService.updateSwitchUnderMaintenance(switchId, underMaintenanceDto);
     }
@@ -400,8 +403,8 @@ public class SwitchController extends BaseController {
      * Delete switch.
      *
      * @param switchId id of switch to delete
-     * @param force True value means that all switch checks (switch is deactivated, there is no flow with this switch,
-     *              switch has no ISLs) will be ignored.
+     * @param force    True value means that all switch checks (switch is deactivated,
+     *                 there is no flow with this switch, switch has no ISLs) will be ignored.
      * @return result of the operation wrapped into {@link DeleteSwitchResult}. True means no errors is occurred.
      */
     @ApiOperation(value = "Delete switch. Requires special authorization.", response = DeleteSwitchResult.class)
@@ -420,7 +423,7 @@ public class SwitchController extends BaseController {
      * Get all flows for a particular switch.
      *
      * @param switchId the switch
-     * @param port the port
+     * @param port     the port
      * @return all flows for a particular switch.
      */
     @ApiOperation(value = "Get a list of flows that goes through a particular switch, based on arguments.",
@@ -429,7 +432,7 @@ public class SwitchController extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<FlowPayload>> getFlowsForSwitch(@PathVariable(value = "switch-id") SwitchId switchId,
                                                                   @RequestParam(value = "port", required = false)
-                                                                          Integer port) {
+                                                                  Integer port) {
         return switchService.getFlowsForSwitch(switchId, port);
     }
 

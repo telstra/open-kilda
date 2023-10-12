@@ -59,4 +59,12 @@ class SwitchPairs {
     SwitchPairs includeSwitch(Switch sw) {
         return new SwitchPairs(switchPairs.findAll { it.src == sw || it.dst == sw})
     }
+
+    SwitchPairs excludeSwitches(List<Switch> switchesList) {
+        return new SwitchPairs(switchPairs.findAll { !(it.src in switchesList) || !(it.dst in switchesList)})
+    }
+
+    List<Switch> collectSwitches() {
+        switchPairs.collectMany { return [it.src, it.dst] }.unique()
+    }
 }

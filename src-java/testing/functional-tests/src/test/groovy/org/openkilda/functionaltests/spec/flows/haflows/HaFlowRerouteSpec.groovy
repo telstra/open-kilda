@@ -17,7 +17,6 @@ import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -41,8 +40,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     HaFlowStats haFlowStats
-    
-    @Tidy
+
     @Tags([TOPOLOGY_DEPENDENT])
     def "Valid HA-flow can be rerouted"() {
         assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
@@ -119,7 +117,6 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "HA-flow in 'Down' status is rerouted when discovering a new ISL"() {
         assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
@@ -186,7 +183,6 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "HA-flow goes to 'Down' status when ISl of the HA-flow fails and there is no alt path to reroute"() {
         assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")

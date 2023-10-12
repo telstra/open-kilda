@@ -6,7 +6,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.fixture.TestFixture
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -39,7 +38,6 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
     //TODO(ylobankov): Actually this is abnormal behavior and we should have an error. But this test is aligned
     // with the current system behavior to verify that system is not hanging. Need to rework the test when system
     // behavior is fixed.
-    @Tidy
     def "Link props are created with empty values when sending an invalid link props key"() {
         when: "Send link property request with invalid character"
         def linkPropsCreate = [new LinkPropsDto("0f:00:00:00:00:00:00:01", 1,
@@ -58,7 +56,6 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(linkPropsCreate)
     }
 
-    @Tidy
     def "Unable to create link property with invalid switchId format"() {
         when: "Try creating link property with invalid switchId format"
         def linkProp = new LinkPropsDto("I'm invalid", 1, "0f:00:00:00:00:00:00:02", 1, [:])
@@ -69,7 +66,6 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         response.messages.first() == "Can not parse input string: \"${linkProp.srcSwitch}\""
     }
 
-    @Tidy
     def "Unable to create link property with non-numeric value for #key"() {
         when: "Try creating link property with non-numeric values"
         def nonNumericValue = "1000L"
@@ -84,7 +80,6 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         key << ["cost", "max_bandwidth"]
     }
 
-    @Tidy
     @TestFixture(setup = "prepareLinkPropsForSearch", cleanup = "cleanLinkPropsAfterSearch")
     def "Searching for link props with #data.descr"() {
         when: "Get link properties with search query"
@@ -148,7 +143,6 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "Updating cost, max bandwidth and description via link props actually updates cost, max bandwidth and description on ISLs"() {
         given: "An active ISL"
         def isl = topology.islsForActiveSwitches.first()
@@ -213,7 +207,6 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         !linkPropsAreDeleted && northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "Newly discovered link gets cost and max bandwidth from link props"() {
         given: "An active ISL"

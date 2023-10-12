@@ -14,7 +14,6 @@ import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_V
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -46,7 +45,6 @@ class FlowPingSpec extends HealthCheckSpecification {
     @Value('${flow.ping.interval}')
     int pingInterval
 
-    @Tidy
     @Unroll("Able to ping a flow with vlan between switches #swPair.toString()")
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to ping a flow with vlan"(Switch srcSwitch, Switch dstSwitch) {
@@ -93,7 +91,6 @@ class FlowPingSpec extends HealthCheckSpecification {
         swPair = new SwitchPair(src: srcSwitch, dst: dstSwitch, paths: [])
     }
 
-    @Tidy
     @Unroll("Able to ping a flow with vxlan between switches #swPair.toString()")
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to ping a flow with vxlan"() {
@@ -139,7 +136,6 @@ class FlowPingSpec extends HealthCheckSpecification {
 
     }
 
-    @Tidy
     @Unroll("Able to ping a flow with no vlan between switches #swPair.toString()")
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to ping a flow with no vlan"(Switch srcSwitch, Switch dstSwitch) {
@@ -169,7 +165,6 @@ class FlowPingSpec extends HealthCheckSpecification {
         swPair = new SwitchPair(src: srcSwitch, dst: dstSwitch, paths: [])
     }
 
-    @Tidy
     @Unroll("Flow ping can detect a broken #description")
     @IterationTag(tags = [SMOKE], iterationNameRegex = /forward path/)
     def "Flow ping can detect a broken path for a vlan flow"() {
@@ -262,7 +257,6 @@ class FlowPingSpec extends HealthCheckSpecification {
                 .build()
     }
 
-    @Tidy
     def "Unable to ping a single-switch flow"() {
         given: "A single-switch flow"
         def sw = topology.activeSwitches.find { !it.centec && it.ofVersion != "OF_12" }
@@ -282,7 +276,6 @@ class FlowPingSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Verify error if try to ping with wrong flowId"() {
         when: "Send ping request with non-existing flowId"
         def wrongFlowId = "nonexistent"
@@ -297,7 +290,6 @@ class FlowPingSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags(TOPOLOGY_DEPENDENT)
     def "Flow ping can detect a broken path for a vxlan flow on an intermediate switch"() {
         given: "A vxlan flow with intermediate switch(es)"
@@ -338,7 +330,6 @@ class FlowPingSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Able to turn on periodic pings on a flow"() {
         when: "Create a flow with periodic pings turned on"
         def endpointSwitches = topologyHelper.notNeighboringSwitchPair
@@ -362,7 +353,6 @@ class FlowPingSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Unable to create a single-switch flow with periodic pings"() {
         when: "Try to create a single-switch flow with periodic pings"

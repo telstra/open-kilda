@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -31,8 +30,6 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
     @Shared
     SwitchMetersFactory switchMetersFactory
 
-
-    @Tidy
     @Tags(SMOKE)
     def "HA-Flow passes validation after creation"() {
         given: "HA-Flow on non-neighbouring switches"
@@ -50,7 +47,6 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
         haFlow && haFlowHelper.deleteHaFlow(haFlow.getHaFlowId())
     }
 
-    @Tidy
     def "HA-Flow validation should fail in case of missing rule on #switchRole switch"() {
         given: "HA-Flow on non-neighbouring switches"
         def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
@@ -80,7 +76,6 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
                 (flow.subFlows*.endpoint.switchId + flow.sharedEndpoint.switchId)).first()}
     }
 
-    @Tidy
     def "HA-Flow validation should fail in case of missing meter on #switchRole switch"() {
         given: "HA-Flow on non-neighbouring switches"
         def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()

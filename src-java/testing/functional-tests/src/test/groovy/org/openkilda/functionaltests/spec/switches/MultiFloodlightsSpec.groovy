@@ -13,7 +13,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.LoopTask
@@ -36,7 +35,6 @@ All switch floodlights can be checked via 'GET /api/v2/switches/{switchId}/conne
 class MultiFloodlightsSpec extends HealthCheckSpecification {
     @Shared ExecutorService executor = Executors.newFixedThreadPool(2)
 
-    @Tidy
     def "Switch remains online only if at least one of multiple RW floodlights is available"() {
         given: "Switch simultaneously connected to 2 management floodlights"
         def cleanupActions = []
@@ -115,7 +113,6 @@ class MultiFloodlightsSpec extends HealthCheckSpecification {
         wait(WAIT_OFFSET) { northbound.getAllSwitches().each { assert it.state == ACTIVATED } }
     }
 
-    @Tidy
     @Tags([LOCKKEEPER])
     def "System supports case when switch uses different networks to connect to FLs, i.e. has diff ips"() {
         given: "A switch with at least 2 regions available"

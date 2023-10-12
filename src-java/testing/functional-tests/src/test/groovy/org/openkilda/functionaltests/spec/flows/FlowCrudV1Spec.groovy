@@ -21,7 +21,6 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -83,7 +82,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         ~/The port $port on the switch \'$swId\' is occupied by an ISL \($endpoint endpoint collision\)./
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Valid #data.description has traffic and no rule discrepancies [#srcDstStr]"() {
         given: "A flow"
@@ -151,7 +149,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         srcDstStr = "src:${topology.find(flow.source.datapath).hwSwString}->dst:${topology.find(flow.destination.datapath).hwSwString}"
     }
 
-    @Tidy
     @Unroll("Able to create a second flow if #data.description")
     def "Able to create multiple flows on certain combinations of switch-port-vlans"() {
         given: "Two potential flows that should not conflict"
@@ -331,7 +328,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to create single switch single port flow with different vlan (#flow.source.datapath)"(FlowPayload flow) {
         given: "A flow"
@@ -360,7 +356,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         flow << getSingleSwitchSinglePortFlows()
     }
 
-    @Tidy
     def "Able to validate flow with zero bandwidth"() {
         given: "A flow with zero bandwidth"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -377,7 +372,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         flow && flowHelper.deleteFlow(flow.id)
     }
 
-    @Tidy
     def "Unable to create single-switch flow with the same ports and vlans on both sides"() {
         given: "Potential single-switch flow with the same ports and vlans on both sides"
         def flow = flowHelper.singleSwitchSinglePortFlow(topology.activeSwitches.first())
@@ -395,7 +389,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         !error && flowHelper.deleteFlow(flow.id)
     }
 
-    @Tidy
     @Unroll("Unable to create flow with #data.conflict")
     def "Unable to create flow with conflicting vlans or flow IDs"() {
         given: "A potential flow"
@@ -435,7 +428,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Unroll("Unable to update flow (#data.conflict)")
     def "Unable to update flow when there are conflicting vlans"() {
         given: "Two potential flows"
@@ -465,7 +457,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         data << getConflictingData()
     }
 
-    @Tidy
     def "A flow cannot be created with asymmetric forward and reverse paths"() {
         given: "Two active neighboring switches with two possible flow paths at least and different number of hops"
         List<List<PathNode>> possibleFlowPaths = []
@@ -501,7 +492,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "Error is returned if there is no available path to #data.isolatedSwitchType switch"() {
         given: "A switch that has no connection to other switches"
         def isolatedSwitch = topologyHelper.notNeighboringSwitchPair.src
@@ -559,7 +549,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         ]
     }
 
-    @Tidy
     def "Removing flow while it is still in progress of being created should not cause rule discrepancies"() {
         given: "A potential flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -604,7 +593,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         flow && flowHelper.deleteFlow(flow.id)
     }
 
-    @Tidy
     def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {
         given: "An isl"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -640,7 +628,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         ]
     }
 
-    @Tidy
     def "Unable to update a flow in case new port is an isl port on a #data.switchType switch"() {
         given: "An isl"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -678,7 +665,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         ]
     }
 
-    @Tidy
     def "Unable to create a flow on an isl port when ISL status is FAILED"() {
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -701,7 +687,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "Unable to create a flow on an isl port when ISL status is MOVED"() {
         given: "An inactive isl with moved state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -736,7 +721,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "Able to CRUD #flowDescription single switch pinned flow"() {
         when: "Create a flow"
         def sw = topology.getActiveSwitches().first()
@@ -767,7 +751,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         "an unmetered"  | 0
     }
 
-    @Tidy
     def "Able to CRUD #flowDescription pinned flow"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -798,7 +781,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         "an unmetered"  | 0
     }
 
-    @Tidy
     @Tags(VIRTUAL)
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
         given: "A deactivated switch"
@@ -819,7 +801,6 @@ are not connected to the controller/).matches(exc)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2625")
-    @Tidy
     def "System recreates excess meter when flow is created with the same meterId"() {
         given: "A Noviflow switch"
         def sw = topology.activeSwitches.find { it.noviflow || it.virtual } ?:
@@ -875,7 +856,6 @@ are not connected to the controller/).matches(exc)
         flows.each { it && flowHelper.deleteFlow(it) }
     }
 
-    @Tidy
     def "System doesn't create flow when reverse path has different bandwidth than forward path on the second link"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
