@@ -52,9 +52,6 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     @Autowired @Qualifier("northboundServiceV2Impl")
     NorthboundServiceV2 northboundV2
 
-    @Autowired @Qualifier("islandNb")
-    NorthboundService islandNorthbound
-
     @Autowired
     LabService labService
 
@@ -155,14 +152,14 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
 
             //wait until topology is discovered
             Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {
-                assert islandNorthbound.getAllLinks().findAll {
-                    it.state == IslChangeType.DISCOVERED
+                assert northbound.getAllLinks().findAll {
+                    it.source.switchId in topo.switches.dpId && it.state == IslChangeType.DISCOVERED
                 }.size() == topo.islsForActiveSwitches.size() * 2
             }
             //wait until switches are activated
             Wrappers.wait(SWITCHES_ACTIVATION_TIME) {
-                assert islandNorthbound.getAllSwitches().findAll {
-                    it.state == SwitchChangeType.ACTIVATED
+                assert northbound.getAllSwitches().findAll {
+                    it.switchId in topo.switches.dpId && it.state == SwitchChangeType.ACTIVATED
                 }.size() == topo.activeSwitches.size()
             }
 
