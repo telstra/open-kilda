@@ -19,9 +19,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+
 @Data
 @NoArgsConstructor
-public class RemoteLogServer {
+public class RemoteLogServer implements Serializable {
     @JsonProperty("ip_address")
     private String ipAddress;
 

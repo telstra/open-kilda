@@ -17,11 +17,12 @@ package org.openkilda.wfm.topology.flowmonitoring.model;
 
 import lombok.Data;
 
+import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
 
 @Data
-public class FlowPathLatency {
+public class FlowPathLatency implements Serializable {
 
     private Instant timestamp;
     private Duration latency;

@@ -21,6 +21,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.Serializable;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -28,7 +29,7 @@ import java.util.Map;
 import java.util.Objects;
 
 @Slf4j
-public class FlowLatencyRequest {
+public class FlowLatencyRequest implements Serializable {
 
     @Getter
     private final String requestId;

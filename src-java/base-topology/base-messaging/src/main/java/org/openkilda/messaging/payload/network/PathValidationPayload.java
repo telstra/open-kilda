@@ -24,13 +24,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Value;
 
+import java.io.Serializable;
 import java.util.List;
 import javax.validation.constraints.PositiveOrZero;
 
 @Value
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class PathValidationPayload {
+public class PathValidationPayload implements Serializable {
     @JsonProperty("bandwidth")
     Long bandwidth;
 

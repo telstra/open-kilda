@@ -36,6 +36,7 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.flow.HaFlowPingResponse;
 import org.openkilda.messaging.info.flow.SubFlowPingPayload;
 import org.openkilda.messaging.info.flow.UniSubFlowPingPayload;
+import org.openkilda.messaging.model.Ping;
 import org.openkilda.messaging.model.Ping.Errors;
 import org.openkilda.messaging.model.PingMeters;
 import org.openkilda.model.FlowEncapsulationType;
@@ -81,6 +82,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class PingTopologyTest extends AbstractStormTest {
     public static final String COMPONENT_NAME = "ping";
@@ -276,15 +278,23 @@ public class PingTopologyTest extends AbstractStormTest {
         final HaFlowPingResponse expectedResponse =
                 new HaFlowPingResponse(HA_FLOW_ID_1, null, expectedSubFlowsPayload);
 
-        createCompleteHaFlow();
+        HaFlow haFlow = createCompleteHaFlow();
 
         sendNorthboundHaFlowPingCommand(HA_FLOW_ID_1, pingTimeout);
 
         List<CommandMessage> pingCommands = speakerConsumer.assertNAndPoll(4, CommandMessage.class);
 
+        List<CommandMessage> forwardPingCommands = pingCommands.stream()
+                .filter(command -> {
+                    Ping ping = ((PingRequest) command.getData()).getPing();
+                    return ping.getSource().getDatapath().equals(haFlow.getSharedSwitchId());
+                })
+                .collect(Collectors.toList());
+
         // send only 2 answers
+        Assertions.assertEquals(2, forwardPingCommands.size());
         for (int i = 0; i < 2; i++) {
-            sendSpeakerAnswer(pingCommands.get(i));
+            sendSpeakerAnswer(forwardPingCommands.get(i));
         }
 
         InfoMessage infoMessage = northboundConsumer.assertNAndPoll(1, InfoMessage.class).get(0);
@@ -425,8 +435,8 @@ public class PingTopologyTest extends AbstractStormTest {
         List<Datapoint> resultDataPoints = otsdbConsumer.assertNAndPoll(4, Datapoint.class);
         assertThat(resultDataPoints, Matchers.containsInAnyOrder(expectedDatapoints.toArray()));
 
-        disableHaFlowAndAssert();
         haFlowRepository.remove(HA_FLOW_ID_1);
+        disableHaFlowAndAssert();
     }
 
     @Test
@@ -465,8 +475,8 @@ public class PingTopologyTest extends AbstractStormTest {
         Assertions.assertTrue(speakerConsumer.isEmpty());
     }
 
-    private void createCompleteHaFlow() {
-        createHaFlow(true, true, false, false, false);
+    private HaFlow createCompleteHaFlow() {
+        return createHaFlow(true, true, false, false, false);
     }
 
     private void createCompleteHaFlowWithPeriodicPing() {
@@ -489,8 +499,8 @@ public class PingTopologyTest extends AbstractStormTest {
         createHaFlow(true, true, false, true, false);
     }
 
-    private void createHaFlow(boolean addSubFlows, boolean addTransitVlan, boolean oneIsOneSwitchFlow,
-                              boolean endPointsEqualsYPoint, boolean periodicPing) {
+    private HaFlow createHaFlow(boolean addSubFlows, boolean addTransitVlan, boolean oneIsOneSwitchFlow,
+                                boolean endPointsEqualsYPoint, boolean periodicPing) {
         final Switch sharedSwitch = switch1;
         Switch endpointSwitchA = switch3;
         if (oneIsOneSwitchFlow) {
@@ -551,6 +561,7 @@ public class PingTopologyTest extends AbstractStormTest {
         }
 
         haFlowRepository.add(haFlow);
+        return haFlow;
     }
 
     private void sendSpeakerAnswer(CommandMessage command) {

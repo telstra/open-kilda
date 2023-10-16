@@ -65,7 +65,7 @@ import java.util.stream.Collectors;
 public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData> {
     @Getter
     @Setter
-    @Delegate(excludes = FlowPathInternalData.class)
+    @Delegate(excludes = HaFlowPathInternalData.class)
     @JsonIgnore
     private HaFlowPathData data;
 
@@ -82,9 +82,9 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
      * @param entityToClone the HA-path entity to copy data from.
      * @param haFlow the HA-flow to be referred ({@code HaFlowPath.getHaFlow()}) by the new HA-path.
      */
-    public HaFlowPath(@NonNull HaFlowPath entityToClone, HaFlow haFlow) {
+    public HaFlowPath(@NonNull HaFlowPath entityToClone, HaFlow haFlow, Collection<HaSubFlow> haSubFlows) {
         this();
-        data = HaFlowPathCloner.INSTANCE.deepCopy(entityToClone.getData(), haFlow);
+        data = HaFlowPathCloner.INSTANCE.deepCopy(entityToClone.getData(), haFlow, haSubFlows);
     }
 
     @Builder
@@ -310,7 +310,7 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
     /**
      * Defines methods which don't need to be delegated.
      */
-    interface FlowPathInternalData {
+    interface HaFlowPathInternalData {
         void setBandwidth(long bandwidth);
 
         void setIgnoreBandwidth(boolean ignoreBandwidth);
@@ -363,7 +363,10 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
 
         @Override
         public String getHaFlowId() {
-            return haFlow != null ? haFlow.getHaFlowId() : null;
+            if (haFlow == null || haFlow.getData() == null) {
+                return null;
+            }
+            return haFlow.getHaFlowId();
         }
 
         @Override
@@ -427,18 +430,20 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
          * @param source the path data to copy from.
          * @param targetHaFlow the HA-flow to be referred ({@code HaFlowPathData.getHaFlow()}) by the new path data.
          */
-        default HaFlowPathData deepCopy(HaFlowPathData source, HaFlow targetHaFlow) {
+        default HaFlowPathData deepCopy(
+                HaFlowPathData source, HaFlow targetHaFlow, Collection<HaSubFlow> targetHaSubFlows) {
             HaFlowPathDataImpl result = new HaFlowPathDataImpl();
             result.haFlow = targetHaFlow;
 
             copyWithoutSwitchesAndSubPaths(source, result);
             result.setSharedSwitch(new Switch(source.getSharedSwitch()));
+            result.setHaSubFlows(targetHaSubFlows);
 
             Map<String, HaSubFlow> subFlowMap;
-            if (targetHaFlow == null || targetHaFlow.getHaSubFlows() == null) {
+            if (targetHaSubFlows == null) {
                 subFlowMap = new HashMap<>();
             } else {
-                subFlowMap = targetHaFlow.getHaSubFlows().stream()
+                subFlowMap = targetHaSubFlows.stream()
                         .collect(Collectors.toMap(HaSubFlow::getHaSubFlowId, Function.identity()));
             }
             List<FlowPath> subPaths = new ArrayList<>();
@@ -451,12 +456,6 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
                 subPaths.add(new FlowPath(subPath, null, targetHaSubFlow));
             }
             result.setSubPaths(subPaths);
-
-            List<HaSubFlow> subFlows = new ArrayList<>();
-            for (HaSubFlow subFlow : source.getHaSubFlows()) {
-                subFlows.add(new HaSubFlow(subFlow, targetHaFlow));
-            }
-            result.setHaSubFlows(subFlows);
             return result;
         }
     }

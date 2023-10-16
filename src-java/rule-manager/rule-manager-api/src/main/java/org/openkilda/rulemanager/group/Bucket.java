@@ -25,13 +25,14 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Builder;
 import lombok.Value;
 
+import java.io.Serializable;
 import java.util.Set;
 
 @Value
 @JsonSerialize
 @Builder
 @JsonNaming(SnakeCaseStrategy.class)
-public class Bucket {
+public class Bucket implements Serializable {
 
     WatchGroup watchGroup;
     WatchPort watchPort;

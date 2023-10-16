@@ -17,7 +17,9 @@ package org.openkilda.wfm.topology.network.model;
 
 import org.openkilda.messaging.model.SpeakerSwitchPortView;
 
-public enum LinkStatus {
+import java.io.Serializable;
+
+public enum LinkStatus implements Serializable {
     UP, DOWN;
 
     /**

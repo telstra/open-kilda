@@ -15,7 +15,9 @@
 
 package org.openkilda.model;
 
-public interface CompositeDataEntity<D> {
+import java.io.Serializable;
+
+public interface CompositeDataEntity<D> extends Serializable {
     D getData();
 
     void setData(D data);

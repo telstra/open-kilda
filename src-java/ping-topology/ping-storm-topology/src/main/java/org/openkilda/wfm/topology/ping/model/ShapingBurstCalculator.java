@@ -17,7 +17,9 @@ package org.openkilda.wfm.topology.ping.model;
 
 import lombok.Getter;
 
-public class ShapingBurstCalculator {
+import java.io.Serializable;
+
+public class ShapingBurstCalculator implements Serializable {
     @Getter
     private long burstAmount = 0;
     private final int windowSize;

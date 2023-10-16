@@ -16,11 +16,11 @@
 package org.openkilda.wfm.topology.stats.model;
 
 import lombok.Getter;
-import lombok.ToString;
+
+import java.io.Serializable;
 
 @Getter
-@ToString
-public abstract class StatsAndDescriptor<T> {
+public abstract class StatsAndDescriptor<T> implements Serializable {
     private final T data;
     private final KildaEntryDescriptor descriptor;
 

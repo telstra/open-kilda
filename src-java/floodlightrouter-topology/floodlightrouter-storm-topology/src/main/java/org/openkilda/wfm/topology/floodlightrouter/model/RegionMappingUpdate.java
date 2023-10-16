@@ -21,10 +21,12 @@ import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
+import java.io.Serializable;
+
 @Getter
 @EqualsAndHashCode
 @AllArgsConstructor
-public abstract class RegionMappingUpdate {
+public abstract class RegionMappingUpdate implements Serializable {
     private final SwitchId switchId;
     private final String region;
     private final boolean readWriteMode;

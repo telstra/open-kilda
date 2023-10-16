@@ -29,7 +29,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         haFlow.waitForHistoryEvent(HaFlowActionType.CREATE)
 
         when: "Request for history records"
-        def historyRecord = haFlow.getHistory(timeBeforeCreation, System.currentTimeSeconds())
+        def historyRecord = haFlow.getHistory(timeBeforeCreation, System.currentTimeSeconds() + 1)
                 .getEntriesByType(HaFlowActionType.CREATE)
 
         then: "Correct event appears in HA-Flow history and can be retrieved without specifying timeline"
@@ -104,7 +104,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         haFlow.waitForHistoryEvent(HaFlowActionType.DELETE)
 
         then: "Correct event appears in HA-Flow history and can be retrieved with specifying timeline"
-        def historyRecord = haFlow.getHistory(timeBeforeOperation, System.currentTimeSeconds())
+        def historyRecord = haFlow.getHistory(timeBeforeOperation, System.currentTimeSeconds() + 1)
                 .getEntriesByType(HaFlowActionType.DELETE)
         historyRecord.size() == 1
 
@@ -171,7 +171,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         }
 
         and: "Correct event appears in HA-Flow history and can be retrieved with specifying timeline"
-        def historyRecordsWithTimeline = haFlow.getHistory(timeBeforeOperation, System.currentTimeSeconds())
+        def historyRecordsWithTimeline = haFlow.getHistory(timeBeforeOperation, System.currentTimeSeconds() + 1)
                 .getEntriesByType(HaFlowActionType.REROUTE_FAIL)
 
         and: "Both retrieved history records are identical"
@@ -192,7 +192,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         def timestampAfterCreate = System.currentTimeSeconds() + 1
 
         then: "Check HA-Flow history has no entries"
-        assert haFlow.getHistory(timestampAfterCreate, System.currentTimeSeconds()).entries.isEmpty()
+        assert haFlow.getHistory(timestampAfterCreate, System.currentTimeSeconds() + 1).entries.isEmpty()
 
         cleanup:
         haFlow && haFlow.delete()

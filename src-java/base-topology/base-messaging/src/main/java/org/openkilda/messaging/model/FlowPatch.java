@@ -23,12 +23,13 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.Set;
 
 @Data
 @Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class FlowPatch {
+public class FlowPatch implements Serializable {
     private String flowId;
     private PatchEndpoint source;
     private PatchEndpoint destination;

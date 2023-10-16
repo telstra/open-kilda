@@ -22,12 +22,13 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 
+import java.io.Serializable;
 import java.time.Duration;
 
 @Getter
 @ToString
 @EqualsAndHashCode
-public class BfdProperties {
+public class BfdProperties implements Serializable {
     @JsonProperty("interval")
     protected final Duration interval;
 

@@ -19,10 +19,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.io.Serializable;
+
 @Data
 @Builder(toBuilder = true)
 @EqualsAndHashCode
-public class MirrorContext {
+public class MirrorContext implements Serializable {
     public static final MirrorContext DEFAULT = MirrorContext.builder().build();
 
     private boolean buildMirrorFactoryOnly;

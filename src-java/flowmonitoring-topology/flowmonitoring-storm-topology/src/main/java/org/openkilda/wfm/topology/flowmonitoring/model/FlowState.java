@@ -17,10 +17,11 @@ package org.openkilda.wfm.topology.flowmonitoring.model;
 
 import lombok.Data;
 
+import java.io.Serializable;
 import java.util.List;
 
 @Data
-public class FlowState {
+public class FlowState implements Serializable {
 
     private List<Link> forwardPath;
     private FlowPathLatency forwardPathLatency = new FlowPathLatency();

@@ -26,13 +26,14 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Value;
 
+import java.io.Serializable;
 import java.util.List;
 
 @Value
 @AllArgsConstructor
 @Builder
 @JsonNaming(SnakeCaseStrategy.class)
-public class HaFlowPathPayload {
+public class HaFlowPathPayload implements Serializable {
     String haPathId;
     String cookie;
     String sharedPointMeterId;

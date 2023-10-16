@@ -21,13 +21,14 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Value;
 
+import java.io.Serializable;
 import java.time.Instant;
 
 @Value
 @Builder
 @AllArgsConstructor
 @JsonNaming(SnakeCaseStrategy.class)
-public class HaFlowHistoryPayload {
+public class HaFlowHistoryPayload implements Serializable {
     Instant timestamp;
     String timestampIso;
     String action;

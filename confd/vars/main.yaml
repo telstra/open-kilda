@@ -95,7 +95,7 @@ kilda_opentsdb_num_datapointparserbolt: 1
 kilda_opentsdb_workers_datapointparserbolt: 1
 kilda_opentsdb_batch_size: 50
 kilda_opentsdb_flush_interval: 1
-kilda_opentsdb_workers: 1
+kilda_opentsdb_workers: 2
 kilda_opentsdb_parallelism: 2
 kilda_opentsdb_metric_prefix: "kilda."
 
@@ -172,41 +172,69 @@ kilda_latency_update_interval: 120
 kilda_latency_update_time_range: 600
 kilda_latency_discovery_interval_multiplier: 3
 
-kilda_storm_swmanager_parallelism: 2
-kilda_storm_swmanager_heavy_operation_parallelism: 2
-kilda_storm_isl_latency_parallelism: 4
 kilda_storm_parallelism_level_new: 2
 kilda_storm_parallelism_level: 1
 kilda_storm_parallelism_workers_count: 1
+kilda_storm_spout_parallelism: 2
+
+# SW manager
+kilda_storm_swmanager_parallelism: 2
+kilda_storm_swmanager_heavy_operation_parallelism: 2
+kilda_storm_swmanager_workers_count: 2
+
+# ISL latency
+kilda_storm_isl_latency_parallelism: 4
+kilda_storm_isl_latency_workers_count: 2
+
+# Stats
 kilda_storm_stats_parallelism: 2
+kilda_storm_stats_workers_count: 2
+
+# Network
+kilda_storm_network_parallelism: 2
+kilda_storm_network_workers_count: 2
 
 # Reroute
 kilda_storm_reroute_parallelism: 2
+kilda_storm_reroute_workers_count: 2
 
 # Floodlight router
 kilda_storm_floodlight_router_parallelism: 2
+kilda_storm_floodlight_router_workers_count: 2
 
 # NB worker
 kilda_storm_nb_worker_parallelism: 2
 kilda_storm_nb_worker_flow_operations_parallelism: 2
+kilda_storm_nbworker_workers_count: 2
 
 # Server42 control
 kilda_storm_server42_control_parallelism: 2
+kilda_storm_server42_control_count: 2
 
 # History
 kilda_storm_history_parallelism: 2
 kilda_storm_history_bolt_parallelism: 2
 kilda_storm_history_bolt_num_tasks: 2
+kilda_storm_history_workers_count: 2
 
 # Connected devices
 kilda_storm_connected_devices_parallelism: 2
+kilda_storm_connected_devices_workers_count: 2
 kilda_storm_connected_devices_packet_bolt_parallelism: 2
+
+# Ping
+kilda_storm_ping_parallelism: 2
+kilda_storm_ping_workers_count: 2
+
+# Port state
+kilda_storm_port_state_parallelism: 1
+kilda_storm_port_state_workers_count: 2
 
 # Flow HS
 kilda_storm_flow_hs_parallelism: 2
 kilda_storm_flow_hs_num_tasks: 2
 kilda_storm_flow_hs_reroute_hub_count_multiplier: 2
-kilda_storm_flowhs_workers: 1
+kilda_storm_flowhs_workers: 2
 kilda_storm_flow_hs_validation_worker_parallelism: 2
 kilda_storm_flow_hs_flow_create_hub_parallelism: 2
 kilda_storm_flow_hs_flow_update_hub_parallelism: 2
@@ -246,9 +274,9 @@ kilda_storm_flow_hs_ping_sender_parallelism: 2
 kilda_storm_flow_hs_monitoring_sender_parallelism: 2
 kilda_storm_flow_hs_speaker_request_sender_parallelism: 2
 
-kilda_storm_spout_parallelism: 2
-
+# Flow monitoring
 kilda_storm_flow_monitoring_parallelism: 2
+kilda_storm_flow_monitoring_workers_count: 2
 kilda_storm_flow_monitoring_flow_stats_bolt_parallelism: 2
 
 kilda_storm_disruptor_wait_timeout: 1000

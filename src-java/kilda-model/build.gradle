@@ -4,7 +4,9 @@ dependencies {
     compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
     implementation 'org.apache.commons:commons-collections4'
     implementation 'org.apache.commons:commons-lang3'
-    implementation 'com.esotericsoftware:kryo'
+    // current storm version is 1.2.1.
+    // kryo package with version >= 5.0 is not compatible with old storm serialization
+    implementation 'com.esotericsoftware:kryo:4.0.3'
 
     implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'

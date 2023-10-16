@@ -26,13 +26,14 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Value;
 
+import java.io.Serializable;
 import java.util.List;
 
 @Value
 @AllArgsConstructor
 @Builder
 @JsonNaming(SnakeCaseStrategy.class)
-public class HaFlowDumpPayload {
+public class HaFlowDumpPayload implements Serializable {
     String taskId;
     DumpType dumpType;
     String haFlowId;

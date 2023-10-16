@@ -19,11 +19,12 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Value;
 
+import java.io.Serializable;
 import java.util.List;
 
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class PathsDto {
+public class PathsDto implements Serializable {
 
     @JsonProperty("paths")
     private List<PathDto> paths;

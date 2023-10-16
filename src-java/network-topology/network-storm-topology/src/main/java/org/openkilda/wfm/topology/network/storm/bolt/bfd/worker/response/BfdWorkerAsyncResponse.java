@@ -18,6 +18,8 @@ package org.openkilda.wfm.topology.network.storm.bolt.bfd.worker.response;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.worker.BfdWorker;
 import org.openkilda.wfm.topology.network.storm.bolt.bfd.worker.command.BfdWorkerCommand;
 
-public abstract class BfdWorkerAsyncResponse {
+import java.io.Serializable;
+
+public abstract class BfdWorkerAsyncResponse implements Serializable {
     public abstract void consume(BfdWorker handler, BfdWorkerCommand request);
 }

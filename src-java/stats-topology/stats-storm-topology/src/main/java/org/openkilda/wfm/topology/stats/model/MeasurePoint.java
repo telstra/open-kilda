@@ -15,7 +15,9 @@
 
 package org.openkilda.wfm.topology.stats.model;
 
-public enum MeasurePoint {
+import java.io.Serializable;
+
+public enum MeasurePoint implements Serializable {
     INGRESS,
     EGRESS,
     ONE_SWITCH,
