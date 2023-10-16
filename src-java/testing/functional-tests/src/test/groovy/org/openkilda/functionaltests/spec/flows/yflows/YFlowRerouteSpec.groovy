@@ -308,6 +308,9 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         topology.getRelatedIsls(terminalSwitch).each {
             portsDown.add(antiflap.portDown(terminalSwitch.dpId, it.srcSwitch == terminalSwitch ? it.srcPort : it.dstPort))
         }
+        wait(FLOW_CRUD_TIMEOUT) {
+            northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.DEGRADED.getState()
+        }
 
         when: "Y-Flow reroute has been called"
         northboundV2.rerouteYFlow(yFlow.YFlowId)
