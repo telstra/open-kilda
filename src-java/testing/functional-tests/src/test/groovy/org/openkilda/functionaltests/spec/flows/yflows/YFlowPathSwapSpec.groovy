@@ -46,6 +46,11 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
     @Autowired @Shared
     FlowStats flowStats
 
+    //Protected path of subflow2 can have common ISLs with main path of subflow1. Thus, after breaking random ISL on
+    //subflow1 main path, subflow2 can be either in Up state, or in Degraded, and both are valid
+    final static List<String> upOrDegradedState = [FlowState.UP, FlowState.DEGRADED].collect{it.getState()}
+    final static List<String> upOrDownState = [FlowState.UP, FlowState.DOWN].collect{it.getState()}
+
     def "Able to swap main and protected paths manually"() {
         given: "A y-flow with protected paths"
         def swT = findSwitchTripletForYFlowWithProtectedPaths()
@@ -137,8 +142,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         def mainReverseCookie = flowInfo.reversePath.cookie.value
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
             def stats = flowStats.of(subflowId)
-            stats.get(FLOW_RAW_BYTES, dstSwitchId, mainForwardCookie).hasNonZeroValues()
-            stats.get(FLOW_RAW_BYTES, yFlow.getSharedEndpoint().getSwitchId(), mainReverseCookie).hasNonZeroValues()
+            assert stats.get(FLOW_RAW_BYTES, dstSwitchId, mainForwardCookie).hasNonZeroValues()
+            assert stats.get(FLOW_RAW_BYTES, dstSwitchId, mainReverseCookie).hasNonZeroValues()
         }
 
         cleanup:
@@ -205,9 +210,9 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
             flowStatusDetails.protectedFlowPathStatus == "Down"
         }
         verifyAll(northbound.getFlow(sFlow2.flowId)) {
-            status == FlowState.UP.toString()
+            upOrDegradedState.contains(status)
             flowStatusDetails.mainFlowPathStatus == "Up"
-            flowStatusDetails.protectedFlowPathStatus == "Up"
+            upOrDownState.contains(flowStatusDetails.protectedFlowPathStatus)
         }
 
         def sFlow1AfterPathInfo = northbound.getFlowPath(sFlow1.flowId)
@@ -387,9 +392,9 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
             flowStatusDetails.protectedFlowPathStatus == "Down"
         }
         verifyAll(northbound.getFlow(sFlow2.flowId)) {
-            status == FlowState.UP.toString()
+            upOrDegradedState.contains(status)
             flowStatusDetails.mainFlowPathStatus == "Up"
-            flowStatusDetails.protectedFlowPathStatus == "Up"
+            upOrDownState.contains(flowStatusDetails.protectedFlowPathStatus)
         }
 
         def sFlow1AfterPathInfo = northbound.getFlowPath(sFlow1.flowId)
