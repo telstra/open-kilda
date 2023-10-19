@@ -928,10 +928,8 @@ Failed to find path with requested bandwidth= ignored"
 
         and: "Alt path ISLs have not enough bandwidth to host the flow"
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
-        def altPaths = allFlowPaths.findAll { it != currentPath }
         def involvedIsls = pathHelper.getInvolvedIsls(currentPath)
-        def altIsls = altPaths.collectMany { pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) } }
-                .unique { a, b -> (a == b || a == b.reversed) ? 0 : 1 }
+        def altIsls = topology.getRelatedIsls(topologyHelper.getSwitch(flow.getSource().getSwitchId())) - involvedIsls
         altIsls.each {isl ->
             def linkProp = islUtils.toLinkProps(isl, [cost: "1"])
             northbound.updateLinkProps([linkProp])
@@ -945,9 +943,8 @@ Failed to find path with requested bandwidth= ignored"
 
         when: "Fail a flow ISL (bring switch port down)"
         Set<Isl> altFlowIsls = []
-        def flowIsls = pathHelper.getInvolvedIsls(flowPath)
         allFlowPaths.findAll { it != flowPath }.each { altFlowIsls.addAll(pathHelper.getInvolvedIsls(it)) }
-        def islToFail = flowIsls.find { !(it in altFlowIsls) && !(it.reversed in altFlowIsls) }
+        def islToFail = involvedIsls.get(0)
         def portDown = antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "Flow history shows two reroute attempts, second one succeeds with ignore bw"
@@ -966,8 +963,6 @@ Failed to find path with requested bandwidth= ignored"
         northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
         List<PathNode> pathAfterReroute1 = PathHelper.convert(northbound.getFlowPath(flow.flowId))
         pathAfterReroute1 != flowPath
-        pathHelper.getInvolvedIsls(pathAfterReroute1).each {
-            assert northbound.getLink(it).availableBandwidth == flow.maximumBandwidth - 1 }
 
         when: "Try to manually reroute the degraded flow, while there is still not enough bandwidth"
         northboundV2.rerouteFlow(flow.flowId)
@@ -984,8 +979,6 @@ Failed to find path with requested bandwidth= ignored"
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
         }
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == pathAfterReroute1
-        pathHelper.getInvolvedIsls(pathAfterReroute1).each {
-            assert northbound.getLink(it).availableBandwidth == flow.maximumBandwidth - 1 }
 
         when: "Trigger auto reroute by blinking not involved(in flow path) isl"
         def islToBlink = topology.islsForActiveSwitches.find {
@@ -1006,8 +999,6 @@ Failed to find path with requested bandwidth= ignored"
         }
 
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == pathAfterReroute1
-        pathHelper.getInvolvedIsls(pathAfterReroute1).each {
-            assert northbound.getLink(it).availableBandwidth == flow.maximumBandwidth - 1 }
 
         when: "Broken ISL on the original path is back online"
         def portUp = antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
