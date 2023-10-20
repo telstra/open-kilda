@@ -28,7 +28,6 @@ import org.openkilda.model.MirrorDirection;
 import org.openkilda.model.MirrorGroup;
 import org.openkilda.model.MirrorGroupType;
 import org.openkilda.model.Switch;
-import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.pce.exception.RecoverableException;
@@ -130,9 +129,6 @@ public class ResourceAllocationAction
             FlowSegmentCookie cookie = FlowSegmentCookie.builder()
                     .flowEffectiveId(stateMachine.getUnmaskedCookie()).mirror(true).build();
 
-            SwitchProperties switchProperties = getSwitchProperties(sinkSwitch.getSwitchId());
-            boolean dstWithMultiTable = switchProperties != null
-                    ? switchProperties.isMultiTable() : kildaConfigurationRepository.getOrDefault().getUseMultiTable();
             FlowMirrorPath flowMirrorPath = FlowMirrorPath.builder()
                     .pathId(stateMachine.getMirrorPathId())
                     .mirrorSwitch(flowMirrorPoints.getMirrorSwitch())
@@ -144,7 +140,6 @@ public class ResourceAllocationAction
                     .bandwidth(flow.getBandwidth())
                     .ignoreBandwidth(flow.isIgnoreBandwidth())
                     .status(FlowPathStatus.IN_PROGRESS)
-                    .egressWithMultiTable(dstWithMultiTable)
                     .build();
 
             flowMirrorPathRepository.add(flowMirrorPath);

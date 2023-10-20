@@ -103,7 +103,7 @@ public class EgressMirrorRuleGeneratorTest {
 
     @Test
     public void buildVlanMultiTableDoubleVlanEgressMirrorRuleTest() {
-        FlowPath path = buildPathWithMirror(true);
+        FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, INNER_VLAN_ID);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
@@ -117,14 +117,14 @@ public class EgressMirrorRuleGeneratorTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new GroupAction(GROUP_ID));
-        assertEgressCommand(egressCommand, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions,
+        assertEgressCommand(egressCommand, VLAN_ENCAPSULATION, expectedApplyActions,
                 groupCommand.getUuid());
         assertGroupCommand(groupCommand);
     }
 
     @Test
     public void buildVlanMultiTableOuterVlanEgressMirrorRuleTest() {
-        FlowPath path = buildPathWithMirror(true);
+        FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
@@ -136,14 +136,14 @@ public class EgressMirrorRuleGeneratorTest {
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new GroupAction(GROUP_ID));
-        assertEgressCommand(egressCommand, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions,
+        assertEgressCommand(egressCommand, VLAN_ENCAPSULATION, expectedApplyActions,
                 groupCommand.getUuid());
         assertGroupCommand(groupCommand);
     }
 
     @Test
     public void buildVlanMultiTableOuterVlanEqualsTransitEgressMirrorRuleTest() {
-        FlowPath path = buildPathWithMirror(true);
+        FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, VLAN_ENCAPSULATION.getId(), 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
@@ -153,7 +153,7 @@ public class EgressMirrorRuleGeneratorTest {
         GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
 
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(new GroupAction(GROUP_ID));
-        assertEgressCommand(egressCommand, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions,
+        assertEgressCommand(egressCommand, VLAN_ENCAPSULATION, expectedApplyActions,
                 groupCommand.getUuid());
         assertGroupCommand(groupCommand);
     }
@@ -161,7 +161,7 @@ public class EgressMirrorRuleGeneratorTest {
 
     @Test
     public void buildVlanMultiTableOuterInnerVlanEqualsTransitEgressMirrorRuleTest() {
-        FlowPath path = buildPathWithMirror(true);
+        FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, VLAN_ENCAPSULATION.getId());
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
@@ -174,14 +174,14 @@ public class EgressMirrorRuleGeneratorTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new GroupAction(GROUP_ID));
-        assertEgressCommand(egressCommand, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions,
+        assertEgressCommand(egressCommand, VLAN_ENCAPSULATION, expectedApplyActions,
                 groupCommand.getUuid());
         assertGroupCommand(groupCommand);
     }
 
     @Test
     public void buildVlanMultiTableFullPortEgressMirrorRuleTest() {
-        FlowPath path = buildPathWithMirror(true);
+        FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, 0, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
 
@@ -193,70 +193,14 @@ public class EgressMirrorRuleGeneratorTest {
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVlanAction(),
                 new GroupAction(GROUP_ID));
-        assertEgressCommand(egressCommand, OfTable.EGRESS, VLAN_ENCAPSULATION, expectedApplyActions,
-                groupCommand.getUuid());
-        assertGroupCommand(groupCommand);
-    }
-
-    @Test
-    public void buildVlanSingleTableOuterVlanEgressMirrorRuleTest() {
-        FlowPath path = buildPathWithMirror(false);
-        Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
-        EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
-
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(2, commands.size());
-        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
-        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
-
-        ArrayList<Action> expectedApplyActions = Lists.newArrayList(
-                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
-                new GroupAction(GROUP_ID));
-        assertEgressCommand(egressCommand, OfTable.INPUT, VLAN_ENCAPSULATION, expectedApplyActions,
-                groupCommand.getUuid());
-        assertGroupCommand(groupCommand);
-    }
-
-    @Test
-    public void buildVlanSingleTableOuterVlanEqualsTransitVlanEgressMirrorRuleTest() {
-        FlowPath path = buildPathWithMirror(false);
-        Flow flow = buildFlow(path, VLAN_ENCAPSULATION.getId(), 0);
-        EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
-
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(2, commands.size());
-        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
-        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
-
-        ArrayList<Action> expectedApplyActions = Lists.newArrayList(
-                new GroupAction(GROUP_ID));
-        assertEgressCommand(egressCommand, OfTable.INPUT, VLAN_ENCAPSULATION, expectedApplyActions,
-                groupCommand.getUuid());
-        assertGroupCommand(groupCommand);
-    }
-
-    @Test
-    public void buildVlanSingleTableFullPortEgressMirrorRuleTest() {
-        FlowPath path = buildPathWithMirror(false);
-        Flow flow = buildFlow(path, 0, 0);
-        EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
-
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(2, commands.size());
-        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
-        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
-
-        ArrayList<Action> expectedApplyActions = Lists.newArrayList(
-                new PopVlanAction(),
-                new GroupAction(GROUP_ID));
-        assertEgressCommand(egressCommand, OfTable.INPUT, VLAN_ENCAPSULATION, expectedApplyActions,
+        assertEgressCommand(egressCommand, VLAN_ENCAPSULATION, expectedApplyActions,
                 groupCommand.getUuid());
         assertGroupCommand(groupCommand);
     }
 
     @Test
     public void buildVxlanMultiTableOuterInnerVlanEgressMirrorRuleTest() {
-        FlowPath path = buildPathWithMirror(true);
+        FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, INNER_VLAN_ID);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
@@ -272,14 +216,14 @@ public class EgressMirrorRuleGeneratorTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new GroupAction(GROUP_ID));
-        assertEgressCommand(egressCommand, OfTable.EGRESS, VXLAN_ENCAPSULATION, expectedApplyActions,
+        assertEgressCommand(egressCommand, VXLAN_ENCAPSULATION, expectedApplyActions,
                 groupCommand.getUuid());
         assertGroupCommand(groupCommand);
     }
 
     @Test
     public void buildVxlanMultiTableOuterVlanEgressMirrorRuleTest() {
-        FlowPath path = buildPathWithMirror(true);
+        FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
@@ -293,14 +237,14 @@ public class EgressMirrorRuleGeneratorTest {
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
                 new GroupAction(GROUP_ID));
-        assertEgressCommand(egressCommand, OfTable.EGRESS, VXLAN_ENCAPSULATION, expectedApplyActions,
+        assertEgressCommand(egressCommand, VXLAN_ENCAPSULATION, expectedApplyActions,
                 groupCommand.getUuid());
         assertGroupCommand(groupCommand);
     }
 
     @Test
     public void buildVxlanMultiTableFullPortEgressMirrorRuleTest() {
-        FlowPath path = buildPathWithMirror(true);
+        FlowPath path = buildPathWithMirror();
         Flow flow = buildFlow(path, 0, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
 
@@ -312,48 +256,7 @@ public class EgressMirrorRuleGeneratorTest {
         ArrayList<Action> expectedApplyActions = Lists.newArrayList(
                 new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
                 new GroupAction(GROUP_ID));
-        assertEgressCommand(egressCommand, OfTable.EGRESS, VXLAN_ENCAPSULATION, expectedApplyActions,
-                groupCommand.getUuid());
-        assertGroupCommand(groupCommand);
-    }
-
-    @Test
-    public void buildVxlanSingleTableOuterVlanEgressMirrorRuleTest() {
-        FlowPath path = buildPathWithMirror(false);
-        Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
-        EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
-
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(2, commands.size());
-        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
-        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
-
-        ArrayList<Action> expectedApplyActions = Lists.newArrayList(
-                new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                new PushVlanAction(),
-                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID).build(),
-                new GroupAction(GROUP_ID)
-        );
-        assertEgressCommand(egressCommand, OfTable.INPUT, VXLAN_ENCAPSULATION, expectedApplyActions,
-                groupCommand.getUuid());
-        assertGroupCommand(groupCommand);
-    }
-
-    @Test
-    public void buildVxlanSingleTableFullPortEgressMirrorRuleTest() {
-        FlowPath path = buildPathWithMirror(false);
-        Flow flow = buildFlow(path, 0, 0);
-        EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
-
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_2);
-        assertEquals(2, commands.size());
-        FlowSpeakerData egressCommand = getCommand(FlowSpeakerData.class, commands);
-        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
-
-        ArrayList<Action> expectedApplyActions = Lists.newArrayList(
-                new PopVxlanAction(ActionType.POP_VXLAN_NOVIFLOW),
-                new GroupAction(GROUP_ID));
-        assertEgressCommand(egressCommand, OfTable.INPUT, VXLAN_ENCAPSULATION, expectedApplyActions,
+        assertEgressCommand(egressCommand, VXLAN_ENCAPSULATION, expectedApplyActions,
                 groupCommand.getUuid());
         assertGroupCommand(groupCommand);
     }
@@ -385,7 +288,7 @@ public class EgressMirrorRuleGeneratorTest {
 
     @Test
     public void pathWithoutMirrorsEgressMirrorRuleTest() {
-        FlowPath path = buildPath(true);
+        FlowPath path = buildPath();
         Flow flow = buildFlow(path, 0, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
         assertEquals(0, generator.generateCommands(SWITCH_2).size());
@@ -393,7 +296,7 @@ public class EgressMirrorRuleGeneratorTest {
 
     @Test
     public void pathWithWrongMirrorSwitchMirrorsEgressMirrorRuleTest() {
-        FlowPath path = buildPath(true);
+        FlowPath path = buildPath();
         path.addFlowMirrorPoints(buildMirrorPoints(SWITCH_1));
         Flow flow = buildFlow(path, 0, 0);
         EgressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
@@ -401,14 +304,14 @@ public class EgressMirrorRuleGeneratorTest {
     }
 
     private void assertEgressCommand(
-            FlowSpeakerData command, OfTable table, FlowTransitEncapsulation encapsulation,
+            FlowSpeakerData command, FlowTransitEncapsulation encapsulation,
             List<Action> expectedApplyActions, UUID groupCommandUuid) {
         assertEquals(SWITCH_2.getSwitchId(), command.getSwitchId());
         assertEquals(SWITCH_2.getOfVersion(), command.getOfVersion().toString());
         assertEquals(Lists.newArrayList(groupCommandUuid), new ArrayList<>(command.getDependsOn()));
 
         assertEquals(MIRROR_COOKIE, command.getCookie());
-        assertEquals(table, command.getTable());
+        assertEquals(OfTable.EGRESS, command.getTable());
         assertEquals(Priority.MIRROR_FLOW_PRIORITY, command.getPriority());
 
 
@@ -472,19 +375,18 @@ public class EgressMirrorRuleGeneratorTest {
                 .build();
     }
 
-    private FlowPath buildPathWithMirror(boolean multiTable) {
-        FlowPath path = buildPath(multiTable);
+    private FlowPath buildPathWithMirror() {
+        FlowPath path = buildPath();
         path.addFlowMirrorPoints(MIRROR_POINTS);
         return path;
     }
 
-    private FlowPath buildPath(boolean multiTable) {
+    private FlowPath buildPath() {
         return FlowPath.builder()
                 .pathId(PATH_ID)
                 .cookie(COOKIE)
                 .srcSwitch(SWITCH_1)
                 .destSwitch(SWITCH_2)
-                .destWithMultiTable(multiTable)
                 .segments(Lists.newArrayList(PathSegment.builder()
                         .pathId(PATH_ID)
                         .srcPort(PORT_NUMBER_2)

@@ -36,8 +36,6 @@ public abstract class PathSegmentFrame extends KildaBaseVertexFrame implements P
     public static final String DST_SWITCH_ID_PROPERTY = "dst_switch_id";
     public static final String SRC_PORT_PROPERTY = "src_port";
     public static final String DST_PORT_PROPERTY = "dst_port";
-    public static final String SRC_W_MULTI_TABLE_PROPERTY = "src_with_multi_table";
-    public static final String DST_W_MULTI_TABLE_PROPERTY = "dst_with_multi_table";
     public static final String IGNORE_BANDWIDTH_PROPERTY = "ignore_bandwidth";
     public static final String BANDWIDTH_PROPERTY = "bandwidth";
     public static final String SEQ_ID_PROPERTY = "seq_id";
@@ -155,26 +153,6 @@ public abstract class PathSegmentFrame extends KildaBaseVertexFrame implements P
         }
         return destSwitch;
     }
-
-    @Override
-    @Property(SRC_W_MULTI_TABLE_PROPERTY)
-    @Deprecated
-    public abstract boolean isSrcWithMultiTable();
-
-    @Override
-    @Property(SRC_W_MULTI_TABLE_PROPERTY)
-    @Deprecated
-    public abstract void setSrcWithMultiTable(boolean srcWithMultiTable);
-
-    @Override
-    @Property(DST_W_MULTI_TABLE_PROPERTY)
-    @Deprecated
-    public abstract boolean isDestWithMultiTable();
-
-    @Override
-    @Property(DST_W_MULTI_TABLE_PROPERTY)
-    @Deprecated
-    public abstract void setDestWithMultiTable(boolean destWithMultiTable);
 
     @Override
     @Property(SHARED_BANDWIDTH_GROUP_ID_PROPERTY)

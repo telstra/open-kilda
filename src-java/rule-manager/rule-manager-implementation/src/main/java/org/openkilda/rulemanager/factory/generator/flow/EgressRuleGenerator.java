@@ -69,7 +69,7 @@ public class EgressRuleGenerator extends NotIngressRuleGenerator {
                 .switchId(flowPath.getDestSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie())
-                .table(flowPath.isDestWithMultiTable() ? OfTable.EGRESS : OfTable.INPUT)
+                .table(OfTable.EGRESS)
                 .priority(Priority.FLOW_PRIORITY)
                 .match(makeTransitMatch(sw, inPort, encapsulation))
                 .instructions(Instructions.builder()

@@ -15,14 +15,13 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN;
 import static org.openkilda.model.FlowEncapsulationType.VXLAN;
 import static org.openkilda.model.PathComputationStrategy.COST;
 import static org.openkilda.model.PathComputationStrategy.LATENCY;
 import static org.openkilda.model.PathComputationStrategy.MAX_LATENCY;
 
+import org.openkilda.messaging.model.system.KildaConfigurationDto;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.PathComputationStrategy;
@@ -49,43 +48,10 @@ public class KildaConfigurationServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void trueMultiTable() {
-        createConfiguration(false, VXLAN, COST);
-        KildaConfiguration kildaConfiguration = KildaConfiguration.builder().useMultiTable(true).build();
-        kildaConfigurationService.updateKildaConfiguration(kildaConfiguration);
-
-        Optional<KildaConfiguration> updatedConfiguration = kildaConfigurationRepository.find();
-        Assertions.assertTrue(updatedConfiguration.isPresent());
-        Assertions.assertTrue(updatedConfiguration.get().getUseMultiTable());
-    }
-
-    @Test
-    public void nullMultiTable() {
-        createConfiguration(false, VXLAN, COST);
-        KildaConfiguration kildaConfiguration = KildaConfiguration.builder().useMultiTable(null).build();
-        kildaConfigurationService.updateKildaConfiguration(kildaConfiguration);
-
-        Optional<KildaConfiguration> updatedConfiguration = kildaConfigurationRepository.find();
-        Assertions.assertTrue(updatedConfiguration.isPresent());
-        Assertions.assertFalse(updatedConfiguration.get().getUseMultiTable());
-    }
-
-    @Test
-    public void falseMultiTable() {
-        createConfiguration(true, VXLAN, COST);
-        KildaConfiguration kildaConfiguration = KildaConfiguration.builder().useMultiTable(false).build();
-
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
-                () -> kildaConfigurationService.updateKildaConfiguration(kildaConfiguration));
-        assertEquals("Single table mode was deprecated. OpenKilda doesn't support it anymore. Configuration "
-                + "property `use_multi_table` can't be 'false'.", thrown.getMessage());
-    }
-
-    @Test
     public void updateEncapsulationTypeTable() {
-        createConfiguration(true, TRANSIT_VLAN, COST);
-        KildaConfiguration kildaConfiguration = KildaConfiguration.builder()
-                .flowEncapsulationType(VXLAN).build();
+        createConfiguration(TRANSIT_VLAN, COST);
+        KildaConfigurationDto kildaConfiguration = KildaConfigurationDto.builder()
+                .flowEncapsulationType(VXLAN.name()).build();
         kildaConfigurationService.updateKildaConfiguration(kildaConfiguration);
 
         Optional<KildaConfiguration> updatedConfiguration = kildaConfigurationRepository.find();
@@ -95,8 +61,9 @@ public class KildaConfigurationServiceTest extends InMemoryGraphBasedTest {
 
     @Test
     public void updateStrategyTable() {
-        createConfiguration(true, VXLAN, MAX_LATENCY);
-        KildaConfiguration kildaConfiguration = KildaConfiguration.builder().pathComputationStrategy(LATENCY).build();
+        createConfiguration(VXLAN, MAX_LATENCY);
+        KildaConfigurationDto kildaConfiguration = KildaConfigurationDto.builder()
+                .pathComputationStrategy(LATENCY.name()).build();
         kildaConfigurationService.updateKildaConfiguration(kildaConfiguration);
 
         Optional<KildaConfiguration> updatedConfiguration = kildaConfigurationRepository.find();
@@ -105,9 +72,8 @@ public class KildaConfigurationServiceTest extends InMemoryGraphBasedTest {
     }
 
     private void createConfiguration(
-            boolean useMultiTable, FlowEncapsulationType encapsulation, PathComputationStrategy computationStrategy) {
+            FlowEncapsulationType encapsulation, PathComputationStrategy computationStrategy) {
         KildaConfiguration kildaConfiguration = KildaConfiguration.builder()
-                .useMultiTable(useMultiTable)
                 .flowEncapsulationType(encapsulation)
                 .pathComputationStrategy(computationStrategy)
                 .build();

@@ -78,7 +78,7 @@ public class InstallIngressRulesAction extends
         Set<SwitchId> switchIds = haPath.getAllInvolvedSwitches();
         Set<PathId> pathIds = new HashSet<>(overlappingPathIds);
         pathIds.addAll(haPath.getSubPathIds());
-        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false);
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, pathIds, switchIds);
         return ruleManager.buildRulesHaFlowPath(haPath, false, false, true, false, dataAdapter);
     }
 

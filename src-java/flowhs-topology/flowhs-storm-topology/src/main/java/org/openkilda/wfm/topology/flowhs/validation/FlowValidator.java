@@ -56,10 +56,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -145,7 +143,6 @@ public class FlowValidator {
         checkFlags(flow);
         checkBandwidth(flow);
         checkMaxLatencyTier(flow);
-        checkSwitchesSupportLldpAndArpIfNeeded(flow);
 
         if (StringUtils.isNotBlank(flow.getDiverseFlowId())) {
             checkDiverseFlow(flow);
@@ -185,17 +182,12 @@ public class FlowValidator {
         for (EndpointDescriptor descriptor : new EndpointDescriptor[]{
                 EndpointDescriptor.makeSource(source),
                 EndpointDescriptor.makeDestination(destination)}) {
-            SwitchId switchId = descriptor.endpoint.getSwitchId();
-            SwitchProperties properties = switchPropertiesRepository.findBySwitchId(switchId)
-                    .orElseThrow(() -> new InvalidFlowException(
-                            format("Couldn't get switch properties for %s switch %s.", descriptor.name, switchId),
-                            ErrorType.DATA_INVALID));
+            SwitchProperties properties = getSwitchProperties(descriptor);
 
             // skip encapsulation type check for one switch flow
             if (!source.getSwitchId().equals(destination.getSwitchId())) {
                 checkForEncapsulationTypeRequirement(descriptor, properties, flow.getFlowEncapsulationType());
             }
-            checkForMultiTableRequirement(descriptor, properties);
             checkFlowForIslConflicts(descriptor);
             checkFlowForFlowConflicts(flow.getFlowId(), descriptor, bulkUpdateFlowIds);
             checkFlowForSinkEndpointConflicts(descriptor);
@@ -557,47 +549,6 @@ public class FlowValidator {
     }
 
     /**
-     * Verifies that the given switches support LLDP and ARP.
-     *
-     * @param requestedFlow a flow to be validated.
-     */
-    // TODO: switch to per endpoint based strategy (same as other end point related checks)
-    @VisibleForTesting
-    void checkSwitchesSupportLldpAndArpIfNeeded(RequestedFlow requestedFlow) throws InvalidFlowException {
-        SwitchId sourceId = requestedFlow.getSrcSwitch();
-        SwitchId destinationId = requestedFlow.getDestSwitch();
-
-        List<String> errorMessages = new ArrayList<>();
-
-        if (requestedFlow.getDetectConnectedDevices().isSrcLldp()
-                || requestedFlow.getDetectConnectedDevices().isSrcArp()) {
-            validateMultiTableProperty(sourceId, errorMessages);
-        }
-
-        if (requestedFlow.getDetectConnectedDevices().isDstLldp()
-                || requestedFlow.getDetectConnectedDevices().isDstArp()) {
-            validateMultiTableProperty(destinationId, errorMessages);
-        }
-
-        if (!errorMessages.isEmpty()) {
-            throw new InvalidFlowException(String.join(" ", errorMessages), ErrorType.DATA_INVALID);
-        }
-    }
-
-    private void validateMultiTableProperty(SwitchId switchId, List<String> errorMessages) {
-        Optional<SwitchProperties> switchProperties = switchPropertiesRepository.findBySwitchId(switchId);
-        if (!switchProperties.isPresent()) {
-            errorMessages.add(String.format("Couldn't get switch properties for switch %s.", switchId));
-        } else {
-            if (!switchProperties.get().isMultiTable()) {
-                errorMessages.add(String.format("Catching of LLDP/ARP packets supported only on switches with "
-                                + "enabled 'multiTable' switch feature. This feature is disabled on switch %s.",
-                        switchId));
-            }
-        }
-    }
-
-    /**
      * Check for equals endpoints.
      *
      * @param firstFlow a first flow.
@@ -631,22 +582,6 @@ public class FlowValidator {
         }
 
         return flowEndpoints;
-    }
-
-    private void checkForMultiTableRequirement(EndpointDescriptor descriptor, SwitchProperties switchProperties)
-            throws InvalidFlowException {
-        FlowEndpoint endpoint = descriptor.getEndpoint();
-        if (endpoint.getVlanStack().size() < 2) {
-            return;
-        }
-
-        if (!switchProperties.isMultiTable()) {
-            final String errorMessage = format(
-                    "Flow's %s endpoint is double VLAN tagged, switch %s is not capable to support such endpoint "
-                            + "encapsulation.",
-                    descriptor.getName(), endpoint.getSwitchId());
-            throw new InvalidFlowException(errorMessage, ErrorType.PARAMETERS_INVALID);
-        }
     }
 
     @VisibleForTesting
@@ -698,17 +633,14 @@ public class FlowValidator {
                 .innerVlanId(mirrorPoint.getSinkEndpoint().getInnerVlanId())
                 .build());
 
-        SwitchId switchId = descriptor.endpoint.getSwitchId();
-        SwitchProperties properties = switchPropertiesRepository.findBySwitchId(switchId)
-                .orElseThrow(() -> new InvalidFlowException(
-                        format("Couldn't get switch properties for %s switch %s.", descriptor.name, switchId),
-                        ErrorType.DATA_INVALID));
+
 
         checkForConnectedDevisesConflict(mirrorPoint.getFlowId(), mirrorPoint.getMirrorPointSwitchId());
-        checkForMultiTableRequirement(descriptor, properties);
         checkFlowForIslConflicts(descriptor);
         checkFlowForFlowConflicts(mirrorPoint.getMirrorPointId(), descriptor);
         checkFlowForSinkEndpointConflicts(descriptor);
+
+        SwitchProperties properties = getSwitchProperties(descriptor);
         checkFlowForServer42Conflicts(descriptor, properties);
     }
 
@@ -764,5 +696,13 @@ public class FlowValidator {
                 throw new InvalidFlowException(message, ErrorType.PARAMETERS_INVALID);
             }
         }
+    }
+
+    private SwitchProperties getSwitchProperties(EndpointDescriptor descriptor) throws InvalidFlowException {
+        SwitchId switchId = descriptor.endpoint.getSwitchId();
+        return switchPropertiesRepository.findBySwitchId(switchId)
+                .orElseThrow(() -> new InvalidFlowException(
+                        format("Couldn't get switch properties for %s switch %s.", descriptor.name, switchId),
+                        ErrorType.DATA_INVALID));
     }
 }

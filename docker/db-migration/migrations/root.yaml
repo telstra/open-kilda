@@ -99,4 +99,6 @@ databaseChangeLog:
   - include:
       relativeToChangelogFile: true
       file: 029-add-ha-flow-history-event.yaml
-
+  - include:
+      relativeToChangelogFile: true
+      file: 030-ensure-all-objects-are-multi-table.yaml

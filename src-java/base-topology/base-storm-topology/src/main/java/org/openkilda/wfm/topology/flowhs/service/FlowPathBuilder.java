@@ -28,20 +28,16 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
-import org.openkilda.model.SwitchProperties;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.FlowSegmentCookie.FlowSubType;
 import org.openkilda.pce.HaPath;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;
-import org.openkilda.persistence.repositories.KildaConfigurationRepository;
-import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResources.PathResources;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources.HaPathResources;
 
 import com.google.common.collect.Sets;
 import lombok.AllArgsConstructor;
-import org.apache.commons.collections4.map.LazyMap;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -54,9 +50,6 @@ import java.util.stream.Collectors;
 
 @AllArgsConstructor
 public class FlowPathBuilder {
-    private SwitchPropertiesRepository switchPropertiesRepository;
-    private KildaConfigurationRepository kildaConfigurationRepository;
-
     /**
      * Check whether the path and flow path represent the same.
      *
@@ -166,14 +159,6 @@ public class FlowPathBuilder {
                     pathResources.getPathId(), destSwitchId, flow.getFlowId()));
         }
 
-        Map<SwitchId, SwitchProperties> switchProperties = getSwitchProperties(pathResources.getPathId());
-        boolean srcWithMultiTable = switchProperties.get(srcSwitch.getSwitchId()) != null
-                ? switchProperties.get(srcSwitch.getSwitchId()).isMultiTable()
-                : kildaConfigurationRepository.getOrDefault().getUseMultiTable();
-        boolean dstWithMultiTable = switchProperties.get(destSwitch.getSwitchId()) != null
-                ? switchProperties.get(destSwitch.getSwitchId()).isMultiTable()
-                : kildaConfigurationRepository.getOrDefault().getUseMultiTable();
-
         return FlowPath.builder()
                 .pathId(pathResources.getPathId())
                 .srcSwitch(srcSwitch)
@@ -184,8 +169,6 @@ public class FlowPathBuilder {
                 .ignoreBandwidth(flow.isIgnoreBandwidth() || forceToIgnoreBandwidth)
                 .latency(pathLatency)
                 .segments(segments)
-                .srcWithMultiTable(srcWithMultiTable)
-                .destWithMultiTable(dstWithMultiTable)
                 .sharedBandwidthGroupId(sharedBandwidthGroupId)
                 .build();
     }
@@ -244,8 +227,6 @@ public class FlowPathBuilder {
                 .ignoreBandwidth(haFlow.isIgnoreBandwidth() || forceIgnoreBandwidth)
                 .latency(path.getLatency())
                 .segments(segments)
-                .srcWithMultiTable(true)
-                .destWithMultiTable(true)
                 .sharedBandwidthGroupId(haFlow.getHaFlowId())
                 .status(FlowPathStatus.IN_PROGRESS)
                 .build();
@@ -309,24 +290,17 @@ public class FlowPathBuilder {
      */
     public List<PathSegment> buildPathSegments(PathId pathId, List<Segment> segments, long bandwidth,
                                                boolean ignoreBandwidth, String sharedBandwidthGroupId) {
-        Map<SwitchId, SwitchProperties> switchProperties = getSwitchProperties(pathId);
-
         List<PathSegment> result = new ArrayList<>();
         for (int i = 0; i < segments.size(); i++) {
             Path.Segment segment = segments.get(i);
-
-            SwitchProperties srcSwitchProperties = switchProperties.get(segment.getSrcSwitchId());
-            SwitchProperties dstSwitchProperties = switchProperties.get(segment.getDestSwitchId());
 
             result.add(PathSegment.builder()
                     .seqId(i)
                     .pathId(pathId)
                     .srcSwitch(Switch.builder().switchId(segment.getSrcSwitchId()).build())
                     .srcPort(segment.getSrcPort())
-                    .srcWithMultiTable(srcSwitchProperties.isMultiTable())
                     .destSwitch(Switch.builder().switchId(segment.getDestSwitchId()).build())
                     .destPort(segment.getDestPort())
-                    .destWithMultiTable(dstSwitchProperties.isMultiTable())
                     .latency(segment.getLatency())
                     .bandwidth(bandwidth)
                     .ignoreBandwidth(ignoreBandwidth)
@@ -374,12 +348,5 @@ public class FlowPathBuilder {
                         .destPort(segment.getDestPort())
                         .build())
                 .collect(Collectors.toSet());
-    }
-
-    private LazyMap<SwitchId, SwitchProperties> getSwitchProperties(PathId pathId) {
-        return LazyMap.lazyMap(new HashMap<>(), switchId ->
-                switchPropertiesRepository.findBySwitchId(switchId)
-                        .orElseThrow(() -> new IllegalArgumentException(
-                                format("Path %s has end-point %s without switch properties", pathId, switchId))));
     }
 }

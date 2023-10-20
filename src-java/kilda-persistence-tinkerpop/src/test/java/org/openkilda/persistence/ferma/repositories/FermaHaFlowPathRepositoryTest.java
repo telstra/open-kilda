@@ -49,6 +49,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -171,7 +172,7 @@ public class FermaHaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
         assertTrue(foundPath1.isPresent());
         assertHaFlowPath(PATH_ID_1, BANDWIDTH_1, COOKIE_1, METER_ID_1, METER_ID_2,
                 switch1, SWITCH_ID_2, GROUP_ID_1, haFlow, foundPath1.get());
-        assertEquals(expectedSubPaths, foundPath1.get().getSubPaths());
+        assertEquals(sorted(expectedSubPaths), sorted(foundPath1.get().getSubPaths()));
         assertEquals(Lists.newArrayList(subFlow1, subFlow2), foundPath1.get().getHaSubFlows());
     }
 
@@ -319,5 +320,9 @@ public class FermaHaFlowPathRepositoryTest extends InMemoryGraphBasedTest {
 
     private static Map<PathId, HaFlowPath> haFlowPathsToMap(Collection<HaFlowPath> paths) {
         return paths.stream().collect(Collectors.toMap(HaFlowPath::getHaPathId, Function.identity()));
+    }
+
+    private static List<FlowPath> sorted(List<FlowPath> paths) {
+        return paths.stream().sorted(Comparator.comparing(FlowPath::getPathId)).collect(Collectors.toList());
     }
 }

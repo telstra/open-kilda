@@ -15,7 +15,10 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.validation;
 
-import static org.openkilda.rulemanager.action.ActionType.PUSH_VXLAN_NOVIFLOW;
+import static com.google.common.collect.Sets.newHashSet;
+import static org.openkilda.wfm.topology.flowhs.fsm.validation.SwitchFlowEntriesBuilder.getIngressFlow;
+import static org.openkilda.wfm.topology.flowhs.fsm.validation.SwitchFlowEntriesBuilder.getSharedCustomerPortFlow;
+import static org.openkilda.wfm.topology.flowhs.fsm.validation.SwitchFlowEntriesBuilder.getSharedIngressFlow;
 
 import org.openkilda.messaging.info.flow.FlowDumpResponse;
 import org.openkilda.messaging.info.group.GroupDumpResponse;
@@ -49,13 +52,13 @@ import org.openkilda.rulemanager.GroupSpeakerData;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.MeterFlag;
 import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber.SpecialPortType;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
 import org.openkilda.rulemanager.action.PortOutAction;
-import org.openkilda.rulemanager.action.PushVxlanAction;
 import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.group.Bucket;
 import org.openkilda.rulemanager.group.WatchPort;
@@ -64,7 +67,6 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesConfig;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import org.apache.commons.lang3.math.NumberUtils;
 
 import java.util.ArrayList;
@@ -372,46 +374,48 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
         List<FlowDumpResponse> switchEntries = new ArrayList<>();
 
         switchEntries.add(getFlowDumpResponse(
-                getFlowSpeakerData(TEST_SWITCH_ID_A, FLOW_A_FORWARD_COOKIE, FLOW_A_SRC_PORT, FLOW_A_SRC_VLAN,
-                        String.valueOf(FLOW_A_SEGMENT_A_SRC_PORT), 0, getSetFieldAction(FLOW_A_ENCAP_ID),
-                        (long) FLOW_A_FORWARD_METER_ID, false),
+                getSharedCustomerPortFlow(TEST_SWITCH_ID_A, FLOW_A_SRC_PORT),
+                getSharedIngressFlow(TEST_SWITCH_ID_A, FLOW_A_SRC_PORT, FLOW_A_SRC_VLAN),
+                getIngressFlow(TEST_SWITCH_ID_A, FLOW_A_FORWARD_COOKIE, FLOW_A_SRC_PORT, FLOW_A_SRC_VLAN,
+                        new PortNumber(FLOW_A_SEGMENT_A_SRC_PORT), FLOW_A_ENCAP_ID, FLOW_A_FORWARD_METER_ID, false),
                 getFlowSpeakerData(TEST_SWITCH_ID_A, FLOW_A_REVERSE_COOKIE, FLOW_A_SEGMENT_A_SRC_PORT, FLOW_A_ENCAP_ID,
                         String.valueOf(FLOW_A_SRC_PORT), 0, getSetFieldAction(FLOW_A_SRC_VLAN),
-                        null, false),
+                        OfTable.EGRESS),
                 getFlowSpeakerData(TEST_SWITCH_ID_A, FLOW_A_REVERSE_COOKIE_PROTECTED,
                         FLOW_A_SEGMENT_A_SRC_PORT_PROTECTED,
                         FLOW_A_ENCAP_ID_PROTECTED, String.valueOf(FLOW_A_SRC_PORT), 0,
-                        getSetFieldAction(FLOW_A_SRC_VLAN), null, false)));
+                        getSetFieldAction(FLOW_A_SRC_VLAN), OfTable.EGRESS)));
 
         switchEntries.add(getFlowDumpResponse(
                 getFlowSpeakerData(TEST_SWITCH_ID_B, FLOW_A_FORWARD_COOKIE, FLOW_A_SEGMENT_A_DST_PORT, FLOW_A_ENCAP_ID,
                         String.valueOf(FLOW_A_SEGMENT_B_SRC_PORT), 0, null,
-                        null, false),
+                        OfTable.TRANSIT),
                 getFlowSpeakerData(TEST_SWITCH_ID_B, FLOW_A_REVERSE_COOKIE, FLOW_A_SEGMENT_B_SRC_PORT, FLOW_A_ENCAP_ID,
                         String.valueOf(FLOW_A_SEGMENT_A_DST_PORT), 0, null,
-                        null, false)));
+                        OfTable.TRANSIT)));
 
         switchEntries.add(getFlowDumpResponse(
                 getFlowSpeakerData(TEST_SWITCH_ID_C, FLOW_A_FORWARD_COOKIE, FLOW_A_SEGMENT_B_DST_PORT, FLOW_A_ENCAP_ID,
                         String.valueOf(FLOW_A_DST_PORT), 0, getSetFieldAction(FLOW_A_DST_VLAN),
-                        null, false),
-                getFlowSpeakerData(TEST_SWITCH_ID_C, FLOW_A_REVERSE_COOKIE, FLOW_A_DST_PORT, FLOW_A_DST_VLAN,
-                        String.valueOf(FLOW_A_SEGMENT_B_DST_PORT), 0, getSetFieldAction(FLOW_A_ENCAP_ID),
-                        (long) FLOW_A_REVERSE_METER_ID, false),
+                        OfTable.EGRESS),
+                getSharedCustomerPortFlow(TEST_SWITCH_ID_C, FLOW_A_DST_PORT),
+                getSharedIngressFlow(TEST_SWITCH_ID_C, FLOW_A_DST_PORT, FLOW_A_DST_VLAN),
+                getIngressFlow(TEST_SWITCH_ID_C, FLOW_A_REVERSE_COOKIE, FLOW_A_DST_PORT, FLOW_A_DST_VLAN,
+                        new PortNumber(FLOW_A_SEGMENT_B_DST_PORT), FLOW_A_ENCAP_ID, FLOW_A_REVERSE_METER_ID, false),
                 getFlowSpeakerData(TEST_SWITCH_ID_C, FLOW_A_FORWARD_COOKIE_PROTECTED,
                         FLOW_A_SEGMENT_B_DST_PORT_PROTECTED,
                         FLOW_A_ENCAP_ID_PROTECTED, String.valueOf(FLOW_A_DST_PORT), 0,
-                        getSetFieldAction(FLOW_A_DST_VLAN), null, false)));
+                        getSetFieldAction(FLOW_A_DST_VLAN), OfTable.EGRESS)));
 
         switchEntries.add(getFlowDumpResponse(
                 getFlowSpeakerData(TEST_SWITCH_ID_E, FLOW_A_FORWARD_COOKIE_PROTECTED,
                         FLOW_A_SEGMENT_A_DST_PORT_PROTECTED,
                         FLOW_A_ENCAP_ID_PROTECTED, String.valueOf(FLOW_A_SEGMENT_B_SRC_PORT_PROTECTED), 0,
-                        null, null, false),
+                        null, OfTable.TRANSIT),
                 getFlowSpeakerData(TEST_SWITCH_ID_E, FLOW_A_REVERSE_COOKIE_PROTECTED,
                         FLOW_A_SEGMENT_B_SRC_PORT_PROTECTED,
                         FLOW_A_ENCAP_ID_PROTECTED, String.valueOf(FLOW_A_SEGMENT_A_DST_PORT_PROTECTED), 0,
-                        null, null, false)));
+                        null, OfTable.TRANSIT)));
 
         return switchEntries;
     }
@@ -420,46 +424,48 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
         List<FlowDumpResponse> switchEntries = new ArrayList<>();
 
         switchEntries.add(getFlowDumpResponse(
-                getFlowSpeakerData(TEST_SWITCH_ID_A, 123, FLOW_A_SRC_PORT, FLOW_A_SRC_VLAN,
-                        String.valueOf(FLOW_A_SEGMENT_A_SRC_PORT), 0,
-                        getSetFieldAction(FLOW_A_ENCAP_ID), (long) FLOW_A_FORWARD_METER_ID, false),
+                getSharedCustomerPortFlow(TEST_SWITCH_ID_A, FLOW_A_SRC_PORT),
+                getSharedIngressFlow(TEST_SWITCH_ID_A, FLOW_A_SRC_PORT, FLOW_A_SRC_VLAN),
+                getIngressFlow(TEST_SWITCH_ID_A, 123, FLOW_A_SRC_PORT, FLOW_A_SRC_VLAN,
+                        new PortNumber(FLOW_A_SEGMENT_A_SRC_PORT), FLOW_A_ENCAP_ID, FLOW_A_FORWARD_METER_ID, false),
                 getFlowSpeakerData(TEST_SWITCH_ID_A, FLOW_A_REVERSE_COOKIE, 123, FLOW_A_ENCAP_ID,
                         String.valueOf(FLOW_A_SRC_PORT), 0, getSetFieldAction(FLOW_A_SRC_VLAN),
-                        null, false),
+                        OfTable.EGRESS),
                 getFlowSpeakerData(TEST_SWITCH_ID_A, FLOW_A_REVERSE_COOKIE_PROTECTED,
-                        123, FLOW_A_ENCAP_ID_PROTECTED,
-                        String.valueOf(FLOW_A_SRC_PORT), 0, getSetFieldAction(FLOW_A_SRC_VLAN),
-                        null, false)));
+                        123,
+                        FLOW_A_ENCAP_ID_PROTECTED, String.valueOf(FLOW_A_SRC_PORT), 0,
+                        getSetFieldAction(FLOW_A_SRC_VLAN), OfTable.EGRESS)));
 
         switchEntries.add(getFlowDumpResponse(
                 getFlowSpeakerData(TEST_SWITCH_ID_B, FLOW_A_FORWARD_COOKIE, FLOW_A_SEGMENT_A_DST_PORT, 123,
                         String.valueOf(FLOW_A_SEGMENT_B_SRC_PORT), 0, null,
-                        null, false),
+                        OfTable.TRANSIT),
                 getFlowSpeakerData(TEST_SWITCH_ID_B, FLOW_A_REVERSE_COOKIE, FLOW_A_SEGMENT_B_SRC_PORT, FLOW_A_ENCAP_ID,
-                        String.valueOf(123), 0, null, null, false)));
+                        String.valueOf(123), 0, null, OfTable.TRANSIT)));
 
         switchEntries.add(getFlowDumpResponse(
                 getFlowSpeakerData(TEST_SWITCH_ID_C, FLOW_A_FORWARD_COOKIE,
                         FLOW_A_SEGMENT_B_DST_PORT, FLOW_A_ENCAP_ID,
                         String.valueOf(FLOW_A_DST_PORT), 0, getSetFieldAction(123),
-                        null, false),
-                getFlowSpeakerData(TEST_SWITCH_ID_C, FLOW_A_REVERSE_COOKIE, FLOW_A_DST_PORT, FLOW_A_DST_VLAN,
-                        String.valueOf(FLOW_A_SEGMENT_B_DST_PORT), 0, getSetFieldAction(FLOW_A_ENCAP_ID),
-                        123L, false),
+                        OfTable.EGRESS),
+                getSharedCustomerPortFlow(TEST_SWITCH_ID_C, FLOW_A_DST_PORT),
+                getSharedIngressFlow(TEST_SWITCH_ID_C, FLOW_A_DST_PORT, FLOW_A_DST_VLAN),
+                getIngressFlow(TEST_SWITCH_ID_C, FLOW_A_REVERSE_COOKIE, FLOW_A_DST_PORT, FLOW_A_DST_VLAN,
+                        new PortNumber(FLOW_A_SEGMENT_B_DST_PORT), FLOW_A_ENCAP_ID, 123, false),
                 getFlowSpeakerData(TEST_SWITCH_ID_C, FLOW_A_FORWARD_COOKIE_PROTECTED,
                         FLOW_A_SEGMENT_B_DST_PORT_PROTECTED,
                         FLOW_A_ENCAP_ID_PROTECTED, String.valueOf(FLOW_A_DST_PORT), 0,
-                        getSetFieldAction(123), null, false)));
+                        getSetFieldAction(123), OfTable.EGRESS)));
 
         switchEntries.add(getFlowDumpResponse(
                 getFlowSpeakerData(TEST_SWITCH_ID_E, FLOW_A_FORWARD_COOKIE_PROTECTED,
                         FLOW_A_SEGMENT_A_DST_PORT_PROTECTED, 123,
                         String.valueOf(FLOW_A_SEGMENT_B_SRC_PORT_PROTECTED), 0,
-                        null, null, false),
+                        null, OfTable.TRANSIT),
                 getFlowSpeakerData(TEST_SWITCH_ID_E, FLOW_A_REVERSE_COOKIE_PROTECTED,
                         FLOW_A_SEGMENT_B_SRC_PORT_PROTECTED,
                         FLOW_A_ENCAP_ID_PROTECTED, String.valueOf(123), 0, null,
-                        null, false)));
+                        OfTable.TRANSIT)));
 
         return switchEntries;
     }
@@ -468,46 +474,48 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
         List<FlowDumpResponse> switchEntries = new ArrayList<>();
 
         switchEntries.add(getFlowDumpResponse(
-                getFlowSpeakerData(TEST_SWITCH_ID_A, FLOW_A_FORWARD_COOKIE, FLOW_A_SRC_PORT, FLOW_A_SRC_VLAN,
-                        String.valueOf(FLOW_A_SEGMENT_A_SRC_PORT), FLOW_A_ENCAP_ID, null,
-                        (long) FLOW_A_FORWARD_METER_ID, true),
+                getSharedCustomerPortFlow(TEST_SWITCH_ID_A, FLOW_A_SRC_PORT),
+                getSharedIngressFlow(TEST_SWITCH_ID_A, FLOW_A_SRC_PORT, FLOW_A_SRC_VLAN),
+                getIngressFlow(TEST_SWITCH_ID_A, FLOW_A_FORWARD_COOKIE, FLOW_A_SRC_PORT, FLOW_A_SRC_VLAN,
+                        new PortNumber(FLOW_A_SEGMENT_A_SRC_PORT), FLOW_A_ENCAP_ID, FLOW_A_FORWARD_METER_ID, true),
                 getFlowSpeakerData(TEST_SWITCH_ID_A, FLOW_A_REVERSE_COOKIE, FLOW_A_SEGMENT_A_SRC_PORT,
                         0, String.valueOf(FLOW_A_SRC_PORT),
-                        FLOW_A_ENCAP_ID, getSetFieldAction(FLOW_A_SRC_VLAN), null, false),
+                        FLOW_A_ENCAP_ID, getSetFieldAction(FLOW_A_SRC_VLAN), OfTable.EGRESS),
                 getFlowSpeakerData(TEST_SWITCH_ID_A, FLOW_A_REVERSE_COOKIE_PROTECTED,
                         FLOW_A_SEGMENT_A_SRC_PORT_PROTECTED,
                         0, String.valueOf(FLOW_A_SRC_PORT), FLOW_A_ENCAP_ID_PROTECTED,
-                        getSetFieldAction(FLOW_A_SRC_VLAN), null, false)));
+                        getSetFieldAction(FLOW_A_SRC_VLAN), OfTable.EGRESS)));
 
         switchEntries.add(getFlowDumpResponse(
                 getFlowSpeakerData(TEST_SWITCH_ID_B, FLOW_A_FORWARD_COOKIE, FLOW_A_SEGMENT_A_DST_PORT, 0,
                         String.valueOf(FLOW_A_SEGMENT_B_SRC_PORT), FLOW_A_ENCAP_ID, null,
-                        null, false),
+                        OfTable.TRANSIT),
                 getFlowSpeakerData(TEST_SWITCH_ID_B, FLOW_A_REVERSE_COOKIE, FLOW_A_SEGMENT_B_SRC_PORT, 0,
                         String.valueOf(FLOW_A_SEGMENT_A_DST_PORT), FLOW_A_ENCAP_ID, null,
-                        null, false)));
+                        OfTable.TRANSIT)));
 
         switchEntries.add(getFlowDumpResponse(
                 getFlowSpeakerData(TEST_SWITCH_ID_C, FLOW_A_FORWARD_COOKIE, FLOW_A_SEGMENT_B_DST_PORT,
                         0, String.valueOf(FLOW_A_DST_PORT),
-                        FLOW_A_ENCAP_ID, getSetFieldAction(FLOW_A_DST_VLAN), null, false),
-                getFlowSpeakerData(TEST_SWITCH_ID_C, FLOW_A_REVERSE_COOKIE, FLOW_A_DST_PORT, FLOW_A_DST_VLAN,
-                        String.valueOf(FLOW_A_SEGMENT_B_DST_PORT), FLOW_A_ENCAP_ID, null,
-                        (long) FLOW_A_REVERSE_METER_ID, true),
+                        FLOW_A_ENCAP_ID, getSetFieldAction(FLOW_A_DST_VLAN), OfTable.EGRESS),
+                getSharedCustomerPortFlow(TEST_SWITCH_ID_C, FLOW_A_DST_PORT),
+                getSharedIngressFlow(TEST_SWITCH_ID_C, FLOW_A_DST_PORT, FLOW_A_DST_VLAN),
+                getIngressFlow(TEST_SWITCH_ID_C, FLOW_A_REVERSE_COOKIE, FLOW_A_DST_PORT, FLOW_A_DST_VLAN,
+                        new PortNumber(FLOW_A_SEGMENT_B_DST_PORT), FLOW_A_ENCAP_ID, FLOW_A_REVERSE_METER_ID, true),
                 getFlowSpeakerData(TEST_SWITCH_ID_C, FLOW_A_FORWARD_COOKIE_PROTECTED,
                         FLOW_A_SEGMENT_B_DST_PORT_PROTECTED,
                         0, String.valueOf(FLOW_A_DST_PORT), FLOW_A_ENCAP_ID_PROTECTED,
-                        getSetFieldAction(FLOW_A_DST_VLAN), null, false)));
+                        getSetFieldAction(FLOW_A_DST_VLAN), OfTable.EGRESS)));
 
         switchEntries.add(getFlowDumpResponse(
                 getFlowSpeakerData(TEST_SWITCH_ID_E, FLOW_A_FORWARD_COOKIE_PROTECTED,
                         FLOW_A_SEGMENT_A_DST_PORT_PROTECTED, 0,
                         String.valueOf(FLOW_A_SEGMENT_B_SRC_PORT_PROTECTED), FLOW_A_ENCAP_ID_PROTECTED,
-                        null, null, false),
+                        null, OfTable.TRANSIT),
                 getFlowSpeakerData(TEST_SWITCH_ID_E, FLOW_A_REVERSE_COOKIE_PROTECTED,
                         FLOW_A_SEGMENT_B_SRC_PORT_PROTECTED, 0,
                         String.valueOf(FLOW_A_SEGMENT_A_DST_PORT_PROTECTED), FLOW_A_ENCAP_ID_PROTECTED,
-                        null, null, false)));
+                        null, OfTable.TRANSIT)));
 
         return switchEntries;
     }
@@ -516,55 +524,52 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
         List<FlowDumpResponse> switchEntries = new ArrayList<>();
 
         switchEntries.add(getFlowDumpResponse(
-                getFlowSpeakerData(TEST_SWITCH_ID_A, 123, FLOW_A_SRC_PORT,
-                        FLOW_A_SRC_VLAN,
-                        String.valueOf(FLOW_A_SEGMENT_A_SRC_PORT),
-                        FLOW_A_ENCAP_ID,
-                        null,
-                        (long) FLOW_A_FORWARD_METER_ID,
-                        true),
+                getSharedCustomerPortFlow(TEST_SWITCH_ID_A, FLOW_A_SRC_PORT),
+                getSharedIngressFlow(TEST_SWITCH_ID_A, FLOW_A_SRC_PORT, FLOW_A_SRC_VLAN),
+                getIngressFlow(TEST_SWITCH_ID_A, 123, FLOW_A_SRC_PORT, FLOW_A_SRC_VLAN,
+                        new PortNumber(FLOW_A_SEGMENT_A_SRC_PORT), FLOW_A_ENCAP_ID, FLOW_A_FORWARD_METER_ID, true),
                 getFlowSpeakerData(TEST_SWITCH_ID_A, FLOW_A_REVERSE_COOKIE,
                         123, 0, String.valueOf(FLOW_A_SRC_PORT),
                         FLOW_A_ENCAP_ID, getSetFieldAction(FLOW_A_SRC_VLAN),
-                        null, false),
+                        OfTable.EGRESS),
                 getFlowSpeakerData(TEST_SWITCH_ID_A, FLOW_A_REVERSE_COOKIE_PROTECTED,
                         123, 0, String.valueOf(FLOW_A_SRC_PORT),
                         FLOW_A_ENCAP_ID_PROTECTED, getSetFieldAction(FLOW_A_SRC_VLAN),
-                        null, false)));
+                        OfTable.EGRESS)));
 
         switchEntries.add(getFlowDumpResponse(
                 getFlowSpeakerData(TEST_SWITCH_ID_B, FLOW_A_FORWARD_COOKIE,
                         FLOW_A_SEGMENT_A_DST_PORT, 0, String.valueOf(FLOW_A_SEGMENT_B_SRC_PORT),
                         123, null,
-                        null, false),
+                        OfTable.TRANSIT),
                 getFlowSpeakerData(TEST_SWITCH_ID_B, FLOW_A_REVERSE_COOKIE,
                         FLOW_A_SEGMENT_B_SRC_PORT, 0, String.valueOf(123),
                         FLOW_A_ENCAP_ID, null,
-                        null, false)));
+                        OfTable.TRANSIT)));
 
         switchEntries.add(getFlowDumpResponse(
                 getFlowSpeakerData(TEST_SWITCH_ID_C, FLOW_A_FORWARD_COOKIE,
                         FLOW_A_SEGMENT_B_DST_PORT, 0, String.valueOf(FLOW_A_DST_PORT),
                         FLOW_A_ENCAP_ID, getSetFieldAction(123),
-                        null, false),
-                getFlowSpeakerData(TEST_SWITCH_ID_C, FLOW_A_REVERSE_COOKIE,
-                        FLOW_A_DST_PORT, FLOW_A_DST_VLAN, String.valueOf(FLOW_A_SEGMENT_B_DST_PORT),
-                        FLOW_A_ENCAP_ID, null,
-                        123L, true),
+                        OfTable.EGRESS),
+                getSharedCustomerPortFlow(TEST_SWITCH_ID_C, FLOW_A_DST_PORT),
+                getSharedIngressFlow(TEST_SWITCH_ID_C, FLOW_A_DST_PORT, FLOW_A_DST_VLAN),
+                getIngressFlow(TEST_SWITCH_ID_C, FLOW_A_REVERSE_COOKIE, FLOW_A_DST_PORT, FLOW_A_DST_VLAN,
+                        new PortNumber(FLOW_A_SEGMENT_B_DST_PORT), FLOW_A_ENCAP_ID, 123, true),
                 getFlowSpeakerData(TEST_SWITCH_ID_C, FLOW_A_FORWARD_COOKIE_PROTECTED,
                         FLOW_A_SEGMENT_B_DST_PORT_PROTECTED, 0, String.valueOf(FLOW_A_DST_PORT),
                         FLOW_A_ENCAP_ID_PROTECTED, getSetFieldAction(123),
-                        null, false)));
+                        OfTable.EGRESS)));
 
         switchEntries.add(getFlowDumpResponse(
                 getFlowSpeakerData(TEST_SWITCH_ID_E, FLOW_A_FORWARD_COOKIE_PROTECTED,
                         FLOW_A_SEGMENT_A_DST_PORT_PROTECTED, 0, String.valueOf(FLOW_A_SEGMENT_B_SRC_PORT_PROTECTED),
                         123, null,
-                        null, false),
+                        OfTable.TRANSIT),
                 getFlowSpeakerData(TEST_SWITCH_ID_E, FLOW_A_REVERSE_COOKIE_PROTECTED,
                         FLOW_A_SEGMENT_B_SRC_PORT_PROTECTED, 0, String.valueOf(123),
                         FLOW_A_ENCAP_ID_PROTECTED, null,
-                        null, false)));
+                        OfTable.TRANSIT)));
 
         return switchEntries;
     }
@@ -579,7 +584,7 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
                         .rate(FLOW_A_BANDWIDTH)
                         .burst(Meter.calculateBurstSize(FLOW_A_BANDWIDTH, MIN_BURST_SIZE_IN_KBITS,
                                 BURST_COEFFICIENT, ""))
-                        .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
+                        .flags(newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
                                 .collect(Collectors.toSet()))
                         .build()))
                 .build());
@@ -592,7 +597,7 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
                         .rate(FLOW_A_BANDWIDTH)
                         .burst(Meter.calculateBurstSize(FLOW_A_BANDWIDTH, MIN_BURST_SIZE_IN_KBITS,
                                 BURST_COEFFICIENT, ""))
-                        .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
+                        .flags(newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
                                 .collect(Collectors.toSet()))
                         .build()))
                 .build());
@@ -630,7 +635,7 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
                         .rate(FLOW_A_BANDWIDTH)
                         .burst(Meter.calculateBurstSize(FLOW_A_BANDWIDTH,
                                 MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
-                        .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
+                        .flags(newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
                                 .collect(Collectors.toSet()))
                         .build()))
                 .build());
@@ -651,7 +656,7 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
                         .meterId(new MeterId(FLOW_A_FORWARD_METER_ID))
                         .rate(rateESwitch)
                         .burst(burstSizeESwitch)
-                        .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
+                        .flags(newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
                                 .collect(Collectors.toSet()))
                         .build()))
                 .build());
@@ -669,7 +674,7 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
                         .rate(FLOW_A_BANDWIDTH)
                         .burst(Meter
                                 .calculateBurstSize(FLOW_A_BANDWIDTH, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
-                        .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
+                        .flags(newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
                                 .collect(Collectors.toSet()))
                         .build()))
                 .build());
@@ -681,13 +686,13 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
         List<FlowDumpResponse> flowDumpResponses = new ArrayList<>();
 
         flowDumpResponses.add(getFlowDumpResponse(
-                getFlowSpeakerData(TEST_SWITCH_ID_D, FLOW_B_FORWARD_COOKIE,
-                        FLOW_B_SRC_PORT, FLOW_B_SRC_VLAN, "in_port", 0,
-                        getSetFieldAction(FLOW_B_DST_VLAN), (long) FLOW_B_FORWARD_METER_ID, false),
-                getFlowSpeakerData(TEST_SWITCH_ID_D, FLOW_B_REVERSE_COOKIE,
-                        FLOW_B_SRC_PORT, FLOW_B_DST_VLAN, "in_port", 0,
-                        getSetFieldAction(FLOW_B_SRC_VLAN), (long) FLOW_B_REVERSE_METER_ID, false)));
-
+                getSharedCustomerPortFlow(TEST_SWITCH_ID_D, FLOW_B_SRC_PORT),
+                getSharedIngressFlow(TEST_SWITCH_ID_D, FLOW_B_SRC_PORT, FLOW_B_SRC_VLAN),
+                getIngressFlow(TEST_SWITCH_ID_D, FLOW_B_FORWARD_COOKIE, FLOW_B_SRC_PORT, FLOW_B_SRC_VLAN,
+                        new PortNumber(SpecialPortType.IN_PORT), FLOW_B_DST_VLAN, FLOW_B_FORWARD_METER_ID, false),
+                getSharedIngressFlow(TEST_SWITCH_ID_D, FLOW_B_SRC_PORT, FLOW_B_DST_VLAN),
+                getIngressFlow(TEST_SWITCH_ID_D, FLOW_B_REVERSE_COOKIE, FLOW_B_SRC_PORT, FLOW_B_DST_VLAN,
+                        new PortNumber(SpecialPortType.IN_PORT), FLOW_B_SRC_VLAN, FLOW_B_REVERSE_METER_ID, false)));
         return flowDumpResponses;
     }
 
@@ -699,7 +704,7 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
                 .rate(FLOW_B_BANDWIDTH)
                 .burst(Meter
                         .calculateBurstSize(FLOW_B_BANDWIDTH, MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
-                .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
+                .flags(newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
                         .collect(Collectors.toSet()))
                 .build());
         meterEntries.add(MeterSpeakerData.builder()
@@ -709,7 +714,7 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
                 .burst(Meter
                         .calculateBurstSize(FLOW_B_BANDWIDTH,
                                 MIN_BURST_SIZE_IN_KBITS, BURST_COEFFICIENT, ""))
-                .flags(Sets.newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
+                .flags(newHashSet(Meter.getMeterKbpsFlags()).stream().map(MeterFlag::valueOf)
                         .collect(Collectors.toSet()))
                 .build());
 
@@ -730,14 +735,12 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
                                                int srcPort, int srcVlan,
                                                String dstPort, int tunnelId,
                                                SetFieldAction setFieldAction,
-                                               Long meterId, boolean tunnelIdIngressRule) {
+                                               OfTable tableId) {
 
         Set<FieldMatch> fieldMatchSet
-                = Sets.newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(srcPort).build(),
+                = newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(srcPort).build(),
                 FieldMatch.builder().field(Field.VLAN_VID).value(srcVlan).build());
-        if (!tunnelIdIngressRule) {
-            fieldMatchSet.add(FieldMatch.builder().field(Field.NOVIFLOW_TUNNEL_ID).value(tunnelId).build());
-        }
+        fieldMatchSet.add(FieldMatch.builder().field(Field.NOVIFLOW_TUNNEL_ID).value(tunnelId).build());
         List<Action> actions = new ArrayList<>();
         PortNumber portNumber = NumberUtils.isParsable(dstPort)
                 ? new PortNumber(NumberUtils.toInt(dstPort)) :
@@ -746,12 +749,10 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
         if (setFieldAction != null) {
             actions.add(setFieldAction);
         }
-        if (tunnelIdIngressRule) {
-            actions.add(PushVxlanAction.builder().vni(tunnelId).type(PUSH_VXLAN_NOVIFLOW).build());
-        }
 
         return FlowSpeakerData.builder()
                 .switchId(switchId)
+                .table(tableId)
                 .cookie(new Cookie(cookie))
                 .packetCount(7)
                 .byteCount(480)
@@ -759,7 +760,6 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
                 .match(fieldMatchSet)
                 .instructions(Instructions.builder()
                         .applyActions(actions)
-                        .goToMeter(meterId == null ? null : new MeterId(meterId))
                         .build())
                 .build();
     }
@@ -779,11 +779,11 @@ public class FlowValidationTestBase extends InMemoryGraphBasedTest {
                         .groupId(new GroupId(FLOW_GROUP_ID_A))
                         .buckets(Lists.newArrayList(
                                 Bucket.builder().watchPort(WatchPort.ANY).writeActions(
-                                        Sets.newHashSet(new PortOutAction(new PortNumber(FLOW_GROUP_ID_A_OUT_PORT)),
+                                        newHashSet(new PortOutAction(new PortNumber(FLOW_GROUP_ID_A_OUT_PORT)),
                                                 getSetFieldAction(FLOW_GROUP_ID_A_OUT_VLAN))
                                 ).build(),
                                 Bucket.builder().watchPort(WatchPort.ANY).writeActions(
-                                        Sets.newHashSet(
+                                        newHashSet(
                                                 new PortOutAction(new PortNumber(FLOW_A_SEGMENT_B_DST_PORT_PROTECTED)))
                                 ).build()))
                         .build()))

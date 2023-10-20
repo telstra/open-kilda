@@ -52,7 +52,6 @@ public abstract class FlowMirrorPathFrame extends KildaBaseVertexFrame implement
     public static final String COOKIE_PROPERTY = "cookie";
     public static final String IGNORE_BANDWIDTH_PROPERTY = "ignore_bandwidth";
     public static final String BANDWIDTH_PROPERTY = "bandwidth";
-    public static final String EGRESS_MULTI_TABLE_PROPERTY = "egress_with_multi_table";
 
     private Switch srcSwitch;
     private Switch destSwitch;
@@ -138,14 +137,6 @@ public abstract class FlowMirrorPathFrame extends KildaBaseVertexFrame implement
     @Property("status")
     @Convert(FlowPathStatusConverter.class)
     public abstract void setStatus(FlowPathStatus status);
-
-    @Override
-    @Property(EGRESS_MULTI_TABLE_PROPERTY)
-    public abstract boolean isEgressWithMultiTable();
-
-    @Override
-    @Property(EGRESS_MULTI_TABLE_PROPERTY)
-    public abstract void setEgressWithMultiTable(boolean egressWithMultiTable);
 
     @Override
     public Switch getMirrorSwitch() {

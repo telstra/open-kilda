@@ -66,12 +66,10 @@ public class PathSegment implements CompositeDataEntity<PathSegment.PathSegmentD
 
     @Builder
     public PathSegment(@NonNull PathId pathId, @NonNull Switch srcSwitch, @NonNull Switch destSwitch,
-                       int srcPort, int destPort,
-                       boolean srcWithMultiTable, boolean destWithMultiTable, int seqId, Long latency, long bandwidth,
+                       int srcPort, int destPort, int seqId, Long latency, long bandwidth,
                        boolean ignoreBandwidth, boolean failed, String sharedBandwidthGroupId) {
         data = PathSegmentDataImpl.builder().pathId(pathId).srcSwitch(srcSwitch).destSwitch(destSwitch)
-                .srcPort(srcPort).destPort(destPort).srcWithMultiTable(srcWithMultiTable)
-                .destWithMultiTable(destWithMultiTable).seqId(seqId).latency(latency).bandwidth(bandwidth)
+                .srcPort(srcPort).destPort(destPort).seqId(seqId).latency(latency).bandwidth(bandwidth)
                 .ignoreBandwidth(ignoreBandwidth).failed(failed).sharedBandwidthGroupId(sharedBandwidthGroupId).build();
     }
 
@@ -106,8 +104,6 @@ public class PathSegment implements CompositeDataEntity<PathSegment.PathSegmentD
         return new EqualsBuilder()
                 .append(getSrcPort(), that.getSrcPort())
                 .append(getDestPort(), that.getDestPort())
-                .append(isSrcWithMultiTable(), that.isSrcWithMultiTable())
-                .append(isDestWithMultiTable(), that.isDestWithMultiTable())
                 .append(getSeqId(), that.getSeqId())
                 .append(isFailed(), that.isFailed())
                 .append(getPathId(), that.getPathId())
@@ -122,8 +118,7 @@ public class PathSegment implements CompositeDataEntity<PathSegment.PathSegmentD
     @Override
     public int hashCode() {
         return Objects.hash(getPathId(), getSrcSwitchId(), getDestSwitchId(), getSrcPort(), getDestPort(),
-                isSrcWithMultiTable(), isDestWithMultiTable(), getSeqId(), getLatency(), getBandwidth(), isFailed(),
-                getSharedBandwidthGroupId());
+                 getSeqId(), getLatency(), getBandwidth(), isFailed(), getSharedBandwidthGroupId());
     }
 
     /**
@@ -153,18 +148,6 @@ public class PathSegment implements CompositeDataEntity<PathSegment.PathSegmentD
         int getDestPort();
 
         void setDestPort(int destPort);
-
-        @Deprecated
-        boolean isSrcWithMultiTable();
-
-        @Deprecated
-        void setSrcWithMultiTable(boolean srcWithMultiTable);
-
-        @Deprecated
-        boolean isDestWithMultiTable();
-
-        @Deprecated
-        void setDestWithMultiTable(boolean destWithMultiTable);
 
         int getSeqId();
 
@@ -220,10 +203,6 @@ public class PathSegment implements CompositeDataEntity<PathSegment.PathSegmentD
         @NonNull Switch destSwitch;
         int srcPort;
         int destPort;
-        @Deprecated
-        boolean srcWithMultiTable;
-        @Deprecated
-        boolean destWithMultiTable;
         int seqId;
         Long latency;
         long bandwidth;

@@ -355,12 +355,12 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
 
         if (lastSegment != null) {
             if (doEgress) {
-                requests.addAll(makeEgressSegmentRequests(context, flow, path, encapsulation, lastSegment, egressSide,
+                requests.addAll(makeEgressSegmentRequests(context, path, encapsulation, lastSegment, egressSide,
                         ingressSide, mirrorContext));
             }
         } else if (flow.isOneSwitchFlow()) {
             // one switch flow (path without path segments)
-            requests.addAll(makeOneSwitchRequest(context, flow, path, ingressSide, egressSide, rulesContext,
+            requests.addAll(makeOneSwitchRequest(context, path, ingressSide, egressSide, rulesContext,
                     mirrorContext, flow.getVlanStatistics()));
             if (singleSwitchLoopRuleRequired(flow)) {
                 requests.add(makeSingleSwitchIngressLoopRequest(context, path, ingressSide));
@@ -379,12 +379,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
 
-        FlowSegmentMetadata metadata = makeMetadata(path, ensureEqualMultiTableFlag(
-                path.isSrcWithMultiTable(), segmentSide.isMultiTable(),
-                String.format("First flow(id:%s, path:%s) segment and flow path level multi-table flag values "
-                                + "are incompatible to each other - flow path(%s) != segment(%s)",
-                        path.getFlow().getFlowId(), path.getPathId(),
-                        path.isSrcWithMultiTable(), segmentSide.isMultiTable())));
+        FlowSegmentMetadata metadata = makeMetadata(path);
 
         List<FlowSegmentRequestFactory> ingressFactories = new ArrayList<>();
 
@@ -408,7 +403,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             ingressFactories.add(IngressMirrorFlowSegmentRequestFactory.builder()
                     .messageContext(new MessageContext(
                             commandIdGenerator.generate().toString(), context.getCorrelationId()))
-                    .metadata(makeMetadata(metadata.getFlowId(), mirrorCookie, metadata.isMultiTable()))
+                    .metadata(makeMetadata(metadata.getFlowId(), mirrorCookie))
                     .endpoint(flowSide.getEndpoint())
                     .meterConfig(getMeterConfig(path))
                     .egressSwitchId(egressFlowSide.getEndpoint().getSwitchId())
@@ -435,7 +430,6 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             CommandContext context, FlowPath path, FlowTransitEncapsulation encapsulation,
             FlowSideAdapter ingressSide, FlowSideAdapter egressSide, PathSegment segment) {
         List<FlowSegmentRequestFactory> result = new ArrayList<>(2);
-        PathSegmentSide segmentSide = makePathSegmentSourceSide(segment);
 
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
@@ -443,7 +437,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
 
         result.add(IngressFlowLoopSegmentRequestFactory.builder()
                 .messageContext(messageContext)
-                .metadata(makeMetadata(path.getFlow().getFlowId(), cookie, segmentSide.isMultiTable()))
+                .metadata(makeMetadata(path.getFlow().getFlowId(), cookie))
                 .endpoint(ingressSide.getEndpoint())
                 .build());
 
@@ -454,7 +448,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
                 .messageContext(messageContext)
                 .switchId(segment.getSrcSwitch().getSwitchId())
                 .egressSwitchId(egressSide.getEndpoint().getSwitchId())
-                .metadata(makeMetadata(path.getFlow().getFlowId(), transitCookie, segmentSide.isMultiTable()))
+                .metadata(makeMetadata(path.getFlow().getFlowId(), transitCookie))
                 .port(segment.getSrcPort())
                 .encapsulation(encapsulation)
                 .build());
@@ -472,7 +466,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         Cookie cookie = path.getCookie().toBuilder().looped(true).build();
         return IngressFlowLoopSegmentRequestFactory.builder()
                 .messageContext(messageContext)
-                .metadata(makeMetadata(path.getFlow().getFlowId(), cookie, path.isSrcWithMultiTable()))
+                .metadata(makeMetadata(path.getFlow().getFlowId(), cookie))
                 .endpoint(flowSide.getEndpoint())
                 .build();
     }
@@ -494,12 +488,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         return TransitFlowSegmentRequestFactory.builder()
                 .messageContext(messageContext)
                 .switchId(ingressEndpoint.getSwitchId())
-                .metadata(makeMetadata(path, ensureEqualMultiTableFlag(
-                        inboundSide.isMultiTable(), outboundSide.isMultiTable(),
-                        String.format(
-                                "Flow(id:%s, path:%s) have incompatible multi-table flags between segments %s "
-                                        + "and %s", path.getFlow().getFlowId(), path.getPathId(), ingress,
-                                egress))))
+                .metadata(makeMetadata(path))
                 .ingressIslPort(ingressEndpoint.getPortNumber())
                 .egressIslPort(egressEndpoint.getPortNumber())
                 .encapsulation(encapsulation)
@@ -507,7 +496,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     }
 
     private List<FlowSegmentRequestFactory> makeEgressSegmentRequests(
-            CommandContext context, Flow flow, FlowPath path, FlowTransitEncapsulation encapsulation,
+            CommandContext context, FlowPath path, FlowTransitEncapsulation encapsulation,
             PathSegment segment, FlowSideAdapter flowSide, FlowSideAdapter ingressFlowSide,
             MirrorContext mirrorContext) {
         PathSegmentSide segmentSide = makePathSegmentDestSide(segment);
@@ -515,12 +504,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
 
-        FlowSegmentMetadata metadata = makeMetadata(path, ensureEqualMultiTableFlag(
-                segmentSide.isMultiTable(), path.isDestWithMultiTable(),
-                String.format("Last flow(id:%s, path:%s) segment and flow path level multi-table flags value "
-                                + "are incompatible to each other - segment(%s) != flow path(%s)",
-                        flow.getFlowId(), path.getPathId(), segmentSide.isMultiTable(),
-                        path.isDestWithMultiTable())));
+        FlowSegmentMetadata metadata = makeMetadata(path);
 
         List<FlowSegmentRequestFactory> egressFactories = new ArrayList<>();
         if (!mirrorContext.isBuildMirrorFactoryOnly()) {
@@ -540,7 +524,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             egressFactories.add(EgressMirrorFlowSegmentRequestFactory.builder()
                     .messageContext(new MessageContext(
                             commandIdGenerator.generate().toString(), context.getCorrelationId()))
-                    .metadata(makeMetadata(metadata.getFlowId(), mirrorCookie, metadata.isMultiTable()))
+                    .metadata(makeMetadata(metadata.getFlowId(), mirrorCookie))
                     .endpoint(flowSide.getEndpoint())
                     .ingressEndpoint(ingressFlowSide.getEndpoint())
                     .islPort(segmentSide.getEndpoint().getPortNumber())
@@ -553,17 +537,13 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
     }
 
     private List<FlowSegmentRequestFactory> makeOneSwitchRequest(
-            CommandContext context, Flow flow, FlowPath path, FlowSideAdapter ingressSide, FlowSideAdapter egressSide,
+            CommandContext context, FlowPath path, FlowSideAdapter ingressSide, FlowSideAdapter egressSide,
             RulesContext rulesContext, MirrorContext mirrorContext, Set<Integer> statVlans) {
 
         UUID commandId = commandIdGenerator.generate();
         MessageContext messageContext = new MessageContext(commandId.toString(), context.getCorrelationId());
 
-        FlowSegmentMetadata metadata = makeMetadata(path, ensureEqualMultiTableFlag(
-                path.isSrcWithMultiTable(), path.isDestWithMultiTable(),
-                String.format("Flow(id:%s) have incompatible for one-switch flow per-side multi-table flags - "
-                                + "src(%s) != dst(%s)",
-                        flow.getFlowId(), path.isSrcWithMultiTable(), path.isDestWithMultiTable())));
+        FlowSegmentMetadata metadata = makeMetadata(path);
 
         List<FlowSegmentRequestFactory> oneSwitchFactories = new ArrayList<>();
         if (!mirrorContext.isBuildMirrorFactoryOnly()) {
@@ -584,7 +564,7 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
             oneSwitchFactories.add(OneSwitchMirrorFlowRequestFactory.builder()
                     .messageContext(new MessageContext(
                             commandIdGenerator.generate().toString(), context.getCorrelationId()))
-                    .metadata(makeMetadata(metadata.getFlowId(), mirrorCookie, metadata.isMultiTable()))
+                    .metadata(makeMetadata(metadata.getFlowId(), mirrorCookie))
                     .endpoint(ingressSide.getEndpoint())
                     .meterConfig(getMeterConfig(path))
                     .egressEndpoint(egressSide.getEndpoint())
@@ -597,38 +577,25 @@ public class SpeakerFlowSegmentRequestBuilder implements FlowCommandBuilder {
         return oneSwitchFactories;
     }
 
-    private boolean ensureEqualMultiTableFlag(boolean ingress, boolean egress, String errorMessage) {
-        if (ingress != egress) {
-            throw new IllegalArgumentException(errorMessage);
-        }
-        return ingress;
-    }
-
     private PathSegmentSide makePathSegmentSourceSide(PathSegment segment) {
-        return new PathSegmentSide(
-                new IslEndpoint(segment.getSrcSwitchId(), segment.getSrcPort()),
-                segment.isSrcWithMultiTable());
+        return new PathSegmentSide(new IslEndpoint(segment.getSrcSwitchId(), segment.getSrcPort()));
     }
 
     private PathSegmentSide makePathSegmentDestSide(PathSegment segment) {
-        return new PathSegmentSide(
-                new IslEndpoint(segment.getDestSwitchId(), segment.getDestPort()),
-                segment.isDestWithMultiTable());
+        return new PathSegmentSide(new IslEndpoint(segment.getDestSwitchId(), segment.getDestPort()));
     }
 
-    private FlowSegmentMetadata makeMetadata(String flowId, Cookie cookie, boolean isMultitable) {
-        return new FlowSegmentMetadata(flowId, cookie, isMultitable);
+    private FlowSegmentMetadata makeMetadata(String flowId, Cookie cookie) {
+        return new FlowSegmentMetadata(flowId, cookie);
     }
 
-    private FlowSegmentMetadata makeMetadata(FlowPath path, boolean isMultitable) {
-        return makeMetadata(path.getFlow().getFlowId(), path.getCookie(), isMultitable);
+    private FlowSegmentMetadata makeMetadata(FlowPath path) {
+        return makeMetadata(path.getFlow().getFlowId(), path.getCookie());
     }
 
     @Value
     private static class PathSegmentSide {
-        private final IslEndpoint endpoint;
-
-        private boolean multiTable;
+        IslEndpoint endpoint;
     }
 
     private MeterConfig getMeterConfig(FlowPath path) {

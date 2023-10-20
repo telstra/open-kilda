@@ -50,14 +50,12 @@ public class FermaKildaConfigurationRepositoryTest extends InMemoryGraphBasedTes
 
         kildaConfiguration = kildaConfigurationRepository.find().orElse(null);
         kildaConfiguration.setFlowEncapsulationType(FlowEncapsulationType.VXLAN);
-        kildaConfiguration.setUseMultiTable(false);
         kildaConfiguration.setPathComputationStrategy(PathComputationStrategy.LATENCY);
 
         KildaConfiguration updatedKildaConfiguration = kildaConfigurationRepository.find().orElse(null);
         assertEquals(kildaConfiguration, updatedKildaConfiguration);
 
         updatedKildaConfiguration.setFlowEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN);
-        updatedKildaConfiguration.setUseMultiTable(false);
         updatedKildaConfiguration.setPathComputationStrategy(PathComputationStrategy.COST);
     }
 }

@@ -99,14 +99,6 @@ public interface FlowPathRepository extends Repository<FlowPath> {
 
     Collection<FlowPath> findInactiveBySegmentSwitch(SwitchId switchId);
 
-    /**
-     * Finds flow paths which segments are goes through the switch in a multi-table mode.
-     * @param switchId the endpoint switch
-     * @param multiTable mode
-     * @return collection of patch
-     */
-    Collection<FlowPath> findBySegmentSwitchWithMultiTable(SwitchId switchId, boolean multiTable);
-
     Collection<FlowPath> findBySegmentDestSwitch(SwitchId switchId);
 
     Collection<FlowPath> findWithPathSegment(SwitchId srcSwitchId, int srcPort,

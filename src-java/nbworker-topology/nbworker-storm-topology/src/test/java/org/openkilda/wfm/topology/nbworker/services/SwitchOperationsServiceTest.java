@@ -164,7 +164,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     public void validateSupportedEncapsulationTypeWhenUpdatingSwitchProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             Switch sw = createSwitch(TEST_SWITCH_ID);
-            createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), false, false, false);
+            createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), false, false);
 
             switchOperationsService.updateSwitchProperties(TEST_SWITCH_ID, new SwitchPropertiesDto());
         });
@@ -174,7 +174,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     public void validateMultiTableFlagWhenUpdatingSwitchProperties() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             Switch sw = createSwitch(TEST_SWITCH_ID);
-            createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, true, false);
+            createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false);
 
             // user can't disable multiTable without disabling LLDP
             SwitchPropertiesDto update = new SwitchPropertiesDto();
@@ -203,7 +203,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
             flowRepository.add(flow);
 
             createSwitchProperties(
-                    firstSwitch, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+                    firstSwitch, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), false, false);
 
             // user can't disable multiTable if some flows has enabled detect connected devices via LLDP
             SwitchPropertiesDto update = new SwitchPropertiesDto();
@@ -220,7 +220,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     public void validateMultiTableFlagWhenUpdatingSwitchPropertiesWithArp() {
         assertThrows(IllegalSwitchPropertiesException.class, () -> {
             Switch sw = createSwitch(TEST_SWITCH_ID);
-            createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, true);
+            createSwitchProperties(sw, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), false, true);
 
             // user can't disable multiTable without disabling ARP
             SwitchPropertiesDto update = new SwitchPropertiesDto();
@@ -249,7 +249,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
             flowRepository.add(flow);
 
             createSwitchProperties(firstSwitch,
-                    Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+                    Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), false, false);
 
             // user can't disable multiTable if some flows has enabled detect connected devices via ARP
             SwitchPropertiesDto update = new SwitchPropertiesDto();
@@ -277,9 +277,9 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         flowRepository.add(flow);
 
         createSwitchProperties(firstSwitch,
-                Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, true, true);
+                Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, true);
         createSwitchProperties(secondSwitch,
-                Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, true, true);
+                Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, true);
 
         SwitchPropertiesDto firstUpdate = new SwitchPropertiesDto();
         firstUpdate.setSupportedTransitEncapsulation(SUPPORTED_TRANSIT_ENCAPSULATION);
@@ -327,9 +327,9 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         flowRepository.add(flow);
 
         createSwitchProperties(firstSwitch,
-                Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+                Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), false, false);
         createSwitchProperties(secondSwitch,
-                Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+                Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), false, false);
 
         SwitchPropertiesDto firstUpdate = new SwitchPropertiesDto();
         firstUpdate.setSupportedTransitEncapsulation(SUPPORTED_TRANSIT_ENCAPSULATION);
@@ -447,7 +447,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
             flowMirrorPointsRepository.add(flowMirrorPoints);
 
             createSwitchProperties(
-                    mirrorSwitch, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+                    mirrorSwitch, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), false, false);
 
             SwitchPropertiesDto update = new SwitchPropertiesDto();
             update.setSupportedTransitEncapsulation(
@@ -481,7 +481,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
             flowMirrorPointsRepository.add(flowMirrorPoints);
 
             createSwitchProperties(
-                    mirrorSwitch, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+                    mirrorSwitch, Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), false, false);
 
             SwitchPropertiesDto update = new SwitchPropertiesDto();
             update.setSupportedTransitEncapsulation(
@@ -510,7 +510,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
             flowRepository.add(flow);
 
             createSwitchProperties(firstSwitch,
-                    Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+                    Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), false, false);
 
             SwitchPropertiesDto update = new SwitchPropertiesDto();
             update.setSupportedTransitEncapsulation(
@@ -536,7 +536,7 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
             flowMirrorPathRepository.add(flowMirrorPath);
 
             createSwitchProperties(firstSwitch,
-                    Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), true, false, false);
+                    Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN), false, false);
 
             SwitchPropertiesDto update = new SwitchPropertiesDto();
             update.setSupportedTransitEncapsulation(
@@ -553,7 +553,6 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         SwitchProperties switchProperties = SwitchProperties.builder()
                 .switchObj(sw)
                 .supportedTransitEncapsulation(Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN))
-                .multiTable(false)
                 .server42IslRtt(SwitchProperties.RttState.DISABLED)
                 .server42Port(SERVER_42_PORT_1).server42Vlan(SERVER_42_VLAN_1)
                 .server42MacAddress(SERVER_42_MAC_ADDRESS_1)
@@ -585,7 +584,6 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         SwitchProperties switchProperties = SwitchProperties.builder()
                 .switchObj(sw)
                 .supportedTransitEncapsulation(Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN))
-                .multiTable(false)
                 .server42IslRtt(SwitchProperties.RttState.DISABLED)
                 .server42Port(SERVER_42_PORT_1).server42Vlan(SERVER_42_VLAN_1)
                 .server42MacAddress(SERVER_42_MAC_ADDRESS_1)
@@ -656,7 +654,6 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         SwitchProperties switchProperties = SwitchProperties.builder()
                 .switchObj(sw)
                 .supportedTransitEncapsulation(Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN))
-                .multiTable(true)
                 .build();
         switchPropertiesRepository.add(switchProperties);
 
@@ -720,7 +717,6 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     private void runInvalidServer42PropsTest(SwitchPropertiesDto invalidProperties) {
-        invalidProperties.setMultiTable(true);
         invalidProperties.setSupportedTransitEncapsulation(Collections.singleton(
                 org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN));
 
@@ -735,7 +731,6 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
         SwitchProperties switchProperties = SwitchProperties.builder()
                 .switchObj(sw)
                 .supportedTransitEncapsulation(Collections.singleton(FlowEncapsulationType.TRANSIT_VLAN))
-                .multiTable(true)
                 .server42FlowRtt(sever42FlowRtt)
                 .server42Port(port)
                 .server42Vlan(vlan)
@@ -745,12 +740,10 @@ public class SwitchOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     private void createSwitchProperties(Switch sw, Set<FlowEncapsulationType> transitEncapsulation,
-                                        boolean multiTable,
                                         boolean switchLldp, boolean switchArp) {
         SwitchProperties switchProperties = SwitchProperties.builder()
                 .switchObj(sw)
                 .supportedTransitEncapsulation(transitEncapsulation)
-                .multiTable(multiTable)
                 .switchLldp(switchLldp)
                 .switchArp(switchArp)
                 .build();
