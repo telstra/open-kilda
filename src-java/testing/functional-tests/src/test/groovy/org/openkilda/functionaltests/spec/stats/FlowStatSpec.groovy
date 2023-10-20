@@ -97,7 +97,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         }
 
         and: "Wait till stats from old main path are collected"
-        Wrappers.wait(WAIT_OFFSET, 3) {
+        Wrappers.wait(statsRouterRequestInterval, 3) {
             statsHelper."force kilda to collect stats"()
             def newStats = flowStats.of(flow.getFlowId())
             assert newStats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).getNewestTimeStamp() ==

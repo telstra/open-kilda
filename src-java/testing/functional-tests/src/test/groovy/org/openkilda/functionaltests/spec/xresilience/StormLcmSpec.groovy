@@ -140,7 +140,7 @@ class StormLcmSpec extends HealthCheckSpecification {
         !networkDeployed && wfmManipulator.deployTopology("network")
         srcBlockData && lockKeeper.reviveSwitch(islUnderTest.srcSwitch, srcBlockData)
         dstBlockData && lockKeeper.reviveSwitch(islUnderTest.dstSwitch, dstBlockData)
-        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
+        Wrappers.wait(WAIT_OFFSET + discoveryTimeout) {
             assert database.getIsls(topology.getIsls()).every {it.status == IslStatus.ACTIVE}
             assert northbound.getAllLinks().every {it.state == IslChangeType.DISCOVERED}
         }
