@@ -11,6 +11,15 @@ server.ssl.key-alias = kilda
 server.ssl.key-store = classpath:keystore-kilda.jks
 server.ssl.key-store-password = openkilda
 
+#SSL Victoria configuration. Configure the SSL keystore file for Victoria Metrics in Java with the certificate required
+#for the HTTPS schema. Provide this file to enable REST API calls over HTTPS to the Victoria DB.
+victoria.trust.store=file:./victoria-keystore-kilda.jks
+{{- if exists "/victoria_keystore_password" }}
+victoria.trust.store.password = {{ getv "/victoria_keystore_password" }}
+{{- else }}
+victoria.trust.store.password =
+{{- end }}
+
 #Derby database configuration (In Memory)
 spring.jpa.database=default
 spring.jpa.properties.hibernate.dialect={{ getv "/kilda_gui_db_dialect" }}
@@ -40,7 +49,7 @@ opentsdb.base.url=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_open
 opentsdb.metric.prefix = {{ getv "/kilda_opentsdb_metric_prefix" }}
 
 #VICTORIA METRICS Base URL and metric prefix
-victoria.base.url=http://{{ getv "/kilda_victoriametrics_host" }}:{{ getv "/kilda_victoriametrics_read_port" }}/prometheus
+victoria.base.url={{ getv "/kilda_victoria_read_url_schema" }}://{{ getv "/kilda_victoriametrics_host" }}:{{ getv "/kilda_victoriametrics_read_port" }}{{ getv "/kilda_victoriametrics_read_path" }}/prometheus
 
 #Kilda username and password
 kilda.username = {{ getv "/kilda_northbound_username" }}

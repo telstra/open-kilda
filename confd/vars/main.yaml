@@ -24,6 +24,9 @@ kilda_victoriametrics_host: "victoriametrics.pendev"
 kilda_victoriametrics_write_port: "4242"
 kilda_victoriametrics_read_port: "8428"
 kilda_victoriametrics_path: ""
+kilda_victoriametrics_read_path: ""
+kilda_victoria_read_url_schema: "http"
+victoria_keystore_password: ""
 kilda_storm_numbus_hosts: "nimbus.pendev"
 
 kilda_hibernate_url: jdbc:mysql://mysql.pendev:3306/kilda
