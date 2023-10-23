@@ -1,6 +1,16 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static groovyx.gpars.GParsExecutorsPool.withPool
+import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.SYNC_ACTION
+
+import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.functionaltests.model.stats.FlowStats
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
+import org.openkilda.testing.service.northbound.payloads.PathRequestParameter
+
 import org.springframework.beans.factory.annotation.Autowired
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -27,6 +37,7 @@ import org.openkilda.model.PathComputationStrategy
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Isolated
 import spock.lang.ResourceLock
 import spock.lang.See
@@ -90,7 +101,6 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
                 .build())
 
         and : "A flow with max_latency 210"
-        def createFlowTime = new Date()
         def flow = flowHelperV2.randomFlow(switchPair).tap {
             maxLatency = 210
             pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
@@ -134,6 +144,135 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
         srcInterfaceName && lockKeeper.cleanupLinkDelay(srcInterfaceName)
         dstInterfaceName && lockKeeper.cleanupLinkDelay(dstInterfaceName)
+        initFeatureToggle && northbound.toggleFeature(initFeatureToggle)
+    }
+
+    @ResourceLock(S42_TOGGLE)
+    @ResourceLock(FLOW_MON_TOGGLE)
+    @Ignore("https://github.com/telstra/open-kilda/issues/5449")
+    def "Able to detect several flows with MAX_LATENCY strategy when main path does not satisfy latency SLA\
+ and successfully SYNC flows after ISL latency SLA recovering"() {
+        given: "flowLatencyMonitoringReactions is enabled in featureToggle"
+        and: "Disable s42 in featureToggle for generating flow-monitoring stats"
+        def initFeatureToggle = northbound.getFeatureToggles()
+        northbound.toggleFeature(FeatureTogglesDto.builder()
+                .flowLatencyMonitoringReactions(true)
+                .server42FlowRtt(false)
+                .build())
+
+        and : "Flows with max_latency 210 have been created successfully"
+        def flowRequest = flowHelperV2.randomFlow(switchPair).tap {
+            maxLatency = 210
+            pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
+        }
+        def flow1 = flowHelperV2.addFlow(flowRequest)
+        def flow2 = addFlowWithOverriddenVlans(flow1.flowId + "_flow2", flowRequest)
+        def flow3 = addFlowWithOverriddenVlans(flow1.flowId + "_flow3", flowRequest)
+
+        //wait for generating some flow-monitoring stats
+        withPool {
+            [flow1.flowId, flow2.flowId, flow3.flowId].eachParallel { id ->
+                wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
+                    flowStats.rttOf(id).get(FLOW_RTT, FORWARD).hasNonZeroValues()
+                }
+            }
+        }
+
+        and: "Flows main and alternative paths have been collected successfully"
+        def flow1Isls = new Path(northbound.getFlowPath(flow1.flowId).forwardPath, topology).getInvolvedIsls()
+        def flow2Isls = new Path(northbound.getFlowPath(flow2.flowId).forwardPath, topology).getInvolvedIsls()
+        def flow3Isls = new Path(northbound.getFlowPath(flow3.flowId).forwardPath, topology).getInvolvedIsls()
+
+        def alternativePathsIsls = northbound.getPaths([(PathRequestParameter.SRC_SWITCH)               : flow1.source.switchId,
+                                                        (PathRequestParameter.DST_SWITCH)               : flow1.destination.switchId,
+                                                        (PathRequestParameter.PATH_COMPUTATION_STRATEGY): PathRequestParameter.MAX_LATENCY,
+                                                        (PathRequestParameter.MAX_LATENCY)              : 210])
+                .collectMany { it -> return [new Path(it.nodes, topology).getInvolvedIsls()] }
+
+        when: "Common ISL does not satisfy SLA(update isl latency via db) and there is no alternative path to reroute flows"
+        def commonIslToSetDelay = flow1Isls.intersect(flow2Isls).intersect(flow2Isls.intersect(flow3Isls)).first()
+        assert commonIslToSetDelay, "Unfortunately flows don't share the same ISL. Cannot proceed with the further checking."
+
+        List <Isl> islToSetDelayAndDisableRerouting = alternativePathsIsls.findAll { !it.contains(commonIslToSetDelay)}
+                .collectMany { return [it.first()] }.flatten()
+        islToSetDelayAndDisableRerouting.each {
+            antiflap.portDown(it.srcSwitch.dpId, it.srcPort)
+        }
+
+        def newLatency = (flowRequest.maxLatency + (flowRequest.maxLatency * flowLatencySlaThresholdPercent)).toInteger()
+        boolean isDelaySetUpForCommonIsl
+        String srcInterfaceName = commonIslToSetDelay.srcSwitch.name + "-" + commonIslToSetDelay.srcPort
+        isDelaySetUpForCommonIsl = true
+        String dstInterfaceName = commonIslToSetDelay.dstSwitch.name + "-" + commonIslToSetDelay.dstPort
+        lockKeeper.setLinkDelay(srcInterfaceName, newLatency)
+        lockKeeper.setLinkDelay(dstInterfaceName, newLatency)
+        withPool {
+            [flow1.flowId, flow2.flowId, flow3.flowId].eachParallel { id ->
+                wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
+                    verifyLatencyInTsdb(id, newLatency)
+                }
+            }
+        }
+        then: "System detects that flowPathLatency doesn't satisfy max_latency and tries to reroute flows without success"
+        /** Steps before rerouting: check latency for a flow every 'kilda_flow_sla_check_interval_seconds';
+         * wait 'kilda_flow_latency_sla_timeout_seconds';
+         * recheck the flowLatency 'kilda_flow_sla_check_interval_seconds';
+         * and then reroute the flow.
+         */
+        withPool {
+            [flow1.flowId, flow2.flowId, flow3.flowId].eachParallel { id ->
+                wait(flowSlaCheckIntervalSeconds * 2 + flowLatencySlaTimeoutSeconds + WAIT_OFFSET) {
+                    def history = northbound.getFlowHistory(id).last()
+                    // Flow sync or flow reroute with reason "Flow latency become unhealthy"
+                    assert history.getAction() == REROUTE_ACTION && history.details.contains("Flow latency become unhealthy") &&
+                            (history.payload.last().action in [REROUTE_FAIL]
+                                    && (history.payload.last().details.contains("Reroute is unsuccessful.")
+                                    || history.payload.last().details.contains("No path found. Can’t find a path from Node")))
+                }
+            }
+        }
+
+        withPool {
+            [flow1.flowId, flow2.flowId, flow3.flowId].eachParallel { id ->
+                if (northbound.getFlowHistory(id).last().payload.last().details.contains("Reroute is unsuccessful.")) {
+                    wait(WAIT_OFFSET * 2) { assert northboundV2.getFlowStatus(id).status == FlowState.UP }
+                } else {
+                    wait(WAIT_OFFSET * 2) { assert northboundV2.getFlowStatus(id).status == FlowState.DOWN }
+                }
+            }
+        }
+
+        when: "The delay has been removed from shared ISL"
+        lockKeeper.cleanupLinkDelay(srcInterfaceName)
+        lockKeeper.cleanupLinkDelay(dstInterfaceName)
+        isDelaySetUpForCommonIsl = false
+
+        then: "SYNC operation has been proceeded successfully for all flows"
+        //https://github.com/telstra/open-kilda/issues/5451 - unsuccessful SYNC (no event)
+        withPool {
+            [flow1.flowId, flow2.flowId, flow3.flowId].eachParallel { id ->
+                wait(flowSlaCheckIntervalSeconds * 2 + flowLatencySlaTimeoutSeconds + WAIT_OFFSET) {
+                    def history = northbound.getFlowHistory(id).last()
+                    assert history.getAction() == SYNC_ACTION && history.details.contains("Performing flow paths sync operation on NB request")
+                }
+            }
+        }
+         and: "All flows are in 'Up' status"
+         //now only for one flow SYNC operation has been executed successfully, the rest of flow is stuck in 'In_progress' status
+         withPool {
+             [flow1.flowId, flow2.flowId, flow3.flowId].eachParallel { id ->
+                 wait(WAIT_OFFSET * 2) { assert northboundV2.getFlowStatus(id).status == FlowState.UP }
+             }
+         }
+
+        cleanup:
+        isDelaySetUpForCommonIsl && lockKeeper.cleanupLinkDelay(srcInterfaceName)
+        isDelaySetUpForCommonIsl && lockKeeper.cleanupLinkDelay(dstInterfaceName)
+        islToSetDelayAndDisableRerouting.each {
+            antiflap.portUp(it.srcSwitch.dpId, it.srcPort)
+        }
+        //as a SYNC operation wasn't successful, we need to execute an additional manual setup for "In_Progress" flows to delete them
+        [flow1, flow2, flow3].findAll().each { flow -> flowHelperV2.deleteFlow(flow.flowId) }
         initFeatureToggle && northbound.toggleFeature(initFeatureToggle)
     }
 
@@ -209,6 +348,14 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         def nanoMultiplier = 1000000
         def expectedNs = expectedMs * nanoMultiplier
         assert Math.abs(expectedNs - actual) <= expectedNs * 0.3 //less than 0.3 is unstable on jenkins
+    }
+
+    FlowResponseV2 addFlowWithOverriddenVlans(String flowId, FlowRequestV2 flowRequest) {
+        flowHelperV2.addFlow(flowRequest.tap {
+            it.flowId = flowId
+            it.source.vlanId = randomVlan()
+            it.destination.vlanId = randomVlan()
+        })
     }
 
     def cleanupSpec() {
