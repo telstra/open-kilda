@@ -670,7 +670,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     void verifyLatencyValueIsCorrect(Isl isl) {
         def t = new Date()
         t.setSeconds(t.getSeconds() - 600) //kilda_latency_update_time_range: 600
-        def stats = islStats.of(isl).get(ISL_RTT).getDataPoints()
+        def stats = islStats.of(isl).get(ISL_RTT, SERVER_42).getDataPoints()
         def expected = stats.values().average()
         def actual = northbound.getLink(isl).latency
         assert Math.abs(expected - actual) <= expected * 0.25
