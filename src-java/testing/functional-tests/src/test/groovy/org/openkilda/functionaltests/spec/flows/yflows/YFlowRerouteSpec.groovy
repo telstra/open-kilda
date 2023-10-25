@@ -87,10 +87,10 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         then: "The flow was rerouted after reroute delay"
         and: "History has relevant entries about y-flow reroute"
         wait(FLOW_CRUD_TIMEOUT) {
-            assert northbound.getFlowHistory(yFlow.YFlowId).last().payload.last().action == REROUTE_SUCCESS_Y
+            assert flowHelper.getLatestHistoryEntry(yFlow.getYFlowId()).payload.last().action == REROUTE_SUCCESS_Y
         }
         yFlow.subFlows.each { sf ->
-            assert northbound.getFlowHistory(sf.flowId).last().payload.last().action == REROUTE_SUCCESS
+            assert flowHelper.getLatestHistoryEntry(sf.flowId).payload.last().action == REROUTE_SUCCESS
         }
         wait(rerouteDelay + WAIT_OFFSET) {
             yFlow = northboundV2.getYFlow(yFlow.YFlowId)

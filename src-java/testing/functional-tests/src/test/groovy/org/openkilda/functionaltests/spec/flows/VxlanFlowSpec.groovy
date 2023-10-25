@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.model.FlowEncapsulationType.VXLAN
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -68,7 +69,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         flowInfo.encapsulationType == data.encapsulationCreate.toString().toLowerCase()
 
         and: "Correct rules are installed"
-        def vxlanRule = (flowInfo.encapsulationType == FlowEncapsulationType.VXLAN.toString().toLowerCase())
+        def vxlanRule = (flowInfo.encapsulationType == VXLAN.toString().toLowerCase())
         def flowInfoFromDb = database.getFlow(flow.flowId)
         // ingressRule should contain "pushVxlan"
         // egressRule should contain "tunnel-id"
@@ -191,10 +192,10 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                 [
                         [
                                 encapsulationCreate: FlowEncapsulationType.TRANSIT_VLAN,
-                                encapsulationUpdate: FlowEncapsulationType.VXLAN
+                                encapsulationUpdate: VXLAN
                         ],
                         [
-                                encapsulationCreate: FlowEncapsulationType.VXLAN,
+                                encapsulationCreate: VXLAN,
                                 encapsulationUpdate: FlowEncapsulationType.TRANSIT_VLAN
                         ]
                 ], getUniqueVxlanSwitchPairs()
@@ -209,7 +210,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
 
         def flow = flowHelperV2.randomFlow(switchPair)
-        flow.encapsulationType = FlowEncapsulationType.VXLAN
+        flow.encapsulationType = VXLAN
         flow.pinned = true
         flowHelperV2.addFlow(flow)
 
@@ -248,7 +249,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         when: "Create a flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.allocateProtectedPath = true
-        flow.encapsulationType = FlowEncapsulationType.VXLAN
+        flow.encapsulationType = VXLAN
         flowHelperV2.addFlow(flow)
 
         then: "Flow is created with protected path"
@@ -365,7 +366,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def defaultFlow = flowHelperV2.randomFlow(switchPair)
         defaultFlow.source.vlanId = 0
         defaultFlow.destination.vlanId = 0
-        defaultFlow.encapsulationType = FlowEncapsulationType.VXLAN
+        defaultFlow.encapsulationType = VXLAN
         flowHelperV2.addFlow(defaultFlow)
 
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -401,8 +402,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         when: "Try to create a VXLAN flow"
         def flow = flowHelperV2.randomFlow(switchPair)
-        flow.encapsulationType = FlowEncapsulationType.VXLAN.toString()
-        def addedFlow = northboundV2.addFlow(flow)
+        flow.encapsulationType = VXLAN.toString()
+        def addedFlow = flowHelperV2.addFlow(flow)
 
         then: "Human readable error is returned"
         def createError = thrown(HttpClientErrorException)
@@ -417,7 +418,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         addedFlow = flowHelperV2.addFlow(flow)
 
         and: "Try updated its encap type to VXLAN"
-        northboundV2.updateFlow(flow.flowId, flow.tap { it.encapsulationType = FlowEncapsulationType.VXLAN.toString() })
+        northboundV2.updateFlow(flow.flowId, flow.tap { it.encapsulationType = VXLAN.toString() })
 
         then: "Human readable error is returned"
         def updateError = thrown(HttpClientErrorException)
@@ -468,8 +469,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         when: "Create a VXLAN flow"
         def flow = flowHelperV2.randomFlow(switchPair)
-        flow.encapsulationType = FlowEncapsulationType.VXLAN
-        northboundV2.addFlow(flow)
+        flow.encapsulationType = VXLAN
+        flowHelperV2.addFlow(flow)
 
         then: "Flow is built through vxlan-enabled path, even though it is not the shortest"
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) != noVxlanPath
@@ -499,9 +500,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                 .supportedTransitEncapsulation.collect { it.toUpperCase() }
 
         when: "Try to create a flow"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.encapsulationType = FlowEncapsulationType.VXLAN
-        northboundV2.addFlow(flow)
+        def flow = flowHelperV2.randomFlow(switchPair).tap {it.encapsulationType = VXLAN}
+        flowHelperV2.addFlow(flow)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -521,9 +521,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         when: "Try to create a one-switch flow"
         def sw = topology.activeSwitches.find { switchHelper.isVxlanEnabled(it.dpId) }
         assumeTrue(sw as boolean, "Require at least 1 VXLAN supported switch")
-        def flow = flowHelperV2.singleSwitchFlow(sw)
-        flow.encapsulationType = encapsulationCreate
-        northboundV2.addFlow(flow)
+        def flow = flowHelperV2.singleSwitchFlow(sw).tap {it.encapsulationType = encapsulationCreate}
+        flowHelperV2.addFlow(flow)
 
         then: "Flow is created with the #encapsulationCreate.toString() encapsulation type"
         def flowInfo1 = northboundV2.getFlow(flow.flowId)
@@ -588,8 +587,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         where:
         encapsulationCreate                | encapsulationUpdate
-        FlowEncapsulationType.TRANSIT_VLAN | FlowEncapsulationType.VXLAN
-        FlowEncapsulationType.VXLAN        | FlowEncapsulationType.TRANSIT_VLAN
+        FlowEncapsulationType.TRANSIT_VLAN | VXLAN
+        VXLAN | FlowEncapsulationType.TRANSIT_VLAN
 
     }
 
@@ -630,7 +629,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
     def getUnsupportedVxlanErrorDescription(endpointName, dpId, supportedEncapsulationTypes) {
         return "Flow's $endpointName endpoint $dpId doesn't support requested encapsulation type " +
-                "$FlowEncapsulationType.VXLAN. Choose one of the supported encapsulation types " +
+                "$VXLAN. Choose one of the supported encapsulation types " +
                 "$supportedEncapsulationTypes or update switch properties and add needed encapsulation type."
     }
 }

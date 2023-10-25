@@ -20,6 +20,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.payload.flow.FlowState.DEGRADED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/pce/design.md",
@@ -128,17 +129,10 @@ class MaxLatencySpec extends HealthCheckSpecification {
             maxLatencyTier2 = 16  // maxLatency < pathLatency < maxLatencyTier2
             pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
         }
-        northboundV2.addFlow(flow)
+        flowHelperV2.addFlow(flow, DEGRADED)
 
         then: "Flow is created, main path is the 10 latency path, protected is 15 latency"
         and: "Flow goes to DEGRADED state"
-        wait(WAIT_OFFSET) {
-            def flowInfo = northboundV2.getFlow(flow.flowId)
-            assert flowInfo.status == FlowState.DEGRADED.toString()
-            assert flowInfo.statusDetails.mainPath == "Up"
-            assert flowInfo.statusDetails.protectedPath == "degraded"
-            assert flowInfo.statusInfo == StatusInfo.BACK_UP_STRATEGY_USED
-        }
         def path = northbound.getFlowPath(flow.flowId)
         pathHelper.convert(path) == mainPath
         pathHelper.convert(path.protectedPath) == alternativePath
@@ -159,15 +153,9 @@ class MaxLatencySpec extends HealthCheckSpecification {
             maxLatencyTier2 = 16
             pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
         }
-        northboundV2.addFlow(flow)
+        flowHelperV2.addFlow(flow, DEGRADED)
 
         then: "Flow is created, flow path is the 15 latency path"
-        wait(WAIT_OFFSET) {
-            def flowInfo = northboundV2.getFlow(flow.flowId)
-            assert flowInfo.status == FlowState.DEGRADED.toString()
-            assert flowInfo.statusInfo == StatusInfo.BACK_UP_STRATEGY_USED
-            assert northboundV2.getFlowHistoryStatuses(flow.flowId).historyStatuses*.statusBecome == ["DEGRADED"]
-        }
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == alternativePath
 
         cleanup:
@@ -198,7 +186,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         wait(WAIT_OFFSET) {
             def flowInfo = northboundV2.getFlow(flow.flowId)
             assert flowInfo.maxLatency == newMaxLatency
-            assert flowInfo.status == FlowState.DEGRADED.toString()
+            assert flowInfo.status == DEGRADED.toString()
             assert flowInfo.statusInfo == StatusInfo.BACK_UP_STRATEGY_USED
             /*[0..1] - can be more than two statuses due to running this test in a parallel mode.
             for example: reroute can be triggered by blinking/activating any isl (not involved in flow path)*/
@@ -230,12 +218,12 @@ class MaxLatencySpec extends HealthCheckSpecification {
 
         then: "Flow is rerouted and goes to the DEGRADED state"
         wait(rerouteDelay + WAIT_OFFSET) {
-            def flowHistory = northbound.getFlowHistory(flow.flowId).last()
+            def flowHistory = flowHelper.getLatestHistoryEntry(flow.flowId)
             flowHistory.payload.last().action == REROUTE_SUCCESS
             // https://github.com/telstra/open-kilda/issues/4049
             flowHistory.payload.last().details == "Flow reroute completed with status DEGRADED and error: The primary path status is DEGRADED"
             def flowInfo = northboundV2.getFlow(flow.flowId)
-            assert flowInfo.status == FlowState.DEGRADED.toString()
+            assert flowInfo.status == DEGRADED.toString()
             assert flowInfo.statusInfo == StatusInfo.BACK_UP_STRATEGY_USED
         }
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == alternativePath
@@ -260,15 +248,10 @@ class MaxLatencySpec extends HealthCheckSpecification {
             maxLatencyTier2 = 12
             pathComputationStrategy = PathComputationStrategy.LATENCY.toString()
         }
-        northboundV2.addFlow(flow)
+        flowHelperV2.addFlow(flow, DEGRADED)
 
         then: "Flow is created in DEGRADED state because flowPath doesn't satisfy max_latency value \
 but satisfies max_latency_tier2"
-        wait(WAIT_OFFSET) {
-            def flowInfo =  northboundV2.getFlow(flow.flowId)
-            assert flowInfo.status == FlowState.DEGRADED.toString()
-            assert flowInfo.statusInfo == StatusInfo.BACK_UP_STRATEGY_USED
-        }
         def path = northbound.getFlowPath(flow.flowId)
         pathHelper.convert(path) == mainPath
 
@@ -288,10 +271,9 @@ but satisfies max_latency_tier2"
             maxLatencyTier2 = 12
             pathComputationStrategy = PathComputationStrategy.LATENCY.toString()
         }
-        northboundV2.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         then: "Flow is created in UP"
-        wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
         def path = northbound.getFlowPath(flow.flowId)
         pathHelper.convert(path) == mainPath
 
@@ -311,7 +293,7 @@ but satisfies max_latency_tier2"
             maxLatencyTier2 = 11
             pathComputationStrategy = PathComputationStrategy.LATENCY.toString()
         }
-        northboundV2.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         then: "Flow is not created, human readable error is returned"
         def e = thrown(HttpClientErrorException)

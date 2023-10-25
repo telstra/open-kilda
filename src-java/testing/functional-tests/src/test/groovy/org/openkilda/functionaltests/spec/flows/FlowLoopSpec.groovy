@@ -261,7 +261,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "Flow history contains info about flowLoop"
         Wrappers.wait(WAIT_OFFSET / 2) {
-            def flowHistory = northbound.getFlowHistory(flow.flowId).last()
+            def flowHistory = flowHelper.getLatestHistoryEntry(flow.flowId)
             assert !flowHistory.dumps.find { it.type == "stateBefore" }.loopSwitchId
             assert flowHistory.dumps.find { it.type == "stateAfter" }.loopSwitchId == switchPair.dst.dpId
         }
@@ -463,7 +463,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
         Wrappers.wait(WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == UPDATE_SUCCESS
+            assert flowHelper.getLatestHistoryEntry(flow.flowId).payload.last().action == UPDATE_SUCCESS
         }
 
         when: "Break ISL on the main path (bring port down) to init auto swap"

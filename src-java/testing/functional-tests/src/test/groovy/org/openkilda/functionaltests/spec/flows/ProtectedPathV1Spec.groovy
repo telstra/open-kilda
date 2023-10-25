@@ -514,8 +514,8 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.id).find {
-                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            assert flowHelper.getHistoryEntriesByAction(flow.id, REROUTE_ACTION).find {
+                it.taskId =~ (/.+ : retry #1 ignore_bw true/)
             }?.payload?.last()?.action == REROUTE_FAIL
         }
         verifyAll(northbound.getFlow(flow.id).flowStatusDetails) {

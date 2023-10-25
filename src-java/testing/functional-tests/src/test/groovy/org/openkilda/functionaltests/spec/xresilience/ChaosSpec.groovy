@@ -40,7 +40,7 @@ class ChaosSpec extends HealthCheckSpecification {
         List<FlowRequestV2> flows = []
         flowsAmount.times {
             def flow = flowHelperV2.randomFlow(*topologyHelper.randomSwitchPair, false, flows)
-            northboundV2.addFlow(flow)
+            flowHelperV2.addFlow(flow)
             flows << flow
         }
 
