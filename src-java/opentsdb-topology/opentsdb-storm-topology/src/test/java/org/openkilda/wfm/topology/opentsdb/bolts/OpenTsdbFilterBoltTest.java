@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.topology.opentsdb.bolt;
+package org.openkilda.wfm.topology.opentsdb.bolts;
 
 import static java.util.Collections.singletonMap;
 import static org.apache.storm.Constants.SYSTEM_COMPONENT_ID;
@@ -30,7 +30,6 @@ import static org.mockito.Mockito.when;
 
 import org.openkilda.messaging.info.Datapoint;
 import org.openkilda.messaging.info.InfoData;
-import org.openkilda.wfm.topology.opentsdb.bolts.OpenTsdbFilterBolt;
 
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.tuple.Tuple;
