@@ -37,6 +37,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteContext
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -106,7 +108,7 @@ public class AllocateProtectedResourcesAction extends
             stateMachine.setBackUpProtectedPathComputationWayUsed(allocatedPaths.isBackUpPathComputationWayUsed());
 
             if (!testNonOverlappingPath.test(allocatedPaths)) {
-                stateMachine.saveActionToHistory("Couldn't find non overlapping protected path. Skipped creating it");
+                saveActionToHistory(stateMachine, "Couldn't find non overlapping protected path. Skipped creating it");
                 stateMachine.fireNoPathFound("Couldn't find non overlapping protected path");
             } else {
                 log.debug("New protected paths have been allocated: {}", allocatedPaths);
@@ -125,7 +127,7 @@ public class AllocateProtectedResourcesAction extends
                 saveAllocationActionToHistory(stateMachine, haFlow, PATHS_TYPE, createdPaths);
             }
         } else {
-            stateMachine.saveActionToHistory("Found the same protected path. Skipped creating of it");
+            saveActionToHistory(stateMachine, "Found the same protected path. Skipped creating of it");
         }
     }
 
@@ -146,5 +148,13 @@ public class AllocateProtectedResourcesAction extends
 
         // Notify about failed allocation.
         stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
+    }
+
+    private void saveActionToHistory(HaFlowRerouteFsm stateMachine, String action) {
+        FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                .of(stateMachine.getCommandContext().getCorrelationId())
+                .withAction(action)
+                .withHaFlowId(stateMachine.getHaFlowId())
+        );
     }
 }

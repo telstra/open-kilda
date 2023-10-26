@@ -29,7 +29,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         haFlow.waitForHistoryEvent(HaFlowActionType.CREATE)
 
         when: "Request for history records"
-        def historyRecord = haFlow.getHistory(timeBeforeCreation, System.currentTimeSeconds() + 1)
+        def historyRecord = haFlow.getHistory(timeBeforeCreation, System.currentTimeSeconds() + 2)
                 .getEntriesByType(HaFlowActionType.CREATE)
 
         then: "Correct event appears in HA-Flow history and can be retrieved without specifying timeline"
@@ -97,21 +97,22 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
         Long timeBeforeOperation = System.currentTimeSeconds()
         HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
-        println(haFlow)
 
         when: "Delete Ha-Flow"
         def deletedFlow = haFlow.delete()
         haFlow.waitForHistoryEvent(HaFlowActionType.DELETE)
 
         then: "Correct event appears in HA-Flow history and can be retrieved with specifying timeline"
-        def historyRecord = haFlow.getHistory(timeBeforeOperation, System.currentTimeSeconds() + 1)
+        def historyRecord = haFlow.getHistory(timeBeforeOperation, System.currentTimeSeconds() + 2)
                 .getEntriesByType(HaFlowActionType.DELETE)
         historyRecord.size() == 1
 
         and: "All basic fields are correct"
-//        https://github.com/telstra/open-kilda/issues/5367
         historyRecord[0].verifyBasicFields(haFlow.haFlowId, HaFlowActionType.DELETE)
-        historyRecord.dumps.flatten().isEmpty()
+
+        and: "Only 'state_before' dump section is present for deletion event"
+        historyRecord[0].verifyDumpSection(DumpType.STATE_BEFORE, haFlow)
+        historyRecord.dumps.flatten().size() == 1
 
         cleanup:
         haFlow && !deletedFlow && haFlow.delete()
@@ -125,7 +126,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
 
         when: "Get timestamp after create event"
-        def historyRecord = haFlow.getHistory(timeBeforeAction, System.currentTimeMillis())
+        def historyRecord = haFlow.getHistory(timeBeforeAction, System.currentTimeMillis() + 2000)
 
         then: "The appropriate history record has been returned"
         verifyAll {
@@ -165,13 +166,11 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
 
         and: "All basic fields are correct and rerouting failure details are available"
         historyRecordWithoutTimeline[0].verifyBasicFields(haFlow.haFlowId, HaFlowActionType.REROUTE_FAIL)
-        verifyAll {
-            historyRecordWithoutTimeline.dumps.flatten().isEmpty()
-            historyRecordWithoutTimeline[0].payloads[-1].details == "ValidateHaFlowAction failed: HA-flow's $haFlow.haFlowId src switch ${swT.shared.dpId} is not active"
-        }
+        historyRecordWithoutTimeline[0].payloads[-1].details == "ValidateHaFlowAction failed: HA-flow's $haFlow.haFlowId src switch ${swT.shared.dpId} is not active"
+        historyRecordWithoutTimeline[0].verifyDumpSection(DumpType.STATE_BEFORE, haFlow)
 
         and: "Correct event appears in HA-Flow history and can be retrieved with specifying timeline"
-        def historyRecordsWithTimeline = haFlow.getHistory(timeBeforeOperation, System.currentTimeSeconds() + 1)
+        def historyRecordsWithTimeline = haFlow.getHistory(timeBeforeOperation, System.currentTimeSeconds() + 2)
                 .getEntriesByType(HaFlowActionType.REROUTE_FAIL)
 
         and: "Both retrieved history records are identical"
@@ -187,6 +186,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         given: "HA-Flow"
         def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
         HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        haFlow.waitForHistoryEvent(HaFlowActionType.CREATE)
 
         when: "Get timestamp after create event"
         def timestampAfterCreate = System.currentTimeSeconds() + 1
