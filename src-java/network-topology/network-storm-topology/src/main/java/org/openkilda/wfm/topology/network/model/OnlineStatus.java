@@ -15,7 +15,9 @@
 
 package org.openkilda.wfm.topology.network.model;
 
-public enum OnlineStatus {
+import java.io.Serializable;
+
+public enum OnlineStatus implements Serializable {
     ONLINE, OFFLINE, REGION_OFFLINE;
 
     public boolean isOnline() {

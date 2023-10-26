@@ -8,7 +8,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -21,7 +20,6 @@ import spock.lang.Narrative
 @Narrative("Verify that ISL's bandwidth behaves consistently and does not allow any oversubscribtions etc.")
 class BandwidthSpec extends HealthCheckSpecification {
 
-    @Tidy
     @Tags(SMOKE)
     def "Available bandwidth on ISLs changes respectively when creating/updating/deleting a flow"() {
         given: "Two active not neighboring switches"
@@ -71,7 +69,6 @@ class BandwidthSpec extends HealthCheckSpecification {
         !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Longer path is chosen in case of not enough available bandwidth on a shorter path"() {
         given: "Two active switches with two possible flow paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
@@ -112,7 +109,6 @@ class BandwidthSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "Unable to exceed bandwidth limit on ISL when creating a flow"() {
         given: "Two active switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -137,7 +133,6 @@ class BandwidthSpec extends HealthCheckSpecification {
         !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Unable to exceed bandwidth limit on ISL when updating a flow"() {
         given: "Two active switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -169,7 +164,6 @@ class BandwidthSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Able to exceed bandwidth limit on ISL when creating/updating a flow with ignore_bandwidth=true"() {
         given: "Two active switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -210,7 +204,6 @@ class BandwidthSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Able to update bandwidth to maximum link speed without using alternate links"() {
         given: "Two active neighboring switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -252,7 +245,6 @@ class BandwidthSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "System doesn't allow to exceed bandwidth limit on ISL while updating a flow with ignore_bandwidth=false"() {
         given: "Two active switches"
         def switchPair = topologyHelper.getNeighboringSwitchPair()
@@ -293,7 +285,6 @@ class BandwidthSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Unable to exceed bandwidth limit on ISL when creating a flow [v1 api]"() {
         given: "Two active switches"

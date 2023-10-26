@@ -45,6 +45,6 @@ public class IngressFlowSegmentInstallMultiTableFlowModFactoryTest extends Ingre
 
     @Override
     protected FlowSegmentMetadata makeMetadata() {
-        return new FlowSegmentMetadata(flowId, cookie, true);
+        return new FlowSegmentMetadata(flowId, cookie);
     }
 }

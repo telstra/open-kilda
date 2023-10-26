@@ -136,7 +136,6 @@ public class FlowValidationService {
                         flow.getReversePathId(),
                         flow.getProtectedForwardPathId(),
                         flow.getProtectedReversePathId()))
-                .keepMultitableForFlow(true)
                 .build();
         List<FlowValidationResponse> flowValidationResponse = new ArrayList<>();
 

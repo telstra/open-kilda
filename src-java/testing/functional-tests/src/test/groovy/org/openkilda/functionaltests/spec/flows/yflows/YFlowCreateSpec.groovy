@@ -15,7 +15,6 @@ import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.YFlowHelper
@@ -49,7 +48,6 @@ class YFlowCreateSpec extends HealthCheckSpecification {
     @Shared
     Provider<TraffExamService> traffExamProvider
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Valid y-flow can be created#trafficDisclaimer, covered cases: #coveredCases"() {
         assumeTrue(swT != null, "These cases cannot be covered on given topology: $coveredCases")
@@ -212,7 +210,6 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         trafficDisclaimer = trafficApplicable ? " and pass traffic" : " [!NO TRAFFIC CHECK!]"
     }
 
-    @Tidy
     def "System forbids to create a y-flow with conflict: #data.descr"(YFlowCreatePayload yFlow) {
         assumeTrue(data.yFlow != null, "This case cannot be covered on given topology: $data.descr")
 
@@ -373,7 +370,6 @@ switch '${flow.sharedEndpoint.switchId}' is occupied by an ISL \(source endpoint
         yFlow = data.yFlow as YFlowCreatePayload
     }
 
-    @Tidy
     def "System forbids to create a y-flow with conflict: subflow1 vlans are [0,X] and subflow2 vlans are [X,0] on shared endpoint"() {
         when: "Try creating a y-flow with one endpoint being in conflict with the other one"
         def flow = yFlowHelper.randomYFlow(topologyHelper.switchTriplets[0]).tap {
@@ -413,7 +409,6 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
         }
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "System forbids to create a y-flow with conflict: shared endpoint port is inside a LAG group"() {
         given: "A LAG port"
@@ -450,7 +445,6 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
         lagPort && northboundV2.deleteLagLogicalPort(swT.shared.dpId, lagPort)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "System allows to create y-flow with bandwidth equal to link bandwidth between shared endpoint and y-point (#4965)"() {
         /* Shared <----------------> Y-Point ----------- Ep1

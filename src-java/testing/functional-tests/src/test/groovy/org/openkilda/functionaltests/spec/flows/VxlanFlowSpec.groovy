@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -12,7 +11,6 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -32,7 +30,6 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
@@ -56,7 +53,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
-    @Tidy
     @IterationTags([
             @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /TRANSIT_VLAN -> VXLAN/)
     ])
@@ -112,13 +108,15 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def exam
         if (swPair.isTraffExamCapable()) {
-            exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 1000, 5)
+            exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(toFlowPayload(flow), 50, 5)
             withPool {
-                [exam.forward, exam.reverse].eachParallel { direction ->
+                assert [exam.forward, exam.reverse].collectParallel { direction ->
                     def resources = traffExam.startExam(direction)
                     direction.setResources(resources)
-                    assert traffExam.waitExam(direction).hasTraffic()
-                }
+                    traffExam.waitExam(direction)
+                }.every {
+                    it.hasTraffic()
+                }, northbound.getSwitchRules(swPair.getSrc().getDpId())
             }
         }
 
@@ -139,17 +137,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         and: "Flow is valid"
         Wrappers.wait(PATH_INSTALLATION_TIME) {
             northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        }
-
-        and: "The flow allows traffic"
-        if(exam) {
-            withPool {
-                [exam.forward, exam.reverse].eachParallel { direction ->
-                    def resources = traffExam.startExam(direction)
-                    direction.setResources(resources)
-                    assert traffExam.waitExam(direction).hasTraffic()
-                }
-            }
         }
 
         and: "Flow is pingable"
@@ -184,9 +171,20 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             }
         }
 
+        and: "The flow allows traffic"
+        if(exam) {
+            withPool {
+                assert [exam.forward, exam.reverse].collectParallel { direction ->
+                    def resources = traffExam.startExam(direction)
+                    direction.setResources(resources)
+                    traffExam.waitExam(direction)
+                }.every {it.hasTraffic()}, northbound.getSwitchRules(swPair.getSrc().getDpId())
+            }
+        }
+
         cleanup: "Delete the flow"
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        sleep(7000) //subsequent test fails due to traffexam. Was not able to track down the reason
+        sleep(10000) //subsequent test fails due to traffexam. Was not able to track down the reason
 
         where:
         [data, swPair] << ([
@@ -203,7 +201,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         ].combinations() ?: assumeTrue(false, "Not enough VXLAN-enabled switches in topology"))
     }
 
-    @Tidy
     def "Able to CRUD a pinned flow with 'VXLAN' encapsulation"() {
         when: "Create a flow"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
@@ -235,7 +232,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Able to CRUD a vxlan flow with protected path"() {
         given: "Two active VXLAN supported switches with two available path at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
@@ -353,7 +349,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES])
     def "System allows tagged traffic via default flow(0<->0) with 'VXLAN' encapsulation"() {
         // we can't test (0<->20, 20<->0) because iperf is not able to establish a connection
@@ -392,7 +387,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(defaultFlow.flowId)
     }
 
-    @Tidy
     def "Unable to create a VXLAN flow when src and dst switches do not support it"() {
         given: "Src and dst switches do not support VXLAN"
         def switchPair = topologyHelper.switchPairs.first()
@@ -441,7 +435,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags(TOPOLOGY_DEPENDENT)
     def "System selects longer path if shorter path does not support required encapsulation type"() {
         given: "Shortest path transit switch does not support VXLAN and alt paths with VXLAN are available"
@@ -487,7 +480,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY, TOPOLOGY_DEPENDENT])
     def "Unable to create a vxlan flow when dst switch does not support it"() {
         given: "VXLAN supported and not supported switches"
@@ -524,7 +516,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         isVxlanEnabledOnDstSw && switchHelper.updateSwitchProperties(switchPair.dst, originDstSwProps)
     }
 
-    @Tidy
     def "System allows to create/update encapsulation type for a one-switch flow\
 (#encapsulationCreate.toString() -> #encapsulationUpdate.toString())"() {
         when: "Try to create a one-switch flow"

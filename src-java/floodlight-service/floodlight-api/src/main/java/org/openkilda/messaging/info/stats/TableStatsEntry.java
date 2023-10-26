@@ -20,10 +20,12 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
 @Builder
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class TableStatsEntry {
+public class TableStatsEntry implements Serializable {
     int tableId;
     long activeEntries;
     long lookupCount;

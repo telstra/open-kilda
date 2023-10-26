@@ -133,6 +133,6 @@ public class RemoveOldRulesAction extends
             pathIds.addAll(stateMachine.getNewPrimaryPathIds().getAllSubPathIds());
         }
         return new PersistenceDataAdapter(
-                persistenceManager, pathIds, switchIds, false, additionalHaFlowMap);
+                persistenceManager, pathIds, switchIds, additionalHaFlowMap);
     }
 }

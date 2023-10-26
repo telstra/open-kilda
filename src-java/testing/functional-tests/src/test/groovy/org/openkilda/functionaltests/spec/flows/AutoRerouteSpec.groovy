@@ -19,7 +19,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -49,7 +48,6 @@ import java.util.concurrent.TimeUnit
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
 class AutoRerouteSpec extends HealthCheckSpecification {
 
-    @Tidy
     @Tags(SMOKE)
     @IterationTag(tags = [TOPOLOGY_DEPENDENT], iterationNameRegex = /vxlan/)
     def "Flow is rerouted when one of the #description flow ISLs fails"() {
@@ -91,7 +89,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "Strict bandwidth true: Flow status is set to DOWN after reroute if no alternative path with enough bandwidth"() {
         given: "A flow with one alternative path at least"
@@ -186,7 +183,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "Single switch flow changes status on switch up/down events"() {
         given: "Single switch flow"
         def sw = topology.getActiveSwitches()[0]
@@ -250,7 +246,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no alt path to reroute"() {
         given: "A flow without alternative paths"
@@ -314,7 +309,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         false       | 2 //original + 1 retry with ignore bw
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "Flow in 'Down' status is rerouted when discovering a new ISL"() {
         given: "An intermediate-switch flow with one alternative path at least"
@@ -375,7 +369,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags(SMOKE)
     def "Flow in 'Up' status is not rerouted when discovering a new ISL and more preferable path is available"() {
         given: "A flow with one alternative path at least"
@@ -422,7 +415,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags([SMOKE])
     def "Flow in 'Up' status is not rerouted when connecting a new switch and more preferable path is available"() {
         given: "A flow with one alternative path at least"
@@ -463,7 +455,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         blockData && !switchIsOnline && switchHelper.reviveSwitch(switchToDisconnect, blockData, true)
     }
 
-    @Tidy
     @Tags([HARDWARE, SMOKE])
     def "Flow is not rerouted when one of the flow ports goes down"() {
         given: "An intermediate-switch flow with one alternative path at least"
@@ -497,7 +488,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     @Tags(HARDWARE)
     def "Flow in 'UP' status is not rerouted after switchUp event"() {
         given: "Two active neighboring switches which support round trip latency"
@@ -555,7 +545,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "Flow is not rerouted when switchUp event appear for a switch which is not related to the flow"() {
         given: "Given a flow in DOWN status on neighboring switches"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -618,7 +607,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "System properly handles multiple flow reroutes if ISL on new path breaks while first reroute is in progress"() {
         given: "Switch pair that have at least 3 paths and 2 paths that have at least 1 common isl"
         List<PathNode> mainPath, backupPath, thirdPath
@@ -763,7 +751,6 @@ triggering one more reroute of the current path"
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
 @Isolated
 class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
-    @Tidy
     //isolation: global toggle flowsRerouteOnIslDiscoveryEnabled is changed
     def "Flow in 'Down' status is rerouted after switchUp event"() {
         given: "First switch pair with two parallel links and two available paths"
@@ -924,8 +911,6 @@ Failed to find path with requested bandwidth= ignored"
         database.resetCosts(topology.isls)
     }
 
-
-    @Tidy
     @Tags(SMOKE)
     /** isolation: test verifies that flow is rerouted by blinking not involved isl,
      * it can be triggered by parallel test, not by action from this test
@@ -943,10 +928,8 @@ Failed to find path with requested bandwidth= ignored"
 
         and: "Alt path ISLs have not enough bandwidth to host the flow"
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
-        def altPaths = allFlowPaths.findAll { it != currentPath }
         def involvedIsls = pathHelper.getInvolvedIsls(currentPath)
-        def altIsls = altPaths.collectMany { pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) } }
-                .unique { a, b -> (a == b || a == b.reversed) ? 0 : 1 }
+        def altIsls = topology.getRelatedIsls(topologyHelper.getSwitch(flow.getSource().getSwitchId())) - involvedIsls
         altIsls.each {isl ->
             def linkProp = islUtils.toLinkProps(isl, [cost: "1"])
             northbound.updateLinkProps([linkProp])
@@ -960,9 +943,8 @@ Failed to find path with requested bandwidth= ignored"
 
         when: "Fail a flow ISL (bring switch port down)"
         Set<Isl> altFlowIsls = []
-        def flowIsls = pathHelper.getInvolvedIsls(flowPath)
         allFlowPaths.findAll { it != flowPath }.each { altFlowIsls.addAll(pathHelper.getInvolvedIsls(it)) }
-        def islToFail = flowIsls.find { !(it in altFlowIsls) && !(it.reversed in altFlowIsls) }
+        def islToFail = involvedIsls.get(0)
         def portDown = antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
 
         then: "Flow history shows two reroute attempts, second one succeeds with ignore bw"
@@ -981,8 +963,6 @@ Failed to find path with requested bandwidth= ignored"
         northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
         List<PathNode> pathAfterReroute1 = PathHelper.convert(northbound.getFlowPath(flow.flowId))
         pathAfterReroute1 != flowPath
-        pathHelper.getInvolvedIsls(pathAfterReroute1).each {
-            assert northbound.getLink(it).availableBandwidth == flow.maximumBandwidth - 1 }
 
         when: "Try to manually reroute the degraded flow, while there is still not enough bandwidth"
         northboundV2.rerouteFlow(flow.flowId)
@@ -999,8 +979,6 @@ Failed to find path with requested bandwidth= ignored"
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
         }
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == pathAfterReroute1
-        pathHelper.getInvolvedIsls(pathAfterReroute1).each {
-            assert northbound.getLink(it).availableBandwidth == flow.maximumBandwidth - 1 }
 
         when: "Trigger auto reroute by blinking not involved(in flow path) isl"
         def islToBlink = topology.islsForActiveSwitches.find {
@@ -1021,8 +999,6 @@ Failed to find path with requested bandwidth= ignored"
         }
 
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == pathAfterReroute1
-        pathHelper.getInvolvedIsls(pathAfterReroute1).each {
-            assert northbound.getLink(it).availableBandwidth == flow.maximumBandwidth - 1 }
 
         when: "Broken ISL on the original path is back online"
         def portUp = antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)

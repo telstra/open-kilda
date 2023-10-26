@@ -23,7 +23,9 @@ import com.sabre.oss.conf4j.annotation.Key;
 @Key("zookeeper")
 public interface ZookeeperConfig {
     // To be able to run tests in parallel we must use different ports for zookeeper hosts in each test
-    int STATS_TOPOLOGY_TEST_ZOOKEEPER_PORT = 9098;
+    int STATS_TOPOLOGY_TEST_ZOOKEEPER_PORT_1 = 9051;
+    int STATS_TOPOLOGY_TEST_ZOOKEEPER_PORT_2 = 9052;
+    int STATS_TOPOLOGY_TEST_ZOOKEEPER_PORT_3 = 9053;
     int ISL_LATENCY_TOPOLOGY_TEST_ZOOKEEPER_PORT = 9099;
     int FLOW_PING_TOPOLOGY_TEST_ZOOKEEPER_PORT = 9100;
 

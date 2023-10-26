@@ -1,8 +1,5 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.northbound.dto.v2.yflows.YFlow
-
 import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -11,10 +8,11 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_ACTION
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.messaging.payload.flow.FlowPathPayload
+import org.openkilda.northbound.dto.v2.yflows.YFlow
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths
 
@@ -30,7 +28,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
     @Shared
     YFlowHelper yFlowHelper
 
-    @Tidy
     def "Able to create diverse y-flows"() {
         given: "Switches with three not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.find {
@@ -92,7 +89,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         !yFlowsAreDeleted && [yFlow1, yFlow2, yFlow3].each { it && yFlowHelper.deleteYFlow(it.YFlowId) }
     }
 
-    @Tidy
     def "Able to update y-flow to became diverse with simple multiSwitch flow"() {
         given: "Switches with two not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.find {
@@ -167,7 +163,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Able to create y-flow with one switch sub flow and diverse with simple multiSwitch flow"() {
         given: "Two switches with two not overlapping paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -207,7 +202,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Able to get y-flow paths with correct overlapping segments stats"() {
         given: "Switches with three not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.find {
@@ -271,7 +265,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Able to get y-flow paths with correct overlapping segments stats with one-switch y-flow"() {
         given: "Three switches"
@@ -320,7 +313,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "Able to get Y-Flow paths with with diversity part when flows become diverse after partial update"() {
         given: "Switches with three not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.find {

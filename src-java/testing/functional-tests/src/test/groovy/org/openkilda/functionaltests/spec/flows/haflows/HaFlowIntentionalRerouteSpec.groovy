@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.HaPathHelper
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -14,7 +13,6 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths
 import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlow
@@ -35,7 +33,6 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
     @Shared
     HaPathHelper haPathHelper
 
-    @Tidy
     def "Not able to reroute to a path with not enough bandwidth available"() {
         given: "An HA-flow with alternate paths available"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
@@ -88,7 +85,6 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "Able to reroute to a better path if it has enough bandwidth"() {
         given: "An HA-flow with alternate paths available"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
@@ -162,7 +158,6 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         thinIsl && [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
     }
 
-    @Tidy
     def "Able to reroute to a path with not enough bandwidth available in case ignoreBandwidth=true"() {
         given: "A HA-flow with alternate paths available"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()

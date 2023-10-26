@@ -77,14 +77,15 @@ public class StatsIntegrationService {
     private final RestClientManager restClientManager;
     private final ApplicationProperties appProps;
     private final ServerContext serverContext;
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
 
     public StatsIntegrationService(RestClientManager restClientManager, ApplicationProperties appProps,
-                                   ServerContext serverContext) {
+                                   ServerContext serverContext, RestTemplate restTemplate) {
         this.restClientManager = restClientManager;
         this.appProps = appProps;
         this.serverContext = serverContext;
+        this.restTemplate = restTemplate;
     }
 
     /**
@@ -103,20 +104,21 @@ public class StatsIntegrationService {
 
         HttpEntity<MultiValueMap<String, Object>> requestEntity
                 = getMultiValueMapHttpEntity(rangeQueryParamsRequest, headers);
+        String url = appProps.getVictoriaBaseUrl() + IConstants.VictoriaMetricsUrl.VICTORIA_RANGE_QUERY;
         try {
-            ResponseEntity<VictoriaDbRes> responseEntity = restTemplate.postForEntity(
-                    appProps.getVictoriaBaseUrl() + IConstants.VictoriaMetricsUrl.VICTORIA_RANGE_QUERY,
-                    requestEntity, VictoriaDbRes.class);
+            LOGGER.info("Request to Victoria DB with the following url: {}", url);
+            ResponseEntity<VictoriaDbRes> responseEntity
+                    = restTemplate.postForEntity(url, requestEntity, VictoriaDbRes.class);
             LOGGER.info("Received response from victoriaDb with the following http code: {}, status: {}, error: {}",
                     responseEntity.getStatusCodeValue(),
                     responseEntity.getBody().getStatus(),
                     responseEntity.getBody().getError());
             return responseEntity.getBody();
         } catch (ResourceAccessException e) {
+            LOGGER.error("Error while accessing VictoriaDB with the following URL: {}", url, e);
             return VictoriaDbRes.builder().status(Status.ERROR).errorType("500")
                     .error("Can not access stats at the moment, something wrong with the Victoria DB").build();
         }
-
     }
 
     private static HttpEntity<MultiValueMap<String, Object>> getMultiValueMapHttpEntity(
@@ -248,7 +250,8 @@ public class StatsIntegrationService {
         if (!statsType.equals(StatsType.ISL)) {
             query.setRate(OpenTsDb.RATE);
         }
-        if (statsType.equals(StatsType.SWITCH_PORT) && Metrics.SWITCH_STATE.getMetricName().equals(metric)) {
+        if (statsType.equals(StatsType.SWITCH_PORT)
+                && Metrics.SWITCH_STATE.getMetricName(appProps.getMetricPrefix()).equals(metric)) {
             query.setRate(false);
         } else {
             if (validateDownSample(paramDownSample)) {

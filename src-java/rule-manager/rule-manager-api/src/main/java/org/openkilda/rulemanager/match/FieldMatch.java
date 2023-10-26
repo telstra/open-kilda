@@ -29,12 +29,14 @@ import lombok.Value;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
+import java.io.Serializable;
+
 @Value
 @JsonSerialize
 @Builder
 @JsonNaming(SnakeCaseStrategy.class)
 @JsonIgnoreProperties(value = { "masked" })
-public class FieldMatch {
+public class FieldMatch implements Serializable {
 
     long value;
     Long mask;

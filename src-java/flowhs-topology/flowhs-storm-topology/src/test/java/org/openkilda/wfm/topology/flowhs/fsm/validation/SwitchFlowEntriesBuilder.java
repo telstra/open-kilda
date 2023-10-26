@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.validation;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static org.openkilda.rulemanager.action.ActionType.PUSH_VXLAN_NOVIFLOW;
 
 import org.openkilda.messaging.info.flow.FlowDumpResponse;
@@ -28,19 +29,28 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.PathSegment;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.Cookie;
+import org.openkilda.model.cookie.CookieBase.CookieType;
+import org.openkilda.model.cookie.FlowSharedSegmentCookie;
+import org.openkilda.model.cookie.FlowSharedSegmentCookie.SharedSegmentType;
+import org.openkilda.model.cookie.PortColourCookie;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.FlowSpeakerData;
+import org.openkilda.rulemanager.FlowSpeakerData.FlowSpeakerDataBuilder;
 import org.openkilda.rulemanager.Instructions;
 import org.openkilda.rulemanager.MeterFlag;
 import org.openkilda.rulemanager.MeterSpeakerData;
+import org.openkilda.rulemanager.OfMetadata;
+import org.openkilda.rulemanager.OfTable;
 import org.openkilda.rulemanager.OfVersion;
 import org.openkilda.rulemanager.ProtoConstants.PortNumber;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.rulemanager.action.Action;
+import org.openkilda.rulemanager.action.PopVlanAction;
 import org.openkilda.rulemanager.action.PortOutAction;
 import org.openkilda.rulemanager.action.PushVxlanAction;
 import org.openkilda.rulemanager.action.SetFieldAction;
 import org.openkilda.rulemanager.match.FieldMatch;
+import org.openkilda.rulemanager.utils.RoutingMetadata;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -92,10 +102,11 @@ public final class SwitchFlowEntriesBuilder {
         }
         PathSegment firstSegment = forwardSegments.get(0);
         flowDumpResponses.add(buildSwitchFlowEntries(flow.getSrcSwitchId(),
-                getFlowEntry(forwardCookie, flow.getSrcSwitchId(), flow.getSrcPort(), flow.getSrcVlan(), null,
-                        firstSegment.getSrcPort(), isVxlan ? null : forwardTransitEncapId,
-                        isVxlan ? forwardTransitEncapId : null,
-                        forwardPath.getMeterId().getValue()),
+                getSharedCustomerPortFlow(flow.getSrcSwitchId(), flow.getSrcPort()),
+                getSharedIngressFlow(flow.getSrcSwitchId(), flow.getSrcPort(), flow.getSrcVlan()),
+                getIngressFlow(flow.getSrcSwitchId(), forwardCookie, flow.getSrcPort(), flow.getSrcVlan(),
+                        new PortNumber(firstSegment.getSrcPort()), forwardTransitEncapId,
+                        (int) forwardPath.getMeterId().getValue(), isVxlan),
                 getFlowEntry(reverseCookie, flow.getSrcSwitchId(), firstSegment.getSrcPort(),
                         isVxlan ? null : reverseTransitEncapId,
                         isVxlan ? reverseTransitEncapId : null,
@@ -149,10 +160,11 @@ public final class SwitchFlowEntriesBuilder {
                         isVxlan ? null : forwardTransitEncapId,
                         isVxlan ? forwardTransitEncapId : null,
                         flow.getDestPort(), flow.getDestVlan(), null, null),
-                getFlowEntry(reverseCookie, flow.getDestSwitchId(), flow.getDestPort(), flow.getDestVlan(),
-                        null, lastSegment.getDestPort(), isVxlan ? null : reverseTransitEncapId,
-                        isVxlan ? reverseTransitEncapId : null,
-                        reversePath.getMeterId().getValue())));
+                getSharedCustomerPortFlow(flow.getDestSwitchId(), flow.getDestPort()),
+                getSharedIngressFlow(flow.getDestSwitchId(), flow.getDestPort(), flow.getDestVlan()),
+                getIngressFlow(flow.getDestSwitchId(), reverseCookie, flow.getDestPort(), flow.getDestVlan(),
+                        new PortNumber(lastSegment.getDestPort()), reverseTransitEncapId,
+                        (int) reversePath.getMeterId().getValue(), isVxlan)));
 
         if (protectedForwardPath.isPresent()) {
             List<PathSegment> forwardProtectedSegments = protectedForwardPath.get().getSegments();
@@ -237,6 +249,77 @@ public final class SwitchFlowEntriesBuilder {
         return switchMeterEntries;
     }
 
+    public static FlowSpeakerData getSharedCustomerPortFlow(SwitchId switchId, int srcPort) {
+        Set<FieldMatch> fieldMatchSet = newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(srcPort).build());
+        PortColourCookie cookie = new PortColourCookie(CookieType.MULTI_TABLE_INGRESS_RULES, srcPort);
+        return getFlowSpeakerDataBuilder(switchId)
+                .table(OfTable.INPUT)
+                .cookie(cookie)
+                .match(fieldMatchSet)
+                .instructions(Instructions.builder()
+                        .goToTable(OfTable.PRE_INGRESS)
+                        .build())
+                .build();
+    }
+
+    public static FlowSpeakerData getSharedIngressFlow(SwitchId switchId, int srcPort, Integer srcVlan) {
+        Set<FieldMatch> fieldMatchSet = newHashSet(
+                FieldMatch.builder().field(Field.IN_PORT).value(srcPort).build(),
+                FieldMatch.builder().field(Field.VLAN_VID).value(srcVlan).build());
+        RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(srcVlan).build(new HashSet<>());
+        List<Action> actions = Lists.newArrayList(new PopVlanAction());
+
+        FlowSharedSegmentCookie cookie = FlowSharedSegmentCookie.builder(SharedSegmentType.QINQ_OUTER_VLAN)
+                .portNumber(srcPort)
+                .vlanId(srcVlan)
+                .build();
+
+        return getFlowSpeakerDataBuilder(switchId)
+                .table(OfTable.PRE_INGRESS)
+                .cookie(cookie)
+                .match(fieldMatchSet)
+                .instructions(Instructions.builder()
+                        .applyActions(actions)
+                        .writeMetadata(new OfMetadata(metadata.getValue(), metadata.getMask()))
+                        .goToTable(OfTable.INGRESS)
+                        .build())
+                .build();
+    }
+
+    public static FlowSpeakerData getIngressFlow(
+            SwitchId switchId, long cookie, int srcPort, Integer srcVlan, PortNumber dstPort, int transitEncapsulation,
+            Integer meterId, boolean vxlanEncapsulation) {
+        RoutingMetadata metadata = RoutingMetadata.builder().outerVlanId(srcVlan).build(new HashSet<>());
+        Set<FieldMatch> fieldMatchSet = newHashSet(
+                FieldMatch.builder().field(Field.IN_PORT).value(srcPort).build(),
+                FieldMatch.builder().field(Field.METADATA).value(metadata.getValue()).mask(metadata.getMask()).build());
+
+        List<Action> actions = Lists.newArrayList(
+                new PortOutAction(dstPort));
+        if (vxlanEncapsulation) {
+            actions.add(PushVxlanAction.builder().vni(transitEncapsulation).type(PUSH_VXLAN_NOVIFLOW).build());
+        } else {
+            actions.add(SetFieldAction.builder().field(Field.VLAN_VID).value(transitEncapsulation).build());
+        }
+
+        return getFlowSpeakerDataBuilder(switchId)
+                .cookie(new Cookie(cookie))
+                .match(fieldMatchSet)
+                .instructions(Instructions.builder()
+                        .applyActions(actions)
+                        .goToMeter(meterId == null ? null : new MeterId(meterId))
+                        .build())
+                .build();
+    }
+
+    private static FlowSpeakerDataBuilder<?, ?> getFlowSpeakerDataBuilder(SwitchId switchId) {
+        return FlowSpeakerData.builder()
+                .switchId(switchId)
+                .packetCount(7)
+                .byteCount(480)
+                .ofVersion(OfVersion.OF_13);
+    }
+
     private FlowDumpResponse buildSwitchFlowEntries(SwitchId switchId, FlowSpeakerData... flowEntries) {
         return FlowDumpResponse.builder()
                 .flowSpeakerData(Lists.newArrayList(flowEntries))
@@ -280,12 +363,9 @@ public final class SwitchFlowEntriesBuilder {
             instructions.setGoToMeter(new MeterId(meterId));
         }
 
-        return FlowSpeakerData.builder()
+        return getFlowSpeakerDataBuilder(switchId)
                 .switchId(switchId)
                 .cookie(new Cookie(cookie))
-                .packetCount(7)
-                .byteCount(480)
-                .ofVersion(OfVersion.OF_13)
                 .match(fieldMatchSet)
                 .instructions(instructions)
                 .build();

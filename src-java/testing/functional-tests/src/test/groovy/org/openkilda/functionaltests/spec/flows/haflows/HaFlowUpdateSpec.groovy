@@ -1,9 +1,5 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithConflictExpectedError
-import org.openkilda.functionaltests.error.haflow.HaFlowNotUpdatedExpectedError
-import spock.lang.Ignore
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -11,7 +7,6 @@ import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.haflow.HaFlowNotUpdatedExpectedError
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
@@ -33,7 +28,6 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
     @Shared
     HaFlowHelper haFlowHelper
 
-    @Tidy
     def "User can update #data.descr of a ha-flow"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
@@ -45,7 +39,8 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
         when: "Update the ha-flow"
         def updateResponse = haFlowHelper.updateHaFlow(haFlow.haFlowId, update)
-        def ignores = ["subFlows.timeUpdate", "subFlows.status", "timeUpdate", "status"]
+        def ignores = ["subFlows.timeUpdate", "subFlows.status", "subFlows.forwardLatency",
+                       "subFlows.reverseLatency", "subFlows.latencyLastModifiedTime", "timeUpdate", "status"]
 
         then: "Requested updates are reflected in the response and in 'get' API"
         expect updateResponse, sameBeanAs(haFlow, ignores)
@@ -105,7 +100,6 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "User can update ha-flow where one of subflows has both ends on shared switch"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow where one of subflows has both ends on shared switch"
@@ -120,7 +114,8 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
         when: "Update the ha-flow"
         def updateResponse = haFlowHelper.updateHaFlow(haFlow.haFlowId, update)
-        def ignores = ["subFlows.timeUpdate", "subFlows.status", "timeUpdate", "status"]
+        def ignores = ["subFlows.timeUpdate", "subFlows.status", "subFlows.forwardLatency",
+                       "subFlows.reverseLatency", "subFlows.latencyLastModifiedTime", "timeUpdate", "status"]
 
         then: "Requested updates are reflected in the response and in 'get' API"
         expect updateResponse, sameBeanAs(haFlow, ignores)
@@ -140,7 +135,6 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }
 
-    @Tidy
     def "User can partially update #data.descr of a ha-flow"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
@@ -151,7 +145,8 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
         when: "Partial update the ha-flow"
         def updateResponse = haFlowHelper.partialUpdateHaFlow(haFlow.haFlowId, patch)
-        def ignores = ["subFlows.timeUpdate", "subFlows.status", "timeUpdate", "status"]
+        def ignores = ["subFlows.timeUpdate", "subFlows.status", "subFlows.forwardLatency",
+                       "subFlows.reverseLatency", "subFlows.latencyLastModifiedTime", "timeUpdate", "status"]
 
         then: "Requested updates are reflected in the response and in 'get' API"
         expect updateResponse, sameBeanAs(haFlow, ignores)
@@ -268,7 +263,6 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "User cannot update a ha-flow #data.descr"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"
@@ -336,7 +330,6 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
         payload.subFlows.forEach { it.endpoint.vlanId = flowHelperV2.randomVlan([it.endpoint.vlanId]) }
     }
 
-    @Tidy
     def "User cannot partial update a ha-flow with #data.descr"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Existing ha-flow"

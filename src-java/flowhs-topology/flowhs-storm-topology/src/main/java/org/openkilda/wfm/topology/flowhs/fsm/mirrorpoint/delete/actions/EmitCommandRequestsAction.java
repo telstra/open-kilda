@@ -118,7 +118,7 @@ public class EmitCommandRequestsAction extends
         Set<PathId> involvedPaths = newHashSet(stateMachine.getMirrorPathId());
         getFlow(stateMachine.getFlowId()).getOppositePathId(path.getPathId()).ifPresent(involvedPaths::add);
         DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths,
-                newHashSet(stateMachine.getMirrorSwitchId()), false);
+                newHashSet(stateMachine.getMirrorSwitchId()));
 
         return ruleManager.buildMirrorPointRules(mirrorPoints, dataAdapter);
     }

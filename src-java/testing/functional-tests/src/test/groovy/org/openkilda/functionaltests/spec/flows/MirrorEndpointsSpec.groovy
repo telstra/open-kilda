@@ -1,18 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import groovy.transform.AutoClone
-import groovy.transform.Memoized
-import groovy.util.logging.Slf4j
-import groovy.transform.AutoClone
-import org.openkilda.functionaltests.error.AbstractExpectedError
-import org.openkilda.functionaltests.error.flowmirror.FlowMirrorPointNotCreatedExpectedError
-import org.openkilda.functionaltests.error.flowmirror.FlowMirrorPointNotCreatedWithConflictExpectedError
-import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
-import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
-import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotUpdatedExpectedError
-
-import java.util.regex.Pattern
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -21,6 +8,8 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
@@ -31,7 +20,6 @@ import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.error.flowmirror.FlowMirrorPointNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flowmirror.FlowMirrorPointNotCreatedWithConflictExpectedError
 import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotUpdatedExpectedError
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.FlowHistoryConstants
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -58,28 +46,18 @@ import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.FlowBidirectionalExam
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.openkilda.testing.tools.TraffgenStats
+
+import groovy.transform.AutoClone
+import groovy.transform.Memoized
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.See
 import spock.lang.Shared
 import spock.lang.Unroll
 
-import javax.inject.Provider
 import java.util.regex.Pattern
-
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static org.junit.jupiter.api.Assumptions.assumeFalse
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
-import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static spock.util.matcher.HamcrestSupport.expect
+import javax.inject.Provider
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-traffic-mirroring")
@@ -92,7 +70,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Autowired @Shared
     FlowStats flowStats
 
-    @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
     def "Able to CRUD a mirror endpoint on the src switch, mirror to the same switch diff port [#swPair.src.hwSwString, #mirrorDirection]#trafficDisclaimer"() {
         given: "A flow"
@@ -247,7 +224,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         trafficDisclaimer = swPair.src.traffGens.size() < 2 ? " !WARN: No mirrored traffic check!" : ""
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Can create mirror point on protected flow and survive path swap, #mirrorDirection"() {
         given: "A flow with protected path"
@@ -302,7 +278,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
     }
 
-    @Tidy
     // ovs switch doesn't support mirroring for the vxlan flows
     @Tags([TOPOLOGY_DEPENDENT, HARDWARE])
     def "Can create mirror point on a VXLAN flow [#swPair.src.hwSwString, #mirrorDirection]#trafficDisclaimer"() {
@@ -351,7 +326,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         trafficDisclaimer = swPair.src.traffGens.size() < 2 ? " !WARN: No mirrored traffic check!" : ""
     }
 
-    @Tidy
     def "Flow with mirror point can survive flow sync, #data.encap, #mirrorDirection"() {
         given: "A flow with given encapsulation type and mirror point"
         // ovs switch doesn't support mirroring for the vxlan flows
@@ -403,7 +377,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         swPair = data.swPair as SwitchPair
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Can create mirror point on unmetered pinned flow, #mirrorDirection"() {
         given: "An unmetered pinned flow"
@@ -439,7 +412,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Can create a mirror point on the same port as flow, different vlan  [#swPair.dst.hwSwString, #encapType, #mirrorDirection]"() {
         given: "A flow"
@@ -494,7 +466,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Can create multiple mirror points for the same flow and switch"() {
         given: "A flow"
@@ -566,7 +537,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "System also updates mirror rule after flow partial update"() {
         given: "A flow with mirror point"
         def swPair = topologyHelper.switchPairs[0]
@@ -613,7 +583,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Mirror point can be created for a default flow (0 vlan), #mirrorDirection"() {
         given: "A default flow"
@@ -658,7 +627,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Flow mirror point works properly with a qinq flow, #mirrorDirection"() {
         given: "A qinq flow"
@@ -704,7 +672,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         mirrorDirection << [FlowPathDirection.REVERSE, FlowPathDirection.FORWARD]
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Unable to create a mirror endpoint with #data.testDescr on the transit switch"() {
         given: "A flow with transit switch"
@@ -769,7 +736,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     @Unroll("#testData.testName, #testData.mirrorPoint.mirrorPointDirection")
     def "Test possible error scenarios during mirror point creation"(MirrorErrorTestData testData) {
@@ -847,7 +813,6 @@ with these parameters./)
         }
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Unable to create a mirror point with existing flow conflict, #mirrorDirection"() {
         given: "A flow"
@@ -881,7 +846,6 @@ with these parameters./)
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Unable to create a flow that conflicts with mirror point, #mirrorDirection"() {
         given: "A flow with mirror point"
@@ -924,7 +888,6 @@ with these parameters./)
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Unable to create mirror point with connected devices enabled, #mirrorDirection"() {
         given: "A flow with connected devices enabled"
@@ -962,7 +925,6 @@ flow mirror point cannot be created this flow/).matches(error)
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Unable to update flow and enable connected devices if mirror is present, #mirrorDirection"() {
         given: "A flow with a mirror point"
@@ -1002,7 +964,6 @@ flow mirror point cannot be created this flow/).matches(error)
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Cannot enable connected devices on switch if mirror is present"() {
         given: "A flow with a mirror endpoint"
@@ -1039,7 +1000,6 @@ flow mirror point cannot be created this flow/).matches(error)
         !error && originalProps && restoreSwitchProperties(swPair.src.dpId, originalProps)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Cannot create mirror on a switch with enabled connected devices"() {
         given: "A switch with enabled connected devices"
@@ -1076,7 +1036,6 @@ flow mirror point cannot be created this flow/).matches(error)
         restoreSwitchProperties(swPair.src.dpId, originalProps)
     }
 
-    @Tidy
     @Tags([LOW_PRIORITY])
     def "Unable to create a mirror point with existing mirror point conflict, #mirrorDirection"() {
         given: "A flow with mirror point"

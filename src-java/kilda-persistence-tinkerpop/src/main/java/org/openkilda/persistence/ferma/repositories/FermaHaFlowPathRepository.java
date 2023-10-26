@@ -175,6 +175,6 @@ public class FermaHaFlowPathRepository extends FermaGenericRepository<HaFlowPath
 
     @Override
     protected HaFlowPathData doDetach(HaFlowPath entity, HaFlowPathFrame frame) {
-        return HaFlowPath.HaFlowPathCloner.INSTANCE.deepCopy(frame, entity.getHaFlow());
+        return HaFlowPath.HaFlowPathCloner.INSTANCE.deepCopy(frame, entity.getHaFlow(), entity.getHaSubFlows());
     }
 }

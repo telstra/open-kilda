@@ -15,7 +15,9 @@
 
 package org.openkilda.wfm.topology.ping.model;
 
-public class WindowedCounter {
+import java.io.Serializable;
+
+public class WindowedCounter implements Serializable {
     private long count = 0;
     private final long[] chunks;
     private int chunkIndex = 0;

@@ -99,7 +99,6 @@ public class SingleTableIngressYRuleGeneratorTest {
             .meterId(METER_ID)
             .srcSwitch(SWITCH_1)
             .destSwitch(SWITCH_2)
-            .srcWithMultiTable(false)
             .bandwidth(BANDWIDTH)
             .segments(newArrayList(PathSegment.builder()
                     .pathId(PATH_ID)
@@ -114,8 +113,6 @@ public class SingleTableIngressYRuleGeneratorTest {
             .cookie(COOKIE)
             .srcSwitch(SWITCH_1)
             .destSwitch(SWITCH_1)
-            .srcWithMultiTable(false)
-            .destWithMultiTable(false)
             .bandwidth(0)
             .segments(new ArrayList<>())
             .build();

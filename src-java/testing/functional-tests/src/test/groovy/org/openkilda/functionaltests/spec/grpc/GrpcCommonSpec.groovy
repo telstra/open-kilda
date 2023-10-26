@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.grpc
 
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 
 import org.springframework.http.HttpStatus
@@ -11,7 +10,6 @@ import spock.lang.Ignore
 
 class GrpcCommonSpec extends GrpcBaseSpecification {
 
-    @Tidy
     def "Able to get switch status on the #sw.hwSwString switch"() {
         when: "Get switch status"
         def response = grpc.getSwitchStatus(sw.address)
@@ -30,7 +28,6 @@ class GrpcCommonSpec extends GrpcBaseSpecification {
         sw << getNoviflowSwitches()
     }
 
-    @Tidy
     def "Able to get switch packet in out stats"() {
         when: "Get switch packet in out stats"
         def response = grpc.getPacketInOutStats(switches.address)
@@ -48,7 +45,6 @@ class GrpcCommonSpec extends GrpcBaseSpecification {
         switches << getNoviflowSwitches()
     }
 
-    @Tidy
     @Ignore("https://github.com/telstra/open-kilda/issues/3901")
     @Tags(HARDWARE)
     def "Not able to get switch status from a non-existent switch address"() {

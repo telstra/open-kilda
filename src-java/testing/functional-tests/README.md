@@ -89,17 +89,6 @@ Refer to [spock docs](https://spockframework.org/spock/docs/2.0/parallel_executi
   * `logs` - casual test log including DEBUG+ messages
 * Reports - ```build/reports```
 
-# Practices
-### Test execution may be aborted due to 'uncleanupable contamination'
-Sometimes it is very difficult to
-compile a comprehensive cleanup code for the test that will cover any failure scenario (especially for long, complex
-test cases). Such tests
-are __not__ marked as `@Tidy`, failure of such tests will abort further execution of any subsequent tests
- because at this point system is considered as contaminated.
-On the other hand, if the test is supplied with a bullet-proof cleanup code, then it should have a
-`@Tidy` annotation above it, meaning that in case of failure no 'failfast' policy should be applied, allowing
-execution of subsequent tests.
-
 ### How to create a test
 - Get understanding of what [SpockFramework](http://spockframework.org/) and [Groovy](http://groovy-lang.org/) is.
 - Get understanding of what is the package structure out here:

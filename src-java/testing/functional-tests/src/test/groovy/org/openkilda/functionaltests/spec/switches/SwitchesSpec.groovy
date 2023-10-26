@@ -15,7 +15,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
@@ -31,13 +30,11 @@ class SwitchesSpec extends HealthCheckSpecification {
     SwitchNotFoundExpectedError switchNotFoundExpectedError = new SwitchNotFoundExpectedError(
             "Switch $NON_EXISTENT_SWITCH_ID not found", ~/Switch $NON_EXISTENT_SWITCH_ID not found/)
 
-    @Tidy
     def "System is able to return a list of all switches"() {
         expect: "System can return list of all switches"
         !northbound.getAllSwitches().empty
     }
 
-    @Tidy
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "System is able to return a certain switch info by its id"() {
         when: "Request info about certain switch from Northbound"
@@ -57,7 +54,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         response.state == SwitchChangeType.ACTIVATED
     }
 
-    @Tidy
     def "Informative error is returned when requesting switch info with non-existing id"() {
         when: "Request info about non-existing switch from Northbound"
         northbound.getSwitch(NON_EXISTENT_SWITCH_ID)
@@ -67,7 +63,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         new SwitchNotFoundExpectedError(NON_EXISTENT_SWITCH_ID).matches(error)
     }
 
-    @Tidy
     def "Systems allows to get a flow that goes through a switch"() {
         given: "Two active not neighboring switches with two diverse paths at least"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
@@ -187,7 +182,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "Informative error is returned when requesting all flows going through non-existing switch"() {
         when: "Get all flows going through non-existing switch"
         northbound.getSwitchFlows(NON_EXISTENT_SWITCH_ID)
@@ -196,7 +190,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         new SwitchNotFoundExpectedError(NON_EXISTENT_SWITCH_ID).matches(exc)    }
 
-    @Tidy
     def "Systems allows to get all flows that goes through a DEACTIVATED switch"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().first() ?:
@@ -225,7 +218,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         blockData && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "System returns human readable error when requesting switch ports from non-existing switch"() {
         when: "Request all ports info from non-existing switch"
@@ -235,7 +227,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         switchNotFoundExpectedError.matches(e)    }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "System returns human readable error when requesting switch rules from non-existing switch"() {
         when: "Request all rules from non-existing switch"
@@ -245,7 +236,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         switchNotFoundExpectedError.matches(e)    }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "System returns human readable error when installing switch rules on non-existing switch"() {
         when: "Install switch rules on non-existing switch"
@@ -256,7 +246,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         new SwitchNotFoundExpectedError("Switch $NON_EXISTENT_SWITCH_ID not found",
                 ~/Error when installing switch rules/).matches(e)    }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "System returns human readable error when deleting switch rules on non-existing switch"() {
         when: "Delete switch rules on non-existing switch"
@@ -267,7 +256,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         new SwitchNotFoundExpectedError("Switch $NON_EXISTENT_SWITCH_ID not found",
                 ~/Error when deleting switch rules/).matches(e)    }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "System returns human readable error when setting under maintenance non-existing switch"() {
         when: "set under maintenance non-existing switch"
@@ -277,7 +265,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         new SwitchNotFoundExpectedError(NON_EXISTENT_SWITCH_ID).matches(e)    }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "System returns human readable error when requesting all meters from non-existing switch"() {
         when: "Request all meters from non-existing switch"
@@ -287,7 +274,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         switchNotFoundExpectedError.matches(e)    }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "System returns human readable error when deleting meter on non-existing switch"() {
         when: "Delete meter on non-existing switch"
@@ -297,7 +283,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         switchNotFoundExpectedError.matches(e)    }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "System returns human readable error when configuring port on non-existing switch"() {
         when: "Configure port on non-existing switch"
@@ -307,7 +292,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         switchNotFoundExpectedError.matches(e)    }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "System returns human readable error when #data.descr non-existing switch"() {
         when: "Make action from description on non-existing switch"
@@ -331,7 +315,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Able to partially update switch a 'location.#data.field' field"() {
         given: "A switch"
@@ -382,7 +365,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "Able to partially update switch a 'pop' field"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()

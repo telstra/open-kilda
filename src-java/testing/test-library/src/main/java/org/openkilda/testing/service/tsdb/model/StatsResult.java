@@ -68,4 +68,8 @@ public class StatsResult {
     public boolean hasValue(long expectedValue) {
         return dataPoints.values().contains(expectedValue);
     }
+
+    public Long getNewestTimeStamp() {
+        return dataPoints.keySet().stream().max(Long::compareTo).orElse(0L);
+    }
 }

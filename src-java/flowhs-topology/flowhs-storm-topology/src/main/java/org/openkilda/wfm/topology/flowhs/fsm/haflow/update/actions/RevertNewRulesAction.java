@@ -160,7 +160,7 @@ public class RevertNewRulesAction extends HaFlowRuleManagerProcessingAction<
     private DataAdapter buildDataAdapterForOldRules(HaFlowPath haFlowPath, Map<PathId, HaFlow> additionalHaFlowMap) {
         Set<PathId> pathIds = new HashSet<>(haFlowPath.getSubPathIds());
         Set<SwitchId> switchIds = haFlowPath.getAllInvolvedSwitches();
-        return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false, additionalHaFlowMap);
+        return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, additionalHaFlowMap);
     }
 
     private DataAdapter buildDataAdapterForNewRules(
@@ -170,7 +170,7 @@ public class RevertNewRulesAction extends HaFlowRuleManagerProcessingAction<
         Set<PathId> pathIds = new HashSet<>(overlappingPathIds);
         pathIds.addAll(haFlowPath.getSubPathIds());
         pathIds.addAll(stateMachine.getOldPrimaryPathIds().getAllSubPathIds());
-        return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false, additionalHaFlowMap);
+        return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, additionalHaFlowMap);
     }
 
     private Map<PathId, HaFlow> buildHaFlowMapForNewPaths(HaFlow haFlow, HaFlowUpdateFsm stateMachine) {

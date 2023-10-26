@@ -1,6 +1,59 @@
 # Changelog
+## v1.145.0 (16/10/2023)
 
-## v1.143.0 (28/09/2023)
+### Bug Fixes:
+-  [#5427](https://github.com/telstra/open-kilda/pull/5427) 5424 GUI: enable to get flow path if flow name contains a dot (Issue: [#5424](https://github.com/telstra/open-kilda/issues/5424)) [**gui**]
+
+### Improvements:
+-  [#5414](https://github.com/telstra/open-kilda/pull/5414) [TEST]: 5357: Improvement: Remove Tidy annotation [**tests**]
+-  [#5416](https://github.com/telstra/open-kilda/pull/5416) [TEST]: Fix victoria metrics key(query_path) [**tests**]
+-  [#5421](https://github.com/telstra/open-kilda/pull/5421) #5390: [TEST] Fix flaky VXLAN flow test (Issue: [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5433](https://github.com/telstra/open-kilda/pull/5433) Update requirements of changelog generator
+
+### Other changes:
+-  [#4667](https://github.com/telstra/open-kilda/pull/4667) Feature/create lag port (Issue: [#4666](https://github.com/telstra/open-kilda/issues/4666)) [**gui**]
+-  [#5404](https://github.com/telstra/open-kilda/pull/5404) [TEST] Wait for lab to become operational between test runs [**tests**]
+-  [#5407](https://github.com/telstra/open-kilda/pull/5407) [TEST]: 5303: Y-Flow: Reroute [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.144.0...v1.145.0).
+
+### Affected Components:
+gui
+
+---
+
+## v1.144.0 (09/10/2023)
+
+### Features:
+-  [#5340](https://github.com/telstra/open-kilda/pull/5340) Add ability to save history on flow PATCH operation. (Issues: [#5237](https://github.com/telstra/open-kilda/issues/5237) [#5385](https://github.com/telstra/open-kilda/issues/5385))
+-  [#5370](https://github.com/telstra/open-kilda/pull/5370) Feature/path check structure (Issue: [#5362](https://github.com/telstra/open-kilda/issues/5362))
+
+### Bug Fixes:
+-  [#5318](https://github.com/telstra/open-kilda/pull/5318) Bugfix/5303 reroute yflow correct response if already on best path (Issue: [#5303](https://github.com/telstra/open-kilda/issues/5303))
+-  [#5397](https://github.com/telstra/open-kilda/pull/5397) open-kilda-5393 Missed cache for mirror groups bug (Issue: [#5393](https://github.com/telstra/open-kilda/issues/5393))
+-  [#5244](https://github.com/telstra/open-kilda/pull/5244) Updated to support special purpose vlan 4095 (Issue: [#5230](https://github.com/telstra/open-kilda/issues/5230))
+
+### Improvements:
+-  [#5387](https://github.com/telstra/open-kilda/pull/5387) #5346: [TEST] Collect application logs if test is failed (Issues: [#5346](https://github.com/telstra/open-kilda/issues/5346) [#5346](https://github.com/telstra/open-kilda/issues/5346)) [**tests**]
+-  [#5398](https://github.com/telstra/open-kilda/pull/5398) Remove vintage junit deps
+-  [#5400](https://github.com/telstra/open-kilda/pull/5400) Test: Path check: New structure: Refactoring [**tests**]
+-  [#5293](https://github.com/telstra/open-kilda/pull/5293) open-kilda-5264 GUI: Add ability to reroute YFlow via UI (Issue: [#5264](https://github.com/telstra/open-kilda/issues/5264))
+-  [#5374](https://github.com/telstra/open-kilda/pull/5374) [TEST]: Ha-Flow/flow: History: Update event: PATCH operation [**tests**]
+
+### Other changes:
+-  [#5376](https://github.com/telstra/open-kilda/pull/5376) Change MySQL docker image version to 8.0.34
+-  [#5386](https://github.com/telstra/open-kilda/pull/5386) [TEST] Fix victoriametrics config key [**tests**]
+-  [#5401](https://github.com/telstra/open-kilda/pull/5401) #5240: [TEST] VLAN ID 4095 should be allowed (Issue: [#5240](https://github.com/telstra/open-kilda/issues/5240)) [**tests**]
+-  [#5409](https://github.com/telstra/open-kilda/pull/5409) #5378: [TEST] Fix Mirror and some other tests (Issues: [#5378](https://github.com/telstra/open-kilda/issues/5378) [#5378](https://github.com/telstra/open-kilda/issues/5378)) [**tests**]
+-  [#5410](https://github.com/telstra/open-kilda/pull/5410) [TEST]: HA-Flow: Reroute: Flaky test refactoring [**tests**]
+-  [#5412](https://github.com/telstra/open-kilda/pull/5412) [TEST] Stabilize flaky HaFlowStats tests [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.143.0...v1.144.0).
+
+### Affected Components:
+history
+
+## v1.143.0 (02/10/2023)
 
 ### Features:
 -  [#5355](https://github.com/telstra/open-kilda/pull/5355) Update Flow graph in GUI for VictoriaMetrics #5295 (Issues: [#5295](https://github.com/telstra/open-kilda/issues/5295) [#5295](https://github.com/telstra/open-kilda/issues/5295))

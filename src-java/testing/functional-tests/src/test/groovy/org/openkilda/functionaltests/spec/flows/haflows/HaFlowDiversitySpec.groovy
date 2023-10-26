@@ -6,7 +6,6 @@ import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.YFlowHelper
 
@@ -28,7 +27,6 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
     @Shared
     HaPathHelper haPathHelper
 
-    @Tidy
     def "Able to create diverse HA-Flows"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Switches with three not overlapping paths at least"
@@ -90,7 +88,6 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         !haFlowsAreDeleted && [haFlow1, haFlow2, haFlow3].each { it && haFlowHelper.deleteHaFlow(it.haFlowId) }
     }
 
-    @Tidy
     def "Able to create HA-Flow diverse with common flow"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Switches with two not overlapping paths at least"
@@ -148,7 +145,6 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Able to create HA-Flow diverse with y-flow"() {
         assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Switches with three not overlapping paths at least"

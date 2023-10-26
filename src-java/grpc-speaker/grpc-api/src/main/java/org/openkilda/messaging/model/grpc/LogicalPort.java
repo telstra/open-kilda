@@ -20,11 +20,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.Singular;
 
+import java.io.Serializable;
 import java.util.List;
 
 @Data
 @Builder
-public class LogicalPort {
+public class LogicalPort implements Serializable {
     @Singular
     @JsonProperty("port_number")
     private List<Integer> portNumbers;

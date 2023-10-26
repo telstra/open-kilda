@@ -12,7 +12,6 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -45,7 +44,6 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
                 PathHelper.convert(haFlowPaths.subFlowPaths[1].protectedPath.forward)]
     }
 
-    @Tidy
     def "Able to swap main and protected paths manually"() {
         given: "An HA-flow with protected paths"
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
@@ -116,7 +114,6 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
         createdHaFlow && haFlowHelper.deleteHaFlow(createdHaFlow.haFlowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to perform the 'swap' request for an HA-flow without protected path"() {
         given: "An HA-flow without protected path"
@@ -141,7 +138,6 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Unable to swap paths for a non-existent Ha-flow"() {
         when: "Try to swap path on a non-existent Ha-flow"

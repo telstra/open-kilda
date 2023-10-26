@@ -10,7 +10,6 @@ import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -48,7 +47,6 @@ class FlowStatSpec extends HealthCheckSpecification {
         statsRouterInterval = statsRouterRequestInterval * 2
     }
 
-    @Tidy
     def "System is able to collect stats after intentional swapping flow path to protected"() {
         given: "Two active neighboring switches with two diverse paths at least"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
@@ -97,7 +95,17 @@ class FlowStatSpec extends HealthCheckSpecification {
             assert pathHelper.convert(newFlowPathInfo) == currentProtectedPath
             assert pathHelper.convert(newFlowPathInfo.protectedPath) == currentPath
         }
-        def timeAfterSwap = new Date().getTime()
+
+        and: "Wait till stats from old main path are collected"
+        Wrappers.wait(WAIT_OFFSET, 3) {
+            statsHelper."force kilda to collect stats"()
+            def newStats = flowStats.of(flow.getFlowId())
+            assert newStats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).getNewestTimeStamp() ==
+                    stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).getNewestTimeStamp() &&
+            newStats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).getNewestTimeStamp() ==
+                    stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).getNewestTimeStamp()
+            stats = newStats
+        }
 
         and: "Generate traffic on the flow"
         //generate two points of stat to be sure that stat is not collected for a new protected path(after swapping)
@@ -111,15 +119,10 @@ class FlowStatSpec extends HealthCheckSpecification {
         def newFlowStats = stats.of(flow.getFlowId())
         newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, protectedReverseCookie).hasNonZeroValues()
 
-        and: "System doesn't collect stats anymore for previous ingress/egress cookie of main path"
-        !newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValuesAfter(timeAfterSwap)
-        !newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValuesAfter(timeAfterSwap)
-
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "System collects stats when a protected flow was intentionally rerouted"() {
         given: "Two active not neighboring switches with three diverse paths at least"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
@@ -203,7 +206,6 @@ class FlowStatSpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
-    @Tidy
     def "System collects stats when a protected flow was automatically rerouted"() {
         given: "Two active not neighboring switches with three not overlapping paths at least"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
@@ -280,7 +282,6 @@ class FlowStatSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     def "System collects stat when protected flow is DEGRADED"() {
         given: "Two active not neighboring switches with two not overlapping paths at least"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
@@ -357,7 +358,6 @@ class FlowStatSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tidy
     @Tags([SMOKE_SWITCHES])
     def "System collects stats when flow is pinned and unmetered"() {
         given: "Two active not neighboring switches"
@@ -398,7 +398,6 @@ class FlowStatSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "System is able to collect stats after partial updating(port) on a flow endpoint"() {
         given: "Two active neighboring switches connected to the traffgens"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
@@ -441,7 +440,6 @@ class FlowStatSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "System is able to collect stats after partial updating(vlan) on a flow endpoint"() {
         given: "Two active neighboring switches connected to the traffgens"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
@@ -483,7 +481,6 @@ class FlowStatSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "System is able to collect stats after partial updating(inner vlan) on a flow endpoint"() {
         given: "Two active neighboring switches connected to the traffgens"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId

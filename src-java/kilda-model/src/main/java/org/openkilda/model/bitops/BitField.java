@@ -19,11 +19,13 @@ import org.openkilda.model.cookie.Cookie;
 
 import lombok.Getter;
 
+import java.io.Serializable;
+
 /**
  * Represent bit-mask and offset of continuous(without 0 in the middle) bit-field.
  */
 @Getter
-public class BitField {
+public class BitField implements Serializable {
     private final long mask;
     private final int offset;
 

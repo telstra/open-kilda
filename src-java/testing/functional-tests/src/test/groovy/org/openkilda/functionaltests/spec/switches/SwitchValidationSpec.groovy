@@ -16,7 +16,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
@@ -68,7 +67,6 @@ class SwitchValidationSpec extends HealthCheckSpecification {
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
 
-    @Tidy
     def "Able to validate and sync a terminating switch with proper rules and meters"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }
@@ -143,7 +141,6 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
-    @Tidy
     def "Able to validate and sync a transit switch with proper rules and no meters"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
@@ -205,7 +202,6 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "Able to validate switch with 'misconfigured' meters"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }
@@ -344,7 +340,6 @@ misconfigured"
         flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
-    @Tidy
     def "Able to validate and sync a switch with missing ingress rule + meter"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }
@@ -432,7 +427,6 @@ misconfigured"
         flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
-    @Tidy
     def "Able to validate and sync a switch with missing ingress rule (unmetered)"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }
@@ -491,7 +485,6 @@ misconfigured"
         flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
-    @Tidy
     def "Able to validate and sync a switch with missing transit rule"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
@@ -563,7 +556,6 @@ misconfigured"
         }
     }
 
-    @Tidy
     def "Able to validate and sync a switch with missing egress rule"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
@@ -645,7 +637,6 @@ misconfigured"
         }
     }
 
-    @Tidy
     def "Able to validate and sync an excess ingress/egress/transit rule + meter"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
@@ -782,7 +773,6 @@ misconfigured"
         flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(switchPair.src, switchPair.dst)
     }
 
-    @Tidy
     @Tags(TOPOLOGY_DEPENDENT)
     def "Able to validate and sync a switch with missing 'vxlan' ingress/transit/egress rule + meter"() {
         given: "Two active not neighboring VXLAN supported switches"
@@ -901,7 +891,6 @@ misconfigured"
         flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(switchPair.src, switchPair.dst)
     }
 
-    @Tidy
     def "Able to validate and sync a missing 'protected path' egress rule"() {
         given: "A flow with protected path"
         def swPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
@@ -965,7 +954,6 @@ misconfigured"
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Able to validate and sync a missing 'connected device' #data.descr rule"() {
         given: "A flow with enabled connected devices"
         def swPair = topologyHelper.switchPairs.find {

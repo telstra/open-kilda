@@ -59,19 +59,6 @@ public class SwitchPropertiesTest {
     }
 
     @Test
-    public void setUnsupportedMultiTableFlagTest() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            Switch sw = Switch.builder()
-                    .switchId(new SwitchId(1))
-                    .build();
-            SwitchProperties sp = SwitchProperties.builder()
-                    .switchObj(sw)
-                    .build();
-            sp.setMultiTable(true);
-        });
-    }
-
-    @Test
     public void setUnsupportedTransitEncapsulationTest() {
         assertThrows(IllegalArgumentException.class, () -> {
             Switch sw = Switch.builder()

@@ -13,7 +13,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.PortHistoryEvent
@@ -23,7 +22,6 @@ import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse
 import org.openkilda.testing.tools.SoftAssertions
 
-import spock.lang.Ignore
 import spock.lang.Isolated
 import spock.lang.Narrative
 import spock.lang.See
@@ -38,7 +36,6 @@ class PortHistorySpec extends HealthCheckSpecification {
     //it means how often the 'ANTI_FLAP_PERIODIC_STATS' is logged in port history
     def antiflapDumpingInterval = 60
 
-    @Tidy
     @IterationTag(tags = [SMOKE, SMOKE_SWITCHES], iterationNameRegex = /direct/)
     def "Port history are created for the port down/up actions when link is #islDescription"() {
         given: "A link"
@@ -121,7 +118,6 @@ class PortHistorySpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tidy
     def "Port history should not be returned in case timeline is incorrect (timeBefore > timeAfter)"() {
         given: "A direct link with port history"
         def timestampBefore = System.currentTimeMillis()
@@ -156,7 +152,6 @@ class PortHistorySpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "Port history should not be returned in case port/switch have never existed"() {
         when: "Try to get port history for incorrect port and switch"
         def portHistory = northboundV2.getPortHistory(NON_EXISTENT_SWITCH_ID, 99999)
@@ -165,7 +160,6 @@ class PortHistorySpec extends HealthCheckSpecification {
         portHistory.isEmpty()
     }
 
-    @Tidy
     def "Port history is available when switch is DEACTIVATED"() {
         given: "A direct link"
         def timestampBefore = System.currentTimeMillis()
@@ -201,7 +195,6 @@ class PortHistorySpec extends HealthCheckSpecification {
         switchToDisconnect && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 
-    @Tidy
     def "System shows antiflap statistic in the ANTI_FLAP_DEACTIVATED event when antiflap is deactivated\
  before collecting ANTI_FLAP_PERIODIC_STATS"() {
         assumeTrue(antiflapCooldown + 3 < antiflapDumpingInterval,
@@ -274,7 +267,6 @@ class PortHistoryIsolatedSpec extends HealthCheckSpecification {
     @Shared
     def antiflapDumpingInterval = 60
 
-    @Tidy
     //isolation: global fl sync toggle is changed
     def "Port history is able to show ANTI_FLAP statistic"() {
         given: "floodlightRoutePeriodicSync is disabled"

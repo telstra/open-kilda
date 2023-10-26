@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.stats
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.YFlowHelper
@@ -61,10 +60,10 @@ class YFlowStatSpec extends HealthCheckSpecification {
             it.ep1 != it.ep2 && it.ep1 != it.shared && it.ep2 != it.shared &&
                     [it.shared, it.ep1, it.ep2].every { it.traffGens }
         } ?: assumeTrue(false, "No suiting switches found")
-        yFlow = yFlowHelper.addYFlow(yFlowHelper.randomYFlow(switchTriplet))
+        yFlow = yFlowHelper.addYFlow(yFlowHelper.randomYFlow(switchTriplet).tap {maximumBandwidth = 10})
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildYFlowExam(yFlow, yFlow.maximumBandwidth + 1000, traffgenRunDuration)
+                .buildYFlowExam(yFlow, yFlow.maximumBandwidth * 10, traffgenRunDuration)
         Wrappers.wait(statsRouterRequestInterval * 4) {
             withPool {
                 [exam.forward1, exam.forward2, exam.reverse1, exam.reverse2].collectParallel { Exam direction ->
@@ -81,7 +80,6 @@ class YFlowStatSpec extends HealthCheckSpecification {
         subflow2Stats = flowStats.of(yFlow.getSubFlows().get(1).getFlowId())
     }
 
-    @Tidy
     @Unroll
     def "System is able to collect #stat meter stats and they grow monotonically"() {
         when: "Stats were collected"
@@ -93,7 +91,6 @@ class YFlowStatSpec extends HealthCheckSpecification {
         stat << YFlowStatsMetric.getEnumConstants()
     }
 
-    @Tidy
     @Unroll
     def "System is able to collect subflow #stat-#direction stats and they grow monotonically"() {
         when: "Stats were collected"

@@ -18,7 +18,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -54,7 +53,6 @@ class MetersSpec extends HealthCheckSpecification {
     @Value('${burst.coefficient}')
     double burstCoefficient
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Able to delete a meter from a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
@@ -93,7 +91,6 @@ class MetersSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Unable to delete a meter with invalid ID=#meterId on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
@@ -121,7 +118,6 @@ class MetersSpec extends HealthCheckSpecification {
      * Default meters should be set in PKTPS by default in Kilda, but Centec switches only allow KBPS flag.
      * System should recalculate the PKTPS value to KBPS on Centec switches.
      */
-    @Tidy
     @Tags([HARDWARE, SMOKE_SWITCHES])
     def "Default meters should express bandwidth in kbps re-calculated from pktps on Centec #sw.hwSwString"() {
         expect: "Only the default meters should be present on the switch"
@@ -141,7 +137,6 @@ class MetersSpec extends HealthCheckSpecification {
                 ?: assumeTrue(false, "Unable to find Centec switches in topology"))
     }
 
-    @Tidy
     @Tags([HARDWARE, SMOKE_SWITCHES])
     def "Default meters should express bandwidth in pktps on Noviflow #sw.hwSwString"() {
         //TODO: Research how to calculate burstSize on OpenVSwitch in this case
@@ -158,7 +153,6 @@ class MetersSpec extends HealthCheckSpecification {
                 ?: assumeTrue(false, "Unable to find Noviflow switch in topology" ))
     }
 
-    @Tidy
     @Tags([HARDWARE, SMOKE_SWITCHES])
     def "Default meters should express bandwidth in kbps on Noviflow Wb5164 #sw.hwSwString"() {
         expect: "Only the default meters should be present on the switch"
@@ -194,7 +188,6 @@ class MetersSpec extends HealthCheckSpecification {
                 assumeTrue(false, "Unable to find Noviflow Wb5164 switches in topology"))
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /ignore_bandwidth=false/)
     def "Meters are created/deleted when creating/deleting a single-switch flow with ignore_bandwidth=#ignoreBandwidth \
@@ -259,7 +252,6 @@ on a #switchType switch"() {
         "OVS"              | getVirtualSwitches()  | true
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Meters are not created when creating a single-switch flow with maximum_bandwidth=0 on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
@@ -293,7 +285,6 @@ on a #switchType switch"() {
         "OVS"              | getVirtualSwitches()
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT])
     def "Source/destination switches have meters only in flow ingress rule and intermediate switches don't have \
 meters in flow rules at all (#data.flowType flow)"() {
@@ -404,7 +395,6 @@ meters in flow rules at all (#data.flowType flow)"() {
         ]
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Meter burst size is correctly set on #data.switchType switches for #flowRate flow rate"() {
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible switch"
@@ -459,7 +449,6 @@ meters in flow rules at all (#data.flowType flow)"() {
 
     }
 
-    @Tidy
     @Tags([HARDWARE, TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     @Unroll("Flow burst should be correctly set on Centec switches in case of #flowRate kbps flow bandwidth")
     def "Flow burst is correctly set on Centec switches"() {
@@ -516,7 +505,6 @@ meters in flow rules at all (#data.flowType flow)"() {
         ]
     }
 
-    @Tidy
     @Tags([HARDWARE, SMOKE_SWITCHES])
     def "Meter burst size is correctly set on Noviflow Wb5164 switches for #flowRate flow rate"() {
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible switch"
@@ -568,7 +556,6 @@ meters in flow rules at all (#data.flowType flow)"() {
         flowRate << [150, 1000, 1024, 5120, 10240, 2480, 960000]
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "System allows to reset meter values to defaults without reinstalling rules for #data.description flow"() {
         given: "Switches combination (#data.description)"
@@ -667,7 +654,6 @@ meters in flow rules at all (#data.flowType flow)"() {
         ]
     }
 
-    @Tidy
     def "Try to reset meters for unmetered flow"() {
         given: "A flow with the 'bandwidth: 0' and 'ignoreBandwidth: true' fields"
         def availableSwitches = topology.activeSwitches

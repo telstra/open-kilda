@@ -15,11 +15,13 @@
 
 package org.openkilda.wfm.topology.nbworker.services;
 
+import org.openkilda.messaging.model.system.KildaConfigurationDto;
 import org.openkilda.model.KildaConfiguration;
 import org.openkilda.model.KildaConfiguration.KildaConfigurationCloner;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.tx.TransactionManager;
+import org.openkilda.wfm.share.mappers.KildaConfigurationMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -28,8 +30,8 @@ import java.util.Optional;
 @Slf4j
 public class KildaConfigurationService {
 
-    private KildaConfigurationRepository kildaConfigurationRepository;
-    private TransactionManager transactionManager;
+    private final KildaConfigurationRepository kildaConfigurationRepository;
+    private final TransactionManager transactionManager;
 
     public KildaConfigurationService(RepositoryFactory repositoryFactory, TransactionManager transactionManager) {
         this.kildaConfigurationRepository = repositoryFactory.createKildaConfigurationRepository();
@@ -38,24 +40,28 @@ public class KildaConfigurationService {
 
     /**
      * Get kilda configuration.
+     *
      * @return kilda configuration.
      */
-    public KildaConfiguration getKildaConfiguration() {
-        return kildaConfigurationRepository.getOrDefault();
+    public KildaConfigurationDto getKildaConfiguration() {
+        return KildaConfigurationMapper.INSTANCE.map(kildaConfigurationRepository.getOrDefault());
     }
 
     /**
      * Update kilda configuration.
-     * @param kildaConfiguration kilda configuration.
+     *
+     * @param kildaConfigurationDto kilda configuration.
      * @return updated kilda configuration.
      */
-    public KildaConfiguration updateKildaConfiguration(KildaConfiguration kildaConfiguration) {
-        log.info("Process kilda config update - config: {}", kildaConfiguration);
-        if (Boolean.FALSE.equals(kildaConfiguration.getUseMultiTable())) {
+    public KildaConfigurationDto updateKildaConfiguration(KildaConfigurationDto kildaConfigurationDto) {
+        log.info("Process kilda config update - config: {}", kildaConfigurationDto);
+        if (Boolean.FALSE.equals(kildaConfigurationDto.getUseMultiTable())) {
             throw new IllegalArgumentException("Single table mode was deprecated. OpenKilda doesn't support it "
                     + "anymore. Configuration property `use_multi_table` can't be 'false'.");
         }
-        return transactionManager.doInTransaction(() -> {
+
+        KildaConfiguration kildaConfiguration = KildaConfigurationMapper.INSTANCE.map(kildaConfigurationDto);
+        KildaConfiguration updatedConfiguration = transactionManager.doInTransaction(() -> {
             Optional<KildaConfiguration> currentKildaConfiguration = kildaConfigurationRepository.find();
             if (currentKildaConfiguration.isPresent()) {
                 KildaConfigurationCloner.INSTANCE.copyNonNull(kildaConfiguration,
@@ -66,5 +72,6 @@ public class KildaConfigurationService {
                 return kildaConfiguration;
             }
         });
+        return KildaConfigurationMapper.INSTANCE.map(updatedConfiguration);
     }
 }

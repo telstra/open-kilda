@@ -67,7 +67,7 @@ public class RevertFlowMirrorPathAllocationAction
             PathId oppositePathId = flow.getOppositePathId(stateMachine.getFlowPathId()).orElse(null);
             Set<PathId> involvedPaths = newHashSet(stateMachine.getFlowPathId(), oppositePathId);
             DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, involvedPaths,
-                    newHashSet(stateMachine.getMirrorSwitchId()), false);
+                    newHashSet(stateMachine.getMirrorSwitchId()));
             stateMachine.getRevertCommands().addAll(ruleManager.buildMirrorPointRules(mirrorPoints.get(), dataAdapter));
         } else {
             log.warn("Can't find mirror points for flow path {} and mirror switch {}. May cause excess rules.",

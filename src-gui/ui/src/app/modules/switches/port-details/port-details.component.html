@@ -7,6 +7,7 @@
         <button class="btn kilda_btn" *ngIf="!editConfigStatus && commonService.hasPermission('sw_port_config')" (click)="configurePortDetails()">Configure</button>
         <button class="btn kilda_btn" *ngIf="editConfigStatus" (click)="savePortDetails()" style="margin-right: 5px;">Save</button>
         <button class="btn kilda_btn" *ngIf="editConfigStatus" (click)="cancelConfigurePort()">Cancel</button>
+        <button class="btn kilda_btn ml-3" *ngIf="portDataObject?.is_logical_port"  (click)="deleteLogicalPort()">Delete</button>
     </div>
   </div>
   <form [formGroup]="portForm">

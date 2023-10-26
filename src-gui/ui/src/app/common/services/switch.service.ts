@@ -118,5 +118,12 @@ getNetworkPath(source_switch, target_switch, strategy, max_latency) {
     }
     xhr.send(requestBody);
   }
+  createLagLogicalPort(data: CreateLagPortModel, switchid) {
+    return this.httpClient.post<any>(`${environment.apiEndPoint}/switch/${switchid}/lags`, data);
+  }
+
+  deleteLagLogicalPort(switchid, logical_port_number ) {
+    return this.httpClient.delete(`${environment.apiEndPoint}/switch/${switchid}/lags/${logical_port_number }`);
+  }
 
 }

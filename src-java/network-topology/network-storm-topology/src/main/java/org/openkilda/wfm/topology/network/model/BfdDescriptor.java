@@ -21,9 +21,11 @@ import org.openkilda.model.BfdSession;
 import lombok.Builder;
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
 @Builder(toBuilder = true)
-public class BfdDescriptor {
+public class BfdDescriptor implements Serializable {
     private SwitchReference local;
     private SwitchReference remote;
 

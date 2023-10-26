@@ -20,8 +20,10 @@ import org.openkilda.wfm.share.model.Endpoint;
 
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
-public class RoundTripStatus {
+public class RoundTripStatus implements Serializable {
     private final Endpoint endpoint;
     private final IslStatus status;
 }

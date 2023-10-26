@@ -109,7 +109,7 @@ public class FlowController extends BaseController {
      *            id of flow path requested.
      * @return flow path with all nodes/switches exists in provided flow
      */
-    @RequestMapping(value = "/path/{flowId}", method = RequestMethod.GET)
+    @RequestMapping(value = "/path/{flowId:.+}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody FlowPayload getFlowPath(@PathVariable final String flowId) {
         LOGGER.info("Get flow path. Flow id: '" + flowId + "'");
@@ -124,7 +124,7 @@ public class FlowController extends BaseController {
      *            id of reroute requested.
      * @return reroute flow of new flow path with all nodes/switches exist
      */
-    @RequestMapping(value = "/{flowId}/reroute", method = RequestMethod.GET)
+    @RequestMapping(value = "/{flowId:.+}/reroute", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody FlowPath rerouteFlow(@PathVariable final String flowId) {
         activityLogger.log(ActivityType.FLOW_REROUTE, flowId);
@@ -139,7 +139,7 @@ public class FlowController extends BaseController {
      *            id of validate flow requested.
      * @return validate flow
      */
-    @RequestMapping(value = "/{flowId}/validate", method = RequestMethod.GET)
+    @RequestMapping(value = "/{flowId:.+}/validate", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody String validateFlow(@PathVariable final String flowId) {
         activityLogger.log(ActivityType.FLOW_VALIDATE, flowId);
@@ -155,7 +155,7 @@ public class FlowController extends BaseController {
      * @return flowInfo
      * @throws AccessDeniedException the access denied exception
      */
-    @RequestMapping(value = "/{flowId}", method = RequestMethod.GET)
+    @RequestMapping(value = "/{flowId:.+}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = { IConstants.Permission.MENU_FLOWS })
     public @ResponseBody FlowInfo getFlowById(@PathVariable final String flowId,
@@ -172,7 +172,7 @@ public class FlowController extends BaseController {
      *            id of flow requested.
      * @return flow
      */
-    @RequestMapping(value = "/{flowId}/status", method = RequestMethod.GET)
+    @RequestMapping(value = "/{flowId:.+}/status", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody FlowStatus getFlowStatusById(@PathVariable final String flowId) {
         LOGGER.info("Get flow status by id. Flow id: '" + flowId + "'");
@@ -203,7 +203,7 @@ public class FlowController extends BaseController {
      *            the flow
      * @return the flow
      */
-    @RequestMapping(value = "/{flowId}", method = RequestMethod.PUT)
+    @RequestMapping(value = "/{flowId:.+}", method = RequestMethod.PUT)
     @ResponseStatus(HttpStatus.CREATED)
     @Permissions(values = { IConstants.Permission.FW_FLOW_UPDATE })
     public @ResponseBody FlowV2 updateFlow(@PathVariable("flowId") final String flowId, 
@@ -221,7 +221,7 @@ public class FlowController extends BaseController {
      *            the flow id
      * @return the flow
      */
-    @RequestMapping(value = "/{flowId}", method = RequestMethod.DELETE)
+    @RequestMapping(value = "/{flowId:.+}", method = RequestMethod.DELETE)
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = { IConstants.Permission.FW_FLOW_DELETE })
     @ResponseBody
@@ -240,7 +240,7 @@ public class FlowController extends BaseController {
      *            id of validate flow requested.
      * @return validate flow
      */
-    @RequestMapping(value = "/{flowId}/sync", method = RequestMethod.PATCH)
+    @RequestMapping(value = "/{flowId:.+}/sync", method = RequestMethod.PATCH)
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = { IConstants.Permission.FW_FLOW_RESYNC })
     public @ResponseBody String resyncFlow(@PathVariable final String flowId) {
@@ -277,7 +277,7 @@ public class FlowController extends BaseController {
      * @param flow the flow
      * @return the string
      */
-    @RequestMapping(value = "/{flowId}/ping", method = RequestMethod.PUT)
+    @RequestMapping(value = "/{flowId:.+}/ping", method = RequestMethod.PUT)
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = { IConstants.Permission.FW_FLOW_PING })
     public @ResponseBody String flowPing(@PathVariable final String flowId, @RequestBody final FlowV2 flow) {
@@ -291,7 +291,7 @@ public class FlowController extends BaseController {
      *
      * @return the flow history.
      */
-    @RequestMapping(value = "/all/history/{flowId}", method = RequestMethod.GET)
+    @RequestMapping(value = "/all/history/{flowId:.+}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = { IConstants.Permission.FW_FLOW_HISTORY })
     public @ResponseBody List<FlowHistory> getFlowHistory(@PathVariable final String flowId,
@@ -306,7 +306,7 @@ public class FlowController extends BaseController {
      *            id of flow.
      * @return FlowConnectedDevice
      */
-    @RequestMapping(value = "/connected/devices/{flowId}", method = RequestMethod.GET)
+    @RequestMapping(value = "/connected/devices/{flowId:.+}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody FlowConnectedDevice getFlowConnectedDevice(@PathVariable final String flowId,
             @RequestParam(name = "since", required = false) String timeLastSeen) {

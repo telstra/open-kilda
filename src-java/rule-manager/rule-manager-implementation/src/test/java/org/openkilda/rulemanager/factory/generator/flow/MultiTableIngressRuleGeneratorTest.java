@@ -109,7 +109,6 @@ public class MultiTableIngressRuleGeneratorTest {
             .meterId(METER_ID)
             .srcSwitch(SWITCH_1)
             .destSwitch(SWITCH_2)
-            .srcWithMultiTable(true)
             .bandwidth(BANDWIDTH)
             .segments(newArrayList(PathSegment.builder()
                     .pathId(PATH_ID)
@@ -124,7 +123,6 @@ public class MultiTableIngressRuleGeneratorTest {
             .cookie(COOKIE)
             .srcSwitch(SWITCH_1)
             .destSwitch(SWITCH_1)
-            .srcWithMultiTable(true)
             .bandwidth(0)
             .segments(new ArrayList<>())
             .build();

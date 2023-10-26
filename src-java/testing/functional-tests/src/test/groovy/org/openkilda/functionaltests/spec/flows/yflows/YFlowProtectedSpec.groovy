@@ -1,27 +1,15 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
-
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.YFlowHelper
-import org.openkilda.functionaltests.helpers.model.SwitchTriplet
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.yflows.YFlow
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 
-import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
-import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -37,7 +25,6 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
     @Shared
     Provider<TraffExamService> traffExamProvider
 
-    @Tidy
     def "Able to enable/disable protected path on a flow"() {
         given: "A simple y-flow"
         def swT = topologyHelper.switchTriplets.find {

@@ -4,7 +4,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.ResourceLockConstants
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.messaging.payload.flow.FlowState
@@ -17,7 +16,6 @@ import org.junit.jupiter.api.parallel.ResourceLock
 @ResourceLock(ResourceLockConstants.DEFAULT_PATH_COMPUTATION)
 class PathComputationSpec extends HealthCheckSpecification {
 
-    @Tidy
     def "Default path computation strategy is used when flow does not specify it"() {
         given: "Default path computation strategy is COST"
         def initConfig = northbound.getKildaConfiguration()
@@ -78,7 +76,6 @@ class PathComputationSpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
-    @Tidy
     def "Flow path computation strategy can be updated from LATENCY to COST"() {
         given: "Switch pair with two paths at least"
         def swPair = topologyHelper.switchPairs.find { it.paths.size() >= 2 }
@@ -112,7 +109,6 @@ class PathComputationSpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
-    @Tidy
     def "Target flow path computation strategy is not applied immediately in case flow was updated partially"() {
         given: "Switch pair with two paths at least"
         def swPair = topologyHelper.switchPairs.find { it.paths.size() >= 2 }
@@ -151,7 +147,6 @@ class PathComputationSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tidy
     def "Target path computation strategy is applied after updating/rerouting a flow"() {
         given: "Switch pair with two paths at least"
         def swPair = topologyHelper.switchPairs.find { it.paths.size() >= 2 }

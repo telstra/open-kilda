@@ -7,7 +7,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.PathNode
@@ -30,7 +29,6 @@ class UnstableIslSpec extends HealthCheckSpecification {
     }
 
     //'ISL with BFD session' case is covered in BfdSpec. Spoiler: it should act the same and don't change cost at all.
-    @Tidy
     def "ISL is NOT considered 'unstable' due to failing connection between switches (not port down)"() {
         given: "ISL going through a-switch with link props created"
         def isl = topology.islsForActiveSwitches.find {
@@ -75,7 +73,6 @@ class UnstableIslSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tidy
     def "ISL is not considered unstable after deactivating/activating switch"() {
         //Switches with roundtrip isl latency will not have ISLs failed given that round trip rules remain installed
         given: "A switch that does not support round trip isl latency"
@@ -103,7 +100,6 @@ class UnstableIslSpec extends HealthCheckSpecification {
 
     }
 
-    @Tidy
     def "ISL is marked as 'unstable' after port down and system takes it into account during flow creation"() {
         given: "Two active neighboring switches with two parallel links"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {

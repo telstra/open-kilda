@@ -143,12 +143,12 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
     }
 
     protected Set<String> findFlowsIdsByEndpointWithMultiTable(SwitchId switchId, int port) {
-        return new HashSet<>(flowRepository.findFlowsIdsByEndpointWithMultiTableSupport(switchId, port));
+        return new HashSet<>(flowRepository.findFlowsIdsByEndpoint(switchId, port));
     }
 
     protected Set<String> findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(SwitchId switchId, int port) {
         return new HashSet<>(
-                flowRepository.findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(switchId, port));
+                flowRepository.findFlowIdsForMultiSwitchFlowsByEndpoint(switchId, port));
     }
 
     protected List<Flow> findOuterVlanMatchSharedRuleUsage(FlowEndpoint needle) {
@@ -163,12 +163,7 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
                     new FlowDestAdapter(flow)}) {
                 FlowEndpoint endpoint = flowSide.getEndpoint();
                 if (needle.isSwitchPortEquals(endpoint) && needle.getOuterVlanId() == endpoint.getOuterVlanId()) {
-                    boolean multitableEnabled = flow.getPaths().stream()
-                            .filter(path -> flow.isActualPathId(path.getPathId()))
-                            .filter(path -> !path.isProtected())
-                            .filter(path -> path.getSrcSwitchId().equals(endpoint.getSwitchId()))
-                            .anyMatch(FlowPath::isSrcWithMultiTable);
-                    if (multitableEnabled) {
+                    if (isUseSharedRule(flow, endpoint)) {
                         results.add(flow);
                         break;
                     }
@@ -197,12 +192,7 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
                 FlowEndpoint endpoint = flowSide.getEndpoint();
                 if (needle.getSwitchId().equals(endpoint.getSwitchId())
                         && needle.getOuterVlanId() == endpoint.getOuterVlanId()) {
-                    boolean multitableEnabled = flow.getPaths().stream()
-                            .filter(path -> flow.isActualPathId(path.getPathId()))
-                            .filter(path -> !path.isProtected())
-                            .filter(path -> path.getSrcSwitchId().equals(endpoint.getSwitchId()))
-                            .anyMatch(FlowPath::isSrcWithMultiTable);
-                    if (multitableEnabled) {
+                    if (isUseSharedRule(flow, endpoint)) {
                         flowIds.add(flow.getFlowId());
                         break;
                     }
@@ -249,8 +239,8 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
         SwitchProperties switchProperties = getSwitchProperties(switchId);
         boolean serverFlowRtt = switchProperties.isServer42FlowRtt() && isServer42FlowRttFeatureToggle();
         return PathContext.builder()
-                .installServer42OuterVlanMatchSharedRule(serverFlowRtt && switchProperties.isMultiTable())
-                .installServer42InputRule(serverFlowRtt && switchProperties.isMultiTable())
+                .installServer42OuterVlanMatchSharedRule(serverFlowRtt)
+                .installServer42InputRule(serverFlowRtt)
                 .installServer42IngressRule(serverFlowRtt)
                 .server42Port(switchProperties.getServer42Port())
                 .server42MacAddress(switchProperties.getServer42MacAddress())
@@ -325,5 +315,12 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
             groupId = flowRepository.getOrCreateDiverseFlowGroupId(diverseFlowId);
         }
         return Optional.of(groupId.orElseThrow(() -> new FlowNotFoundException(diverseFlowId)));
+    }
+
+    private static boolean isUseSharedRule(Flow flow, FlowEndpoint endpoint) {
+        return flow.getPaths().stream()
+                .filter(path -> flow.isActualPathId(path.getPathId()))
+                .filter(path -> !path.isProtected())
+                .anyMatch(path -> path.getSrcSwitchId().equals(endpoint.getSwitchId()));
     }
 }

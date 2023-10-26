@@ -12,7 +12,6 @@ import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.model.FlowEncapsulationType
@@ -29,7 +28,6 @@ Properties can be read/updated via API '/api/v1/switches/:switch-id/properties'.
 Main purpose of that is to understand which feature is supported by a switch(encapsulation type, multi table)""")
 class SwitchPropertiesSpec extends HealthCheckSpecification {
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "Able to manipulate with switch properties"() {
         given: "A switch that supports VXLAN"
@@ -76,7 +74,6 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         sw && SwitchHelper.updateSwitchProperties(sw, initSwitchProperties)
     }
 
-    @Tidy
     def "Informative error is returned when trying to get/update switch properties with non-existing id"() {
         when: "Try to get switch properties info for non-existing switch"
         northbound.getSwitchProperties(NON_EXISTENT_SWITCH_ID)
@@ -94,7 +91,6 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         new SwitchPropertiesNotFoundExpectedError(NON_EXISTENT_SWITCH_ID, ~/Failed to update switch properties./).matches(exc)    }
 
-    @Tidy
     def "Informative error is returned when trying to update switch properties with incorrect information"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -117,7 +113,6 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
                 "Supported transit encapsulations should not be null or empty")
     }
 
-    @Tidy
     def "Error is returned when trying to #data.desc"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
@@ -200,7 +195,6 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         Pattern description = null
     }
 
-    @Tidy
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
     def "System forbids to turn on VXLAN encap type on switch that does not support it"() {
         given: "Switch that does not support VXLAN feature"

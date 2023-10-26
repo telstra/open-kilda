@@ -5,7 +5,6 @@ import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.haflow.HaFlowNotFoundExpectedError
-import org.openkilda.functionaltests.extension.failfast.Tidy
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.springframework.beans.factory.annotation.Autowired
@@ -23,7 +22,6 @@ class HaFlowPathsSpec extends HealthCheckSpecification {
     @Shared
     HaFlowHelper haFlowHelper
 
-    @Tidy
     @Tags(LOW_PRIORITY)
     def "Meaningful error is returned when requested paths for non-existing HA flow"() {
         when: "Request paths for non-existing HA flow"
@@ -35,7 +33,6 @@ class HaFlowPathsSpec extends HealthCheckSpecification {
         new HaFlowNotFoundExpectedError(~/HA-flow ${flowId} not found\./).matches(actualException)
     }
 
-    @Tidy
     def "HA flow main path is not overlapped with protected path"() {
         given: "An HA-flow with protected path"
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()

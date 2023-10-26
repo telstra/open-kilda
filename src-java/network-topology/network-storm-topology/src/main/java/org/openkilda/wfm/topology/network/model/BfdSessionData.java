@@ -20,8 +20,10 @@ import org.openkilda.wfm.share.model.IslReference;
 
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
-public class BfdSessionData {
+public class BfdSessionData implements Serializable {
     IslReference reference;
     BfdProperties properties;
 }
