@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.network.model;
 
-public enum BfdStatusUpdate {
+import java.io.Serializable;
+
+public enum BfdStatusUpdate implements Serializable {
     UP, DOWN, KILL, FAIL
 }

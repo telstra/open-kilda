@@ -20,12 +20,13 @@ import org.openkilda.wfm.share.model.IslReference;
 
 import lombok.Getter;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-public class BiIslDataHolder<T> {
+public class BiIslDataHolder<T> implements Serializable {
     @Getter
     private final IslReference reference;
 

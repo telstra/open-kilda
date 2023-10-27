@@ -27,6 +27,7 @@ import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.SuperBuilder;
 
+import java.io.Serializable;
 import java.time.Duration;
 import java.util.List;
 
@@ -37,7 +38,7 @@ import java.util.List;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PACKAGE)
 @Setter(value = AccessLevel.PRIVATE)
-public class PathDto {
+public class PathDto implements Serializable {
     Long bandwidth;
     Long latency;
     Long latencyNs;

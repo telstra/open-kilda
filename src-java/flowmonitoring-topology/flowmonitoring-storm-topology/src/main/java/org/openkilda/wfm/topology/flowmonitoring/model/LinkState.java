@@ -18,11 +18,12 @@ package org.openkilda.wfm.topology.flowmonitoring.model;
 import lombok.Builder;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
 
 @Data
-public class LinkState {
+public class LinkState implements Serializable {
 
     private Duration rttLatency;
     private Instant rttTimestamp;

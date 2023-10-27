@@ -861,7 +861,7 @@ public class HaFlow implements CompositeDataEntity<HaFlowData> {
                     .collect(Collectors.toList()));
 
             target.addPaths(source.getPaths().stream()
-                    .map(path -> new HaFlowPath(path, targetFlow))
+                    .map(path -> new HaFlowPath(path, targetFlow, target.getSubFlows()))
                     .toArray(HaFlowPath[]::new));
         }
 

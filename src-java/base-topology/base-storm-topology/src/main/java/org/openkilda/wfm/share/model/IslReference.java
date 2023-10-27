@@ -21,9 +21,11 @@ import org.openkilda.model.Isl;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
 @EqualsAndHashCode
-public class IslReference {
+public class IslReference implements Serializable {
     private final Endpoint source;
     private final Endpoint dest;
 

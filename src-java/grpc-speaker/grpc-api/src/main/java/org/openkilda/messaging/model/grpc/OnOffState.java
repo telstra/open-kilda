@@ -15,7 +15,9 @@
 
 package org.openkilda.messaging.model.grpc;
 
-public enum OnOffState {
+import java.io.Serializable;
+
+public enum OnOffState implements Serializable {
     ON(2),
     OFF(1),
     ONOFF_RESERVED(0);

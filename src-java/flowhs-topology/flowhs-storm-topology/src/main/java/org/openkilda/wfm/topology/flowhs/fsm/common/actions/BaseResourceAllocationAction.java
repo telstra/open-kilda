@@ -28,10 +28,8 @@ import org.openkilda.persistence.exceptions.ConstraintViolationException;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslEndpoints;
-import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.ResourceAllocationException;
@@ -81,11 +79,7 @@ public abstract class BaseResourceAllocationAction<T
         switchRepository = repositoryFactory.createSwitchRepository();
         islRepository = repositoryFactory.createIslRepository();
         pathSegmentRepository = repositoryFactory.createPathSegmentRepository();
-        SwitchPropertiesRepository switchPropertiesRepository = repositoryFactory.createSwitchPropertiesRepository();
-        KildaConfigurationRepository kildaConfigurationRepository =
-                repositoryFactory.createKildaConfigurationRepository();
-        flowPathBuilder = new FlowPathBuilder(switchPropertiesRepository,
-                kildaConfigurationRepository);
+        flowPathBuilder = new FlowPathBuilder();
 
         this.pathComputer = pathComputer;
         this.resourcesManager = resourcesManager;

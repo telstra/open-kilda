@@ -21,11 +21,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
+import java.io.Serializable;
+
 @Data
 @Builder
 @AllArgsConstructor
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class SubFlowPingPayload {
+public class SubFlowPingPayload implements Serializable {
     String flowId;
     UniSubFlowPingPayload forward;
     UniSubFlowPingPayload reverse;

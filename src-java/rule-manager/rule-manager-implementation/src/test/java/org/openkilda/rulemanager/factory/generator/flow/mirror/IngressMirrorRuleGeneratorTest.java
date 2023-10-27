@@ -23,7 +23,6 @@ import static org.openkilda.model.SwitchFeature.METERS;
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN;
 import static org.openkilda.model.SwitchFeature.RESET_COUNTS_FLAG;
 import static org.openkilda.rulemanager.OfTable.INGRESS;
-import static org.openkilda.rulemanager.OfTable.INPUT;
 import static org.openkilda.rulemanager.Utils.assertEqualsMatch;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
 import static org.openkilda.rulemanager.Utils.getCommand;
@@ -114,10 +113,8 @@ public class IngressMirrorRuleGeneratorTest {
     public static final FlowTransitEncapsulation VXLAN_ENCAPSULATION = new FlowTransitEncapsulation(
             VXLAN_VNI, FlowEncapsulationType.VXLAN);
     public static final FlowSegmentCookie COOKIE = new FlowSegmentCookie(FlowPathDirection.FORWARD, 123);
-    public static final FlowPath MULTI_TABLE_PATH = buildPathWithMirror(true);
-    public static final FlowPath SINGLE_TABLE_PATH = buildPathWithMirror(false);
-    public static final FlowPath MULTI_TABLE_ONE_SWITCH_PATH = buildOneSwitchFlowPathWithMirror(true);
-    public static final FlowPath SINGLE_TABLE_ONE_SWITCH_PATH = buildOneSwitchFlowPathWithMirror(false);
+    public static final FlowPath MULTI_TABLE_PATH = buildPathWithMirror();
+    public static final FlowPath MULTI_TABLE_ONE_SWITCH_PATH = buildOneSwitchFlowPathWithMirror();
 
     public static final double BURST_COEFFICIENT = 1.05;
     public static final FlowSegmentCookie MIRROR_COOKIE = COOKIE.toBuilder().mirror(true).build();
@@ -191,42 +188,6 @@ public class IngressMirrorRuleGeneratorTest {
     public void buildIngressActionsVxlanEncapsulationFullPortTest() {
         Flow flow = buildFlow(MULTI_TABLE_PATH, 0, 0);
         IngressMirrorRuleGenerator generator = buildGenerator(MULTI_TABLE_PATH, flow, VXLAN_ENCAPSULATION);
-        List<Action> transformActions = generator.buildIngressActions(getEndpoint(flow), GROUP_ID);
-        List<Action> expectedActions = newArrayList(new GroupAction(GROUP_ID));
-        Assertions.assertEquals(expectedActions, transformActions);
-    }
-
-    @Test
-    public void buildSingleTableIngressActionsVlanEncapsulationSingleVlanTest() {
-        Flow flow = buildFlow(SINGLE_TABLE_PATH, OUTER_VLAN_ID_1, 0);
-        IngressMirrorRuleGenerator generator = buildGenerator(SINGLE_TABLE_PATH, flow, VLAN_ENCAPSULATION);
-        List<Action> transformActions = generator.buildIngressActions(getEndpoint(flow), GROUP_ID);
-        List<Action> expectedActions = newArrayList(new PopVlanAction(), new GroupAction(GROUP_ID));
-        Assertions.assertEquals(expectedActions, transformActions);
-    }
-
-    @Test
-    public void buildSingleTableIngressActionsVlanEncapsulationFullPortTest() {
-        Flow flow = buildFlow(SINGLE_TABLE_PATH, 0, 0);
-        IngressMirrorRuleGenerator generator = buildGenerator(SINGLE_TABLE_PATH, flow, VLAN_ENCAPSULATION);
-        List<Action> transformActions = generator.buildIngressActions(getEndpoint(flow), GROUP_ID);
-        List<Action> expectedActions = newArrayList(new GroupAction(GROUP_ID));
-        Assertions.assertEquals(expectedActions, transformActions);
-    }
-
-    @Test
-    public void buildSingleTableIngressActionsVxlanEncapsulationSingleVlanTest() {
-        Flow flow = buildFlow(SINGLE_TABLE_PATH, OUTER_VLAN_ID_1, 0);
-        IngressMirrorRuleGenerator generator = buildGenerator(SINGLE_TABLE_PATH, flow, VXLAN_ENCAPSULATION);
-        List<Action> transformActions = generator.buildIngressActions(getEndpoint(flow), GROUP_ID);
-        List<Action> expectedActions = newArrayList(new PopVlanAction(), new GroupAction(GROUP_ID));
-        Assertions.assertEquals(expectedActions, transformActions);
-    }
-
-    @Test
-    public void buildSingleTableIngressActionsVxlanEncapsulationFullPortTest() {
-        Flow flow = buildFlow(SINGLE_TABLE_PATH, 0, 0);
-        IngressMirrorRuleGenerator generator = buildGenerator(SINGLE_TABLE_PATH, flow, VXLAN_ENCAPSULATION);
         List<Action> transformActions = generator.buildIngressActions(getEndpoint(flow), GROUP_ID);
         List<Action> expectedActions = newArrayList(new GroupAction(GROUP_ID));
         Assertions.assertEquals(expectedActions, transformActions);
@@ -339,47 +300,6 @@ public class IngressMirrorRuleGeneratorTest {
     ///////
 
     @Test
-    public void buildSingleTableIngressActionsOneSwitchSingleVlanInSingleVlanOutTest() {
-        Flow flow = buildFlow(SINGLE_TABLE_ONE_SWITCH_PATH, OUTER_VLAN_ID_1, 0, OUTER_VLAN_ID_2, 0);
-        IngressMirrorRuleGenerator generator = buildGenerator(SINGLE_TABLE_ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
-        List<Action> transformActions = generator.buildIngressActions(getEndpoint(flow), GROUP_ID);
-        List<Action> expectedActions = newArrayList(
-                SetFieldAction.builder().field(Field.VLAN_VID).value((short) OUTER_VLAN_ID_2).build(),
-                new GroupAction(GROUP_ID));
-        Assertions.assertEquals(expectedActions, transformActions);
-    }
-
-    @Test
-    public void buildSingleTableIngressActionsOneSwitchSingleVlanInFullPortOutTest() {
-        Flow flow = buildFlow(SINGLE_TABLE_ONE_SWITCH_PATH, OUTER_VLAN_ID_1, 0, 0, 0);
-        IngressMirrorRuleGenerator generator = buildGenerator(SINGLE_TABLE_ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
-        List<Action> transformActions = generator.buildIngressActions(getEndpoint(flow), GROUP_ID);
-        List<Action> expectedActions = newArrayList(new PopVlanAction(), new GroupAction(GROUP_ID));
-        Assertions.assertEquals(expectedActions, transformActions);
-    }
-
-    @Test
-    public void buildSingleTableIngressActionsOneSwitchFullPortInSingleVlanOutTest() {
-        Flow flow = buildFlow(SINGLE_TABLE_ONE_SWITCH_PATH, 0, 0, OUTER_VLAN_ID_2, 0);
-        IngressMirrorRuleGenerator generator = buildGenerator(SINGLE_TABLE_ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
-        List<Action> transformActions = generator.buildIngressActions(getEndpoint(flow), GROUP_ID);
-        List<Action> expectedActions = newArrayList(
-                new PushVlanAction(),
-                SetFieldAction.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_2).build(),
-                new GroupAction(GROUP_ID));
-        Assertions.assertEquals(expectedActions, transformActions);
-    }
-
-    @Test
-    public void buildSingleTableIngressActionsOneSwitchFullPortInFullPortOutTest() {
-        Flow flow = buildFlow(SINGLE_TABLE_ONE_SWITCH_PATH, 0, 0, 0, 0);
-        IngressMirrorRuleGenerator generator = buildGenerator(SINGLE_TABLE_ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
-        List<Action> transformActions = generator.buildIngressActions(getEndpoint(flow), GROUP_ID);
-        List<Action> expectedActions = newArrayList(new GroupAction(GROUP_ID));
-        Assertions.assertEquals(expectedActions, transformActions);
-    }
-
-    @Test
     public void oneSwitchFlowFullPortRuleTest() {
         Flow flow = buildFlow(MULTI_TABLE_ONE_SWITCH_PATH, 0, 0, OUTER_VLAN_ID_2, 0);
         IngressMirrorRuleGenerator generator = buildGenerator(MULTI_TABLE_ONE_SWITCH_PATH, flow, VLAN_ENCAPSULATION);
@@ -430,52 +350,8 @@ public class IngressMirrorRuleGeneratorTest {
     }
 
     @Test
-    public void buildSingleTableCommandsVlanEncapsulationSingleVlanTest() {
-        Flow flow = buildFlow(SINGLE_TABLE_PATH, OUTER_VLAN_ID_1, 0);
-        IngressMirrorRuleGenerator generator = buildGenerator(SINGLE_TABLE_PATH, flow, VLAN_ENCAPSULATION);
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        Assertions.assertEquals(2, commands.size());
-
-        FlowSpeakerData ingressCommand = getCommand(FlowSpeakerData.class, commands);
-        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
-
-        Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
-                FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
-                FieldMatch.builder().field(Field.VLAN_VID).value(OUTER_VLAN_ID_1).build());
-        List<Action> expectedIngressActions = newArrayList(new PopVlanAction(), new GroupAction(GROUP_ID));
-        assertIngressCommand(ingressCommand, Priority.MIRROR_FLOW_PRIORITY, INPUT, expectedIngressMatch,
-                expectedIngressActions, METER_ID, groupCommand.getUuid());
-
-        Set<Action> expectedFlowBucketActions = newHashSet(
-                new PushVlanAction(),
-                SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
-                new PortOutAction(new PortNumber(PORT_NUMBER_2)));
-        assertGroupCommand(groupCommand, expectedFlowBucketActions);
-    }
-
-    @Test
-    public void buildSingleTableCommandsOneSwitchFullPortTest() {
-        Flow flow = buildFlow(SINGLE_TABLE_ONE_SWITCH_PATH, 0, 0, 0, 0);
-        IngressMirrorRuleGenerator generator = buildGenerator(SINGLE_TABLE_ONE_SWITCH_PATH, flow, VXLAN_ENCAPSULATION);
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        Assertions.assertEquals(2, commands.size());
-
-        FlowSpeakerData ingressCommand = getCommand(FlowSpeakerData.class, commands);
-        GroupSpeakerData groupCommand = getCommand(GroupSpeakerData.class, commands);
-
-        Set<FieldMatch> expectedIngressMatch = Sets.newHashSet(
-                FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build());
-        List<Action> expectedIngressActions = newArrayList(new GroupAction(GROUP_ID));
-        assertIngressCommand(ingressCommand, Priority.MIRROR_DEFAULT_FLOW_PRIORITY, INPUT, expectedIngressMatch,
-                expectedIngressActions, null, groupCommand.getUuid());
-
-        Set<Action> expectedFlowBucketActions = newHashSet(new PortOutAction(new PortNumber(PORT_NUMBER_2)));
-        assertGroupCommand(groupCommand, expectedFlowBucketActions);
-    }
-
-    @Test
     public void pathWithoutMirrorsEgressMirrorRuleTest() {
-        FlowPath path = buildPath(true);
+        FlowPath path = buildPath();
         Flow flow = buildFlow(path, 0, 0);
         IngressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
         Assertions.assertEquals(0, generator.generateCommands(SWITCH_1).size());
@@ -483,7 +359,7 @@ public class IngressMirrorRuleGeneratorTest {
 
     @Test
     public void pathWithWrongMirrorSwitchMirrorsEgressMirrorRuleTest() {
-        FlowPath path = buildPath(true);
+        FlowPath path = buildPath();
         path.addFlowMirrorPoints(buildMirrorPoints(SWITCH_2));
         Flow flow = buildFlow(path, 0, 0);
         IngressMirrorRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
@@ -542,7 +418,7 @@ public class IngressMirrorRuleGeneratorTest {
                 .flowPath(path)
                 .flow(flow)
                 .encapsulation(encapsulation)
-                .multiTable(path.isSrcWithMultiTable())
+                .multiTable(true)
                 .build();
     }
 
@@ -566,20 +442,19 @@ public class IngressMirrorRuleGeneratorTest {
         return flow;
     }
 
-    private static FlowPath buildPathWithMirror(boolean multiTable) {
-        FlowPath path = buildPath(multiTable);
+    private static FlowPath buildPathWithMirror() {
+        FlowPath path = buildPath();
         path.addFlowMirrorPoints(MIRROR_POINTS);
         return path;
     }
 
-    private static FlowPath buildPath(boolean multiTable) {
+    private static FlowPath buildPath() {
         return FlowPath.builder()
                 .pathId(PATH_ID)
                 .cookie(COOKIE)
                 .meterId(METER_ID)
                 .srcSwitch(SWITCH_1)
                 .destSwitch(SWITCH_2)
-                .srcWithMultiTable(multiTable)
                 .bandwidth(BANDWIDTH)
                 .segments(newArrayList(PathSegment.builder()
                         .pathId(PATH_ID)
@@ -591,13 +466,12 @@ public class IngressMirrorRuleGeneratorTest {
                 .build();
     }
 
-    private static FlowPath buildOneSwitchFlowPathWithMirror(boolean multiTable) {
+    private static FlowPath buildOneSwitchFlowPathWithMirror() {
         FlowPath path = FlowPath.builder()
                 .pathId(PATH_ID)
                 .cookie(COOKIE)
                 .srcSwitch(SWITCH_1)
                 .destSwitch(SWITCH_1)
-                .srcWithMultiTable(multiTable)
                 .bandwidth(0)
                 .segments(new ArrayList<>())
                 .build();

@@ -73,7 +73,7 @@ public class EgressYRuleGenerator extends EgressRuleGenerator implements Metered
                 .switchId(flowPath.getDestSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie().toBuilder().yFlow(true).build())
-                .table(flowPath.isDestWithMultiTable() ? OfTable.EGRESS : OfTable.INPUT)
+                .table(OfTable.EGRESS)
                 .priority(Priority.Y_FLOW_PRIORITY)
                 .match(makeTransitMatch(sw, inPort, encapsulation))
                 .instructions(buildInstructions(sw, buildApplyActions(egressEndpoint, sw)));

@@ -15,10 +15,12 @@
 
 package org.openkilda.model;
 
+import java.io.Serializable;
+
 /**
  * Interface for different encapsulation types in model.
  */
-public interface EncapsulationId {
+public interface EncapsulationId extends Serializable {
 
     /**
      * Get encapsulation resource id.

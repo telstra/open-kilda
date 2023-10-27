@@ -20,9 +20,11 @@ import org.openkilda.model.IslStatus;
 import lombok.AllArgsConstructor;
 import lombok.Value;
 
+import java.io.Serializable;
+
 @Value
 @AllArgsConstructor
-public class IslEndpointPollStatus {
+public class IslEndpointPollStatus implements Serializable {
     IslDataHolder islData;
 
     IslStatus status;

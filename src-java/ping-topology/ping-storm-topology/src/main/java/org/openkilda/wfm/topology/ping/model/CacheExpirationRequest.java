@@ -17,8 +17,10 @@ package org.openkilda.wfm.topology.ping.model;
 
 import lombok.Data;
 
+import java.io.Serializable;
+
 @Data
-public class CacheExpirationRequest {
+public class CacheExpirationRequest implements Serializable {
     private final String flowId;
     private final long forwardCookie;
     private final long reverseCookie;

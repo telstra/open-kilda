@@ -15,7 +15,9 @@
 
 package org.openkilda.messaging.model.grpc;
 
-public enum LogicalPortType {
+import java.io.Serializable;
+
+public enum LogicalPortType implements Serializable {
     LAG,
     BFD,
     RESERVED;

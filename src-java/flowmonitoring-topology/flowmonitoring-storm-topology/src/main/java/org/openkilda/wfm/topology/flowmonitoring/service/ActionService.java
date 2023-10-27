@@ -213,10 +213,11 @@ public class ActionService implements FlowSlaMonitoringCarrier {
     public void sendFlowRerouteRequest(String flowId) {
         Optional<Flow> flow = flowRepository.findById(flowId);
         Optional<HaSubFlow> optionalHaSubFlow;
-        if (flow.isPresent() && LATENCY_BASED_STRATEGIES.contains(flow.get().getPathComputationStrategy())
-                && isReactionsEnabled()) {
-            log.info("Sending flow '{}' reroute request.", flowId);
-            carrier.sendFlowRerouteRequest(flowId);
+        if (flow.isPresent()) {
+            if (LATENCY_BASED_STRATEGIES.contains(flow.get().getPathComputationStrategy()) && isReactionsEnabled()) {
+                log.info("Sending flow '{}' reroute request.", flowId);
+                carrier.sendFlowRerouteRequest(flowId);
+            }
         } else if ((optionalHaSubFlow = haSubFlowRepository.findById(flowId)).isPresent()) {
             HaFlow haFlow = optionalHaSubFlow.get().getHaFlow();
             if (haFlow != null && LATENCY_BASED_STRATEGIES.contains(haFlow.getPathComputationStrategy())

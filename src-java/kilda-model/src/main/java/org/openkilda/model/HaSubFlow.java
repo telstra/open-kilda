@@ -207,7 +207,10 @@ public class HaSubFlow implements CompositeDataEntity<HaSubFlowData> {
         @Override
         @JsonIgnore
         public String getHaFlowId() {
-            return haFlow != null ? haFlow.getHaFlowId() : null;
+            if (haFlow == null || haFlow.getData() == null) {
+                return null;
+            }
+            return haFlow.getHaFlowId();
         }
 
         @Override

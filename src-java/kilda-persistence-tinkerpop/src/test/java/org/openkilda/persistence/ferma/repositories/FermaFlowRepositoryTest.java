@@ -36,6 +36,7 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.persistence.ferma.frames.FlowFrame;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -47,6 +48,11 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -294,33 +300,6 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldFindFlowByEndpointSwitchWithEnabledArp() {
-        createFlowWithArp(TEST_FLOW_ID, switchA, false, switchB, false);
-        createFlowWithArp(TEST_FLOW_ID_2, switchA, true, switchB, false);
-        createFlowWithArp(TEST_FLOW_ID_3, switchB, false, switchA, true);
-        createFlowWithArp(TEST_FLOW_ID_4, switchA, true, switchA, true);
-
-        Collection<Flow> foundFlows = flowRepository.findByEndpointSwitchWithEnabledArp(TEST_SWITCH_A_ID);
-        Set<String> foundFlowIds = foundFlows.stream()
-                .map(Flow::getFlowId)
-                .collect(Collectors.toSet());
-
-        assertEquals(newHashSet(TEST_FLOW_ID_2, TEST_FLOW_ID_3, TEST_FLOW_ID_4), foundFlowIds);
-    }
-
-    @Test
-    public void shouldFindOneFlowByEndpointSwitchWithEnabledArp() {
-        // one switch flow with ARP on src and dst
-        createFlowWithArp(TEST_FLOW_ID, switchA, true, switchA, true);
-
-        Collection<Flow> foundFlows = flowRepository.findByEndpointSwitchWithEnabledArp(TEST_SWITCH_A_ID);
-
-        // only one Flow object must be returned
-        assertEquals(1, foundFlows.size());
-        assertEquals(TEST_FLOW_ID, foundFlows.iterator().next().getFlowId());
-    }
-
-    @Test
     public void shouldFindFlowByEndpoint() {
         Flow flow = createTestFlow(TEST_FLOW_ID, switchA, switchB);
 
@@ -416,28 +395,26 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldFindIsByEndpointWithMultiTableSupport() {
-        createTestFlow(TEST_FLOW_ID, switchA, PORT_1, VLAN_1, switchB, PORT_2, VLAN_2, true);
-        createTestFlow(TEST_FLOW_ID_2, switchA, PORT_1, VLAN_2, switchB, PORT_2, 0, true);
-        createTestFlow(TEST_FLOW_ID_3, switchA, PORT_1, VLAN_3, switchB, PORT_2, 0, false);
-        createTestFlow(TEST_FLOW_ID_4, switchB, PORT_1, VLAN_1, switchB, PORT_3, VLAN_1, true);
+    public void findIsByEndpoint() {
+        createTestFlow(TEST_FLOW_ID, switchA, PORT_1, VLAN_1, switchB, PORT_2, VLAN_2);
+        createTestFlow(TEST_FLOW_ID_2, switchA, PORT_1, VLAN_2, switchB, PORT_2, 0);
+        createTestFlow(TEST_FLOW_ID_4, switchB, PORT_1, VLAN_1, switchB, PORT_3, VLAN_1);
 
         Collection<String> flowIds =
-                flowRepository.findFlowsIdsByEndpointWithMultiTableSupport(switchA.getSwitchId(), PORT_1);
+                flowRepository.findFlowsIdsByEndpoint(switchA.getSwitchId(), PORT_1);
         assertEquals(2, flowIds.size());
         assertTrue(flowIds.contains(TEST_FLOW_ID));
         assertTrue(flowIds.contains(TEST_FLOW_ID_2));
     }
 
     @Test
-    public void shouldFindFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport() {
-        createTestFlow(TEST_FLOW_ID, switchA, PORT_1, VLAN_1, switchB, PORT_2, VLAN_2, true);
-        createTestFlow(TEST_FLOW_ID_2, switchA, PORT_2, VLAN_2, switchB, PORT_2, 0, true);
-        createTestFlow(TEST_FLOW_ID_3, switchA, PORT_1, VLAN_3, switchB, PORT_2, 0, false);
-        createTestFlow(TEST_FLOW_ID_4, switchA, PORT_1, VLAN_1, switchA, PORT_3, VLAN_1, true);
-        createTestFlow(TEST_FLOW_ID_5, switchA, PORT_2, VLAN_1, switchB, PORT_1, VLAN_1, true);
+    public void findFlowIdsForMultiSwitchFlowsByEndpoint() {
+        createTestFlow(TEST_FLOW_ID, switchA, PORT_1, VLAN_1, switchB, PORT_2, VLAN_2);
+        createTestFlow(TEST_FLOW_ID_2, switchA, PORT_2, VLAN_2, switchB, PORT_2, 0);
+        createTestFlow(TEST_FLOW_ID_4, switchA, PORT_1, VLAN_1, switchA, PORT_3, VLAN_1);
+        createTestFlow(TEST_FLOW_ID_5, switchA, PORT_2, VLAN_1, switchB, PORT_1, VLAN_1);
 
-        Collection<String> flowIds = flowRepository.findFlowIdsForMultiSwitchFlowsByEndpointWithMultiTableSupport(
+        Collection<String> flowIds = flowRepository.findFlowIdsForMultiSwitchFlowsByEndpoint(
                 switchA.getSwitchId(), PORT_1);
         assertEquals(1, flowIds.size());
         assertEquals(TEST_FLOW_ID, flowIds.iterator().next());
@@ -468,34 +445,6 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    public void shouldFindFlowBySwitchEndpointWithMultiTable() {
-        Flow firstFlow = createTestFlow(TEST_FLOW_ID, switchA, switchB);
-        firstFlow.getForwardPath().setSrcWithMultiTable(true);
-
-        Flow secondFlow = createTestFlow(TEST_FLOW_ID_2, switchA, switchB);
-        secondFlow.getForwardPath().setSrcWithMultiTable(false);
-
-        Collection<Flow> foundFlows = flowRepository.findByEndpointSwitchWithMultiTableSupport(TEST_SWITCH_A_ID);
-        Set<String> foundFlowIds = foundFlows.stream().map(Flow::getFlowId).collect(Collectors.toSet());
-        assertEquals(Collections.singleton(firstFlow.getFlowId()), foundFlowIds);
-    }
-
-    @Test
-    public void shouldFindFlowByEndpointSwitchWithEnabledLldp() {
-        createFlowWithLldp(TEST_FLOW_ID, switchA, false, switchB, false);
-        createFlowWithLldp(TEST_FLOW_ID_2, switchA, true, switchB, false);
-        createFlowWithLldp(TEST_FLOW_ID_3, switchB, false, switchA, true);
-        createFlowWithLldp(TEST_FLOW_ID_4, switchA, true, switchA, true);
-
-        Collection<Flow> foundFlows = flowRepository.findByEndpointSwitchWithEnabledLldp(TEST_SWITCH_A_ID);
-        Set<String> foundFlowIds = foundFlows.stream()
-                .map(Flow::getFlowId)
-                .collect(Collectors.toSet());
-
-        assertEquals(newHashSet(TEST_FLOW_ID_2, TEST_FLOW_ID_3, TEST_FLOW_ID_4), foundFlowIds);
-    }
-
-    @Test
     public void shouldFindOneFlowByEndpoint() {
         // one switch flow with LLDP on src and dst
         Flow flow1 = createTestFlow(TEST_FLOW_ID, switchA, switchA);
@@ -510,18 +459,6 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
 
         Collection<Flow> foundFlows = flowRepository.findOneSwitchFlows(switchA.getSwitchId());
 
-        assertEquals(1, foundFlows.size());
-        assertEquals(TEST_FLOW_ID, foundFlows.iterator().next().getFlowId());
-    }
-
-    @Test
-    public void shouldFindOneFlowByEndpointSwitchWithEnabledLldp() {
-        // one switch flow with LLDP on src and dst
-        createFlowWithLldp(TEST_FLOW_ID, switchA, true, switchA, true);
-
-        Collection<Flow> foundFlows = flowRepository.findByEndpointSwitchWithEnabledLldp(TEST_SWITCH_A_ID);
-
-        // only one Flow object must be returned
         assertEquals(1, foundFlows.size());
         assertEquals(TEST_FLOW_ID, foundFlows.iterator().next().getFlowId());
     }
@@ -657,6 +594,29 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
     }
 
     @Test
+    public void serializeAndDeserializeDetachedHaFlow() throws IOException, ClassNotFoundException {
+        Flow flow = createTestFlow(TEST_FLOW_ID, switchA, PORT_1, VLAN_1, switchB, PORT_2, VLAN_2);
+        assertTrue(flow.getData() instanceof FlowFrame);
+        flowRepository.detach(flow);
+
+        ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+        ObjectOutputStream outputStream = new ObjectOutputStream(byteOutputStream);
+        outputStream.writeObject(flow);
+        outputStream.flush();
+        byte[] serializedHaFlow = byteOutputStream.toByteArray();
+        byteOutputStream.close();
+        outputStream.close();
+
+        ByteArrayInputStream byteInputStream = new ByteArrayInputStream(serializedHaFlow);
+        ObjectInputStream inputStream = new ObjectInputStream(byteInputStream);
+        Flow deserializedFlow = (Flow) inputStream.readObject();
+        byteInputStream.close();
+        inputStream.close();
+
+        assertEquals(flow, deserializedFlow);
+    }
+
+    @Test
     public void shouldNotUpdateFlowStatusSafeWhenFlowIsInProgressState() {
         Flow flow = createTestFlow(TEST_FLOW_ID, switchA, switchB);
         flow.setStatus(FlowStatus.IN_PROGRESS);
@@ -717,11 +677,6 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
 
     private Flow createTestFlow(String flowId, Switch srcSwitch, int srcPort, int srcVlan,
                                 Switch destSwitch, int destPort, int destVlan) {
-        return createTestFlow(flowId, srcSwitch, srcPort, srcVlan, destSwitch, destPort, destVlan, false);
-    }
-
-    private Flow createTestFlow(String flowId, Switch srcSwitch, int srcPort, int srcVlan,
-                                Switch destSwitch, int destPort, int destVlan, boolean multiTable) {
         Flow flow = Flow.builder()
                 .flowId(flowId)
                 .srcSwitch(srcSwitch)
@@ -742,8 +697,6 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
                 .srcSwitch(srcSwitch)
                 .destSwitch(destSwitch)
                 .status(FlowPathStatus.ACTIVE)
-                .srcWithMultiTable(multiTable)
-                .destWithMultiTable(multiTable)
                 .build();
 
         PathSegment forwardSegment = PathSegment.builder()
@@ -765,8 +718,6 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
                 .srcSwitch(destSwitch)
                 .destSwitch(srcSwitch)
                 .status(FlowPathStatus.ACTIVE)
-                .srcWithMultiTable(multiTable)
-                .destWithMultiTable(multiTable)
                 .build();
 
         PathSegment reverseSegment = PathSegment.builder()

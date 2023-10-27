@@ -44,7 +44,7 @@ public abstract class KildaConfigurationMapper {
                 kildaConfiguration.getPathComputationStrategy().name().toLowerCase();
         return KildaConfigurationDto.builder()
                 .flowEncapsulationType(flowEncapsulationType)
-                .useMultiTable(kildaConfiguration.getUseMultiTable())
+                .useMultiTable(true)
                 .pathComputationStrategy(pathComputationStrategy)
                 .build();
     }
@@ -65,7 +65,6 @@ public abstract class KildaConfigurationMapper {
                 .pathComputationStrategy(
                         pathComputationStrategy == null ? null
                                 : PathComputationStrategy.valueOf(pathComputationStrategy.toUpperCase()))
-                .useMultiTable(kildaConfigurationDto.getUseMultiTable())
                 .build();
     }
 }

@@ -125,7 +125,6 @@ public class RemoveOldRulesAction extends
         Set<PathId> pathIds = new HashSet<>(overlappingPathIds);
         pathIds.addAll(haFlowPath.getSubPathIds());
         pathIds.addAll(stateMachine.getNewPrimaryPathIds().getAllSubPathIds());
-        return new PersistenceDataAdapter(
-                persistenceManager, pathIds, switchIds, false, additionalHaFlowMap);
+        return new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, additionalHaFlowMap);
     }
 }

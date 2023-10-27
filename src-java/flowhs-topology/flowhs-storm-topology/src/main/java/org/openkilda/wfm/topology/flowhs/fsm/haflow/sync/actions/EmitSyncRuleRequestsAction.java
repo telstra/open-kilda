@@ -73,7 +73,7 @@ public class EmitSyncRuleRequestsAction extends HaFlowRuleManagerProcessingActio
     private List<SpeakerData> buildRules(HaFlowPath haPath) {
         Set<SwitchId> switchIds = haPath.getAllInvolvedSwitches();
         Set<PathId> pathIds = new HashSet<>(haPath.getSubPathIds());
-        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, pathIds, switchIds, false);
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, pathIds, switchIds);
         return ruleManager.buildRulesHaFlowPath(haPath, true, dataAdapter);
     }
 

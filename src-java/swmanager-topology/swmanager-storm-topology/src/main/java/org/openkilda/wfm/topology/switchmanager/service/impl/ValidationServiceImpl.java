@@ -132,7 +132,6 @@ public class ValidationServiceImpl implements ValidationService {
                 .persistenceManager(persistenceManager)
                 .switchIds(Collections.singleton(switchId))
                 .pathIds(flowPathIds)
-                .keepMultitableForFlow(true)
                 .build();
         return ruleManager.buildRulesForSwitch(switchId, dataAdapter);
     }

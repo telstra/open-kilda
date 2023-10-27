@@ -15,6 +15,8 @@
 
 package org.openkilda.server42.control.topology.storm;
 
-public interface ICommand<H> {
+import java.io.Serializable;
+
+public interface ICommand<H> extends Serializable {
     void apply(H handler);
 }

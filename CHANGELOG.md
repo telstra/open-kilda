@@ -1,5 +1,32 @@
 # Changelog
-## v1.145.0 (16/10/2023)
+
+## v1.145.1 (24/10/2023)
+
+### Bug Fixes:
+-  [#5445](https://github.com/telstra/open-kilda/pull/5445) Do not write false 'flow not found' log if monitoring is disabled
+-  [#5413](https://github.com/telstra/open-kilda/pull/5413) Victoria metrics url fixes for multicluster victoria configuration. [**gui**]
+
+### Improvements:
+-  [#5443](https://github.com/telstra/open-kilda/pull/5443) #5390: [TEST] Fix flaky Y-Flow Path Swap test (Issues: [#5390](https://github.com/telstra/open-kilda/issues/5390) [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5446](https://github.com/telstra/open-kilda/pull/5446) #5390: [TEST] Fix flaky Y-Flow reroute test (Issues: [#5390](https://github.com/telstra/open-kilda/issues/5390) [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5448](https://github.com/telstra/open-kilda/pull/5448) #5390: [TEST] Fix flaky Autoreroute test (Issues: [#5390](https://github.com/telstra/open-kilda/issues/5390) [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5319](https://github.com/telstra/open-kilda/pull/5319) Remove multi_table fields from DB objects (Issue: [#5313](https://github.com/telstra/open-kilda/issues/5313))
+-  [#4552](https://github.com/telstra/open-kilda/pull/4552) Multi AZ deployment for kilda [**docs**]
+-  [#4695](https://github.com/telstra/open-kilda/pull/4695) Make all storm topologies scalable across storm workers
+-  [#5434](https://github.com/telstra/open-kilda/pull/5434) [TEST]: Flaky tests: Ha-Flow: Update [**tests**]
+-  [#5436](https://github.com/telstra/open-kilda/pull/5436) Split StatsTopologyTest to run it in parallel [**tests**]
+-  [#5437](https://github.com/telstra/open-kilda/pull/5437) Ignore lock-keeper tests in docker directory
+-  [#5438](https://github.com/telstra/open-kilda/pull/5438) Run unit tests via github actions in parallel
+-  [#5439](https://github.com/telstra/open-kilda/pull/5439) [TEST]: Env setup: Parallel execution: Topology readiness [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.145.0...v1.145.1).
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
+## v1.145.0 (12/10/2023)
 
 ### Bug Fixes:
 -  [#5427](https://github.com/telstra/open-kilda/pull/5427) 5424 GUI: enable to get flow path if flow name contains a dot (Issue: [#5424](https://github.com/telstra/open-kilda/issues/5424)) [**gui**]

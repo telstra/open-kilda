@@ -75,7 +75,7 @@ public class FlowRulesGeneratorFactory {
     public RuleGenerator getIngressRuleGenerator(
             FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
             Set<FlowSideAdapter> overlappingIngressAdapters) {
-        boolean multiTable = isPathSrcMultiTable(flowPath, flow);
+        boolean multiTable = isPathSrcMultiTable();
         if (multiTable) {
             return MultiTableIngressRuleGenerator.builder()
                     .config(config)
@@ -100,7 +100,7 @@ public class FlowRulesGeneratorFactory {
     public RuleGenerator getServer42IngressRuleGenerator(
             FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
             SwitchProperties switchProperties, Set<FlowSideAdapter> overlappingIngressAdapters) {
-        boolean multiTable = isPathSrcMultiTable(flowPath, flow);
+        boolean multiTable = isPathSrcMultiTable();
         if (multiTable) {
             return MultiTableServer42IngressRuleGenerator.builder()
                     .config(config)
@@ -125,7 +125,7 @@ public class FlowRulesGeneratorFactory {
      * Get vlan stats rule generator.
      */
     public RuleGenerator getVlanStatsRuleGenerator(FlowPath flowPath, Flow flow) {
-        boolean multiTable = isPathSrcMultiTable(flowPath, flow);
+        boolean multiTable = isPathSrcMultiTable();
         if (multiTable) {
             return VlanStatsRuleGenerator.builder()
                     .flow(flow)
@@ -144,7 +144,7 @@ public class FlowRulesGeneratorFactory {
             FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
             Set<FlowSideAdapter> overlappingIngressAdapters, MeterId sharedMeterId, UUID externalMeterCommandUuid,
             boolean generateMeterCommand) {
-        boolean multiTable = isPathSrcMultiTable(flowPath, flow);
+        boolean multiTable = isPathSrcMultiTable();
         if (multiTable) {
             return MultiTableIngressYRuleGenerator.builder()
                     .config(config)
@@ -176,7 +176,7 @@ public class FlowRulesGeneratorFactory {
         return FlowLoopIngressRuleGenerator.builder()
                 .flowPath(flowPath)
                 .flow(flow)
-                .multiTable(isPathSrcMultiTable(flowPath, flow))
+                .multiTable(isPathSrcMultiTable())
                 .build();
     }
 
@@ -188,7 +188,7 @@ public class FlowRulesGeneratorFactory {
         return IngressMirrorRuleGenerator.builder()
                 .flowPath(flowPath)
                 .flow(flow)
-                .multiTable(isPathSrcMultiTable(flowPath, flow))
+                .multiTable(isPathSrcMultiTable())
                 .config(config)
                 .encapsulation(encapsulation)
                 .sharedMeterCommandUuid(sharedMeterCommandUuid)
@@ -202,7 +202,7 @@ public class FlowRulesGeneratorFactory {
             FlowPath flowPath, Flow flow, Set<FlowSideAdapter> overlappingIngressAdapters) {
         return InputLldpRuleGenerator.builder()
                 .ingressEndpoint(FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint())
-                .multiTable(isPathSrcMultiTable(flowPath, flow))
+                .multiTable(isPathSrcMultiTable())
                 .overlappingIngressAdapters(overlappingIngressAdapters)
                 .build();
     }
@@ -214,7 +214,7 @@ public class FlowRulesGeneratorFactory {
             FlowPath flowPath, Flow flow, Set<FlowSideAdapter> overlappingIngressAdapters) {
         return InputArpRuleGenerator.builder()
                 .ingressEndpoint(FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint())
-                .multiTable(isPathSrcMultiTable(flowPath, flow))
+                .multiTable(isPathSrcMultiTable())
                 .overlappingIngressAdapters(overlappingIngressAdapters)
                 .build();
     }
@@ -283,7 +283,7 @@ public class FlowRulesGeneratorFactory {
                 .encapsulation(encapsulation)
                 .inPort(firstSegment.getDestPort())
                 .outPort(secondSegment.getSrcPort())
-                .multiTable(isSegmentMultiTable(firstSegment, secondSegment))
+                .multiTable(true)
                 .build();
     }
 
@@ -310,7 +310,7 @@ public class FlowRulesGeneratorFactory {
                 .encapsulation(encapsulation)
                 .inPort(firstSegment.getDestPort())
                 .outPort(secondSegment.getSrcPort())
-                .multiTable(isSegmentMultiTable(firstSegment, secondSegment))
+                .multiTable(true)
                 .config(config)
                 .sharedMeterId(sharedMeterId)
                 .externalMeterCommandUuid(externalMeterCommandUuid)
@@ -443,42 +443,15 @@ public class FlowRulesGeneratorFactory {
         return FlowLoopTransitRuleGenerator.builder()
                 .flowPath(flowPath)
                 .flow(flow)
-                .multiTable(isPathSrcMultiTable(flowPath, flow))
+                .multiTable(true)
                 .inPort(inPort)
                 .encapsulation(encapsulation)
                 .build();
     }
 
-    private boolean isSegmentMultiTable(PathSegment first, PathSegment second) {
-        if (first.isDestWithMultiTable() != second.isSrcWithMultiTable()) {
-            throw new IllegalStateException(
-                    format("Paths segments %s and %s has different multi table flag for switch %s",
-                            first, second, first.getDestSwitchId()));
-        }
-        return first.isDestWithMultiTable();
-    }
-
-    private boolean isPathSrcMultiTable(FlowPath flowPath, Flow flow) {
-        if (flowPath.isOneSwitchPath()) {
-            return flowPath.isSrcWithMultiTable();
-        }
-        ensureEqualMultiTableFlag(flowPath, flow);
-        return flowPath.isSrcWithMultiTable();
-    }
-
-    private void ensureEqualMultiTableFlag(FlowPath flowPath, Flow flow) {
-        if (flowPath.getSegments() == null || flowPath.getSegments().isEmpty()) {
-            throw new IllegalStateException(
-                    format("No segments found for path %s", flowPath.getPathId()));
-        }
-        PathSegment segment = flowPath.getSegments().get(0);
-        if (flowPath.isSrcWithMultiTable() != segment.isSrcWithMultiTable()) {
-            String errorMessage = String.format("First flow(id:%s, path:%s) segment and flow path level multi-table "
-                            + "flag values are incompatible to each other - flow path(%s) != segment(%s)",
-                    flow.getFlowId(), flowPath.getPathId(),
-                    flowPath.isSrcWithMultiTable(), segment.isSrcWithMultiTable());
-            throw new IllegalArgumentException(errorMessage);
-        }
+    private boolean isPathSrcMultiTable() {
+        // TODO remove
+        return true;
     }
 
     private void checkEgressRulePreRequirements(FlowPath flowPath, Flow flow, String ruleName) {

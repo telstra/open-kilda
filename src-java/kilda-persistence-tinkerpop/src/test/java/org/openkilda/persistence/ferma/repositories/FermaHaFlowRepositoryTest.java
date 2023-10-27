@@ -42,6 +42,7 @@ import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.persistence.ferma.frames.HaFlowFrame;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.HaFlowPathRepository;
@@ -54,6 +55,11 @@ import com.google.common.collect.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -206,20 +212,8 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
 
     @Test
     public void haFlowCascadeRemoveTest() {
-        createHaFlowWithSubFlows(haFlow1);
         createHaFlow(haFlow2);
-
-        haFlowPathRepository.add(haPath1);
-        haPath1.setSubPaths(Lists.newArrayList(
-                createPathWithSegments(SUB_PATH_ID_1, haPath1, subFlow1, switch1, switch2, switch3),
-                createPathWithSegments(SUB_PATH_ID_2, haPath1, subFlow2, switch1, switch3, switch2)));
-        haPath1.setHaSubFlows(Lists.newArrayList(subFlow1, subFlow2));
-
-        haFlowPathRepository.add(haPath2);
-        haPath2.setSubPaths(Lists.newArrayList(
-                createPathWithSegments(SUB_PATH_ID_3, haPath2, subFlow1, switch3, switch2, switch1)));
-        haPath2.setHaSubFlows(Lists.newArrayList(subFlow2, subFlow1));
-        haFlow1.addPaths(haPath1, haPath2);
+        createHaFlowWithSubFlowsAndPaths();
 
         assertEquals(2, haFlowRepository.findAll().size());
         assertEquals(2, haFlowPathRepository.findAll().size());
@@ -243,19 +237,7 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
 
     @Test
     public void makeDetachedHaFlowCopy() {
-        createHaFlowWithSubFlows(haFlow1);
-
-        haFlowPathRepository.add(haPath1);
-        haPath1.setSubPaths(Lists.newArrayList(
-                createPathWithSegments(SUB_PATH_ID_1, haPath1, subFlow1, switch1, switch2, switch3),
-                createPathWithSegments(SUB_PATH_ID_2, haPath1, subFlow2, switch1, switch3, switch2)));
-        haPath1.setHaSubFlows(Lists.newArrayList(subFlow1, subFlow2));
-
-        haFlowPathRepository.add(haPath2);
-        haPath2.setSubPaths(Lists.newArrayList(
-                createPathWithSegments(SUB_PATH_ID_3, haPath2, subFlow1, switch3, switch2, switch1)));
-        haPath2.setHaSubFlows(Lists.newArrayList(subFlow2, subFlow1));
-        haFlow1.addPaths(haPath1, haPath2);
+        createHaFlowWithSubFlowsAndPaths();
 
         HaFlow detachedHaFlow = new HaFlow(haFlow1);
         assertEquals(haFlow1, detachedHaFlow);
@@ -267,6 +249,29 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
         // field must not be changed in DB
         assertEquals(haFlow1.getMaxLatency(), foundHaFlow.get().getMaxLatency());
         assertNotEquals(detachedHaFlow.getMaxLatency(), foundHaFlow.get().getMaxLatency());
+    }
+
+    @Test
+    public void serializeAndDeserializeDetachedHaFlow() throws IOException, ClassNotFoundException {
+        createHaFlowWithSubFlowsAndPaths();
+        assertTrue(haFlow1.getData() instanceof HaFlowFrame);
+        haFlowRepository.detach(haFlow1);
+
+        ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
+        ObjectOutputStream outputStream = new ObjectOutputStream(byteOutputStream);
+        outputStream.writeObject(haFlow1);
+        outputStream.flush();
+        byte[] serializedHaFlow = byteOutputStream.toByteArray();
+        byteOutputStream.close();
+        outputStream.close();
+
+        ByteArrayInputStream byteInputStream = new ByteArrayInputStream(serializedHaFlow);
+        ObjectInputStream inputStream = new ObjectInputStream(byteInputStream);
+        HaFlow deserializedHaFlow = (HaFlow) inputStream.readObject();
+        byteInputStream.close();
+        inputStream.close();
+
+        assertEquals(haFlow1, deserializedHaFlow);
     }
 
     @Test
@@ -401,6 +406,22 @@ public class FermaHaFlowRepositoryTest extends InMemoryGraphBasedTest {
         haSubFlowRepository.add(subFlow1);
         haSubFlowRepository.add(subFlow2);
         haFlow.setHaSubFlows(newHashSet(subFlow1, subFlow2));
+    }
+
+    private void createHaFlowWithSubFlowsAndPaths() {
+        createHaFlowWithSubFlows(haFlow1);
+
+        haFlowPathRepository.add(haPath1);
+        haPath1.setSubPaths(Lists.newArrayList(
+                createPathWithSegments(SUB_PATH_ID_1, haPath1, subFlow1, switch1, switch2, switch3),
+                createPathWithSegments(SUB_PATH_ID_2, haPath1, subFlow2, switch1, switch3, switch2)));
+        haPath1.setHaSubFlows(Lists.newArrayList(subFlow1, subFlow2));
+
+        haFlowPathRepository.add(haPath2);
+        haPath2.setSubPaths(Lists.newArrayList(
+                createPathWithSegments(SUB_PATH_ID_3, haPath2, subFlow1, switch3, switch2, switch1)));
+        haPath2.setHaSubFlows(Lists.newArrayList(subFlow2, subFlow1));
+        haFlow1.addPaths(haPath1, haPath2);
     }
 
     private void assertPathsFlows(Collection<HaFlowPath> actualPaths, HaFlowPath... expectedPaths) {

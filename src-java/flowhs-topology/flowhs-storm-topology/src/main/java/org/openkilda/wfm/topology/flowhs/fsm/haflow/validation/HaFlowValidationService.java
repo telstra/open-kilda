@@ -182,7 +182,6 @@ public class HaFlowValidationService {
                 .persistenceManager(persistenceManager)
                 .switchIds(switchIds)
                 .pathIds(pathIds)
-                .keepMultitableForFlow(true)
                 .build();
     }
 

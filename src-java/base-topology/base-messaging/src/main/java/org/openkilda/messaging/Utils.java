@@ -262,9 +262,10 @@ public final class Utils {
      */
     public static <E> List<List<E>> split(List<E> list, int firstChunkSize, int chunkSize) {
         List<List<E>> result = new ArrayList<>();
-        result.add(list.subList(0, Math.min(firstChunkSize, list.size())));
+        // list.subList() is not serializable, so we have to wrap it into ArrayList
+        result.add(new ArrayList<>(list.subList(0, Math.min(firstChunkSize, list.size()))));
         for (int i = firstChunkSize; i < list.size(); i += chunkSize) {
-            result.add(list.subList(i, Math.min(i + chunkSize, list.size())));
+            result.add(new ArrayList<>(list.subList(i, Math.min(i + chunkSize, list.size()))));
         }
         return result;
     }

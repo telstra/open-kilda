@@ -87,13 +87,13 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
                     FlowSegmentCookie cookie, MeterId meterId, GroupId ingressMirrorGroupId,
                     long latency, long bandwidth,
                     boolean ignoreBandwidth, FlowPathStatus status, List<PathSegment> segments,
-                    Set<FlowApplication> applications, boolean srcWithMultiTable, boolean destWithMultiTable,
+                    Set<FlowApplication> applications,
                     String sharedBandwidthGroupId, HaFlowPath haFlowPath) {
         data = FlowPathDataImpl.builder().pathId(pathId).srcSwitch(srcSwitch).destSwitch(destSwitch)
                 .cookie(cookie).meterId(meterId).ingressMirrorGroupId(ingressMirrorGroupId)
                 .latency(latency).bandwidth(bandwidth)
                 .ignoreBandwidth(ignoreBandwidth).status(status)
-                .applications(applications).srcWithMultiTable(srcWithMultiTable).destWithMultiTable(destWithMultiTable)
+                .applications(applications)
                 .sharedBandwidthGroupId(sharedBandwidthGroupId).haFlowPath(haFlowPath)
                 .build();
         // The reference is used to link path segments back to the path. See {@link #setSegments(List)}.
@@ -257,8 +257,6 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
                 .append(getStatus(), that.getStatus())
                 .append(getSegments(), that.getSegments())
                 .append(getApplications(), that.getApplications())
-                .append(isSrcWithMultiTable(), that.isSrcWithMultiTable())
-                .append(isDestWithMultiTable(), that.isDestWithMultiTable())
                 .append(getSharedBandwidthGroupId(), that.getSharedBandwidthGroupId())
                 .isEquals();
     }
@@ -267,8 +265,7 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
     public int hashCode() {
         return Objects.hash(getPathId(), getSrcSwitchId(), getDestSwitchId(), getFlowId(), getCookie(), getMeterId(),
                 getLatency(), getBandwidth(), isIgnoreBandwidth(), getTimeCreate(), getTimeModify(), getStatus(),
-                getSegments(), getApplications(), isSrcWithMultiTable(), isDestWithMultiTable(),
-                getSharedBandwidthGroupId());
+                getSegments(), getApplications(), getSharedBandwidthGroupId());
     }
 
     /**
@@ -349,18 +346,6 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
 
         void setApplications(Set<FlowApplication> applications);
 
-        @Deprecated
-        boolean isSrcWithMultiTable();
-
-        @Deprecated
-        void setSrcWithMultiTable(boolean srcWithMultiTable);
-
-        @Deprecated
-        boolean isDestWithMultiTable();
-
-        @Deprecated
-        void setDestWithMultiTable(boolean destWithMultiTable);
-
         Set<FlowMirrorPoints> getFlowMirrorPointsSet();
 
         void addFlowMirrorPoints(FlowMirrorPoints flowMirrorPoints);
@@ -432,10 +417,6 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
         @EqualsAndHashCode.Exclude
         FlowPath flowPath;
 
-        @Deprecated
-        boolean srcWithMultiTable;
-        @Deprecated
-        boolean destWithMultiTable;
         String sharedBandwidthGroupId;
 
         @Override
@@ -449,7 +430,10 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
 
         @Override
         public String getFlowId() {
-            return flow != null ? flow.getFlowId() : null;
+            if (flow == null || flow.getData() == null) {
+                return null;
+            }
+            return flow.getFlowId();
         }
 
         @Override

@@ -30,7 +30,7 @@ import java.util.List;
 @Builder
 @EqualsAndHashCode(callSuper = false)
 @JsonNaming(value = SnakeCaseStrategy.class)
-public class GroupEntry  implements Serializable {
+public class GroupEntry implements Serializable {
     private int groupId;
     private String groupType;
     private List<GroupBucket> buckets;

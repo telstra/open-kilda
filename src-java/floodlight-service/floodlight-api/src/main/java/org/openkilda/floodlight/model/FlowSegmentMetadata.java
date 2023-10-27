@@ -38,10 +38,9 @@ public class FlowSegmentMetadata implements Serializable {
     @JsonCreator
     public FlowSegmentMetadata(
             @JsonProperty("flowid") @NonNull String flowId,
-            @JsonProperty("cookie") @NonNull Cookie cookie,
-            @JsonProperty("multi_table") boolean multiTable) {
+            @JsonProperty("cookie") @NonNull Cookie cookie) {
         this.flowId = flowId;
         this.cookie = cookie;
-        this.multiTable = multiTable;
+        this.multiTable = true;
     }
 }

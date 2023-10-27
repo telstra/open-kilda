@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.ping.model;
 
+import java.io.Serializable;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -22,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 
-public class ExpirableMap<K, V extends Expirable<K>> {
+public class ExpirableMap<K, V extends Expirable<K>> implements Serializable {
     private final PriorityQueue<V> expirableQueue =
             new PriorityQueue<>(Comparator.comparingLong(Expirable::getExpireAt));
     private final Map<K, V> map = new HashMap<>();
