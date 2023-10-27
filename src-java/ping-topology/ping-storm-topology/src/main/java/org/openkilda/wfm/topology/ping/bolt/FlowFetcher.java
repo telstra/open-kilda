@@ -150,6 +150,11 @@ public class FlowFetcher extends Abstract {
         if (periodicHaPingCommand.isEnable()) {
             haFlowRepository.findById(haFlowId)
                     .flatMap(haFlow -> {
+                        if (hasHasOneHaSubFlowWithYPointEqualsEndpoint(haFlow)) {
+                            log.warn("Temporary disabled. HaFlow {} has one sub-flow with endpoint switch equals to "
+                                    + "Y-point switch", haFlowId);
+                            return Optional.empty();
+                        }
                         haFlowRepository.detach(haFlow);
                         return getFlowWithTransitEncapsulation(haFlow);
                     })
@@ -185,6 +190,7 @@ public class FlowFetcher extends Abstract {
 
     private Set<FlowWithTransitEncapsulation> getHaFlowsWithTransitEncapsulation() {
         return haFlowRepository.findWithPeriodicPingsEnabled().stream()
+                .filter(haFlow -> !hasHasOneHaSubFlowWithYPointEqualsEndpoint(haFlow))
                 .peek(haFlowRepository::detach)
                 .map(this::getFlowWithTransitEncapsulation)
                 .flatMap(o -> o.map(Stream::of).orElseGet(Stream::empty))
@@ -341,10 +347,7 @@ public class FlowFetcher extends Abstract {
             return;
         }
 
-        SwitchId yPointSwitchId = haFlow.getForwardPath().getYPointSwitchId();
-        long yEqualsEndpointCount = haFlow.getHaSubFlows().stream()
-                .filter(subFlow -> subFlow.getEndpointSwitchId().equals(yPointSwitchId)).count();
-        if (yEqualsEndpointCount == 1) {
+        if (hasHasOneHaSubFlowWithYPointEqualsEndpoint(haFlow)) {
             emitOnDemandHaFlowResponse(input, request, format(
                     "Temporary disabled. HaFlow %s has one sub-flow with endpoint switch equals to Y-point switch",
                     request.getHaFlowId()));
@@ -364,6 +367,12 @@ public class FlowFetcher extends Abstract {
                 .timeout(request.getTimeout())
                 .build();
         emit(input, pingContext, pullContext(input));
+    }
+
+    private boolean hasHasOneHaSubFlowWithYPointEqualsEndpoint(HaFlow haFlow) {
+        SwitchId yPointSwitchId = haFlow.getForwardPath().getYPointSwitchId();
+        return haFlow.getHaSubFlows().stream()
+                .filter(subFlow -> subFlow.getEndpointSwitchId().equals(yPointSwitchId)).count() == 1;
     }
 
     private Optional<FlowWithTransitEncapsulation> getFlowWithTransitEncapsulation(Flow flow) {

@@ -16,8 +16,9 @@
 package org.openkilda.wfm.topology.opentsdb.bolts;
 
 import org.openkilda.messaging.info.Datapoint;
+import org.openkilda.wfm.topology.opentsdb.models.Storage;
+import org.openkilda.wfm.topology.opentsdb.models.Storage.DatapointValue;
 
-import lombok.Value;
 import org.apache.storm.Config;
 import org.apache.storm.Constants;
 import org.apache.storm.task.OutputCollector;
@@ -30,7 +31,6 @@ import org.apache.storm.tuple.Values;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -43,7 +43,7 @@ public class OpenTsdbFilterBolt extends BaseRichBolt {
 
     public static final Fields STREAM_FIELDS = new Fields(FIELD_ID_DATAPOINT);
 
-    private Map<DatapointKey, Datapoint> storage = new HashMap<>();
+    private final Storage storage = new Storage();
     private OutputCollector collector;
 
     @Override
@@ -63,11 +63,14 @@ public class OpenTsdbFilterBolt extends BaseRichBolt {
         
         if (isTickTuple(tuple)) {
             // opentsdb using current epoch time (date +%s) in seconds
-            long now  = System.currentTimeMillis();
-            storage.entrySet().removeIf(entry ->  now - entry.getValue().getTime() > MUTE_IF_NO_UPDATES_MILLIS);
+            int initialSize = storage.size();
+            storage.removeOutdated(MUTE_IF_NO_UPDATES_MILLIS);
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Removed {} outdated datapoints from the storage", initialSize - storage.size());
+            }
 
             if (LOGGER.isTraceEnabled()) {
-                LOGGER.trace("storage after clean tuple: {}", storage.toString());
+                LOGGER.trace("storage after clean tuple: {}", storage);
             }
 
             collector.ack(tuple);
@@ -100,27 +103,27 @@ public class OpenTsdbFilterBolt extends BaseRichBolt {
     private void addDatapoint(Datapoint datapoint) {
         LOGGER.debug("adding datapoint: {}", datapoint);
         LOGGER.debug("storage.size: {}", storage.size());
-        storage.put(new DatapointKey(datapoint.getMetric(), datapoint.getTags()), datapoint);
+        storage.add(datapoint);
         if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace("addDatapoint storage: {}", storage.toString());
+            LOGGER.trace("addDatapoint storage: {}", storage);
         }
     }
 
     private boolean isUpdateRequired(Datapoint datapoint) {
         boolean update = true;
-        Datapoint prevDatapoint = storage.get(new DatapointKey(datapoint.getMetric(), datapoint.getTags()));
+        DatapointValue prevDatapointValue = storage.get(datapoint);
 
-        if (prevDatapoint != null) {
+        if (prevDatapointValue != null) {
             if (LOGGER.isTraceEnabled()) {
                 LOGGER.trace("prev: {} cur: {} equals: {} time_delta: {}",
-                        prevDatapoint,
+                        prevDatapointValue,
                         datapoint,
-                        prevDatapoint.getValue().equals(datapoint.getValue()),
-                        datapoint.getTime() - prevDatapoint.getTime()
+                        prevDatapointValue.getValue().equals(datapoint.getValue()),
+                        datapoint.getTime() - prevDatapointValue.getTime()
                 );
             }
-            update = !prevDatapoint.getValue().equals(datapoint.getValue())
-                    || datapoint.getTime() - prevDatapoint.getTime() >= MUTE_IF_NO_UPDATES_MILLIS;
+            update = !prevDatapointValue.getValue().equals(datapoint.getValue())
+                    || datapoint.getTime() - prevDatapointValue.getTime() >= MUTE_IF_NO_UPDATES_MILLIS;
         }
         return update;
     }
@@ -135,13 +138,5 @@ public class OpenTsdbFilterBolt extends BaseRichBolt {
 
     private Values makeDefaultTuple(Datapoint datapoint) {
         return new Values(datapoint);
-    }
-
-    @Value
-    private static class DatapointKey {
-
-        private String metric;
-
-        private Map<String, String> tags;
     }
 }
