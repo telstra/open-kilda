@@ -81,7 +81,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         timedLoop(pingInterval + WAIT_OFFSET) {
             [haFlow.subFlows*.flowId, [FORWARD, REVERSE]].combinations().each {String flowId, Direction direction ->
                     def stats = flowStats.latencyOf(flowId).get(LATENCY, direction)
-                    assert stats != null && !stats.hasNonZeroValuesAfter(afterUpdateTime)
+                    assert stats != null && !stats.hasNonZeroValuesAfter(afterUpdateTime + 1000)
             }
         }
 

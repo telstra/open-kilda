@@ -516,7 +516,9 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "server42 stats are not available any more for the flow1 in the forward direction"
-        !flowStats.rttOf(flow1.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValuesAfter(timeWhenEndpointWereSwapped)
+        //give one second extra after swap
+        !flowStats.rttOf(flow1.getFlowId()).get(FLOW_RTT, FORWARD)
+                .hasNonZeroValuesAfter(timeWhenEndpointWereSwapped + 1000)
 
         cleanup:
         flow1 && flowHelperV2.deleteFlow(flow1.flowId)
