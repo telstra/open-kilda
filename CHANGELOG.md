@@ -1,6 +1,22 @@
 # Changelog
 
-## v1.145.1 (24/10/2023)
+## v1.145.2 (30/10/2023)
+
+### Bug Fixes:
+-  [#5381](https://github.com/telstra/open-kilda/pull/5381) skip haYPoint=endpoint when update periodic pings
+
+### Improvements:
+-  [#5444](https://github.com/telstra/open-kilda/pull/5444) Add a check whether a migrate script completed successfully.  [**configuration**]
+-  [#5447](https://github.com/telstra/open-kilda/pull/5447) [TEST]: 5224: Ha-Flow: Ping: Updating switch triplet selection
+-  [#5453](https://github.com/telstra/open-kilda/pull/5453) #5390: [TEST] Attempt to fix several flaky tests increasing waiting intervals (Issues: [#5390](https://github.com/telstra/open-kilda/issues/5390) [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5454](https://github.com/telstra/open-kilda/pull/5454) [TEST]: Server42: Isl Rtt:  Fixing refactoring issue
+-  [#5456](https://github.com/telstra/open-kilda/pull/5456) Store datapoints into special storage to save memory
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.145.1...v1.145.2).
+
+---
+
+## v1.145.1 (26/10/2023)
 
 ### Bug Fixes:
 -  [#5445](https://github.com/telstra/open-kilda/pull/5445) Do not write false 'flow not found' log if monitoring is disabled
