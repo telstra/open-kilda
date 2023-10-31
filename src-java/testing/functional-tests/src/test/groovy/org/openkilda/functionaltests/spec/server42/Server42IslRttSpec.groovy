@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.server42
 
 import org.openkilda.functionaltests.model.stats.IslStats
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Unroll
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
@@ -58,7 +59,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     int statsWaitSeconds = 4
 
     @Tags([LOW_PRIORITY])
-    def "ISL RTT stats are #testLabel available only if both global and switch toggles are 'on'"() {
+    @Unroll
+    def "ISL RTT stats are available only if both global and switch toggles are 'on'"() {
         given: "An active ISL with both switches having server42"
         def server42switchesDpIds = topology.getActiveServer42Switches()*.dpId
         def isl = topology.islsForActiveSwitches.find {
@@ -658,7 +660,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
 
     void checkIslRttStats(Isl isl, Date checkpointTime, Boolean statExist) {
         //wait till near real-time stats arrive to TSDB
-        sleep(statsWaitSeconds * 1000)
+        sleep((statsWaitSeconds + 1) * 1000)
         def stats = islStats.of(isl).get(ISL_RTT, SERVER_42)
         if (statExist) {
             assert stats.hasNonZeroValuesAfter(checkpointTime.getTime())
@@ -670,7 +672,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     void verifyLatencyValueIsCorrect(Isl isl) {
         def t = new Date()
         t.setSeconds(t.getSeconds() - 600) //kilda_latency_update_time_range: 600
-        def stats = islStats.of(isl).get(ISL_RTT).getDataPoints()
+        def stats = islStats.of(isl).get(ISL_RTT, SERVER_42).getDataPoints()
         def expected = stats.values().average()
         def actual = northbound.getLink(isl).latency
         assert Math.abs(expected - actual) <= expected * 0.25

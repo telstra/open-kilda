@@ -207,6 +207,18 @@ class TopologyHelper {
         }
     }
 
+    SwitchTriplet findSwitchTripletWithSharedEpInTheMiddleOfTheChain() {
+        def pairSharedEpAndEp1 = getAllSwitchPairs().neighbouring().random()
+        //shared endpoint should be in the middle of the switches chain to deploy ha-flow without shared path
+        def pairEp1AndEp2 = getAllSwitchPairs().neighbouring().excludePairs([pairSharedEpAndEp1]).includeSwitch(pairSharedEpAndEp1.src).random()
+        Switch thirdSwitch = pairSharedEpAndEp1.src == pairEp1AndEp2.dst ? pairEp1AndEp2.src : pairEp1AndEp2.dst
+        return switchTriplets.find {
+                    it.shared.dpId == pairSharedEpAndEp1.src.dpId
+                            && ((it.ep1.dpId == pairSharedEpAndEp1.dst.dpId && it.ep2.dpId == thirdSwitch.dpId)
+                            || (it.ep1.dpId == thirdSwitch.dpId && it.ep2.dpId == pairSharedEpAndEp1.dst.dpId))
+                }
+    }
+
     SwitchTriplet findSwitchTripletForHaFlowWithProtectedPaths() {
         return switchTriplets.find {
             if (!SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it)) {

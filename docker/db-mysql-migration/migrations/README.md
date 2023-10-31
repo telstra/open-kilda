@@ -34,7 +34,7 @@ chunk into `root.yaml`
       file: 001-feature-ABC.yaml
 ```
 
-Tag for rollback operation (during rollback everithing that was applied after this tag will be rolled back)
+Tag for rollback operation (during rollback everything that was applied after this tag will be rolled back)
 ```yaml
 changeSet:
   id: tag-for-some-migration
@@ -44,31 +44,31 @@ changeSet:
       tag: 000-migration
 ```
 
-To start DB update by hands you need to build migration container
+To start DB update manually you need to compose a migration image and execute a migration script. Optionally, you
+can execute liquibase with arbitrary parameters.
+
+To create an image, navigate to (TODO) 
 ```shell script
 docker-compose build db_mysql_migration
 ```
 
-And execute following command (for DB on some foreign host):
+For executing a migration script (you can override other environment variables as well). `NO_SLEEP` parameter will exit the
+script normally, otherwise it will sleep infinitely to preserve the container running:
 ```shell script
-docker run \
-  --volume=/etc/resolv.conf:/etc/resolv.conf --rm --network=host \
-  -e INSTALL_MYSQL=true \
-  open-kilda_db_mysql_migration:latest \
-  --username="kilda" \
-  --password="password" \
-  --url="jdbc:mysql://mysql.pendev/kilda" \
-  update --changelog-file="root.yaml"
+docker run --volume=/etc/resolv.conf:/etc/resolv.conf --rm --network=host \
+-e KILDA_MYSQL_JDBC_URL="jdbc:mysql://localhost:8101/kilda" \
+-e NO_SLEEP=true \
+--entrypoint=/kilda/migrate-develop.sh \
+kilda/db_mysql_migration:latest
 ```
 
-For rollback changes up to some specific tag, execute command
+For executing liquibase manually, for example for rolling back changes up to some specific tag, execute the following command:
 ```shell script
 docker run \
   --volume=/etc/resolv.conf:/etc/resolv.conf --rm --network=host \
-  -e INSTALL_MYSQL=true \
-  open-kilda_db_mysql_migration:latest \
+  kilda/db_mysql_migration:latest \
   --username="kilda" \
-  --password="password" \
-  --url="jdbc:mysql://mysql.pendev/kilda" \
+  --password="kilda" \
+  --url="jdbc:mysql://localhost:8101/kilda" \
   rollback --changelog-file="root.yaml" --tag="some-specific-tag"
 ```

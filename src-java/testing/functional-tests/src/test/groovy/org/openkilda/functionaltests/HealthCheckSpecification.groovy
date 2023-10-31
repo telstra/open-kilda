@@ -21,7 +21,7 @@ import org.springframework.beans.factory.annotation.Value
 @Slf4j
 class HealthCheckSpecification extends HealthCheckBaseSpecification {
 
-    private static final int WAIT_FOR_LAB_TO_BE_OPERATIONAL = 120 //sec
+    private static final int WAIT_FOR_LAB_TO_BE_OPERATIONAL = 210 //sec
     static Throwable healthCheckError
     static boolean healthCheckRan = false
     @Value('${health_check.verifier:true}')

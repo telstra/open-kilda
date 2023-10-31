@@ -57,18 +57,17 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Able to turn off periodic pings on a HA-flow"() {
         given: "An HA-flow with periodic pings turned on"
-        def swT = topologyHelper.findSwitchTripletWithDifferentEndpoints()
+        def swT = topologyHelper.findSwitchTripletWithSharedEpInTheMiddleOfTheChain()
         def haFlowRequest = haFlowHelper.randomHaFlow(swT).tap {
             it.periodicPings = true
         }
         def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
+        def paths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
+        assert !paths.sharedPath.forward, "Ha-flow has shared path and one of the sub-flow is a Y-Point and ping is disable for such kind of Ha-flow"
         assert northboundV2.getHaFlow(haFlow.haFlowId).periodicPings
         wait(STATS_LOGGING_TIMEOUT) {
             assert flowStats.latencyOf(haFlow.getSubFlows().get(0).getFlowId()).get(LATENCY, REVERSE).hasNonZeroValues()
-
         }
-
-
         when: "Turn off periodic pings"
         def updatedHaFlow = haFlowHelper.partialUpdateHaFlow(
                 haFlow.haFlowId, HaFlowPatchPayload.builder().periodicPings(false).build())
@@ -91,19 +90,24 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     }
 
     @Tags([LOW_PRIORITY])
-    def "Unable to ping HA-flow via periodic pings if ISL is broken"() {
+    def "Unable to ping one of the HA-subflows via periodic pings if related ISL is broken"() {
         given: "Pinned HA-flow with periodic pings turned on which won't be rerouted after ISL fails"
-        def swT = topologyHelper.findSwitchTripletWithDifferentEndpoints()
+        def swT = topologyHelper.findSwitchTripletWithSharedEpInTheMiddleOfTheChain()
         def haFlowRequest = haFlowHelper.randomHaFlow(swT).tap {
             it.periodicPings = true
             it.pinned = true
         }
         def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
         assert northboundV2.getHaFlow(haFlow.haFlowId).periodicPings
-        def paths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
-        def islToFail = pathHelper.getInvolvedIsls(PathHelper.convert(paths.subFlowPaths[0].forward)).first()
 
-        when: "Fail an HA-flow ISL (bring switch port down)"
+        def paths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
+        assert !paths.sharedPath.forward, "Ha-flow has shared path and one of the sub-flow is a Y-Point and ping is disable for such kind of Ha-flow"
+        String subFlowWithBrokenIsl = paths.subFlowPaths.first().flowId
+        def islToFail = pathHelper.getInvolvedIsls(PathHelper.convert(paths.subFlowPaths.first().forward)).first()
+
+        String subFlowWithActiveIsl = paths.subFlowPaths.flowId.find { it != subFlowWithBrokenIsl }
+
+        when: "Fail one of the HA-subflows ISL (bring switch port down)"
         antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
         wait(WAIT_OFFSET) { northbound.getLink(islToFail).state == FAILED }
         def afterFailTime = new Date().getTime()
@@ -111,13 +115,19 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         then: "Periodic pings are still enabled"
         northboundV2.getHaFlow(haFlow.haFlowId).periodicPings
 
-        and: "Metrics for HA-subflows have 'error' in tsdb"
+        and: "Metrics for the HA-subflow with broken ISL have 'error' status in tsdb"
         wait(pingInterval + WAIT_OFFSET * 2, 2) {
-            withPool {
-                [haFlow.subFlows*.flowId, [FORWARD, REVERSE]].combinations().eachParallel {
-                    String flowId, Direction direction ->
-                        flowStats.latencyOf(flowId).get(LATENCY, direction, ERROR).hasNonZeroValuesAfter(afterFailTime)
-                }
+            [FORWARD, REVERSE].each { Direction direction ->
+                def stats = flowStats.latencyOf(subFlowWithBrokenIsl).get(LATENCY, direction, ERROR)
+                assert stats != null && stats.dataPoints.keySet().find { it >= afterFailTime}
+            }
+        }
+
+        and: "Metrics for HA-subflow with active ISL have 'success' status in tsdb"
+        wait(pingInterval + WAIT_OFFSET * 2, 2) {
+            [FORWARD, REVERSE].each { Direction direction ->
+                def stats = flowStats.latencyOf(subFlowWithActiveIsl).get(LATENCY, direction, SUCCESS)
+                assert stats != null && stats.hasNonZeroValuesAfter(afterFailTime)
             }
         }
 
@@ -130,12 +140,14 @@ class HaFlowPingSpec extends HealthCheckSpecification {
 
     def "Able to turn on periodic pings on a HA-flow"() {
         when: "Create a HA-flow with periodic pings turned on"
-        def swT = topologyHelper.findSwitchTripletWithDifferentEndpoints()
+        def swT = topologyHelper.findSwitchTripletWithSharedEpInTheMiddleOfTheChain()
         def beforeCreationTime = new Date().getTime()
         def haFlowRequest = haFlowHelper.randomHaFlow(swT).tap {
             it.periodicPings = true
         }
         def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
+        def paths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
+        assert !paths.sharedPath.forward, "Ha-flow has shared path and one of the sub-flow is a Y-Point and ping is disable for such kind of Ha-flow"
 
         then: "Periodic pings are really enabled"
         northboundV2.getHaFlow(haFlow.haFlowId).periodicPings
