@@ -57,6 +57,6 @@ public interface StatsTopologyConfig extends AbstractTopologyConfig {
     String getMetricPrefix();
 
     @Key("statistics.interval")
-    @Default("60")
+    @Default("30")
     int getStatisticsRequestInterval();
 }
