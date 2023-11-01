@@ -299,6 +299,9 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                 List<FlowSpeakerData> misconfiguredRulesToInstall = validationResult.getExpectedEntries().stream()
                         .filter(entry -> entry instanceof FlowSpeakerData)
                         .map(entry -> (FlowSpeakerData) entry)
+                        //This filter cannot find the actual rule to install if the misconfigured rule has an incorrect
+                        //cookie. The misconfigured rule will be removed here and the proper rule is installed because
+                        //SwitchValidation marks the same rule as a missing one.
                         .filter(flowEntry -> reinstalledRulesCookies.contains(flowEntry.getCookie().getValue()))
                         .collect(Collectors.toList());
                 toInstall.addAll(misconfiguredRulesToInstall);
