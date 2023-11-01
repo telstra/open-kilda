@@ -93,6 +93,12 @@ public class ValidateHaFlowAction extends
 
         HaFlow haFlow = transactionManager.doInTransaction(() -> {
             HaFlow foundHaFlow = getHaFlow(flowId);
+            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("HA-flow validation started.")
+                    .withDescription("Saving a dump before.")
+                    .withHaFlowDumpBefore(foundHaFlow));
+
             if (foundHaFlow.getStatus() == FlowStatus.IN_PROGRESS) {
                 String message = format("HA-flow %s is in progress now", flowId);
                 stateMachine.setRerouteError(new FlowInProgressError(message));
