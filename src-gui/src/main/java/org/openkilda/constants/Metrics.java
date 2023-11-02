@@ -123,6 +123,11 @@ public enum Metrics {
         return prefix + this.metricName;
     }
 
+    public static String getFullMetricNameByMetricName(String metricName, String prefix) {
+        return Arrays.stream(values()).filter(value -> value.metricName.equals(metricName))
+                .map(val -> val.getMetricName(prefix)).findFirst().orElse(null);
+    }
+
     /**
      * Flow value.
      *
@@ -176,14 +181,14 @@ public enum Metrics {
     /**
      * Flow raw value.
      *
-     * @param tag the tag
+     * @param metricEnding the tag
      * @return the list
      */
-    public static List<String> flowRawValue(String tag, String prefix) {
+    public static List<String> flowRawValue(String metricEnding, String prefix) {
         List<String> list = new ArrayList<>();
-        tag = "Flow_raw_" + tag;
+        metricEnding = "Flow_raw_" + metricEnding;
         for (Metrics metric : values()) {
-            if (metric.getTag().equalsIgnoreCase(tag)) {
+            if (metric.getTag().equalsIgnoreCase(metricEnding)) {
                 list.add(metric.getMetricName(prefix));
             }
         }
@@ -193,21 +198,22 @@ public enum Metrics {
     /**
      * Switch value.
      *
-     * @param tag the tag
+     * @param metricEnding the tag
      * @return the list
      */
-    public static List<String> switchValue(String tag, String prefix) {
+    public static List<String> switchValue(String metricEnding, String prefix) {
         List<String> list = new ArrayList<>();
+        String metricTag;
 
-        if (tag.equalsIgnoreCase("latency")) {
-            tag = "Isl_" + tag;
-        } else if (tag.equalsIgnoreCase("rtt")) {
-            tag = "Isl_" + tag;
+        if (metricEnding.equalsIgnoreCase("latency")) {
+            metricTag = "Isl_" + metricEnding;
+        } else if (metricEnding.equalsIgnoreCase("rtt")) {
+            metricTag = "Isl_" + metricEnding;
         } else {
-            tag = "Switch_" + tag;
+            metricTag = "Switch_" + metricEnding;
         }
         for (Metrics metric : values()) {
-            if (metric.getTag().equalsIgnoreCase(tag)) {
+            if (metric.getTag().equalsIgnoreCase(metricTag)) {
                 list.add(metric.getMetricName(prefix));
             }
         }

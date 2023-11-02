@@ -4,9 +4,7 @@ import { environment } from '../../../environments/environment';
 import { Observable } from 'rxjs';
 import { Switch } from '../data-models/switch';
 import { catchError } from 'rxjs/operators';
-import * as _moment from 'moment';
 import { CookieManagerService } from './cookie-manager.service';
-declare var moment: any;
 
 
 @Injectable({
@@ -27,14 +25,6 @@ export class SwitchService {
     const timestamp = new Date().getTime();
     return this.httpClient.get(`${environment.apiEndPoint}/switch/${switchId}/rules?_=${timestamp}`, {responseType: 'text'});
   }
-
-  getSwitchPortsStats(switchId): Observable<any[]> {
-    const timestamp = new Date().getTime();
-    const endDate = moment().utc().format('YYYY-MM-DD-HH:mm:ss');
-    const startDate = moment().utc().subtract(30, 'minutes').format('YYYY-MM-DD-HH:mm:ss');
-    const downSample = '30s';
-    return this.httpClient.get<any[]>(`${environment.apiEndPoint}/stats/switchports/${switchId}/${startDate}/${endDate}/${downSample}?_=${timestamp}`);
-}
 
 getNetworkPath(source_switch, target_switch, strategy, max_latency) {
   const timestamp = new Date().getTime();

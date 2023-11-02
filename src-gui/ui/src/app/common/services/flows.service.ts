@@ -4,8 +4,6 @@ import { environment } from '../../../environments/environment';
 import { Observable } from 'rxjs';
 import { Flow } from '../data-models/flow';
 import { CookieManagerService } from './cookie-manager.service';
-import {FlowMetricTsdb} from '../data-models/flowMetricTsdb';
-import {VictoriaStatsRes} from '../data-models/flowMetricVictoria';
 
 @Injectable({
   providedIn: 'root'
@@ -82,48 +80,6 @@ export class FlowsService {
     getYFlowReRoutedPath(yFlowId): Observable<any> {
         return this.httpClient.get(`${environment.apiEndPoint}/y-flows/${yFlowId}/reroute`);
     }
-
-  getFlowPathStats(jsonPayload): Observable<any> {
-    return this.httpClient.post(`${environment.apiEndPoint}/stats/flowpath`, jsonPayload);
-  }
-
-  getFlowGraphData(flowid, convertedStartDate, convertedEndDate, downsampling, metric): Observable<FlowMetricTsdb[]> {
-    return this.httpClient.get<FlowMetricTsdb[]>(`${environment.apiEndPoint}/stats/flowid/${flowid}/${convertedStartDate}/${convertedEndDate}/${downsampling}/${metric}`);
-  }
-
-  getFlowGraphVictoriaData(statsType: string,
-                           flowid: string,
-                           convertedStartDate: string,
-                           convertedEndDate: string,
-                           downsampling: string,
-                           metrics: string[],
-                           direction?: string): Observable<VictoriaStatsRes> {
-    const url = `${environment.apiEndPoint}/stats/victoria/${statsType}`;
-
-    // Construct form data
-    const formData = new FormData();
-    formData.append('flowId', flowid);
-    formData.append('startDate', convertedStartDate);
-    formData.append('endDate', convertedEndDate);
-    formData.append('step', downsampling);
-    metrics.forEach(metric => {
-      formData.append('metric', metric);
-    });
-    if (direction && direction.trim() !== '') {
-      formData.append('direction', direction);
-    }
-
-    // Make the POST request
-    return this.httpClient.post<VictoriaStatsRes>(url, formData);
-  }
-
-  getMeterGraphData(flowid, convertedStartDate, convertedEndDate, downsampling, metric, direction): Observable<any> {
-    return this.httpClient.get(`${environment.apiEndPoint}/stats/meter/${flowid}/${convertedStartDate}/${convertedEndDate}/${downsampling}/${metric}/${direction}`);
-  }
-
-  getFlowPacketGraphData(flowid, convertedStartDate, convertedEndDate, downsampling, direction): Observable<any> {
-	  return this.httpClient.get(`${environment.apiEndPoint}/stats/flow/losspackets/${flowid}/${convertedStartDate}/${convertedEndDate}/${downsampling}/${direction}`);
-  }
 
   getFlowCount(): Observable<any> {
 	  return this.httpClient.get(`${environment.apiEndPoint}/flows/count`);
