@@ -560,10 +560,9 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
                             .as(FLOWS_ALIAS)
                             .select(PATH_SEGMENT_ALIAS, FLOWS_ALIAS)
                     ).getRawTraversal().toList().stream().map(Map.class::cast),
-                    PathSegmentFrame.SRC_PORT_PROPERTY, PathSegmentFrame.DST_PORT_PROPERTY);
+                    switchId);
 
             addFlowEndPoints(switchId, portToFlowMap);
-
             portToFlowMap.entrySet().removeIf(e -> (ports != null && !ports.contains(e.getKey())));
 
             return portToFlowMap;
@@ -632,13 +631,23 @@ public class FermaFlowRepository extends FermaGenericRepository<Flow, FlowData, 
     }
 
     private Map<Integer, Collection<Flow>> collectToPortToFlowTreeMap(Stream<Map<String, Vertex>> aliasToVertexMap,
-                                                               String... properties) {
+                                                               SwitchId switchId) {
         final Map<Integer, Collection<Flow>> portToFlowIdMap = new TreeMap<>();
 
         aliasToVertexMap.forEach(e -> {
-            for (String property : properties) {
+            if (e.get(PATH_SEGMENT_ALIAS).property(PathSegmentFrame.DST_SWITCH_ID_PROPERTY).value()
+                    .equals(switchId.toString())) {
                 portToFlowIdMap.merge(Integer.valueOf(e.get(PATH_SEGMENT_ALIAS)
-                                .property(property).value().toString()),
+                                .property(PathSegmentFrame.DST_PORT_PROPERTY).value().toString()),
+                        Collections.singleton(new Flow(
+                                framedGraph().frameElement(e.get(FLOWS_ALIAS), FlowFrame.class))),
+                        this::combineDistinctToOrderedCollection);
+            }
+
+            if (e.get(PATH_SEGMENT_ALIAS).property(PathSegmentFrame.SRC_SWITCH_ID_PROPERTY).value()
+                    .equals(switchId.toString())) {
+                portToFlowIdMap.merge(Integer.valueOf(e.get(PATH_SEGMENT_ALIAS)
+                                .property(PathSegmentFrame.SRC_PORT_PROPERTY).value().toString()),
                         Collections.singleton(new Flow(
                                 framedGraph().frameElement(e.get(FLOWS_ALIAS), FlowFrame.class))),
                         this::combineDistinctToOrderedCollection);

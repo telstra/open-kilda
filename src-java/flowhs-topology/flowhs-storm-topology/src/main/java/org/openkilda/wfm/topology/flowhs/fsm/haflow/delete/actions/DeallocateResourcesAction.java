@@ -47,7 +47,7 @@ public class DeallocateResourcesAction extends
                     resourcesManager.deallocateHaFlowResources(resources));
 
             FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                    .of(stateMachine.getHaFlowId())
+                    .of(stateMachine.getCommandContext().getCorrelationId())
                     .withAction("Flow resources have been deallocated")
                     .withDescription(format("The ha-flow resources for %s / %s have been deallocated",
                             resources.getForward().getPathId(), resources.getReverse().getPathId()))

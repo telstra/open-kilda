@@ -371,7 +371,8 @@ public final class HaFlowRerouteFsm extends HaFlowPathSwappingFsm<HaFlowRerouteF
                     .perform(new NotifyHaFlowMonitorAction<>(persistenceManager, carrier));
 
             builder.defineFinalState(State.FINISHED)
-                    .addEntryAction(new OnFinishedAction(dashboardLogger, carrier));
+                    .addEntryAction(new OnFinishedAction(dashboardLogger, carrier,
+                            persistenceManager.getRepositoryFactory().createHaFlowRepository()));
             builder.defineFinalState(State.FINISHED_WITH_ERROR)
                     .addEntryAction(new OnFinishedWithErrorAction(dashboardLogger, carrier));
         }

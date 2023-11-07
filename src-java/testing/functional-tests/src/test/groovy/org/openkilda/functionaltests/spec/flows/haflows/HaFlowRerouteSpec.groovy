@@ -23,6 +23,7 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
+import org.openkilda.model.history.DumpType
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.northbound.model.HaFlowActionType
 
@@ -68,6 +69,10 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def timeAfterRerouting = new Date().getTime()
 
         and: "History has relevant entries about HA-flow reroute"
+        wait(WAIT_OFFSET) {
+            assert haFlowHelper.getHistory(haFlow.haFlowId).getEntriesByType(HaFlowActionType.REROUTE)[0].payloads.action
+                    .find {it == HaFlowActionType.REROUTE.getPayloadLastAction()}
+        }
         def historyRecord = haFlowHelper.getHistory(haFlow.haFlowId).getEntriesByType(HaFlowActionType.REROUTE)
 
         verifyAll {
@@ -78,7 +83,10 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
 
             historyRecord[0].payloads.action.find {it == HaFlowActionType.REROUTE.getPayloadLastAction()}
             historyRecord[0].payloads.every {it.timestampIso }
-            historyRecord.dumps.flatten().isEmpty()
+
+            historyRecord[0].dumps.findAll { it.dumpType == DumpType.STATE_BEFORE }.size() == 1
+            historyRecord[0].dumps.findAll { it.dumpType == DumpType.STATE_AFTER }.size() == 1
+            historyRecord.dumps.flatten().size() == 2
         }
 
         and: "HA-flow passes validation"

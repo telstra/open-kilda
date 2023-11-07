@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.146.0 (01/11/2023)
+
+
+### Bug Fixes:
+-  [#5464](https://github.com/telstra/open-kilda/pull/5464) GUI: Graph: Victoria: Incorrect metrics value (max value) #5458 (Issues: [#5458](https://github.com/telstra/open-kilda/issues/5458) [#5458](https://github.com/telstra/open-kilda/issues/5458))
+-  [#5457](https://github.com/telstra/open-kilda/pull/5457) Flows by port: add condition to check switch ID and separate scr and dst ports when processing segments. (Issue: [#5450](https://github.com/telstra/open-kilda/issues/5450))
+-  [#5419](https://github.com/telstra/open-kilda/pull/5419) HA-flow history: add dumps, fix task IDs for saving an action to history (Issue: [#5425](https://github.com/telstra/open-kilda/issues/5425))
+
+
+### Other changes:
+-  [#5463](https://github.com/telstra/open-kilda/pull/5463) #5390: [TEST] Fix for flaky Server42 tests (Issues: [#5390](https://github.com/telstra/open-kilda/issues/5390) [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.145.2...v1.146.0).
+
+### Affected Components:
+gui, history
+
 ## v1.145.2 (30/10/2023)
 
 ### Bug Fixes:

@@ -19,9 +19,13 @@ import org.openkilda.floodlight.api.request.rulemanager.BaseSpeakerCommandsReque
 import org.openkilda.floodlight.api.response.rulemanager.SpeakerCommandResponse;
 import org.openkilda.model.SwitchId;
 import org.openkilda.wfm.CommandContext;
+import org.openkilda.wfm.share.history.model.FlowDumpData;
+import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.topology.flowhs.service.common.HistoryUpdateCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
 import org.openkilda.wfm.topology.flowhs.service.common.ProcessingEventListener;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.Getter;
 import lombok.NonNull;
@@ -103,4 +107,87 @@ public abstract class HaFlowProcessingFsm<T extends AbstractStateMachine<T, S, E
     public void clearSpeakerCommands() {
         speakerCommands.clear();
     }
+
+    //region Simple Flow history methods
+    @Override
+    public void saveErrorToHistory(String action, String errorMessage) {
+        logFlowHistoryInHaFlowFsmError();
+        FlowHistoryService.using(getCarrier()).saveError(HaFlowHistory.of(getCommandContext().getCorrelationId())
+                .withHaFlowId(getHaFlowId())
+                .withAction(action)
+                .withDescription(errorMessage));
+    }
+
+    @Override
+    public void saveErrorToHistory(String errorMessage) {
+        logFlowHistoryInHaFlowFsmError();
+        FlowHistoryService.using(getCarrier()).saveError(HaFlowHistory.of(getCommandContext().getCorrelationId())
+                .withHaFlowId(getHaFlowId())
+                .withAction(errorMessage));
+    }
+
+    @Override
+    public void saveErrorToHistory(String errorMessage, Exception ex) {
+        logFlowHistoryInHaFlowFsmError();
+        FlowHistoryService.using(getCarrier()).saveError(HaFlowHistory.of(getCommandContext().getCorrelationId())
+                .withHaFlowId(getHaFlowId())
+                .withAction(errorMessage)
+                .withDescription(ex.getMessage()));
+    }
+
+    @Override
+    public void saveActionToHistory(String action) {
+        logFlowHistoryInHaFlowFsmError();
+    }
+
+    @Override
+    public void saveActionToHistory(String action, String description) {
+        logFlowHistoryInHaFlowFsmError();
+    }
+
+    @Override
+    public void saveFlowActionToHistory(String flowId, String action) {
+        logFlowHistoryInHaFlowFsmError();
+    }
+
+    @Override
+    public void saveFlowActionToHistory(String flowId, String action, String description) {
+        logFlowHistoryInHaFlowFsmError();
+    }
+
+    @Override
+    public void saveNewEventToHistory(String action, FlowEventData.Event event) {
+        logFlowHistoryInHaFlowFsmError();
+    }
+
+    @Override
+    public void saveNewEventToHistory(String flowId, String action, FlowEventData.Event event) {
+        logFlowHistoryInHaFlowFsmError();
+    }
+
+    @Override
+    public void saveNewEventToHistory(String action,
+                                      FlowEventData.Event event, FlowEventData.Initiator initiator, String details) {
+        logFlowHistoryInHaFlowFsmError();
+    }
+
+    @Override
+    public void saveNewEventToHistory(String flowId, String action, FlowEventData.Event event,
+                                      FlowEventData.Initiator initiator, String details, String taskId) {
+        logFlowHistoryInHaFlowFsmError();
+    }
+
+    @Override
+    public void saveActionWithDumpToHistory(String action, String description, FlowDumpData flowDumpData) {
+        logFlowHistoryInHaFlowFsmError();
+    }
+
+    private void logFlowHistoryInHaFlowFsmError() {
+        //TODO remove usages of base classes and interfaces dedicated for simple flow and remove all methods
+        //that are not applicable to HA-flow. Then all methods in this region could be removed as well.
+        RuntimeException exception = new RuntimeException("Dummy Exception");
+        log.warn("Storing simple flow history is invoked from an HA-flow FSM. Trace: {}",
+                (Object) exception.getStackTrace());
+    }
+    //endregion
 }
