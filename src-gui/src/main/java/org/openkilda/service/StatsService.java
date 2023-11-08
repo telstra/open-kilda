@@ -38,6 +38,7 @@ import org.openkilda.model.PortDiscrepancy;
 import org.openkilda.model.PortInfo;
 import org.openkilda.model.SwitchLogicalPort;
 import org.openkilda.model.VictoriaStatsReq;
+import org.openkilda.model.victoria.MetricValues;
 import org.openkilda.model.victoria.RangeQueryParams;
 import org.openkilda.model.victoria.VictoriaData;
 import org.openkilda.model.victoria.dbdto.VictoriaDbRes;
@@ -45,7 +46,6 @@ import org.openkilda.store.service.StoreService;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.IoUtil;
 
-import com.google.common.collect.Lists;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -267,7 +267,7 @@ public class StatsService {
                 .orElse(System.currentTimeMillis() / 1000);
 
         List<VictoriaData> victoriaDataList = new ArrayList<>();
-        List<String> metricNameList = Lists.newArrayList();
+        List<String> metricNameList = new ArrayList<>();
 
         if (CollectionUtils.isNotEmpty(statsReq.getMetrics())) {
             statsReq.getMetrics().forEach(metric ->
@@ -282,12 +282,8 @@ public class StatsService {
             if (StringUtils.isBlank(metricName)) {
                 throw new InvalidRequestException(String.format("There is no such metric: %s", metricName));
             }
-            boolean useRate = true;
-            boolean useSum = true;
-            if (metricName.equals(SWITCH_STATE.getMetricName(appProps.getMetricPrefix()))) {
-                useRate = false;
-                useSum = false;
-            }
+            boolean useRate = !metricName.equals(SWITCH_STATE.getMetricName(appProps.getMetricPrefix()));
+            boolean useSum = useRate;
             if (metricName.equals(ISL_LATENCY.getMetricName(appProps.getMetricPrefix()))
                     || metricName.equals(ISL_RTT.getMetricName(appProps.getMetricPrefix()))) {
                 useRate = false;
@@ -507,13 +503,13 @@ public class StatsService {
         return portInfos;
     }
 
-    private VictoriaData buildVictoriaData(VictoriaDbRes dbData, String metricName) {
-
+    private VictoriaData buildVictoriaData(VictoriaDbRes dbData, String metricName, MetricValues metricValues) {
         LinkedHashMap<Long, Double> timeToValueMap = new LinkedHashMap<>();
         Map<String, String> tags = new HashMap<>();
-        if (dbData.getData() != null && isNotEmpty(dbData.getData().getResult())) {
-            tags = dbData.getData().getResult().get(0).getTags();
-            dbData.getData().getResult().get(0).getValues()
+
+        if (metricValues != null) {
+            tags = metricValues.getTags();
+            metricValues.getValues()
                     .forEach(timeToValue ->
                             timeToValueMap.put(Long.parseLong(timeToValue[0]), Double.valueOf(timeToValue[1])));
         }
@@ -527,26 +523,23 @@ public class StatsService {
                 .build();
     }
 
-    private List<VictoriaData> buildVictoriaDataList(VictoriaDbRes dbData, String metricName) {
-        List<VictoriaData> result = Lists.newArrayList();
-
+    private VictoriaData buildVictoriaData(VictoriaDbRes dbData, String metricName) {
+        MetricValues metricValues = null;
         if (dbData.getData() != null && isNotEmpty(dbData.getData().getResult())) {
-            dbData.getData().getResult().forEach(metricValues -> {
-                LinkedHashMap<Long, Double> timeToValueMap = new LinkedHashMap<>();
-                metricValues.getValues().forEach(timeToValue -> {
-                    timeToValueMap.put(Long.parseLong(timeToValue[0]), Double.valueOf(timeToValue[1]));
-                });
-
-                result.add(VictoriaData.builder()
-                        .tags(metricValues.getTags())
-                        .metric(metricName)
-                        .timeToValueMap(timeToValueMap)
-                        .status(dbData.getStatus())
-                        .error(dbData.getError())
-                        .errorType(dbData.getErrorType())
-                        .build());
-            });
+            metricValues = dbData.getData().getResult().get(0);
         }
+        return buildVictoriaData(dbData, metricName, metricValues);
+    }
+
+    private List<VictoriaData> buildVictoriaDataList(VictoriaDbRes dbData, String metricName) {
+        List<VictoriaData> result = new ArrayList<>();
+        if (dbData.getData() == null) {
+            return result;
+        }
+
+        dbData.getData().getResult().stream()
+                .map(metricValues -> buildVictoriaData(dbData, metricName, metricValues))
+                .forEach(result::add);
         return result;
     }
 
