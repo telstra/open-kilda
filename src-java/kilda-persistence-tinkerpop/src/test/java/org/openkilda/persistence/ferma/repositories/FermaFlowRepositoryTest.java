@@ -106,6 +106,35 @@ public class FermaFlowRepositoryTest extends InMemoryGraphBasedTest {
     }
 
     @Test
+    void findPortToFlowsMapWithOneFlow() {
+        createTestFlow(TEST_FLOW_ID, switchA, switchB);
+        createTestFlow(TEST_FLOW_ID_2, switchA, switchB);
+
+        Map<Integer, Collection<Flow>> result = flowRepository.findSwitchFlowsByPort(switchA.getSwitchId(), null);
+
+        assertNotNull(result);
+        assertTrue(result.containsKey(PORT_1), "The map must contain a key for the port");
+        assertNotNull(result.get(PORT_1), "The map must contain a non-null value for the test port");
+        assertEquals(1, result.size(),
+                "There must be nothing else except the value for the test port");
+    }
+
+    @Test
+    void findPortToFlowsMapWithOneSwitchFlow() {
+        createTestFlow(TEST_FLOW_ID_5, switchA, switchA);
+
+        Map<Integer, Collection<Flow>> result = flowRepository.findSwitchFlowsByPort(switchA.getSwitchId(), null);
+
+        assertNotNull(result);
+        assertTrue(result.containsKey(PORT_1), "The map must contain a key for the first port");
+        assertTrue(result.containsKey(PORT_2), "The map must contain a key for the second port");
+        assertNotNull(result.get(PORT_1), "The map must contain a non-null value for the first test port");
+        assertNotNull(result.get(PORT_2), "The map must contain a non-null value for the second test port");
+        assertEquals(2, result.size(),
+                "There must be nothing else except values for the test ports");
+    }
+
+    @Test
     public void findPortToFlowsMap() {
         createTestFlow(TEST_FLOW_ID, switchA, switchB);
         createTestFlow(TEST_FLOW_ID_2, switchA, switchB);

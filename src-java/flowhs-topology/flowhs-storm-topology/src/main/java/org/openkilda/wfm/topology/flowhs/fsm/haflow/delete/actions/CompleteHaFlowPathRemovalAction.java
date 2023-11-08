@@ -63,6 +63,7 @@ public class CompleteHaFlowPathRemovalAction extends
 
         Set<PathId> pathIds = transactionManager.doInTransaction(() -> {
             HaFlow haFlow = getHaFlow(stateMachine.getHaFlowId());
+
             for (HaFlowPath haFlowPath : haFlow.getPaths()) {
                 for (FlowPath subPath : haFlowPath.getSubPaths()) {
                     // Flow path cascade remove will remove segments too

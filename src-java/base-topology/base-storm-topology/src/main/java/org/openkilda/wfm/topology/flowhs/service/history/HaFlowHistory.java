@@ -40,6 +40,21 @@ public final class HaFlowHistory {
         this.taskId = taskId;
     }
 
+    /**
+     * This method creates an object that holds history fields. The current history implementation
+     * expects the parameter to be the taskId (history actions are grouped by this parameter).
+     * Usage:<p>
+     * <pre>
+     * HaFlowHistory.of(correlationId)
+     *     .withAction("An action title goes here")
+     *     .withDescription("Optionally, a more detailed description could be added")
+     *     .withHaFlowId(haFlowId)
+     *     .withDumpBefore(haFlowDumpData);
+     * </pre>
+     * </p>
+     * @param taskId a string containing correlation ID of the operation that saves a history record
+     * @return an HaFlowHistory object that is supposed to be filled with history parameters.
+     */
     public static HaFlowHistory of(String taskId) {
         return new HaFlowHistory(taskId);
     }

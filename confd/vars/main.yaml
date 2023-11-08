@@ -102,7 +102,7 @@ kilda_opentsdb_workers: 2
 kilda_opentsdb_parallelism: 2
 kilda_opentsdb_metric_prefix: "kilda."
 
-kilda_statistics_interval: 60
+kilda_statistics_interval: 30
 
 kilda_production_fileserver: "http://127.0.0.1"
 

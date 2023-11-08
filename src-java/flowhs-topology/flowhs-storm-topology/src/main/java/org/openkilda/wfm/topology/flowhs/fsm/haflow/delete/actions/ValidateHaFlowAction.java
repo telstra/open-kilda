@@ -33,6 +33,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -57,6 +58,13 @@ public class ValidateHaFlowAction extends
         String flowId = stateMachine.getFlowId();
         dashboardLogger.onHaFlowDelete(flowId);
 
+        FlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
+                .haFlowId(stateMachine.getHaFlowId())
+                .action("HA-flow deletion is invoked")
+                .taskId(stateMachine.getCommandContext().getCorrelationId())
+                .event(HaFlowEventData.Event.DELETE)
+                .build());
+
         boolean isOperationAllowed = featureTogglesRepository.getOrDefault().getDeleteHaFlowEnabled();
         if (!isOperationAllowed) {
             throw new FlowProcessingException(ErrorType.NOT_PERMITTED, "HA-flow delete feature is disabled");
@@ -73,15 +81,15 @@ public class ValidateHaFlowAction extends
             stateMachine.setOriginalFlowStatus(haFlow.getStatus());
             haFlow.setStatus(FlowStatus.IN_PROGRESS);
             haFlow.getHaSubFlows().forEach(subFlow -> subFlow.setStatus(FlowStatus.IN_PROGRESS));
+
+            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("HA-flow has been validated successfully.")
+                    .withDescription("Saving a dump before HA-flow deletion")
+                    .withHaFlowDumpBefore(haFlow)
+                    .withHaFlowId(haFlow.getHaFlowId()));
             return haFlow;
         });
-
-        FlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
-                .haFlowId(stateMachine.getHaFlowId())
-                .action("HA-flow was validated successfully")
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .event(HaFlowEventData.Event.DELETE)
-                .build());
 
         return Optional.of(buildResponseMessage(resultHaFlow, stateMachine.getCommandContext()));
     }
