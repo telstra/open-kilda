@@ -40,7 +40,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
         and: "Flows' histories contain 'affinityGroupId' information"
         [flow2, flow3].each {//flow1 had no affinity at the time of creation
-            assert northbound.getFlowHistory(it.flowId).find { it.action == CREATE_ACTION }.dumps
+            assert flowHelper.getEarliestHistoryEntryByAction(it.flowId, CREATE_ACTION).dumps
                     .find { it.type == "stateAfter" }?.affinityGroupId == flow1.flowId
         }
 
@@ -49,14 +49,14 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         def flowsAreDeleted = true
 
         then: "Flow1 history contains 'affinityGroupId' information in 'delete' operation"
-        verifyAll(northbound.getFlowHistory(flow1.flowId).find { it.action == DELETE_ACTION }.dumps) {
+        verifyAll(flowHelper.getEarliestHistoryEntryByAction(flow1.flowId, DELETE_ACTION).dumps) {
             it.find { it.type == "stateBefore" }?.affinityGroupId
             !it.find { it.type == "stateAfter" }?.affinityGroupId
         }
 
         and: "Flow2 and flow3 histories does not have 'affinityGroupId' in 'delete' because it's gone after deletion of 'main' flow1"
         [ flow2, flow3].each {
-            verifyAll(northbound.getFlowHistory(it.flowId).find { it.action == DELETE_ACTION }.dumps) {
+            verifyAll(flowHelper.getEarliestHistoryEntryByAction(it.flowId, DELETE_ACTION).dumps) {
                 !it.find { it.type == "stateBefore" }?.affinityGroupId
                 !it.find { it.type == "stateAfter" }?.affinityGroupId
             }
@@ -197,14 +197,14 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
         when: "Create affinity flow on the same switch pair"
         def affinityFlow2 = flowHelperV2.randomFlow(swPair, false, [flow1, affinityFlow]).tap { affinityFlowId = flow1.flowId; diverseFlowId = affinityFlow.flowId }
-        northboundV2.addFlow(affinityFlow2)
+        flowHelperV2.addFlow(affinityFlow2)
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
         expectedError.matches(e)
         when: "Create affinity flow on the same switch pair"
         def affinityFlow3 = flowHelperV2.randomFlow(swPair, false, [flow1, affinityFlow]).tap { affinityFlowId = affinityFlow.flowId; diverseFlowId = flow1.flowId }
-        northboundV2.addFlow(affinityFlow3)
+        flowHelperV2.addFlow(affinityFlow3)
 
         then: "Error is returned"
         def e2 = thrown(HttpClientErrorException)
@@ -230,7 +230,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
         when: "Create an affinity flow that targets the diversity flow"
         def affinityFlow2 = flowHelperV2.randomFlow(swPair, false, [flow1, diverseFlow]).tap { affinityFlowId = flow1.flowId; diverseFlowId = flow2.flowId }
-        northboundV2.addFlow(affinityFlow2)
+        flowHelperV2.addFlow(affinityFlow2)
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
@@ -261,7 +261,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         }
 
         and: "Affinity flow history contain 'affinityGroupId' information"
-            assert northbound.getFlowHistory(affinityFlow.flowId).find { it.action == CREATE_ACTION }.dumps
+            assert flowHelper.getEarliestHistoryEntryByAction(affinityFlow.flowId, CREATE_ACTION).dumps
                     .find { it.type == "stateAfter" }?.affinityGroupId == oneSwitchFlow.flowId
 
         cleanup:
@@ -273,7 +273,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         when: "Create an affinity flow that targets non-existing flow"
         def swPair = topologyHelper.getSwitchPairs()[0]
         def flow = flowHelperV2.randomFlow(swPair).tap { diverseFlowId = NON_EXISTENT_FLOW_ID }
-        northboundV2.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)

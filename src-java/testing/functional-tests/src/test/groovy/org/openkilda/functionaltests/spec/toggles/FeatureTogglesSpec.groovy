@@ -35,7 +35,7 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         def disableFlowCreation = northbound.toggleFeature(FeatureTogglesDto.builder().createFlowEnabled(false).build())
 
         and: "Try to create a new flow"
-        northbound.addFlow(flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
+        flowHelper.addFlow(flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)

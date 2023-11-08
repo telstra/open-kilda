@@ -1060,8 +1060,8 @@ switches"() {
                 it.state == IslChangeType.FAILED
             }.size() == broughtDownPorts.size() * 2
             assert northbound.getFlowStatus(flow1.id).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow1.id).find {
-                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            assert flowHelper.getHistoryEntriesByAction(flow1.id, REROUTE_ACTION).find {
+                it.taskId =~ (/.+ : retry #1 ignore_bw true/)
             }?.payload?.last()?.action == REROUTE_FAIL
         }
 

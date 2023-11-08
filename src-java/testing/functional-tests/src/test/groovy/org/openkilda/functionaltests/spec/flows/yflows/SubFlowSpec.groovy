@@ -67,7 +67,7 @@ class SubFlowSpec extends HealthCheckSpecification {
 
         and: "Flow history doesn't contain info about illegal action"
         //create action only
-        northbound.getFlowHistory(yFlow.YFlowId).last().payload.last().action == CREATE_SUCCESS_Y
+        flowHelper.getLatestHistoryEntry(yFlow.YFlowId).payload.last().action == CREATE_SUCCESS_Y
 
         and: "Sub flow is pingable"
         verifyAll(northbound.pingFlow(subFlow.flowId, new PingInput())) {

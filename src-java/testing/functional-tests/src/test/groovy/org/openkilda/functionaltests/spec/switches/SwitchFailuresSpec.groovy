@@ -72,8 +72,8 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
             def currentIsls = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.flowId)))
             def pathChanged = !currentIsls.contains(isl) && !currentIsls.contains(isl.reversed)
             assert pathChanged || (northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN &&
-                    northbound.getFlowHistory(flow.flowId).find {
-                        it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+                    flowHelper.getHistoryEntriesByAction(flow.flowId, REROUTE_ACTION).find {
+                        it.taskId =~ (/.+ : retry #1 ignore_bw true/)
                     }?.payload?.last()?.action == REROUTE_FAIL)
         }
 
@@ -102,7 +102,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
         and: "Switch reconnects in the middle of reroute"
         Wrappers.wait(WAIT_OFFSET, 0) {
-            def reroute = northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }
+            def reroute = flowHelper.getEarliestHistoryEntryByAction(flow.flowId, REROUTE_ACTION)
             assert reroute.payload.last().action == "Started validation of installed non ingress rules"
         }
         lockKeeper.reviveSwitch(swPair.src, lockKeeper.knockoutSwitch(swPair.src, RW))
@@ -110,7 +110,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         then: "Flow reroute is successful"
         Wrappers.wait(PATH_INSTALLATION_TIME * 2) { //double timeout since rerouted is slowed by delay
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == REROUTE_SUCCESS
+            assert flowHelper.getLatestHistoryEntry(flow.flowId).payload.last().action == REROUTE_SUCCESS
         }
 
         and: "Blinking switch has no rule anomalies"
@@ -132,7 +132,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         when: "Start creating a flow between switches and lose connection to src before rules are set"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        northboundV2.addFlow(flow)
+        flowHelperV2.attemptToAddFlow(flow)
         sleep(50)
         def blockData = lockKeeper.knockoutSwitch(srcSwitch, RW)
 

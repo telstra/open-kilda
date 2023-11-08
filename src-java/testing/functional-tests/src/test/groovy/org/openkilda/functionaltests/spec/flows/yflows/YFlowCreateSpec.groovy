@@ -70,9 +70,9 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         northboundV2.getAllFlows()*.flowId.sort() == yFlow.subFlows*.flowId.sort()
 
         and: "History has relevant entries about y-flow creation"
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) { northbound.getFlowHistory(yFlow.YFlowId).last().payload.last().action == CREATE_SUCCESS_Y }
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) { flowHelper.getLatestHistoryEntry(yFlow.YFlowId).payload.last().action == CREATE_SUCCESS_Y }
         yFlow.subFlows.each { sf ->
-            Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowHistory(sf.flowId).last().payload.last().action == CREATE_SUCCESS }
+            Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert flowHelper.getLatestHistoryEntry(sf.flowId).payload.last().action == CREATE_SUCCESS }
         }
 
         and: "User is able to view y-flow paths"
@@ -182,10 +182,10 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         }
 
         and: "History has relevant entries about y-flow deletion"
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) { northbound.getFlowHistory(yFlow.YFlowId).last().payload.last().action == DELETE_SUCCESS_Y }
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) { flowHelper.getLatestHistoryEntry(yFlow.YFlowId).payload.last().action == DELETE_SUCCESS_Y }
         yFlow.subFlows.each { sf ->
             Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-                assert northbound.getFlowHistory(sf.flowId).last().payload.last().action == DELETE_SUCCESS
+                assert flowHelper.getLatestHistoryEntry(sf.flowId).payload.last().action == DELETE_SUCCESS
             }
         }
 
