@@ -9,6 +9,8 @@ import { IslDataService } from 'src/app/common/services/isl-data.service';
 import { CommonService } from 'src/app/common/services/common.service';
 import { MessageObj } from 'src/app/common/constants/constants';
 import { ActivatedRoute } from '@angular/router';
+import {StatsService} from '../../../common/services/stats.service';
+import {VictoriaStatsRes} from '../../../common/data-models/flowMetricVictoria';
 
 declare var moment: any;
 
@@ -45,6 +47,7 @@ export class PortGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     private toastr: ToastrService,
     private route: ActivatedRoute,
     private dygraphService: DygraphService,
+    private statsService: StatsService,
     private loaderService: LoaderService,
     private islDataService: IslDataService,
     private commonService: CommonService,
@@ -153,15 +156,15 @@ export class PortGraphComponent implements OnInit, AfterViewInit, OnDestroy {
 
     }
 
-    this.graphSubscriber = this.dygraphService.
-      getForwardGraphData(
+    this.graphSubscriber = this.statsService.
+      getPortGraphData(
         this.port_src_switch,
         this.portDataObject.port_number,
         '', '', downsampling,
-        'source',
         metric,
         convertedStartDate,
-        convertedEndDate).subscribe((dataForward: any) => {
+        convertedEndDate).subscribe((data: VictoriaStatsRes) => {
+            const dataForward = data.dataList;
             this.loaderService.show();
             this.responseGraph = [];
             if (dataForward[0] !== undefined) {
@@ -173,7 +176,7 @@ export class PortGraphComponent implements OnInit, AfterViewInit, OnDestroy {
               this.responseGraph.push(dataForward[1]) ;
             } else {
               if (dataForward[0] !== undefined) {
-                dataForward[1] = {'tags': {'direction': 'R' },
+                  dataForward[1] = {'tags': {'direction': 'R' },
                                   'metric': '',
                                   'dps': {}};
 

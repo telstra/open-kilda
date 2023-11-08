@@ -14,6 +14,7 @@ import { ModalconfirmationComponent } from '../../../common/components/modalconf
 import { CommonService } from 'src/app/common/services/common.service';
 import { MessageObj } from 'src/app/common/constants/constants';
 import { Message } from '@angular/compiler/src/i18n/i18n_ast';
+import {StatsService} from '../../../common/services/stats.service';
 
 declare var jQuery: any;
 
@@ -47,6 +48,7 @@ export class FlowAddComponent implements OnInit {
     private flowService: FlowsService,
     private toaster: ToastrService,
     private switchService: SwitchService,
+    private statsService: StatsService,
     private switchIdMaskPipe: SwitchidmaskPipe,
     private router: Router,
     private loaderService: LoaderService,
@@ -157,33 +159,34 @@ export class FlowAddComponent implements OnInit {
       }
 
       this.loaderService.show('Loading Ports');
-      this.switchService.getSwitchPortsStats(switchId).subscribe(
+      this.statsService.getSwitchPortsStats(switchId).subscribe(
         ports => {
           const filteredPorts = ports.filter(function(d) {
             return d.assignmenttype != 'ISL';
           });
-          let sortedPorts = filteredPorts.sort(function(a, b) {
+          const sortedPorts = filteredPorts.sort(function(a, b) {
             return a.port_number - b.port_number;
           });
-          sortedPorts = sortedPorts.map(portInfo => {
+          const portNumbers = sortedPorts.map(portInfo => {
             return { label: portInfo.port_number, value: portInfo.port_number };
           });
 
           if (switchType == 'source_switch') {
-            this.sourcePorts = sortedPorts;
-            this.mainSourcePorts = sortedPorts;
+            this.sourcePorts = portNumbers;
+            this.mainSourcePorts = portNumbers;
           } else {
-            this.targetPorts = sortedPorts;
-            this.mainTargetPorts = sortedPorts;
+            this.targetPorts = portNumbers;
+            this.mainTargetPorts = portNumbers;
 
           }
-          if (sortedPorts.length == 0) {
+          if (portNumbers.length == 0) {
             this.toaster.info(MessageObj.no_ports, 'Info');
           }
           this.loaderService.hide();
         },
         error => {
-          const errorMsg = error && error.error && error.error['error-auxiliary-message'] ? error.error['error-auxiliary-message'] : 'Unable to get port information';
+          const errorMsg = error && error.error && error.error['error-auxiliary-message']
+              ? error.error['error-auxiliary-message'] : 'Unable to get port information';
           this.toaster.error(errorMsg, 'Error');
           this.loaderService.hide();
         }

@@ -11,6 +11,8 @@ import {CommonService} from 'src/app/common/services/common.service';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {CreateLagPortComponent} from '../create-lag-port/create-lag-port.component';
 import {MessageObj} from 'src/app/common/constants/constants';
+import {StatsService} from '../../../common/services/stats.service';
+import {PortInfo} from '../../../common/data-models/port-info';
 
 @Component({
     selector: 'app-port-list',
@@ -28,7 +30,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
 
     currentActivatedRoute: string;
     switch_id: string;
-    switchPortDataSet: any;
+    switchPortDataSet: PortInfo[];
     anyData: any;
     portListTimerId: any;
     portFlowData: any = {};
@@ -39,6 +41,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
     hasStoreSetting;
 
     constructor(private switchService: SwitchService,
+                private statsService: StatsService,
                 private toastr: ToastrService,
                 private maskPipe: SwitchidmaskPipe,
                 private router: Router,
@@ -132,7 +135,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
             this.loaderService.show('Loading Ports');
         }
         this.loadPorts = true;
-        this.portListSubscriber = this.switchService.getSwitchPortsStats(this.maskPipe.transform(this.switch_id, 'legacy')).subscribe((data: Array<object>) => {
+        this.portListSubscriber = this.statsService.getSwitchPortsStats(this.maskPipe.transform(this.switch_id, 'legacy')).subscribe((data: PortInfo[]) => {
             this.rerender();
             this.ngAfterViewInit();
             this.loadPorts = false;

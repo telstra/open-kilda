@@ -14,6 +14,7 @@ import { ModalconfirmationComponent } from '../../../common/components/modalconf
 import { ModalComponent } from '../../../common/components/modal/modal.component';
 import { CommonService } from '../../../common/services/common.service';
 import { MessageObj } from 'src/app/common/constants/constants';
+import {StatsService} from '../../../common/services/stats.service';
 
 @Component({
   selector: 'app-flow-edit',
@@ -48,6 +49,7 @@ export class FlowEditComponent implements OnInit {
     private route: ActivatedRoute,
     private toaster: ToastrService,
     private switchService: SwitchService,
+    private statsService: StatsService,
     private switchIdMaskPipe: SwitchidmaskPipe,
     private loaderService: LoaderService,
     private modalService: NgbModal,
@@ -179,26 +181,20 @@ export class FlowEditComponent implements OnInit {
         this.loaderService.show(MessageObj.load_ports);
       }
 
-      this.switchService.getSwitchPortsStats(switchId).subscribe(
+      this.statsService.getSwitchPortsStats(switchId).subscribe(
         ports => {
-          const filteredPorts = ports.filter(function(d) {
-            return d.assignmenttype != 'ISL';
+          const filteredPorts = ports.filter(function(portInfo) {
+            return portInfo.assignmenttype != 'ISL';
           });
-          let sortedPorts = filteredPorts.sort(function(a, b) {
+          const sortedPorts = filteredPorts.sort(function(a, b) {
             return a.port_number - b.port_number;
           });
-          sortedPorts = sortedPorts.map(portInfo => {
-            if (portInfo.port_number == this.flowDetail.source_port) {
-              return {
-                label: portInfo.port_number,
-                value: portInfo.port_number
-              };
-            }
+          const labels = sortedPorts.map(portInfo => {
             return { label: portInfo.port_number, value: portInfo.port_number };
           });
           if (switchType == 'source_switch') {
-            this.sourcePorts = sortedPorts;
-            this.mainSourcePorts = sortedPorts;
+            this.sourcePorts = labels;
+            this.mainSourcePorts = labels;
             if (!flag) {
               this.flowEditForm.controls['source_port'].setValue(null);
               this.flowEditForm.controls['source_vlan'].setValue('0');
@@ -206,8 +202,8 @@ export class FlowEditComponent implements OnInit {
             }
 
           } else {
-            this.targetPorts = sortedPorts;
-            this.mainTargetPorts = sortedPorts;
+            this.targetPorts = labels;
+            this.mainTargetPorts = labels;
             if (!flag) {
               this.flowEditForm.controls['target_port'].setValue(null);
               this.flowEditForm.controls['target_vlan'].setValue('0');
@@ -215,7 +211,7 @@ export class FlowEditComponent implements OnInit {
             }
           }
 
-          if (sortedPorts.length == 0) {
+          if (labels.length == 0) {
             this.toaster.info(MessageObj.no_ports, 'Info');
             if (switchType == 'source_switch') {
               this.flowEditForm.controls['source_port'].setValue(null);

@@ -1,11 +1,12 @@
 import { Component, OnInit, Input, AfterViewInit, OnDestroy } from '@angular/core';
-import { FlowsService } from '../../../common/services/flows.service';
 import { DygraphService } from '../../../common/services/dygraph.service';
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 import { SwitchidmaskPipe } from '../../../common/pipes/switchidmask.pipe';
 import { ClipboardService } from 'ngx-clipboard';
 import { MessageObj } from 'src/app/common/constants/constants';
+import {StatsService} from '../../../common/services/stats.service';
+import {VictoriaData, VictoriaStatsReq, VictoriaStatsRes} from '../../../common/data-models/flowMetricVictoria';
 declare var moment: any;
 
 @Component({
@@ -33,7 +34,7 @@ export class FlowPathGraphComponent implements OnInit, AfterViewInit, OnDestroy 
 
   });
   constructor(
-    private flowService: FlowsService,
+    private statsService: StatsService,
     private dygraphService: DygraphService,
     private formBuilder: FormBuilder,
     private toaster: ToastrService,
@@ -164,36 +165,35 @@ export class FlowPathGraphComponent implements OnInit, AfterViewInit, OnDestroy 
       });
     }
     const metric = formData.metric;
-    const requestPayload = {
-      flowid: this.data.flowid,
-     // switches: switches,
-      startdate: startDate,
-      enddate: endDate,
-      downsample: '30s',
-      direction: this.type,
-      metric: metric
+    const requestPayload: VictoriaStatsReq = {
+      metrics: [metric],
+      statsType: 'flowRawPacket',
+      startDate: startDate,
+      endDate: endDate,
+      step: '30s',
+      labels: {
+        flowid: this.data.flowid,
+        direction: this.type,
+        cookie: '*',
+        switchid: '*'
+      }
     };
 
-    this.flowService.getFlowPathStats(requestPayload).subscribe(
-      response => {
-        const dataforgraph = this.dygraphService.getCookieDataforFlowStats(response, this.type);
-        const cookieBasedData = this.dygraphService.getCookieBasedData(response, this.type);
-        this.cookieData = Object.keys(cookieBasedData);
-        const data = (dataforgraph && dataforgraph.length) ? dataforgraph : [] ;
-        this.plotFlowPathGraph(data, fromDate, toDate, this.type, formData.timezone);
-      },
-      error => {
-        const dataforgraph = this.dygraphService.getCookieDataforFlowStats([], this.type);
-        const cookieBasedData = this.dygraphService.getCookieBasedData([], this.type);
-        this.cookieData = Object(cookieBasedData).keys;
-        const data = (dataforgraph && dataforgraph.length) ? dataforgraph : [];
-        this.plotFlowPathGraph(data, fromDate, toDate, this.type, formData.timezone);
-      }
-    );
+    this.statsService.getFlowPathStats(requestPayload).subscribe(
+      response => handleResponse(response.dataList),
+      error => handleResponse([]));
+
+    const handleResponse = (response: VictoriaData[]) => {
+      const dataforgraph = this.dygraphService.getCookieDataforFlowStats(response, this.type);
+      const cookieBasedData = this.dygraphService.getCookieBasedData(response, this.type);
+      this.cookieData = Object.keys(cookieBasedData);
+      const data = (dataforgraph && dataforgraph.length) ? dataforgraph : [] ;
+      this.plotFlowPathGraph(data, fromDate, toDate, this.type, formData.timezone);
+    };
   }
 
 
-  plotFlowPathGraph(data, startDate, endDate, type, timezone) {
+  plotFlowPathGraph(data: VictoriaData[], startDate, endDate, type, timezone) {
     const graph_data = this.dygraphService.computeFlowPathGraphData(
       data,
       startDate,

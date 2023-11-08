@@ -13,28 +13,26 @@
  *   limitations under the License.
  */
 
-package org.openkilda.model.victoria;
+package org.openkilda.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.LowerCamelCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.Builder;
 import lombok.Data;
 
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
-@Data
-@Builder
-@JsonNaming(LowerCamelCaseStrategy.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class VictoriaData {
-    private String metric;
-    private Map<String, String> tags;
-    @JsonProperty("dps")
-    LinkedHashMap<Long, Double> timeToValueMap;
-    private Status status;
-    private String error;
-    private String errorType;
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonNaming(value = PropertyNamingStrategies.LowerCamelCaseStrategy.class)
+@Data
+public class VictoriaStatsReq {
+    private List<String> metrics;
+    private String statsType;
+    private String startDate;
+    private String endDate;
+    private String step;
+    private Map<String, String> labels;
 }

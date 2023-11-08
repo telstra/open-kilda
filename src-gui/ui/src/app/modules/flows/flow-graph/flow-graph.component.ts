@@ -1,9 +1,9 @@
 import {AfterViewInit, Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges} from '@angular/core';
 import {DygraphService} from '../../../common/services/dygraph.service';
 import {FormBuilder, FormGroup, Validators} from '@angular/forms';
-import {FlowsService} from '../../../common/services/flows.service';
 import {ToastrService} from 'ngx-toastr';
 import {CommonService} from 'src/app/common/services/common.service';
+import {StatsService} from '../../../common/services/stats.service';
 
 declare var moment: any;
 
@@ -26,7 +26,7 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnC
     constructor(
         private dygraphService: DygraphService,
         private formBuiler: FormBuilder,
-        private flowService: FlowsService,
+        private statsService: StatsService,
         private toaster: ToastrService,
         private commonService: CommonService
     ) {
@@ -217,7 +217,7 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnC
 
         if (formdata.graph == 'flow') {
             if (formdata.victoriaSource) {
-                this.flowService.getFlowGraphVictoriaData(
+                this.statsService.getFlowGraphVictoriaData(
                     'flow',
                     flowid,
                     convertedStartDate,
@@ -226,12 +226,12 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnC
                     [metric])
                     .subscribe(handleSuccessForFlow, handleErrorForFlow);
             } else {
-                this.flowService.getFlowGraphData(flowid, convertedStartDate, convertedEndDate, downsampling, metric)
+                this.statsService.getFlowGraphData(flowid, convertedStartDate, convertedEndDate, downsampling, metric)
                     .subscribe(handleSuccessForFlow, handleErrorForFlow);
             }
         } else if (formdata.graph == 'flowmeter') {
             if (formdata.victoriaSource) {
-                this.flowService.getFlowGraphVictoriaData(
+                this.statsService.getFlowGraphVictoriaData(
                     'meter',
                     flowid,
                     convertedStartDate,
@@ -242,7 +242,7 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnC
                         console.log(res);
                     });
             } else {
-                this.flowService
+                this.statsService
                     .getMeterGraphData(
                         flowid,
                         convertedStartDate,
@@ -255,7 +255,7 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnC
             }
         } else { // packet loss
             if (formdata.victoriaSource) {
-                this.flowService.getFlowGraphVictoriaData(
+                this.statsService.getFlowGraphVictoriaData(
                     'flow',
                     flowid,
                     convertedStartDate,
@@ -265,7 +265,7 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnC
                     direction)
                     .subscribe(handleSuccessForFlow, handleErrorForFlow);
             } else {
-                this.flowService
+                this.statsService
                     .getFlowPacketGraphData(
                         flowid,
                         convertedStartDate,
