@@ -370,7 +370,17 @@ public class ValidationServiceImpl implements ValidationService {
                 } else {
                     log.info("On switch {} rule {} is misconfigured. Actual: {} : expected : {}",
                             switchId, actualRuleValue.getCookie(), actualRuleValue, expectedRuleValue);
-                    misconfiguredRules.add(calculateMisconfiguredRule(expectedRuleValue, actualRuleValue));
+                    MisconfiguredInfo<RuleInfoEntryV2> misconfiguredInfo =
+                            calculateMisconfiguredRule(expectedRuleValue, actualRuleValue);
+                    misconfiguredRules.add(misconfiguredInfo);
+
+                    // This is needed because of the SwitchSyncFsm implementation: it adds rules to install by
+                    // looking at the misconfigured rule's cookie in the list of expected rules. Therefore, when
+                    // the rule has the incorrect cookie, it will be removed, but not added in SwitchSyncFsm
+                    // misconfigured rules' handler.
+                    if (misconfiguredInfo.getDiscrepancies().getCookie() != null) {
+                        missingRules.add(expectedRuleValue);
+                    }
                 }
             }
         });
