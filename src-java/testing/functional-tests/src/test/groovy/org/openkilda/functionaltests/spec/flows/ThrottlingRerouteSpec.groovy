@@ -69,15 +69,15 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
         then: "The oldest broken flow is still not rerouted before rerouteDelay run out"
         sleep(untilReroutesBegin() - (long) (rerouteDelay * 1000 * 0.5)) //check after 50% of rerouteDelay has passed
-        northbound.getFlowHistory(flows.first().flowId).last().action == "Flow creating" //reroute didn't start yet
+        flowHelper.getLatestHistoryEntry(flows.first().flowId).action == "Flow creating" //reroute didn't start yet
 
         and: "The oldest broken flow is rerouted when the rerouteDelay runs out"
         def waitTime = untilReroutesBegin() / 1000.0 + PATH_INSTALLATION_TIME * 2
         Wrappers.wait(waitTime) {
             //Flow should go DOWN or change path on reroute. In our case it doesn't matter which of these happen.
             assert (northboundV2.getFlowStatus(flows.first().flowId).status == FlowState.DOWN &&
-                    northbound.getFlowHistory(flows.first().flowId).find {
-                        it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1/) })||
+                    flowHelper.getHistoryEntriesByAction(flows.first().flowId, REROUTE_ACTION).find {
+                        it.taskId =~ (/.+ : retry #1/) })||
                     northbound.getFlowPath(flows.first().flowId) != flowPaths.first()
         }
 
@@ -85,8 +85,8 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             flowPaths[1..-1].each { flowPath ->
                 assert (northboundV2.getFlowStatus(flowPath.id).status == FlowState.DOWN &&
-                        northbound.getFlowHistory(flowPath.id).find {
-                    it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1/)
+                        flowHelper.getHistoryEntriesByAction(flowPath.id, REROUTE_ACTION).find {
+                    it.taskId =~ (/.+ : retry #1/)
                 })  ||
                         (northbound.getFlowPath(flowPath.id) != flowPath &&
                                 northboundV2.getFlowStatus(flowPath.id).status == FlowState.UP)

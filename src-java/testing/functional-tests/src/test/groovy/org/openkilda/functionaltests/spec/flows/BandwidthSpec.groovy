@@ -298,9 +298,8 @@ class BandwidthSpec extends HealthCheckSpecification {
             }
         }
 
-        def flow = flowHelper.randomFlow(switchPair)
-        flow.maximumBandwidth = involvedBandwidths.max() + 1
-        northbound.addFlow(flow)
+        def flow = flowHelper.randomFlow(switchPair).tap {it.maximumBandwidth = involvedBandwidths.max() + 1}
+        flowHelper.addFlow(flow)
 
         then: "The flow is not created because flow path should not be found"
         def exc = thrown(HttpClientErrorException)

@@ -86,8 +86,8 @@ and at least 1 path must remain safe"
 
         then: "System fails to install rules on desired path and tries to retry reroute and find new path (global retry)"
         wait(WAIT_OFFSET * 3, 0.1) {
-            assert northbound.getFlowHistory(flow.flowId).find {
-                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1/)
+            assert flowHelper.getHistoryEntriesByAction(flow.flowId, REROUTE_ACTION).find {
+                it.taskId =~ (/.+ : retry #1/)
             }
         }
 
@@ -187,9 +187,8 @@ and at least 1 path must remain safe"
 
         then: "System retried to #data.description"
         wait(WAIT_OFFSET) {
-            assert northbound.getFlowHistory(flow.flowId).findAll {
-                it.action == data.historyAction
-            }.last().payload*.details.findAll{ it =~ /.+ Retrying/}.size() == data.retriesAmount
+            assert flowHelper.getHistoryEntriesByAction(flow.flowId, data.historyAction)
+            .last().payload*.details.findAll{ it =~ /.+ Retrying/}.size() == data.retriesAmount
         }
 
         then: "Flow is DOWN"
@@ -282,7 +281,7 @@ and at least 1 path must remain safe"
 
         then: "Flow history shows failed delete rule retry attempts but flow deletion is successful at the end"
         wait(WAIT_OFFSET) {
-            def history = northbound.getFlowHistory(flow.flowId).last().payload
+            def history = flowHelper.getLatestHistoryEntry(flow.flowId).payload
             //egress and ingress rule and egress and ingress mirror rule on a broken switch, 3 retries each = total 12
             assert history.count { it.details ==~ /Failed to remove the rule.*Retrying \(attempt \d+\)/ } == 12
             assert history.last().action == DELETE_SUCCESS
@@ -345,9 +344,8 @@ and at least 1 path must remain safe"
 
         then: "System retries to install/delete rules on the dst switch"
         wait(WAIT_OFFSET) {
-            assert northbound.getFlowHistory(flow.flowId).findAll {
-                it.action == REROUTE_ACTION
-            }.last().payload*.details.findAll{ it =~ /.+ Retrying/}.size() == 15
+            assert flowHelper.getHistoryEntriesByAction(flow.flowId, REROUTE_ACTION)
+                .last().payload*.details.findAll{ it =~ /.+ Retrying/}.size() == 15
             //install: 3 attempts, revert: delete 9 attempts + install 3 attempts
             // delete: 3 attempts * (1 flow rule + 1 ingress mirror rule + 1 egress mirror rule) = 9 attempts
         }
@@ -434,7 +432,7 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
         and: "Flow remains down and no new history events appear for the next 3 seconds (no retry happens)"
         timedLoop(3) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).size() == eventsAmount
+            assert flowHelper.getHistorySize(flow.flowId) == eventsAmount
         }
 
         and: "Src/dst switches are valid"

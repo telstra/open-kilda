@@ -1,9 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
-import { Observable, Subject, BehaviorSubject } from 'rxjs';
+import { Subject, BehaviorSubject } from 'rxjs';
 import {FlowMetricTsdb} from '../data-models/flowMetricTsdb';
-import {VictoriaData} from '../data-models/flowMetricVictoria';
+import {VictoriaData, VictoriaStatsRes} from '../data-models/flowMetricVictoria';
 
 
 @Injectable({
@@ -30,90 +29,6 @@ export class DygraphService {
 
   constructor(private httpClient: HttpClient) {}
 
-  getForwardGraphData(
-      src_switch,
-      src_port,
-      dst_switch,
-      dst_port,
-      frequency,
-      graph,
-      menu,
-      from,
-      to
-  ): Observable<any[]> {
-    if (graph === 'latency') {
-      return this.httpClient.get<any[]>(
-          `${
-              environment.apiEndPoint
-          }/stats/isl/${src_switch}/${src_port}/${dst_switch}/${dst_port}/${from}/${to}/${frequency}/latency`
-      );
-    }
-    if (graph === 'rtt') {
-      return this.httpClient.get<any[]>(
-          `${
-              environment.apiEndPoint
-          }/stats/isl/${src_switch}/${src_port}/${dst_switch}/${dst_port}/${from}/${to}/${frequency}/rtt`
-      );
-    }
-
-    if (graph === 'source') {
-      return this.httpClient.get<any[]>(
-          `${
-              environment.apiEndPoint
-          }/stats/switchid/${src_switch}/port/${src_port}/${from}/${to}/${frequency}/${menu}`
-      );
-    }
-
-    if (graph === 'target') {
-      return this.httpClient.get<any[]>(
-          `${
-              environment.apiEndPoint
-          }/stats/switchid/${dst_switch}/port/${dst_port}/${from}/${to}/${frequency}/${menu}`
-      );
-    }
-
-    if (graph === 'isllossforward') {
-      return this.httpClient.get<any[]>(
-          `${
-              environment.apiEndPoint
-          }/stats/isl/losspackets/${src_switch}/${src_port}/${dst_switch}/${dst_port}/${from}/${to}/${frequency}/${menu}`
-      );
-    }
-
-    if (graph === 'isllossreverse') {
-      return this.httpClient.get<any[]>(
-          `${
-              environment.apiEndPoint
-          }/stats/isl/losspackets/${dst_switch}/${dst_port}/${src_switch}/${src_port}/${from}/${to}/${frequency}/${menu}`
-      );
-    }
-  }
-  getBackwardGraphData(
-      src_switch,
-      src_port,
-      dst_switch,
-      dst_port,
-      frequency,
-      graph,
-      from,
-      to
-  ): Observable<any[]> {
-    if (graph === 'rtt') {
-      return this.httpClient.get<any[]>(
-          `${
-              environment.apiEndPoint
-          }/stats/isl/${dst_switch}/${dst_port}/${src_switch}/${src_port}/${from}/${to}/${frequency}/rtt`
-      );
-    }
-    if (graph == 'latency') {
-      return this.httpClient.get<any[]>(
-          `${
-              environment.apiEndPoint
-          }/stats/isl/${dst_switch}/${dst_port}/${src_switch}/${src_port}/${from}/${to}/${frequency}/latency`
-      );
-    }
-
-  }
   changeMeterGraphData(graphData) {
     this.meterGraphSource.next(graphData);
   }
@@ -192,9 +107,9 @@ export class DygraphService {
       graphData.push([startTime, ...addNullsToArray([], victoriaDataArr.length || 2)]);
     }
 
-    const fwdTimeToValueMap = victoriaDataArr[0] && victoriaDataArr[0].timeToValue ? victoriaDataArr[0].timeToValue : {};
+    const fwdTimeToValueMap = victoriaDataArr[0] && victoriaDataArr[0].dps ? victoriaDataArr[0].dps : {};
     const fwdTimeStamps = Object.keys(fwdTimeToValueMap);
-    const rvsTimeToValueMap = victoriaDataArr[1] && victoriaDataArr[1].timeToValue ? victoriaDataArr[1].timeToValue : {};
+    const rvsTimeToValueMap = victoriaDataArr[1] && victoriaDataArr[1].dps ? victoriaDataArr[1].dps : {};
     const rvsTimeStamps = Object.keys(rvsTimeToValueMap);
     fwdMetricDirectionLbl = victoriaDataArr[0] &&  victoriaDataArr[0].tags.direction
         ? `${victoriaDataArr[0].metric}(${victoriaDataArr[0].tags.direction})` : victoriaDataArr[0] ? victoriaDataArr[0].metric : '';
@@ -354,8 +269,8 @@ export class DygraphService {
     return constructedData;
   }
 
-  getCookieDataforFlowStats(data, type) {
-    const constructedData = [];
+  getCookieDataforFlowStats(data: VictoriaData[], type): VictoriaData[] {
+    const constructedData: VictoriaData[] = [];
     for (let i = 0; i < data.length; i++) {
       const cookieId = data[i].tags && data[i].tags['cookie'] ? data[i].tags['cookie'] : null;
       if (cookieId) {
@@ -405,7 +320,7 @@ export class DygraphService {
         let timestampArray = [];
         const dpsArray = [];
         for (let j = 0; j < victoriaDataArr.length; j++) {
-          const dataValues = typeof victoriaDataArr[j] !== 'undefined' ? victoriaDataArr[j].timeToValue : null;
+          const dataValues = typeof victoriaDataArr[j] !== 'undefined' ? victoriaDataArr[j].dps : null;
 
           let metric = typeof victoriaDataArr[j] !== 'undefined' ? victoriaDataArr[j].metric : '';
           metric = metric + '(switchid=' + victoriaDataArr[j].tags.switchid + ', meterid=' + victoriaDataArr[j].tags['meterid'] + ')';
@@ -551,7 +466,7 @@ export class DygraphService {
     return { labels: labels, data: graphData, color: color };
   }
 
-  computeFlowPathGraphData(data, startDate, endDate, type, timezone) {
+  computeFlowPathGraphData(data: VictoriaData[], startDate, endDate, type, timezone) {
     const maxtrixArray = [];
     const labels = ['Date'];
     const color = [];

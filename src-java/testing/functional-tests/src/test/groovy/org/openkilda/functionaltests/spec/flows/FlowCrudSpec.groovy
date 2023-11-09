@@ -25,6 +25,8 @@ import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
+import static org.openkilda.messaging.payload.flow.FlowState.UP
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -41,7 +43,6 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
-import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
@@ -480,7 +481,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
 
         when: "Try building a flow using the isolated switch"
-        northboundV2.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         then: "Error is returned, stating that there is no path found for such flow"
         def error = thrown(HttpClientErrorException)
@@ -528,7 +529,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def switches = pathHelper.getInvolvedSwitches(paths.min { pathHelper.getCost(it) })
 
         when: "Init creation of a new flow"
-        northboundV2.addFlow(flow)
+        flowHelperV2.addFlow(flow, IN_PROGRESS)
 
         and: "Immediately remove the flow"
         northboundV2.deleteFlow(flow.flowId)
@@ -541,7 +542,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "Flow eventually gets into UP state"
         wait(WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == UP
         }
 
 
@@ -562,7 +563,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Remove the flow"
-        Wrappers.silent{flow && flowHelperV2.deleteFlow(flow.flowId)}
+        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Unable to create a flow with #problem"() {
@@ -762,7 +763,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
         when: "Try to create a one-switch flow on a deactivated switch"
         def flow = flowHelperV2.singleSwitchFlow(sw)
-        northboundV2.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -916,12 +917,12 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def longPath = swPair.paths.max { it.size() }
         swPair.paths.findAll { it != longPath }.each { pathHelper.makePathMorePreferable(longPath, it) }
         def flow = flowHelperV2.randomFlow(swPair)
-        northboundV2.addFlow(flow)
+        flowHelperV2.addFlow(flow, IN_PROGRESS)
 
         then: "Flow status is changed to UP only when all rules are actually installed"
-        northboundV2.getFlowStatus(flow.flowId).status == FlowState.IN_PROGRESS
+        northboundV2.getFlowStatus(flow.flowId).status == IN_PROGRESS
         wait(PATH_INSTALLATION_TIME) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flow.flowId).status == UP
         }
         def flowInfo = database.getFlow(flow.flowId)
         def flowCookies = [flowInfo.forwardPath.cookie.value, flowInfo.reversePath.cookie.value]
@@ -982,12 +983,12 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
 
         and: "Flow history shows actual info into stateBefore and stateAfter sections"
-        def flowHistory = northbound.getFlowHistory(flow.flowId)
-        with(flowHistory.last().dumps.find { it.type == "stateBefore" }) {
+        def flowHistoryEntry = flowHelper.getLatestHistoryEntry(flow.flowId)
+        with(flowHistoryEntry.dumps.find { it.type == "stateBefore" }) {
             it.sourcePort == flow.source.portNumber
             it.sourceVlan == flow.source.vlanId
         }
-        with(flowHistory.last().dumps.find { it.type == "stateAfter" }) {
+        with(flowHistoryEntry.dumps.find { it.type == "stateAfter" }) {
             it.sourcePort == updatedFlow.source.portNumber
             it.sourceVlan == updatedFlow.source.vlanId
         }
@@ -1036,11 +1037,11 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
 
         and: "Flow history shows actual info into stateBefore and stateAfter sections"
-        def flowHistory2 = northbound.getFlowHistory(flow.flowId)
-        with(flowHistory2.last().dumps.find { it.type == "stateBefore" }) {
+        def flowHistory2 = flowHelper.getLatestHistoryEntry(flow.flowId)
+        with(flowHistory2.dumps.find { it.type == "stateBefore" }) {
             it.destinationSwitch == dstSwitch.dpId.toString()
         }
-        with(flowHistory2.last().dumps.find { it.type == "stateAfter" }) {
+        with(flowHistory2.dumps.find { it.type == "stateAfter" }) {
             it.destinationSwitch == newDstSwitch.dpId.toString()
         }
 

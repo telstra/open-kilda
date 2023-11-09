@@ -6,6 +6,8 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ONLY_IN_DB
+import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
+import static org.openkilda.messaging.payload.flow.FlowState.UP
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
@@ -153,23 +155,32 @@ class FlowHelperV2 {
     }
 
     /**
-     * Adds flow and waits for it to become UP
+     * Adds flow and waits for it to become in expected state ('Up' by default)
      */
-    FlowResponseV2 addFlow(FlowRequestV2 flow) {
+    FlowResponseV2 addFlow(FlowRequestV2 flow, FlowState expectedFlowState = UP) {
         log.debug("Adding flow '${flow.flowId}'")
         def response = northboundV2.addFlow(flow)
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == CREATE_SUCCESS
+            assert northboundV2.getFlowStatus(flow.flowId).status == expectedFlowState
+            if (expectedFlowState != IN_PROGRESS) {
+                assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == CREATE_SUCCESS
+            }
         }
         return response
     }
 
     /**
-     * Adds flow and waits for it to become UP
+     * Adds flow and waits for it to become in expected state ('Up' by default)
      */
-    FlowResponseV2 addFlow(FlowCreatePayload flow) {
-        return addFlow(toV2(flow));
+    FlowResponseV2 addFlow(FlowCreatePayload flow, FlowState expectedFlowState = UP) {
+        return addFlow(toV2(flow), expectedFlowState);
+    }
+
+    /**
+     * Sends flow create request but doesn't wait for flow to go up.
+     */
+    FlowResponseV2 attemptToAddFlow(FlowRequestV2 flow) {
+        return northboundV2.addFlow(flow)
     }
 
     /**
@@ -193,7 +204,7 @@ class FlowHelperV2 {
         log.debug("Updating flow '${flowId}'")
         def response = northboundV2.updateFlow(flowId, flow)
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-            assert northboundV2.getFlowStatus(flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flowId).status == UP
             assert northbound.getFlowHistory(flowId).last().payload.last().action == UPDATE_SUCCESS
         }
         return response
@@ -211,7 +222,7 @@ class FlowHelperV2 {
         String action = isUpdateConsecutive ? UPDATE_SUCCESS : PARTIAL_UPDATE_ONLY_IN_DB
         def response = northboundV2.partialUpdate(flowId, flow)
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-            assert northboundV2.getFlowStatus(flowId).status == FlowState.UP
+            assert northboundV2.getFlowStatus(flowId).status == UP
             assert northbound.getFlowHistory(flowId).last().payload.last().action == action
         }
         return response

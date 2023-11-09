@@ -8,7 +8,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
@@ -102,7 +101,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         and: "Flow history reports a successful mirror creation"
         Wrappers.wait(WAIT_OFFSET) {
-            with(northbound.getFlowHistory(flow.flowId).last()) {
+            with(flowHelper.getLatestHistoryEntry(flow.getFlowId())) {
                 action == FlowHistoryConstants.CREATE_MIRROR_ACTION
                 it.payload.last().action == FlowHistoryConstants.CREATE_MIRROR_SUCCESS
             }
@@ -183,7 +182,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "'Mirror point delete' operation is present in flow history"
         Wrappers.wait(WAIT_OFFSET) {
-            with(northbound.getFlowHistory(flow.flowId).last()) {
+            with(flowHelper.getLatestHistoryEntry(flow.flowId)) {
                 action == FlowHistoryConstants.DELETE_MIRROR_ACTION
                 payload.last().action == FlowHistoryConstants.DELETE_MIRROR_SUCCESS
             }
@@ -873,7 +872,7 @@ with these parameters./)
             it.destination.portNumber = mirrorPoint.sinkEndpoint.portNumber
             it.destination.vlanId = mirrorPoint.sinkEndpoint.vlanId
         }
-        northboundV2.addFlow(otherFlow)
+        flowHelperV2.addFlow(otherFlow)
 
         then: "Error is returned, cannot create flow that conflicts with mirror point"
         def error = thrown(HttpClientErrorException)

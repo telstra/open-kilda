@@ -940,7 +940,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
                 status == FlowState.DEGRADED.toString()
                 statusInfo == StatusInfo.OVERLAPPING_PROTECTED_PATH
             }
-            assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
+            assert flowHelper.getLatestHistoryEntry(flow.flowId).payload.find { it.action == REROUTE_FAIL }
             assert northboundV2.getFlowHistoryStatuses(flow.flowId, 1).historyStatuses*.statusBecome == ["DEGRADED"]
         }
 
@@ -1323,8 +1323,8 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).find {
-                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            assert flowHelper.getHistoryEntriesByAction(flow.flowId, REROUTE_ACTION).find{
+                it.taskId =~ (/.+ : retry #1 ignore_bw true/)
             }?.payload?.last()?.action == REROUTE_FAIL
         }
         verifyAll(northboundV2.getFlow(flow.flowId).statusDetails) {
