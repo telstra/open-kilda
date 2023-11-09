@@ -54,7 +54,7 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnC
             meterdirection: ['both'],
             auto_reload: [''],
             auto_reload_time: ['', Validators.compose([Validators.pattern('[0-9]*')])],
-            victoriaSource: [false]
+            victoriaSource: [true]
         });
 
         this.flowMetrics = this.dygraphService.getFlowMetricData();
