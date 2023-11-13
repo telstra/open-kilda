@@ -26,7 +26,7 @@ public final class Constants {
     public static final Integer PROTECTED_PATH_INSTALLATION_TIME = 20;
     public static final Integer PATH_INSTALLATION_TIME = 15;
     public static final Integer FLOW_CRUD_TIMEOUT = 30;
-    public static final Integer TOPOLOGY_DISCOVERING_TIME = 120;
+    public static final Integer TOPOLOGY_DISCOVERING_TIME = 150;
     public static final Integer SWITCHES_ACTIVATION_TIME = 10;
     public static final Integer RULES_DELETION_TIME = 10;
     public static final Integer RULES_INSTALLATION_TIME = 25;

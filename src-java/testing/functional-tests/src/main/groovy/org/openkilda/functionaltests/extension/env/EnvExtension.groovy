@@ -134,7 +134,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
             northbound.deleteLink(new LinkParametersDto(it.source.switchId.toString(), it.source.portNo,
                     it.destination.switchId.toString(), it.destination.portNo))
         }
-        Wrappers.wait(WAIT_OFFSET / 2) {
+        Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getAllLinks().empty
         }
         log.info("Deleting all switches")
@@ -142,6 +142,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
         Wrappers.wait(WAIT_OFFSET / 2) { assert northbound.getAllSwitches().empty }
 
         List<TopologyDefinition> topologies = [topology, topologyPool.topologies].flatten()
+        log.info("Creating topologies (${topologies.size()})")
         def unblocked = false
         topologies.each { topo ->
             def lab = labService.createLab(topo) //can't create in parallel, hangs on Jenkins. why?
