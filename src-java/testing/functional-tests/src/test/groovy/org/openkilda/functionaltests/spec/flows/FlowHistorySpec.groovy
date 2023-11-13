@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ONLY_IN_DB
+import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 
 import org.openkilda.functionaltests.error.HistoryMaxCountExpectedError
 
@@ -13,6 +14,7 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
@@ -371,7 +373,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
 
         and: "The root cause('Switch is not active') is registered in flow history"
         Wrappers.wait(WAIT_OFFSET) {
-            def flowHistory = northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }
+            def flowHistory = flowHelper.getEarliestHistoryEntryByAction(flow.flowId, REROUTE_ACTION)
             assert flowHistory.payload[0].action == "Started flow validation"
             assert flowHistory.payload[1].action == "ValidateFlowAction failed: Flow's $flow.flowId src switch is not active"
             assert flowHistory.payload[2].action == REROUTE_FAIL
@@ -390,6 +392,9 @@ class FlowHistorySpec extends HealthCheckSpecification {
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
         flowHelper.addFlow(flow)
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
+            assert northbound.getFlowHistory(flow.id).last().payload.last().action == CREATE_SUCCESS
+        }
 
         then: "History record is created"
         Long timestampAfterCreate = System.currentTimeSeconds()
@@ -401,6 +406,9 @@ class FlowHistorySpec extends HealthCheckSpecification {
         when: "Update the created flow"
         def flowInfo = northbound.getFlow(flow.id)
         flowHelper.updateFlow(flowInfo.id, flowInfo.tap { it.description = it.description + "updated" })
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
+            assert northbound.getFlowHistory(flow.id).last().payload.last().action == UPDATE_SUCCESS
+        }
 
         then: "History record is created after updating the flow"
         Long timestampAfterUpdate = System.currentTimeSeconds()
@@ -415,6 +423,9 @@ class FlowHistorySpec extends HealthCheckSpecification {
 
         when: "Delete the updated flow"
         def deleteResponse = flowHelper.deleteFlow(flow.id)
+        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
+            assert northbound.getFlowHistory(flow.id).last().payload.last().action == DELETE_SUCCESS
+        }
 
         then: "History is still available for the deleted flow"
         northbound.getFlowHistory(flow.id, specStartTime, timestampAfterUpdate).size() == 2

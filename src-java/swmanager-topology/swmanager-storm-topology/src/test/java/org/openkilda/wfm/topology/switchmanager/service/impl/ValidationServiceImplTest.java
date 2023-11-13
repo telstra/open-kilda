@@ -21,6 +21,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -630,7 +631,10 @@ public class ValidationServiceImplTest {
                 true);
 
         assertTrue(response.getExcessRules().isEmpty());
-        assertTrue(response.getMissingRules().isEmpty());
+        assertFalse(response.getMissingRules().isEmpty(),
+                "The rule is considered missing, because the misconfigured rule has an incorrect cookie "
+                        + "and SwitchSync has no way to pick the correct rule for installation using this cookie.");
+        assertNotEquals(expected.get(0).getCookie(), misconfigured.getCookie());
         assertFalse(response.getMisconfiguredRules().isEmpty());
         assertTrue(response.getProperRules().isEmpty());
         assertFalse(response.isAsExpected());

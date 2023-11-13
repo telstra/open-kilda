@@ -101,8 +101,8 @@ class FlowStatSpec extends HealthCheckSpecification {
             statsHelper."force kilda to collect stats"()
             def newStats = flowStats.of(flow.getFlowId())
             assert newStats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).getNewestTimeStamp() ==
-                    stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).getNewestTimeStamp() &&
-            newStats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).getNewestTimeStamp() ==
+                    stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).getNewestTimeStamp()
+            assert newStats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).getNewestTimeStamp() ==
                     stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).getNewestTimeStamp()
             stats = newStats
         }

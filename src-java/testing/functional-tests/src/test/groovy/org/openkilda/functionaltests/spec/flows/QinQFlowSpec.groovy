@@ -180,14 +180,14 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow history shows actual info into stateBefore and stateAfter sections"
-        def flowHistory = northbound.getFlowHistory(qinqFlow.flowId)
-        with(flowHistory.last().dumps.find { it.type == "stateBefore" }){
+        def flowHistoryEntry = flowHelper.getLatestHistoryEntry(qinqFlow.flowId)
+        with(flowHistoryEntry.dumps.find { it.type == "stateBefore" }){
             it.sourceVlan == srcVlanId
             it.sourceInnerVlan == srcInnerVlanId
             it.destinationVlan == dstVlanId
             it.destinationInnerVlan ==  dstInnerVlanId
         }
-        with(flowHistory.last().dumps.find { it.type == "stateAfter" }){
+        with(flowHistoryEntry.dumps.find { it.type == "stateAfter" }){
             it.sourceVlan == vlanFlow.source.vlanId
             it.sourceInnerVlan == vlanFlow.destination.vlanId
             it.destinationVlan == vlanFlow.destination.vlanId
@@ -327,7 +327,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.randomFlow(swP)
         flow.source.innerVlanId = srcInnerVlanId
         flow.destination.innerVlanId = dstInnerVlanId
-        northboundV2.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)

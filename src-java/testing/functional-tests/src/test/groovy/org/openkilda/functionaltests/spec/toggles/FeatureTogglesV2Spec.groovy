@@ -54,7 +54,7 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
         def disableFlowCreation = northbound.toggleFeature(FeatureTogglesDto.builder().createFlowEnabled(false).build())
 
         and: "Try to create a new flow"
-        northboundV2.addFlow(flowHelperV2.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
+        flowHelperV2.addFlow(flowHelperV2.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
@@ -339,16 +339,16 @@ feature toggle"() {
         then: "The flow becomes 'Down'"
         wait(discoveryTimeout + rerouteDelay + WAIT_OFFSET * 2) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).find {
-                it.action == REROUTE_ACTION && it.taskId =~ (/.+ : retry #1 ignore_bw true/)
+            assert flowHelper.getHistoryEntriesByAction(flow.flowId, REROUTE_ACTION).find {
+                it.taskId =~ (/.+ : retry #1 ignore_bw true/)
             }?.payload?.last()?.action == REROUTE_FAIL
             assert northboundV2.getFlowHistoryStatuses(flow.flowId, 1).historyStatuses*.statusBecome == ["DOWN"]
         }
         wait(WAIT_OFFSET) {
-            def prevHistorySize = northbound.getFlowHistory(flow.flowId).size()
+            def prevHistorySize = flowHelper.getHistorySize(flow.flowId)
             Wrappers.timedLoop(4) {
                 //history size should no longer change for the flow, all retries should give up
-                def newHistorySize = northbound.getFlowHistory(flow.flowId).size()
+                def newHistorySize = flowHelper.getHistorySize(flow.flowId)
                 assert newHistorySize == prevHistorySize
                 assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
                 sleep(500)

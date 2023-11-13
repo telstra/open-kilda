@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
 import org.openkilda.messaging.payload.flow.PathNodePayload
+import org.openkilda.messaging.payload.history.FlowHistoryEntry
 import org.openkilda.model.SwitchId
 
 import static groovyx.gpars.GParsPool.withPool
@@ -167,6 +168,33 @@ class FlowHelper {
         def response = northbound.updateFlow(flowId, flow)
         Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flowId).status == FlowState.UP }
         return response
+    }
+
+    /**
+     * Returns last (the freshest) flow history entry
+     * @param flowId
+     * @return
+     */
+    FlowHistoryEntry getLatestHistoryEntry(String flowId) {
+        return northbound.getFlowHistory(flowId).last()
+    }
+
+    /**
+     * Returns the number of entries in flow history
+     * @param flowId
+     * @return
+     */
+    int getHistorySize(String flowId) {
+        return northbound.getFlowHistory(flowId).size()
+    }
+
+    //TODO: Switch to enum for action
+    List<FlowHistoryEntry> getHistoryEntriesByAction(String flowId, String action) {
+        return northbound.getFlowHistory(flowId).findAll {it.getAction() == action}
+    }
+
+    FlowHistoryEntry getEarliestHistoryEntryByAction(String flowId, String action) {
+        return getHistoryEntriesByAction(flowId, action).first()
     }
 
     /**

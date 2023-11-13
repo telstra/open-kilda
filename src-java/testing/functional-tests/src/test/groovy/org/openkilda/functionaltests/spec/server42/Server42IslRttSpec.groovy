@@ -665,7 +665,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         if (statExist) {
             assert stats.hasNonZeroValuesAfter(checkpointTime.getTime())
         } else {
-            assert stats == null || !stats.hasNonZeroValuesAfter(checkpointTime.getTime())
+            //give 1 second between stop collecting stats command and actual stopping of stats collection
+            assert stats == null || !stats.hasNonZeroValuesAfter(checkpointTime.getTime() + 1000)
         }
     }
 
