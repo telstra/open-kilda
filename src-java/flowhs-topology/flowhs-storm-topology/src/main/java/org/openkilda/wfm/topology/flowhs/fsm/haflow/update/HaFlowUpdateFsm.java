@@ -356,7 +356,7 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
                     .perform(new SkipResourceManagementOnEndpointsUpdateAction(persistenceManager));
 
             builder.transition()
-                    .from(State.DETERMINE_RESOURCE_REVERTING_REQUIRED)
+                    .from(State.DETERMINE_OLD_RESOURCE_REMOVAL_REQUIRED)
                     .to(State.UPDATING_FLOW_STATUS)
                     .on(Event.UPDATE_ENDPOINTS_ONLY);
 
