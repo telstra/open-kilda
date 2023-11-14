@@ -36,10 +36,10 @@ public class Storage implements Serializable {
     public static final char TAG_VALUE_DELIMITER = ':';
     public static final String NULL_TAG = "NULL_TAG";
 
-    private final Map<String, DatapointValue> map;
+    private Map<String, DatapointValue> map;
 
     public Storage() {
-        this.map = new HashMap<>();
+        this.map = createNewMapInstance();
     }
 
     public void add(Datapoint datapoint) {
@@ -50,9 +50,15 @@ public class Storage implements Serializable {
         return map.get(createKey(datapoint));
     }
 
+    /**
+     * Removes datapoints from the storage if they are older than now() - ttlInMillis.
+     */
     public void removeOutdated(long ttlInMillis) {
         long now = System.currentTimeMillis();
         map.entrySet().removeIf(entry -> now - entry.getValue().getTime() > ttlInMillis);
+        if (map.isEmpty()) {
+            map = createNewMapInstance();
+        }
     }
 
     public int size() {
@@ -93,6 +99,14 @@ public class Storage implements Serializable {
             sortedTags.put(key, entry.getValue());
         }
         return sortedTags;
+    }
+
+    /**
+     * Instead of map.clear() we are creating a new map here.
+     * We need it because map.clear() doesn't shrink already allocated map capacity, size of which can be significant.
+     */
+    private static Map<String, DatapointValue> createNewMapInstance() {
+        return new HashMap<>();
     }
 
     @Value

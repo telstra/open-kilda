@@ -50,7 +50,7 @@ public class FlowCacheService {
     private final Duration flowRttStatsExpirationTime;
     private final FlowCacheBoltCarrier carrier;
     private boolean active;
-    private final Map<String, FlowState> flowStates;
+    private Map<String, FlowState> flowStates;
     private final FlowRepository flowRepository;
     private final HaSubFlowRepository haSubFlowRepository;
 
@@ -59,7 +59,7 @@ public class FlowCacheService {
         this.clock = clock;
         this.flowRttStatsExpirationTime = flowRttStatsExpirationTime;
         this.carrier = carrier;
-        flowStates = new HashMap<>();
+        flowStates = createNewFlowStateInstance();
         active = false;
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
         haSubFlowRepository = persistenceManager.getRepositoryFactory().createHaSubFlowRepository();
@@ -153,7 +153,7 @@ public class FlowCacheService {
      */
     public void deactivate() {
         if (active) {
-            flowStates.clear();
+            flowStates = createNewFlowStateInstance();
             log.info("Flow cache cleared.");
             active = false;
         }
@@ -206,5 +206,13 @@ public class FlowCacheService {
     @VisibleForTesting
     protected boolean flowStatesIsEmpty() {
         return flowStates.isEmpty();
+    }
+
+    /**
+     * Instead of map.clear() we are creating a new map here.
+     * We need it because map.clear() doesn't shrink already allocated map capacity, size of which can be significant.
+     */
+    private static Map<String, FlowState> createNewFlowStateInstance() {
+        return new HashMap<>();
     }
 }

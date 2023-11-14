@@ -49,7 +49,7 @@ public class IslCacheService {
         this.clock = clock;
         this.islRttLatencyExpiration = islRttLatencyExpiration;
         active = false;
-        linkStates = new HashMap<>();
+        linkStates = createNewLinkStateInstance();
         islRepository = persistenceManager.getRepositoryFactory().createIslRepository();
     }
 
@@ -74,7 +74,7 @@ public class IslCacheService {
      */
     public void deactivate() {
         if (active) {
-            linkStates.clear();
+            linkStates = createNewLinkStateInstance();
             log.info("Isl cache cleared.");
             active = false;
         }
@@ -167,5 +167,13 @@ public class IslCacheService {
     @VisibleForTesting
     protected boolean linkStatesIsEmpty() {
         return linkStates.isEmpty();
+    }
+
+    /**
+     * Instead of map.clear() we are creating a new map here.
+     * We need it because map.clear() doesn't shrink already allocated map capacity, size of which can be significant.
+     */
+    private Map<Link, LinkState> createNewLinkStateInstance() {
+        return new HashMap<>();
     }
 }
