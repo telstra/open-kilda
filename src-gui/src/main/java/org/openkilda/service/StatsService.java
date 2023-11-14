@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 import static org.openkilda.constants.Metrics.ISL_LATENCY;
 import static org.openkilda.constants.Metrics.ISL_RTT;
 import static org.openkilda.constants.Metrics.SWITCH_STATE;
+import static org.openkilda.utility.VictoriaQueryUtil.buildRangeQueryParams;
 
 import org.openkilda.config.ApplicationProperties;
 import org.openkilda.constants.Direction;
@@ -27,7 +28,6 @@ import org.openkilda.constants.Metrics;
 import org.openkilda.constants.OpenTsDb.StatsType;
 import org.openkilda.exception.InvalidRequestException;
 import org.openkilda.integration.converter.PortConverter;
-import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.integration.model.response.IslPath;
 import org.openkilda.integration.service.StatsIntegrationService;
@@ -64,13 +64,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
-
-/**
- * The Class StatsService.
- *
- * @author Gaurav Chugh
- */
 
 @Service
 public class StatsService {
@@ -100,44 +93,6 @@ public class StatsService {
         this.storeService = storeService;
         this.switchStoreService = switchStoreService;
         this.appProps = appProps;
-    }
-
-    /**
-     * Gets the stats.
-     *
-     * @param startDate  the start date
-     * @param endDate    the end date
-     * @param downsample the downsample
-     * @param srcSwitch  the src switch
-     * @param srcPort    the src port
-     * @param dstSwitch  the dst switch
-     * @param dstPort    the dst port
-     * @param metric     the metric
-     * @return the stats
-     * @throws IntegrationException the integration exception
-     */
-    public String getSwitchIslStats(String startDate, String endDate, String downsample, String srcSwitch,
-                                    String srcPort, String dstSwitch, String dstPort, String metric)
-            throws IntegrationException {
-        return statsIntegrationService.getStats(startDate, endDate, downsample, null, null, null, srcSwitch, srcPort,
-                dstSwitch, dstPort, StatsType.ISL, metric, null);
-    }
-
-    /**
-     * Gets the flow stats.
-     *
-     * @param startDate  the start date
-     * @param endDate    the end date
-     * @param downsample the downsample
-     * @param flowId     the flow id
-     * @param metric     the metric
-     * @return the flow stats
-     * @throws IntegrationException the integration exception
-     */
-    public String getFlowStats(String startDate, String endDate, String downsample, String flowId, String metric)
-            throws IntegrationException {
-        return statsIntegrationService.getStats(startDate, endDate, downsample, null, null, flowId, null, null, null,
-                null, StatsType.FLOW, metric, null);
     }
 
     /**
@@ -193,63 +148,6 @@ public class StatsService {
 
         LOGGER.info("Received the following metrics responses: {}", victoriaDataList);
         return victoriaDataList;
-    }
-
-    /**
-     * Gets the switch stats.
-     *
-     * @param switchid   the switchid
-     * @param portnumber the portnumber
-     * @param startDate  the start date
-     * @param endDate    the end date
-     * @param downsample the downsample
-     * @param metric     the metric
-     * @return the switch stats
-     * @throws IntegrationException the integration exception
-     */
-    public String getSwitchPortStats(String startDate, String endDate, String downsample, String switchid,
-                                     String portnumber, String metric) throws IntegrationException {
-        List<String> switchIds = new ArrayList<String>();
-        switchIds.add(switchid);
-        return statsIntegrationService.getStats(startDate, endDate, downsample, switchIds, portnumber,
-                null, null, null, null, null, StatsType.PORT, metric, null);
-    }
-
-    /**
-     * Gets the switch isl loss packet stats.
-     *
-     * @param startDate  the start date
-     * @param endDate    the end date
-     * @param downsample the downsample
-     * @param srcSwitch  the src switch
-     * @param srcPort    the src port
-     * @param dstSwitch  the dst switch
-     * @param dstPort    the dst port
-     * @param metric     the metric
-     * @return the switch isl loss packet stats
-     */
-    public String getSwitchIslLossPacketStats(String startDate, String endDate, String downsample, String srcSwitch,
-                                              String srcPort, String dstSwitch, String dstPort, String metric) {
-        return statsIntegrationService.getStats(startDate, endDate, downsample, null, null, null, srcSwitch, srcPort,
-                dstSwitch, dstPort, StatsType.ISL_LOSS_PACKET, metric, null);
-    }
-
-    /**
-     * Gets the flow loss packet stats.
-     *
-     * @param startDate  the start date
-     * @param endDate    the end date
-     * @param downsample the downsample
-     * @param flowId     the flow id
-     * @param direction  the direction
-     * @return the flow loss packet stats
-     * @throws IntegrationException the integration exception
-     */
-    public String getFlowLossPacketStats(String startDate, String endDate, String downsample, String flowId,
-                                         String direction) throws IntegrationException {
-        return statsIntegrationService.getStats(startDate, endDate, downsample, null, null, flowId, null, null, null,
-                null, StatsType.FLOW_LOSS_PACKET, Metrics.FLOW_INGRESS_PACKETS.getTag().replace("Flow_", ""),
-                direction);
     }
 
     /**
@@ -321,25 +219,6 @@ public class StatsService {
         return portStats;
     }
 
-
-    /**
-     * Gets the meter stats.
-     *
-     * @param startDate  the start date
-     * @param endDate    the end date
-     * @param downsample the downsample
-     * @param flowId     the flow id
-     * @param metric     the direction
-     * @return the flow stats
-     * @throws IntegrationException the integration exception
-     */
-    public String getMeterStats(String startDate, String endDate, String downsample,
-                                String flowId, String metric, String direction)
-            throws IntegrationException {
-        return statsIntegrationService.getStats(startDate, endDate, downsample, null,
-                null, flowId, null, null, null, null,
-                StatsType.METER, metric, direction);
-    }
 
     private void processInventoryPorts(final List<PortInfo> portStats, final List<Port> inventoryPorts) {
         if (!CollectionUtil.isEmpty(inventoryPorts)) {
@@ -447,7 +326,7 @@ public class StatsService {
      * @return the list
      */
     private List<PortInfo> getIslPorts(final Map<String, Map<String, Double>> portStatsByPortNo, String switchid) {
-        List<PortInfo> portInfos = getPortInfo(portStatsByPortNo);
+        List<PortInfo> portInfos = buildPortInfos(portStatsByPortNo);
         String switchIdentifier = IoUtil.switchCodeToSwitchId(switchid);
         List<SwitchLogicalPort> switchLogicalPorts = switchIntegrationService.getLogicalPort(switchIdentifier);
         if (isNotEmpty(switchLogicalPorts)) {
@@ -486,7 +365,7 @@ public class StatsService {
         return portInfos;
     }
 
-    private List<PortInfo> getPortInfo(final Map<String, Map<String, Double>> portStatsByPortNo) {
+    private List<PortInfo> buildPortInfos(final Map<String, Map<String, Double>> portStatsByPortNo) {
         List<PortInfo> portInfos = new ArrayList<PortInfo>();
         for (Map.Entry<String, Map<String, Double>> portStats : portStatsByPortNo.entrySet()) {
             PortInfo portInfo = new PortInfo();
@@ -501,6 +380,26 @@ public class StatsService {
             portInfos.add(portInfo);
         }
         return portInfos;
+    }
+
+    private List<VictoriaData> buildVictoriaDataList(VictoriaDbRes dbData, String metricName) {
+        List<VictoriaData> result = new ArrayList<>();
+        if (dbData.getData() == null) {
+            return result;
+        }
+
+        dbData.getData().getResult().stream()
+                .map(metricValues -> buildVictoriaData(dbData, metricName, metricValues))
+                .forEach(result::add);
+        return result;
+    }
+
+    private VictoriaData buildVictoriaData(VictoriaDbRes dbData, String metricName) {
+        MetricValues metricValues = null;
+        if (dbData.getData() != null && isNotEmpty(dbData.getData().getResult())) {
+            metricValues = dbData.getData().getResult().get(0);
+        }
+        return buildVictoriaData(dbData, metricName, metricValues);
     }
 
     private VictoriaData buildVictoriaData(VictoriaDbRes dbData, String metricName, MetricValues metricValues) {
@@ -523,26 +422,6 @@ public class StatsService {
                 .build();
     }
 
-    private VictoriaData buildVictoriaData(VictoriaDbRes dbData, String metricName) {
-        MetricValues metricValues = null;
-        if (dbData.getData() != null && isNotEmpty(dbData.getData().getResult())) {
-            metricValues = dbData.getData().getResult().get(0);
-        }
-        return buildVictoriaData(dbData, metricName, metricValues);
-    }
-
-    private List<VictoriaData> buildVictoriaDataList(VictoriaDbRes dbData, String metricName) {
-        List<VictoriaData> result = new ArrayList<>();
-        if (dbData.getData() == null) {
-            return result;
-        }
-
-        dbData.getData().getResult().stream()
-                .map(metricValues -> buildVictoriaData(dbData, metricName, metricValues))
-                .forEach(result::add);
-        return result;
-    }
-
     private Map<String, String> buildQueryParamLabelFilters(String flowId, Direction direction) {
         Map<String, String> queryParamLabelFilters = new LinkedHashMap<>();
         queryParamLabelFilters.put("flowid", flowId);
@@ -550,43 +429,6 @@ public class StatsService {
         return queryParamLabelFilters;
     }
 
-    private RangeQueryParams buildRangeQueryParams(Long startTimeStamp, Long endTimeStamp,
-                                                   String step, String metricName,
-                                                   Map<String, String> queryParamLabelFilters,
-                                                   boolean useRate, boolean useSum) {
-        return RangeQueryParams.builder()
-                .start(startTimeStamp)
-                .end(endTimeStamp)
-                .step(step)
-                .query(buildVictoriaRequestRangeQueryFormParam(metricName, queryParamLabelFilters, useRate, useSum))
-                .build();
-    }
-
-    private String buildVictoriaRequestRangeQueryFormParam(String metricName,
-                                                           Map<String, String> queryParamLabelFilters,
-                                                           boolean useRate, boolean useSum) {
-        String lableFilterString = queryParamLabelFilters.entrySet().stream()
-                .filter(keyValue -> !keyValue.getValue().equals("*"))
-                .map(entry -> String.format("%s='%s'", entry.getKey(), entry.getValue()))
-                .collect(Collectors.joining(", "));
-        String labelList = String.join(",", queryParamLabelFilters.keySet());
-        String query = String.format("%s{%s}", metricName.replace("-", "\\-"), lableFilterString);
-        if (useSum) {
-            query = addSumToQuery(query, labelList);
-        }
-        if (useRate) {
-            query = addRateToQuery(query);
-        }
-        return query;
-    }
-
-    private String addRateToQuery(String query) {
-        return "rate(" + query + ")";
-    }
-
-    private String addSumToQuery(String query, String groupByLabels) {
-        return String.format("sum(" + query + ") by (%s)", groupByLabels);
-    }
 
     private void validateRequestParameters(String startDate, List<String> metric, String flowId)
             throws InvalidRequestException {

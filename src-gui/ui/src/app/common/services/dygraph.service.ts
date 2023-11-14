@@ -81,14 +81,6 @@ export class DygraphService {
     ];
   }
 
-  getMetricDirections() {
-    return [
-      { label: 'Both', value: 'both' },
-      { label: 'Forward', value: 'forward' },
-      { label: 'Reverse', value: 'reverse' }
-    ];
-  }
-
   constructVictoriaGraphData(victoriaDataArr: VictoriaData[], startDate: string, endDate: string, timezone: string) {
     this.numOperator = 0;
     let fwdMetricDirectionLbl: string;

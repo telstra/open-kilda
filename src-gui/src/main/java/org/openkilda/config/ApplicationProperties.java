@@ -33,13 +33,10 @@ public class ApplicationProperties {
     @Value("${nb.base.url}")
     private String nbBaseUrl;
 
-    @Value("${opentsdb.base.url}")
-    private String openTsdbBaseUrl;
-
     @Value("${victoria.base.url}")
     private String victoriaBaseUrl;
 
-    @Value("${opentsdb.metric.prefix}")
+    @Value("${metric.prefix}")
     private String metricPrefix;
 
     @Value("${kilda.username}")

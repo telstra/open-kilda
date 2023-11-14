@@ -4,7 +4,6 @@ import {CookieManagerService} from './cookie-manager.service';
 import {Observable} from 'rxjs';
 import {VictoriaStatsReq, VictoriaStatsRes} from '../data-models/flowMetricVictoria';
 import {environment} from '../../../environments/environment';
-import {FlowMetricTsdb} from '../data-models/flowMetricTsdb';
 import * as moment from 'moment';
 import {PortInfo} from '../data-models/port-info';
 import {concatMap, map} from 'rxjs/operators';
@@ -26,7 +25,7 @@ export class StatsService {
                              downsampling: string,
                              metrics: string[],
                              direction?: string): Observable<VictoriaStatsRes> {
-        const url = `${environment.apiEndPoint}/stats/victoria/${statsType}`;
+        const url = `${environment.apiEndPoint}/stats/flowgraph/${statsType}`;
 
         // Construct form data
         const formData = new FormData();
@@ -45,27 +44,11 @@ export class StatsService {
         return this.httpClient.post<VictoriaStatsRes>(url, formData);
     }
 
-    getFlowGraphData(flowid, convertedStartDate, convertedEndDate, downsampling, metric): Observable<FlowMetricTsdb[]> {
-        return this.httpClient.get<FlowMetricTsdb[]>(
-            `${environment.apiEndPoint}/stats/flowid/${flowid}/${convertedStartDate}/${convertedEndDate}/${downsampling}/${metric}`);
-    }
-
-    getMeterGraphData(flowid, convertedStartDate, convertedEndDate, downsampling, metric, direction): Observable<any> {
-        return this.httpClient.get(`${environment.apiEndPoint}/stats/meter/
-        ${flowid}/${convertedStartDate}/${convertedEndDate}/${downsampling}/${metric}/${direction}`);
-    }
-
-    getFlowPacketGraphData(flowid, convertedStartDate, convertedEndDate, downsampling, direction): Observable<any> {
-        return this.httpClient.get(`${environment.apiEndPoint}/stats/flow/losspackets/
-        ${flowid}/${convertedStartDate}/${convertedEndDate}/${downsampling}/${direction}`);
-    }
-
-
     getFlowPathStats(jsonPayload: VictoriaStatsReq): Observable<VictoriaStatsRes> {
         return this.httpClient.post<VictoriaStatsRes>(`${environment.apiEndPoint}/stats/common`, jsonPayload);
     }
 
-    getSwitchPortsStats(switchId): Observable<PortInfo[]> {
+    getSwitchPortsStats(switchId: string): Observable<PortInfo[]> {
         const startDate = moment().utc().subtract(30, 'minutes').format('YYYY-MM-DD-HH:mm:ss');
         const endDate = moment().utc().format('YYYY-MM-DD-HH:mm:ss');
 
@@ -83,14 +66,12 @@ export class StatsService {
             `${environment.apiEndPoint}/stats/switchports`, requestPayload);
     }
 
-    getPortGraphData(src_switch,
-                     src_port,
-                     dst_switch,
-                     dst_port,
-                     frequency,
-                     metric,
-                     from,
-                     to): Observable<VictoriaStatsRes> {
+    getPortGraphData(src_switch: string,
+                     src_port: string,
+                     frequency: string,
+                     metric: string,
+                     from: string,
+                     to: string): Observable<VictoriaStatsRes> {
         const requestPayload: VictoriaStatsReq = {
             metrics: [metric],
             statsType: 'port',
@@ -106,15 +87,15 @@ export class StatsService {
     }
 
     getForwardGraphData(
-        src_switch,
-        src_port,
-        dst_switch,
-        dst_port,
-        frequency,
-        graph,
-        metric,
-        from,
-        to
+        src_switch: string,
+        src_port: string,
+        dst_switch: string,
+        dst_port: string,
+        frequency: string,
+        graph: string,
+        metric: string,
+        from: string,
+        to: string
     ): Observable<VictoriaStatsRes> {
         if (graph === 'latency') {
             const requestPayload: VictoriaStatsReq = {
@@ -181,14 +162,14 @@ export class StatsService {
     }
 
     getBackwardGraphData(
-        src_switch,
-        src_port,
-        dst_switch,
-        dst_port,
-        frequency,
-        graph,
-        from,
-        to
+        src_switch: string,
+        src_port: string,
+        dst_switch: string,
+        dst_port: string,
+        frequency: string,
+        graph: string,
+        from: string,
+        to: string
     ): Observable<VictoriaStatsRes> {
         if (graph === 'rtt') {
             const requestPayload: VictoriaStatsReq = {
@@ -224,15 +205,15 @@ export class StatsService {
         }
     }
 
-    getIslLossGraphData(src_switch,
-                        src_port,
-                        dst_switch,
-                        dst_port,
-                        step,
-                        graph,
-                        metric,
-                        from,
-                        to): Observable<VictoriaStatsRes> {
+    getIslLossGraphData(src_switch: string,
+                        src_port: string,
+                        dst_switch: string,
+                        dst_port: string,
+                        step: string,
+                        graph: string,
+                        metric: any,
+                        from: string,
+                        to: string): Observable<VictoriaStatsRes> {
         const metricList: string[] = [];
         switch (metric) {
             case 'bits':
