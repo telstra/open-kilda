@@ -27,6 +27,8 @@
 
 #include <rte_memory.h>
 #include <rte_ring.h>
+#include <rte_mbuf_dyn.h>
+#include <rte_errno.h>
 
 #include "Config.h"
 #include "control.pb.h"
@@ -143,6 +145,18 @@ boost::shared_ptr<rte_ring> init_ring(Config::cref_ptr config) {
             RING_F_SP_ENQ), rte_ring_free);
 }
 
+int init_mbuf_dyn_timestamp() {
+
+    static const struct rte_mbuf_dynfield timestamp_dynfield_desc = {
+            "server42_dynfield_timestamp",
+            sizeof(uint64_t),
+            __alignof__(uint64_t),
+            0
+    };
+
+    return rte_mbuf_dynfield_register(&timestamp_dynfield_desc);
+}
+
 
 worker_artefact_t build_write_thread(SharedContext &shared_context) {
     auto ptr = boost::make_shared<DpdkCoreThread>(boost::bind(write_thread, _2,
@@ -157,7 +171,8 @@ worker_artefact_t build_write_thread(SharedContext &shared_context) {
 worker_artefact_t build_read_thread(SharedContext &shared_context) {
     auto ptr = boost::make_shared<DpdkCoreThread>(boost::bind(read_thread, _2,
                                                               shared_context.primary_device,
-                                                              shared_context.rx_ring));
+                                                              shared_context.rx_ring,
+                                                              shared_context.mbuf_dyn_timestamp_offset));
     return boost::make_tuple(ptr, "read_thread");
 }
 
@@ -168,7 +183,8 @@ worker_artefact_t build_process_thread(SharedContext &shared_context,
             boost::bind(process_thread, _1, _2,
                         shared_context.rx_ring,
                         process_thread_port,
-                        src_mac));
+                        src_mac,
+                        shared_context.mbuf_dyn_timestamp_offset));
     return boost::make_tuple(ptr, str(boost::format("process_thread with port %1%") % process_thread_port));
 }
 
@@ -266,12 +282,21 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    int mbuf_dyn_timestamp_offset = init_mbuf_dyn_timestamp();
+
+    if (mbuf_dyn_timestamp_offset < 0) {
+        BOOST_LOG_TRIVIAL(fatal) << "Cannot allocate dynamic timestamp field rte_errno=" << rte_errno
+        << " error text= " << rte_strerror(rte_errno);
+        return 1;
+    }
+
     SharedContext shared_context = {
             .primary_device = device,
             .pool_guard = pool_guard,
             .flow_pool = flow_pool,
             .isl_pool = isl_pool,
-            .rx_ring = rx_ring
+            .rx_ring = rx_ring,
+            .mbuf_dyn_timestamp_offset = mbuf_dyn_timestamp_offset
     };
 
     boost::uint32_t cores;

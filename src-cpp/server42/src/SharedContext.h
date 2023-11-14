@@ -18,6 +18,7 @@ namespace org::openkilda {
         flow_pool_t &flow_pool;
         isl_pool_t &isl_pool;
         boost::shared_ptr<rte_ring> rx_ring;
+        int mbuf_dyn_timestamp_offset;
     };
 }
 
