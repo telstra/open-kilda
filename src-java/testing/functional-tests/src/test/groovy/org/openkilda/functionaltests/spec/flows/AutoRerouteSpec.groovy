@@ -11,6 +11,7 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_COMPLETE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
+import static org.openkilda.functionaltests.helpers.Wrappers.retry
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
@@ -22,7 +23,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
@@ -276,7 +276,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         then: "The flow becomes 'Down'"
         wait(rerouteDelay + WAIT_OFFSET * 2) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            def reroutes = northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }
+            def reroutes = flowHelper.getHistoryEntriesByAction(flow.flowId, REROUTE_ACTION)
             assert reroutes.size() == reroutesCount
             assert reroutes.last().payload.last().action == REROUTE_FAIL
         }
@@ -290,7 +290,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         then: "The flow becomes 'Up'"
         wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert northbound.getFlowHistory(flow.flowId).last().payload.find {
+            assert flowHelper.getLatestHistoryEntry(flow.flowId).payload.find {
                 it.action == "The flow status was reverted to UP" || it.action == REROUTE_SUCCESS
             }
         }
@@ -330,12 +330,12 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         then: "The flow goes to 'Down' status"
         wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert northbound.getFlowHistory(flow.flowId).last().payload.find { it.action == REROUTE_FAIL }
+            assert flowHelper.getLatestHistoryEntry(flow.flowId).payload.find { it.action == REROUTE_FAIL }
         }
         wait(WAIT_OFFSET) {
             def prevHistorySize = northbound.getFlowHistory(flow.flowId)
                     .findAll { !(it.details =~ /Reason: ISL .* status become ACTIVE/) }.size()
-            Wrappers.timedLoop(4) {
+            timedLoop(4) {
                 //history size should no longer change for the flow, all retries should give up
                 def newHistorySize = northbound.getFlowHistory(flow.flowId)
                         .findAll { !(it.details =~ /Reason: ISL .* status become ACTIVE/) }.size()
@@ -526,10 +526,10 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         isSwDeactivated = false
 
         then: "System doesn't try to reroute the flow on the switchUp event because flow is already in UP state"
-        Wrappers.timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
-            assert northbound.getFlowHistory(flow.flowId).findAll {
-                !(it.details =~ /Reason: ISL .* status become ACTIVE/) && //exclude ISL up reasons from parallel streams
-                        it.action == REROUTE_ACTION }.empty
+        timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
+            assert flowHelper.getHistoryEntriesByAction(flow.flowId, REROUTE_ACTION).findAll {
+                !(it.details =~ /Reason: ISL .* status become ACTIVE/)
+            }.isEmpty()
         }
 
         cleanup:
@@ -577,10 +577,10 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         def blockData = switchHelper.knockoutSwitch(switchToManipulate, RW)
         def isSwitchActivated = false
         wait(WAIT_OFFSET) {
-            def prevHistorySize = northbound.getFlowHistory(flow.flowId).size()
-            Wrappers.timedLoop(4) {
+            def prevHistorySize = flowHelper.getHistorySize(flow.flowId)
+            timedLoop(4) {
                 //history size should no longer change for the flow, all retries should give up
-                def newHistorySize = northbound.getFlowHistory(flow.flowId).size()
+                def newHistorySize = flowHelper.getHistorySize(flow.flowId)
                 assert newHistorySize == prevHistorySize
                 assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
             sleep(500)
@@ -666,18 +666,17 @@ triggering one more reroute of the current path"
         lockKeeper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(1000))
         //break the second ISL when the first reroute has started and is in progress
         wait(WAIT_OFFSET) {
-            assert northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }.size() == 1
+            assert flowHelper.getHistoryEntriesByAction(flow.flowId, REROUTE_ACTION).size() == 1
         }
         antiflap.portDown(commonIsl.srcSwitch.dpId, commonIsl.srcPort)
         TimeUnit.SECONDS.sleep(rerouteDelay)
         //first reroute should not be finished at this point, otherwise increase the latency to switches
         assert ![REROUTE_SUCCESS, REROUTE_FAIL].contains(
-            northbound.getFlowHistory(flow.flowId).find { it.action == REROUTE_ACTION }.payload.last().action)
+                flowHelper.getEarliestHistoryEntryByAction(flow.flowId, REROUTE_ACTION).payload.last().action)
 
         then: "System reroutes the flow twice and flow ends up in UP state"
         wait(PATH_INSTALLATION_TIME * 2) {
-            def history = northbound.getFlowHistory(flow.flowId)
-            def reroutes = history.findAll { it.action == REROUTE_ACTION }
+            def reroutes = flowHelper.getHistoryEntriesByAction(flow.getFlowId(), REROUTE_ACTION)
             assert reroutes.size() == 2 //reroute queue, second reroute starts right after first is finished
             reroutes.each { assert it.payload.last().action == REROUTE_SUCCESS }
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
@@ -690,7 +689,7 @@ triggering one more reroute of the current path"
         }
 
         and: "Flow is pingable"
-        Wrappers.retry(3, 0) { //Was unstable on Jenkins builds. Fresh env problem?
+        retry(3, 0) { //Was unstable on Jenkins builds. Fresh env problem?
             with(northbound.pingFlow(flow.flowId, new PingInput())) {
                 it.forward.pingSuccess
                 it.reverse.pingSuccess
@@ -828,11 +827,11 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
         then: "System tries to reroute a flow with transit switch"
         def flowPathMap = [(firstFlow.flowId): firstFlowMainPath, (secondFlow.flowId): secondFlowPath]
         wait(WAIT_OFFSET * 2) {
-            def firstFlowHistory = northbound.getFlowHistory(firstFlow.flowId).findAll { it.action == REROUTE_ACTION }
+            def firstFlowHistory = flowHelper.getHistoryEntriesByAction(firstFlow.flowId, REROUTE_ACTION)
             assert firstFlowHistory.last().payload.find { it.action == REROUTE_FAIL }
             //check that system doesn't retry to reroute the firstFlow (its src is down, no need to retry)
             assert !firstFlowHistory.find { it.taskId =~ /.+ : retry #1/ }
-            def secondFlowHistory = northbound.getFlowHistory(secondFlow.flowId).findAll { it.action == REROUTE_ACTION }
+            def secondFlowHistory = flowHelper.getHistoryEntriesByAction(secondFlow.flowId, REROUTE_ACTION)
             /*there should be original reroute + 3 retries or original reroute + 2 retries
             (sometimes the system does not try to retry reroute for linkDown event,
             because the system gets 'ISL timeout' event for other ISLs)
@@ -858,10 +857,10 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
             nonRtIsls.forEach { assert islUtils.getIslInfo(allLinks, it).get().state == FAILED }
         }
         wait(WAIT_OFFSET) {
-            def prevHistorySizes = [firstFlow.flowId, secondFlow.flowId].collect { northbound.getFlowHistory(it).size() }
-            Wrappers.timedLoop(4) {
+            def prevHistorySizes = [firstFlow.flowId, secondFlow.flowId].collect { flowHelper.getHistorySize(it) }
+            timedLoop(4) {
                 //history size should no longer change for both flows, all retries should give up
-                def newHistorySizes = [firstFlow.flowId, secondFlow.flowId].collect { northbound.getFlowHistory(it).size() }
+                def newHistorySizes = [firstFlow.flowId, secondFlow.flowId].collect { flowHelper.getHistorySize(it) }
                 assert newHistorySizes == prevHistorySizes
                 withPool {
                     [firstFlow.flowId, secondFlow.flowId].eachParallel { String flowId ->
@@ -887,9 +886,8 @@ Failed to find path with requested bandwidth= ignored"
          and don't check that flow is UP */
         wait(WAIT_OFFSET) {
             [firstFlow, secondFlow].each {
-                assert northbound.getFlowHistory(it.flowId).find {
-                    it.action == REROUTE_ACTION &&
-                            it.details == "Reason: Switch '$switchPair1.src.dpId' online"
+                assert flowHelper.getHistoryEntriesByAction(it.flowId, REROUTE_ACTION).find {
+                    it.details == "Reason: Switch '$switchPair1.src.dpId' online"
                 }
             }
         }
@@ -973,8 +971,8 @@ Failed to find path with requested bandwidth= ignored"
 
         and: "Flow remains DEGRADED and on the same path"
         wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowHistory(flow.flowId).findAll {
-                it.action == REROUTE_ACTION && it.details == "Reason: initiated via Northbound"
+            assert flowHelper.getHistoryEntriesByAction(flow.flowId, REROUTE_ACTION).findAll {
+                it.details == "Reason: initiated via Northbound"
             }.size() == 2 //reroute + retry
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
         }
@@ -992,8 +990,8 @@ Failed to find path with requested bandwidth= ignored"
         then: "System tries to reroute the DEGRADED flow"
         and: "Flow remains DEGRADED and on the same path"
         wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getFlowHistory(flow.flowId).findAll {
-                it.action == REROUTE_ACTION && it.details.contains("status become ACTIVE")
+            assert flowHelper.getHistoryEntriesByAction(flow.flowId, REROUTE_ACTION).findAll {
+                it.details.contains("status become ACTIVE")
             }.size() == 2 //reroute + retry
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED
         }

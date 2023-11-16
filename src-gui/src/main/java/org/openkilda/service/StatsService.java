@@ -16,6 +16,9 @@
 package org.openkilda.service;
 
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
+import static org.openkilda.constants.Metrics.ISL_LATENCY;
+import static org.openkilda.constants.Metrics.ISL_RTT;
+import static org.openkilda.constants.Metrics.SWITCH_STATE;
 
 import org.openkilda.config.ApplicationProperties;
 import org.openkilda.constants.Direction;
@@ -31,11 +34,11 @@ import org.openkilda.integration.service.StatsIntegrationService;
 import org.openkilda.integration.service.SwitchIntegrationService;
 import org.openkilda.integration.source.store.SwitchStoreService;
 import org.openkilda.integration.source.store.dto.Port;
-import org.openkilda.model.FlowPathStats;
 import org.openkilda.model.PortDiscrepancy;
 import org.openkilda.model.PortInfo;
 import org.openkilda.model.SwitchLogicalPort;
-import org.openkilda.model.SwitchPortStats;
+import org.openkilda.model.VictoriaStatsReq;
+import org.openkilda.model.victoria.MetricValues;
 import org.openkilda.model.victoria.RangeQueryParams;
 import org.openkilda.model.victoria.VictoriaData;
 import org.openkilda.model.victoria.dbdto.VictoriaDbRes;
@@ -43,8 +46,6 @@ import org.openkilda.store.service.StoreService;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.IoUtil;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
@@ -58,11 +59,11 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -184,7 +185,7 @@ public class StatsService {
             for (Direction dir : directions) {
                 Map<String, String> queryParamLabelFilters = buildQueryParamLabelFilters(flowId, dir);
                 RangeQueryParams rangeQueryParams = buildRangeQueryParams(startTimeStamp, endTimeStamp, step,
-                        metricName, queryParamLabelFilters);
+                        metricName, queryParamLabelFilters, true, true);
                 victoriaDataList.add(buildVictoriaData(statsIntegrationService.getVictoriaStats(rangeQueryParams),
                         metricName));
             }
@@ -252,51 +253,70 @@ public class StatsService {
     }
 
     /**
-     * Gets the flow path stat.
+     * Retrieves Victoria Flow Path statistics data based on the provided request parameters.
      *
-     * @param flowPathStats the flow path stat
-     * @return the flow path stat
+     * @param statsReq The request parameters for querying Victoria Flow Path statistics.
+     * @return A list of VictoriaData objects representing the queried statistics.
+     * @throws InvalidRequestException if the request parameters are invalid or if there are issues with the query.
      */
-    public String getFlowPathStats(FlowPathStats flowPathStats) {
-        return statsIntegrationService.getStats(flowPathStats.getStartDate(), flowPathStats.getEndDate(),
-                flowPathStats.getDownsample(), getSwitches(flowPathStats), null, flowPathStats.getFlowid(),
-                null, flowPathStats.getInPort(), null, flowPathStats.getOutPort(),
-                StatsType.FLOW_RAW_PACKET, flowPathStats.getMetric(), flowPathStats.getDirection());
+    public List<VictoriaData> getVictoriaStats(VictoriaStatsReq statsReq) throws InvalidRequestException {
+        validateRequestParameters(statsReq.getStartDate(), statsReq.getStatsType(), statsReq.getMetrics());
+
+        Long startTimeStamp = parseTimeStamp(statsReq.getStartDate());
+        Long endTimeStamp = Optional.ofNullable(parseTimeStamp(statsReq.getEndDate()))
+                .orElse(System.currentTimeMillis() / 1000);
+
+        List<VictoriaData> victoriaDataList = new ArrayList<>();
+        List<String> metricNameList = new ArrayList<>();
+
+        if (CollectionUtils.isNotEmpty(statsReq.getMetrics())) {
+            statsReq.getMetrics().forEach(metric ->
+                    metricNameList.addAll(
+                            getMetricByMetricEndingAngStatsType(
+                                    StatsType.byJsonValue(statsReq.getStatsType()), metric)));
+        } else {
+            metricNameList.addAll(getMetricByStatsType(StatsType.byJsonValue(statsReq.getStatsType())));
+        }
+
+        for (String metricName : metricNameList) {
+            if (StringUtils.isBlank(metricName)) {
+                throw new InvalidRequestException(String.format("There is no such metric: %s", metricName));
+            }
+            boolean useRate = !metricName.equals(SWITCH_STATE.getMetricName(appProps.getMetricPrefix()));
+            boolean useSum = useRate;
+            if (metricName.equals(ISL_LATENCY.getMetricName(appProps.getMetricPrefix()))
+                    || metricName.equals(ISL_RTT.getMetricName(appProps.getMetricPrefix()))) {
+                useRate = false;
+            }
+            RangeQueryParams rangeQueryParams = buildRangeQueryParams(startTimeStamp, endTimeStamp, statsReq.getStep(),
+                    metricName, statsReq.getLabels(), useRate, useSum);
+            victoriaDataList.addAll(buildVictoriaDataList(statsIntegrationService.getVictoriaStats(rangeQueryParams),
+                    metricName));
+        }
+        LOGGER.debug("Received the following metrics responses: {}", victoriaDataList);
+        return victoriaDataList;
     }
 
     /**
-     * Gets the switch ports stats.
+     * Retrieve statistics for switch ports.
      *
-     * @param startDate  the start date
-     * @param endDate    the end date
-     * @param downSample the down sample
-     * @param switchId   the switch id
-     * @return the switch ports stats
+     * @param statsReq The request object containing statistics parameters.
+     * @return A list of PortInfo objects representing switch port statistics.
+     * @throws InvalidRequestException If the request is invalid or malformed.
      */
-    public List<PortInfo> getSwitchPortsStats(String startDate, String endDate, String downSample, String switchId) {
-        List<String> switchIds = Arrays.asList(switchId);
-        List<SwitchPortStats> switchPortStats = new ArrayList<SwitchPortStats>();
-        try {
-            String result = statsIntegrationService.getStats(startDate, endDate, downSample, switchIds,
-                    null, null, null, null, null, null,
-                    StatsType.SWITCH_PORT, null, null);
-            ObjectMapper mapper = new ObjectMapper();
-            switchPortStats = mapper.readValue(result,
-                    TypeFactory.defaultInstance().constructCollectionLikeType(List.class, SwitchPortStats.class));
-        } catch (Exception e) {
-            LOGGER.error("Error occurred while retriving switch port stats", e);
-        }
-        List<PortInfo> portStats = getSwitchPortStatsReport(switchPortStats, switchId);
-        if (storeService.getSwitchStoreConfig().getUrls().size() > 0) {
-            if (!CollectionUtil.isEmpty(switchIds)) {
-                try {
-                    List<Port> inventoryPorts = switchStoreService
-                            .getSwitchPort(IoUtil.switchCodeToSwitchId(switchIds.get(0)));
-                    processInventoryPorts(portStats, inventoryPorts);
-                } catch (Exception ex) {
-                    LOGGER.error("Error occurred while retriving switch ports stats for inventory", ex);
-                }
+    public List<PortInfo> getSwitchPortsStats(VictoriaStatsReq statsReq) throws InvalidRequestException {
+        List<VictoriaData> victoriaDataList = getVictoriaStats(statsReq);
+        String switchId = statsReq.getLabels().get("switchid");
+        List<PortInfo> portStats = getSwitchPortStatsReport(victoriaDataList, switchId);
+        if (!storeService.getSwitchStoreConfig().getUrls().isEmpty()) {
+            try {
+                List<Port> inventoryPorts = switchStoreService
+                        .getSwitchPort(IoUtil.switchCodeToSwitchId(switchId));
+                processInventoryPorts(portStats, inventoryPorts);
+            } catch (Exception ex) {
+                LOGGER.error("Error occurred while retriving switch ports stats for inventory", ex);
             }
+
         }
         return portStats;
     }
@@ -379,10 +399,10 @@ public class StatsService {
      * @param switchPortStats the list
      * @return the ports stat
      */
-    private List<PortInfo> getSwitchPortStatsReport(List<SwitchPortStats> switchPortStats, String switchId) {
+    private List<PortInfo> getSwitchPortStatsReport(List<VictoriaData> switchPortStats, String switchId) {
         Map<String, Map<String, Double>> portStatsByPortNo = new HashMap<String, Map<String, Double>>();
-        for (SwitchPortStats stats : switchPortStats) {
-            String port = stats.getTags().getPort();
+        for (VictoriaData stats : switchPortStats) {
+            String port = stats.getTags().get("port");
 
             if (Integer.parseInt(port) > 0) {
                 if (!portStatsByPortNo.containsKey(port)) {
@@ -390,7 +410,7 @@ public class StatsService {
                 }
                 portStatsByPortNo.get(port).put(
                         stats.getMetric().replace(appProps.getMetricPrefix() + "switch.", ""),
-                        calculateHighestValue(stats.getDps()));
+                        getLastValue(stats.getTimeToValueMap()));
             }
         }
 
@@ -403,20 +423,20 @@ public class StatsService {
      * @param dps the dps
      * @return the double
      */
-    private double calculateHighestValue(Map<String, Double> dps) {
-        double maxVal = 0.0;
+    private double getLastValue(LinkedHashMap<Long, Double> dps) {
+        double lastValue = 0.0;
         if (!dps.isEmpty()) {
-            long maxTimestamp = 0;
-            for (String key : dps.keySet()) {
-                long val = Long.parseLong(key);
-                if (maxTimestamp < val) {
-                    maxTimestamp = val;
+            long lastTimeStamp = 0;
+            for (Map.Entry<Long, Double> entry : dps.entrySet()) {
+                Long timeStamp = entry.getKey();
+                if (timeStamp > lastTimeStamp) {
+                    lastTimeStamp = timeStamp;
                 }
             }
-            maxVal = BigDecimal.valueOf(dps.get(String.valueOf(maxTimestamp))).setScale(2, RoundingMode.HALF_UP)
+            lastValue = BigDecimal.valueOf(dps.get(lastTimeStamp)).setScale(2, RoundingMode.HALF_UP)
                     .doubleValue();
         }
-        return maxVal;
+        return lastValue;
     }
 
     /**
@@ -483,25 +503,13 @@ public class StatsService {
         return portInfos;
     }
 
-    private List<String> getSwitches(FlowPathStats flowPathStats) {
-        List<String> switches = null;
-        if (flowPathStats != null) {
-            switches = flowPathStats.getSwitches();
-            if (switches == null || switches.isEmpty()) {
-                switches = new ArrayList<String>();
-                switches.add("*");
-            }
-        }
-        return switches;
-    }
-
-    private VictoriaData buildVictoriaData(VictoriaDbRes dbData, String metricName) {
-
+    private VictoriaData buildVictoriaData(VictoriaDbRes dbData, String metricName, MetricValues metricValues) {
         LinkedHashMap<Long, Double> timeToValueMap = new LinkedHashMap<>();
         Map<String, String> tags = new HashMap<>();
-        if (dbData.getData() != null && isNotEmpty(dbData.getData().getResult())) {
-            tags = dbData.getData().getResult().get(0).getTags();
-            dbData.getData().getResult().get(0).getValues()
+
+        if (metricValues != null) {
+            tags = metricValues.getTags();
+            metricValues.getValues()
                     .forEach(timeToValue ->
                             timeToValueMap.put(Long.parseLong(timeToValue[0]), Double.valueOf(timeToValue[1])));
         }
@@ -515,6 +523,26 @@ public class StatsService {
                 .build();
     }
 
+    private VictoriaData buildVictoriaData(VictoriaDbRes dbData, String metricName) {
+        MetricValues metricValues = null;
+        if (dbData.getData() != null && isNotEmpty(dbData.getData().getResult())) {
+            metricValues = dbData.getData().getResult().get(0);
+        }
+        return buildVictoriaData(dbData, metricName, metricValues);
+    }
+
+    private List<VictoriaData> buildVictoriaDataList(VictoriaDbRes dbData, String metricName) {
+        List<VictoriaData> result = new ArrayList<>();
+        if (dbData.getData() == null) {
+            return result;
+        }
+
+        dbData.getData().getResult().stream()
+                .map(metricValues -> buildVictoriaData(dbData, metricName, metricValues))
+                .forEach(result::add);
+        return result;
+    }
+
     private Map<String, String> buildQueryParamLabelFilters(String flowId, Direction direction) {
         Map<String, String> queryParamLabelFilters = new LinkedHashMap<>();
         queryParamLabelFilters.put("flowid", flowId);
@@ -524,28 +552,56 @@ public class StatsService {
 
     private RangeQueryParams buildRangeQueryParams(Long startTimeStamp, Long endTimeStamp,
                                                    String step, String metricName,
-                                                   Map<String, String> queryParamLabelFilters) {
+                                                   Map<String, String> queryParamLabelFilters,
+                                                   boolean useRate, boolean useSum) {
         return RangeQueryParams.builder()
                 .start(startTimeStamp)
                 .end(endTimeStamp)
                 .step(step)
-                .query(buildVictoriaRequestRangeQueryFormParam(metricName, queryParamLabelFilters))
+                .query(buildVictoriaRequestRangeQueryFormParam(metricName, queryParamLabelFilters, useRate, useSum))
                 .build();
     }
 
     private String buildVictoriaRequestRangeQueryFormParam(String metricName,
-                                                           Map<String, String> queryParamLableFilters) {
-        String lableFilterString = queryParamLableFilters.entrySet().stream()
+                                                           Map<String, String> queryParamLabelFilters,
+                                                           boolean useRate, boolean useSum) {
+        String lableFilterString = queryParamLabelFilters.entrySet().stream()
+                .filter(keyValue -> !keyValue.getValue().equals("*"))
                 .map(entry -> String.format("%s='%s'", entry.getKey(), entry.getValue()))
                 .collect(Collectors.joining(", "));
-        String labelList = String.join(",", queryParamLableFilters.keySet());
-        return String.format("rate(sum(%s{%s}) by (%s))", metricName, lableFilterString, labelList);
+        String labelList = String.join(",", queryParamLabelFilters.keySet());
+        String query = String.format("%s{%s}", metricName.replace("-", "\\-"), lableFilterString);
+        if (useSum) {
+            query = addSumToQuery(query, labelList);
+        }
+        if (useRate) {
+            query = addRateToQuery(query);
+        }
+        return query;
+    }
+
+    private String addRateToQuery(String query) {
+        return "rate(" + query + ")";
+    }
+
+    private String addSumToQuery(String query, String groupByLabels) {
+        return String.format("sum(" + query + ") by (%s)", groupByLabels);
     }
 
     private void validateRequestParameters(String startDate, List<String> metric, String flowId)
             throws InvalidRequestException {
         if (StringUtils.isBlank(startDate) || CollectionUtils.isEmpty(metric) || StringUtils.isBlank(flowId)) {
             throw new InvalidRequestException("startDate, metric, and flowid must not be null or empty");
+        }
+    }
+
+    private void validateRequestParameters(String startDate, String statsType, List<String> metrics)
+            throws InvalidRequestException {
+        if (StringUtils.isBlank(startDate)) {
+            throw new InvalidRequestException("Empty startDate");
+        }
+        if ((CollectionUtils.isEmpty(metrics) && StringUtils.isBlank(statsType))) {
+            throw new InvalidRequestException("Metric list and statsType can not be null or empty at the same time");
         }
     }
 
@@ -563,5 +619,37 @@ public class StatsService {
     private Long convertToTimeStamp(String timeString, DateTimeFormatter formatter) throws DateTimeParseException {
         LocalDateTime localDateTime = LocalDateTime.parse(timeString, formatter);
         return localDateTime.toEpochSecond(ZoneOffset.UTC);
+    }
+
+    private List<String> getMetricByStatsType(StatsType statsType) {
+        return getMetricByMetricEndingAngStatsType(statsType, null);
+    }
+
+    private List<String> getMetricByMetricEndingAngStatsType(StatsType statsType, String metric) {
+        List<String> metricList = new ArrayList<>();
+        if (statsType == null) {
+            String fullMetricName = Metrics.getFullMetricNameByMetricName(metric, appProps.getMetricPrefix());
+            if (fullMetricName != null) {
+                metricList.add(fullMetricName);
+            }
+        } else if (statsType.equals(StatsType.PORT)) {
+            metricList = Metrics.switchValue(metric, appProps.getMetricPrefix());
+        } else if (statsType.equals(StatsType.FLOW)) {
+            metricList = Metrics.flowValue(metric, true, appProps.getMetricPrefix());
+        } else if (statsType.equals(StatsType.ISL)) {
+            metricList = Metrics.switchValue(metric, appProps.getMetricPrefix());
+        } else if (statsType.equals(StatsType.ISL_LOSS_PACKET)) {
+            metricList = Metrics.switchValue(metric, appProps.getMetricPrefix());
+        } else if (statsType.equals(StatsType.FLOW_LOSS_PACKET)) {
+            metricList = Metrics.flowValue("packets", false, appProps.getMetricPrefix());
+            metricList.addAll(Metrics.flowValue(metric, false, appProps.getMetricPrefix()));
+        } else if (statsType.equals(StatsType.FLOW_RAW_PACKET)) {
+            metricList = Metrics.flowRawValue(metric, appProps.getMetricPrefix());
+        } else if (statsType.equals(StatsType.SWITCH_PORT)) {
+            metricList = Metrics.getStartsWith("Switch_", appProps.getMetricPrefix());
+        } else if (statsType.equals(StatsType.METER)) {
+            metricList = Metrics.meterValue(metric, appProps.getMetricPrefix());
+        }
+        return metricList;
     }
 }

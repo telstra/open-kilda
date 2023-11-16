@@ -43,7 +43,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         assumeTrue(switchPair != null, "Unable to find required switch pair in topology")
         def flow1 = flowHelperV2.randomFlow(switchPair)
         flow1.encapsulationType = null
-        northboundV2.addFlow(flow1)
+        flowHelperV2.addFlow(flow1)
 
         then: "Flow is created with current default encapsulation type(transit_vlan)"
         northboundV2.getFlow(flow1.flowId).encapsulationType == defaultEncapsulationType.toString().toLowerCase()
@@ -62,7 +62,7 @@ class ConfigurationSpec extends HealthCheckSpecification {
         when: "Create a flow without encapsulation type"
         def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1])
         flow2.encapsulationType = null
-        northboundV2.addFlow(flow2)
+        flowHelperV2.addFlow(flow2)
 
         then: "Flow is created with new default encapsulation type(vxlan)"
         northboundV2.getFlow(flow2.flowId).encapsulationType == newFlowEncapsulationType.toString().toLowerCase()

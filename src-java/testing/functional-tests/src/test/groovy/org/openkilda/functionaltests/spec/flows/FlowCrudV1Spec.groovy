@@ -378,7 +378,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         flow.destination.vlanId = flow.source.vlanId
 
         when: "Try creating such flow"
-        northbound.addFlow(flow)
+        flowHelper.addFlow(flow)
 
         then: "Error is returned, stating a readable reason"
         def error = thrown(HttpClientErrorException)
@@ -403,7 +403,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         flowHelper.addFlow(flow)
 
         and: "Try creating the second flow which conflicts"
-        northbound.addFlow(conflictingFlow)
+        flowHelper.addFlow(conflictingFlow)
 
         then: "Error is returned, stating a readable reason of conflict"
         def error = thrown(HttpClientErrorException)
@@ -508,7 +508,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         }
 
         when: "Try building a flow using the isolated switch"
-        northbound.addFlow(flow)
+        flowHelper.addFlow(flow)
 
         then: "Error is returned, stating that there is no path found for such flow"
         def error = thrown(HttpClientErrorException)
@@ -789,7 +789,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
 
         when: "Create a flow"
         def flow = flowHelper.singleSwitchFlow(sw)
-        northbound.addFlow(flow)
+        flowHelper.addFlow(flow)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -832,7 +832,7 @@ are not connected to the controller/).matches(exc)
         def amountOfFlows = 5
         amountOfFlows.times {
             def flow = flowHelper.singleSwitchFlow(sw)
-            northbound.addFlow(flow)
+            flowHelper.addFlow(flow)
             flows << flow.id
         }
 

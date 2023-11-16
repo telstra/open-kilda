@@ -75,7 +75,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         and: "Flows' histories contain 'diverseGroupId' information"
         [flow2, flow3].each {//flow1 had no diversity at the time of creation
-            assert northbound.getFlowHistory(it.flowId).find { it.action == CREATE_ACTION }.dumps
+            assert flowHelper.getEarliestHistoryEntryByAction(it.flowId, CREATE_ACTION).dumps
                     .find { it.type == "stateAfter" }?.diverseGroupId
         }
 
@@ -85,13 +85,13 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         then: "Flows' histories contain 'diverseGroupId' information in 'delete' operation"
         [flow1, flow2].each {
-            verifyAll(northbound.getFlowHistory(it.flowId).find { it.action == DELETE_ACTION }.dumps) {
+            verifyAll(flowHelper.getEarliestHistoryEntryByAction(it.flowId, DELETE_ACTION).dumps) {
                 it.find { it.type == "stateBefore" }?.diverseGroupId
                 !it.find { it.type == "stateAfter" }?.diverseGroupId
             }
         }
         //except flow3, because after deletion of flow1/flow2 flow3 is no longer in the diversity group
-        verifyAll(northbound.getFlowHistory(flow3.flowId).find { it.action == DELETE_ACTION }.dumps) {
+        verifyAll(flowHelper.getEarliestHistoryEntryByAction(flow3.flowId, DELETE_ACTION).dumps) {
             !it.find { it.type == "stateBefore" }?.diverseGroupId
             !it.find { it.type == "stateAfter" }?.diverseGroupId
         }
@@ -120,7 +120,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
                                                                 flow2.tap { it.diverseFlowId = flow1.flowId })
 
         and: "Second flow's history contains 'groupId' information"
-        verifyAll(northbound.getFlowHistory(flow2.flowId).find { it.action == UPDATE_ACTION }.dumps) {
+        verifyAll(flowHelper.getEarliestHistoryEntryByAction(flow2.flowId, UPDATE_ACTION).dumps) {
             !it.find { it.type == "stateBefore" }?.diverseGroupId
             it.find { it.type == "stateAfter" }?.diverseGroupId
         }
@@ -186,7 +186,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         !northboundV2.getFlow(flow2.flowId).diverseWith
 
         and: "The flow's history reflects the change of 'groupId' field"
-        verifyAll(northbound.getFlowHistory(flow2.flowId).find { it.action == UPDATE_ACTION }.dumps) {
+        verifyAll(flowHelper.getEarliestHistoryEntryByAction(flow2.flowId, UPDATE_ACTION).dumps) {
             //https://github.com/telstra/open-kilda/issues/3807
 //            it.find { it.type == "stateBefore" }.groupId
             !it.find { it.type == "stateAfter" }.diverseGroupId

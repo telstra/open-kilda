@@ -122,7 +122,7 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
          * and then reroute the flow.
          */
         wait(flowSlaCheckIntervalSeconds * 2 + flowLatencySlaTimeoutSeconds + WAIT_OFFSET) {
-            def history = northbound.getFlowHistory(flow.flowId).last()
+            def history = flowHelper.getLatestHistoryEntry(flow.flowId)
             // Flow sync or flow reroute with reason "Flow latency become unhealthy"
             assert history.getAction() == "Flow paths sync"
                 || (history.details.contains("healthy") &&
@@ -177,7 +177,7 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
 
         then: "Flow is not rerouted because flowLatencyMonitoringReactions is disabled in featureToggle"
         sleep((flowSlaCheckIntervalSeconds * 2 + flowLatencySlaTimeoutSeconds) * 1000)
-        northbound.getFlowHistory(flow.flowId).findAll { it.action == REROUTE_ACTION }.empty
+        flowHelper.getHistoryEntriesByAction(flow.flowId, REROUTE_ACTION).isEmpty()
 
         and: "Flow path is not changed"
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath

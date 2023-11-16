@@ -25,8 +25,8 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.constants.Metrics;
 import org.openkilda.constants.OpenTsDb;
 import org.openkilda.exception.InvalidRequestException;
-import org.openkilda.model.FlowPathStats;
 import org.openkilda.model.PortInfo;
+import org.openkilda.model.VictoriaStatsReq;
 import org.openkilda.model.victoria.Status;
 import org.openkilda.model.victoria.VictoriaData;
 import org.openkilda.model.victoria.VictoriaStatsRes;
@@ -55,9 +55,6 @@ import java.util.Optional;
 public class StatsController {
 
     private static final Logger LOGGER = Logger.getLogger(StatsController.class);
-
-    private static final String VICTORIA_METRICS_URL_EMPTY = "Victoria Metrics DB URL has not been configured"
-            + " for Openkilda-gui.";
     private static final String REQUIRED_START_DATE_ERROR = "startDate must not be null or empty.";
     private static final String STATS_TYPE_ERROR = "statsType path variable should not be empty or wrong.";
     private static final String REQUIRED_METRIC_ERROR = "metric must not be null or empty.";
@@ -160,11 +157,11 @@ public class StatsController {
     /**
      * Retrieves Victoria statistics data for a specific flow based on the provided parameters.
      *
-     * @param flowId The ID of the flow for which statistics are retrieved.
+     * @param flowId    The ID of the flow for which statistics are retrieved.
      * @param startDate The start date of the data retrieval period.
-     * @param endDate The end date of the data retrieval period.
-     * @param step The time step for data aggregation.
-     * @param metric A list of metrics for which statistics are retrieved.
+     * @param endDate   The end date of the data retrieval period.
+     * @param step      The time step for data aggregation.
+     * @param metric    A list of metrics for which statistics are retrieved.
      * @param direction The direction of the flow data ('forward' or 'reverse'). Optional.
      * @return A {@link ResponseEntity} containing a {@link VictoriaStatsRes} object with the retrieved statistics.
      * @see VictoriaStatsRes
@@ -181,11 +178,6 @@ public class StatsController {
                                                                  @RequestParam String step,
                                                                  @RequestParam List<String> metric,
                                                                  @RequestParam(required = false) String direction) {
-
-        if (StringUtils.isBlank(applicationProperties.getVictoriaBaseUrl())
-                || applicationProperties.getVictoriaBaseUrl().contains("://:/prometheus")) {
-            return buildServiceUnavailableRes();
-        }
 
         LOGGER.info("Get victoria stat for flow");
         if (StringUtils.isBlank(startDate)) {
@@ -277,40 +269,57 @@ public class StatsController {
     }
 
     /**
-     * Gets the flow path stat.
+     * Gets the flow path stat from victoria db.
      *
-     * @param flowPathStats the flow path stat (flowid , list of switchids, start date, end date)
+     * @param victoriaStatsReq the flow path stat (flowid , switchId, startDate, endDate, labels)
      * @return the flow path stat
      */
-    @RequestMapping(value = "flowpath", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
+    @RequestMapping(value = "common", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = {IConstants.Permission.MENU_FLOWS})
     @ResponseBody
-    public String getFlowPathStat(@RequestBody FlowPathStats flowPathStats) {
+    public ResponseEntity<VictoriaStatsRes> commonVictoriaStats(@RequestBody VictoriaStatsReq victoriaStatsReq) {
 
-        LOGGER.info("Get flow path stat ");
-        return statsService.getFlowPathStats(flowPathStats);
+        LOGGER.info(String.format("Get flow path stat request: %s", victoriaStatsReq));
+        ResponseEntity<VictoriaStatsRes> res;
+        try {
+            List<VictoriaData> victoriaResult = statsService.getVictoriaStats(victoriaStatsReq);
+
+            Optional<VictoriaData> errorData = victoriaResult.stream().filter(this::hasError).findFirst();
+
+            if (errorData.isPresent()) {
+                VictoriaData err = errorData.get();
+                res = buildVictoriaBadRequestErrorRes(Integer.parseInt(err.getErrorType()), err.getError());
+            } else {
+                res = ResponseEntity.ok(VictoriaStatsRes.builder().status(SUCCESS)
+                        .dataList(victoriaResult).build());
+            }
+        } catch (InvalidRequestException e) {
+            res = buildVictoriaBadRequestErrorRes(e.getMessage());
+        }
+        return res;
     }
 
     /**
-     * Gets the switch ports stats.
+     * Retrieves statistics for switch ports.
+     * This method handles HTTP POST requests to fetch statistics for switch ports. It requires a valid
+     * VictoriaStatsReq object in the request body to specify the statistics parameters.
      *
-     * @param switchid   the switchid
-     * @param startDate  the start date
-     * @param endDate    the end date
-     * @param downsample the downsample
-     * @return the switch ports stats
+     * @param statsReq The VictoriaStatsReq object containing the statistics parameters.
+     * @return A list of PortInfo objects representing the statistics for switch ports.
+     * @throws InvalidRequestException If the request parameters are invalid or malformed.
+     * @see VictoriaStatsReq
+     * @see PortInfo
+     * @see StatsService#getSwitchPortsStats(VictoriaStatsReq)
      */
-    @RequestMapping(value = "switchports/{switchid}/{startDate}/{endDate}/{downsample}", method = RequestMethod.GET,
+    @RequestMapping(value = "switchports", method = RequestMethod.POST,
             produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = {IConstants.Permission.MENU_SWITCHES})
     @ResponseBody
-    public List<PortInfo> getSwitchPortsStats(@PathVariable String switchid, @PathVariable String startDate,
-                                              @PathVariable String endDate, @PathVariable String downsample) {
-
-        LOGGER.info("Get switch ports stat ");
-        return statsService.getSwitchPortsStats(startDate, endDate, downsample, switchid);
+    public List<PortInfo> switchPortsStats(@RequestBody VictoriaStatsReq statsReq) throws InvalidRequestException {
+        LOGGER.info("POST switch ports stat ");
+        return statsService.getSwitchPortsStats(statsReq);
     }
 
 
@@ -340,10 +349,6 @@ public class StatsController {
 
     private boolean hasError(VictoriaData victoriaData) {
         return victoriaData != null && Status.ERROR.equals(victoriaData.getStatus());
-    }
-
-    private ResponseEntity<VictoriaStatsRes> buildServiceUnavailableRes() {
-        return buildVictoriaBadRequestErrorRes(503, StatsController.VICTORIA_METRICS_URL_EMPTY);
     }
 
     private ResponseEntity<VictoriaStatsRes> buildVictoriaBadRequestErrorRes(String message) {

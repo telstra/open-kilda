@@ -96,12 +96,11 @@ public class KildaEntryCacheService {
     /**
      * Cookie to flow and meter to flow maps.
      */
-    private final HashSetValuedHashMap<CookieCacheKey, KildaEntryDescriptor> cookieToFlow =
-            new HashSetValuedHashMap<>();
-    private final HashSetValuedHashMap<MeterCacheKey, KildaEntryDescriptor> switchAndMeterToFlow =
-            new HashSetValuedHashMap<>();
-    private final HashSetValuedHashMap<GroupCacheKey, KildaEntryDescriptor> switchAndGroupToFlow =
-            new HashSetValuedHashMap<>();
+    private HashSetValuedHashMap<CookieCacheKey, KildaEntryDescriptor> cookieToFlow = createNewCookieCacheInstance();
+    private HashSetValuedHashMap<MeterCacheKey, KildaEntryDescriptor> switchAndMeterToFlow =
+            createNewMeterCacheInstance();
+    private HashSetValuedHashMap<GroupCacheKey, KildaEntryDescriptor> switchAndGroupToFlow =
+            createNewGroupCacheInstance();
 
     public KildaEntryCacheService(PersistenceManager persistenceManager, KildaEntryCacheCarrier carrier) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
@@ -555,8 +554,32 @@ public class KildaEntryCacheService {
 
     @VisibleForTesting
     void clearCache() {
-        cookieToFlow.clear();
-        switchAndMeterToFlow.clear();
-        switchAndGroupToFlow.clear();
+        cookieToFlow = createNewCookieCacheInstance();
+        switchAndMeterToFlow = createNewMeterCacheInstance();
+        switchAndGroupToFlow = createNewGroupCacheInstance();
+    }
+
+    /**
+     * Instead of map.clear() we are creating a new map here.
+     * We need it because map.clear() doesn't shrink already allocated map capacity, size of which can be significant.
+     */
+    private static HashSetValuedHashMap<CookieCacheKey, KildaEntryDescriptor> createNewCookieCacheInstance() {
+        return new HashSetValuedHashMap<>();
+    }
+
+    /**
+     * Instead of map.clear() we are creating a new map here.
+     * We need it because map.clear() doesn't shrink already allocated map capacity, size of which can be significant.
+     */
+    private static HashSetValuedHashMap<MeterCacheKey, KildaEntryDescriptor>  createNewMeterCacheInstance() {
+        return new HashSetValuedHashMap<>();
+    }
+
+    /**
+     * Instead of map.clear() we are creating a new map here.
+     * We need it because map.clear() doesn't shrink already allocated map capacity, size of which can be significant.
+     */
+    private static HashSetValuedHashMap<GroupCacheKey, KildaEntryDescriptor> createNewGroupCacheInstance() {
+        return new HashSetValuedHashMap<>();
     }
 }

@@ -105,7 +105,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
                     updatedRegions[pair.src.dpId] != updatedRegions[pair.dst.dpId]
         }
         def flow = flowHelperV2.randomFlow(swPair)
-        northboundV2.addFlow(flow)
+        flowHelperV2.attemptToAddFlow(flow)
         wait(WAIT_OFFSET * 2) { //FL may be a bit laggy right after comming up, so this may take a bit longer than usual
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }

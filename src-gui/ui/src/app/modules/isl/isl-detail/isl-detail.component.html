@@ -489,7 +489,7 @@
                         </select>
                       </div>
                     </div>
-                    <div class="row form-group clearfix" id="islMetric" *ngIf="f.graph.value !='latency'">
+                    <div class="row form-group clearfix" id="islMetric" *ngIf="!(f.graph.value =='latency' || f.graph.value =='rtt')">
                       <label class="col-xs-4 col-md-4 text-label">Metric:</label>
                       <div class="col-xs-8 col-md-8">
                         <select *ngIf="f.graph.value !='flow'" formControlName="metric" class="form-control"
