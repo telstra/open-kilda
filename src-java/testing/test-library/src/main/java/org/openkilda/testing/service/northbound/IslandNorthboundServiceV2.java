@@ -20,6 +20,8 @@ import static org.springframework.beans.factory.config.ConfigurableBeanFactory.S
 
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2;
+import org.openkilda.northbound.dto.v2.haflows.HaFlow;
+import org.openkilda.northbound.dto.v2.yflows.YFlow;
 import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch;
 
@@ -47,7 +49,20 @@ public class IslandNorthboundServiceV2 extends NorthboundServiceV2Impl {
     public List<FlowResponseV2> getAllFlows() {
         List<FlowResponseV2> result = super.getAllFlows();
         return result.stream().filter(flow -> switchIds.stream().anyMatch(swId ->
-                flow.getSource().getSwitchId().equals(swId) || flow.getDestination().getSwitchId().equals(swId)))
-                .collect(toList());
+                flow.getSource().getSwitchId().equals(swId))).collect(toList());
+    }
+
+    @Override
+    public List<YFlow> getAllYFlows() {
+        List<YFlow> result = super.getAllYFlows();
+        return result.stream().filter(flow -> switchIds.stream().anyMatch(swId ->
+                        flow.getSharedEndpoint().getSwitchId().equals(swId))).collect(toList());
+    }
+
+    @Override
+    public List<HaFlow> getAllHaFlows() {
+        List<HaFlow> result = super.getAllHaFlows();
+        return result.stream().filter(flow -> switchIds.stream().anyMatch(swId ->
+                flow.getSharedEndpoint().getSwitchId().equals(swId))).collect(toList());
     }
 }
