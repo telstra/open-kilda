@@ -34,13 +34,13 @@
             <span [contextMenu]="copySrcSwitchName">{{src_switch_name }}</span>
           </div>
         </div>
-        <div class='row' *ngIf="bfdPropertyData && bfdPropertyData.properties">
+        <div class='row' *ngIf="bfdPropertyData && bfdPropertyData.effective_source">
           <label class='col-sm-4 col-form-label'> Interval(ms):</label>
           <div class="col-sm-8 col-form-label">
             <span>{{bfdPropertyData.effective_source.properties['interval_ms']}}</span>
           </div>
         </div>
-        <div class='row' *ngIf="bfdPropertyData && bfdPropertyData.properties">
+        <div class='row' *ngIf="bfdPropertyData && bfdPropertyData.effective_source">
           <label class='col-sm-4 col-form-label'> Multiplier:</label>
           <div class="col-sm-8 col-form-label">
             <span>{{bfdPropertyData.effective_source.properties['multiplier']}}</span>
@@ -100,13 +100,13 @@
             <span [contextMenu]="copyTrgSwitchName">{{dst_switch_name}}</span>
           </div>
         </div>
-        <div class='row' *ngIf="bfdPropertyData && bfdPropertyData.properties">
+        <div class='row' *ngIf="bfdPropertyData && bfdPropertyData.effective_destination">
           <label class='col-sm-4 col-form-label'> Interval(ms):</label>
           <div class="col-sm-8 col-form-label">
             <span>{{bfdPropertyData.effective_destination.properties['interval_ms']}}</span>
           </div>
         </div>
-        <div class='row' *ngIf="bfdPropertyData && bfdPropertyData.properties">
+        <div class='row' *ngIf="bfdPropertyData && bfdPropertyData.effective_destination">
           <label class='col-sm-4 col-form-label'> Multiplier:</label>
           <div class="col-sm-8 col-form-label">
             <span>{{bfdPropertyData.effective_destination.properties['multiplier']}}</span>
@@ -209,9 +209,9 @@
                 <div class="update_isl_cost col-sm-6" id="isl_cost_update" [hidden]="!showDescriptionEditing">
                   <div class="row" style=" margin-bottom: 10px;">
                    <div class="col-lg-8">
-                    <textarea formControlName="description"  id="isl_description" 
+                    <textarea formControlName="description"  id="isl_description"
                     class="form-control"></textarea>
-              
+
                    </div>
                    <div class="mt-2">
                     <span style="margin-right: 5px; border: 1; padding: 7px 12px;" class="btn kilda_btn ml-1"
@@ -222,7 +222,7 @@
                    </div>
                   </div>
                 </div>
-              </div>            
+              </div>
             </div>
             <div class="col-sm-4">
               <div class='row isl_sbl_details' *ngIf="commonService.hasPermission('isl_update_maintenance')">
@@ -277,7 +277,7 @@
                 <label class='col-sm-6 col-form-label'>BFD Session Status:</label>
                 <p class='col-sm-6 isl_div_state'>{{bfd_session_status}}</p>
               </div>
-             
+
             </div>
           </div>
         </div>
@@ -299,7 +299,7 @@
                       <div class="row">
                         <label class='col-md-4 col-form-label'> Interval(ms):</label>
                         <div class="col-md-8 col-form-label">
-                          <span>{{bfdPropertyData.properties['interval_ms']}}</span>
+                          <span>{{bfdPropertyData?.properties?.['interval_ms']}}</span>
                         </div>
                       </div>
                     </div>
@@ -307,7 +307,7 @@
                       <div class="row">
                         <label class='col-md-4 col-form-label'> Multiplier:</label>
                         <div class="col-md-4 col-form-label">
-                          <span>{{bfdPropertyData.properties['multiplier']}}</span>
+                          <span>{{bfdPropertyData?.properties?.['multiplier']}}</span>
                         </div>
                         <div class="col-md-4 col-form-label">
                           <span>
@@ -336,7 +336,7 @@
                         <div class="row">
                           <label class='col-md-4 col-form-label'> Interval</label>
                           <div class="col-md-8 col-form-label">
-                            <input formControlName="interval_ms" value="{{bfdPropertyData.properties['interval_ms']}}"
+                            <input formControlName="interval_ms" value="{{bfdPropertyData?.properties?.['interval_ms']}}"
                               class="form-control" type="number" name="interval_ms" min="0">
                           </div>
                         </div>
@@ -345,7 +345,7 @@
                         <div class="row">
                           <label class='col-md-4 col-form-label'> Multiplier</label>
                           <div class="col-md-8 col-form-label">
-                            <input formControlName="multiplier" value="{{bfdPropertyData.properties['multiplier']}}"
+                            <input formControlName="multiplier" value="{{bfdPropertyData?.properties?.['multiplier']}}"
                               class="form-control" type="number" name="multiplier" min="0">
                           </div>
                         </div>

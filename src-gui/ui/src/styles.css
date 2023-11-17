@@ -168,12 +168,12 @@ h1 {
   padding: 30px 15px;
   font-family: "Telstra-Regular", Arial, Helvetica, sans-serif;
   font-size: 13px;
-  min-height: 500px; 
+  min-height: 500px;
   z-index: 1;
 }
 
 #switchdetails_div .tab-content {
-  min-height: 450; 
+  min-height: 450;
 }
 
 .tab-wrapper {
@@ -700,19 +700,19 @@ div.switch5 > input.switch:focus ~ label:before {
 }
 
 .onoffswitch-flow-ping {
-  right: 93px; 
+  right: 93px;
 }
 .onoffflow-ping {
  width: 120px;
 }
 .onoffswitch-switch-meter {
-   right: 82px; 
+   right: 82px;
 }
 .onoffswitch-meter {
   width: 110px;
 }
 .onoffswitch-switch-connected-devices {
-  right: 85px; 
+  right: 85px;
 }
 .onoffswitch-connected-devices {
  width: 110px;
@@ -1371,7 +1371,7 @@ path.link {
   stroke-width:2.5px;
 }
 .orange_percentage{
-    stroke-width: 5!important;	
+    stroke-width: 5!important;
   stroke:#FF8C00;
 }
 .diff_bandwidth {
@@ -1638,7 +1638,7 @@ tbody tr.maintenance_isl  td, tbody tr.maintenance_switch  td{
   font-size: 12px !important;
 }
 
-.ng-dygraphs .ng-dygraphs-chart-container {
+.app-custom-dygraphs .dygraphs-chart-container {
   padding-top: 24px;
   padding-bottom: 0;
   padding-left: 0;
@@ -1670,7 +1670,7 @@ tbody tr.maintenance_isl  td, tbody tr.maintenance_switch  td{
   cursor: pointer;
 }
 
-.ng-dygraphs .loader-holder {
+.app-custom-dygraphs .loader-holder {
   position: absolute;
   display: -ms-flexbox;
   display: -webkit-box;
@@ -1685,7 +1685,7 @@ tbody tr.maintenance_isl  td, tbody tr.maintenance_switch  td{
   opacity: 0.9;
 }
 
-.ng-dygraphs .loader {
+.app-custom-dygraphs .loader {
     border: 5px solid #f3f3f3 !important;
     border-top: 5px solid #3498db !important;
     border-radius: 50% !important;
@@ -1709,7 +1709,7 @@ table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTa
 }
 
 table.dataTable thead .sorting {
-  /* background-image: url('../images/sort_both.png'); 
+  /* background-image: url('../images/sort_both.png');
   background-image: url(assets/images/sort_both.png);*/
   background-image: url(assets/images/sort_both_white.png);
 }
@@ -1775,7 +1775,7 @@ table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTa
 
 .modal-header .close {padding: 0; margin: 0;}
 
-.control-label.required:after { 
+.control-label.required:after {
   color: #d00;
   content: "*";
   position: absolute;
@@ -1974,6 +1974,7 @@ label.btn.kilda_btn > span.copy_to_clipBoard {
 
 .modal.show {
   top: 0;
+  z-index: 1060;
 }
 
 .ng-select.ng-select-multiple .ng-select-container .ng-value-container .ng-value {
@@ -2405,7 +2406,7 @@ width:100%;
   color: rgb(27, 31, 38);
   font-size: 18px;
   text-align: center;
-  z-index: 3;  
+  z-index: 3;
   transition: all 0.5s ease;
 }
 
@@ -2422,7 +2423,7 @@ width:100%;
   display: inline-block;
   width: 100%;
   cursor: pointer;
-  z-index:1;  
+  z-index:1;
 }
 
 .sidebar-toggle:hover .icon-group .fa {
@@ -2578,7 +2579,7 @@ a.badge.badge-dark.custom-button {
 .islPath:hover {
   background: #00baff!important;
   height:4px!important;
- 
+
 }
 
 /** path css end ****/
@@ -2780,7 +2781,7 @@ table.network-path-tbl{
   -webkit-overflow-scrolling: touch;
   -ms-overflow-style: -ms-autohiding-scrollbar;
 }
-table.network-path-tbl thead { 
+table.network-path-tbl thead {
   background-color: #343a40;
   border-color: #343a40;
   color: #FFF;
@@ -3076,7 +3077,7 @@ left: calc(100% - 16px);
   left: 0;
   text-align:center;
   background: #FFF;
-} 
+}
 .my-custom-scrollbar {
   position: relative;
   height: 300px;
@@ -3088,8 +3089,8 @@ left: calc(100% - 16px);
   #popup-content .tableLinks table th{
     background: #CCC;
     width:10%;
-  } 
-  
+  }
+
   .islLink a:hover {
     color: #212529!important;
     text-decoration: none!important;

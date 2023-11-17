@@ -19,7 +19,8 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnC
     autoReloadTimerId = null;
     flowMetrics = [];
     packetMetrics = [];
-    getautoReloadValues = this.commonService.getAutoreloadValues();
+    metersDirection = [];
+    getautoReloadValues;
     filterForm: FormGroup;
 
     constructor(
@@ -29,7 +30,7 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnC
         private toaster: ToastrService,
         private commonService: CommonService
     ) {
-
+        this.getautoReloadValues = this.commonService.getAutoreloadValues();
     }
 
     ngOnChanges(change: SimpleChanges) {

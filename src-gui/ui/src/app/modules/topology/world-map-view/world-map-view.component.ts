@@ -323,16 +323,18 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
     initMap() {
         this.overlay = new Overlay({
             element: this.container,
-            autoPan: true,
-            autoPanAnimation: {
-                duration: 250,
+            autoPan: {
+                animation: {
+                    duration: 250
+                }
             },
         });
         this.popInfoOverlay = new Overlay({
             element: this.popinfocontainer,
-            autoPan: true,
-            autoPanAnimation: {
-                duration: 250,
+            autoPan: {
+                animation: {
+                  duration: 250
+                }
             },
         });
         this.map = new Map({
@@ -667,7 +669,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
             },
         });
         this.map.addLayer(vectorLayer);
-        vectorLayer.setZIndex(5, 10);
+        vectorLayer.setZIndex(5);
         setTimeout(() => {
             this.loadCLusterLinks();
         }, 500);
@@ -836,7 +838,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
                             }
                         });
                         this.map.addLayer(this.clusterLinkLayer);
-                        this.clusterLinkLayer.setZIndex(2, 10);
+                        this.clusterLinkLayer.setZIndex(2);
                     }, 100);
                 }
             }
@@ -938,7 +940,7 @@ export class WorldMapViewComponent implements OnInit, AfterViewInit, OnChanges, 
                 }
             });
             this.map.addLayer(this.linkLayer);
-            this.linkLayer.setZIndex(2, 10);
+            this.linkLayer.setZIndex(2);
         }, 100);
     }
 

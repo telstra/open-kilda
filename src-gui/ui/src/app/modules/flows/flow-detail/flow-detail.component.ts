@@ -173,24 +173,7 @@ export class FlowDetailComponent implements OnInit {
       this.getFlowHistory();
     }
   }
-
-  dragStart = () => {
-    if (!d3.event.active) { this.forceSimulation.alphaTarget(1).stop(); }
-  }
-
-  dragging = (d: any, i) => {
-    this.isDragMove = true;
-    d.py += d3.event.dy;
-    d.x += d3.event.dx;
-    d.y += d3.event.dy;
-    this.tick();
-  }
-
-  dragEnd = (d: any, i) => {
-    if (!d3.event.active) { this.forceSimulation.alphaTarget(0); }
-  }
-
-  horizontallyBound = (parentDiv, childDiv) => {
+    horizontallyBound = (parentDiv, childDiv) => {
     const parentRect: any = parentDiv.getBoundingClientRect();
     const childRect: any = childDiv.getBoundingClientRect();
     return (
@@ -285,7 +268,8 @@ export class FlowDetailComponent implements OnInit {
       }).attr('stroke-width', (d) => 2.5).attr('stroke', function(d, index) {
               return ISL.DISCOVERED;
       }).attr('cursor', 'pointer')
-      .on('mouseover', function(d, index) {
+      .on('mouseover', function(event, d) {
+          const index = d.index;
         const element = document.getElementById('link' + index);
         let classes = element.getAttribute('class');
         classes = classes + ' overlay';
@@ -321,7 +305,8 @@ export class FlowDetailComponent implements OnInit {
           });
 
          }
-      }).on('mouseout', function(d, index) {
+      }).on('mouseout', function(event, d) {
+        const index = d.index;
         const element = document.getElementById('link' + index);
         $('#link' + index).removeClass('overlay');
         $('#ping-hover-txt').css('display', 'none');
@@ -380,8 +365,8 @@ export class FlowDetailComponent implements OnInit {
                                 .attr('width', 58)
                                 .attr('id', function(d, index) {
                                   return 'image_' + index;
-                                }).attr('cursor', 'pointer').on('mouseover', function(d, index) {
-                                  const element = document.getElementById('circle_' + index);
+                                }).attr('cursor', 'pointer').on('mouseover', function(event, d) {
+                                  const element = document.getElementById('circle_' + d.index);
                                     const rec: any = element.getBoundingClientRect();
                                     $('#ping-hover-txt,#switch_hover').css('display', 'block');
                                     $('#ping-hover-txt').css('top', rec.y + 'px');
@@ -411,7 +396,7 @@ export class FlowDetailComponent implements OnInit {
                                       $('#ping-hover-txt').css('left', left + 'px');
                                       $('#ping-hover-txt').addClass('left');
                                     }
-                                }).on('mouseout', function(d, index) {
+                                }).on('mouseout', function(event, d) {
                                   $('#ping-hover-txt,#switch_hover').css('display', 'none');
                                 });
 

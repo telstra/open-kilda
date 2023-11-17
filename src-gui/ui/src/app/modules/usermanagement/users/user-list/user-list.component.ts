@@ -25,7 +25,7 @@ export class UserListComponent implements OnDestroy, OnInit, AfterViewInit {
 
   dtOptions: any = {};
   users: any;
-  dtTrigger: Subject<any> = new Subject();
+  dtTrigger: Subject<void> = new Subject();
   changeStatus: any;
   loggedInUserId: any;
   hide = false;

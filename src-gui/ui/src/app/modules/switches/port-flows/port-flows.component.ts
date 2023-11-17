@@ -18,7 +18,7 @@ export class PortFlowsComponent implements  OnDestroy, OnInit, OnChanges, AfterV
   @Input() data;
   @Input() textSearch: any;
   dtOptions: any = {};
-  dtTrigger: Subject<any> = new Subject();
+  dtTrigger: Subject<void> = new Subject();
   wrapperHide = false;
   srcSwitch: string;
   dstSwitch: string;

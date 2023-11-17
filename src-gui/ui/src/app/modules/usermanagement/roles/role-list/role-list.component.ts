@@ -22,7 +22,7 @@ export class RoleListComponent implements OnDestroy, OnInit, AfterViewInit {
   datatableElement: DataTableDirective;
   dtOptions: any = {};
   roleData: any;
-  dtTrigger: Subject<any> = new Subject();
+  dtTrigger: Subject<void> = new Subject();
   hide = false;
   loadCount = 0;
   expandedName = false;
