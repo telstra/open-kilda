@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute;
 
+import static org.openkilda.wfm.share.history.model.FlowEventData.Event.REROUTE;
+
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
@@ -42,6 +44,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.AllocatePrimaryReso
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.AllocateProtectedResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.CompleteFlowPathInstallationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.CompleteFlowPathRemovalAction;
+import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.CreateNewHistoryEventForRerouteAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.DeallocateResourcesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.EmitIngressRulesVerifyRequestsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.reroute.actions.EmitNonIngressRulesVerifyRequestsAction;
@@ -172,6 +175,12 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
             final ReportErrorAction<FlowRerouteFsm, State, Event, FlowRerouteContext>
                     reportErrorAction = new ReportErrorAction<>(Event.TIMEOUT);
+
+            builder.transition()
+                    .from(State.CREATE_NEW_HISTORY_EVENT)
+                    .to(State.INITIALIZED)
+                    .on(Event.NEXT)
+                    .perform(new CreateNewHistoryEventForRerouteAction<>(persistenceManager, REROUTE));
 
             builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
                     .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
@@ -424,8 +433,8 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
 
         public FlowRerouteFsm newInstance(@NonNull String flowId, @NonNull CommandContext commandContext,
                                           @NonNull Collection<FlowRerouteEventListener> eventListeners) {
-            FlowRerouteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
-                    eventListeners);
+            FlowRerouteFsm fsm = builder.newStateMachine(State.CREATE_NEW_HISTORY_EVENT, commandContext, carrier,
+                    flowId, eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("FlowRerouteFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
@@ -480,6 +489,7 @@ public final class FlowRerouteFsm extends FlowPathSwappingFsm<FlowRerouteFsm, St
     }
 
     public enum State {
+        CREATE_NEW_HISTORY_EVENT,
         INITIALIZED,
         FLOW_VALIDATED,
         PRIMARY_RESOURCES_ALLOCATED,

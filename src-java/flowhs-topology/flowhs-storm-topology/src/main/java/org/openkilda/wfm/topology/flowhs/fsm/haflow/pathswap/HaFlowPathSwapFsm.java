@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap;
 
+import static org.openkilda.wfm.share.history.model.HaFlowEventData.Event.PATH_SWAP;
+
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
@@ -22,6 +24,7 @@ import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowPathSwappingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.CreateNewHaFlowHistoryEventAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.HandleNotCompletedCommandsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.NotifyHaFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.OnReceivedInstallResponseAction;
@@ -93,6 +96,12 @@ public final class HaFlowPathSwapFsm extends HaFlowPathSwappingFsm<HaFlowPathSwa
                     Collection.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
+
+            builder.transition()
+                    .from(State.CREATE_NEW_HISTORY_EVENT)
+                    .to(State.INITIALIZED)
+                    .on(Event.NEXT)
+                    .perform(new CreateNewHaFlowHistoryEventAction<>(persistenceManager, PATH_SWAP));
 
             builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
                     .perform(new HaFlowValidateAction(persistenceManager, dashboardLogger));
@@ -189,8 +198,8 @@ public final class HaFlowPathSwapFsm extends HaFlowPathSwappingFsm<HaFlowPathSwa
         public HaFlowPathSwapFsm newInstance(
                 @NonNull CommandContext commandContext, @NonNull String haFlowId,
                 @NonNull Collection<FlowProcessingEventListener> eventListeners) {
-            HaFlowPathSwapFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, haFlowId,
-                    eventListeners);
+            HaFlowPathSwapFsm fsm = builder.newStateMachine(State.CREATE_NEW_HISTORY_EVENT, commandContext, carrier,
+                    haFlowId, eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("HaFlowPathSwapFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
@@ -215,6 +224,7 @@ public final class HaFlowPathSwapFsm extends HaFlowPathSwappingFsm<HaFlowPathSwa
     }
 
     public enum State {
+        CREATE_NEW_HISTORY_EVENT,
         INITIALIZED,
         FLOW_VALIDATED,
         FLOW_UPDATED,

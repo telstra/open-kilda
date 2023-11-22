@@ -25,7 +25,6 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
@@ -92,7 +91,7 @@ public class FlowValidateAction extends
             flow.getProtectedReversePath().setStatus(FlowPathStatus.IN_PROGRESS);
 
         });
-        stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.PATH_SWAP);
+        stateMachine.saveActionToHistory("Flow was validated successfully");
 
         return Optional.empty();
     }

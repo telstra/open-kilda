@@ -24,8 +24,10 @@ import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithSpeakerCommandsFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.CreateNewHistoryEventAction;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.FlowMirrorPointCreateFsm.State;
 import org.openkilda.wfm.topology.flowhs.fsm.mirrorpoint.create.actions.EmitRemoveRulesRequestsAction;
@@ -101,6 +103,13 @@ public final class FlowMirrorPointCreateFsm extends FlowProcessingWithSpeakerCom
                     String.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
+            builder.transition()
+                    .from(State.CREATE_NEW_HISTORY_EVENT)
+                    .to(State.INITIALIZED)
+                    .on(Event.NEXT)
+                    .perform(new CreateNewHistoryEventAction<>(persistenceManager,
+                            FlowEventData.Event.FLOW_MIRROR_POINT_CREATE));
+
 
             builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
                     .perform(new ValidateRequestAction(persistenceManager, dashboardLogger));
@@ -188,11 +197,12 @@ public final class FlowMirrorPointCreateFsm extends FlowProcessingWithSpeakerCom
         }
 
         public FlowMirrorPointCreateFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId) {
-            return builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId);
+            return builder.newStateMachine(State.CREATE_NEW_HISTORY_EVENT, commandContext, carrier, flowId);
         }
     }
 
     public enum State {
+        CREATE_NEW_HISTORY_EVENT,
         INITIALIZED,
         FLOW_VALIDATED,
         ALLOCATING_RESOURCES,

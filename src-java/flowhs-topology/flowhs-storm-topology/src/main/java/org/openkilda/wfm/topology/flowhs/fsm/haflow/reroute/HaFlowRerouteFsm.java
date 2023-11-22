@@ -51,6 +51,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions.AllocateProt
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions.BuildNewRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions.CompleteFlowPathInstallationAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions.CompleteFlowPathRemovalAction;
+import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions.CreateNewHaHistoryEventForRerouteAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions.InstallIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions.InstallNonIngressRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions.OnFinishedAction;
@@ -158,6 +159,12 @@ public final class HaFlowRerouteFsm extends HaFlowPathSwappingFsm<HaFlowRerouteF
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
             final ReportErrorAction<HaFlowRerouteFsm, State, Event, HaFlowRerouteContext>
                     reportErrorAction = new ReportErrorAction<>(Event.TIMEOUT);
+
+            builder.transition()
+                    .from(State.CREATE_NEW_HISTORY_EVENT)
+                    .to(State.INITIALIZED)
+                    .on(Event.NEXT)
+                    .perform(new CreateNewHaHistoryEventForRerouteAction<>(persistenceManager));
 
             builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
                     .perform(new ValidateHaFlowAction(persistenceManager, dashboardLogger));
@@ -379,8 +386,8 @@ public final class HaFlowRerouteFsm extends HaFlowPathSwappingFsm<HaFlowRerouteF
 
         public HaFlowRerouteFsm newInstance(@NonNull String flowId, @NonNull CommandContext commandContext,
                                             @NonNull Collection<FlowRerouteEventListener> eventListeners) {
-            HaFlowRerouteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
-                    eventListeners);
+            HaFlowRerouteFsm fsm = builder.newStateMachine(State.CREATE_NEW_HISTORY_EVENT, commandContext, carrier,
+                    flowId, eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("HaFlowRerouteFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
@@ -425,6 +432,7 @@ public final class HaFlowRerouteFsm extends HaFlowPathSwappingFsm<HaFlowRerouteF
     }
 
     public enum State {
+        CREATE_NEW_HISTORY_EVENT,
         INITIALIZED,
         FLOW_VALIDATED,
         PRIMARY_RESOURCES_ALLOCATED,
