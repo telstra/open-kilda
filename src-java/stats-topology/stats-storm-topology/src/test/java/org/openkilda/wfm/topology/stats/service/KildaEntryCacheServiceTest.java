@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.stats.service;
 import static java.util.Arrays.asList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
@@ -36,21 +37,29 @@ import org.openkilda.messaging.info.stats.MeterStatsEntry;
 import org.openkilda.messaging.info.stats.RemoveFlowPathInfo;
 import org.openkilda.messaging.info.stats.UpdateFlowPathInfo;
 import org.openkilda.model.Flow;
+import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowMirrorPoints;
 import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
+import org.openkilda.model.FlowStatus;
 import org.openkilda.model.GroupId;
+import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaFlowPath;
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.MeterId;
 import org.openkilda.model.MirrorDirection;
 import org.openkilda.model.MirrorGroup;
 import org.openkilda.model.MirrorGroupType;
+import org.openkilda.model.PathComputationStrategy;
+import org.openkilda.model.PathId;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
 import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.persistence.ferma.repositories.FermaModelUtils;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.HaFlowRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -63,6 +72,8 @@ import org.openkilda.wfm.topology.stats.model.CommonFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.EndpointFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.FlowStatsAndDescriptor;
 import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
+import org.openkilda.wfm.topology.stats.model.MeasurePoint;
+import org.openkilda.wfm.topology.stats.model.MeterCacheKey;
 import org.openkilda.wfm.topology.stats.model.MeterStatsAndDescriptor;
 import org.openkilda.wfm.topology.stats.model.StatVlanDescriptor;
 import org.openkilda.wfm.topology.stats.model.StatsAndDescriptor;
@@ -71,7 +82,9 @@ import org.openkilda.wfm.topology.stats.model.SwitchMeterStats;
 import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowSubDescriptor;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -83,6 +96,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @ExtendWith(MockitoExtension.class)
 public class KildaEntryCacheServiceTest {
@@ -873,6 +887,32 @@ public class KildaEntryCacheServiceTest {
         verify(yFlowRepository, times(2)).findAll();
     }
 
+    @Test
+    void whenHaFlowExist_activateService_populatesCache() {
+        service.clearCache();
+        HashSetValuedHashMap<MeterCacheKey, KildaEntryDescriptor> cache = service.getSwitchAndMeterToFlow();
+        assertTrue(cache.isEmpty());
+
+        try {
+            prepareHaFlowRepository();
+
+            service.deactivate();
+            service.activate();
+
+            List<String> measurePoints = service.getSwitchAndMeterToFlow().values().stream()
+                    .map(KildaEntryDescriptor::getMeasurePoint)
+                    .map(MeasurePoint::toString)
+                    .sorted()
+                    .collect(Collectors.toList());
+
+            assertEquals(2, measurePoints.size());
+            assertEquals("HA_FLOW_Y_POINT", measurePoints.get(0));
+            assertEquals("INGRESS", measurePoints.get(1));
+        } finally {
+            service.clearCache();
+        }
+    }
+
     private void assertCookieCache(
             List<FlowStatsAndDescriptor> statsEntries, FlowSegmentCookie cookie,
             KildaEntryDescriptor expectedDescriptor) {
@@ -963,5 +1003,55 @@ public class KildaEntryCacheServiceTest {
         return new MeterStatsData(DST_SWITCH_ID, asList(
                 new MeterStatsEntry(REVERSE_METER_ID, 0, 0),
                 new MeterStatsEntry(PROTECTED_REVERSE_METER_ID, 0, 0)));
+    }
+
+    private HaFlow createHaFlowWithDistinctYSwitch() {
+        Switch sharedSwitch = Switch.builder().switchId(new SwitchId(1)).build();
+        Switch yPointSwitch = Switch.builder().switchId(new SwitchId(2)).build();
+        Switch endpointSwitchA = Switch.builder().switchId(new SwitchId(3)).build();
+        Switch endpointSwitchB = Switch.builder().switchId(new SwitchId(4)).build();
+
+        HaFlow haFlow = FermaModelUtils.buildHaFlow("HA-flow ID", sharedSwitch, 1, 1, 1,
+                12, 13, 14, FlowEncapsulationType.VXLAN, 1, "description",
+                PathComputationStrategy.COST, FlowStatus.UP, false, false, false,
+                false, false);
+
+        HaSubFlow haSubFlow1 = FermaModelUtils.buildHaSubFlow("sub1", endpointSwitchA, 2, 2, 2, "");
+        HaSubFlow haSubFlow2 = FermaModelUtils.buildHaSubFlow("sub1", endpointSwitchB, 3, 3, 3, "");
+
+        haFlow.setHaSubFlows(Lists.newArrayList(haSubFlow1, haSubFlow2));
+
+        HaFlowPath forward = FermaModelUtils.buildHaFlowPath(new PathId("1"), 1, FlowSegmentCookie.builder()
+                        .direction(FlowPathDirection.FORWARD).build(),
+                new MeterId(12), new MeterId(13), sharedSwitch, sharedSwitch.getSwitchId(), GroupId.MIN_FLOW_GROUP_ID);
+        forward.setHaSubFlows(Lists.newArrayList(haSubFlow1, haSubFlow2));
+
+        FlowPath forwardPath = FermaModelUtils.buildPath(new PathId("1"), forward, sharedSwitch, endpointSwitchA);
+        forwardPath.setHaSubFlow(haSubFlow1);
+        forwardPath.setCookie(FORWARD_PATH_COOKIE);
+        forwardPath.setSegments(FermaModelUtils.buildSegments(new PathId("1"),
+                sharedSwitch, yPointSwitch, endpointSwitchA));
+        forward.setSubPaths(Collections.singletonList(forwardPath));
+        haFlow.setForwardPath(forward);
+
+        HaFlowPath reverse = FermaModelUtils.buildHaFlowPath(new PathId("2"), 1, FlowSegmentCookie.builder()
+                        .direction(FlowPathDirection.REVERSE).build(),
+                new MeterId(15), new MeterId(16), sharedSwitch, sharedSwitch.getSwitchId(), GroupId.MIN_FLOW_GROUP_ID);
+        reverse.setHaSubFlows(Lists.newArrayList(haSubFlow1, haSubFlow2));
+
+        FlowPath reversePath = FermaModelUtils.buildPath(new PathId("2"), reverse, sharedSwitch, endpointSwitchA);
+        reversePath.setCookie(REVERSE_PATH_COOKIE);
+        reversePath.setHaSubFlow(haSubFlow1);
+        reversePath.setSegments(FermaModelUtils.buildSegments(new PathId("2"),
+                endpointSwitchA, yPointSwitch, sharedSwitch));
+        reverse.setSubPaths(Collections.singletonList(reversePath));
+
+        haFlow.setReversePath(reverse);
+
+        return haFlow;
+    }
+
+    private void prepareHaFlowRepository() {
+        when(haFlowRepository.findAll()).thenReturn(Collections.singletonList(createHaFlowWithDistinctYSwitch()));
     }
 }
