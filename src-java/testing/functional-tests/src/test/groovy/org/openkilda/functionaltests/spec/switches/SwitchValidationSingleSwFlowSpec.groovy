@@ -54,6 +54,10 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
 
+    def setupSpec() {
+        deleteAnyFlowsLeftoversIssue5480()
+    }
+
     @Tags([TOPOLOGY_DEPENDENT, SMOKE])
     def "Switch validation is able to store correct information on a #switchType switch in the 'proper' section"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")

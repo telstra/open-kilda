@@ -76,6 +76,10 @@ class SwitchValidationV2Spec extends HealthCheckSpecification {
     @Shared
     String dockerHost
 
+    def setupSpec() {
+        deleteAnyFlowsLeftoversIssue5480()
+    }
+
     def "Able to validate and sync a terminating switch with proper rules and meters"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches.findAll { it.ofVersion != "OF_12" }

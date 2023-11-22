@@ -53,6 +53,10 @@ class MetersSpec extends HealthCheckSpecification {
     @Value('${burst.coefficient}')
     double burstCoefficient
 
+    def setupSpec() {
+        deleteAnyFlowsLeftoversIssue5480()
+    }
+
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Able to delete a meter from a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")

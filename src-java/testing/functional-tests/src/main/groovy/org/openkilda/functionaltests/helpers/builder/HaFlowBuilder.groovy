@@ -103,6 +103,6 @@ class HaFlowBuilder {
 
     private String generateFlowId() {
         return new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US).format(new Date()) + "_" +
-                faker.food().ingredient().toLowerCase().replaceAll(/\W/, "") + faker.number().digits(4)
+                faker.food().ingredient().toLowerCase().replaceAll(/\W/, "") + faker.number().digits(4) +  "_haflow"
     }
 }

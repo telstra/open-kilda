@@ -50,6 +50,8 @@ class YFlowHelper {
     NorthboundService northbound
     @Autowired
     PathHelper pathHelper
+    @Autowired
+    FlowHelperV2 flowHelperV2
 
     def random = new Random()
     def faker = new Faker()
@@ -81,6 +83,7 @@ class YFlowHelper {
             ep
         }
         return YFlowCreatePayload.builder()
+                .yFlowId(flowHelperV2.generateFlowId() + "_yflow")
                 .sharedEndpoint(se)
                 .subFlows(subFlows)
                 .maximumBandwidth(1000)
@@ -133,6 +136,7 @@ class YFlowHelper {
         }
 
         return YFlowCreatePayload.builder()
+                .yFlowId(flowHelperV2.generateFlowId() + "_yflow")
                 .sharedEndpoint(YFlowSharedEndpoint.builder().switchId(sw.dpId).portNumber(sePort).build())
                 .subFlows(subFlows)
                 .maximumBandwidth(1000)

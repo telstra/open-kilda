@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests
 
-
+import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 
 import org.openkilda.functionaltests.helpers.FlowHelper
@@ -10,6 +10,7 @@ import org.openkilda.functionaltests.helpers.PortAntiflapHelper
 import org.openkilda.functionaltests.helpers.StatsHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.TopologyHelper
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
@@ -59,6 +60,7 @@ class BaseSpecification extends Specification {
     SwitchHelper switchHelper
     @Autowired @Shared
     PortAntiflapHelper antiflap
+    //component overrides getting existing flows per topology lab(flow, y-flow, ha_flow)
     @Autowired @Shared @Qualifier("islandNbV2")
     NorthboundServiceV2 northboundV2
     @Autowired @Shared
@@ -117,5 +119,14 @@ class BaseSpecification extends Specification {
         def rules = northbound.validateSwitchRules(switchId)
         assert rules.excessRules.empty
         assert rules.missingRules.empty
+    }
+
+    // this cleanup section should be removed after fixing the issue https://github.com/telstra/open-kilda/issues/5480
+    void deleteAnyFlowsLeftoversIssue5480() {
+        Wrappers.benchmark("Deleting flows leftovers") {
+            withPool { northboundV2.getAllFlows().eachParallel { !it.YFlowId && northboundV2.deleteFlow(it.flowId) } }
+            withPool { northboundV2.getAllYFlows().eachParallel { northboundV2.deleteYFlow(it.YFlowId) } }
+            withPool { northboundV2.getAllHaFlows().eachParallel { northboundV2.deleteHaFlow(it.haFlowId) } }
+        }
     }
 }
