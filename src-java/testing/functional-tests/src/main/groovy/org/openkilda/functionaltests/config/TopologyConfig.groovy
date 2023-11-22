@@ -59,6 +59,7 @@ class TopologyConfig {
     @Scope("specThread")
     TopologyDefinition getTopologyDefinition(TopologyPool topologyPool) throws IOException {
         def topo = topologyPool.take()
+        log.info("Assigned topology: " + topo)
         topo.setParentPool(topologyPool)
         return topo
     }
