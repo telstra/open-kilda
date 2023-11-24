@@ -202,7 +202,7 @@ public class FlowSwapEndpointsFsm extends FlowProcessingWithHistorySupportFsm<Fl
         public FlowSwapEndpointsFsm newInstance(@NonNull CommandContext commandContext,
                                                 @NonNull RequestedFlow firstTargetFlow,
                                                 @NonNull RequestedFlow secondTargetFlow) {
-            return builder.newStateMachine(FlowSwapEndpointsFsm.State.CREATE_NEW_HISTORY_EVENT, commandContext, carrier,
+            return builder.newStateMachine(State.CREATE_NEW_HISTORY_EVENT, commandContext, carrier,
                     firstTargetFlow, secondTargetFlow);
         }
     }
