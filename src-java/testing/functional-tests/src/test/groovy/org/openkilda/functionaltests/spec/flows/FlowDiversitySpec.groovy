@@ -322,7 +322,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
     def "Able to get flow paths with correct overlapping segments stats (casual + single-switch flows)"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def switchPair = switchPairs.all().nonNeighbouring().random()
         and: "Create a casual flow going through these switches"
         def flow1 = flowHelperV2.randomFlow(switchPair, false)
         flowHelperV2.addFlow(flow1)

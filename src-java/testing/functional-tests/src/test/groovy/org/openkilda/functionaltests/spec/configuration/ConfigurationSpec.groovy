@@ -35,12 +35,13 @@ class ConfigurationSpec extends HealthCheckSpecification {
     @Shared
     FlowEncapsulationType defaultEncapsulationType = FlowEncapsulationType.TRANSIT_VLAN
 
+
     def "System takes into account default flow encapsulation type while creating a flow"() {
         when: "Create a flow without encapsulation type"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            [swP.src, swP.dst].every { sw -> switchHelper.isVxlanEnabled(sw.dpId) }
-        }
-        assumeTrue(switchPair != null, "Unable to find required switch pair in topology")
+        def switchPair = switchPairs.all()
+                .neighbouring()
+                .withBothSwitchesVxLanEnabled()
+                .random()
         def flow1 = flowHelperV2.randomFlow(switchPair)
         flow1.encapsulationType = null
         flowHelperV2.addFlow(flow1)

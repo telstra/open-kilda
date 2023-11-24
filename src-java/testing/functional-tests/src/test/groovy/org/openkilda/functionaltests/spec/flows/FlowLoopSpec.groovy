@@ -356,7 +356,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
     def "System is able to detect and sync missing flowLoop rules"() {
         given: "An active flow with created flowLoop on the src switch"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
         northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
@@ -627,7 +627,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Attempt to create the exact same flowLoop twice just reinstalls the rules"() {
         given: "An active multi switch flow with created flowLoop on the src switch"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
         northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
@@ -670,7 +670,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Unable to create flowLoop when a switch is deactivated"() {
         given: "An active flow"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
@@ -706,7 +706,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Unable to create flowLoop on the src switch when it is already created on the dst switch"() {
         given: "An active flow with created flowLoop on the src switch"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
         northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
@@ -726,7 +726,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Unable to create flowLoop on a transit switch"() {
         given: "An active multi switch flow with transit switch"
-        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def switchPair = switchPairs.all().nonNeighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
         def transitSwId = PathHelper.convert(northbound.getFlowPath(flow.flowId))[1].switchId
@@ -770,7 +770,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Unable to create flowLoop on a non existent switch"() {
         given: "An active multi switch flow"
-        def swP = topologyHelper.getNeighboringSwitchPair()
+        def swP = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.randomFlow(swP)
         flowHelperV2.addFlow(flow)
 

@@ -332,7 +332,7 @@ class FlowPingSpec extends HealthCheckSpecification {
 
     def "Able to turn on periodic pings on a flow"() {
         when: "Create a flow with periodic pings turned on"
-        def endpointSwitches = topologyHelper.notNeighboringSwitchPair
+        def endpointSwitches = switchPairs.all().nonNeighbouring().random()
         def flow = flowHelperV2.randomFlow(endpointSwitches).tap {
             it.periodicPings = true
         }

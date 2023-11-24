@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests
 
+import org.openkilda.functionaltests.helpers.model.SwitchPairs
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 
@@ -69,6 +71,8 @@ class BaseSpecification extends Specification {
     StatsHelper statsHelper
     @Autowired @Shared
     LabService labService
+    @Autowired @Shared
+    SwitchPairs switchPairs
 
     @Value('${spring.profiles.active}') @Shared
     String profile

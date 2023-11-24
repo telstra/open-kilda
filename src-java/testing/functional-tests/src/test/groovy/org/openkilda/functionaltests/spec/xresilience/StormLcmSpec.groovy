@@ -58,7 +58,7 @@ class StormLcmSpec extends HealthCheckSpecification {
         List<FlowRequestV2> flows = []
         def flowsAmount = topology.activeSwitches.size() * 3
         flowsAmount.times {
-            def flow = flowHelperV2.randomFlow(*topologyHelper.getRandomSwitchPair(false), false, flows)
+            def flow = flowHelperV2.randomFlow(switchPairs.all().random(), false, flows)
             flow.maximumBandwidth = 500000
             flowHelperV2.addFlow(flow)
             flows << flow

@@ -494,7 +494,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
 
     def "Error is returned if there is no available path to #data.isolatedSwitchType switch"() {
         given: "A switch that has no connection to other switches"
-        def isolatedSwitch = topologyHelper.notNeighboringSwitchPair.src
+        def isolatedSwitch = switchPairs.all().nonNeighbouring().random().src
         def flow = data.getFlow(isolatedSwitch)
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
             antiflap.portDown(isolatedSwitch.dpId, port)

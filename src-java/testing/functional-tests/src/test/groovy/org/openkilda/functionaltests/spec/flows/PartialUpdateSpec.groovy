@@ -237,7 +237,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     def "Able to do partial update on a single-switch flow"() {
         given: "A single-switch flow"
-        def swPair = topologyHelper.singleSwitchPair
+        def swPair = switchPairs.singleSwitch().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
