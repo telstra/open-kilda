@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.147.1 (27/11/2023)
+
+### Bug Fixes:
+-  [#5467](https://github.com/telstra/open-kilda/pull/5467) Fix KildaEntryCacheService cache init on the service activation.
+
+### Improvements:
+-  [#5477](https://github.com/telstra/open-kilda/pull/5477) [TEST]: Additional logs: Topology rebuild issue [**tests**]
+-  [#5478](https://github.com/telstra/open-kilda/pull/5478) [TEST]: Improvement: Flows(regular, y-, ha-) leftovers cleanup [**tests**]
+-  [#5482](https://github.com/telstra/open-kilda/pull/5482) [TEST] Debug enabled for flaky Flow Monitoring spec [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.147.0...v1.147.1).
+
+---
+
 ## v1.147.0 (21/11/2023)
 
 ### Bug Fixes:

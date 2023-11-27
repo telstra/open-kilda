@@ -15,6 +15,7 @@ import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
+import static org.openkilda.functionaltests.model.stats.Origin.FLOW_MONITORING
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -97,7 +98,7 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
         //wait for generating some flow-monitoring stats
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
-            flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD).hasNonZeroValues()
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
 
         def path = northbound.getFlowPath(flow.flowId)
@@ -160,7 +161,7 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         flowHelperV2.addFlow(flow)
         //wait for generating some flow-monitoring stats
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
-            flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE).hasNonZeroValues()
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, FLOW_MONITORING).hasNonZeroValues()
         }
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
 

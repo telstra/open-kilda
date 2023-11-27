@@ -31,6 +31,11 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import spock.lang.Unroll
 
 class DefaultRulesSpec extends HealthCheckSpecification {
+
+    def setupSpec() {
+        deleteAnyFlowsLeftoversIssue5480()
+    }
+
     @Unroll("Default rules are installed on #sw.hwSwString")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Default rules are installed on switches"() {
