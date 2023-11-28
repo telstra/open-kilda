@@ -160,7 +160,7 @@ export class PortGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       getPortGraphData(
         this.port_src_switch,
         this.portDataObject.port_number,
-        '', '', downsampling,
+        downsampling,
         metric,
         convertedStartDate,
         convertedEndDate).subscribe((data: VictoriaStatsRes) => {
