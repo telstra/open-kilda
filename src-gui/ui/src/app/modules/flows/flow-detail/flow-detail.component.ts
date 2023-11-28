@@ -749,9 +749,9 @@ export class FlowDetailComponent implements OnInit {
     }
   }
 
-  isSubflowForYFlow(flowDetail): boolean {
-      return typeof flowDetail.y_flow_id === 'string' && flowDetail.y_flow_id !== '';
-  }
+    isSubflowForYFlow(flowDetail: { y_flow_id: string; }): boolean {
+        return flowDetail.y_flow_id !== undefined && typeof flowDetail.y_flow_id === 'string' && flowDetail.y_flow_id !== '';
+    }
 
   processRerouteResult( data: any) {
       this.loaderService.hide();
