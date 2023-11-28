@@ -3,6 +3,8 @@ package org.openkilda.functionaltests.helpers
 import groovy.transform.InheritConstructors
 import groovy.util.logging.Slf4j
 
+import static java.lang.System.currentTimeMillis
+
 @Slf4j
 class Wrappers {
 
@@ -67,8 +69,8 @@ class Wrappers {
      * @param closure code to repeat in a loop
      */
     static void timedLoop(double timeout, Closure closure) {
-        long endTime = System.currentTimeMillis() + (long) (timeout * 1000)
-        while (System.currentTimeMillis() < endTime) {
+        long endTime = currentTimeMillis() + (long) (timeout * 1000)
+        while (currentTimeMillis() < endTime) {
             closure.call()
         }
     }
@@ -84,13 +86,16 @@ class Wrappers {
      * @return True if wait was successful, throws WaitTimeoutException otherwise
      */
     static boolean wait(double timeout, double retryInterval = 0.5, Closure closure) {
-        long endTime = System.currentTimeMillis() + (long) (timeout * 1000)
+        long endTime = currentTimeMillis() + (long) (timeout * 1000)
         long sleepTime = (long) (retryInterval * 1000)
         Throwable thrown = null
-        while (System.currentTimeMillis() < endTime) {
+        while (currentTimeMillis() < endTime) {
             try {
                 def result = closure.call()
                 if (result || result == null) {
+                    log.debug("Closure: ${closure.toString()}\n" +
+                            "Took ${(currentTimeMillis() - (endTime - (long) (timeout * 1000))) * 1000} seconds\n" +
+                            "Limit was ${timeout} seconds")
                     return true
                 } else {
                     thrown = null
@@ -112,12 +117,12 @@ class Wrappers {
      * @return result of the given closure
      */
     static def benchmark(name, closure) {
-        def start = System.currentTimeMillis()
+        def start = currentTimeMillis()
         def result
         try {
             result = closure.call()
         } finally {
-            def now = System.currentTimeMillis()
+            def now = currentTimeMillis()
             log.debug("$name took " + (now - start) + "ms")
         }
         return result

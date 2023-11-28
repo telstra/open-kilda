@@ -50,6 +50,8 @@ class YFlowHelper {
     NorthboundService northbound
     @Autowired
     PathHelper pathHelper
+    @Autowired
+    FlowHelperV2 flowHelperV2
 
     def random = new Random()
     def faker = new Faker()
@@ -71,7 +73,7 @@ class YFlowHelper {
                 .portNumber(randomEndpointPort(sharedSwitch, useTraffgenPorts, busyEndpoints))
                 .build()
         def subFlows = [firstSwitch, secondSwitch].collect {sw ->
-            def seVlan = randomVlan()
+            def seVlan = randomVlan(busyEndpoints*.vlan)
             busyEndpoints << new SwitchPortVlan(se.switchId, se.portNumber, seVlan)
             def ep = SubFlowUpdatePayload.builder()
                     .sharedEndpoint(YFlowSharedEndpointEncapsulation.builder().vlanId(seVlan).build())
@@ -81,6 +83,7 @@ class YFlowHelper {
             ep
         }
         return YFlowCreatePayload.builder()
+                .yFlowId(flowHelperV2.generateFlowId() + "_yflow")
                 .sharedEndpoint(se)
                 .subFlows(subFlows)
                 .maximumBandwidth(1000)
@@ -114,11 +117,11 @@ class YFlowHelper {
 
         def subFlows = (0..1).collect {
             def payload = Wrappers.retry(3, 0) {
-                def seVlan = randomVlan()
+                def seVlan = randomVlan(busyEndpoints*.vlan)
                 if (busyEndpoints.contains(new SwitchPortVlan(sw.dpId, sePort, seVlan))) {
                     throw new Exception("Generated sub-flow conflicts with existing endpoints.")
                 }
-                def epVlan = randomVlan();
+                def epVlan = randomVlan(busyEndpoints*.vlan);
                 if (busyEndpoints.contains(new SwitchPortVlan(sw.dpId, epPort, epVlan))) {
                     throw new Exception("Generated sub-flow conflicts with existing endpoints.")
                 }
@@ -133,6 +136,7 @@ class YFlowHelper {
         }
 
         return YFlowCreatePayload.builder()
+                .yFlowId(flowHelperV2.generateFlowId() + "_yflow")
                 .sharedEndpoint(YFlowSharedEndpoint.builder().switchId(sw.dpId).portNumber(sePort).build())
                 .subFlows(subFlows)
                 .maximumBandwidth(1000)
@@ -260,7 +264,7 @@ class YFlowHelper {
      */
     private FlowEndpointV2 randomEndpoint(Switch sw, boolean useTraffgenPorts = true, List<SwitchPortVlan> busyEps) {
         return new FlowEndpointV2(
-                sw.dpId, randomEndpointPort(sw, useTraffgenPorts, busyEps), randomVlan(),
+                sw.dpId, randomEndpointPort(sw, useTraffgenPorts, busyEps), randomVlan(busyEps*.vlan),
                 new DetectConnectedDevicesV2(false, false))
     }
 
@@ -287,8 +291,8 @@ class YFlowHelper {
         return port
     }
 
-    private int randomVlan() {
-        return KILDA_ALLOWED_VLANS.shuffled().first()
+    private int randomVlan(List<Integer> busyVlans = []) {
+        return (KILDA_ALLOWED_VLANS - busyVlans).shuffled().first()
     }
 
     private String generateDescription() {

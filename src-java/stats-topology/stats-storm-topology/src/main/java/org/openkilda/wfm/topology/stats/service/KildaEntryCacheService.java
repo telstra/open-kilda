@@ -71,6 +71,7 @@ import org.openkilda.wfm.topology.stats.model.SwitchMeterStats;
 import org.openkilda.wfm.topology.stats.model.YFlowDescriptor;
 import org.openkilda.wfm.topology.stats.model.YFlowSubDescriptor;
 
+import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.collections4.multimap.HashSetValuedHashMap;
@@ -95,12 +96,11 @@ public class KildaEntryCacheService {
     /**
      * Cookie to flow and meter to flow maps.
      */
-    private final HashSetValuedHashMap<CookieCacheKey, KildaEntryDescriptor> cookieToFlow =
-            new HashSetValuedHashMap<>();
-    private final HashSetValuedHashMap<MeterCacheKey, KildaEntryDescriptor> switchAndMeterToFlow =
-            new HashSetValuedHashMap<>();
-    private final HashSetValuedHashMap<GroupCacheKey, KildaEntryDescriptor> switchAndGroupToFlow =
-            new HashSetValuedHashMap<>();
+    private HashSetValuedHashMap<CookieCacheKey, KildaEntryDescriptor> cookieToFlow = createNewCookieCacheInstance();
+    private HashSetValuedHashMap<MeterCacheKey, KildaEntryDescriptor> switchAndMeterToFlow =
+            createNewMeterCacheInstance();
+    private HashSetValuedHashMap<GroupCacheKey, KildaEntryDescriptor> switchAndGroupToFlow =
+            createNewGroupCacheInstance();
 
     public KildaEntryCacheService(PersistenceManager persistenceManager, KildaEntryCacheCarrier carrier) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
@@ -109,6 +109,11 @@ public class KildaEntryCacheService {
         this.haFlowRepository = repositoryFactory.createHaFlowRepository();
         this.carrier = carrier;
         this.active = false;
+    }
+
+    @VisibleForTesting
+    HashSetValuedHashMap<MeterCacheKey, KildaEntryDescriptor> getSwitchAndMeterToFlow() {
+        return new HashSetValuedHashMap<>(switchAndMeterToFlow);
     }
 
     /**
@@ -371,7 +376,7 @@ public class KildaEntryCacheService {
                 cacheHandler, subPath.getHaFlowId(),
                 FlowPathMapper.INSTANCE.mapToPathNodes(subPath.getHaFlowPath().getHaFlow(), subPath),
                 subPath.getCookie(),
-                subPath.getMeterId(),
+                subPath.isForward() ? haPath.getSharedPointMeterId() : subPath.getMeterId(),
                 subPath.getCookie().getDirection() == FlowPathDirection.FORWARD
                         ? subPath.getHaFlowPath().getYPointGroupId() : null,
                 subPath.getCookie().getDirection() == FlowPathDirection.REVERSE
@@ -435,14 +440,14 @@ public class KildaEntryCacheService {
      * @param cookie         the FlowSegmentCookie associated with the flow
      * @param meterId        the MeterId associated with the flow
      * @param path           the list of PathNodePayload representing the flow path
-     * @param ypointGroupId  the GroupId associated with the y-point switch
+     * @param yPointGroupId  the GroupId associated with the y-point switch
      * @param yPointMeterId  the MeterId associated with the y-point switch
      * @param haSubFlowId    the ID of the HA subflow
      * @param yPointSwitchId the SwitchId of the y-point switch
      */
     private void processHaCookies(
             KildaEntryDescriptorHandler cacheHandler, String haFlowId,
-            FlowSegmentCookie cookie, MeterId meterId, List<PathNodePayload> path, GroupId ypointGroupId,
+            FlowSegmentCookie cookie, MeterId meterId, List<PathNodePayload> path, GroupId yPointGroupId,
             MeterId yPointMeterId, String haSubFlowId, SwitchId yPointSwitchId) {
 
         List<SwitchId> switchIds = path.stream().map(PathNodePayload::getSwitchId).collect(Collectors.toList());
@@ -462,7 +467,7 @@ public class KildaEntryCacheService {
             //y-point
             if (sw.equals(yPointSwitchId)) {
                 cacheHandler.handle(newHaFlowDescriptor(sw, HA_FLOW_Y_POINT, haFlowId, modifiedCookie, null,
-                        ypointGroupId, yPointMeterId, resolveHaSubFlowIdForYPoint(cookie, haSubFlowId)));
+                        yPointGroupId, yPointMeterId, resolveHaSubFlowIdForYPoint(cookie, haSubFlowId)));
             } else if (i > 0 && i < path.size() - 1) {
                 // do not send meter into a transit
                 cacheHandler.handle(newCommonHaFlowDescriptor(sw, TRANSIT, haFlowId, modifiedCookie,
@@ -547,9 +552,34 @@ public class KildaEntryCacheService {
                 cookieToFlow, switchAndMeterToFlow, switchAndGroupToFlow);
     }
 
-    private void clearCache() {
-        cookieToFlow.clear();
-        switchAndMeterToFlow.clear();
-        switchAndGroupToFlow.clear();
+    @VisibleForTesting
+    void clearCache() {
+        cookieToFlow = createNewCookieCacheInstance();
+        switchAndMeterToFlow = createNewMeterCacheInstance();
+        switchAndGroupToFlow = createNewGroupCacheInstance();
+    }
+
+    /**
+     * Instead of map.clear() we are creating a new map here.
+     * We need it because map.clear() doesn't shrink already allocated map capacity, size of which can be significant.
+     */
+    private static HashSetValuedHashMap<CookieCacheKey, KildaEntryDescriptor> createNewCookieCacheInstance() {
+        return new HashSetValuedHashMap<>();
+    }
+
+    /**
+     * Instead of map.clear() we are creating a new map here.
+     * We need it because map.clear() doesn't shrink already allocated map capacity, size of which can be significant.
+     */
+    private static HashSetValuedHashMap<MeterCacheKey, KildaEntryDescriptor>  createNewMeterCacheInstance() {
+        return new HashSetValuedHashMap<>();
+    }
+
+    /**
+     * Instead of map.clear() we are creating a new map here.
+     * We need it because map.clear() doesn't shrink already allocated map capacity, size of which can be significant.
+     */
+    private static HashSetValuedHashMap<GroupCacheKey, KildaEntryDescriptor> createNewGroupCacheInstance() {
+        return new HashSetValuedHashMap<>();
     }
 }

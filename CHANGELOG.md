@@ -1,6 +1,34 @@
 # Changelog
 
-## v1.146.1 (08/11/2023)
+## v1.147.1 (27/11/2023)
+
+### Bug Fixes:
+-  [#5467](https://github.com/telstra/open-kilda/pull/5467) Fix KildaEntryCacheService cache init on the service activation.
+
+### Improvements:
+-  [#5477](https://github.com/telstra/open-kilda/pull/5477) [TEST]: Additional logs: Topology rebuild issue [**tests**]
+-  [#5478](https://github.com/telstra/open-kilda/pull/5478) [TEST]: Improvement: Flows(regular, y-, ha-) leftovers cleanup [**tests**]
+-  [#5482](https://github.com/telstra/open-kilda/pull/5482) [TEST] Debug enabled for flaky Flow Monitoring spec [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.147.0...v1.147.1).
+
+---
+
+## v1.147.0 (21/11/2023)
+
+### Bug Fixes:
+-  [#5468](https://github.com/telstra/open-kilda/pull/5468) GUI, Flow-detail page. Change checkbox switch from default opentsdb to victoriaDb [**gui**]
+
+### Improvements:
+-  [#5473](https://github.com/telstra/open-kilda/pull/5473) Use new instance of cache map instead of cleaning
+-  [#5469](https://github.com/telstra/open-kilda/pull/5469) [TEST] A unit test for generating a DOT-file representation of an FSM [**tests**]
+-  [#5471](https://github.com/telstra/open-kilda/pull/5471) [TEST]: Improvement: Flow Stats: Flaky test [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.146.1...v1.147.0).
+
+---
+
+## v1.146.1 (09/11/2023)
 
 ### Bug Fixes:
 -  [#5465](https://github.com/telstra/open-kilda/pull/5465) Fix a bug when a misconfigured rule with incorrect cookie is not re-installed.

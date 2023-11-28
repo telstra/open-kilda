@@ -101,7 +101,7 @@ class HaFlowHelper {
             ep
         }
         return HaFlowCreatePayload.builder()
-                .haFlowId(flowHelperV2.generateFlowId())
+                .haFlowId(flowHelperV2.generateFlowId() + "_haflow")
                 .sharedEndpoint(se)
                 .subFlows(subFlows)
                 .maximumBandwidth(1000)
@@ -150,6 +150,7 @@ class HaFlowHelper {
         }
 
         return HaFlowCreatePayload.builder()
+                .haFlowId(flowHelperV2.generateFlowId() + "_haflow")
                 .sharedEndpoint(HaFlowSharedEndpoint.builder().switchId(sw.dpId).portNumber(sePort).vlanId(seVlan).build())
                 .subFlows(subFlows)
                 .maximumBandwidth(1000)

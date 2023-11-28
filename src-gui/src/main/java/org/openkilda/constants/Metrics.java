@@ -26,8 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 @Getter
@@ -261,17 +259,4 @@ public enum Metrics {
         return Arrays.stream(values()).map(metric -> metric.getMetricName(prefix)).collect(Collectors.toList());
     }
 
-    /**
-     * Tags.
-     *
-     * @return the sets the
-     */
-    public static Set<String> tags() {
-        Set<String> tags = new TreeSet<>();
-        for (Metrics metric : values()) {
-            String[] v = metric.getTag().split("_");
-            tags.add(v[1]);
-        }
-        return tags;
-    }
 }

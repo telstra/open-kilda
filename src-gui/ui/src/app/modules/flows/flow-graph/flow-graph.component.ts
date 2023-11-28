@@ -15,11 +15,10 @@ declare var moment: any;
 export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnChanges {
     @Input()
     flowId;
-
+    directionItems: string[] = ['Forward', 'Reverse'];
     autoReloadTimerId = null;
     flowMetrics = [];
     packetMetrics = [];
-    metersDirection = [];
     getautoReloadValues = this.commonService.getAutoreloadValues();
     filterForm: FormGroup;
 
@@ -51,15 +50,12 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnC
             graph: ['flow'],
             metric: ['packets'],
             direction: ['forward'],
-            meterdirection: ['both'],
             auto_reload: [''],
             auto_reload_time: ['', Validators.compose([Validators.pattern('[0-9]*')])],
-            victoriaSource: [true]
         });
 
         this.flowMetrics = this.dygraphService.getFlowMetricData();
         this.packetMetrics = this.dygraphService.getPacketsMetricData();
-        this.metersDirection = this.dygraphService.getMetricDirections();
     }
 
     getDateRange(): any {
@@ -140,15 +136,23 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnC
         this.loadGraphData();
     }
 
+    setDirectionLabels(formdata) {
+        if (formdata.graph === 'flow' || formdata.graph === 'flowmeter') {
+            this.directionItems = ['Forward', 'Reverse'];
+        } else {
+            const label = this.packetMetrics.find(element => element.value === this.filterForm.value.direction).label;
+            this.directionItems = [label, label];
+        }
+    }
+
     loadGraphData() {
         const formdata = this.filterForm.value;
-        console.log('loadGraphData() called, isVictoriaSource:' + formdata.victoriaSource);
+        this.setDirectionLabels(formdata);
         const flowid = this.flowId;
         const autoReloadTime = Number(
             this.filterForm.controls['auto_reload_time'].value
         );
 
-        const direction = (formdata.graph == 'flowmeter') ? formdata.meterdirection : formdata.direction;
         const downsampling = formdata.download_sample;
         const metric = formdata.metric;
         const timezone = formdata.timezone;
@@ -189,7 +193,7 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnC
                 endDate: endDate,
                 timezone: timezone
             });
-            const statsDbName = formdata.victoriaSource ? 'Victoria DB' : 'OpenTSDB';
+            const statsDbName = 'Victoria DB';
             const errorMsg = res && res.error && res.error.message ? res.error.message
                 : `Something went wrong while accessing ${statsDbName}`;
             this.toaster.error(errorMsg, 'Error');
@@ -210,71 +214,39 @@ export class FlowGraphComponent implements OnInit, AfterViewInit, OnDestroy, OnC
                 endDate: endDate,
                 timezone: timezone
             });
-            const statsDbName = formdata.victoriaSource ? 'Victoria DB' : 'OpenTSDB';
+            const statsDbName = 'Victoria DB';
             const errorMsg = error && error.message ? error.message : `Something went wrong while accessing ${statsDbName}`;
             this.toaster.error(errorMsg, 'Error');
         };
 
         if (formdata.graph == 'flow') {
-            if (formdata.victoriaSource) {
-                this.statsService.getFlowGraphVictoriaData(
-                    'flow',
-                    flowid,
-                    convertedStartDate,
-                    convertedEndDate,
-                    downsampling,
-                    [metric])
-                    .subscribe(handleSuccessForFlow, handleErrorForFlow);
-            } else {
-                this.statsService.getFlowGraphData(flowid, convertedStartDate, convertedEndDate, downsampling, metric)
-                    .subscribe(handleSuccessForFlow, handleErrorForFlow);
-            }
+            this.statsService.getFlowGraphVictoriaData(
+                'flow',
+                flowid,
+                convertedStartDate,
+                convertedEndDate,
+                downsampling,
+                [metric])
+                .subscribe(handleSuccessForFlow, handleErrorForFlow);
         } else if (formdata.graph == 'flowmeter') {
-            if (formdata.victoriaSource) {
-                this.statsService.getFlowGraphVictoriaData(
-                    'meter',
-                    flowid,
-                    convertedStartDate,
-                    convertedEndDate,
-                    downsampling,
-                    [metric])
-                    .subscribe(res => {
-                        console.log(res);
-                    });
-            } else {
-                this.statsService
-                    .getMeterGraphData(
-                        flowid,
-                        convertedStartDate,
-                        convertedEndDate,
-                        downsampling,
-                        metric,
-                        direction
-                    )
-                    .subscribe(handleSuccessMeter, handleErrorMeter);
-            }
+            this.statsService.getFlowGraphVictoriaData(
+                'meter',
+                flowid,
+                convertedStartDate,
+                convertedEndDate,
+                downsampling,
+                [metric])
+                .subscribe(handleSuccessMeter, handleErrorMeter);
         } else { // packet loss
-            if (formdata.victoriaSource) {
-                this.statsService.getFlowGraphVictoriaData(
-                    'flow',
-                    flowid,
-                    convertedStartDate,
-                    convertedEndDate,
-                    downsampling,
-                    [metric, 'ingress_packets'],
-                    direction)
-                    .subscribe(handleSuccessForFlow, handleErrorForFlow);
-            } else {
-                this.statsService
-                    .getFlowPacketGraphData(
-                        flowid,
-                        convertedStartDate,
-                        convertedEndDate,
-                        downsampling,
-                        direction
-                    )
-                    .subscribe(handleSuccessForFlow, handleErrorForFlow);
-            }
+            this.statsService.getFlowGraphVictoriaData(
+                'flow',
+                flowid,
+                convertedStartDate,
+                convertedEndDate,
+                downsampling,
+                [metric, 'ingress_packets'],
+                formdata.direction)
+                .subscribe(handleSuccessForFlow, handleErrorForFlow);
         }
     }
 

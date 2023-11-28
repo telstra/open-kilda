@@ -30,9 +30,8 @@ spring.mvc.throw-exception-if-no-handler-found=true
 #Northbound Base URL
 nb.base.url=http://northbound.pendev:8080/api
 
-#OPEN TSDB Base URL
-opentsdb.base.url=http://opentsdb.pendev:4242
-opentsdb.metric.prefix = kilda.
+#Metric prefix
+metric.prefix = kilda.
 
 #VICTORIA METRICS Base URL
 victoria.base.url=http://victoriametrics.pendev:8428/prometheus

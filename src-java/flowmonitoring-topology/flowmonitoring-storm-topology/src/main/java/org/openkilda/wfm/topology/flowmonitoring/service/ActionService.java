@@ -66,7 +66,7 @@ public class ActionService implements FlowSlaMonitoringCarrier {
     private final int shardCount;
 
     @VisibleForTesting
-    protected Map<FsmKey, FlowLatencyMonitoringFsm> fsms = new HashMap<>();
+    protected Map<FsmKey, FlowLatencyMonitoringFsm> fsms = createNewFsmMapInstance();
 
     public ActionService(FlowOperationsCarrier carrier, PersistenceManager persistenceManager,
                          Clock clock, Duration timeout, float threshold, int shardCount) {
@@ -181,7 +181,7 @@ public class ActionService implements FlowSlaMonitoringCarrier {
      * Remove all current fsms.
      */
     public void purge() {
-        fsms.clear();
+        fsms = createNewFsmMapInstance();
     }
 
     @Override
@@ -242,5 +242,13 @@ public class ActionService implements FlowSlaMonitoringCarrier {
     private static class FsmKey {
         String flowId;
         FlowDirection direction;
+    }
+
+    /**
+     * Instead of map.clear() we are creating a new map here.
+     * We need it because map.clear() doesn't shrink already allocated map capacity, size of which can be significant.
+     */
+    private static Map<FsmKey, FlowLatencyMonitoringFsm> createNewFsmMapInstance() {
+        return new HashMap<>();
     }
 }
