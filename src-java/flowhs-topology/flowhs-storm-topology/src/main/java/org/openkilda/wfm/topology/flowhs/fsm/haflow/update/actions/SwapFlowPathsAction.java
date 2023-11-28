@@ -156,8 +156,6 @@ public class SwapFlowPathsAction extends
                 .withAction("HA-flow was updated with new paths")
                 .withDescription(format("The HA-flow %s has been updated with paths %s / %s",
                         haFlow.getHaFlowId(), forwardPathId, reversePathId))
-                .withHaFlowId(stateMachine.getHaFlowId())
-                .withHaFlowDumpAfter(haFlow));
+                .withHaFlowId(stateMachine.getHaFlowId()));
     }
-
 }
