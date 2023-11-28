@@ -47,7 +47,7 @@ changeSet:
 To start DB update manually you need to compose a migration image and execute a migration script. Optionally, you
 can execute liquibase with arbitrary parameters.
 
-To create an image, navigate to (TODO) 
+To create an image, navigate to the root of the OpenKilda project and execute:
 ```shell script
 docker-compose build db_mysql_migration
 ```
