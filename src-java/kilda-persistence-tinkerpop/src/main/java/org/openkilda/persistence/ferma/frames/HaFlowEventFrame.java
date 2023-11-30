@@ -90,7 +90,8 @@ public abstract class HaFlowEventFrame extends KildaBaseVertexFrame implements H
                         .hasLabel(HaFlowEventActionFrame.FRAME_LABEL)
                         .has(HaFlowEventActionFrame.TASK_ID_PROPERTY, getTaskId()))
                 .toListExplicit(HaFlowEventActionFrame.class).stream()
-                .sorted(Comparator.comparing(HaFlowEventActionFrame::getTimestamp))
+                .sorted(Comparator.comparing(HaFlowEventActionFrame::getTimestamp)
+                        .thenComparing(x -> x.getId()))
                 .map(HaFlowEventAction::new)
                 .collect(Collectors.toList());
     }
