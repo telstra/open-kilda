@@ -140,10 +140,12 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
         }
 
-        and: "Flow is pingable"
-        verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
-            forward.pingSuccess
-            reverse.pingSuccess
+        and: "Flow is pingable (though sometimes we have to wait)"
+        Wrappers.wait(WAIT_OFFSET) {
+            verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
+                forward.pingSuccess
+                reverse.pingSuccess
+            }
         }
 
         and: "Rules are recreated"
