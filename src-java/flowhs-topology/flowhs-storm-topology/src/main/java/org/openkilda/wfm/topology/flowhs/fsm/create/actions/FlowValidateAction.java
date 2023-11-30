@@ -21,7 +21,6 @@ import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
@@ -79,12 +78,8 @@ public class FlowValidateAction extends
 
         stateMachine.setTargetFlow(request);
 
-        if (event != Event.RETRY) {
-            stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.CREATE);
-        } else {
-            // no need to save a new event into DB, it should already exist there.
-            stateMachine.saveActionToHistory("Flow was validated successfully");
-        }
+        stateMachine.saveActionToHistory("Flow was validated successfully",
+                event == Event.RETRY ? "Retrying the operation" : null);
 
         return Optional.empty();
     }

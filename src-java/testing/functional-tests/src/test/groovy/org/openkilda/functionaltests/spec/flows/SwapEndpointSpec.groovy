@@ -52,7 +52,7 @@ class SwapEndpointSpec extends HealthCheckSpecification {
         given: "Some flows in the system according to preconditions"
         flows.each { flowHelper.addFlow(it) }
 
-        when: "Try to swap endpoints with #data.descirption"
+        when: "Try to swap endpoints with #data.description"
         def response = northbound.swapFlowEndpoint(firstSwap, secondSwap)
 
         then: "Endpoints are successfully swapped"

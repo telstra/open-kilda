@@ -25,7 +25,6 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsContext;
@@ -92,12 +91,10 @@ public class ValidateFlowsAction
             return;
         }
 
-        stateMachine.saveNewEventToHistory(stateMachine.getFirstFlowId(),
-                format("Current flow and flow %s were validated successfully", stateMachine.getSecondFlowId()),
-                FlowEventData.Event.SWAP_ENDPOINTS);
-        stateMachine.saveNewEventToHistory(stateMachine.getSecondFlowId(),
-                format("Current flow and flow %s were validated successfully", stateMachine.getFirstFlowId()),
-                FlowEventData.Event.SWAP_ENDPOINTS);
+        stateMachine.saveActionToHistory(stateMachine.getFirstFlowId(),
+                format("Current flow and flow %s were validated successfully", stateMachine.getSecondFlowId()));
+        stateMachine.saveActionToHistory(stateMachine.getSecondFlowId(),
+                format("Current flow and flow %s were validated successfully", stateMachine.getFirstFlowId()));
 
         stateMachine.fireNext();
     }

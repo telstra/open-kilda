@@ -58,10 +58,6 @@ public class HaFlowSyncSetupAction extends
     protected void transaction(HaFlowSyncFsm stateMachine) {
         HaFlow haFlow = getHaFlow(stateMachine.getHaFlowId());
         dashboardLogger.onHaFlowSync(haFlow.getHaFlowId());
-        // TODO save history https://github.com/telstra/open-kilda/issues/5169
-        // stateMachine.saveNewEventToHistory(
-        //         "Started HA-flow paths sync", FlowEventData.Event.SYNC, FlowEventData.Initiator.NB,
-        //         "Performing HA-flow paths sync operation on NB request");
 
         haFlowValidator.validateHaFlowStatusIsNotInProgress(haFlow);
         haFlow.setStatus(FlowStatus.IN_PROGRESS);

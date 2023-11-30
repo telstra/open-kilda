@@ -21,9 +21,11 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.YFlowProcessingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.CreateNewHistoryEventAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.RevertYFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.delete.YFlowDeleteFsm.State;
@@ -127,6 +129,13 @@ public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, Sta
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
 
             builder.transition()
+                    .from(State.CREATE_NEW_HISTORY_EVENT)
+                    .to(State.INITIALIZED)
+                    .on(Event.NEXT)
+                    .perform(new CreateNewHistoryEventAction<>(persistenceManager, FlowEventData.Event.DELETE));
+
+
+            builder.transition()
                     .from(State.INITIALIZED)
                     .to(State.YFLOW_VALIDATED)
                     .on(Event.NEXT)
@@ -219,8 +228,8 @@ public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, Sta
 
         public YFlowDeleteFsm newInstance(@NonNull CommandContext commandContext, @NonNull String yFlowId,
                                           @NonNull Collection<YFlowEventListener> eventListeners) {
-            YFlowDeleteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, yFlowId,
-                    eventListeners);
+            YFlowDeleteFsm fsm = builder.newStateMachine(State.CREATE_NEW_HISTORY_EVENT, commandContext, carrier,
+                    yFlowId, eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("YFlowDeleteFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
@@ -245,6 +254,7 @@ public final class YFlowDeleteFsm extends YFlowProcessingFsm<YFlowDeleteFsm, Sta
     }
 
     public enum State {
+        CREATE_NEW_HISTORY_EVENT,
         INITIALIZED,
         YFLOW_VALIDATED,
         YFLOW_DELETE_STARTED,

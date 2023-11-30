@@ -27,10 +27,12 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.YFlowProcessingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.AllocateYFlowResourcesAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.CreateNewHistoryEventAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.RevertYFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.yflow.reroute.YFlowRerouteFsm.State;
@@ -171,6 +173,12 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
                     Collection.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
+
+            builder.transition()
+                    .from(State.CREATE_NEW_HISTORY_EVENT)
+                    .to(State.INITIALIZED)
+                    .on(Event.NEXT)
+                    .perform(new CreateNewHistoryEventAction<>(persistenceManager, FlowEventData.Event.REROUTE));
 
             builder.transition()
                     .from(State.INITIALIZED)
@@ -353,8 +361,8 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
 
         public YFlowRerouteFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId,
                                            @NonNull Collection<YFlowEventListener> eventListeners) {
-            YFlowRerouteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
-                    eventListeners);
+            YFlowRerouteFsm fsm = builder.newStateMachine(State.CREATE_NEW_HISTORY_EVENT, commandContext, carrier,
+                    flowId, eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("YFlowRerouteFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
@@ -379,6 +387,7 @@ public final class YFlowRerouteFsm extends YFlowProcessingFsm<YFlowRerouteFsm, S
     }
 
     public enum State {
+        CREATE_NEW_HISTORY_EVENT,
         INITIALIZED,
         YFLOW_VALIDATED,
         YFLOW_REROUTE_STARTED,

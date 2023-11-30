@@ -28,6 +28,7 @@ import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.FlowSwapEndpointsFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.actions.CreateNewHistoryEventForSwapEndpointsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.actions.OnFinishedAction;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.actions.OnFinishedWithErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.swapendpoints.actions.OnReceivedUpdateResponseAction;
@@ -151,6 +152,12 @@ public class FlowSwapEndpointsFsm extends FlowProcessingWithHistorySupportFsm<Fl
                     FlowSwapEndpointsContext.class, CommandContext.class, FlowSwapEndpointsHubCarrier.class,
                     RequestedFlow.class, RequestedFlow.class);
 
+            builder.transition()
+                    .from(State.CREATE_NEW_HISTORY_EVENT)
+                    .to(State.INITIALIZED)
+                    .on(Event.NEXT)
+                    .perform(new CreateNewHistoryEventForSwapEndpointsAction(persistenceManager));
+
             builder.transition().from(State.INITIALIZED).to(State.FLOWS_VALIDATED).on(Event.NEXT)
                     .perform(new ValidateFlowsAction(persistenceManager));
             builder.transition().from(State.INITIALIZED).to(State.FINISHED_WITH_ERROR).on(Event.TIMEOUT);
@@ -195,12 +202,13 @@ public class FlowSwapEndpointsFsm extends FlowProcessingWithHistorySupportFsm<Fl
         public FlowSwapEndpointsFsm newInstance(@NonNull CommandContext commandContext,
                                                 @NonNull RequestedFlow firstTargetFlow,
                                                 @NonNull RequestedFlow secondTargetFlow) {
-            return builder.newStateMachine(FlowSwapEndpointsFsm.State.INITIALIZED, commandContext, carrier,
+            return builder.newStateMachine(State.CREATE_NEW_HISTORY_EVENT, commandContext, carrier,
                     firstTargetFlow, secondTargetFlow);
         }
     }
 
     public enum State {
+        CREATE_NEW_HISTORY_EVENT,
         INITIALIZED,
         FLOWS_VALIDATED,
         SEND_UPDATE_REQUESTS,

@@ -31,7 +31,6 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowMirrorPathRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.wfm.CommandContext;
-import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
@@ -103,8 +102,7 @@ public class ValidateRequestAction extends
                     .build();
         });
 
-        stateMachine.saveNewEventToHistory("Flow was validated successfully",
-                FlowEventData.Event.FLOW_MIRROR_POINT_DELETE);
+        stateMachine.saveActionToHistory("Flow was validated successfully");
 
         CommandContext commandContext = stateMachine.getCommandContext();
         return Optional.of(new InfoMessage(response, commandContext.getCreateTime(),

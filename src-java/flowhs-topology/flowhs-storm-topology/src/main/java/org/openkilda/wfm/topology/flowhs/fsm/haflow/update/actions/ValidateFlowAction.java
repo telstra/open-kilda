@@ -28,7 +28,6 @@ import org.openkilda.model.HaSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.share.history.model.HaFlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
@@ -118,7 +117,7 @@ public class ValidateFlowAction extends
 
         stateMachine.saveOldPathIds(stateMachine.getOriginalHaFlow());
 
-        saveNewHistoryEventWithDump(stateMachine, haFlow);
+        saveHistoryActionWithDump(stateMachine, haFlow);
 
         return Optional.empty();
     }
@@ -136,17 +135,8 @@ public class ValidateFlowAction extends
         stateMachine.notifyEventListenersOnError(errorType, stateMachine.getErrorReason());
     }
 
-    private void saveNewHistoryEventWithDump(HaFlowUpdateFsm stateMachine, HaFlow haFlow) {
-        FlowHistoryService flowHistoryService = FlowHistoryService.using(stateMachine.getCarrier());
-
-        flowHistoryService.saveNewHaFlowEvent(HaFlowEventData.builder()
-                .action("HA-flow has been validated successfully")
-                .event(HaFlowEventData.Event.UPDATE)
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .haFlowId(stateMachine.getHaFlowId())
-                .build());
-
-        flowHistoryService.save(HaFlowHistory
+    private void saveHistoryActionWithDump(HaFlowUpdateFsm stateMachine, HaFlow haFlow) {
+        FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
                 .of(stateMachine.getCommandContext().getCorrelationId())
                 .withHaFlowId(haFlow.getHaFlowId())
                 .withAction("HA-flow has been validated successfully")

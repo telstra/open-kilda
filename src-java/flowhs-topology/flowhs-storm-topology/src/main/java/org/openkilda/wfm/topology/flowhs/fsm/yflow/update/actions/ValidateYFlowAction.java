@@ -31,7 +31,6 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.YFlowRepository;
-import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
@@ -138,7 +137,7 @@ public class ValidateYFlowAction extends
 
         stateMachine.setTargetFlow(targetFlow);
 
-        stateMachine.saveNewEventToHistory("Y-flow was validated successfully", FlowEventData.Event.UPDATE);
+        stateMachine.saveActionToHistory("Y-flow was validated successfully");
 
         return Optional.empty();
     }

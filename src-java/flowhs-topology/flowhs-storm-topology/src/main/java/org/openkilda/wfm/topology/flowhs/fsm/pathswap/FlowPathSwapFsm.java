@@ -22,9 +22,11 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowPathSwappingFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.CreateNewHistoryEventAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.pathswap.FlowPathSwapFsm.Event;
@@ -122,6 +124,12 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
                     Collection.class);
 
             FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
+
+            builder.transition()
+                    .from(State.CREATE_NEW_HISTORY_EVENT)
+                    .to(State.INITIALIZED)
+                    .on(Event.NEXT)
+                    .perform(new CreateNewHistoryEventAction<>(persistenceManager, FlowEventData.Event.PATH_SWAP));
 
             builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
                     .perform(new FlowValidateAction(persistenceManager, dashboardLogger));
@@ -229,8 +237,8 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
 
         public FlowPathSwapFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId,
                                            @NonNull Collection<FlowProcessingEventListener> eventListeners) {
-            FlowPathSwapFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
-                    eventListeners);
+            FlowPathSwapFsm fsm = builder.newStateMachine(State.CREATE_NEW_HISTORY_EVENT, commandContext, carrier,
+                    flowId, eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("FlowPathSwapFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
@@ -271,6 +279,7 @@ public final class FlowPathSwapFsm extends FlowPathSwappingFsm<FlowPathSwapFsm, 
     }
 
     public enum State {
+        CREATE_NEW_HISTORY_EVENT,
         INITIALIZED,
         FLOW_VALIDATED,
         FLOW_UPDATED,
