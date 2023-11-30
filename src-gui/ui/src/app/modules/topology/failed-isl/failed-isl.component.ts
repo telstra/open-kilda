@@ -13,7 +13,7 @@ export class FailedIslComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(DataTableDirective, { static: true })
   datatableElement: DataTableDirective;
   dtOptions: any = {};
-  dtTrigger: Subject<any> = new Subject();
+  dtTrigger: Subject<void> = new Subject();
   failedISL: any;
 
 

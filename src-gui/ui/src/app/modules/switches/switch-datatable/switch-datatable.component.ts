@@ -24,7 +24,7 @@ export class SwitchDatatableComponent implements OnInit, OnChanges, OnDestroy, A
   @Input() switchFilterFlag: string;
   @Input() textSearch: any;
   dtOptions: any = {};
-  dtTrigger: Subject<any> = new Subject();
+  dtTrigger: Subject<void> = new Subject();
   wrapperHide = false;
   hasStoreSetting = false;
   flowSubscription: Subscription[] = [];

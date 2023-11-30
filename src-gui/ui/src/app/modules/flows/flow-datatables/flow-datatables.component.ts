@@ -5,7 +5,7 @@ import { Subject } from 'rxjs';
 import { Flow } from 'src/app/common/data-models/flow';
 import { Router } from '@angular/router';
 import { CommonService } from 'src/app/common/services/common.service';
-import { FormBuilder, FormGroup } from '@angular/forms';
+import { FormBuilder } from '@angular/forms';
 import { ClipboardService } from 'ngx-clipboard';
 import { FlowReRouteModalComponent } from 'src/app/common/components/flow-re-route-modal/flow-re-route-modal.component';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
@@ -35,7 +35,7 @@ export class FlowDatatablesComponent implements OnInit, AfterViewInit, OnChanges
   reRouteList: any = [];
   checkedFlow = [];
   selectAll = false;
-  dtTrigger: Subject<any> = new Subject();
+  dtTrigger: Subject<void> = new Subject();
 
   wrapperHide = true;
   expandedSrcSwitchName = false;

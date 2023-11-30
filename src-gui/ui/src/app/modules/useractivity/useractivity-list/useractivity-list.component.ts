@@ -13,7 +13,7 @@ export class UseractivityListComponent implements OnInit, OnChanges {
   @Input() data = [];
   dtOptions = {};
   wrapperHide = true;
-  dtTrigger: Subject<any> = new Subject();
+  dtTrigger: Subject<void> = new Subject();
   expandedActivityTime = false;
   expandedClientIpAddress = false;
   expandedUserId = false;

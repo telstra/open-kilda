@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { FormGroup, FormControl, Validators } from '@angular/forms';
-import { Select2Data } from 'ng-select2-component/lib/select2-utils';
 import { TabService } from '../../../../common/services/tab.service';
 import { PermissionService } from '../../../../common/services/permission.service';
 import { Title } from '@angular/platform-browser';
+import {Select2Data} from 'ng-select2-component';
 
 @Component({
   selector: 'app-permission-view',

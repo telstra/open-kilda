@@ -1,13 +1,13 @@
 import { Component, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { FormGroup, FormControl, Validators } from '@angular/forms';
-import { Select2Data } from 'ng-select2-component/lib/select2-utils';
 import { TabService } from '../../../../common/services/tab.service';
 import { PermissionService } from '../../../../common/services/permission.service';
 import { ToastrService } from 'ngx-toastr';
 import { Title } from '@angular/platform-browser';
 import { LoaderService } from '../../../../common/services/loader.service';
 import { MessageObj } from 'src/app/common/constants/constants';
+import {Select2Data} from 'ng-select2-component';
 
 @Component({
   selector: 'app-permission-edit',
@@ -54,8 +54,8 @@ export class PermissionEditComponent implements OnInit {
   */
   private createAssignForm() {
     this.permissionEditForm = new FormGroup({
-      name: new FormControl({value: ''}, Validators.required),
-      description: new FormControl({value: ''})
+      name: new FormControl({value: '', disabled: false}, Validators.required),
+      description: new FormControl({value: '', disabled: false})
     });
   }
 

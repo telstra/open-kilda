@@ -26,7 +26,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
     @Input() loadinterval = false;
     isLoaderActive = false;
     dtOptions: any = {};
-    dtTrigger: Subject<any> = new Subject();
+    dtTrigger: Subject<void> = new Subject();
 
     currentActivatedRoute: string;
     switch_id: string;

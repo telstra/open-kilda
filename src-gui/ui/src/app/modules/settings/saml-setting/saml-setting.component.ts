@@ -3,7 +3,6 @@ import { SamlSettingService } from 'src/app/common/services/saml-setting.service
 import { LoaderService } from 'src/app/common/services/loader.service';
 import {MessageObj} from '../../../common/constants/constants';
 import { ToastrService } from 'ngx-toastr';
-import { DataTableDirective } from 'angular-datatables';
 import { Subject } from 'rxjs';
 import { ModalconfirmationComponent } from '../../../common/components/modalconfirmation/modalconfirmation.component';
 import { ModalComponent } from '../../../common/components/modal/modal.component';

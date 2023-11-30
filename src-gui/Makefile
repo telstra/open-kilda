@@ -8,8 +8,8 @@ build/libs/${APP}.war: .deps/node .deps/resources
 	./gradlew build
 
 .deps/node: | .deps
-	docker run --rm -e LOCAL_UID=`id -u $(USER)` -e LOCAL_GID=`id -g $(USER)` -v $(CURDIR)/src:/app/src -v $(CURDIR)/ui:/app/ui node:14.17-alpine \
-		sh -c 'cd /app/ui && npm install && /app/ui/node_modules/.bin/ng build --prod && chown -R $$LOCAL_UID:$$LOCAL_GID /app'
+	docker run --rm -e LOCAL_UID=`id -u $(USER)` -e LOCAL_GID=`id -g $(USER)` -v $(CURDIR)/src:/app/src -v $(CURDIR)/ui:/app/ui node:18.18.2-alpine \
+		sh -c 'cd /app/ui && npm install && /app/ui/node_modules/.bin/ng build --configuration production && chown -R $$LOCAL_UID:$$LOCAL_GID /app'
 
 .deps/resources: .deps
 	mkdir -p src/main/webapp/lib/css/
