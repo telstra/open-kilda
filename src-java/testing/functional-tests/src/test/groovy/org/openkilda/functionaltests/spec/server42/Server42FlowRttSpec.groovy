@@ -18,6 +18,7 @@ import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_C
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.SERVER42_STATS_LAG
 import static org.openkilda.testing.Constants.STATS_FROM_SERVER42_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -341,8 +342,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         when: "Disable flow rtt on dst switch"
         changeFlowRttSwitch(switchPair.dst, false)
-        sleep(1000)
-        checkpointTime = new Date().getTime()
+        Wrappers.wait(RULES_INSTALLATION_TIME, 3) {
+            northboundV2.validateSwitch(switchPair.dst.dpId).isAsExpected()
+        }
+        checkpointTime = new Date().getTime() + SERVER42_STATS_LAG * 1000
 
         then: "Stats are available in forward direction"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
