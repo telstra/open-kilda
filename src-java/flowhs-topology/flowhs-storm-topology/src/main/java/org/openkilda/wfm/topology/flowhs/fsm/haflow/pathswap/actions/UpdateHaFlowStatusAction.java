@@ -65,10 +65,20 @@ public class UpdateHaFlowStatusAction extends
                 haFlow.setStatus(flowStatus);
                 haFlow.recalculateHaSubFlowStatuses();
             }
+
+            saveDumpToHistory(stateMachine, haFlow);
             return flowStatus;
         });
 
         saveActionToHistory(stateMachine, resultStatus);
+    }
+
+    private void saveDumpToHistory(HaFlowPathSwapFsm stateMachine, HaFlow haFlow) {
+        FlowHistoryService.using(stateMachine.getCarrier()).save(
+                HaFlowHistory.of(stateMachine.getCommandContext().getCorrelationId())
+                        .withAction("Save a dump AFTER")
+                        .withHaFlowDumpAfter(haFlow)
+                        .withHaFlowId(stateMachine.getHaFlowId()));
     }
 
     private void saveActionToHistory(HaFlowPathSwapFsm stateMachine, FlowStatus resultStatus) {
