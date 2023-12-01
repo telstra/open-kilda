@@ -77,6 +77,7 @@ public class CompleteFlowPathRemovalAction extends
                 updateIslsForFlowPath(removedPaths.getReverse());
             }
             if (removedPaths != null) {
+                // TODO this saves a dump with paths' status IN_PROGRESS and state BEFORE which is confusing for users
                 saveRemovalActionWithDumpToHistory(stateMachine, originalFlow, removedPaths);
             }
         }
