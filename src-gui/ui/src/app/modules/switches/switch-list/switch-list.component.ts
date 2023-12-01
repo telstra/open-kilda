@@ -6,7 +6,6 @@ import {
   ViewChild,
   Renderer2
 } from '@angular/core';
-import { DataTableDirective } from 'angular-datatables';
 import { SwitchService } from '../../../common/services/switch.service';
 import { ToastrService } from 'ngx-toastr';
 import { Subject } from 'rxjs';

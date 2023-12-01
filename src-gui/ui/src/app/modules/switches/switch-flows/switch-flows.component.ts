@@ -28,7 +28,7 @@ export class SwitchFlowsComponent implements OnDestroy, OnInit, OnChanges, After
   pingFlowIndex = {};
   pingFlowList: any = [];
   selectedFlowList: any = [];
-  dtTrigger: Subject<any> = new Subject();
+  dtTrigger: Subject<void> = new Subject();
   wrapperHide = true;
 
   srcSwitch: string;

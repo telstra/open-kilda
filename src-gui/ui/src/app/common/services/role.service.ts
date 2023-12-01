@@ -12,7 +12,7 @@ import { BehaviorSubject } from 'rxjs';
   export class RoleService {
 
     configUrl: string;
-    public subject = new Subject<any>();
+    public subject = new Subject<void>();
     private roleSource = new BehaviorSubject(null);
     currentRole = this.roleSource.asObservable();
 
@@ -58,9 +58,4 @@ import { BehaviorSubject } from 'rxjs';
     selectedRole(userId: number) {
         this.roleSource.next(userId);
     }
-
-    clearSelectedRole() {
-        this.subject.next();
-    }
-
-  }
+}

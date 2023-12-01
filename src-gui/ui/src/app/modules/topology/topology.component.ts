@@ -1,11 +1,8 @@
 import {
   Component,
   OnInit,
-  ViewChild,
   AfterViewInit,
   HostListener,
-  ElementRef,
-  ViewContainerRef,
   Renderer2,
   OnDestroy
 } from '@angular/core';
@@ -15,7 +12,6 @@ import { UserService } from '../../common/services/user.service';
 import { ISL } from '../../common/enums/isl.enum';
 import { CommonService } from '../../common/services/common.service';
 import * as d3 from 'd3';
-import { NgbTypeahead } from '@ng-bootstrap/ng-bootstrap';
 import { TopologyView } from '../../common/data-models/topology-view';
 import { FlowsService } from '../../common/services/flows.service';
 import { Observable } from 'rxjs';
@@ -24,7 +20,6 @@ import { environment } from '../../../environments/environment';
 import { LoaderService } from '../../common/services/loader.service';
 import { ToastrService } from 'ngx-toastr';
 import { Title } from '@angular/platform-browser';
-import { scaleBand } from 'd3';
 import { Router } from '@angular/router';
 declare var jQuery: any;
 import { MessageObj } from 'src/app/common/constants/constants';
@@ -229,21 +224,21 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       .zoom()
       .scaleExtent([this.scaleLimit, this.max_zoom])
       .extent([[0, 0], [this.width, this.height]])
-      .on('zoom', () => {
+      .on('zoom', (event) => {
         // this.forceSimulation.stop();
         this.g.attr(
           'transform',
           'translate(' +
-            d3.event.transform.x +
+            event.transform.x +
             ',' +
-            d3.event.transform.y +
+            event.transform.y +
             ') scale(' +
-            d3.event.transform.k +
+            event.transform.k +
             ')'
         );
-        this.zoomLevel = Math.round(d3.event.transform.k * 100) / 100;
-        this.translateX = d3.event.transform.x;
-        this.translateY = d3.event.transform.y;
+        this.zoomLevel = Math.round(event.transform.k * 100) / 100;
+        this.translateX = event.transform.x;
+        this.translateY = event.transform.y;
         this.isDragMove = true;
         $('#topology-hover-txt, #switch_hover').css('display', 'none');
         $('#topology-click-txt').css('display', 'none');
@@ -527,7 +522,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         return 'image_' + index;
       })
       .attr('cursor', 'pointer')
-      .on('mouseover', function(d, index) {
+      .on('mouseover', function(event, d) {
         $('#isl_hover').css('display', 'none');
 
         const element = document.getElementById('circle_' + d.switch_id);
@@ -574,7 +569,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
       })
-      .on('mouseout', function(d, index) {
+      .on('mouseout', function(event, d) {
         if (this.flagHover == false) {
           this.flagHover = true;
         } else {
@@ -592,7 +587,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         }
 
       })
-      .on('click', function(d, index) {
+      .on('click', function(event, d) {
         $('#topology-hover-txt').css('display', 'none');
 
         const cName = document.getElementById('circle_' + d.switch_id).className;
@@ -698,7 +693,8 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
       .attr('id', (d, index) => {
         return 'link' + index;
       })
-      .on('mouseover', function(d, index) {
+      .on('mouseover', function(event, d) {
+        const index = d.index;
         $('#switch_hover').css('display', 'none');
         const element = $('#link' + index)[0];
         const availbandwidth = d.available_bandwidth;
@@ -866,9 +862,9 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
           );
         }
       })
-      .on('mouseout', function(d, index) {
+      .on('mouseout', function(event, d) {
         $('#topology-hover-txt, #isl_hover').css('display', 'none');
-        const element = $('#link' + index)[0];
+        const element = $('#link' + d.index)[0];
         const availbandwidth = d.available_bandwidth;
         const max_bandwidth = d.max_bandwidth;
         const percentage = ref.commonService.getPercentage(availbandwidth, max_bandwidth);
@@ -925,8 +921,8 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
           $('#topology-hover-txt, #isl_hover').css('display', 'none');
         }
       })
-      .on('click', function(d, index) {
-        const element = $('#link' + index)[0];
+      .on('click', function(event, d) {
+        const element = $('#link' + d.index)[0];
         const availbandwidth = d.available_bandwidth;
         const max_bandwidth = d.max_bandwidth;
         const percentage = ref.commonService.getPercentage(availbandwidth, max_bandwidth);
@@ -1058,7 +1054,8 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
           return r;
         }
       })
-      .on('mouseover', function(d, index) {
+      .on('mouseover', function(event, d) {
+        const index = d.index;
         const element = $('#link' + index)[0];
         const availbandwidth = d.available_bandwidth;
         let classes = '';
@@ -1075,8 +1072,8 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         element.setAttribute('class', classes);
       })
-      .on('mouseout', function(d, index) {
-        const element = $('#link' + index)[0];
+      .on('mouseout', function(event, d) {
+        const element = $('#link' + d.index)[0];
         const availbandwidth = d.available_bandwidth;
         let classes = '';
         const max_bandwidth = d.max_bandwidth;
@@ -1095,7 +1092,7 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         element.setAttribute('class', classes);
       })
-      .on('click', function(d, index) {
+      .on('click', function(event, d) {
         ref.showFlowDetails(d);
       })
       .attr('class', 'linecircle')
@@ -1908,24 +1905,24 @@ export class TopologyComponent implements OnInit, AfterViewInit, OnDestroy {
     this.syncUserCoordinatesChanges();
   }
 
-  dragStart = () => {
-    if (!d3.event.active) { this.forceSimulation.alphaTarget(1).stop(); }
+  dragStart = (event, d) => {
+    if (!event.active) { this.forceSimulation.alphaTarget(1).stop(); }
     jQuery('#topology-hover-txt').hide();
     jQuery('#topology-click-txt').hide();
   }
 
-  dragging = (d: any, i) => {
+  dragging = (event, d) => {
     jQuery('#topology-hover-txt').hide();
     jQuery('#topology-click-txt').hide();
     this.isDragMove = true;
-    d.py += d3.event.dy;
-    d.x += d3.event.dx;
-    d.y += d3.event.dy;
+    d.py += event.dy;
+    d.x += event.dx;
+    d.y += event.dy;
     this.tick();
   }
 
-  dragEnd = (d: any, i) => {
-    if (!d3.event.active) { this.forceSimulation.alphaTarget(0); }
+  dragEnd = (event, d) => {
+    if (!event.active) { this.forceSimulation.alphaTarget(0); }
     this.flagHover = false;
     d.fixed = true; // of course set the node to fixed so the force doesn't include the node in its auto positioning stuff
     this.tick();

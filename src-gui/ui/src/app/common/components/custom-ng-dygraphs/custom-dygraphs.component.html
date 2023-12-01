@@ -1,0 +1,19 @@
+<div class="app-custom-dygraphs">
+    <div *ngIf="loadingInProgress" class="loader-holder">
+        <div class="loader"></div>
+    </div>
+    <div *ngIf="customVisibility" class="name-nodes-holder">
+        <div class="checkbox" *ngFor="let lineLabel of labels;let i = index;">
+            <label id="status_column">
+                <input type="checkbox" attr.id="{{i}}" checked="true" (change)="changeVisibility($event)"/>
+                {{lineLabel}}
+             </label>
+        </div>
+    </div>
+    <div class="dygraphs-chart-container">
+        <div [ngClass]="{'hide': !data?.length}" #chart [style.width.px]="chartWidth" [style.height.px]="chartHeight"></div>
+        <div *ngIf="!data?.length" class="nodata" [style.width.px]="chartWidth" [style.height.px]="chartHeight">
+          {{noDataLabel}}
+        </div>
+    </div>
+</div>

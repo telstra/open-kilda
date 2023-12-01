@@ -5,7 +5,7 @@ import { LoaderService } from 'src/app/common/services/loader.service';
 import { FlowsService } from 'src/app/common/services/flows.service';
 import { ToastrService } from 'ngx-toastr';
 import { FlowReRouteModalComponent } from 'src/app/common/components/flow-re-route-modal/flow-re-route-modal.component';
-import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { MessageObj } from 'src/app/common/constants/constants';
 
 @Component({
@@ -24,7 +24,7 @@ export class IslFlowDatatablesComponent implements OnInit , AfterViewInit , OnDe
   islFlow = [];
   selectAll = false;
   reRouteList: any = [];
-  dtTrigger: Subject<any> = new Subject();
+  dtTrigger: Subject<void> = new Subject();
   wrapperHide = true;
   expandedFlowId = false;
   expandedSrcSwitchPort = false;

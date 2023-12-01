@@ -3,11 +3,11 @@ canvas{
     height: 400px !important;
 }
 
-.ng-dygraphs .loader-holder {
+.app-custom-dygraphs .loader-holder {
     display: none !important;
 }
 
- .ng-dygraphs .loader {
+ .app-custom-dygraphs .loader {
     display: none !important;
  }
 

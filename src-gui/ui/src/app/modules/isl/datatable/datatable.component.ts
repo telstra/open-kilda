@@ -10,16 +10,12 @@ import {
   SimpleChanges,
   EventEmitter
 } from '@angular/core';
-import { IslModel } from '../../../common/data-models/isl-model';
-import { IslDetailModel } from '../../../common/data-models/isl-detail-model';
 import { IslListService } from '../../../common/services/isl-list.service';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
 import { Subject } from 'rxjs';
 import { DataTableDirective } from 'angular-datatables';
 import { ToastrService } from 'ngx-toastr';
-import { NgxSpinnerService } from 'ngx-spinner';
 import { LoaderService } from '../../../common/services/loader.service';
 import { ClipboardService } from 'ngx-clipboard';
 
@@ -31,7 +27,7 @@ import { ClipboardService } from 'ngx-clipboard';
 export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnChanges {
   @ViewChild(DataTableDirective, { static: true }) datatableElement: DataTableDirective;
   dtOptions: any = {};
-  dtTrigger: Subject<any> = new Subject();
+  dtTrigger: Subject<void> = new Subject();
 
   @Input() data = [];
   @Output() refresh =  new EventEmitter();

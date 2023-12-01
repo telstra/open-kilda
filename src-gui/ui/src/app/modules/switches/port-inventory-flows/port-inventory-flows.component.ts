@@ -19,7 +19,7 @@ export class PortInventoryFlowsComponent implements  OnDestroy, OnInit, OnChange
   @Input() data;
   @Input() textSearch: any;
   dtOptions: any = {};
-  dtTrigger: Subject<any> = new Subject();
+  dtTrigger: Subject<void> = new Subject();
   wrapperHide = false;
   customername = false;
   customerid = false;

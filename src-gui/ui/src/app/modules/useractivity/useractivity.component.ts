@@ -1,14 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
 import { NgOption } from '@ng-select/ng-select';
-import { Select2Data } from 'ng-select2-component/lib/select2-utils';
 import { UserActivityService } from '../../common/services/user-activity.service';
 import { ToastrService } from 'ngx-toastr';
-import { NgxSpinnerService } from 'ngx-spinner';
 import * as _moment from 'moment';
 import { LoaderService } from '../../common/services/loader.service';
 import { Title } from '@angular/platform-browser';
-import { tickStep } from 'd3';
 import { CommonService } from 'src/app/common/services/common.service';
 import { Router } from '@angular/router';
 import { MessageObj } from 'src/app/common/constants/constants';

@@ -83,9 +83,9 @@ export class RoleEditComponent implements OnInit, AfterViewInit {
   */
   private createEditForm() {
     this.roleEditForm = new FormGroup({
-      name: new FormControl({value: ''}, Validators.required),
-      description: new FormControl({value: ''}, Validators.required),
-      permission: new FormControl({value: ''}, Validators.required)
+      name: new FormControl({value: '', disabled: false}, Validators.required),
+      description: new FormControl({value: '', disabled: false}, Validators.required),
+      permission: new FormControl({value: '', disabled: false}, Validators.required)
     });
   }
 

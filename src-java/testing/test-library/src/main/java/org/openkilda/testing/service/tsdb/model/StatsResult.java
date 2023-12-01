@@ -62,7 +62,7 @@ public class StatsResult {
 
     public boolean hasNonZeroValuesAfter(long timestamp) {
         return dataPoints.keySet().stream()
-                .anyMatch(tstamp -> tstamp >= timestamp && dataPoints.get(tstamp) > 0);
+                .anyMatch(tstamp -> tstamp >= timestamp && dataPoints.get(tstamp) != 0);
     }
 
     public boolean hasValue(long expectedValue) {

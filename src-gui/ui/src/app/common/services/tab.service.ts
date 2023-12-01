@@ -14,6 +14,6 @@ export class TabService {
     }
 
     clearSelectedTab() {
-        this.subject.next();
+        this.subject.next(true);
     }
 }
