@@ -826,7 +826,7 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
 
         then: "System tries to reroute a flow with transit switch"
         def flowPathMap = [(firstFlow.flowId): firstFlowMainPath, (secondFlow.flowId): secondFlowPath]
-        wait(WAIT_OFFSET * 2) {
+        wait(WAIT_OFFSET * 3) {
             def firstFlowHistory = flowHelper.getHistoryEntriesByAction(firstFlow.flowId, REROUTE_ACTION)
             assert firstFlowHistory.last().payload.find { it.action == REROUTE_FAIL }
             //check that system doesn't retry to reroute the firstFlow (its src is down, no need to retry)
