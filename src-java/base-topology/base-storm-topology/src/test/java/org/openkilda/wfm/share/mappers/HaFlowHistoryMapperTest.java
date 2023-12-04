@@ -17,25 +17,19 @@ package org.openkilda.wfm.share.mappers;
 
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.messaging.payload.history.HaFlowDumpPayload;
 import org.openkilda.messaging.payload.history.HaFlowHistoryEntry;
 import org.openkilda.messaging.payload.history.HaFlowHistoryPayload;
 import org.openkilda.messaging.payload.history.HaFlowPathPayload;
 import org.openkilda.messaging.payload.history.HaSubFlowPayload;
-import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowPathDirection;
-import org.openkilda.model.FlowPathStatus;
-import org.openkilda.model.FlowStatus;
 import org.openkilda.model.GroupId;
 import org.openkilda.model.HaFlow;
-import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.MeterId;
-import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.PathId;
-import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.history.HaFlowEvent;
@@ -44,11 +38,10 @@ import org.openkilda.model.history.HaFlowEventDump;
 import org.openkilda.model.history.HaFlowEventDump.HaFlowEventDumpDataImpl;
 import org.openkilda.model.history.HaFlowEventDump.HaSubFlowDumpWrapper;
 import org.openkilda.model.history.HaFlowEventDump.PathNodePayload;
+import org.openkilda.wfm.HaFlowHelper;
 import org.openkilda.wfm.share.history.model.DumpType;
 import org.openkilda.wfm.share.history.model.HaFlowDumpData;
 import org.openkilda.wfm.share.history.model.HaFlowEventData;
-import org.openkilda.wfm.share.history.model.HaFlowEventData.Event;
-import org.openkilda.wfm.share.history.model.HaFlowEventData.Initiator;
 import org.openkilda.wfm.share.history.model.HaFlowHistoryData;
 import org.openkilda.wfm.share.history.model.HaFlowPathDump;
 import org.openkilda.wfm.share.history.model.HaSubFlowDump;
@@ -56,61 +49,22 @@ import org.openkilda.wfm.share.history.model.HaSubFlowDump;
 import com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
 
-import java.time.Instant;
 import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
 public class HaFlowHistoryMapperTest {
-
-    public static final String DETAILS = "details";
-    public static final Event EVENT_CREATE = Event.CREATE;
-    public static final String ACTOR = "actor";
-    public static final String CORRELATION_ID = "correlation id";
-    public static final String FAKE_TIMESTAMP = "fake timestamp";
-    private static final String HA_FLOW_ID = "HA flow ID";
-    public static final Initiator INITIATOR = Initiator.NB;
-    public static final String HISTORY_ACTION = "Ha flow history action";
-    private static final Integer SHARED_PORT = 1;
-    private static final Integer SHARED_OUTER_VLAN = 1000;
-    private static final Integer SHARED_INNER_VLAN = 2000;
-    private static final Long MAXIMUM_BANDWIDTH = 100_000L;
-    private static final PathComputationStrategy PATH_COMPUTATION_STRATEGY = PathComputationStrategy.COST;
-    private static final FlowEncapsulationType FLOW_ENCAPSULATION_TYPE = FlowEncapsulationType.VXLAN;
-    private static final Long MAX_LATENCY = 42L;
-    private static final Long MAX_LATENCY_TIER_2 = 84L;
-    private static final Boolean IGNORE_BANDWIDTH = false;
-    private static final Boolean PERIODIC_PINGS = false;
-    private static final Boolean PINNED = false;
-    private static final Integer PRIORITY = 455;
-    public static final String STATUS_INFO = "Status info";
-    private static final Boolean STRICT_BANDWIDTH = false;
-    private static final String DESCRIPTION = "HA flow description";
-    private static final Boolean ALLOCATE_PROTECTED_PATH = true;
-    private static final FlowStatus FLOW_STATUS = FlowStatus.UP;
-    private static final String AFFINITY_GROUP_ID = "affinity group ID";
-    private static final String DIVERSE_GROUP_ID = "diverse group ID";
-    private static final Switch SHARED_SWITCH = Switch.builder().switchId(new SwitchId("00:00:01")).build();
-    private static final Instant TIME_CREATE = Instant.now().minus(1, ChronoUnit.HOURS);
-    private static final Instant TIME_MODIFY = Instant.now();
-    private static final FlowPathStatus FLOW_PATH_STATUS = FlowPathStatus.ACTIVE;
-    private static final String HA_SUB_FLOW_ID = "HA sub flow ID";
-    private static final SwitchId ENDPOINT_SWITCH_ID = new SwitchId("00:01");
-    private static final Integer ENDPOINT_PORT = 1;
-    private static final Integer ENDPOINT_VLAN = 1000;
-    private static final Integer ENDPOINT_INNER_VLAN = 2000;
 
     private final HaFlowHistoryMapper mapper = HaFlowHistoryMapper.INSTANCE;
 
     @Test
     public void createHaFlowEvent() {
         HaFlowEventData source = HaFlowEventData.builder()
-                .event(EVENT_CREATE)
-                .details(DETAILS)
-                .initiator(INITIATOR)
-                .haFlowId(HA_FLOW_ID)
-                .time(TIME_CREATE)
+                .event(HaFlowHelper.EVENT_CREATE)
+                .details(HaFlowHelper.DETAILS)
+                .initiator(HaFlowHelper.INITIATOR)
+                .haFlowId(HaFlowHelper.HA_FLOW_ID)
+                .time(HaFlowHelper.TIME_CREATE)
                 .build();
         String taskId = "task ID";
         HaFlowEvent result = mapper.createHaFlowEvent(source, taskId);
@@ -126,10 +80,10 @@ public class HaFlowHistoryMapperTest {
     @Test
     public void createHaFlowEventAction() {
         HaFlowHistoryData source = HaFlowHistoryData.builder()
-                .action(HISTORY_ACTION)
-                .description(DESCRIPTION)
-                .haFlowId(HA_FLOW_ID)
-                .time(TIME_CREATE)
+                .action(HaFlowHelper.HISTORY_ACTION)
+                .description(HaFlowHelper.DESCRIPTION)
+                .haFlowId(HaFlowHelper.HA_FLOW_ID)
+                .time(HaFlowHelper.TIME_CREATE)
                 .build();
 
         String taskId = "taskID";
@@ -144,43 +98,43 @@ public class HaFlowHistoryMapperTest {
     @Test
     public void createHaFlowHistoryEntries() {
         HaFlowEvent haFlowEvent = HaFlowEvent.builder()
-                .haFlowId(HA_FLOW_ID)
-                .actor(ACTOR)
-                .timestamp(TIME_CREATE)
-                .taskId(CORRELATION_ID)
-                .details(DETAILS)
+                .haFlowId(HaFlowHelper.HA_FLOW_ID)
+                .actor(HaFlowHelper.ACTOR)
+                .timestamp(HaFlowHelper.TIME_CREATE)
+                .taskId(HaFlowHelper.CORRELATION_ID)
+                .details(HaFlowHelper.DETAILS)
                 .build();
         List<HaFlowHistoryPayload> payloads = Lists.newArrayList(HaFlowHistoryPayload.builder()
-                        .details(DETAILS)
-                        .timestampIso(FAKE_TIMESTAMP)
-                        .action(HISTORY_ACTION)
-                        .timestamp(TIME_CREATE)
+                        .details(HaFlowHelper.DETAILS)
+                        .timestampIso(HaFlowHelper.FAKE_TIMESTAMP)
+                        .action(HaFlowHelper.HISTORY_ACTION)
+                        .timestamp(HaFlowHelper.TIME_CREATE)
                 .build());
         List<HaFlowDumpPayload> dumps = Lists.newArrayList(HaFlowDumpPayload.builder()
-                .affinityGroupId(AFFINITY_GROUP_ID)
-                .allocateProtectedPath(ALLOCATE_PROTECTED_PATH)
-                .description(DESCRIPTION)
-                .diverseGroupId(DIVERSE_GROUP_ID)
+                .affinityGroupId(HaFlowHelper.AFFINITY_GROUP_ID)
+                .allocateProtectedPath(HaFlowHelper.ALLOCATE_PROTECTED_PATH)
+                .description(HaFlowHelper.DESCRIPTION)
+                .diverseGroupId(HaFlowHelper.DIVERSE_GROUP_ID)
                 .dumpType(org.openkilda.model.history.DumpType.STATE_BEFORE)
-                .encapsulationType(FLOW_ENCAPSULATION_TYPE)
-                .flowTimeCreate(TIME_CREATE.toString())
-                .flowTimeModify(TIME_MODIFY.toString())
-                .haFlowId(HA_FLOW_ID)
-                .ignoreBandwidth(IGNORE_BANDWIDTH)
-                .maximumBandwidth(MAXIMUM_BANDWIDTH)
-                .maxLatency(MAX_LATENCY)
-                .maxLatencyTier2(MAX_LATENCY_TIER_2)
-                .pathComputationStrategy(PATH_COMPUTATION_STRATEGY)
-                .pinned(PINNED)
-                .priority(PRIORITY)
-                .periodicPings(PERIODIC_PINGS)
-                .status(FLOW_STATUS)
-                .sharedPort(SHARED_PORT)
-                .sharedInnerVlan(SHARED_INNER_VLAN)
-                .sharedOuterVlan(SHARED_OUTER_VLAN)
-                .sharedSwitchId(SHARED_SWITCH.getSwitchId().toString())
-                .strictBandwidth(STRICT_BANDWIDTH)
-                .taskId(CORRELATION_ID)
+                .encapsulationType(HaFlowHelper.FLOW_ENCAPSULATION_TYPE)
+                .flowTimeCreate(HaFlowHelper.TIME_CREATE.toString())
+                .flowTimeModify(HaFlowHelper.TIME_MODIFY.toString())
+                .haFlowId(HaFlowHelper.HA_FLOW_ID)
+                .ignoreBandwidth(HaFlowHelper.IGNORE_BANDWIDTH)
+                .maximumBandwidth(HaFlowHelper.MAXIMUM_BANDWIDTH)
+                .maxLatency(HaFlowHelper.MAX_LATENCY)
+                .maxLatencyTier2(HaFlowHelper.MAX_LATENCY_TIER_2)
+                .pathComputationStrategy(HaFlowHelper.PATH_COMPUTATION_STRATEGY)
+                .pinned(HaFlowHelper.PINNED)
+                .priority(HaFlowHelper.PRIORITY)
+                .periodicPings(HaFlowHelper.PERIODIC_PINGS)
+                .status(HaFlowHelper.FLOW_STATUS)
+                .sharedPort(HaFlowHelper.SHARED_PORT)
+                .sharedInnerVlan(HaFlowHelper.SHARED_INNER_VLAN)
+                .sharedOuterVlan(HaFlowHelper.SHARED_OUTER_VLAN)
+                .sharedSwitchId(HaFlowHelper.SHARED_SWITCH.getSwitchId().toString())
+                .strictBandwidth(HaFlowHelper.STRICT_BANDWIDTH)
+                .taskId(HaFlowHelper.CORRELATION_ID)
                 .haSubFlows(Lists.newArrayList(createHaSubFlowPayload()))
                 .protectedForwardPath(createHaFlowPathPayload(FlowPathDirection.FORWARD))
                 .protectedReversePath(createHaFlowPathPayload(FlowPathDirection.REVERSE))
@@ -196,40 +150,40 @@ public class HaFlowHistoryMapperTest {
         assertEquals(haFlowEvent.getActor(), result.getActor());
         assertEquals(haFlowEvent.getAction(), result.getAction());
         assertEquals(haFlowEvent.getTimestamp(), result.getTime());
-        assertEquals(TIME_CREATE.atOffset(ZoneOffset.UTC).toString(), result.getTimestampIso());
+        assertEquals(HaFlowHelper.TIME_CREATE.atOffset(ZoneOffset.UTC).toString(), result.getTimestampIso());
 
         assertNotNull(result.getDumps());
-        assertTrue(result.getDumps().size() > 0);
+        assertFalse(result.getDumps().isEmpty());
         HaFlowDumpPayload resultDump = result.getDumps().get(0);
         
-        assertEquals(HA_FLOW_ID, resultDump.getHaFlowId());
-        assertEquals(SHARED_PORT, resultDump.getSharedPort());
-        assertEquals(SHARED_OUTER_VLAN, resultDump.getSharedOuterVlan());
-        assertEquals(SHARED_INNER_VLAN, resultDump.getSharedInnerVlan());
-        assertEquals(MAXIMUM_BANDWIDTH, resultDump.getMaximumBandwidth());
-        assertEquals(PATH_COMPUTATION_STRATEGY, resultDump.getPathComputationStrategy());
-        assertEquals(FLOW_ENCAPSULATION_TYPE, resultDump.getEncapsulationType());
-        assertEquals(MAX_LATENCY, resultDump.getMaxLatency());
-        assertEquals(MAX_LATENCY_TIER_2, resultDump.getMaxLatencyTier2());
-        assertEquals(IGNORE_BANDWIDTH, resultDump.getIgnoreBandwidth());
-        assertEquals(PERIODIC_PINGS, resultDump.getPeriodicPings());
-        assertEquals(PINNED, resultDump.getPinned());
-        assertEquals(PRIORITY, resultDump.getPriority());
-        assertEquals(STRICT_BANDWIDTH, resultDump.getStrictBandwidth());
-        assertEquals(DESCRIPTION, resultDump.getDescription());
-        assertEquals(ALLOCATE_PROTECTED_PATH, resultDump.getAllocateProtectedPath());
-        assertEquals(FLOW_STATUS, resultDump.getStatus());
-        assertEquals(AFFINITY_GROUP_ID, resultDump.getAffinityGroupId());
-        assertEquals(DIVERSE_GROUP_ID, resultDump.getDiverseGroupId());
+        assertEquals(HaFlowHelper.HA_FLOW_ID, resultDump.getHaFlowId());
+        assertEquals(HaFlowHelper.SHARED_PORT, resultDump.getSharedPort());
+        assertEquals(HaFlowHelper.SHARED_OUTER_VLAN, resultDump.getSharedOuterVlan());
+        assertEquals(HaFlowHelper.SHARED_INNER_VLAN, resultDump.getSharedInnerVlan());
+        assertEquals(HaFlowHelper.MAXIMUM_BANDWIDTH, resultDump.getMaximumBandwidth());
+        assertEquals(HaFlowHelper.PATH_COMPUTATION_STRATEGY, resultDump.getPathComputationStrategy());
+        assertEquals(HaFlowHelper.FLOW_ENCAPSULATION_TYPE, resultDump.getEncapsulationType());
+        assertEquals(HaFlowHelper.MAX_LATENCY, resultDump.getMaxLatency());
+        assertEquals(HaFlowHelper.MAX_LATENCY_TIER_2, resultDump.getMaxLatencyTier2());
+        assertEquals(HaFlowHelper.IGNORE_BANDWIDTH, resultDump.getIgnoreBandwidth());
+        assertEquals(HaFlowHelper.PERIODIC_PINGS, resultDump.getPeriodicPings());
+        assertEquals(HaFlowHelper.PINNED, resultDump.getPinned());
+        assertEquals(HaFlowHelper.PRIORITY, resultDump.getPriority());
+        assertEquals(HaFlowHelper.STRICT_BANDWIDTH, resultDump.getStrictBandwidth());
+        assertEquals(HaFlowHelper.DESCRIPTION, resultDump.getDescription());
+        assertEquals(HaFlowHelper.ALLOCATE_PROTECTED_PATH, resultDump.getAllocateProtectedPath());
+        assertEquals(HaFlowHelper.FLOW_STATUS, resultDump.getStatus());
+        assertEquals(HaFlowHelper.AFFINITY_GROUP_ID, resultDump.getAffinityGroupId());
+        assertEquals(HaFlowHelper.DIVERSE_GROUP_ID, resultDump.getDiverseGroupId());
 
         assertNotNull(result.getPayloads());
-        assertTrue(result.getPayloads().size() > 0);
+        assertFalse(result.getPayloads().isEmpty());
         HaFlowHistoryPayload resultPayload = result.getPayloads().get(0);
 
-        assertEquals(FAKE_TIMESTAMP, resultPayload.getTimestampIso());
-        assertEquals(DETAILS, resultPayload.getDetails());
-        assertEquals(TIME_CREATE, resultPayload.getTimestamp());
-        assertEquals(HISTORY_ACTION, resultPayload.getAction());
+        assertEquals(HaFlowHelper.FAKE_TIMESTAMP, resultPayload.getTimestampIso());
+        assertEquals(HaFlowHelper.DETAILS, resultPayload.getDetails());
+        assertEquals(HaFlowHelper.TIME_CREATE, resultPayload.getTimestamp());
+        assertEquals(HaFlowHelper.HISTORY_ACTION, resultPayload.getAction());
     }
 
     private HaFlowPathPayload createHaFlowPathPayload(FlowPathDirection direction) {
@@ -247,12 +201,12 @@ public class HaFlowHistoryMapperTest {
                 .yPointGroupId(GroupId.MIN_FLOW_GROUP_ID.toString())
                 .yPointSwitchId(new SwitchId("00:03").toString())
                 .yPointMeterId(MeterId.LACP_REPLY_METER_ID.toString())
-                .timeCreate(TIME_CREATE.toString())
-                .timeModify(TIME_MODIFY.toString())
+                .timeCreate(HaFlowHelper.TIME_CREATE.toString())
+                .timeModify(HaFlowHelper.TIME_MODIFY.toString())
                 .sharedPointMeterId(MeterId.LACP_REPLY_METER_ID.toString())
                 .cookie(FlowSegmentCookie.builder().direction(direction).build().toString())
-                .ignoreBandwidth(IGNORE_BANDWIDTH)
-                .status(FLOW_PATH_STATUS)
+                .ignoreBandwidth(HaFlowHelper.IGNORE_BANDWIDTH)
+                .status(HaFlowHelper.FLOW_PATH_STATUS)
                 .paths(pathNodesList)
                 .haSubFlows(haSubFlowDump)
                 .build();
@@ -260,16 +214,16 @@ public class HaFlowHistoryMapperTest {
     
     private HaSubFlowPayload createHaSubFlowPayload() {
         return HaSubFlowPayload.builder()
-                .haSubFlowId(HA_SUB_FLOW_ID)
-                .haFlowId(HA_FLOW_ID)
-                .status(FLOW_STATUS)
-                .endpointSwitchId(ENDPOINT_SWITCH_ID.toString())
-                .endpointPort(ENDPOINT_PORT)
-                .endpointVlan(ENDPOINT_VLAN)
-                .endpointInnerVlan(ENDPOINT_INNER_VLAN)
-                .description(DESCRIPTION)
-                .timeCreate(TIME_CREATE.toString())
-                .timeModify(TIME_MODIFY.toString())
+                .haSubFlowId(HaFlowHelper.HA_SUB_FLOW_ID)
+                .haFlowId(HaFlowHelper.HA_FLOW_ID)
+                .status(HaFlowHelper.FLOW_STATUS)
+                .endpointSwitchId(HaFlowHelper.ENDPOINT_SWITCH_ID.toString())
+                .endpointPort(HaFlowHelper.ENDPOINT_PORT)
+                .endpointVlan(HaFlowHelper.ENDPOINT_VLAN)
+                .endpointInnerVlan(HaFlowHelper.ENDPOINT_INNER_VLAN)
+                .description(HaFlowHelper.DESCRIPTION)
+                .timeCreate(HaFlowHelper.TIME_CREATE.toString())
+                .timeModify(HaFlowHelper.TIME_MODIFY.toString())
                 .build();
     }
     
@@ -400,7 +354,7 @@ public class HaFlowHistoryMapperTest {
 
     @Test
     public void createHaFlowDump() {
-        HaFlow source = createHaFlow();
+        HaFlow source = HaFlowHelper.createHaFlow();
 
         HaFlowDumpData dump = mapper.toHaFlowDumpData(source, "correlation ID", DumpType.STATE_AFTER);
 
@@ -454,29 +408,29 @@ public class HaFlowHistoryMapperTest {
 
     private HaFlowEventDump createHaFlowEventDump(org.openkilda.model.history.DumpType dumpType, String correlationId) {
         return new HaFlowEventDump(HaFlowEventDumpDataImpl.builder()
-                .affinityGroupId(AFFINITY_GROUP_ID)
-                .allocateProtectedPath(ALLOCATE_PROTECTED_PATH)
-                .description(DESCRIPTION)
-                .diverseGroupId(DIVERSE_GROUP_ID)
+                .affinityGroupId(HaFlowHelper.AFFINITY_GROUP_ID)
+                .allocateProtectedPath(HaFlowHelper.ALLOCATE_PROTECTED_PATH)
+                .description(HaFlowHelper.DESCRIPTION)
+                .diverseGroupId(HaFlowHelper.DIVERSE_GROUP_ID)
                 .dumpType(dumpType)
-                .encapsulationType(FLOW_ENCAPSULATION_TYPE)
-                .flowTimeCreate(TIME_CREATE.toString())
-                .flowTimeModify(TIME_MODIFY.toString())
-                .haFlowId(HA_FLOW_ID)
-                .ignoreBandwidth(IGNORE_BANDWIDTH)
-                .maximumBandwidth(MAXIMUM_BANDWIDTH)
-                .maxLatency(MAX_LATENCY)
-                .maxLatencyTier2(MAX_LATENCY_TIER_2)
-                .pathComputationStrategy(PATH_COMPUTATION_STRATEGY)
-                .pinned(PINNED)
-                .priority(PRIORITY)
-                .periodicPings(PERIODIC_PINGS)
-                .status(FLOW_STATUS)
-                .sharedPort(SHARED_PORT)
-                .sharedInnerVlan(SHARED_INNER_VLAN)
-                .sharedOuterVlan(SHARED_OUTER_VLAN)
-                .sharedSwitchId(SHARED_SWITCH.getSwitchId().toString())
-                .strictBandwidth(STRICT_BANDWIDTH)
+                .encapsulationType(HaFlowHelper.FLOW_ENCAPSULATION_TYPE)
+                .flowTimeCreate(HaFlowHelper.TIME_CREATE.toString())
+                .flowTimeModify(HaFlowHelper.TIME_MODIFY.toString())
+                .haFlowId(HaFlowHelper.HA_FLOW_ID)
+                .ignoreBandwidth(HaFlowHelper.IGNORE_BANDWIDTH)
+                .maximumBandwidth(HaFlowHelper.MAXIMUM_BANDWIDTH)
+                .maxLatency(HaFlowHelper.MAX_LATENCY)
+                .maxLatencyTier2(HaFlowHelper.MAX_LATENCY_TIER_2)
+                .pathComputationStrategy(HaFlowHelper.PATH_COMPUTATION_STRATEGY)
+                .pinned(HaFlowHelper.PINNED)
+                .priority(HaFlowHelper.PRIORITY)
+                .periodicPings(HaFlowHelper.PERIODIC_PINGS)
+                .status(HaFlowHelper.FLOW_STATUS)
+                .sharedPort(HaFlowHelper.SHARED_PORT)
+                .sharedInnerVlan(HaFlowHelper.SHARED_INNER_VLAN)
+                .sharedOuterVlan(HaFlowHelper.SHARED_OUTER_VLAN)
+                .sharedSwitchId(HaFlowHelper.SHARED_SWITCH.getSwitchId().toString())
+                .strictBandwidth(HaFlowHelper.STRICT_BANDWIDTH)
                 .taskId(correlationId)
                 .haSubFlows(createPersistenceHaSubFlowDumpWrapper())
                 .protectedForwardPath(createPersistenceHaFlowPathDump(FlowPathDirection.FORWARD))
@@ -499,12 +453,12 @@ public class HaFlowHistoryMapperTest {
                 .yPointGroupId(GroupId.MIN_FLOW_GROUP_ID.toString())
                 .yPointSwitchId("00:03")
                 .yPointMeterId(MeterId.LACP_REPLY_METER_ID.toString())
-                .timeCreate(TIME_CREATE.toString())
-                .timeModify(TIME_MODIFY.toString())
+                .timeCreate(HaFlowHelper.TIME_CREATE.toString())
+                .timeModify(HaFlowHelper.TIME_MODIFY.toString())
                 .sharedPointMeterId(MeterId.LACP_REPLY_METER_ID.toString())
                 .cookie(FlowSegmentCookie.builder().direction(direction).build().toString())
-                .ignoreBandwidth(IGNORE_BANDWIDTH)
-                .status(FLOW_PATH_STATUS.toString())
+                .ignoreBandwidth(HaFlowHelper.IGNORE_BANDWIDTH)
+                .status(HaFlowHelper.FLOW_PATH_STATUS.toString())
                 .paths(pathNodesList)
                 .haSubFlows(Lists.newArrayList(createPersistenceHaSubFlowDump()))
                 .build();
@@ -512,16 +466,16 @@ public class HaFlowHistoryMapperTest {
 
     private HaFlowEventDump.HaSubFlowDump createPersistenceHaSubFlowDump() {
         return HaFlowEventDump.HaSubFlowDump.builder()
-                .haSubFlowId(HA_SUB_FLOW_ID)
-                .haFlowId(HA_FLOW_ID)
-                .status(FLOW_STATUS)
-                .endpointSwitchId(ENDPOINT_SWITCH_ID.toString())
-                .endpointPort(ENDPOINT_PORT)
-                .endpointVlan(ENDPOINT_VLAN)
-                .endpointInnerVlan(ENDPOINT_INNER_VLAN)
-                .description(DESCRIPTION)
-                .timeCreate(TIME_CREATE.toString())
-                .timeModify(TIME_MODIFY.toString())
+                .haSubFlowId(HaFlowHelper.HA_SUB_FLOW_ID)
+                .haFlowId(HaFlowHelper.HA_FLOW_ID)
+                .status(HaFlowHelper.FLOW_STATUS)
+                .endpointSwitchId(HaFlowHelper.ENDPOINT_SWITCH_ID.toString())
+                .endpointPort(HaFlowHelper.ENDPOINT_PORT)
+                .endpointVlan(HaFlowHelper.ENDPOINT_VLAN)
+                .endpointInnerVlan(HaFlowHelper.ENDPOINT_INNER_VLAN)
+                .description(HaFlowHelper.DESCRIPTION)
+                .timeCreate(HaFlowHelper.TIME_CREATE.toString())
+                .timeModify(HaFlowHelper.TIME_MODIFY.toString())
                 .build();
     }
 
@@ -533,29 +487,29 @@ public class HaFlowHistoryMapperTest {
 
     private HaFlowDumpData createHaFlowDumpData(DumpType dumpType, String correlationId) {
         return HaFlowDumpData.builder()
-                .affinityGroupId(AFFINITY_GROUP_ID)
-                .allocateProtectedPath(ALLOCATE_PROTECTED_PATH)
-                .description(DESCRIPTION)
-                .diverseGroupId(DIVERSE_GROUP_ID)
+                .affinityGroupId(HaFlowHelper.AFFINITY_GROUP_ID)
+                .allocateProtectedPath(HaFlowHelper.ALLOCATE_PROTECTED_PATH)
+                .description(HaFlowHelper.DESCRIPTION)
+                .diverseGroupId(HaFlowHelper.DIVERSE_GROUP_ID)
                 .dumpType(dumpType)
-                .encapsulationType(FLOW_ENCAPSULATION_TYPE)
-                .flowTimeCreate(TIME_CREATE)
-                .flowTimeModify(TIME_MODIFY)
-                .haFlowId(HA_FLOW_ID)
-                .ignoreBandwidth(IGNORE_BANDWIDTH)
-                .maximumBandwidth(MAXIMUM_BANDWIDTH)
-                .maxLatency(MAX_LATENCY)
-                .maxLatencyTier2(MAX_LATENCY_TIER_2)
-                .pathComputationStrategy(PATH_COMPUTATION_STRATEGY)
-                .pinned(PINNED)
-                .priority(PRIORITY)
-                .periodicPings(PERIODIC_PINGS)
-                .status(FLOW_STATUS)
-                .sharedPort(SHARED_PORT)
-                .sharedInnerVlan(SHARED_INNER_VLAN)
-                .sharedOuterVlan(SHARED_OUTER_VLAN)
-                .sharedSwitchId(SHARED_SWITCH.getSwitchId())
-                .strictBandwidth(STRICT_BANDWIDTH)
+                .encapsulationType(HaFlowHelper.FLOW_ENCAPSULATION_TYPE)
+                .flowTimeCreate(HaFlowHelper.TIME_CREATE)
+                .flowTimeModify(HaFlowHelper.TIME_MODIFY)
+                .haFlowId(HaFlowHelper.HA_FLOW_ID)
+                .ignoreBandwidth(HaFlowHelper.IGNORE_BANDWIDTH)
+                .maximumBandwidth(HaFlowHelper.MAXIMUM_BANDWIDTH)
+                .maxLatency(HaFlowHelper.MAX_LATENCY)
+                .maxLatencyTier2(HaFlowHelper.MAX_LATENCY_TIER_2)
+                .pathComputationStrategy(HaFlowHelper.PATH_COMPUTATION_STRATEGY)
+                .pinned(HaFlowHelper.PINNED)
+                .priority(HaFlowHelper.PRIORITY)
+                .periodicPings(HaFlowHelper.PERIODIC_PINGS)
+                .status(HaFlowHelper.FLOW_STATUS)
+                .sharedPort(HaFlowHelper.SHARED_PORT)
+                .sharedInnerVlan(HaFlowHelper.SHARED_INNER_VLAN)
+                .sharedOuterVlan(HaFlowHelper.SHARED_OUTER_VLAN)
+                .sharedSwitchId(HaFlowHelper.SHARED_SWITCH.getSwitchId())
+                .strictBandwidth(HaFlowHelper.STRICT_BANDWIDTH)
                 .taskId(correlationId)
                 .haSubFlows(Lists.newArrayList(createHaSubFlowDump()))
                 .protectedForwardPath(createHaFlowPathDump(FlowPathDirection.FORWARD))
@@ -580,13 +534,13 @@ public class HaFlowHistoryMapperTest {
                 .yPointGroupId(GroupId.MIN_FLOW_GROUP_ID)
                 .yPointSwitchId(new SwitchId("00:03"))
                 .yPointMeterId(MeterId.LACP_REPLY_METER_ID)
-                .timeCreate(TIME_CREATE)
-                .timeModify(TIME_MODIFY)
+                .timeCreate(HaFlowHelper.TIME_CREATE)
+                .timeModify(HaFlowHelper.TIME_MODIFY)
                 .sharedPointMeterId(MeterId.LACP_REPLY_METER_ID)
                 .sharedSwitchId(new SwitchId("00:01"))
                 .cookie(FlowSegmentCookie.builder().direction(direction).build())
-                .ignoreBandwidth(IGNORE_BANDWIDTH)
-                .status(FLOW_PATH_STATUS)
+                .ignoreBandwidth(HaFlowHelper.IGNORE_BANDWIDTH)
+                .status(HaFlowHelper.FLOW_PATH_STATUS)
                 .paths(pathNodesList)
                 .haSubFlows(haSubFlowDump)
                 .build();
@@ -594,58 +548,18 @@ public class HaFlowHistoryMapperTest {
 
     private HaSubFlowDump createHaSubFlowDump() {
         return HaSubFlowDump.builder()
-                .haSubFlowId(HA_SUB_FLOW_ID)
-                .haFlowId(HA_FLOW_ID)
-                .status(FLOW_STATUS)
-                .endpointSwitchId(ENDPOINT_SWITCH_ID)
-                .endpointPort(ENDPOINT_PORT)
-                .endpointVlan(ENDPOINT_VLAN)
-                .endpointInnerVlan(ENDPOINT_INNER_VLAN)
-                .description(DESCRIPTION)
-                .timeCreate(TIME_CREATE)
-                .timeModify(TIME_MODIFY)
+                .haSubFlowId(HaFlowHelper.HA_SUB_FLOW_ID)
+                .haFlowId(HaFlowHelper.HA_FLOW_ID)
+                .status(HaFlowHelper.FLOW_STATUS)
+                .endpointSwitchId(HaFlowHelper.ENDPOINT_SWITCH_ID)
+                .endpointPort(HaFlowHelper.ENDPOINT_PORT)
+                .endpointVlan(HaFlowHelper.ENDPOINT_VLAN)
+                .endpointInnerVlan(HaFlowHelper.ENDPOINT_INNER_VLAN)
+                .description(HaFlowHelper.DESCRIPTION)
+                .timeCreate(HaFlowHelper.TIME_CREATE)
+                .timeModify(HaFlowHelper.TIME_MODIFY)
                 .build();
     }
 
-    private HaFlow createHaFlow() {
-        HaFlow result = new HaFlow(HA_FLOW_ID,
-                SHARED_SWITCH,
-                SHARED_PORT,
-                SHARED_OUTER_VLAN,
-                SHARED_INNER_VLAN,
-                MAXIMUM_BANDWIDTH,
-                PATH_COMPUTATION_STRATEGY,
-                FLOW_ENCAPSULATION_TYPE,
-                MAX_LATENCY,
-                MAX_LATENCY_TIER_2,
-                IGNORE_BANDWIDTH,
-                PERIODIC_PINGS,
-                PINNED,
-                PRIORITY,
-                STRICT_BANDWIDTH,
-                DESCRIPTION,
-                ALLOCATE_PROTECTED_PATH,
-                FLOW_STATUS,
-                STATUS_INFO,
-                AFFINITY_GROUP_ID,
-                DIVERSE_GROUP_ID);
 
-        HaFlowPath forward = createHaFlowPath("forward ID", FlowPathDirection.FORWARD);
-        HaFlowPath reverse = createHaFlowPath("reverse ID", FlowPathDirection.REVERSE);
-
-        result.setForwardPath(forward);
-        result.setReversePath(reverse);
-        result.addPaths(forward, reverse);
-
-        return result;
-    }
-
-    private HaFlowPath createHaFlowPath(String pathId, FlowPathDirection direction) {
-        return HaFlowPath.builder()
-                .haPathId(new PathId(pathId))
-                .sharedSwitch(SHARED_SWITCH)
-                .bandwidth(50_000L)
-                .cookie(FlowSegmentCookie.builder().direction(direction).build())
-                .build();
-    }
 }

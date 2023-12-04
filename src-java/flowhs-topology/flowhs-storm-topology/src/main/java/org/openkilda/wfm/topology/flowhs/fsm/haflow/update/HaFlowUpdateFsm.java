@@ -58,12 +58,14 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.RevertFlowAct
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.RevertFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.RevertNewRulesAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.RevertPathsSwapAction;
+import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.SkipResourceManagementOnEndpointsUpdateAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.SwapFlowPathsAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.UpdateFlowStatusAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.UpdateHaFlowAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions.ValidateFlowAction;
 import org.openkilda.wfm.topology.flowhs.service.FlowProcessingEventListener;
 import org.openkilda.wfm.topology.flowhs.service.haflow.HaFlowGenericCarrier;
+import org.openkilda.wfm.topology.flowhs.utils.EndpointUpdateType;
 
 import io.micrometer.core.instrument.LongTaskTimer;
 import io.micrometer.core.instrument.LongTaskTimer.Sample;
@@ -87,6 +89,7 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
         HaFlowGenericCarrier, FlowProcessingEventListener> {
     private HaFlowRequest targetHaFlow;
     private FlowStatus newFlowStatus;
+    private EndpointUpdateType endpointUpdateType = EndpointUpdateType.NONE;
 
     public HaFlowUpdateFsm(@NonNull CommandContext commandContext, @NonNull HaFlowGenericCarrier carrier,
                            @NonNull String flowId,
@@ -243,7 +246,7 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
                     .onEach(Event.TIMEOUT, Event.ERROR)
                     .perform(new HandleNotCompletedCommandsAction<>());
 
-            builder.transition().from(State.OLD_RULES_REMOVED)
+            builder.transition().from(State.DETERMINE_OLD_RESOURCE_REMOVAL_REQUIRED)
                     .to(State.NOTIFY_FLOW_STATS_ON_REMOVED_PATHS).on(Event.NEXT)
                     .perform(new NotifyHaFlowStatsOnRemovedPathsAction<>(persistenceManager, carrier));
 
@@ -301,8 +304,13 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
                     .perform(new HandleNotCompletedCommandsAction<>());
 
             builder.transition().from(State.NEW_RULES_REVERTED)
-                    .to(State.REVERTING_ALLOCATED_RESOURCES)
-                    .on(Event.NEXT);
+                    .to(State.DETERMINE_RESOURCE_REVERTING_REQUIRED)
+                    .on(Event.NEXT)
+                    .perform(new SkipResourceManagementOnEndpointsUpdateAction(persistenceManager));
+
+            builder.transitions().from(State.DETERMINE_RESOURCE_REVERTING_REQUIRED)
+                    .toAmong(State.REVERTING_ALLOCATED_RESOURCES, State.REVERTING_FLOW)
+                    .onEach(Event.NEXT, Event.UPDATE_ENDPOINTS_ONLY);
 
             builder.onEntry(State.REVERTING_ALLOCATED_RESOURCES)
                     .perform(reportErrorAction);
@@ -342,6 +350,23 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
                     .to(State.FINISHED_WITH_ERROR)
                     .on(Event.NEXT)
                     .perform(new NotifyHaFlowMonitorAction<>(persistenceManager, carrier));
+
+            builder.transition()
+                    .from(State.FLOW_UPDATED)
+                    .to(State.RESOURCE_ALLOCATION_COMPLETED)
+                    .on(Event.UPDATE_ENDPOINTS_ONLY)
+                    .perform(new PostResourceAllocationAction(persistenceManager));
+
+            builder.transition()
+                    .from(State.OLD_RULES_REMOVED)
+                    .to(State.DETERMINE_OLD_RESOURCE_REMOVAL_REQUIRED)
+                    .on(Event.NEXT)
+                    .perform(new SkipResourceManagementOnEndpointsUpdateAction(persistenceManager));
+
+            builder.transition()
+                    .from(State.DETERMINE_OLD_RESOURCE_REMOVAL_REQUIRED)
+                    .to(State.UPDATING_FLOW_STATUS)
+                    .on(Event.UPDATE_ENDPOINTS_ONLY);
 
             builder.defineFinalState(State.FINISHED)
                     .addEntryAction(new OnFinishedAction(dashboardLogger));
@@ -426,11 +451,14 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
         NOTIFY_FLOW_MONITOR_WITH_ERROR,
 
         NOTIFY_FLOW_STATS_ON_NEW_PATHS,
-        NOTIFY_FLOW_STATS_ON_REMOVED_PATHS
+        NOTIFY_FLOW_STATS_ON_REMOVED_PATHS,
+        DETERMINE_RESOURCE_REVERTING_REQUIRED,
+        DETERMINE_OLD_RESOURCE_REMOVAL_REQUIRED
     }
 
     public enum Event {
         NEXT,
+        UPDATE_ENDPOINTS_ONLY,
 
         NO_PATH_FOUND,
 

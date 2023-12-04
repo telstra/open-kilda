@@ -65,7 +65,7 @@ public class InstallIngressRulesAction extends
         SpeakerRequestBuildContext speakerContext = buildBaseSpeakerContextForInstall(
                 newPrimaryForward.getSrcSwitchId(), newPrimaryReverse.getSrcSwitchId());
         Collection<FlowSegmentRequestFactory> commands = new ArrayList<>();
-        switch (stateMachine.getEndpointUpdate()) {
+        switch (stateMachine.getEndpointUpdateType()) {
             case SOURCE:
                 speakerContext.getForward().setUpdateMeter(false);
                 commands.addAll(getCommandsForSourceUpdate(commandBuilder, stateMachine, flow,
@@ -76,7 +76,7 @@ public class InstallIngressRulesAction extends
                 commands.addAll(getCommandsForDestinationUpdate(commandBuilder, stateMachine, flow,
                         newPrimaryForward, newPrimaryReverse, speakerContext));
                 break;
-            case BOTH:
+            case ALL:
                 speakerContext.getForward().setUpdateMeter(false);
                 speakerContext.getReverse().setUpdateMeter(false);
                 if (stateMachine.getFlowLoopOperation() == FlowLoopOperation.NONE) {

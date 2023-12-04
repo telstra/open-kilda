@@ -88,11 +88,11 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
         if (stateMachine.getNewPrimaryForwardPath() != null && stateMachine.getNewPrimaryReversePath() != null) {
             FlowPath newForward = getFlowPath(flow, stateMachine.getNewPrimaryForwardPath());
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewPrimaryReversePath());
-            if (stateMachine.getEndpointUpdate().isPartialUpdate()) {
+            if (stateMachine.getEndpointUpdateType().isPartialUpdate()) {
                 SpeakerRequestBuildContext speakerRequestBuildContext = getSpeakerRequestBuildContextForRemoval(
                         stateMachine, false);
                 Flow oldFlow = RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow());
-                switch (stateMachine.getEndpointUpdate()) {
+                switch (stateMachine.getEndpointUpdateType()) {
                     case SOURCE:
                         switch (stateMachine.getFlowLoopOperation()) {
                             case NONE:
@@ -156,8 +156,8 @@ public class RevertNewRulesAction extends BaseFlowRuleRemovalAction<FlowUpdateFs
             FlowPath newReverse = getFlowPath(flow, stateMachine.getNewProtectedReversePath());
             Flow oldFlow = RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow());
 
-            if (stateMachine.getEndpointUpdate().isPartialUpdate()) {
-                switch (stateMachine.getEndpointUpdate()) {
+            if (stateMachine.getEndpointUpdateType().isPartialUpdate()) {
+                switch (stateMachine.getEndpointUpdateType()) {
                     case SOURCE:
                         if (stateMachine.getFlowLoopOperation() == NONE) {
                             revertCommands.addAll(commandBuilder.buildEgressOnlyOneDirection(commandContext,

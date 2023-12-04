@@ -34,6 +34,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
 import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
+import org.openkilda.wfm.topology.flowhs.utils.EndpointUpdateType;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -58,12 +59,24 @@ public class UpdateHaFlowAction extends
 
             log.debug("Updating the flow {} with properties: {}", haFlowId, targetHaFlow);
 
-            // Complete target ha-flow in FSM with values from original ha-flow
+            stateMachine.setEndpointUpdateType(EndpointUpdateType.determineUpdateType(haFlow, targetHaFlow));
+
+            // Complete the target HA-flow in FSM with values from original HA-flow
             stateMachine.setTargetHaFlow(updateFlow(haFlow, targetHaFlow));
             FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
                     .of(stateMachine.getCommandContext().getCorrelationId())
                     .withAction("HA-flow properties have been updated."));
         });
+
+        if (stateMachine.getEndpointUpdateType().isPartialUpdate()) {
+            stateMachine.setNewPrimaryPathIds(stateMachine.getOldPrimaryPathIds());
+            stateMachine.setNewProtectedPathIds(stateMachine.getOldProtectedPathIds());
+
+            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("HA-flow endpoints update is executed."));
+            stateMachine.fire(Event.UPDATE_ENDPOINTS_ONLY);
+        }
 
         return Optional.empty();
     }

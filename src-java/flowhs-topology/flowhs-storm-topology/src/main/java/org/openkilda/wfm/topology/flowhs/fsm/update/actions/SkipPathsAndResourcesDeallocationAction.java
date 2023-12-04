@@ -43,7 +43,7 @@ public class SkipPathsAndResourcesDeallocationAction
 
     @Override
     public void perform(State from, State to, Event event, FlowUpdateContext context, FlowUpdateFsm stateMachine) {
-        if (stateMachine.getEndpointUpdate().isPartialUpdate()) {
+        if (stateMachine.getEndpointUpdateType().isPartialUpdate()) {
 
             Flow originalFlow =  RequestedFlowMapper.INSTANCE.toFlow(stateMachine.getOriginalFlow());
             originalFlow.setAffinityGroupId(stateMachine.getOriginalAffinityFlowGroup());

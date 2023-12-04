@@ -61,11 +61,11 @@ public class RemoveOldRulesAction extends
         Flow originalFlow = getOriginalFlowWithPaths(stateMachine, stateMachine.getOriginalFlow());
 
         MirrorContext mirrorContext = MirrorContext.builder().removeFlowOperation(true).build();
-        if (stateMachine.getEndpointUpdate().isPartialUpdate()) {
+        if (stateMachine.getEndpointUpdateType().isPartialUpdate()) {
             SpeakerRequestBuildContext speakerContext = getSpeakerRequestBuildContext(stateMachine, false);
             FlowPath forward = getFlowPath(stateMachine.getOldPrimaryForwardPath());
             FlowPath reverse = getFlowPath(stateMachine.getOldPrimaryReversePath());
-            switch (stateMachine.getEndpointUpdate()) {
+            switch (stateMachine.getEndpointUpdateType()) {
                 case SOURCE:
                     factories.addAll(buildCommandsForSourceUpdate(commandBuilder, stateMachine, originalFlow,
                             forward, reverse, speakerContext, mirrorContext.toBuilder().removeGroup(false).build()));
@@ -74,7 +74,7 @@ public class RemoveOldRulesAction extends
                     factories.addAll(buildCommandsForDestinationUpdate(commandBuilder, stateMachine, originalFlow,
                             forward, reverse, speakerContext, mirrorContext.toBuilder().removeGroup(false).build()));
                     break;
-                case BOTH:
+                case ALL:
                 default:
                     switch (stateMachine.getFlowLoopOperation()) {
                         case DELETE:
