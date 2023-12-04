@@ -213,6 +213,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
 
         and: "Init auto reroute (bring port down on the src switch)"
+        setLatencyForPaths(10, 15)
         def islToBreak = pathHelper.getInvolvedIsls(mainPath).first()
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 

@@ -161,7 +161,7 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         flowHelperV2.addFlow(flow)
         //wait for generating some flow-monitoring stats
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, FLOW_MONITORING).hasNonZeroValues()
+            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
 
