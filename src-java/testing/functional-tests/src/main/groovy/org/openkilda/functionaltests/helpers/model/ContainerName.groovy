@@ -3,7 +3,8 @@ package org.openkilda.functionaltests.helpers.model
 enum ContainerName {
     GRPC("grpc-speaker"),
     GRPC_STUB("grpc-stub"),
-    WFM("wfm")
+    WFM("wfm"),
+    STORM("storm-ui")
 
     private final String id;
 
