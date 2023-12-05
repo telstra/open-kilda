@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
@@ -41,7 +42,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
     @Value('${reroute.hardtimeout}')
     int rerouteHardTimeout
 
-    @Tags(SMOKE)
+    @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     //    unignored. Tests needs supervision next builds
     def "Reroute is not performed while new reroutes are being issued"() {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
@@ -104,6 +105,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
     }
 
     @Ignore("Unstable")
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Reroute is performed after hard timeout even though new reroutes are still being issued"() {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
         /* Here we will pick only short flows that consist of 2 switches, so that we can maximize amount of unique
@@ -179,6 +181,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Flow can be safely deleted while it is in the reroute window waiting for reroute"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -194,7 +197,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         def flowIsDeleted = true
 
         then: "The flow is not present in NB"
-        northboundV2.getAllFlows().empty
+        !northboundV2.getAllFlows().find { it.flowId == flow.flowId}
 
         and: "Related switches have no excess rules"
         //wait, server42 rules may take some time to disappear after flow removal

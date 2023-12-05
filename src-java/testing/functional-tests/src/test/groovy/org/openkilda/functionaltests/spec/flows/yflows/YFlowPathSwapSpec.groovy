@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.model.stats.FlowStats
 
 import static groovyx.gpars.GParsPool.withPool
@@ -150,6 +153,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
+    @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "System is able to switch a y-flow to protected paths"() {
         given: "A y-flow with protected paths"
         def swT = findSwitchTripletForYFlowWithProtectedPaths()
@@ -331,7 +335,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
                 "Y-flow $NON_EXISTENT_FLOW_ID not found"
     }
 
-    @Tags(LOW_PRIORITY)
+    @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "Unable to swap paths for an inactive y-flow"() {
         given: "A y-flow with protected paths"
         def swT = findSwitchTripletForYFlowWithProtectedPaths()

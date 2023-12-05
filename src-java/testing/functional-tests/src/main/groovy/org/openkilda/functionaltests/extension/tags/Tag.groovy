@@ -19,4 +19,9 @@ enum Tag {
 
     //speed
     SLOW,//usually for 1minute+ tests
+
+    //topology links recovering only when an error occurred during test execution
+    ISL_RECOVER_ON_FAIL,
+    //resetting cost and bandwidth only when an error occurred during test execution
+    ISL_PROPS_DB_RESET
 }

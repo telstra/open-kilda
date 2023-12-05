@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_ACTIVATED
@@ -14,6 +15,7 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.PortHistoryEvent
 import org.openkilda.messaging.info.event.IslChangeType
@@ -36,7 +38,7 @@ class PortHistorySpec extends HealthCheckSpecification {
     //it means how often the 'ANTI_FLAP_PERIODIC_STATS' is logged in port history
     def antiflapDumpingInterval = 60
 
-    @IterationTag(tags = [SMOKE, SMOKE_SWITCHES], iterationNameRegex = /direct/)
+    @IterationTag(tags = [SMOKE, SMOKE_SWITCHES, ISL_RECOVER_ON_FAIL], iterationNameRegex = /direct/)
     def "Port history are created for the port down/up actions when link is #islDescription"() {
         given: "A link"
         assumeTrue(isl as boolean, "Unable to find $islDescription ISL for this test")
@@ -118,6 +120,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Port history should not be returned in case timeline is incorrect (timeBefore > timeAfter)"() {
         given: "A direct link with port history"
         def timestampBefore = System.currentTimeMillis()
@@ -160,6 +163,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         portHistory.isEmpty()
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Port history is available when switch is DEACTIVATED"() {
         given: "A direct link"
         def timestampBefore = System.currentTimeMillis()

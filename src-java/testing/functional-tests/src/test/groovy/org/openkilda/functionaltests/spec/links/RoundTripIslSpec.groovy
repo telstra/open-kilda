@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.links
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
@@ -34,6 +35,7 @@ class RoundTripIslSpec extends HealthCheckSpecification {
     via the 'knockoutSwitch' method on the stage env*/
     Integer customWaitOffset = WAIT_OFFSET * 4
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Isl with round-trip properly changes status after port events(#descr)"() {
         given: "Round-trip ISL with a-switch"
         def cleanupActions = []
@@ -362,6 +364,7 @@ round trip latency rule is removed on the dst switch"() {
         }
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Able to delete failed ISL without force if it was discovered with disabled portDiscovery on a switch"() {
         given: "A deleted round trip latency ISL"
         Isl roundTripIsl = topology.islsForActiveSwitches.find {

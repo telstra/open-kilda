@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.error.flowloop.FlowLoopNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
@@ -287,6 +289,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "System is able to reroute a flow when flowLoop is created on it"() {
         given: "A multi switch flow with one alternative path at least"
         def allTraffGenSwIds = topology.activeTraffGens*.switchConnected*.dpId
@@ -442,6 +445,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "System is able to autoSwapPath for a protected flow when flowLoop is created on it"() {
         given: "Two active switches with three diverse paths at least"
         def allTraffGenSwIds = topology.activeTraffGens*.switchConnected*.dpId
