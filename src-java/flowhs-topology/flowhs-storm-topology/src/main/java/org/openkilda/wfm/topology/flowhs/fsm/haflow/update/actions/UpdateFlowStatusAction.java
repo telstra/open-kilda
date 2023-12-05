@@ -114,6 +114,12 @@ public class UpdateFlowStatusAction extends
             }
 
             stateMachine.setNewFlowStatus(newHaFlowStatusStatus);
+            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction("Save a dump on Flow status change")
+                    .withHaFlowDumpAfter(haFlow)
+                    .withHaFlowId(stateMachine.getHaFlowId()));
+
             return newHaFlowStatusStatus;
         });
 
