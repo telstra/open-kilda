@@ -49,12 +49,11 @@ public class InputLldpRuleGenerator implements RuleGenerator {
     @Default
     private final Set<FlowSideAdapter> overlappingIngressAdapters = new HashSet<>();
     private FlowEndpoint ingressEndpoint;
-    private boolean multiTable;
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
         List<SpeakerData> result = new ArrayList<>();
-        if (multiTable && ingressEndpoint.isTrackLldpConnectedDevices()
+        if (ingressEndpoint.isTrackLldpConnectedDevices()
                 && overlappingIngressAdapters.stream().noneMatch(FlowSideAdapter::isDetectConnectedDevicesLldp)) {
             result.add(buildLldpInputCustomerFlowCommand(sw, ingressEndpoint));
         }

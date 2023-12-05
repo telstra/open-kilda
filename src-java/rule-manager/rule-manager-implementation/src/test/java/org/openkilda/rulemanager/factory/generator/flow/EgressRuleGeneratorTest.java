@@ -83,7 +83,7 @@ public class EgressRuleGeneratorTest {
     public static final FlowSegmentCookie COOKIE = new FlowSegmentCookie(FlowPathDirection.FORWARD, 123);
 
     @Test
-    public void buildVlanMultiTableOuterInnerVlanEgressRuleTest() {
+    public void buildVlanOuterInnerVlanEgressRuleTest() {
         FlowPath path = buildPath();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, INNER_VLAN_ID);
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
@@ -99,7 +99,7 @@ public class EgressRuleGeneratorTest {
     }
 
     @Test
-    public void buildVlanMultiTableOuterVlanEgressRuleTest() {
+    public void buildVlanOuterVlanEgressRuleTest() {
         FlowPath path = buildPath();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
@@ -113,7 +113,7 @@ public class EgressRuleGeneratorTest {
     }
 
     @Test
-    public void buildVlanMultiTableOuterVlanEqualsTransitEgressRuleTest() {
+    public void buildVlanOuterVlanEqualsTransitEgressRuleTest() {
         FlowPath path = buildPath();
         Flow flow = buildFlow(path, VLAN_ENCAPSULATION.getId(), 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
@@ -127,7 +127,7 @@ public class EgressRuleGeneratorTest {
 
 
     @Test
-    public void buildVlanMultiTableOuterInnerVlanEqualsTransitEgressRuleTest() {
+    public void buildVlanOuterInnerVlanEqualsTransitEgressRuleTest() {
         FlowPath path = buildPath();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, VLAN_ENCAPSULATION.getId());
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
@@ -142,7 +142,7 @@ public class EgressRuleGeneratorTest {
     }
 
     @Test
-    public void buildVlanMultiTableFullPortEgressRuleTest() {
+    public void buildVlanFullPortEgressRuleTest() {
         FlowPath path = buildPath();
         Flow flow = buildFlow(path, 0, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VLAN_ENCAPSULATION);
@@ -156,7 +156,7 @@ public class EgressRuleGeneratorTest {
     }
 
     @Test
-    public void buildVxlanMultiTableOuterInnerVlanEgressRuleTest() {
+    public void buildVxlanOuterInnerVlanEgressRuleTest() {
         FlowPath path = buildPath();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, INNER_VLAN_ID);
         EgressRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
@@ -174,7 +174,7 @@ public class EgressRuleGeneratorTest {
     }
 
     @Test
-    public void buildVxlanMultiTableOuterVlanEgressRuleTest() {
+    public void buildVxlanOuterVlanEgressRuleTest() {
         FlowPath path = buildPath();
         Flow flow = buildFlow(path, OUTER_VLAN_ID, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);
@@ -190,7 +190,7 @@ public class EgressRuleGeneratorTest {
     }
 
     @Test
-    public void buildVxlanMultiTableFullPortEgressRuleTest() {
+    public void buildVxlanFullPortEgressRuleTest() {
         FlowPath path = buildPath();
         Flow flow = buildFlow(path, 0, 0);
         EgressRuleGenerator generator = buildGenerator(path, flow, VXLAN_ENCAPSULATION);

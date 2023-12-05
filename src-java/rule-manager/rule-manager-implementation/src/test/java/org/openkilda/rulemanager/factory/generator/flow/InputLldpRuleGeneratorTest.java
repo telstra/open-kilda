@@ -66,7 +66,6 @@ public class InputLldpRuleGeneratorTest {
 
         InputLldpRuleGenerator generator = InputLldpRuleGenerator.builder()
                 .ingressEndpoint(endpoint)
-                .multiTable(true)
                 .overlappingIngressAdapters(Sets.newHashSet(overlapAdapter))
                 .build();
 
@@ -99,23 +98,10 @@ public class InputLldpRuleGeneratorTest {
     }
 
     @Test
-    public void buildLldpRuleForSingleTableTest() {
-        FlowEndpoint endpoint = new FlowEndpoint(SW.getSwitchId(), PORT_NUMBER_1, 0, 0, true, false);
-        InputLldpRuleGenerator generator = InputLldpRuleGenerator.builder()
-                .ingressEndpoint(endpoint)
-                .multiTable(false)
-                .overlappingIngressAdapters(new HashSet<>())
-                .build();
-
-        assertEquals(0, generator.generateCommands(SW).size());
-    }
-
-    @Test
     public void buildLldpRuleWithoutLldpTest() {
         FlowEndpoint endpoint = new FlowEndpoint(SW.getSwitchId(), PORT_NUMBER_1, 0, 0, false, false);
         InputLldpRuleGenerator generator = InputLldpRuleGenerator.builder()
                 .ingressEndpoint(endpoint)
-                .multiTable(true)
                 .overlappingIngressAdapters(new HashSet<>())
                 .build();
 
@@ -133,7 +119,6 @@ public class InputLldpRuleGeneratorTest {
                 .build());
         InputLldpRuleGenerator generator = InputLldpRuleGenerator.builder()
                 .ingressEndpoint(endpoint)
-                .multiTable(true)
                 .overlappingIngressAdapters(Sets.newHashSet(adapter))
                 .build();
 
