@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.148.0 (04/12/2023)
+
+### Bug Fixes:
+-  [#5476](https://github.com/telstra/open-kilda/pull/5476) Fix a bug with writing history before the history event is created. (Issue: [#4738](https://github.com/telstra/open-kilda/issues/4738))
+
+### Improvements:
+-  [#5472](https://github.com/telstra/open-kilda/pull/5472) Remove opentsdb from Kilda-gui [**gui**]
+-  [#5479](https://github.com/telstra/open-kilda/pull/5479) kilda-gui deps update [**gui**]
+-  [#5483](https://github.com/telstra/open-kilda/pull/5483) [TEST]: Server42: Flow: Rtt stats: Adding origin [**tests**]
+-  [#5484](https://github.com/telstra/open-kilda/pull/5484) #5390: [TEST] Avoid possibility of Y-Flow's subflows vlan conflict (Issues: [#5390](https://github.com/telstra/open-kilda/issues/5390) [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5487](https://github.com/telstra/open-kilda/pull/5487) [TEST]: Rigel: Stats: Victoria [**tests**]
+-  [#5488](https://github.com/telstra/open-kilda/pull/5488) #5390: [TEST] Fix flaky HA-Flow ping test (Issues: [#5390](https://github.com/telstra/open-kilda/issues/5390) [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5461](https://github.com/telstra/open-kilda/pull/5461) Change health check test for the MySQL container. Update docs. (Issue: [#5459](https://github.com/telstra/open-kilda/issues/5459)) [**configuration**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.147.1...v1.148.0).
+
+### Affected Components:
+history
+
+---
+
 ## v1.147.1 (27/11/2023)
 
 ### Bug Fixes:
