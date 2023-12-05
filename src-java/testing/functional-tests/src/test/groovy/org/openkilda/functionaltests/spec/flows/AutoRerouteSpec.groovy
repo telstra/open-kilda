@@ -742,6 +742,18 @@ triggering one more reroute of the current path"
     def cleanup() {
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
+
+        def failedLinks = northbound.getAllLinks().findAll { it.state == FAILED }
+        failedLinks.collectMany { return [it.source.switchId, it.destination.switchId] }.unique()
+                .each { switchId ->
+                    northbound.getPorts(switchId).findAll { port -> port.config == ["PORT_DOWN"] }
+                            .each { portDetails -> antiflap.portUp(switchId, portDetails.portNumber) }
+                }
+        if (failedLinks) {
+            wait(discoveryInterval + WAIT_OFFSET) {
+                assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
+            }
+        }
     }
 }
 

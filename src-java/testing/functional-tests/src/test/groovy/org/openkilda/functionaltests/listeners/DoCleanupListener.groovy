@@ -3,12 +3,15 @@ package org.openkilda.functionaltests.listeners
 import static groovyx.gpars.GParsPool.withPool
 
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 
+import groovy.util.logging.Slf4j
 import org.spockframework.runtime.model.ErrorInfo
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 
+@Slf4j
 class DoCleanupListener extends AbstractSpringListener {
 
     @Autowired
@@ -16,6 +19,12 @@ class DoCleanupListener extends AbstractSpringListener {
 
     @Autowired @Qualifier("islandNb")
     NorthboundService northbound
+
+    @Autowired
+    Database database
+
+    private List<String> resetIslRelatedSpecs = ["YFlowPathSwapSpec", "HaFlowIntentionalRerouteSpec", "ProtectedPathV1Spec",
+                                                 "ProtectedPathSpec", "MultiRerouteSpec", "IntentionalRerouteSpec", "FlowCrudV1Spec"]
 
     @Override
     void error(ErrorInfo error) {
@@ -28,6 +37,13 @@ class DoCleanupListener extends AbstractSpringListener {
                     }
                 }
             }
+        }
+        if (error.method.parent.name in resetIslRelatedSpecs) {
+            def isls = topology.getIslsForActiveSwitches().collectMany { [it, it.reversed] }
+            log.info("Resetting ISLs bandwidth due to the failure in " + error.method.parent.name + "\nISLs: " + isls)
+            isls.each { database.resetIslBandwidth(it) }
+            log.info("Resetting ISLs cost due to the failure in " + error.method.parent.name)
+            database.resetCosts(topology.isls)
         }
     }
 }
