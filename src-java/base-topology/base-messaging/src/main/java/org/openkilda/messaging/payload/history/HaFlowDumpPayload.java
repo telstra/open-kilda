@@ -15,11 +15,13 @@
 
 package org.openkilda.messaging.payload.history;
 
+import org.openkilda.messaging.validation.JsonIncludeObjectHavingNonNullFieldOrNonEmptyList;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.history.DumpType;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
@@ -63,6 +65,10 @@ public class HaFlowDumpPayload implements Serializable {
     List<HaSubFlowPayload> haSubFlows;
     HaFlowPathPayload forwardPath;
     HaFlowPathPayload reversePath;
+    @JsonInclude(value = JsonInclude.Include.CUSTOM,
+            valueFilter = JsonIncludeObjectHavingNonNullFieldOrNonEmptyList.class)
     HaFlowPathPayload protectedForwardPath;
+    @JsonInclude(value = JsonInclude.Include.CUSTOM,
+            valueFilter = JsonIncludeObjectHavingNonNullFieldOrNonEmptyList.class)
     HaFlowPathPayload protectedReversePath;
 }
