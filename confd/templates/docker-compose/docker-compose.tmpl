@@ -140,7 +140,11 @@ services:
     ports:
       - 8101:3306
     healthcheck:
-      test: "mysqladmin -u kilda -pkilda ping"
+      test: "mysql -u kilda -pkilda --protocol=tcp -e 'use kilda; select count(user());'"
+      interval: 3s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
     networks:
       default:
         aliases:

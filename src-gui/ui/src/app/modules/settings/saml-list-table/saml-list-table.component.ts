@@ -1,8 +1,6 @@
 import { Component, OnInit , ViewChild, Input, OnChanges, Output, EventEmitter, Renderer2, SimpleChanges} from '@angular/core';
 import { SamlSettingService } from 'src/app/common/services/saml-setting.service';
 import { LoaderService } from 'src/app/common/services/loader.service';
-import {MessageObj} from '../../../common/constants/constants';
-import { ToastrService } from 'ngx-toastr';
 import { DataTableDirective } from 'angular-datatables';
 import { Subject } from 'rxjs';
 @Component({
@@ -18,7 +16,7 @@ export class SamlListTableComponent implements OnInit , OnChanges {
   @Output() deletesaml = new EventEmitter();
   dtOptions = {};
   wrapperHide = true;
-  dtTrigger: Subject<any> = new Subject();
+  dtTrigger: Subject<void> = new Subject();
   constructor(
     private samlSettingService: SamlSettingService,
     private loaderService: LoaderService,

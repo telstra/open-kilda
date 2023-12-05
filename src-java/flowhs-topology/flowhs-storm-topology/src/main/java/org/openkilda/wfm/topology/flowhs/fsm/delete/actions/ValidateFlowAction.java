@@ -24,7 +24,6 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
@@ -78,7 +77,7 @@ public class ValidateFlowAction extends
         stateMachine.setDstSwitchId(resultFlow.getDestSwitchId());
         stateMachine.setSrcSwitchId(resultFlow.getSrcSwitchId());
 
-        stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.DELETE);
+        stateMachine.saveActionToHistory("Flow was validated successfully");
 
         return Optional.of(buildResponseMessage(resultFlow, stateMachine.getCommandContext()));
     }

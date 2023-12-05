@@ -26,10 +26,12 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.SpeakerCommandFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.CreateNewHistoryEventAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
@@ -205,6 +207,12 @@ public final class FlowCreateFsm extends FlowProcessingWithHistorySupportFsm<Flo
                     commandExecutorFsmBuilder, persistenceManager);
             final ReportErrorAction<FlowCreateFsm, State, Event, FlowCreateContext>
                     reportErrorAction = new ReportErrorAction<>(Event.TIMEOUT);
+
+            builder.transition()
+                    .from(State.CREATE_NEW_HISTORY_EVENT)
+                    .to(State.INITIALIZED)
+                    .on(Event.NEXT)
+                    .perform(new CreateNewHistoryEventAction<>(persistenceManager, FlowEventData.Event.CREATE));
 
             // validate the flow
             builder.transition()
@@ -411,7 +419,7 @@ public final class FlowCreateFsm extends FlowProcessingWithHistorySupportFsm<Flo
 
         public FlowCreateFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId,
                                          @NonNull Collection<FlowCreateEventListener> eventListeners) {
-            FlowCreateFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
+            FlowCreateFsm fsm = builder.newStateMachine(State.CREATE_NEW_HISTORY_EVENT, commandContext, carrier, flowId,
                     eventListeners, config);
 
             fsm.addTransitionCompleteListener(event ->
@@ -466,6 +474,7 @@ public final class FlowCreateFsm extends FlowProcessingWithHistorySupportFsm<Flo
     }
 
     public enum State {
+        CREATE_NEW_HISTORY_EVENT,
         INITIALIZED,
         FLOW_VALIDATED,
         RESOURCES_ALLOCATED,

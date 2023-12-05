@@ -48,17 +48,7 @@ import { BehaviorSubject } from 'rxjs';
         const url = `${this.configUrl}/role/permission/${id}`;
         return this.http.put<Permission>(url, role);
     }
-
-    getPermissionRoleById(id: number): Observable<Permission> {
-        const url = `${this.configUrl}/role/permission/${id}`;
-        return this.http.get<Permission>(url);
-    }
-
     selectedPermission(userId: number) {
         this.permissionSource.next(userId);
-    }
-
-    clearselectedPermission() {
-        this.subject.next();
     }
 }

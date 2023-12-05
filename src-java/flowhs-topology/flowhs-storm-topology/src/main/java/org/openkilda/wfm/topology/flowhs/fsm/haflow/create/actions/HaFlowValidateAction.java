@@ -24,7 +24,6 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.share.history.model.HaFlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
@@ -32,7 +31,6 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
-import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
 import org.openkilda.wfm.topology.flowhs.validation.HaFlowValidator;
 import org.openkilda.wfm.topology.flowhs.validation.UnavailableFlowEndpointException;
 
@@ -88,12 +86,6 @@ public class HaFlowValidateAction extends
                 request.getMaximumBandwidth(), request.getPathComputationStrategy(), request.getMaxLatency(),
                 request.getMaxLatencyTier2());
 
-        FlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
-                        .details("HA-flow has been validated successfully")
-                        .event(HaFlowEventData.Event.CREATE)
-                        .taskId(stateMachine.getCommandContext().getCorrelationId())
-                        .haFlowId(stateMachine.getHaFlowId())
-                .build());
         return Optional.empty();
     }
 

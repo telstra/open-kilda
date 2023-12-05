@@ -17,8 +17,6 @@ package org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.actions;
 
 import static java.lang.String.format;
 import static java.util.Collections.emptySet;
-import static org.openkilda.wfm.share.history.model.HaFlowEventData.Initiator.AUTO;
-import static org.openkilda.wfm.share.history.model.HaFlowEventData.Initiator.NB;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
@@ -35,7 +33,6 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.share.history.model.HaFlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.TimedExecution;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -78,18 +75,7 @@ public class ValidateHaFlowAction extends
                 new HashSet<>(Optional.ofNullable(context.getAffectedIsl()).orElse(emptySet()));
         dashboardLogger.onHaFlowReroute(flowId, affectedIsl);
 
-        String rerouteReason = context.getRerouteReason();
-
-        FlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
-                .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .event(HaFlowEventData.Event.REROUTE)
-                .haFlowId(stateMachine.getHaFlowId())
-                .action("Started HA-flow validation")
-                .initiator(rerouteReason == null ? NB : AUTO)
-                .details(rerouteReason == null ? null : "Reason: " + rerouteReason)
-                .build());
-
-        stateMachine.setRerouteReason(rerouteReason);
+        stateMachine.setRerouteReason(context.getRerouteReason());
 
         HaFlow haFlow = transactionManager.doInTransaction(() -> {
             HaFlow foundHaFlow = getHaFlow(flowId);

@@ -64,15 +64,15 @@ export class TopologyGraphService {
 	.zoom()
 	.scaleExtent([this.scaleLimit, this.max_zoom])
 	.extent([[0, 0], [width, height]])
-	.on('zoom', () => {
+	.on('zoom', (event, d) => {
 		this.g.attr(
 		'transform',
 		'translate(' +
-			d3.event.transform.x +
+			event.transform.x +
 			',' +
-			d3.event.transform.y +
+			event.transform.y +
 			') scale(' +
-			d3.event.transform.k +
+			event.transform.k +
 			')'
 		);
 	});
@@ -314,7 +314,7 @@ export class TopologyGraphService {
       })
       .attr('cursor', 'pointer');
   if (!forMap) {
-    graphNodeElement.on('mouseover', function(d, index) {
+    graphNodeElement.on('mouseover', function(event, d) {
       $('#isl_hover').css('display', 'none');
       const element = document.getElementById('circle_' + d.switch_id);
 
@@ -360,7 +360,7 @@ export class TopologyGraphService {
       }
 
     })
-    .on('mouseout', function(d, index) {
+    .on('mouseout', function(event, d) {
       if (this.flagHover == false) {
         this.flagHover = true;
       } else {
@@ -378,7 +378,7 @@ export class TopologyGraphService {
       }
 
     })
-    .on('click', function(d, index) {
+    .on('click', function(event, d) {
       $('#topology-hover-txt').css('display', 'none');
 
       const cName = document.getElementById('circle_' + d.switch_id).className;
@@ -485,8 +485,8 @@ export class TopologyGraphService {
       })
       .attr('id', (d, index) => {
         return 'link' + index;
-      }).on('click', function(d, index) {
-        const element = $('#link' + index)[0];
+      }).on('click', function(event, d) {
+        const element = $('#link' + d.index)[0];
         const availbandwidth = d.available_bandwidth;
         const max_bandwidth = d.max_bandwidth;
         const percentage = ref.commonService.getPercentage(availbandwidth, max_bandwidth);
@@ -571,7 +571,8 @@ export class TopologyGraphService {
         }
       });
       if (!forMap) {
-        graphLinksData.on('mouseover', function(d, index) {
+        graphLinksData.on('mouseover', function(event, d) {
+          const index = d.index;
           $('#switch_hover').css('display', 'none');
           const element = $('#link' + index)[0];
           const availbandwidth = d.available_bandwidth;
@@ -739,9 +740,9 @@ export class TopologyGraphService {
             );
           }
         })
-        .on('mouseout', function(d, index) {
+        .on('mouseout', function(event, d) {
           $('#topology-hover-txt, #isl_hover').css('display', 'none');
-          const element = $('#link' + index)[0];
+          const element = $('#link' + d.index)[0];
           const availbandwidth = d.available_bandwidth;
           const max_bandwidth = d.max_bandwidth;
           const percentage = ref.commonService.getPercentage(availbandwidth, max_bandwidth);
@@ -1064,19 +1065,19 @@ export class TopologyGraphService {
     });
   }
 
-  dragStart = () => {
-    if (!d3.event.active) { this.simulation.alphaTarget(1).stop(); }
+  dragStart = (event, d) => {
+    if (!event.active) { this.simulation.alphaTarget(1).stop(); }
   }
 
-  dragging = (d: any, i) => {
+  dragging = (event, d) => {
     // this.isDragMove = true;
-    d.py += d3.event.dy;
-    d.x += d3.event.dx;
-    d.y += d3.event.dy;
+    d.py += event.dy;
+    d.x += event.dx;
+    d.y += event.dy;
     this.ticked();
   }
 
-  dragEnd = (d: any, i) => {
-    if (!d3.event.active) { this.simulation.alphaTarget(0); }
+  dragEnd = (event, d) => {
+    if (!event.active) { this.simulation.alphaTarget(0); }
   }
 }

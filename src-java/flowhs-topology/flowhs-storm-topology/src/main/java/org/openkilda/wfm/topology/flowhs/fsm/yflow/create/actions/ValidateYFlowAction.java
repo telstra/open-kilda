@@ -24,7 +24,6 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
@@ -85,7 +84,7 @@ public class ValidateYFlowAction extends
                 targetFlow.getMaximumBandwidth(), targetFlow.getPathComputationStrategy(), targetFlow.getMaxLatency(),
                 targetFlow.getMaxLatencyTier2());
 
-        stateMachine.saveNewEventToHistory("Y-flow was validated successfully", FlowEventData.Event.CREATE);
+        stateMachine.saveActionToHistory("Y-flow was validated successfully");
 
         return Optional.empty();
     }

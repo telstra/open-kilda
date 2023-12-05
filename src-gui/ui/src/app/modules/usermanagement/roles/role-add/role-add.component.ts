@@ -1,7 +1,6 @@
 import { Component, OnInit, Input, Output, EventEmitter, HostBinding, AfterViewInit  } from '@angular/core';
 import { FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
 import { NgOption } from '@ng-select/ng-select';
-import { Select2Data } from 'ng-select2-component/lib/select2-utils';
 import { TabService } from '../../../../common/services/tab.service';
 import { PermissionService } from '../../../../common/services/permission.service';
 import { RoleService } from '../../../../common/services/role.service';

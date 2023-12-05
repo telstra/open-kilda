@@ -1,5 +1,4 @@
 import {AfterViewInit, Component, EventEmitter, OnDestroy, OnInit, Output} from '@angular/core';
-import {HttpClient} from '@angular/common/http';
 import {ActivatedRoute, Router} from '@angular/router';
 import {SwitchidmaskPipe} from '../../../common/pipes/switchidmask.pipe';
 import {IslListService} from '../../../common/services/isl-list.service';
@@ -34,7 +33,6 @@ declare var moment: any;
 export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     openedTab = 'graph';
     loaderName = 'graphSpinner';
-    detailUrl = '';
     src_switch = '';
     src_port = '';
     dst_switch = '';
@@ -56,13 +54,10 @@ export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     bfdPropertyData: any;
     src_switch_name: string;
     dst_switch_name: string;
-    graphDataForwardUrl: string;
-    graphDataBackwardUrl: string;
     responseGraph = [];
     src_switch_kilda: string;
     dst_switch_kilda: string;
     dataForISLFLowGraph = [];
-    callGraphAPIFlag = false;
     currentGraphData = {
         data: [],
         startDate: moment(new Date()).format('YYYY/MM/DD HH:mm:ss'),
@@ -72,9 +67,8 @@ export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
         series: {},
         colors: [],
     };
-    graphObj: any;
     message: {};
-    getautoReloadValues = this.commonService.getAutoreloadValues();
+    getautoReloadValues;
 
     filterForm: FormGroup;
     graphMetrics = [];
@@ -86,7 +80,6 @@ export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     showDescriptionEditing = false;
     showBandwidthEditing = false;
     currentGraphName = 'Round Trip Latency Graph (In Seconds)';
-    dateMessage: string;
     clipBoardItems = {
         sourceSwitchName: '',
         sourceSwitch: '',
@@ -102,26 +95,24 @@ export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
         this.islDataService.changeMessage(this.currentGraphData);
     }
 
-    constructor(private httpClient: HttpClient,
-                private route: ActivatedRoute,
+    constructor(private route: ActivatedRoute,
                 private maskPipe: SwitchidmaskPipe,
                 private router: Router,
                 private islListService: IslListService,
                 private toastr: ToastrService,
                 private dygraphService: DygraphService,
                 private islDataService: IslDataService,
-                private formBuiler: FormBuilder,
+                private formBuilder: FormBuilder,
                 private loaderService: LoaderService,
                 private clipboardService: ClipboardService,
-                private islFormBuiler: FormBuilder,
                 private titleService: Title,
                 private modalService: NgbModal,
-                private commonService: CommonService,
+                public commonService: CommonService,
                 private islDetailService: IslDetailService,
                 private statsService: StatsService,
                 private graphLoader: NgxSpinnerService
     ) {
-
+        this.getautoReloadValues = this.commonService.getAutoreloadValues();
         if (!this.commonService.hasPermission('menu_isl')) {
             this.toastr.error(MessageObj.unauthorised);
             this.router.navigate(['/home']);
@@ -147,7 +138,7 @@ export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
             this.getIslDetailData(this.src_switch, this.src_port, this.dst_switch, this.dst_port);
         });
 
-        this.filterForm = this.formBuiler.group({
+        this.filterForm = this.formBuilder.group({
             timezone: ['LOCAL'],
             fromDate: [dateRange.from],
             toDate: [dateRange.to],
@@ -161,6 +152,17 @@ export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
             no_flows: 10,
             auto_reload_time: ['', Validators.compose([Validators.pattern('[0-9]*')])]
         });
+        this.bfdPropForm = this.formBuilder.group({
+            interval_ms: [0, Validators.min(0)],
+            multiplier: [0, Validators.min(0)]
+        });
+
+        this.islForm = this.formBuilder.group({
+            cost: [0, Validators.min(0)],
+            max_bandwidth: [0, Validators.min(0)],
+            description: ''
+        });
+
         this.graphMetrics = this.dygraphService.getPortMetricData();
         this.flowGraphMetrics = this.dygraphService.getFlowMetricData();
     }
@@ -198,11 +200,6 @@ export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.islListService.getIslDetail(this.src_switch, this.src_port, this.dst_switch, this.dst_port).subscribe((data: any) => {
                     if (data != null) {
                         this.detailDataObservable = data;
-                        this.islForm = this.islFormBuiler.group({
-                            cost: [this.detailDataObservable.cost, Validators.min(0)],
-                            max_bandwidth: [this.max_bandwidth, Validators.min(0)],
-                            description: [this.detailDataObservable.props.description],
-                        });
                     } else {
                         this.detailDataObservable = {
                             'props': {
@@ -210,13 +207,10 @@ export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
                                 'description': ''
                             }
                         };
-
-                        this.islForm = this.islFormBuiler.group({
-                            cost: [this.detailDataObservable.cost, Validators.min(0)],
-                            max_bandwidth: [this.max_bandwidth, Validators.min(0)],
-                            description: [this.detailDataObservable.props.description],
-                        });
                     }
+                    this.islForm.get('cost').setValue(this.detailDataObservable.props.cost);
+                    this.islForm.get('max_bandwidth').setValue(this.max_bandwidth);
+                    this.islForm.get('description').setValue(this.detailDataObservable.props.description);
                 }, error => {
                     this.toastr.error(MessageObj.no_cost_data_returned, 'Error');
                 });
@@ -224,16 +218,12 @@ export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.islListService.getLinkBFDProperties(this.src_switch, this.src_port, this.dst_switch, this.dst_port).subscribe((data: any) => {
                     if (data != null) {
                         this.bfdPropertyData = data;
-                        this.bfdPropForm = this.formBuiler.group({
-                            interval_ms: [this.bfdPropertyData.properties['interval_ms'], Validators.min(0)],
-                            multiplier: [this.bfdPropertyData.properties['multiplier'], Validators.min(0)]
-                        });
+                        this.bfdPropForm.get('interval_ms').setValue(this.bfdPropertyData.properties['interval_ms']);
+                        this.bfdPropForm.get('multiplier').setValue(this.bfdPropertyData.properties['multiplier']);
                     } else {
                         this.bfdPropertyData = {};
-                        this.bfdPropForm = this.formBuiler.group({
-                            interval_ms: [0, Validators.min(0)],
-                            multiplier: [0, Validators.min(0)]
-                        });
+                        this.bfdPropForm.get('interval_ms').setValue(0);
+                        this.bfdPropForm.get('multiplier').setValue(0);
                     }
 
                 }, error => {
@@ -674,7 +664,7 @@ export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
                 graph,
                 convertedStartDate,
                 convertedEndDate).subscribe((res: VictoriaStatsRes) => {
-                    const dataBackward = res.dataList;
+                const dataBackward = res.dataList;
                 if (dataBackward[0] !== undefined) {
                     dataBackward[0].tags.direction = 'R';
                     if (graph == 'rtt') {

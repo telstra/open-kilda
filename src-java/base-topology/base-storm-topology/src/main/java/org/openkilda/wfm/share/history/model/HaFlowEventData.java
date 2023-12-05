@@ -55,7 +55,8 @@ public class HaFlowEventData implements Serializable {
         PARTIAL_UPDATE("HA-Flow partial update"),
         REROUTE("HA-Flow reroute"),
         DELETE("HA-Flow delete"),
-        PATH_SWAP("HA-flow path swap");
+        PATH_SWAP("HA-Flow path swap"),
+        FLOW_SYNC("HA-Flow sync");
 
         private final String description;
     }

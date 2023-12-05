@@ -22,10 +22,12 @@ import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources;
+import org.openkilda.wfm.share.history.model.HaFlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowProcessingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.CreateNewHaFlowHistoryEventAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.NotifyHaFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteFsm.State;
@@ -95,6 +97,12 @@ public final class HaFlowDeleteFsm extends HaFlowProcessingFsm<HaFlowDeleteFsm, 
             final FlowOperationsDashboardLogger dashboardLogger = new FlowOperationsDashboardLogger(log);
             final ReportErrorAction<HaFlowDeleteFsm, State, Event, HaFlowDeleteContext>
                     reportErrorAction = new ReportErrorAction<>(Event.TIMEOUT);
+
+            builder.transition()
+                    .from(State.CREATE_NEW_HISTORY_EVENT)
+                    .to(State.INITIALIZED)
+                    .on(Event.NEXT)
+                    .perform(new CreateNewHaFlowHistoryEventAction<>(persistenceManager, HaFlowEventData.Event.DELETE));
 
             builder.transition().from(State.INITIALIZED).to(State.HA_FLOW_VALIDATED).on(Event.NEXT)
                     .perform(new ValidateHaFlowAction(persistenceManager, dashboardLogger));
@@ -172,8 +180,8 @@ public final class HaFlowDeleteFsm extends HaFlowProcessingFsm<HaFlowDeleteFsm, 
 
         public HaFlowDeleteFsm newInstance(@NonNull CommandContext commandContext, @NonNull String haFlowId,
                                            @NonNull Collection<FlowProcessingEventListener> eventListeners) {
-            HaFlowDeleteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, haFlowId,
-                    eventListeners);
+            HaFlowDeleteFsm fsm = builder.newStateMachine(State.CREATE_NEW_HISTORY_EVENT, commandContext, carrier,
+                    haFlowId, eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("HaFlowDeleteFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
@@ -214,6 +222,7 @@ public final class HaFlowDeleteFsm extends HaFlowProcessingFsm<HaFlowDeleteFsm, 
     }
 
     public enum State {
+        CREATE_NEW_HISTORY_EVENT,
         INITIALIZED,
         HA_FLOW_VALIDATED,
 

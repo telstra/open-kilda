@@ -25,7 +25,6 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaFlowPath;
 import org.openkilda.persistence.PersistenceManager;
-import org.openkilda.wfm.share.history.model.HaFlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
@@ -34,6 +33,7 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.pathswap.HaFlowPathSwapFsm.State;
 import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -80,7 +80,7 @@ public class HaFlowValidateAction extends
             saveAndSetInProgressStatuses(haFlow.getProtectedForwardPath(), stateMachine);
             saveAndSetInProgressStatuses(haFlow.getProtectedReversePath(), stateMachine);
         });
-        saveNewEventToHistory(stateMachine);
+        saveNewActionToHistory(stateMachine);
         return Optional.empty();
     }
 
@@ -98,12 +98,10 @@ public class HaFlowValidateAction extends
         return "Could not swap paths for flow";
     }
 
-    private void saveNewEventToHistory(HaFlowPathSwapFsm stateMachine) {
-        FlowHistoryService.using(stateMachine.getCarrier()).saveNewHaFlowEvent(HaFlowEventData.builder()
-                        .action("HA-flow has been validated successfully")
-                        .event(HaFlowEventData.Event.PATH_SWAP)
-                        .haFlowId(stateMachine.getHaFlowId())
-                        .taskId(stateMachine.getCommandContext().getCorrelationId())
-                .build());
+    private void saveNewActionToHistory(HaFlowPathSwapFsm stateMachine) {
+        FlowHistoryService.using(stateMachine.getCarrier()).save(
+                HaFlowHistory.of(stateMachine.getCommandContext().getCorrelationId())
+                        .withAction("HA-flow has been validated successfully")
+                        .withHaFlowId(stateMachine.getHaFlowId()));
     }
 }

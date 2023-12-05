@@ -142,7 +142,8 @@ public abstract class FlowProcessingWithHistorySupportFsm<T extends AbstractStat
     }
 
     /**
-     * Add a history record on the new event.
+     * Add a history record on the new event. Pay attention that this method prepends the Flow ID to the task ID,
+     * which is later used for fetching the history. If other methods in an FSM don't do the same, the history is lost.
      */
     public void saveNewEventToHistory(String flowId, String action, FlowEventData.Event event) {
         String taskId = KeyProvider.joinKeys(flowId, getCommandContext().getCorrelationId());

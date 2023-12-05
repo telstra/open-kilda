@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2023 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -82,78 +82,6 @@ public class StatsController {
         return Metrics.list(applicationProperties.getMetricPrefix());
     }
 
-
-    /**
-     * Gets the isl stats.
-     *
-     * @param startDate  the start date
-     * @param endDate    the end date
-     * @param downsample the downsample
-     * @return the flow stats
-     */
-    @RequestMapping(value =
-            "isl/{srcSwitch}/{srcPort}/{dstSwitch}/{dstPort}/{startDate}/{endDate}/{downsample}/{metric}",
-            method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = {IConstants.Permission.MENU_ISL})
-    @ResponseBody
-    public String getIslStats(@PathVariable String srcSwitch, @PathVariable String srcPort,
-                              @PathVariable String dstSwitch, @PathVariable String dstPort,
-                              @PathVariable String startDate, @PathVariable String endDate,
-                              @PathVariable String downsample, @PathVariable String metric) {
-
-        LOGGER.info("Get stat for Isl");
-        return statsService.getSwitchIslStats(startDate, endDate, downsample, srcSwitch, srcPort, dstSwitch, dstPort,
-                metric);
-
-    }
-
-    /**
-     * Gets the port stats.
-     *
-     * @param switchid   the switchid
-     * @param port       the port
-     * @param startDate  the start date
-     * @param endDate    the end date
-     * @param downsample the downsample
-     * @return the port stats
-     */
-    @RequestMapping(value = "switchid/{switchid}/port/{port}/{startDate}/{endDate}/{downsample}/{metric}",
-            method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = {IConstants.Permission.MENU_SWITCHES})
-    @ResponseBody
-    public String getPortStats(@PathVariable String switchid, @PathVariable String port,
-                               @PathVariable String startDate, @PathVariable String endDate,
-                               @PathVariable String downsample, @PathVariable String metric) {
-
-        LOGGER.info("Get stat for port");
-        return statsService.getSwitchPortStats(startDate, endDate, downsample, switchid, port, metric);
-
-    }
-
-    /**
-     * Gets the flow stats.
-     *
-     * @param flowid     the flowid
-     * @param startDate  the start date
-     * @param endDate    the end date
-     * @param downsample the downsample
-     * @return the flow stats
-     */
-    @RequestMapping(value = "flowid/{flowid:.+}/{startDate}/{endDate}/{downsample}/{metric}",
-            method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = {IConstants.Permission.MENU_FLOWS})
-    @ResponseBody
-    public String getFlowStats(@PathVariable String flowid, @PathVariable String startDate,
-                               @PathVariable String endDate, @PathVariable String downsample,
-                               @PathVariable String metric) {
-
-        LOGGER.info("Get stat for flow");
-        return statsService.getFlowStats(startDate, endDate, downsample, flowid, metric);
-    }
-
     /**
      * Retrieves Victoria statistics data for a specific flow based on the provided parameters.
      *
@@ -166,7 +94,7 @@ public class StatsController {
      * @return A {@link ResponseEntity} containing a {@link VictoriaStatsRes} object with the retrieved statistics.
      * @see VictoriaStatsRes
      */
-    @RequestMapping(value = "victoria/{statsType}",
+    @RequestMapping(value = "flowgraph/{statsType}",
             method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     @Permissions(values = {IConstants.Permission.MENU_FLOWS})
@@ -178,7 +106,7 @@ public class StatsController {
                                                                  @RequestParam String step,
                                                                  @RequestParam List<String> metric,
                                                                  @RequestParam(required = false) String direction) {
-
+        //TODO find a way to unite this controller method with the commonVictoriaStats method.
         LOGGER.info("Get victoria stat for flow");
         if (StringUtils.isBlank(startDate)) {
             return buildVictoriaBadRequestErrorRes(REQUIRED_START_DATE_ERROR);
@@ -201,71 +129,11 @@ public class StatsController {
                     statsService.getTransformedFlowVictoriaStats(statsType, startDate, endDate, step,
                             flowId, metric, Direction.byDisplayName(direction));
 
-            Optional<VictoriaData> errorData = victoriaResult.stream().filter(this::hasError).findFirst();
-
-            if (errorData.isPresent()) {
-                VictoriaData err = errorData.get();
-                res = buildVictoriaBadRequestErrorRes(Integer.parseInt(err.getErrorType()), err.getError());
-            } else {
-                res = ResponseEntity.ok(VictoriaStatsRes.builder().status(SUCCESS)
-                        .dataList(victoriaResult).build());
-            }
+            res = convertToVictoriaStatsRes(victoriaResult);
         } catch (InvalidRequestException e) {
             res = buildVictoriaBadRequestErrorRes(e.getMessage());
         }
         return res;
-    }
-
-    /**
-     * Gets the switch isl loss packet stats.
-     *
-     * @param srcSwitch  the src switch
-     * @param srcPort    the src port
-     * @param dstSwitch  the dst switch
-     * @param dstPort    the dst port
-     * @param startDate  the start date
-     * @param endDate    the end date
-     * @param downsample the downsample
-     * @param metric     the metric
-     * @return the isl loss packet stats
-     */
-    @RequestMapping(value =
-            "isl/losspackets/{srcSwitch}/{srcPort}/{dstSwitch}/{dstPort}/{startDate}/{endDate}/{downsample}/{metric}",
-            method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = {IConstants.Permission.MENU_ISL})
-    @ResponseBody
-    public String getIslLossPacketStats(@PathVariable String srcSwitch, @PathVariable String srcPort,
-                                        @PathVariable String dstSwitch, @PathVariable String dstPort,
-                                        @PathVariable String startDate, @PathVariable String endDate,
-                                        @PathVariable String downsample, @PathVariable String metric) {
-
-        LOGGER.info("Get stat of Isl loss packet");
-        return statsService.getSwitchIslLossPacketStats(startDate, endDate, downsample, srcSwitch, srcPort, dstSwitch,
-                dstPort, metric);
-    }
-
-    /**
-     * Gets the flow loss packet stats.
-     *
-     * @param flowid     the flowid
-     * @param startDate  the start date
-     * @param endDate    the end date
-     * @param downsample the downsample
-     * @param direction  the direction
-     * @return the flow loss packet stats
-     */
-    @RequestMapping(value = "flow/losspackets/{flowid:.+}/{startDate}/{endDate}/{downsample}/{direction}",
-            method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = {IConstants.Permission.MENU_FLOWS})
-    @ResponseBody
-    public String getFlowLossPacketStats(@PathVariable String flowid, @PathVariable String startDate,
-                                         @PathVariable String endDate, @PathVariable String downsample,
-                                         @PathVariable String direction) {
-
-        LOGGER.info("Get stat of flow loss packet");
-        return statsService.getFlowLossPacketStats(startDate, endDate, downsample, flowid, direction);
     }
 
     /**
@@ -285,15 +153,7 @@ public class StatsController {
         try {
             List<VictoriaData> victoriaResult = statsService.getVictoriaStats(victoriaStatsReq);
 
-            Optional<VictoriaData> errorData = victoriaResult.stream().filter(this::hasError).findFirst();
-
-            if (errorData.isPresent()) {
-                VictoriaData err = errorData.get();
-                res = buildVictoriaBadRequestErrorRes(Integer.parseInt(err.getErrorType()), err.getError());
-            } else {
-                res = ResponseEntity.ok(VictoriaStatsRes.builder().status(SUCCESS)
-                        .dataList(victoriaResult).build());
-            }
+            res = convertToVictoriaStatsRes(victoriaResult);
         } catch (InvalidRequestException e) {
             res = buildVictoriaBadRequestErrorRes(e.getMessage());
         }
@@ -322,29 +182,18 @@ public class StatsController {
         return statsService.getSwitchPortsStats(statsReq);
     }
 
+    private ResponseEntity<VictoriaStatsRes> convertToVictoriaStatsRes(List<VictoriaData> victoriaResult) {
+        ResponseEntity<VictoriaStatsRes> res;
+        Optional<VictoriaData> errorData = victoriaResult.stream().filter(this::hasError).findFirst();
 
-    /**
-     * Gets the meter stats.
-     *
-     * @param flowid     the flowid
-     * @param startDate  the start date
-     * @param endDate    the end date
-     * @param downsample the downsample
-     * @param direction  the direction
-     * @param metric     the metric
-     * @return the meter stats
-     */
-    @RequestMapping(value = "meter/{flowid:.+}/{startDate}/{endDate}/{downsample}/{metric}/{direction}",
-            method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseStatus(HttpStatus.OK)
-    @Permissions(values = {IConstants.Permission.MENU_FLOWS})
-    @ResponseBody
-    public String getMeterStats(@PathVariable String flowid, @PathVariable String startDate,
-                                @PathVariable String endDate, @PathVariable String downsample,
-                                @PathVariable String metric, @PathVariable String direction) {
-
-        LOGGER.info("Get stat for meter");
-        return statsService.getMeterStats(startDate, endDate, downsample, flowid, metric, direction);
+        if (errorData.isPresent()) {
+            VictoriaData err = errorData.get();
+            res = buildVictoriaBadRequestErrorRes(Integer.parseInt(err.getErrorType()), err.getError());
+        } else {
+            res = ResponseEntity.ok(VictoriaStatsRes.builder().status(SUCCESS)
+                    .dataList(victoriaResult).build());
+        }
+        return res;
     }
 
     private boolean hasError(VictoriaData victoriaData) {

@@ -271,16 +271,16 @@ export class NetworkpathComponent implements OnInit {
       .zoom()
       .scaleExtent([this.min_zoom, this.max_zoom])
       .extent([[0, 0], [width - 200, height - 50]])
-      .on('zoom', () => {
-        self.zoomLevel = Math.round(d3.event.transform.k * 100) / 100;
+      .on('zoom', (event, d) => {
+        self.zoomLevel = Math.round(event.transform.k * 100) / 100;
         self.g.attr(
           'transform',
           'translate(' +
-            d3.event.transform.x +
+            event.transform.x +
             ',' +
-            d3.event.transform.y +
+            event.transform.y +
             ') scale(' +
-            d3.event.transform.k +
+            event.transform.k +
             ')'
         );
 
@@ -380,20 +380,20 @@ export class NetworkpathComponent implements OnInit {
     }
     return mLinkNum;
   }
-  dragStart = () => {
-    if (!d3.event.active) { this.forceSimulation.alphaTarget(1).stop(); }
+  dragStart = (event, d) => {
+    if (!event.active) { this.forceSimulation.alphaTarget(1).stop(); }
   }
 
-  dragging = (d: any, i) => {
+  dragging = (event, d) => {
     this.isDragMove = true;
-    d.py += d3.event.dy;
-    d.x += d3.event.dx;
-    d.y += d3.event.dy;
+    d.py += event.dy;
+    d.x += event.dx;
+    d.y += event.dy;
     this.tick();
   }
 
-  dragEnd = (d: any, i) => {
-    if (!d3.event.active) { this.forceSimulation.alphaTarget(0); }
+  dragEnd = (event, d) => {
+    if (!event.active) { this.forceSimulation.alphaTarget(0); }
     this.flagHover = false;
     d.fixed = true; // of course set the node to fixed so the force doesn't include the node in its auto positioning stuff
     this.tick();

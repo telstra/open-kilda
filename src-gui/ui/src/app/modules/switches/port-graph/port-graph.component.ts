@@ -35,7 +35,7 @@ export class PortGraphComponent implements OnInit, AfterViewInit, OnDestroy {
   graphSubscriber = null;
   responseGraph = [];
   autoReloadTimerId = null;
-  getautoReloadValues = this.commonService.getAutoreloadValues();
+  getautoReloadValues;
   portMetrics = [];
   switchId  = null;
   portId  = null;
@@ -51,7 +51,9 @@ export class PortGraphComponent implements OnInit, AfterViewInit, OnDestroy {
     private loaderService: LoaderService,
     private islDataService: IslDataService,
     private commonService: CommonService,
-  ) { }
+  ) {
+    this.getautoReloadValues = this.commonService.getAutoreloadValues();
+  }
 
   ngOnInit() {
     this.route.parent.params.subscribe(params => this.switchId = params['id']);
@@ -160,7 +162,7 @@ export class PortGraphComponent implements OnInit, AfterViewInit, OnDestroy {
       getPortGraphData(
         this.port_src_switch,
         this.portDataObject.port_number,
-        '', '', downsampling,
+        downsampling,
         metric,
         convertedStartDate,
         convertedEndDate).subscribe((data: VictoriaStatsRes) => {

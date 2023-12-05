@@ -41,12 +41,13 @@
             ],
             "scripts": [
               "node_modules/jquery/dist/jquery.js",
+              "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js",
               "node_modules/datatables.net/js/jquery.dataTables.js",
               "src/assets/alertifyjs/alertify.js",
               "node_modules/dygraphs/dist/dygraph.min.js",
               "src/assets/js/moment.js",
               "src/assets/js/jquery.datetimepicker.full.js",
-              "node_modules/d3/build/d3.min.js",
+              "node_modules/d3/dist/d3.min.js",
               "node_modules/dt-colresize/js/dataTables.colResize.js",
               "node_modules/jszip/dist/jszip.js",
               "node_modules/datatables.net-buttons/js/dataTables.buttons.js",
@@ -67,7 +68,6 @@
               "optimization": true,
               "outputHashing": "all",
               "sourceMap": false,
-              "extractCss": true,
               "namedChunks": false,
               "aot": true,
               "extractLicenses": false,
@@ -109,11 +109,11 @@
               "src/assets"
             ]
 
-            
+
           }
         },
         "lint": {
-          "builder": "@angular-devkit/build-angular:tslint",
+          "builder": "@angular-eslint/builder:lint",
           "options": {
             "tsConfig": [
               "src/tsconfig.app.json",
@@ -143,7 +143,7 @@
           }
         },
         "lint": {
-          "builder": "@angular-devkit/build-angular:tslint",
+          "builder": "@angular-eslint/builder:lint",
           "options": {
             "tsConfig": "e2e/tsconfig.e2e.json",
             "exclude": [
@@ -153,6 +153,5 @@
         }
       }
     }
-  },
-  "defaultProject": "ui"
+  }
 }

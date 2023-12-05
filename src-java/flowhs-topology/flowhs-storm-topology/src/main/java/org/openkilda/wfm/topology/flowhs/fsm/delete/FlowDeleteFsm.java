@@ -25,9 +25,11 @@ import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowMirrorPathResources;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
+import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySupportFsm;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.CreateNewHistoryEventAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NotifyFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.delete.FlowDeleteFsm.Event;
@@ -143,6 +145,12 @@ public final class FlowDeleteFsm extends FlowProcessingWithHistorySupportFsm<Flo
             final ReportErrorAction<FlowDeleteFsm, State, Event, FlowDeleteContext>
                     reportErrorAction = new ReportErrorAction<>(Event.TIMEOUT);
 
+            builder.transition()
+                    .from(State.CREATE_NEW_HISTORY_EVENT)
+                    .to(State.INITIALIZED)
+                    .on(Event.NEXT)
+                    .perform(new CreateNewHistoryEventAction<>(persistenceManager, FlowEventData.Event.DELETE));
+
             builder.transition().from(State.INITIALIZED).to(State.FLOW_VALIDATED).on(Event.NEXT)
                     .perform(new ValidateFlowAction(persistenceManager, dashboardLogger));
             builder.transition().from(State.INITIALIZED).to(State.FINISHED_WITH_ERROR).on(Event.TIMEOUT);
@@ -221,7 +229,7 @@ public final class FlowDeleteFsm extends FlowProcessingWithHistorySupportFsm<Flo
 
         public FlowDeleteFsm newInstance(@NonNull CommandContext commandContext, @NonNull String flowId,
                                          @NonNull Collection<FlowProcessingEventListener> eventListeners) {
-            FlowDeleteFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, flowId,
+            FlowDeleteFsm fsm = builder.newStateMachine(State.CREATE_NEW_HISTORY_EVENT, commandContext, carrier, flowId,
                     eventListeners);
 
             fsm.addTransitionCompleteListener(event ->
@@ -263,6 +271,7 @@ public final class FlowDeleteFsm extends FlowProcessingWithHistorySupportFsm<Flo
     }
 
     public enum State {
+        CREATE_NEW_HISTORY_EVENT,
         INITIALIZED,
         FLOW_VALIDATED,
 

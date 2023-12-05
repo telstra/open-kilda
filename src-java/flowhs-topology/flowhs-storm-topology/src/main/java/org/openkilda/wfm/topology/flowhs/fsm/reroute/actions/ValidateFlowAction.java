@@ -31,7 +31,6 @@ import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaConfigurationRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.share.history.model.FlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.TimedExecution;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
@@ -73,11 +72,7 @@ public class ValidateFlowAction extends
                 new HashSet<>(Optional.ofNullable(context.getAffectedIsl()).orElse(emptySet()));
         dashboardLogger.onFlowPathReroute(flowId, affectedIsl);
 
-        String rerouteReason = context.getRerouteReason();
-        stateMachine.saveNewEventToHistory("Started flow validation", FlowEventData.Event.REROUTE,
-                rerouteReason == null ? FlowEventData.Initiator.NB : FlowEventData.Initiator.AUTO,
-                rerouteReason == null ? null : "Reason: " + rerouteReason);
-        stateMachine.setRerouteReason(rerouteReason);
+        stateMachine.setRerouteReason(context.getRerouteReason());
 
         Flow flow = transactionManager.doInTransaction(() -> {
             Flow foundFlow = getFlow(flowId);

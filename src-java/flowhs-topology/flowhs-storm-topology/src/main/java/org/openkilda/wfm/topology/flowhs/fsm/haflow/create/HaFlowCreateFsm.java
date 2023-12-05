@@ -28,10 +28,12 @@ import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.flow.resources.HaFlowResources;
+import org.openkilda.wfm.share.history.model.HaFlowEventData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.share.metrics.MeterRegistryHolder;
 import org.openkilda.wfm.topology.flowhs.fsm.common.HaFlowProcessingFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.ReportErrorAction;
+import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.CreateNewHaFlowHistoryEventAction;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.haflow.NotifyHaFlowMonitorAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
@@ -184,6 +186,12 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
 
             final ReportErrorAction<HaFlowCreateFsm, State, Event, HaFlowCreateContext>
                     reportErrorAction = new ReportErrorAction<>(Event.TIMEOUT);
+
+            builder.transition()
+                    .from(State.CREATE_NEW_HISTORY_EVENT)
+                    .to(State.INITIALIZED)
+                    .on(Event.NEXT)
+                    .perform(new CreateNewHaFlowHistoryEventAction<>(persistenceManager, HaFlowEventData.Event.CREATE));
 
             // validate the ha-flow
             builder.transition()
@@ -340,8 +348,8 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
 
         public HaFlowCreateFsm newInstance(@NonNull CommandContext commandContext, @NonNull String haFlowId,
                                            @NonNull Collection<FlowProcessingEventListener> eventListeners) {
-            HaFlowCreateFsm fsm = builder.newStateMachine(State.INITIALIZED, commandContext, carrier, haFlowId,
-                    eventListeners, config);
+            HaFlowCreateFsm fsm = builder.newStateMachine(State.CREATE_NEW_HISTORY_EVENT, commandContext, carrier,
+                    haFlowId, eventListeners, config);
 
             fsm.addTransitionCompleteListener(event ->
                     log.debug("HaFlowCreateFsm, transition to {} on {}", event.getTargetState(), event.getCause()));
@@ -395,6 +403,7 @@ public final class HaFlowCreateFsm extends HaFlowProcessingFsm<HaFlowCreateFsm, 
     }
 
     public enum State {
+        CREATE_NEW_HISTORY_EVENT,
         INITIALIZED,
         HA_FLOW_VALIDATED,
         RESOURCES_ALLOCATED,

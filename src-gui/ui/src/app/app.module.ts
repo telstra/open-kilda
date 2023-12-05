@@ -1,7 +1,6 @@
 import {BrowserModule, Title} from '@angular/platform-browser';
 import {NgModule} from '@angular/core';
 import {DataTablesModule} from 'angular-datatables';
-import {AngularFontAwesomeModule} from 'angular-font-awesome';
 import {AppRoutingModule} from './app-routing.module';
 import {NgSelectModule} from '@ng-select/ng-select';
 import {ReactiveFormsModule} from '@angular/forms';
@@ -10,11 +9,9 @@ import {Select2Module} from 'ng-select2-component';
 import {HttpClientModule} from '@angular/common/http';
 import {BrowserAnimationsModule} from '@angular/platform-browser/animations';
 import {ToastrModule} from 'ngx-toastr';
-import {NgDygraphsModule} from 'ng-dygraphs';
 import {NgxSpinnerModule} from 'ngx-spinner';
 import {ClipboardModule} from 'ngx-clipboard';
 import {NgbModule} from '@ng-bootstrap/ng-bootstrap';
-import {NgxTypeaheadModule} from 'ngx-typeahead';
 import {AppComponent} from './app.component';
 import {SidebarComponent} from './common/components/sidebar/sidebar.component';
 import {HeaderComponent} from './common/components/header/header.component';
@@ -74,9 +71,9 @@ import {AffectedIslComponent} from './modules/topology/affected-isl/affected-isl
 import {FailedIslComponent} from './modules/topology/failed-isl/failed-isl.component';
 import {UnidirectionalIslComponent} from './modules/topology/unidirectional-isl/unidirectional-isl.component';
 import {SettingsComponent} from './modules/settings/settings.component';
+import {CustomDygraphsComponent} from './common/components/custom-ng-dygraphs/custom-dygraphs.component';
 import {IdentityServerComponent} from './modules/settings/identity-server/identity-server.component';
 import {LinkStoreComponent} from './modules/settings/link-store/link-store.component';
-import {ContextMenuModule} from 'ngx-contextmenu';
 import {ModalconfirmationComponent} from './common/components/modalconfirmation/modalconfirmation.component';
 import {LogoutComponent} from './common/components/logout/logout.component';
 import {FlowDatatablesComponent} from './modules/flows/flow-datatables/flow-datatables.component';
@@ -112,11 +109,14 @@ import {SwitchupdatemodalComponent} from './common/components/switchupdatemodal/
 import {UseractivityListComponent} from './modules/useractivity/useractivity-list/useractivity-list.component';
 import {FlowPingModalComponent} from './common/components/flow-ping-modal/flow-ping-modal.component';
 import { CreateLagPortComponent } from './modules/switches/create-lag-port/create-lag-port.component';
+import {ContextMenuModule} from '@perfectmemory/ngx-contextmenu';
+import {FontAwesomeModule} from '@fortawesome/angular-fontawesome';
 
 @NgModule({
     declarations: [
         AppComponent,
         SidebarComponent,
+        CustomDygraphsComponent,
         HeaderComponent,
         HomeComponent,
         TopologyComponent,
@@ -211,16 +211,14 @@ import { CreateLagPortComponent } from './modules/switches/create-lag-port/creat
     imports: [
         HttpClientModule,
         BrowserModule,
-        NgDygraphsModule,
         AppRoutingModule,
-        AngularFontAwesomeModule,
+        FontAwesomeModule,
         DataTablesModule,
         NgSelectModule,
         ReactiveFormsModule,
         Select2Module,
         ClipboardModule,
         NgbModule,
-        NgxTypeaheadModule,
         BrowserAnimationsModule, // required animations module
         ToastrModule.forRoot({
             timeOut: 4000,
@@ -228,31 +226,11 @@ import { CreateLagPortComponent } from './modules/switches/create-lag-port/creat
             preventDuplicates: true,
         }),
         NgxSpinnerModule,
-        ContextMenuModule.forRoot({
-            autoFocus: true
-        }),
         ClickOutsideModule,
-        FormsModule
+        FormsModule,
+        ContextMenuModule
     ],
     providers: [SwitchidmaskPipe, AlertifyService, Title, AppAuthProvider],
-    bootstrap: [AppComponent],
-    entryComponents: [
-        OtpComponent,
-        ModalComponent,
-        ModalconfirmationComponent,
-        FlowReRouteModalComponent,
-        ChangepasswordComponent,
-        AffectedIslComponent,
-        FlowGraphComponent,
-        FlowPathGraphComponent,
-        FlowContractsComponent,
-        ResetPasswordComponent,
-        ImportTopologySettingComponent,
-        ExportTopologySettingComponent,
-        IslmaintenancemodalComponent,
-        SwitchupdatemodalComponent,
-        FlowPingModalComponent,
-        CreateLagPortComponent,
-    ]
+    bootstrap: [AppComponent]
 })
 export class AppModule { }

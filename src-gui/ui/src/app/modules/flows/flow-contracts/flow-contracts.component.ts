@@ -16,7 +16,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
 export class FlowContractsComponent implements OnInit, OnChanges, AfterViewInit {
   @ViewChild(DataTableDirective, { static: true }) datatableElement: DataTableDirective;
   dtOptions = {};
-  dtTrigger: Subject<any> = new Subject();
+  dtTrigger: Subject<void> = new Subject();
   @Input() data = [];
   @Input() flowId;
 

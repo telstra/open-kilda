@@ -13,7 +13,7 @@ export class UnidirectionalIslComponent implements OnInit, AfterViewInit, OnDest
   @ViewChild(DataTableDirective, { static: true })
   datatableElement: DataTableDirective;
   dtOptions: any =  {};
-  dtTrigger: Subject<any> = new Subject();
+  dtTrigger: Subject<void> = new Subject();
   unidirectionalISL: any;
 
   uexpandedSrcSwitchName = false;

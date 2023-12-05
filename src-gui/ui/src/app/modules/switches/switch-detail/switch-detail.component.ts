@@ -4,7 +4,6 @@ import { SwitchidmaskPipe } from '../../../common/pipes/switchidmask.pipe';
 import { ToastrService } from 'ngx-toastr';
 import { Router, NavigationEnd, ActivatedRoute} from '@angular/router';
 import { filter } from 'rxjs/operators';
-import { NgxSpinnerService } from 'ngx-spinner';
 import { LoaderService } from '../../../common/services/loader.service';
 import { ClipboardService } from 'ngx-clipboard';
 import { Title } from '@angular/platform-browser';
@@ -37,7 +36,6 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   switchFlows: any = [];
   openedTab = 'port';
   isSwitchNameEdit = false;
-  isStorageDBType = false;
   evacuate = false;
   underMaintenance: boolean;
   flowBandwidthSum: any = 0;

@@ -44,9 +44,8 @@ spring.mvc.throw-exception-if-no-handler-found=true
 #Northbound Base URL
 nb.base.url={{ getv "/kilda_northbound_endpoint" }}:{{ getv "/kilda_northbound_rest_port" }}/api
 
-#OPEN TSDB Base URL and metric prefix
-opentsdb.base.url=http://{{ getv "/kilda_opentsdb_hosts" }}:{{ getv "/kilda_opentsdb_port" }}
-opentsdb.metric.prefix = {{ getv "/kilda_opentsdb_metric_prefix" }}
+#Metric prefix
+metric.prefix = {{ getv "/kilda_opentsdb_metric_prefix" }}
 
 #VICTORIA METRICS Base URL and metric prefix
 victoria.base.url={{ getv "/kilda_victoria_read_url_schema" }}://{{ getv "/kilda_victoriametrics_host" }}:{{ getv "/kilda_victoriametrics_read_port" }}{{ getv "/kilda_victoriametrics_read_path" }}/prometheus

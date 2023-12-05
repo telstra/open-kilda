@@ -13,7 +13,6 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ModalconfirmationComponent } from '../../../common/components/modalconfirmation/modalconfirmation.component';
 import { CommonService } from 'src/app/common/services/common.service';
 import { MessageObj } from 'src/app/common/constants/constants';
-import { Message } from '@angular/compiler/src/i18n/i18n_ast';
 import {StatsService} from '../../../common/services/stats.service';
 
 declare var jQuery: any;

@@ -1,9 +1,6 @@
 import { AfterViewInit, Component, OnInit, ViewChild, OnDestroy, HostListener, Renderer2, Input, OnChanges, SimpleChanges } from '@angular/core';
-import { DataTableDirective } from 'angular-datatables';
 import { FlowsService } from '../../../common/services/flows.service';
 import { ToastrService } from 'ngx-toastr';
-import { Subject } from 'rxjs';
-import { Flow } from '../../../common/data-models/flow';
 import { Router } from '@angular/router';
 import { LoaderService } from '../../../common/services/loader.service';
 import { MessageObj } from 'src/app/common/constants/constants';

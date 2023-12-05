@@ -4,7 +4,6 @@ import { LoaderService } from 'src/app/common/services/loader.service';
 import * as d3 from 'd3';
 import { ISL } from '../../../common/enums/isl.enum';
 import { environment } from '../../../../environments/environment';
-import { AngularFontAwesomeComponent } from 'angular-font-awesome';
 
 @Component({
   selector: 'app-connected-devices',
@@ -130,20 +129,20 @@ export class ConnectedDevicesComponent implements OnInit, OnChanges, AfterViewIn
   }
   }
 
-  dragStart = () => {
-    if (!d3.event.active) { this.forceSimulation.alphaTarget(1).stop(); }
+  dragStart = (event, d) => {
+    if (!event.active) { this.forceSimulation.alphaTarget(1).stop(); }
   }
 
-  dragging = (d: any, i) => {
+  dragging = (event, d) => {
     this.isDragMove = true;
-    d.py += d3.event.dy;
-    d.x += d3.event.dx;
-    d.y += d3.event.dy;
+    d.py += event.dy;
+    d.x += event.dx;
+    d.y += event.dy;
     this.tick();
   }
 
-  dragEnd = (d: any, i) => {
-    if (!d3.event.active) { this.forceSimulation.alphaTarget(0); }
+  dragEnd = (event, d) => {
+    if (!event.active) { this.forceSimulation.alphaTarget(0); }
     if (!d.connected) {
         d.fixed = true;
     }
@@ -250,15 +249,15 @@ export class ConnectedDevicesComponent implements OnInit, OnChanges, AfterViewIn
       .zoom()
       .scaleExtent([this.min_zoom, this.max_zoom])
       .extent([[0, 0], [this.width, this.height]])
-      .on('zoom', () => {
+      .on('zoom', (event, d) => {
         this.g.attr(
           'transform',
           'translate(' +
-            d3.event.transform.x +
+            event.transform.x +
             ',' +
-            d3.event.transform.y +
+            event.transform.y +
             ') scale(' +
-            d3.event.transform.k +
+            event.transform.k +
             ')'
         );
       });
@@ -414,8 +413,8 @@ export class ConnectedDevicesComponent implements OnInit, OnChanges, AfterViewIn
                       })
                       .attr('id', function(d, index) {
                         return 'image_' + index;
-                      }).attr('cursor', 'pointer').on('mouseover', function(d, index) {
-                        const element = document.getElementById('circle_' + index);
+                      }).attr('cursor', 'pointer').on('mouseover', function(event, d) {
+                        const element = document.getElementById('circle_' + d.index);
                           const rec: any = element.getBoundingClientRect();
                           if (d.connected) {
                             $('#tooltip_connected_device').css('display', 'block');
@@ -444,7 +443,7 @@ export class ConnectedDevicesComponent implements OnInit, OnChanges, AfterViewIn
                             }
                           }
 
-                      }).on('mouseout', function(d, index) {
+                      }).on('mouseout', function(event, d) {
                          $('#tooltip_connected_device').css('display', 'none');
                       });
 

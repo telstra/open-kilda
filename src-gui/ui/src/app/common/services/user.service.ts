@@ -19,7 +19,7 @@ const httpOptions = {
   export class UserService {
 
     configUrl: string;
-    public subject = new Subject<any>();
+    public subject = new Subject<void>();
     private userSource = new BehaviorSubject(null);
     currentUser = this.userSource.asObservable();
 

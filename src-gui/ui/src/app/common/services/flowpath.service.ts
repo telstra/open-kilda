@@ -88,46 +88,51 @@ export class FlowpathService {
     );
   }
 
-  dragStartForward = () => {
+  dragStartForward = (event) => {
     const simulation = this.simulationArr['forwardDiverse'];
-    if (!d3.event.active) { simulation.alphaTarget(1).stop(); }
+    if (!event.active) { simulation.alphaTarget(1).stop(); }
   }
 
-  draggingForward = (d: any, i) => {
+  draggingForward = (event, d) => {
     this.isDragMoveForward = true;
-    d.py += d3.event.dy;
-    d.x += d3.event.dx;
-    d.y += d3.event.dy;
-    this.tick( this.graphLinkArr['forwardDiverse'], this.graphNodeArr['forwardDiverse'], this.graphPortArrSource['forwardDiverse'], this.graphPortArrTarget['forwardDiverse'], this.linksSource['forwardDiverse'], this.linkNum['forwardDiverse']);
+    d.py += event.dy;
+    d.x += event.dx;
+    d.y += event.dy;
+    this.tick( this.graphLinkArr['forwardDiverse'], this.graphNodeArr['forwardDiverse'],
+        this.graphPortArrSource['forwardDiverse'], this.graphPortArrTarget['forwardDiverse'],
+        this.linksSource['forwardDiverse'], this.linkNum['forwardDiverse']);
   }
 
-  dragEndForward = (d: any, i) => {
+  dragEndForward = (event, d) => {
     const simulation = this.simulationArr['forwardDiverse'];
-    if (!d3.event.active) { simulation.alphaTarget(0); }
+    if (!event.active) { simulation.alphaTarget(0); }
     d.fixed = true; // of course set the node to fixed so the force doesn't include the node in its auto positioning stuff
-    this.tick( this.graphLinkArr['forwardDiverse'], this.graphNodeArr['forwardDiverse'], this.graphPortArrSource['forwardDiverse'], this.graphPortArrTarget['forwardDiverse'], this.linksSource['forwardDiverse'], this.linkNum['forwardDiverse']);
+    this.tick( this.graphLinkArr['forwardDiverse'], this.graphNodeArr['forwardDiverse'], this.graphPortArrSource['forwardDiverse'],
+        this.graphPortArrTarget['forwardDiverse'], this.linksSource['forwardDiverse'], this.linkNum['forwardDiverse']);
   }
   // for reverse
-  dragStartReverse = () => {
+  dragStartReverse = (event, d) => {
     const simulation = this.simulationArr['reverseDiverse'];
-    if (!d3.event.active) { simulation.alphaTarget(1).stop(); }
+    if (!event.active) { simulation.alphaTarget(1).stop(); }
     jQuery('#topology-hover-txt').hide();
     jQuery('#topology-click-txt').hide();
   }
 
-  draggingReverse = (d: any, i) => {
+  draggingReverse = (event, d) => {
     this.isDragMoveReverse = true;
-    d.py += d3.event.dy;
-    d.x += d3.event.dx;
-    d.y += d3.event.dy;
-    this.tick( this.graphLinkArr['reverseDiverse'], this.graphNodeArr['reverseDiverse'], this.graphPortArrSource['reverseDiverse'], this.graphPortArrTarget['reverseDiverse'], this.linksSource['reverseDiverse'], this.linkNum['reverseDiverse']);
+    d.py += event.dy;
+    d.x += event.dx;
+    d.y += event.dy;
+    this.tick( this.graphLinkArr['reverseDiverse'], this.graphNodeArr['reverseDiverse'], this.graphPortArrSource['reverseDiverse'],
+        this.graphPortArrTarget['reverseDiverse'], this.linksSource['reverseDiverse'], this.linkNum['reverseDiverse']);
   }
 
-  dragEndReverse = (d: any, i) => {
+  dragEndReverse = (event, d) => {
     const simulation = this.simulationArr['reverseDiverse'];
-    if (!d3.event.active) { simulation.alphaTarget(0); }
+    if (!event.active) { simulation.alphaTarget(0); }
     d.fixed = true; // of course set the node to fixed so the force doesn't include the node in its auto positioning stuff
-    this.tick( this.graphLinkArr['reverseDiverse'], this.graphNodeArr['reverseDiverse'], this.graphPortArrSource['reverseDiverse'], this.graphPortArrTarget['reverseDiverse'], this.linksSource['reverseDiverse'], this.linkNum['reverseDiverse']);
+    this.tick( this.graphLinkArr['reverseDiverse'], this.graphNodeArr['reverseDiverse'], this.graphPortArrSource['reverseDiverse'],
+        this.graphPortArrTarget['reverseDiverse'], this.linksSource['reverseDiverse'], this.linkNum['reverseDiverse']);
   }
   initSimulation(nodes, links, svgElement, graphWrapper, type, positions, hoverTextID, showValueID, hideValueID) {
     this.svgElementArr[type] = svgElement;
@@ -180,17 +185,17 @@ export class FlowpathService {
       .zoom()
       .scaleExtent([this.min_zoom, this.max_zoom])
       .extent([[0, 0], [width - 200, height - 50]])
-      .on('zoom', () => {
-        zoomLevel = Math.round(d3.event.transform.k * 100) / 100;
+      .on('zoom', (event, d) => {
+        zoomLevel = Math.round(event.transform.k * 100) / 100;
         self.zoomLevelArr[type] = zoomLevel;
         g.attr(
           'transform',
           'translate(' +
-            d3.event.transform.x +
+            event.transform.x +
             ',' +
-            d3.event.transform.y +
+            event.transform.y +
             ') scale(' +
-            d3.event.transform.k +
+            event.transform.k +
             ')'
         );
 
@@ -344,7 +349,8 @@ export class FlowpathService {
       }).attr('stroke-width', (d) => 4.5).attr('stroke', function(d, index) {
                return d.colourCode;
       }).attr('cursor', 'pointer')
-      .on('mouseover', function(d, index) {
+      .on('mouseover', function(event, d) {
+        const index = d.index;
         if (type == 'forwardDiverse' || type == 'reverseDiverse' ) {
           const element = document.getElementById(type + '_link' + index);
           let classes = element.getAttribute('class');
@@ -375,10 +381,10 @@ export class FlowpathService {
             });
         }
 
-      }).on('mouseout', function(d, index) {
-        $('#' + type + '_link' + index).removeClass('overlay');
+      }).on('mouseout', function(event, d) {
+        $('#' + type + '_link' + d.index).removeClass('overlay');
         $('#' + hoverTextID).css('display', 'none');
-      }).on('click', function(d) {
+      }).on('click', function(event, d) {
         if (d.type == 'isl') {
           const src_switch = d.source_detail.id,
           src_port = d.source_detail.out_port,
@@ -413,7 +419,7 @@ export class FlowpathService {
         .attr('stroke', '#00baff')
         .attr('stroke-width', '1px')
         .attr('fill', '#FFF').attr('style', 'cursor:pointer')
-        .on('mouseover', function(d, index) {
+        .on('mouseover', function(event, d) {
           if (type == 'forwardDiverse' || type == 'reverseDiverse' ) {
             const element = document.getElementById('textCircle_target_' + type + '_' + d.target.switch_id);
              const rec: any = element.getBoundingClientRect();
@@ -428,7 +434,7 @@ export class FlowpathService {
 
           }
 
-        }).on('mouseout', function(d, index) {
+        }).on('mouseout', function(event, d) {
           $('#' + hoverTextID).css('display', 'none');
         });
 
@@ -476,7 +482,7 @@ export class FlowpathService {
         .attr('stroke', '#00baff')
         .attr('stroke-width', '1px')
         .attr('fill', '#FFF').attr('style', 'cursor:pointer')
-        .on('mouseover', function(d, index) {
+        .on('mouseover', function(event, d) {
           if (type == 'forwardDiverse' || type == 'reverseDiverse' ) {
             const element = document.getElementById('textCircle_source_' + type + '_' + d.source.switch_id);
              const rec: any = element.getBoundingClientRect();
@@ -492,7 +498,7 @@ export class FlowpathService {
 
           }
 
-        }).on('mouseout', function(d, index) {
+        }).on('mouseout', function(event, d) {
            $('#' + hoverTextID).css('display', 'none');
         });
 
@@ -559,7 +565,7 @@ export class FlowpathService {
                       .attr('id', function(d, index) {
                           return type + '_circle_' + d.switch_id;
                       }).style('cursor', 'pointer')
-                      .on('click', function(d) {
+                      .on('click', function(event, d) {
                           ref.loadSwitchDetail(d.switch_id);
                       });
         const images = graphNodeElement
@@ -582,7 +588,7 @@ export class FlowpathService {
                         return 'image_' + index;
                       })
                       .attr('cursor', 'pointer')
-                      .on('mouseover', function(d, index) {
+                      .on('mouseover', function(event, d) {
                         if (type == 'forwardDiverse' || type == 'reverseDiverse' ) {
                           const element = document.getElementById(type + '_circle_' + d.switch_id);
                            const rec: any = element.getBoundingClientRect();
@@ -597,7 +603,7 @@ export class FlowpathService {
 
                         }
 
-                      }).on('mouseout', function(d, index) {
+                      }).on('mouseout', function(event, d) {
                         $('#' + hoverTextID).css('display', 'none');
                       });
 

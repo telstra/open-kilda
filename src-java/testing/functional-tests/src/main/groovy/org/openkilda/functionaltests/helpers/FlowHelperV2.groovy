@@ -163,7 +163,7 @@ class FlowHelperV2 {
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             assert northboundV2.getFlowStatus(flow.flowId).status == expectedFlowState
             if (expectedFlowState != IN_PROGRESS) {
-                assert northbound.getFlowHistory(flow.flowId).last().payload.last().action == CREATE_SUCCESS
+                assert northbound.getFlowHistory(flow.flowId).any {it.payload.last().action == CREATE_SUCCESS}
             }
         }
         return response

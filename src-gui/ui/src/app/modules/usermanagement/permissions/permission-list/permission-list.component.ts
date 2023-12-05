@@ -22,7 +22,7 @@ export class PermissionListComponent implements OnDestroy, OnInit, AfterViewInit
   datatableElement: DataTableDirective;
   dtOptions: any = {};
   allPermissions: any;
-  dtTrigger: Subject<any> = new Subject();
+  dtTrigger: Subject<void> = new Subject();
   changeStatus: any;
   hide = false;
   loadCount = 0;
