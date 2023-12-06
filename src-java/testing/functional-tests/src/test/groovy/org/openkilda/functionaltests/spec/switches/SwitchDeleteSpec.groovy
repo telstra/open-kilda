@@ -177,7 +177,6 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         // enable connected devices on switch
         switchHelper.updateSwitchProperties(sw, initSwProps.jacksonCopy().tap {
-            it.multiTable = true
             it.switchLldp = true
             it.switchArp = true
         })

@@ -90,8 +90,6 @@ class BaseSpecification extends Specification {
     int antiflapCooldown
     @Value('${antiflap.min}') @Shared
     int antiflapMin
-    @Value('${use.multitable}') @Shared
-    boolean useMultitable
     @Value('${zookeeper.connect_string}') @Shared
     String zkConnectString
     @Value('${affinity.isl.cost:10000}') @Shared

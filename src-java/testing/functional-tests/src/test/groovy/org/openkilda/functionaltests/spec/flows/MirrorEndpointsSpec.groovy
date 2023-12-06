@@ -632,7 +632,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     def "Flow mirror point works properly with a qinq flow, #mirrorDirection"() {
         given: "A qinq flow"
         def swPair = topologyHelper.getSwitchPairs(true).find {
-            [it.src, it.dst].every { it.traffGens && isMultitable(it.dpId) } && it.src.traffGens.size() > 1
+            [it.src, it.dst].every { it.traffGens} && it.src.traffGens.size() > 1
         } ?: assumeTrue(false, "Not able to find enough switches with traffgens and in multi-table mode")
         def flow = flowHelperV2.randomFlow(swPair).tap {
             source.innerVlanId = 100
@@ -893,7 +893,6 @@ with these parameters./)
     def "Unable to create mirror point with connected devices enabled, #mirrorDirection"() {
         given: "A flow with connected devices enabled"
         def swPair = topologyHelper.switchPairs[0]
-        def initialSrcProps = enableMultiTableIfNeeded(true, swPair.src.dpId)
         def flow = flowHelperV2.randomFlow(swPair).tap {
             source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
         }
@@ -920,7 +919,6 @@ flow mirror point cannot be created this flow/).matches(error)
 
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
-        initialSrcProps && restoreSwitchProperties(swPair.src.dpId, initialSrcProps)
 
         where:
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
@@ -930,7 +928,6 @@ flow mirror point cannot be created this flow/).matches(error)
     def "Unable to update flow and enable connected devices if mirror is present, #mirrorDirection"() {
         given: "A flow with a mirror point"
         def swPair = topologyHelper.switchPairs[0]
-        def initialSrcProps = enableMultiTableIfNeeded(true, swPair.src.dpId)
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
         def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
@@ -959,7 +956,6 @@ flow mirror point cannot be created this flow/).matches(error)
 
         cleanup:
         flowHelperV2.deleteFlow(flow.flowId)
-        initialSrcProps && restoreSwitchProperties(swPair.src.dpId, initialSrcProps)
 
         where:
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
@@ -968,7 +964,6 @@ flow mirror point cannot be created this flow/).matches(error)
     @Tags([LOW_PRIORITY])
     def "Cannot enable connected devices on switch if mirror is present"() {
         given: "A flow with a mirror endpoint"
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         def swPair = topologyHelper.switchPairs[0]
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
@@ -1004,7 +999,6 @@ flow mirror point cannot be created this flow/).matches(error)
     @Tags([LOW_PRIORITY])
     def "Cannot create mirror on a switch with enabled connected devices"() {
         given: "A switch with enabled connected devices"
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         def swPair = topologyHelper.switchPairs[0]
         def originalProps = switchHelper.getCachedSwProps(swPair.src.dpId)
         northbound.updateSwitchProperties(swPair.src.dpId, originalProps.jacksonCopy().tap {
@@ -1130,17 +1124,6 @@ with existing flow mirror point \'$existingMirror.mirrorPointId\'./
         direction == FlowPathDirection.FORWARD ? biExam.forward : biExam.reverse
     }
 
-    private SwitchPropertiesDto enableMultiTableIfNeeded(boolean needDevices, SwitchId switchId) {
-        def initialProps = switchHelper.getCachedSwProps(switchId)
-        if (needDevices && !initialProps.multiTable) {
-            def sw = topology.switches.find { it.dpId == switchId }
-            switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
-                it.multiTable = true
-            })
-        }
-        return initialProps
-    }
-
     private void restoreSwitchProperties(SwitchId switchId, SwitchPropertiesDto initialProperties) {
         Switch sw = topology.switches.find { it.dpId == switchId }
         switchHelper.updateSwitchProperties(sw, initialProperties)
@@ -1155,10 +1138,6 @@ with existing flow mirror point \'$existingMirror.mirrorPointId\'./
             resources = traffExam.startExam(it)
             assert traffExam.waitExam(it).hasTraffic()
         }
-    }
-
-    def isMultitable(SwitchId switchId) {
-        return initialSwPropsCache(switchId).multiTable
     }
 
     @Memoized

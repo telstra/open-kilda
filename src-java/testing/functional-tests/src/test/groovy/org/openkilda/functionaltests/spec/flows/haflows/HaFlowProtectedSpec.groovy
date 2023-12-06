@@ -29,7 +29,6 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
     YFlowHelper yFlowHelper
 
     def "Able to enable protected path on an HA-flow"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "A simple HA-flow"
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
@@ -76,7 +75,6 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
     }
 
     def "Able to disable protected path on an HA-flow via partial update"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "An HA-flow with protected path"
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
@@ -123,7 +121,6 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
     }
 
     def "User can update #data.descr of a ha-flow with protected path"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "An HA-flow with protected path"
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")

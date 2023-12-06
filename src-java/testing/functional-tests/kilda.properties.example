@@ -84,7 +84,6 @@ latency.update.interval = 120
 flow.sla.check.interval.seconds = 60
 
 use.hs=true
-use.multitable=true
 cleanup.verifier=true
 #set value to 'false' to skip health check verification
 health_check.verifier=true

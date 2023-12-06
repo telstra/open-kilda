@@ -811,9 +811,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
     def "getSwPairConnectedToTraffGenForQinQ"(List<SwitchId> switchIds) {
         return getTopologyHelper().getSwitchPairs().find { swP ->
-            [swP.dst, swP.src].every { it.dpId in switchIds } && swP.paths.findAll { path ->
-                pathHelper.getInvolvedSwitches(path).every { getSwitchHelper().getCachedSwProps(it.dpId).multiTable }
-            }
+            [swP.dst, swP.src].every { it.dpId in switchIds }
         }
     }
 

@@ -35,38 +35,34 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
                 || it.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN) }
         assumeTrue(sw as boolean, "Wasn't able to find vxlan-enabled switch")
         def initSwitchProperties = switchHelper.getCachedSwProps(sw.dpId)
-        assert initSwitchProperties.multiTable != null
         assert !initSwitchProperties.supportedTransitEncapsulation.empty
         //make sure that two endpoints have the same info
         with(northboundV2.getAllSwitchProperties().switchProperties.find { it.switchId == sw.dpId }){
-            multiTable == initSwitchProperties.multiTable
             supportedTransitEncapsulation.sort() == initSwitchProperties.supportedTransitEncapsulation.sort()
         }
 
         when: "Update switch properties"
         SwitchPropertiesDto switchProperties = new SwitchPropertiesDto()
-        def newMultiTable = initSwitchProperties.multiTable // multi_table 'false' was deprecated and forbidden
         def newTransitEncapsulation = (initSwitchProperties.supportedTransitEncapsulation.size() == 1) ?
                 [FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase(),
                  FlowEncapsulationType.VXLAN.toString().toLowerCase()].sort() :
                 [FlowEncapsulationType.VXLAN.toString().toLowerCase()]
-        switchProperties.multiTable = newMultiTable
-        switchProperties.supportedTransitEncapsulation = newTransitEncapsulation
+        switchProperties.tap {
+            supportedTransitEncapsulation = newTransitEncapsulation
+            multiTable = true
+        }
         def updateSwPropertiesResponse = SwitchHelper.updateSwitchProperties(sw, switchProperties)
 
         then: "Correct response is returned"
-        updateSwPropertiesResponse.multiTable == newMultiTable
         updateSwPropertiesResponse.supportedTransitEncapsulation.sort() == newTransitEncapsulation
 
         and: "Switch properties is really updated"
         with(northbound.getSwitchProperties(sw.dpId)) {
-            it.multiTable == newMultiTable
             it.supportedTransitEncapsulation.sort() == newTransitEncapsulation
         }
 
         and: "Changes are shown in getAllSwitchProperties response"
         with(northboundV2.getAllSwitchProperties().switchProperties.find { it.switchId == sw.dpId }){
-            multiTable == newMultiTable
             supportedTransitEncapsulation.sort() == newTransitEncapsulation
         }
 
@@ -83,8 +79,10 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         new SwitchPropertiesNotFoundExpectedError(NON_EXISTENT_SWITCH_ID, ~/Failed to get switch properties./).matches(e)
         when: "Try to update switch properties info for non-existing switch"
         def switchProperties = new SwitchPropertiesDto()
-        switchProperties.multiTable = true
-        switchProperties.supportedTransitEncapsulation = [FlowEncapsulationType.VXLAN.toString()]
+        switchProperties.tap {
+            supportedTransitEncapsulation = [FlowEncapsulationType.VXLAN.toString()]
+            multiTable = true
+        }
         northbound.updateSwitchProperties(NON_EXISTENT_SWITCH_ID, switchProperties)
 
         then: "Human readable error is returned"
@@ -120,7 +118,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         when: "Try to update switch properties with incorrect server 42 properties combination"
         def switchProperties = new SwitchPropertiesDto()
         switchProperties.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
-        switchProperties.multiTable = data.multiTable
+        switchProperties.multiTable = true
         switchProperties.server42FlowRtt = data.server42FlowRtt
         switchProperties.server42Port = data.server42Port
         switchProperties.server42Vlan = data.server42Vlan
@@ -135,60 +133,56 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         where:
         data << [
                 new PropertiesData(desc: "enable server42_flow_rtt property without server42_port property",
-                        multiTable: true, server42FlowRtt: true, server42Port: null, server42MacAddress: "42:42:42:42:42:42",
+                        server42FlowRtt: true, server42Port: null, server42MacAddress: "42:42:42:42:42:42",
                         server42Vlan: 15,
                         error: "Illegal switch properties combination for switch %s. To enable property " +
                                 "'server42_flow_rtt' you need to specify valid property 'server42_port'"),
 
                 new PropertiesData(desc: "enable server42_flow_rtt property without server42_mac_address property",
-                        multiTable: true, server42FlowRtt: true, server42Port: 42, server42MacAddress: null,
+                        server42FlowRtt: true, server42Port: 42, server42MacAddress: null,
                         server42Vlan: 15,
                         error: "Illegal switch properties combination for switch %s. To enable property " +
                                 "'server42_flow_rtt' you need to specify valid property 'server42_mac_address'"),
 
                 new PropertiesData(desc: "enable server42_flow_rtt property without server42_vlan property",
-                        multiTable: true, server42FlowRtt: true, server42Port: 42, server42MacAddress: "42:42:42:42:42:42",
+                        server42FlowRtt: true, server42Port: 42, server42MacAddress: "42:42:42:42:42:42",
                         server42Vlan: null,
                         error: "Illegal switch properties combination for switch %s. To enable property " +
                                 "'server42_flow_rtt' you need to specify valid property 'server42_vlan'"),
 
                 new PropertiesData(desc: "set invalid server42_port property",
-                        multiTable: true, server42FlowRtt: true, server42Port: -1, server42MacAddress: null,
+                        server42FlowRtt: true, server42Port: -1, server42MacAddress: null,
                         server42Vlan: 15,
                         error: "Property 'server42_port' for switch %s has invalid value '-1'. Port must be positive",
                         description: ~/Invalid server 42 Port/),
 
                 new PropertiesData(desc: "set invalid server42mac_address property",
-                        multiTable: true, server42FlowRtt: false, server42Port: null, server42MacAddress: "INVALID",
+                        server42FlowRtt: false, server42Port: null, server42MacAddress: "INVALID",
                         server42Vlan: 15,
                         error: "Property 'server42_mac_address' for switch %s has invalid value 'INVALID'.",
                         description: ~/Invalid server 42 Mac Address/),
 
                 new PropertiesData(desc: "set invalid server42_vlan property",
-                        multiTable: true, server42FlowRtt: false, server42Port: null, server42MacAddress: null,
+                        server42FlowRtt: false, server42Port: null, server42MacAddress: null,
                         server42Vlan: -1,
                         error: "Property 'server42_vlan' for switch %s has invalid value '-1'. Vlan must be in range [0, 4095]",
                         description: ~/Invalid server 42 Vlan/),
 
                 new PropertiesData(desc: "enable server42_isl_rtt property without server42_port property",
-                        multiTable: true, server42IslRtt: "ENABLED", server42Port: null, server42MacAddress: "42:42:42:42:42:42",
+                        server42IslRtt: "ENABLED", server42Port: null, server42MacAddress: "42:42:42:42:42:42",
                         error: "Illegal switch properties combination for switch %s. To enable property " +
                                 "'server42_isl_rtt' you need to specify valid property 'server42_port'"),
 
                 new PropertiesData(desc: "enable server42_isl_rtt property without server42_mac_address property",
-                        multiTable: true, server42IslRtt: "ENABLED", server42Port: 42, server42MacAddress: null,
+                        server42IslRtt: "ENABLED", server42Port: 42, server42MacAddress: null,
                         error: "Illegal switch properties combination for switch %s. To enable property " +
-                                "'server42_isl_rtt' you need to specify valid property 'server42_mac_address'"),
-
-                new PropertiesData(desc: "enable to set multi_table property to 'false'", multiTable: false,
-                        error: "Single table mode was deprecated and it is not supported " +
-                                "anymore. The only valid value for switch property 'multi_table' is 'true'."),
+                                "'server42_isl_rtt' you need to specify valid property 'server42_mac_address'")
         ]
     }
 
     @AutoClone
     private static class PropertiesData {
-        boolean multiTable, server42FlowRtt
+        boolean server42FlowRtt
         Integer server42Port, server42Vlan
         String server42MacAddress, desc, error
         String server42IslRtt
