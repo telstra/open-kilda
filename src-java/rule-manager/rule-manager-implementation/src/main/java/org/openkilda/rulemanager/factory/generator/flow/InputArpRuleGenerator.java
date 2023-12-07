@@ -49,12 +49,11 @@ public class InputArpRuleGenerator implements RuleGenerator {
     @Default
     private final Set<FlowSideAdapter> overlappingIngressAdapters = new HashSet<>();
     private FlowEndpoint ingressEndpoint;
-    private boolean multiTable;
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
         List<SpeakerData> result = new ArrayList<>();
-        if (multiTable && ingressEndpoint.isTrackArpConnectedDevices()
+        if (ingressEndpoint.isTrackArpConnectedDevices()
                 && overlappingIngressAdapters.stream().noneMatch(FlowSideAdapter::isDetectConnectedDevicesArp)) {
             result.add(buildArpInputCustomerFlowCommand(sw, ingressEndpoint));
         }

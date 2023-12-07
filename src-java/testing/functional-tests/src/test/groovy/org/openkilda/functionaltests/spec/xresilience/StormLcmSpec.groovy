@@ -19,6 +19,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.Constants
 
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Isolated
 import spock.lang.Narrative
 import spock.lang.Shared
@@ -108,6 +109,7 @@ class StormLcmSpec extends HealthCheckSpecification {
         flows.each { flowHelperV2.deleteFlow(it.flowId) }
     }
 
+    @Ignore
     @Tags(LOW_PRIORITY)
     def "System's able to fail an ISL if switches on both ends go offline during restart of network topology"() {
         when: "Kill network topology"

@@ -6,7 +6,7 @@ import { ToastrService } from 'ngx-toastr';
 import { SwitchService } from '../../../common/services/switch.service';
 import { SwitchidmaskPipe } from '../../../common/pipes/switchidmask.pipe';
 import { LoaderService } from '../../../common/services/loader.service';
-import { NgbModal, NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { OtpComponent } from '../../../common/components/otp/otp.component';
 import { Location } from '@angular/common';
 import { Title } from '@angular/platform-browser';
@@ -28,7 +28,6 @@ export class FlowEditComponent implements OnInit {
   switches: any = [];
   sourceSwitches: Array<any>;
   targetSwitches: Array<any>;
-  enableSearch: Number = 1;
   sourcePorts = [];
   mainSourcePorts = [];
   targetPorts = [];
@@ -92,7 +91,7 @@ export class FlowEditComponent implements OnInit {
       max_latency_tier2: ['']
     });
 
-    this.vlanPorts = this.getVlans();
+    this.vlanPorts = this.flowService.getVlansForFlow();
     const flowId: string = this.route.snapshot.paramMap.get('id');
     const filterFlag = localStorage.getItem('filterFlag') || 'controller';
 
@@ -395,11 +394,5 @@ export class FlowEditComponent implements OnInit {
       this.flowEditForm.controls['target_vlan'].setValue('0');
       this.flowEditForm.controls['target_inner_vlan'].setValue('0');
     }
-  }
-
-  getVlans() {
-   return  Array.from({ length: 4095 }, (v, k) => {
-      return { label: (k).toString(), value: (k).toString() };
-    });
   }
 }

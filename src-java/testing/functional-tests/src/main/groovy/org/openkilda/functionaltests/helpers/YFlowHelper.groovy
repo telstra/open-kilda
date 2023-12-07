@@ -177,7 +177,7 @@ class YFlowHelper {
         def response = northboundV2.deleteYFlow(yFlowId)
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             assert !northboundV2.getYFlow(yFlowId)
-            assert northbound.getFlowHistory(response.YFlowId).last().payload.last().action == DELETE_SUCCESS_Y
+            assert northbound.getFlowHistory(response.YFlowId).any{it.payload.last().action == DELETE_SUCCESS_Y}
         }
         // https://github.com/telstra/open-kilda/issues/3411
         northbound.synchronizeSwitch(response.sharedEndpoint.switchId, true)

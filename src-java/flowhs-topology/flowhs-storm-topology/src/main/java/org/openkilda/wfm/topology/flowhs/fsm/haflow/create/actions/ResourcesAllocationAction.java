@@ -120,12 +120,11 @@ public class ResourcesAllocationAction extends
             log.debug("Resources allocated successfully for the flow {}", haFlowId);
             stateMachine.setPathsBeenAllocated(true);
 
-            HaFlow resultHaFlow = getHaFlow(haFlowId);
             FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
                     .of(stateMachine.getCommandContext().getCorrelationId())
-                    .withAction("HA-flow has been created")
-                    .withHaFlowDumpAfter(resultHaFlow));
+                    .withAction("HA-flow has been created"));
 
+            HaFlow resultHaFlow = getHaFlow(haFlowId);
             stateMachine.fireNext(context);
 
             // Notify about successful allocation.

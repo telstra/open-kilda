@@ -74,63 +74,32 @@ public class TransitRuleGeneratorTest {
             .build();
 
     @Test
-    public void buildCorrectVlanMultiTableTransitRuleTest() {
+    public void buildCorrectVlanTransitRuleTest() {
         TransitRuleGenerator generator = TransitRuleGenerator.builder()
                 .flowPath(PATH)
                 .inPort(PORT_NUMBER_1)
                 .outPort(PORT_NUMBER_2)
-                .multiTable(true)
                 .encapsulation(VLAN_ENCAPSULATION)
                 .build();
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertTransitCommands(commands, OfTable.TRANSIT, VLAN_ENCAPSULATION);
+        assertTransitCommands(commands, VLAN_ENCAPSULATION);
     }
 
     @Test
-    public void buildCorrectVlanSingleTransitRuleTest() {
+    public void buildCorrectVxlanTransitRuleTest() {
         TransitRuleGenerator generator = TransitRuleGenerator.builder()
                 .flowPath(PATH)
                 .inPort(PORT_NUMBER_1)
                 .outPort(PORT_NUMBER_2)
-                .multiTable(false)
-                .encapsulation(VLAN_ENCAPSULATION)
-                .build();
-
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertTransitCommands(commands, OfTable.INPUT, VLAN_ENCAPSULATION);
-    }
-
-    @Test
-    public void buildCorrectVxlanMultiTableTransitRuleTest() {
-        TransitRuleGenerator generator = TransitRuleGenerator.builder()
-                .flowPath(PATH)
-                .inPort(PORT_NUMBER_1)
-                .outPort(PORT_NUMBER_2)
-                .multiTable(true)
                 .encapsulation(VXLAN_ENCAPSULATION)
                 .build();
 
         List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertTransitCommands(commands, OfTable.TRANSIT, VXLAN_ENCAPSULATION);
+        assertTransitCommands(commands, VXLAN_ENCAPSULATION);
     }
 
-    @Test
-    public void buildCorrectVxlanSingleTableTransitRuleTest() {
-        TransitRuleGenerator generator = TransitRuleGenerator.builder()
-                .flowPath(PATH)
-                .inPort(PORT_NUMBER_1)
-                .outPort(PORT_NUMBER_2)
-                .multiTable(false)
-                .encapsulation(VXLAN_ENCAPSULATION)
-                .build();
-
-        List<SpeakerData> commands = generator.generateCommands(SWITCH_1);
-        assertTransitCommands(commands, OfTable.INPUT, VXLAN_ENCAPSULATION);
-    }
-
-    private void assertTransitCommands(List<SpeakerData> commands, OfTable table,
-                                       FlowTransitEncapsulation encapsulation) {
+    private void assertTransitCommands(List<SpeakerData> commands, FlowTransitEncapsulation encapsulation) {
         Assertions.assertEquals(1, commands.size());
 
         FlowSpeakerData flowCommandData = getCommand(FlowSpeakerData.class, commands);
@@ -139,7 +108,7 @@ public class TransitRuleGeneratorTest {
         Assertions.assertTrue(flowCommandData.getDependsOn().isEmpty());
 
         Assertions.assertEquals(COOKIE, flowCommandData.getCookie());
-        Assertions.assertEquals(table, flowCommandData.getTable());
+        Assertions.assertEquals(OfTable.TRANSIT, flowCommandData.getTable());
         Assertions.assertEquals(Priority.FLOW_PRIORITY, flowCommandData.getPriority());
 
 
@@ -187,7 +156,6 @@ public class TransitRuleGeneratorTest {
                 .flowPath(path)
                 .inPort(PORT_NUMBER_1)
                 .outPort(PORT_NUMBER_2)
-                .multiTable(true)
                 .encapsulation(VLAN_ENCAPSULATION)
                 .build();
         Assertions.assertEquals(0, generator.generateCommands(SWITCH_1).size());

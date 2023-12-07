@@ -25,8 +25,10 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
 import org.openkilda.persistence.repositories.RepositoryFactory;
-import org.openkilda.wfm.share.history.model.FlowEventData;
+import org.openkilda.wfm.share.history.model.DumpType;
+import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
+import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flowhs.exception.FlowProcessingException;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.NbTrackableWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
@@ -79,6 +81,11 @@ public class ValidateFlowAction extends
         stateMachine.setDoNotRevert(context.isDoNotRevert());
         Flow flow = getFlow(flowId);
 
+        FlowDumpData dumpData = HistoryMapper.INSTANCE.map(flow, flow.getForwardPath(), flow.getReversePath(),
+                DumpType.STATE_BEFORE);
+        stateMachine.saveActionWithDumpToHistory("Validate flow action started",
+                "Saving a flow dump BEFORE", dumpData);
+
         try {
             flowValidator.validate(targetFlow, stateMachine.getBulkUpdateFlowIds());
         } catch (InvalidFlowException e) {
@@ -112,7 +119,7 @@ public class ValidateFlowAction extends
             return foundFlow;
         });
 
-        stateMachine.saveNewEventToHistory("Flow was validated successfully", FlowEventData.Event.UPDATE);
+        stateMachine.saveActionToHistory("Flow was validated successfully");
 
         return Optional.empty();
     }

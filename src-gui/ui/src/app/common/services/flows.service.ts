@@ -109,4 +109,11 @@ export class FlowsService {
     return this.httpClient.get<any>(`${environment.apiEndPoint}/flows/${flowid}/status`);
   }
 
+  getVlansForFlow() {
+    return  Array.from({ length: 4096 }, (v, k) => {
+      return { label: (k).toString(), value: (k).toString() };
+    });
+  }
+
+
 }

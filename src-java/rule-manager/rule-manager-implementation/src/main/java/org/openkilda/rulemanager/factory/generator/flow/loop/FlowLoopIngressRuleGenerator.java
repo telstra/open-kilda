@@ -48,7 +48,6 @@ public class FlowLoopIngressRuleGenerator implements RuleGenerator {
 
     protected final Flow flow;
     private final FlowPath flowPath;
-    private final boolean multiTable;
 
     @Override
     public List<SpeakerData> generateCommands(Switch sw) {
@@ -64,9 +63,9 @@ public class FlowLoopIngressRuleGenerator implements RuleGenerator {
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie().toBuilder().looped(true).build())
-                .table(multiTable ? OfTable.INGRESS : OfTable.INPUT)
+                .table(OfTable.INGRESS)
                 .priority(getPriority(ingressEndpoint))
-                .match(makeIngressMatch(ingressEndpoint, multiTable, sw.getFeatures()))
+                .match(makeIngressMatch(ingressEndpoint, sw.getFeatures()))
                 .instructions(makeIngressFlowLoopInstructions(ingressEndpoint));
 
         // todo add RESET_COUNTERS flag
@@ -86,12 +85,9 @@ public class FlowLoopIngressRuleGenerator implements RuleGenerator {
     }
 
     private Instructions makeIngressFlowLoopInstructions(FlowEndpoint endpoint) {
-        List<Action> applyActions = new ArrayList<>();
-        if (multiTable) {
-            applyActions.addAll(Utils.makeVlanReplaceActions(
-                    FlowEndpoint.makeVlanStack(endpoint.getInnerVlanId()),
-                    endpoint.getVlanStack()));
-        }
+        List<Action> applyActions = new ArrayList<>(Utils.makeVlanReplaceActions(
+                FlowEndpoint.makeVlanStack(endpoint.getInnerVlanId()),
+                endpoint.getVlanStack()));
         applyActions.add(new PortOutAction(new PortNumber(SpecialPortType.IN_PORT)));
         return Instructions.builder().applyActions(applyActions).build();
     }

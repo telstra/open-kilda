@@ -114,14 +114,16 @@ public class CompleteHaFlowCreateAction extends
             }
             haFlow.recalculateHaSubFlowStatuses();
 
+            FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                    .of(stateMachine.getCommandContext().getCorrelationId())
+                    .withAction(format("The HA-flow status has been set to %s", haFlowStatus))
+                    .withHaFlowDumpAfter(haFlow)
+                    .withHaFlowId(stateMachine.getHaFlowId()));
+
             return haFlowStatus;
         });
 
         dashboardLogger.onFlowStatusUpdate(stateMachine.getHaFlowId(), flowStatus);
-        FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
-                .of(stateMachine.getCommandContext().getCorrelationId())
-                .withAction(format("The HA-flow status has been set to %s", flowStatus))
-                .withHaFlowId(stateMachine.getHaFlowId()));
     }
 
     private boolean isBackUpStrategyUsed(PathId pathId, HaFlowCreateFsm stateMachine) {

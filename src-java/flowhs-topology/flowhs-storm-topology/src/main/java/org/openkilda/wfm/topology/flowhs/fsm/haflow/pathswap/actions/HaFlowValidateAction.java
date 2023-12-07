@@ -57,6 +57,8 @@ public class HaFlowValidateAction extends
             HaFlow haFlow = haFlowRepository.findById(haFlowId)
                     .orElseThrow(() -> new FlowProcessingException(ErrorType.NOT_FOUND,
                             format("Could not swap paths: HA-flow %s not found", haFlowId)));
+            saveDumpToHistory(stateMachine, haFlow);
+
             dashboardLogger.onHaFlowPathsSwap(haFlowId);
             stateMachine.setPeriodicPingsEnabled(haFlow.isPeriodicPings());
             if (haFlow.getStatus() == FlowStatus.IN_PROGRESS) {
@@ -96,6 +98,14 @@ public class HaFlowValidateAction extends
     @Override
     protected String getGenericErrorMessage() {
         return "Could not swap paths for flow";
+    }
+
+    private void saveDumpToHistory(HaFlowPathSwapFsm stateMachine, HaFlow haFlow) {
+        FlowHistoryService.using(stateMachine.getCarrier()).save(
+                HaFlowHistory.of(stateMachine.getCommandContext().getCorrelationId())
+                        .withAction("Save a dump BEFORE")
+                        .withHaFlowDumpBefore(haFlow)
+                        .withHaFlowId(stateMachine.getHaFlowId()));
     }
 
     private void saveNewActionToHistory(HaFlowPathSwapFsm stateMachine) {

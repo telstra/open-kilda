@@ -100,7 +100,7 @@ public class AllocatePrimaryResourcesAction extends
         setMirrorPointsToNewPath(oldPaths.getForwardPathId(), newForwardPathId);
         setMirrorPointsToNewPath(oldPaths.getReversePathId(), newReversePathId);
 
-        saveAllocationActionWithDumpsToHistory(stateMachine, tmpFlow, "primary", createdPaths);
+        stateMachine.saveActionToHistory("Primary resources have been allocated");
     }
 
     @Override

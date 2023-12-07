@@ -117,7 +117,7 @@ public class ValidateFlowAction extends
 
         stateMachine.saveOldPathIds(stateMachine.getOriginalHaFlow());
 
-        saveHistoryActionWithDump(stateMachine, haFlow);
+        saveHistoryActionWithDump(stateMachine, stateMachine.getOriginalHaFlow());
 
         return Optional.empty();
     }
