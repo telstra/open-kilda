@@ -30,7 +30,7 @@ class HaFlowPathsSpec extends HealthCheckSpecification {
 
         then: "Meaningful error is returned"
         def actualException = thrown(HttpClientErrorException)
-        new HaFlowNotFoundExpectedError(~/HA-flow ${flowId} not found\./).matches(actualException)
+        new HaFlowNotFoundExpectedError(~/HA-flow ${flowId} not found!\./).matches(actualException)
     }
 
     def "HA flow main path is not overlapped with protected path"() {

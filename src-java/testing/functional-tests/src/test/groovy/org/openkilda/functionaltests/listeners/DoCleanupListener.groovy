@@ -28,6 +28,7 @@ class DoCleanupListener extends AbstractSpringListener {
 
     @Override
     void error(ErrorInfo error) {
+        log.info("I am inside DoCleanupListener " + this + ". Spec is " + error.method.parent.name + " method " + error.method.name)
         def thrown = error.exception
         if (thrown instanceof AssertionError) {
             if (thrown.getMessage() && thrown.getMessage().contains("SwitchValidationExtendedResult(")) {
