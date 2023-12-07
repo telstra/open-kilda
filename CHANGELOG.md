@@ -1,4 +1,30 @@
 # Changelog
+## v1.149.0 (07/12/2023)
+
+### Bug Fixes:
+-  [#5489](https://github.com/telstra/open-kilda/pull/5489) Improve dump payload format to not display empty protected path objects. (Issue: [#5368](https://github.com/telstra/open-kilda/issues/5368))
+-  [#5490](https://github.com/telstra/open-kilda/pull/5490) HA-Flow: move history dumps to the place where status of flow and paths are already set. (Issue: [#5371](https://github.com/telstra/open-kilda/issues/5371))
+-  [#5495](https://github.com/telstra/open-kilda/pull/5495) open-kilda-4485 [GUI] missing permission validation on the 'useractivity' page (Issue: [#4485](https://github.com/telstra/open-kilda/issues/4485)) [**gui**]
+-  [#5497](https://github.com/telstra/open-kilda/pull/5497) Simple flow: move saving history dumps so that they saved before or after the IN_PROGRESS state (Issue: [#5373](https://github.com/telstra/open-kilda/issues/5373))
+-  [#5500](https://github.com/telstra/open-kilda/pull/5500) Enable saving dumps before and after on HA-Flow path swap operation.
+
+### Improvements:
+-  [#5505](https://github.com/telstra/open-kilda/pull/5505) [TEST] Fixed flaky Y-Flow delete metod [**tests**]
+-  [#5509](https://github.com/telstra/open-kilda/pull/5509) Make writing data into OTSDB optional
+-  [#5382](https://github.com/telstra/open-kilda/pull/5382) Remove multi table from rule manager and DB
+-  [#5492](https://github.com/telstra/open-kilda/pull/5492) GUI: Add inner vlans into flows/add-new page (Issue: [#5296](https://github.com/telstra/open-kilda/issues/5296)) [**gui**]
+-  [#5498](https://github.com/telstra/open-kilda/pull/5498) #5390: [TEST] Prevent one way to false fail Flow Monitoring test (Issues: [#5390](https://github.com/telstra/open-kilda/issues/5390) [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5503](https://github.com/telstra/open-kilda/pull/5503) [TEST]: Storm: Disabling test that caused topology deletion issue [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.148.0...v1.149.0).
+
+### Affected Components:
+history
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
 
 ## v1.148.0 (04/12/2023)
 
