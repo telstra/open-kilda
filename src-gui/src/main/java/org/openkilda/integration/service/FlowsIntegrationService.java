@@ -113,9 +113,6 @@ public class FlowsIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while retriving flow status with id: " + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.warn("Error occurred while retriving flow status with id:" + flowId, e);
-            throw new IntegrationException(e);
         }
     }
 
@@ -264,15 +261,11 @@ public class FlowsIntegrationService {
                             + UriUtils.encodePath(flowId, "UTF-8"),
                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
-                FlowV2 flow = restClientManager.getResponse(response, FlowV2.class);
-                return flow;
+                return restClientManager.getResponse(response, FlowV2.class);
             }
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while getting flow by id:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.warn("Error occurred while getting flow by id:" + flowId, e);
-            throw new IntegrationException(e);
         }
         return null;
     }
@@ -321,7 +314,7 @@ public class FlowsIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while updating flow:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (JsonProcessingException | UnsupportedEncodingException e) {
+        } catch (JsonProcessingException e) {
             LOGGER.warn("Error occurred while updating flow:" + flowId, e);
             throw new IntegrationException(e.getMessage(), e);
         }
@@ -347,9 +340,6 @@ public class FlowsIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while deleting flow:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.warn("Error occurred while deleting flow:" + flowId, e);
-            throw new IntegrationException(e);
         }
     }
 
@@ -429,11 +419,7 @@ public class FlowsIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while retriving flow history with id: " + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.error("Error occurred while retriving flow history with id: " + flowId, e);
-            e.printStackTrace();
         }
-        return null;
     }
 
     /**

@@ -9,8 +9,8 @@ configurations {
 
 description = 'GRPC service'
 dependencies {
-    implementation(platform('org.springframework:spring-framework-bom:5.2.19.RELEASE'))
-    implementation(platform('org.springframework.boot:spring-boot-dependencies:2.2.13.RELEASE'))
+    implementation(platform('org.springframework:spring-framework-bom:6.0.6'))
+    implementation(platform('org.springframework.boot:spring-boot-dependencies:3.0.4'))
 
     implementation project(':grpc-api')
     implementation project(':kilda-configuration')
@@ -19,7 +19,7 @@ dependencies {
     implementation('org.springframework.boot:spring-boot-starter')
     implementation 'org.springframework.boot:spring-boot-starter-log4j2'
     implementation('org.springframework.boot:spring-boot-starter-web')
-    implementation 'org.springframework.security:spring-security-config'
+    implementation 'org.springframework.security:spring-security-config:6.0.2'
     implementation 'org.springframework.security:spring-security-web'
     implementation ('org.springframework.kafka:spring-kafka') {
         version {
@@ -73,7 +73,8 @@ dependencies {
 
 compileJava {
     options.compilerArgs = [
-            '-Amapstruct.defaultComponentModel=spring'
+            '-Amapstruct.defaultComponentModel=spring',
+            '-Amapstruct.unmappedTargetPolicy=ERROR'
     ]
 }
 

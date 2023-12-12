@@ -17,7 +17,7 @@ package org.openkilda.persistence.hibernate.converters;
 
 import org.openkilda.model.SwitchId;
 
-import javax.persistence.AttributeConverter;
+import jakarta.persistence.AttributeConverter;
 
 public class SwitchIdConverter implements AttributeConverter<SwitchId, String> {
     public static final SwitchIdConverter INSTANCE = new SwitchIdConverter();

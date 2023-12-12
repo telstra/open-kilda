@@ -34,7 +34,8 @@ import org.openkilda.service.StatsService;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -54,7 +55,7 @@ import java.util.Optional;
 @RequestMapping(value = "/api/stats")
 public class StatsController {
 
-    private static final Logger LOGGER = Logger.getLogger(StatsController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(StatsController.class);
     private static final String REQUIRED_START_DATE_ERROR = "startDate must not be null or empty.";
     private static final String STATS_TYPE_ERROR = "statsType path variable should not be empty or wrong.";
     private static final String REQUIRED_METRIC_ERROR = "metric must not be null or empty.";

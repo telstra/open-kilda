@@ -42,8 +42,8 @@ import org.openkilda.store.service.StoreService;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.StringUtil;
 
-import org.apache.log4j.Logger;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.usermanagement.exception.RequestValidationException;
@@ -69,7 +69,7 @@ import java.util.stream.Collectors;
 @Service
 public class FlowService {
 
-    private static final Logger LOGGER = Logger.getLogger(FlowService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(FlowService.class);
 
     @Autowired
     private FlowsIntegrationService flowsIntegrationService;
@@ -136,8 +136,7 @@ public class FlowService {
     /**
      * Gets the flow count.
      *
-     * @param flows
-     *            the flows
+     * @param flows the flows
      * @return the flow count
      */
     public Collection<FlowCount> getFlowsCount(final List<FlowV2> flows) {
@@ -174,8 +173,7 @@ public class FlowService {
     /**
      * Gets the path link.
      *
-     * @param flowId
-     *            the flow id
+     * @param flowId the flow id
      * @return the path link
      */
     public FlowPayload getFlowPath(final String flowId) throws IntegrationException {
@@ -194,8 +192,7 @@ public class FlowService {
     /**
      * Re route Flow by flow id.
      *
-     * @param flowId
-     *            the flow id
+     * @param flowId the flow id
      * @return flow path
      */
     public FlowPath rerouteFlow(String flowId) {
@@ -205,8 +202,7 @@ public class FlowService {
     /**
      * Validate Flow.
      *
-     * @param flowId
-     *            the flow id
+     * @param flowId the flow id
      * @return the string
      */
     public String validateFlow(String flowId) {
@@ -216,8 +212,7 @@ public class FlowService {
     /**
      * Flow by flow id.
      *
-     * @param flowId
-     *            the flow id
+     * @param flowId the flow id
      * @return the flow by id
      * @throws AccessDeniedException the access denied exception
      */
@@ -259,7 +254,7 @@ public class FlowService {
                         if (("UP".equalsIgnoreCase(flowInfo.getStatus())
                                 && !"ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))
                                 || ("DOWN".equalsIgnoreCase(flowInfo.getStatus())
-                                    && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
+                                && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
                             discrepancy.setStatus(true);
 
                             FlowState flowState = new FlowState();
@@ -290,8 +285,8 @@ public class FlowService {
                     } else {
                         flowConverter.toFlowInfo(flowInfo, inventoryFlow, csNames);
                     }
-                } 
-            } 
+                }
+            }
             if (flow == null) {
                 throw new RequestValidationException("Can not get flow: Flow " + flowId + " not found");
             }
@@ -305,8 +300,7 @@ public class FlowService {
     /**
      * Gets the flow status by id.
      *
-     * @param flowId
-     *            the flow id
+     * @param flowId the flow id
      * @return the flow status by id
      */
     public FlowStatus getFlowStatusById(String flowId) {
@@ -316,8 +310,7 @@ public class FlowService {
     /**
      * Creates the flow.
      *
-     * @param flow
-     *            the flow
+     * @param flow the flow
      * @return the flow
      */
     public FlowV2 createFlow(FlowV2 flow) {
@@ -329,10 +322,8 @@ public class FlowService {
     /**
      * Update flow.
      *
-     * @param flowId
-     *            the flow id
-     * @param flow
-     *            the flow
+     * @param flowId the flow id
+     * @param flow   the flow
      * @return the flow
      */
     public FlowV2 updateFlow(String flowId, FlowV2 flow) {
@@ -344,10 +335,8 @@ public class FlowService {
     /**
      * Delete flow.
      *
-     * @param flowId
-     *            the flow id
-     * @param userInfo
-     *            the user info
+     * @param flowId   the flow id
+     * @param userInfo the user info
      * @return the flow
      */
     public FlowV2 deleteFlow(String flowId, UserInfo userInfo) {
@@ -362,22 +351,20 @@ public class FlowService {
 
     /**
      * Re sync flow.
-     * 
-     * @param flowId
-     *            the flow id
-     * 
+     *
+     * @param flowId the flow id
      * @return
      */
     public String resyncFlow(String flowId) {
         activityLogger.log(ActivityType.RESYNC_FLOW, flowId);
         return flowsIntegrationService.resyncFlow(flowId);
     }
-    
+
     /**
      * Flow ping.
      *
      * @param flowId the flow id
-     * @param flow the flow
+     * @param flow   the flow
      * @return the string
      */
     public String flowPing(String flowId, FlowV2 flow) {
@@ -387,10 +374,8 @@ public class FlowService {
     /**
      * Process inventory flow.
      *
-     * @param flows
-     *            the flows
-     * @param inventoryFlows
-     *            the inventory flows
+     * @param flows          the flows
+     * @param inventoryFlows the inventory flows
      */
     private void processInventoryFlow(final List<FlowInfo> flows, final List<InventoryFlow> inventoryFlows) {
         List<FlowInfo> discrepancyFlow = new ArrayList<FlowInfo>();
@@ -418,7 +403,7 @@ public class FlowService {
                 if (("UP".equalsIgnoreCase(flows.get(index).getStatus())
                         && !"ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))
                         || ("DOWN".equalsIgnoreCase(flows.get(index).getStatus())
-                                && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
+                        && "ACTIVE".equalsIgnoreCase(inventoryFlow.getState()))) {
                     discrepancy.setInventoryDiscrepancy(true);
                     discrepancy.setStatus(true);
 
@@ -492,14 +477,13 @@ public class FlowService {
     /**
      * Gets the flow history by id.
      *
-     * @param flowId
-     *            the flow id
+     * @param flowId the flow id
      * @return the flow history by id
      */
     public List<FlowHistory> getFlowHistory(String flowId, String timeFrom, String timeTo) {
         return flowsIntegrationService.getFlowHistoryById(flowId, timeFrom, timeTo);
     }
-    
+
     /**
      * Flow connected devices.
      *

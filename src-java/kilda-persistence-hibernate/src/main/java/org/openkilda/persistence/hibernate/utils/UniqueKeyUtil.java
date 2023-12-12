@@ -17,14 +17,14 @@ package org.openkilda.persistence.hibernate.utils;
 
 import org.openkilda.persistence.exceptions.PersistenceException;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.hibernate.Session;
 
 import java.util.List;
 import java.util.Optional;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Root;
 
 /**
  * This utility is useful together with the indexed column 'taskIdUniqueKey' in DB.
@@ -33,7 +33,6 @@ import javax.persistence.criteria.Root;
  * are not suitable for the indexed keys, use the method from this utility to make a unique key better for indexing
  * and then use the corresponding method to retrieve the entity using this indexed column.
  * </p>
- *
  */
 public final class UniqueKeyUtil {
 
@@ -51,10 +50,10 @@ public final class UniqueKeyUtil {
      * Common method for both simple and HA flows history. Retrieves an entity from DB using a special key optimised
      * for better indexing.
      *
-     * @param taskId taskId from entity (typically the field with the same name; usually contains correlation ID)
+     * @param taskId  taskId from entity (typically the field with the same name; usually contains correlation ID)
      * @param session a session from Hibernate
-     * @param type the type of the Entity that supports task ID unique key (for example HibernateHaFlowEvent)
-     * @param <T> entity type that supports task ID unique key.
+     * @param type    the type of the Entity that supports task ID unique key (for example HibernateHaFlowEvent)
+     * @param <T>     entity type that supports task ID unique key.
      * @return the entity of type T from DB
      */
     public static <T> Optional<T> findEntityUsingTaskIdUniqueKey(String taskId, Session session, Class<T> type) {

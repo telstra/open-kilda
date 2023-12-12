@@ -15,12 +15,12 @@
 
 package org.openkilda.entity;
 
-import java.util.Date;
+import jakarta.persistence.Column;
+import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 
-import javax.persistence.Column;
-import javax.persistence.MappedSuperclass;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
+import java.util.Date;
 
 /**
  * The Class Base.
@@ -30,25 +30,33 @@ import javax.persistence.TemporalType;
 @MappedSuperclass
 public abstract class BaseEntity {
 
-    /** The created by. */
+    /**
+     * The created by.
+     */
     @Column(name = "Created_By")
     private Long createdBy;
 
-    /** The created date. */
+    /**
+     * The created date.
+     */
     @Column(name = "Created_Date")
     @Temporal(TemporalType.TIMESTAMP)
     private Date createdDate;
 
-    /** The updated by. */
+    /**
+     * The updated by.
+     */
     @Column(name = "Updated_By")
     private Long updatedBy;
 
-    /** The updated date. */
+    /**
+     * The updated date.
+     */
     @Column(name = "Updated_Date")
     @Temporal(TemporalType.TIMESTAMP)
     private Date updatedDate;
-    
-    public abstract Long id(); 
+
+    public abstract Long id();
 
     /**
      * Gets the created by.

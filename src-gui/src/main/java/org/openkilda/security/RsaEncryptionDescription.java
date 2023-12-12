@@ -15,7 +15,8 @@
 
 package org.openkilda.security;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
@@ -26,7 +27,6 @@ import java.security.Key;
 import java.security.KeyFactory;
 import java.security.spec.RSAPrivateKeySpec;
 import java.security.spec.RSAPublicKeySpec;
-
 import javax.crypto.Cipher;
 
 /**
@@ -35,11 +35,13 @@ import javax.crypto.Cipher;
 
 public final class RsaEncryptionDescription {
 
-    /** The Constant _log. */
-    private static final Logger _log = Logger.getLogger(RsaEncryptionDescription.class);
-    
+    /**
+     * The Constant _log.
+     */
+    private static final Logger _log = LoggerFactory.getLogger(RsaEncryptionDescription.class);
+
     private RsaEncryptionDescription() {
-        
+
     }
 
     /**
@@ -70,7 +72,7 @@ public final class RsaEncryptionDescription {
                 return null;
             }
         } catch (Exception e) {
-            _log.fatal("Exception in readKeyFromFile : " + e.getMessage());
+            _log.error("Exception in readKeyFromFile : " + e.getMessage());
             throw new RuntimeException("Spurious serialisation error", e);
         } finally {
             if (oin != null) {
@@ -85,7 +87,7 @@ public final class RsaEncryptionDescription {
     /**
      * Rsa decrypt.
      *
-     * @param text the text
+     * @param text    the text
      * @param fileDes the fileDes
      * @return the string
      * @throws Exception the exception
@@ -107,7 +109,7 @@ public final class RsaEncryptionDescription {
     /**
      * Rsa decrypt.
      *
-     * @param text the text
+     * @param text    the text
      * @param fileDes the file_des
      * @return the string
      * @throws Exception the exception

@@ -6,6 +6,7 @@ configurations {
     // This conflicts with spring-boot-starter-log4j2
     implementation.exclude module: 'spring-boot-starter-logging'
 }
+compileJava.options.compilerArgs += '-Amapstruct.unmappedTargetPolicy=ERROR'
 
 description = 'server42-control-storm-stub'
 

@@ -23,14 +23,15 @@ import org.openkilda.persistence.hibernate.entities.history.HibernatePortEvent;
 import org.openkilda.persistence.hibernate.entities.history.HibernatePortEvent_;
 import org.openkilda.persistence.repositories.history.PortEventRepository;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Root;
 
 public class HibernateHistoryPortEventRepository
         extends HibernateGenericRepository<PortEvent, PortEventData, HibernatePortEvent>

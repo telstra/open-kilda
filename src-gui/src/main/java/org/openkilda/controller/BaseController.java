@@ -19,12 +19,12 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.constants.Status;
 import org.openkilda.saml.service.SamlService;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import org.opensaml.saml2.core.NameID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.web.ErrorController;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,7 +33,6 @@ import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.ModelAndView;
-
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.repository.UserRepository;
 import org.usermanagement.model.UserInfo;
@@ -41,19 +40,16 @@ import org.usermanagement.util.MessageUtils;
 
 import java.nio.file.AccessDeniedException;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
-
-public abstract class BaseController implements ErrorController {
+public abstract class BaseController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseController.class);
 
     @Autowired
     private UserRepository userRepository;
-    
+
     @Autowired
     private MessageUtils messageUtils;
-    
+
     @Autowired
     protected SamlService samlService;
 
@@ -66,7 +62,7 @@ public abstract class BaseController implements ErrorController {
      * <li>If user is not logged in then redirected to login page.</li>
      * </ul>
      *
-     * @param request HttpServletRequest to check user log in status.
+     * @param request  HttpServletRequest to check user log in status.
      * @param viewName on which user has to redirect if logged in and not of type user.
      * @return ModelAndView information containing view name on which user is going to be redirected.
      */
@@ -102,18 +98,6 @@ public abstract class BaseController implements ErrorController {
             return modelAndView;
         }
         throw new AccessDeniedException(messageUtils.getUnauthorizedMessage());
-    }
-
-    /*
-     * (non-Javadoc)
-     *
-     * @see
-     * org.springframework.boot.autoconfigure.web.ErrorController#getErrorPath()
-     */
-    @Override
-    @RequestMapping("/error")
-    public String getErrorPath() {
-        return IConstants.View.ERROR;
     }
 
     /**

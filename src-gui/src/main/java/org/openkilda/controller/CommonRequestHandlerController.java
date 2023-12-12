@@ -15,22 +15,20 @@
 
 package org.openkilda.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.ModelAndView;
 
-import javax.servlet.http.HttpServletRequest;
-
 @Controller
-@RequestMapping(value = { "/home", "/topology", "/flows", "/isl", "/switches", "/usermanagement", "/useractivity",
-        "/storesetting", "/application-setting", "/networkpath", "/flowreport" }, method = RequestMethod.GET)
+@RequestMapping(value = {"/home", "/topology", "/flows", "/isl", "/switches", "/usermanagement", "/useractivity",
+        "/storesetting", "/application-setting", "/networkpath", "/flowreport"}, method = RequestMethod.GET)
 public class CommonRequestHandlerController extends BaseController {
     /**
      * CommonRequestHandlerController.
      *
      * @param request the request
-     * 
      * @return the model and view
      */
     @RequestMapping
@@ -38,12 +36,12 @@ public class CommonRequestHandlerController extends BaseController {
         return new ModelAndView("forward:/ui/index.html");
     }
 
-    @RequestMapping(value = { "/details/*", "/switch/*", "/edit/*", "/add-new", }, method = RequestMethod.GET)
+    @RequestMapping(value = {"/details/*", "/switch/*", "/edit/*", "/add-new"}, method = RequestMethod.GET)
     public ModelAndView childRoutes(final HttpServletRequest request) {
         return new ModelAndView("forward:/ui/index.html");
     }
-    
-    @RequestMapping(value = { "/details/*/*/*", "/switch/isl/*/*/*/*"}, method = RequestMethod.GET)
+
+    @RequestMapping(value = {"/details/*/*/*", "/switch/isl/*/*/*/*"}, method = RequestMethod.GET)
     public ModelAndView childChildRoutes(final HttpServletRequest request) {
         return new ModelAndView("forward:/./ui/index.html");
     }

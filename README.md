@@ -64,7 +64,7 @@ Install required packages:
 ```shell
 sudo apt update && sudo apt-get install -y \
   maven \
-  openjdk-8-jdk \
+  openjdk-17-jdk \
   python \
   python3.8 \
   python3-pip \
@@ -104,7 +104,7 @@ The following commands will install necessary dependencies on Ubuntu 20.04:
 sudo apt update && sudo apt install -y \
   maven \
   make \
-  openjdk-8-jdk \
+  openjdk-17-jdk \
   openvswitch-switch \
   python3-pip \
   tox \

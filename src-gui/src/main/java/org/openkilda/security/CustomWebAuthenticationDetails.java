@@ -15,9 +15,8 @@
 
 package org.openkilda.security;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.web.authentication.WebAuthenticationDetails;
-
-import javax.servlet.http.HttpServletRequest;
 
 public class CustomWebAuthenticationDetails extends WebAuthenticationDetails {
 
@@ -37,6 +36,6 @@ public class CustomWebAuthenticationDetails extends WebAuthenticationDetails {
     }
 
     public boolean isConfigure2Fa() {
-        return configure2Fa != null  && configure2Fa.equalsIgnoreCase("TRUE") ? true : false;
+        return configure2Fa != null && configure2Fa.equalsIgnoreCase("TRUE") ? true : false;
     }
 }
