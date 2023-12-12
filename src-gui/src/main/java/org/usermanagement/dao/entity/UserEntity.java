@@ -17,23 +17,22 @@ package org.usermanagement.dao.entity;
 
 import org.openkilda.entity.BaseEntity;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import org.hibernate.annotations.GenericGenerator;
 
 import java.io.Serializable;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
 
 /**
  * The Class UserEntity.
@@ -68,13 +67,13 @@ public class UserEntity extends BaseEntity implements Serializable {
 
     @Column(name = "LOGOUT_TIME", nullable = true)
     private Date logoutTime;
-    
+
     @Column(name = "FAILED_LOGIN_TIME")
     private Date failedLoginTime;
-    
+
     @Column(name = "FAILED_LOGIN_COUNT")
     private Integer failedLoginCount;
-    
+
     @Column(name = "UNLOCK_TIME")
     private Integer unlockTime;
 
@@ -101,7 +100,7 @@ public class UserEntity extends BaseEntity implements Serializable {
     @JoinTable(name = "USER_ROLE", joinColumns = {@JoinColumn(name = "user_id")},
             inverseJoinColumns = {@JoinColumn(name = "role_id")})
     private Set<RoleEntity> roles = new HashSet<RoleEntity>();
-    
+
     /* (non-Javadoc)
      * @see org.openkilda.entity.BaseEntity#id()
      */
@@ -127,12 +126,12 @@ public class UserEntity extends BaseEntity implements Serializable {
     public void setRoles(final Set<RoleEntity> roles) {
         this.roles = roles;
     }
-    
+
     /**
      * Gets the failed login count.
      *
      * @return the failed login count
-    */
+     */
     public Integer getFailedLoginCount() {
         return failedLoginCount;
     }

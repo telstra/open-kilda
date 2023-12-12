@@ -23,7 +23,7 @@ subprojects {
 
     java {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(8)
+            languageVersion = JavaLanguageVersion.of(17)
         }
     }
 
@@ -136,11 +136,11 @@ subprojects {
             implementation 'org.glassfish:javax.el:3.0.1-b12'
             testImplementation 'org.glassfish:javax.el:3.0.1-b12'
 
-            implementation 'org.aspectj:aspectjrt:1.9.7'
-            implementation 'org.mapstruct:mapstruct:1.5.4.Final'
-            implementation 'org.mapstruct:mapstruct-processor:1.5.4.Final'
-            annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.4.Final'
-            testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.5.4.Final'
+            implementation 'org.aspectj:aspectjrt:1.9.8'
+            implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+            implementation 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+            annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+            testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
 
             implementation 'io.grpc:grpc-protobuf:1.54.1'
             implementation 'io.grpc:grpc-stub:1.54.1'
@@ -168,10 +168,6 @@ subprojects {
         from("${project.buildDir}/dependency-jars") { into "${project.name}/dependency-jars" }
         from(tasks.processResources) { into "${project.name}/resources" }
         from("${project.file('build.gradle')}") { into "${project.name}" }
-    }
-
-    compileJava {
-        options.compilerArgs << '-Amapstruct.unmappedTargetPolicy=ERROR'
     }
 
     checkstyle {

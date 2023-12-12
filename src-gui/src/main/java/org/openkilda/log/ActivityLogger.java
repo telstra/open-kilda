@@ -21,8 +21,8 @@ import org.openkilda.log.constants.ActivityType;
 import org.openkilda.log.model.LogInfo;
 import org.openkilda.log.service.UserActivityService;
 
-import org.apache.log4j.Logger;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -32,7 +32,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 @Component
 public class ActivityLogger {
-    private static final Logger LOGGER = Logger.getLogger(ActivityLogger.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ActivityLogger.class);
 
     private static final BlockingQueue<LogInfo> logs = new LinkedBlockingQueue<>();
     private static Boolean isThreadStarted = false;

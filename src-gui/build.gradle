@@ -15,27 +15,28 @@ repositories {
 
 dependencies {
     implementation 'javax.servlet:jstl:1.2'
-    implementation 'org.springframework.ldap:spring-ldap-core:2.3.2.RELEASE'
-    implementation 'org.springframework.security:spring-security-ldap:4.1.4.RELEASE'
-    implementation 'org.apache.httpcomponents:httpclient:4.5.13'
+    implementation 'org.springframework.ldap:spring-ldap-core:3.1.0'
+    implementation 'org.springframework.security:spring-security-ldap:6.0.2'
     implementation 'javax.ws.rs:javax.ws.rs-api:2.0'
     implementation 'com.googlecode.json-simple:json-simple:1.1.1'
     implementation 'org.codehaus.jettison:jettison:1.4.1'
     implementation 'commons-lang:commons-lang:2.6'
-    implementation 'org.springframework.boot:spring-boot:1.4.3.RELEASE'
-    implementation 'org.springframework.boot:spring-boot-autoconfigure:1.4.3.RELEASE'
-    implementation 'org.springframework.boot:spring-boot-starter-web:1.4.3.RELEASE'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa:1.4.3.RELEASE'
-    implementation 'org.springframework.boot:spring-boot-starter-security:1.4.3.RELEASE'
+    implementation 'org.springframework.boot:spring-boot:3.1.0'
+    implementation 'org.springframework.boot:spring-boot-autoconfigure:3.1.0'
+    implementation 'org.springframework.boot:spring-boot-starter-web:3.1.0'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa:3.0.4'
+    implementation 'org.springframework.boot:spring-boot-starter-security:3.0.4'
+    implementation 'org.springframework.security:spring-security-config:6.0.2'
+
     implementation 'org.springframework.security.extensions:spring-security-saml-dsl:1.0.0.M3'
-    implementation 'org.springframework.boot:spring-boot-devtools:1.4.3.RELEASE'
+    implementation 'org.springframework.boot:spring-boot-devtools:3.0.4'
     implementation 'javax.mail:mail:1.5.0-b01'
-    implementation 'org.springframework.boot:spring-boot-starter-mail:1.4.3.RELEASE'
+    implementation 'org.springframework.boot:spring-boot-starter-mail:3.0.4'
     implementation 'com.fasterxml.jackson.core:jackson-core:2.13.1'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.1'
     implementation 'com.fasterxml.jackson.core:jackson-annotations:2.13.1'
     implementation 'org.webjars:bootstrap:4.1.2'
-    implementation 'net.logstash.logback:logstash-logback-encoder:4.7'
+    implementation 'net.logstash.logback:logstash-logback-encoder:7.3'
     implementation 'javax.xml.bind:jaxb-api:2.1'
     implementation 'org.apache.derby:derby:10.12.1.1'
 	implementation group: 'mysql', name: 'mysql-connector-java', version: '8.0.27'
@@ -44,12 +45,20 @@ dependencies {
     implementation 'org.apache.commons:commons-collections4:4.4'
     implementation 'com.ibatis:ibatis2-common:2.1.7.597'
     implementation 'com.google.collections:google-collections:1.0-rc2'
-    
-    implementation 'org.springframework.boot:spring-boot-starter-tomcat:1.4.3.RELEASE'
+
+    implementation 'org.springframework.boot:spring-boot-starter-tomcat:3.1.0'
     implementation 'org.apache.tomcat.embed:tomcat-embed-jasper:8.5.9'
-    
-    testImplementation 'org.springframework.boot:spring-boot-starter-test:1.4.3.RELEASE'
-    testImplementation 'org.mockito:mockito-junit-jupiter:4.2.0'
+    implementation 'jakarta.persistence:jakarta.persistence-api:3.1.0'
+    implementation 'javax.validation:validation-api:2.0.1.Final'
+    implementation 'jakarta.servlet:jakarta.servlet-api:6.0.0'
+    implementation group: 'org.springframework', name: 'spring-web', version: '6.1.0'
+    implementation 'org.apache.httpcomponents:httpclient:4.5.13'
+    implementation 'org.apache.httpcomponents.core5:httpcore5:5.2.2'
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
+
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test:3.1.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.2.0'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
 
@@ -63,7 +72,11 @@ dependencies {
 
 group = 'org.openkilda'
 description = 'OpenKilda-GUI'
-sourceCompatibility = '1.8'
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
 
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
@@ -83,6 +96,10 @@ jacocoTestReport {
 
 bootJar {
     archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
+}
+
+bootWar {
+    mainClassName = 'org.openkilda.OpenKildaApplication'
 }
 
 checkstyle {
@@ -112,7 +129,7 @@ checkstyle {
 }*/
 
 jar {
-  manifest { 
+  manifest {
     attributes "Main-Class": "org.openkilda.OpenKildaApplication"
   }
 }

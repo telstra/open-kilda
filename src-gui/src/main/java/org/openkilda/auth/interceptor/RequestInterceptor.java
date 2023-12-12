@@ -23,16 +23,16 @@ import org.openkilda.constants.IConstants.ApplicationSetting;
 import org.openkilda.constants.Status;
 import org.openkilda.service.ApplicationSettingService;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.AsyncHandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
-import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
-
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.repository.UserRepository;
 import org.usermanagement.model.Permission;
@@ -43,39 +43,34 @@ import org.usermanagement.service.RoleService;
 import org.usermanagement.util.MessageUtils;
 
 import java.nio.file.AccessDeniedException;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-
 @Component
-public class RequestInterceptor extends HandlerInterceptorAdapter {
+public class RequestInterceptor implements AsyncHandlerInterceptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RequestInterceptor.class);
     private static final String CORRELATION_ID = "correlation_id";
 
-    @Autowired
-    private ServerContext serverContext;
+    private final ServerContext serverContext;
+    private final RoleService roleService;
+    private final PermissionService permissionService;
+    private final MessageUtils messageUtils;
+    private final UserRepository userRepository;
+    private final ApplicationSettingService applicationSettingService;
 
-    @Autowired
-    private RoleService roleService;
-
-    @Autowired
-    private PermissionService permissionService;
-
-    @Autowired
-    private MessageUtils messageUtils;
-
-    @Autowired
-    private UserRepository userRepository;
-    
-    @Autowired
-    private ApplicationSettingService applicationSettingService;
+    public RequestInterceptor(ServerContext serverContext, RoleService roleService,
+                              PermissionService permissionService, MessageUtils messageUtils,
+                              UserRepository userRepository, ApplicationSettingService applicationSettingService) {
+        this.serverContext = serverContext;
+        this.roleService = roleService;
+        this.permissionService = permissionService;
+        this.messageUtils = messageUtils;
+        this.userRepository = userRepository;
+        this.applicationSettingService = applicationSettingService;
+    }
 
     @Override
     public boolean preHandle(final HttpServletRequest request, final HttpServletResponse response, final Object handler)
@@ -110,11 +105,10 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
 
     @Override
     public void postHandle(final HttpServletRequest request, final HttpServletResponse response, final Object handler,
-            final ModelAndView modelAndView) throws Exception {
-        super.postHandle(request, response, handler, modelAndView);
+                           final ModelAndView modelAndView) {
         MDC.remove(CORRELATION_ID);
     }
-    
+
     private void validateUser(final UserInfo userInfo) throws AccessDeniedException {
         UserEntity userEntity = userRepository.findByUserId(userInfo.getUserId());
         if (userEntity == null || !userEntity.getActiveFlag()) {
@@ -123,7 +117,7 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
     }
 
     private void updateRequestContext(final String correlationId, final HttpServletRequest request,
-            final UserInfo userInfo) {
+                                      final UserInfo userInfo) {
         RequestContext requestContext = serverContext.getRequestContext();
         requestContext.setCorrelationId(userInfo.getUsername() + "_" + correlationId);
         requestContext.setUserId(userInfo.getUserId());
@@ -133,7 +127,7 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
         requestContext.setIs2FaEnabled(userInfo.getIs2FaEnabled());
         requestContext.setStatus(userInfo.getStatus());
         requestContext.setClientIpAddress(getClientIp(request));
-        
+
         MDC.put(CORRELATION_ID, requestContext.getCorrelationId());
     }
 

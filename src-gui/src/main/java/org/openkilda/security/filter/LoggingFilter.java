@@ -19,10 +19,12 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
-
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -31,11 +33,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 /**
  * The Class LoggingFilter.
@@ -55,12 +52,12 @@ public class LoggingFilter extends OncePerRequestFilter {
      *
      * @see
      * org.springframework.web.filter.OncePerRequestFilter#doFilterInternal(
-     * javax.servlet.http. HttpServletRequest,
-     * javax.servlet.http.HttpServletResponse, javax.servlet.FilterChain)
+     * jakarta.servlet.http. HttpServletRequest,
+     * jakarta.servlet.http.HttpServletResponse, jakarta.servlet.FilterChain)
      */
     @Override
     protected void doFilterInternal(final HttpServletRequest request, final HttpServletResponse response,
-            final FilterChain filterChain) throws ServletException, IOException {
+                                    final FilterChain filterChain) throws ServletException, IOException {
         if (LOGGER.isDebugEnabled()) {
             List<String> apis = Arrays.asList("stats/", "switch/");
 
@@ -130,9 +127,9 @@ public class LoggingFilter extends OncePerRequestFilter {
      * Log response.
      *
      * @param response the response
-     * @throws JsonParseException the json parse exception
+     * @throws JsonParseException   the json parse exception
      * @throws JsonMappingException the json mapping exception
-     * @throws IOException Signals that an I/O exception has occurred.
+     * @throws IOException          Signals that an I/O exception has occurred.
      */
     private void logResponse(final ResponseWrapper response)
             throws JsonParseException, JsonMappingException, IOException {

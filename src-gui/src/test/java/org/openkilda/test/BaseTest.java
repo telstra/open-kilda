@@ -18,10 +18,10 @@ package org.openkilda.test;
 import org.openkilda.util.IConstantsTest;
 import org.openkilda.utility.IoUtil;
 
-import org.apache.log4j.Logger;
-
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -41,7 +41,7 @@ import java.util.List;
  */
 public class BaseTest {
 
-    private static final Logger LOGGER = Logger.getLogger(BaseTest.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(BaseTest.class);
 
     /**
      * Execute kilda files.
@@ -98,10 +98,8 @@ public class BaseTest {
     /**
      * Download files.
      *
-     * @param urlStr
-     *            the url str
-     * @param file
-     *            the file
+     * @param urlStr the url str
+     * @param file   the file
      */
     private void downloadFiles(final String urlStr, final String file) {
         if (file.contains(IConstantsTest.FONTS_PATH)) {

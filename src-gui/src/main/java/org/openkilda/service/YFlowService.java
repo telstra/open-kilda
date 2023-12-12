@@ -18,14 +18,15 @@ package org.openkilda.service;
 import org.openkilda.integration.service.FlowsIntegrationService;
 import org.openkilda.model.YFlowRerouteResult;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class YFlowService {
 
-    private static final Logger LOGGER = Logger.getLogger(YFlowService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(YFlowService.class);
 
     @Autowired
     private FlowsIntegrationService flowsIntegrationService;

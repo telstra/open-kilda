@@ -24,20 +24,18 @@ import org.openkilda.model.response.ErrorMessage;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonMappingException.Reference;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.ConversionNotSupportedException;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.util.MultiValueMap;
-import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -52,7 +50,6 @@ import org.springframework.web.context.request.async.AsyncRequestTimeoutExceptio
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-
 import org.usermanagement.exception.RequestValidationException;
 
 import java.nio.file.AccessDeniedException;
@@ -74,7 +71,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleHttpRequestMethodNotSupported(
-            final HttpRequestMethodNotSupportedException ex, final HttpHeaders headers, final HttpStatus status,
+            final HttpRequestMethodNotSupportedException ex, final HttpHeaders headers, final HttpStatusCode status,
             final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.METHOD_NOT_ALLOWED.getHttpStatus(), HttpError.METHOD_NOT_ALLOWED.getCode(),
@@ -83,7 +80,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleHttpMediaTypeNotSupported(final HttpMediaTypeNotSupportedException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.UNPROCESSABLE_ENTITY.getHttpStatus(), HttpError.UNPROCESSABLE_ENTITY.getCode(),
                 HttpError.UNPROCESSABLE_ENTITY.getAuxilaryMessage(), ex.toString());
@@ -91,7 +88,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleHttpMediaTypeNotAcceptable(final HttpMediaTypeNotAcceptableException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.UNPROCESSABLE_ENTITY.getHttpStatus(), HttpError.UNPROCESSABLE_ENTITY.getCode(),
                 HttpError.UNPROCESSABLE_ENTITY.getAuxilaryMessage(), ex.toString());
@@ -99,7 +96,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleMissingPathVariable(final MissingPathVariableException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.BAD_REQUEST.getHttpStatus(), HttpError.BAD_REQUEST.getCode(),
                 HttpError.BAD_REQUEST.getAuxilaryMessage(), ex.toString());
@@ -107,7 +104,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleMissingServletRequestParameter(
-            final MissingServletRequestParameterException ex, final HttpHeaders headers, final HttpStatus status,
+            final MissingServletRequestParameterException ex, final HttpHeaders headers, final HttpStatusCode status,
             final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.BAD_REQUEST.getHttpStatus(), HttpError.BAD_REQUEST.getCode(),
@@ -116,7 +113,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleServletRequestBindingException(final ServletRequestBindingException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.METHOD_NOT_FOUND.getHttpStatus(), HttpError.METHOD_NOT_FOUND.getCode(),
                 HttpError.METHOD_NOT_FOUND.getAuxilaryMessage(), ex.toString());
@@ -124,7 +121,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleConversionNotSupported(final ConversionNotSupportedException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.UNPROCESSABLE_ENTITY.getHttpStatus(), HttpError.UNPROCESSABLE_ENTITY.getCode(),
                 HttpError.UNPROCESSABLE_ENTITY.getAuxilaryMessage(), ex.toString());
@@ -132,7 +129,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleTypeMismatch(final TypeMismatchException ex, final HttpHeaders headers,
-            final HttpStatus status, final WebRequest request) {
+            final HttpStatusCode status, final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.METHOD_NOT_ALLOWED.getHttpStatus(), HttpError.METHOD_NOT_ALLOWED.getCode(),
                 HttpError.METHOD_NOT_ALLOWED.getAuxilaryMessage(), ex.toString());
@@ -140,7 +137,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(final HttpMessageNotReadableException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         String message = new String();
         if (ex.getCause() instanceof JsonMappingException) {
@@ -163,7 +160,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotWritable(final HttpMessageNotWritableException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.UNPROCESSABLE_ENTITY.getHttpStatus(), HttpError.UNPROCESSABLE_ENTITY.getCode(),
                 HttpError.UNPROCESSABLE_ENTITY.getAuxilaryMessage(), ex.toString());
@@ -171,7 +168,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(final MethodArgumentNotValidException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         String message = ex.getBindingResult().getFieldErrors().stream().map(FieldError::getDefaultMessage)
                 .collect(joining(", "));
@@ -181,24 +178,15 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleMissingServletRequestPart(final MissingServletRequestPartException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.BAD_REQUEST.getHttpStatus(), HttpError.BAD_REQUEST.getCode(),
                 HttpError.BAD_REQUEST.getAuxilaryMessage(), ex.toString());
     }
 
     @Override
-    protected ResponseEntity<Object> handleBindException(final BindException ex, final HttpHeaders headers,
-            final HttpStatus status, final WebRequest request) {
-        _log.error("Exception: " + ex.getMessage(), ex);
-        String message = ex.getFieldErrors().stream().map(FieldError::getDefaultMessage).collect(joining(", "));
-        return response(HttpError.BAD_REQUEST.getHttpStatus(), HttpError.BAD_REQUEST.getCode(),
-                HttpError.BAD_REQUEST.getAuxilaryMessage(), message);
-    }
-
-    @Override
     protected ResponseEntity<Object> handleNoHandlerFoundException(final NoHandlerFoundException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest request) {
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest request) {
         _log.error("Exception: " + ex.getMessage(), ex);
         return response(HttpError.METHOD_NOT_FOUND.getHttpStatus(), HttpError.METHOD_NOT_FOUND.getCode(),
                 HttpError.METHOD_NOT_FOUND.getAuxilaryMessage(), ex.getMessage());
@@ -206,7 +194,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleAsyncRequestTimeoutException(final AsyncRequestTimeoutException ex,
-            final HttpHeaders headers, final HttpStatus status, final WebRequest webRequest) {
+            final HttpHeaders headers, final HttpStatusCode status, final WebRequest webRequest) {
         return super.handleAsyncRequestTimeoutException(ex, headers, status, webRequest);
     }
 
@@ -225,7 +213,7 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
         headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
         return new ResponseEntity<Object>(new ErrorMessage(code, message, auxilaryMessage), headers, status);
     }
-    
+
     /**
      * Response.
      *
@@ -241,8 +229,8 @@ public class GlobalExceptionMapper extends ResponseEntityExceptionHandler {
             final String message, String correlationId, String errorDescription) {
         MultiValueMap<String, String> headers = new HttpHeaders();
         headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
-        return new ResponseEntity<Object>(new ErrorMessage(code, message, auxilaryMessage, 
-                correlationId, errorDescription), 
+        return new ResponseEntity<Object>(new ErrorMessage(code, message, auxilaryMessage,
+                correlationId, errorDescription),
                 headers, status);
     }
 

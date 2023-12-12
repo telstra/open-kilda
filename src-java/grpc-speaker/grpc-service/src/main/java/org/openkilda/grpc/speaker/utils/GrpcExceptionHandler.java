@@ -22,8 +22,10 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.GrpcMessageError;
 
 import io.grpc.StatusRuntimeException;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -31,7 +33,6 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.io.IOException;
-import javax.servlet.http.HttpServletResponse;
 
 @ControllerAdvice
 public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
@@ -60,23 +61,23 @@ public class GrpcExceptionHandler extends ResponseEntityExceptionHandler {
 
         return makeExceptionalResponse(ex, makeErrorPayload(ex.getCode(), ex.getMessage()), status, request);
     }
-    
+
     @ExceptionHandler(StatusRuntimeException.class)
-    public void  handleException(StatusRuntimeException ex, HttpServletResponse response) throws IOException {
+    public void handleException(StatusRuntimeException ex, HttpServletResponse response) throws IOException {
         response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value());
     }
 
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(Exception exception, Object body, HttpHeaders headers,
-                                                             HttpStatus status, WebRequest request) {
+                                                             HttpStatusCode status, WebRequest request) {
         GrpcMessageError error = new GrpcMessageError(System.currentTimeMillis(), -1L, exception.getMessage(),
                 ErrorType.REQUEST_INVALID.toString());
         return makeExceptionalResponse(exception, error, status, request);
     }
 
- 
+
     private ResponseEntity<Object> makeExceptionalResponse(
-            Exception ex, GrpcMessageError body, HttpStatus status, WebRequest request) {
+            Exception ex, GrpcMessageError body, HttpStatusCode status, WebRequest request) {
         logger.error(format("Produce error response: %s", body));
         return super.handleExceptionInternal(ex, body, new HttpHeaders(), status, request);
     }

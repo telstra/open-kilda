@@ -17,9 +17,8 @@ package org.openkilda.config;
 
 import org.openkilda.security.filter.LoggingFilter;
 
+import jakarta.servlet.Filter;
 import org.springframework.context.annotation.Bean;
-
-import javax.servlet.Filter;
 
 /**
  * The Class FilterConfig.

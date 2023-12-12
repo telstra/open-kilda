@@ -18,7 +18,7 @@ dependencies {
 
     runtimeOnly 'org.yaml:snakeyaml:1.30'
     runtimeOnly 'commons-logging:commons-logging:1.2'
-    implementation('org.apache.storm:storm-opentsdb:1.2.1') {
+    implementation('org.apache.storm:storm-opentsdb:2.4.0') {
         exclude group: 'org.apache.httpcomponents', module: 'httpclient'
         // This conflicts with jcl-over-slf4j
         exclude group: 'commons-logging', module: 'commons-logging'
