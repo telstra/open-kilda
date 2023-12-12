@@ -98,7 +98,7 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
         //wait for generating some flow-monitoring stats
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
 
         def path = northbound.getFlowPath(flow.flowId)
@@ -161,7 +161,7 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         flowHelperV2.addFlow(flow)
         //wait for generating some flow-monitoring stats
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
 
@@ -205,7 +205,7 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
     }
 
     void verifyLatencyInTsdb(flowId, expectedMs) {
-        def actual = flowStats.rttOf(flowId).get(FLOW_RTT).getDataPoints().max {it.getKey()}.getValue()
+        def actual = flowStats.of(flowId).get(FLOW_RTT).getDataPoints().max {it.getKey()}.getValue()
         def nanoMultiplier = 1000000
         def expectedNs = expectedMs * nanoMultiplier
         assert Math.abs(expectedNs - actual) <= expectedNs * 0.3 //less than 0.3 is unstable on jenkins

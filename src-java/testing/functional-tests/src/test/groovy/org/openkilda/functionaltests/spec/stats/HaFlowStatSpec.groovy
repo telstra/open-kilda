@@ -92,7 +92,7 @@ class HaFlowStatSpec extends HealthCheckSpecification {
     def "System is able to collect latency stats for subflows"() {
         expect: "#stat stats is available"
         wait(statsRouterRequestInterval) {
-            assert flowStats.rttOf(subFlow).get(FLOW_RTT, direction).hasNonZeroValues()
+            assert flowStats.of(subFlow).get(FLOW_RTT, direction).hasNonZeroValues()
         }
 
         where:

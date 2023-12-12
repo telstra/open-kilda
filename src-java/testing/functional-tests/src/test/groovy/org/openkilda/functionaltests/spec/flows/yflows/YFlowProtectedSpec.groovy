@@ -30,7 +30,7 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
         def swT = topologyHelper.switchTriplets.find {
             def ep1paths = it.pathsEp1.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
             def ep2paths = it.pathsEp2.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            def yPoints = yFlowHelper.findPotentialYPoints(it)
+            def yPoints = topologyHelper.findPotentialYPoints(it)
             //se == yp
             yPoints.size() == 1 && yPoints[0] == it.shared && yPoints[0] != it.ep1 && yPoints[0] != it.ep2 &&
                     it.ep1 != it.ep2 && ep1paths.size() >= 2 && ep2paths.size() >= 2

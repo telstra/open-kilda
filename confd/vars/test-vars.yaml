@@ -8,8 +8,6 @@ kilda_tests_kafka_hosts: "localhost:9093"
 kilda_tests_kafka_hosts_internal: "localhost:9092"
 kilda_tests_zookeeper_hosts: "localhost"
 
-kilda_tests_opentsdb_hosts: "localhost"
-kilda_tests_opentsdb_port: "4242"
 kilda_tests_victoriametrics_host: "localhost"
 
 kilda_tests_hibernate_url: jdbc:mysql://localhost:8101/kilda

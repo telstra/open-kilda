@@ -58,7 +58,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         given: "A qinq y-flow"
         def swT = topologyHelper.switchTriplets.find { it ->
-            def yPoints = yFlowHelper.findPotentialYPoints(it)
+            def yPoints = topologyHelper.findPotentialYPoints(it)
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
                     [it.pathsEp1, it.pathsEp2].every { it.size() > 1 } &&
                     it.ep1 != it.ep2 && yPoints.size() == 1 && yPoints[0] != it.shared &&

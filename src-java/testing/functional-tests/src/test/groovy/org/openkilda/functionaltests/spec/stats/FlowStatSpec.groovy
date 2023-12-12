@@ -149,7 +149,7 @@ class FlowStatSpec extends HealthCheckSpecification {
                 (int) flow.maximumBandwidth, 3).tap { udp = true }
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
-        //statsHelper."force kilda to collect stats"()
+        statsHelper."force kilda to collect stats"()
 
         then: "Stats is not empty for main path cookies"
         def flowInfo = database.getFlow(flow.flowId)
@@ -184,7 +184,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         and: "Generate traffic on the flow"
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
-        //statsHelper."force kilda to collect stats"()
+        statsHelper."force kilda to collect stats"()
 
 
         then: "Stats is not empty for new main path cookies"

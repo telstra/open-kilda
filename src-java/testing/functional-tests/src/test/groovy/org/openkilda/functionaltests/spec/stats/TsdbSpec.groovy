@@ -77,7 +77,7 @@ class TsdbSpec extends HealthCheckSpecification {
     def setupSpec() {
         withPool {
             statsMap = uniqueSwitches.collectParallel
-            {[it, switchStats.of(it, SwitchStatsMetric.values() as List - STATE - hardwareOnlySwitchStats, 15)]}
+            {[it, switchStats.of(it, 15)]}
                     .collectEntries{[(it[0]): it[1]]}
         }
     }
@@ -128,7 +128,7 @@ class TsdbSpec extends HealthCheckSpecification {
         assumeTrue(northbound.getFeatureToggles().collectGrpcStats,
 "This test is skipped because 'collectGrpcStats' is disabled")
         expect: "At least 1 result in the past 15 minutes"
-        assert !switchStats.of(sw.getDpId(), [metric], 15).get(metric).getDataPoints().isEmpty()
+        assert !switchStats.of(sw.getDpId(), 15).get(metric).getDataPoints().isEmpty()
 
         where:
         [metric, sw] << ([hardwareOnlySwitchStats, getNoviflowSwitches()].combinations())
