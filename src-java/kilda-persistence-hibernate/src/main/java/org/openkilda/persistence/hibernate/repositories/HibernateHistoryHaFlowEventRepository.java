@@ -62,7 +62,7 @@ public class HibernateHistoryHaFlowEventRepository
                 () -> fetch(haFlowId, timeFrom, timeTo, maxCount).stream()
                         .map(HaFlowEvent::new)
                         .collect(Collectors.toList()));
-        // fetch does ordering [1,2,3,4,5] and limit to maxCount (let's say top 3) [1,2,3]
+        // fetch does the ordering [1,2,3,4,5] and limit to maxCount (let's say top 3) [1,2,3]
         // then we reverse the collection [3,2,1].
         // This is different from having the opposite ordering in the query: order [5,4,3,2,1] and top 3: [5,4,3]
         Collections.reverse(results);
