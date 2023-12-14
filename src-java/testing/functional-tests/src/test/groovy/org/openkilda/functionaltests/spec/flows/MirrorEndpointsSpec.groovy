@@ -173,7 +173,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         }
 
         and: "Traffic is also received at the mirror point (check only if second tg available)"
-        if (mirrorTg) {
+        //https://github.com/telstra/open-kilda/issues/5420
+        if (mirrorTg && !swPair.src.isWb5164()) {
             assert mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
         }
 
@@ -310,7 +311,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def mirrorPortStats = mirrorTg ? new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId]) : null
         def rxPacketsBefore = mirrorPortStats?.get()?.rxPackets
         verifyTraffic(traffExam, flow, mirrorDirection)
-        if (mirrorTg) {
+        //https://github.com/telstra/open-kilda/issues/5420
+        if (mirrorTg && !swPair.src.isWb5164()) {
             assert mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
         }
 
