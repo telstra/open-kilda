@@ -1,0 +1,8 @@
+FROM python:3.11-slim
+
+ARG wheel
+
+WORKDIR /tmp
+COPY dist/${wheel} ./
+RUN pip install ${wheel}
+RUN rm -rf ${wheel}
