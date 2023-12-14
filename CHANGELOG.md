@@ -1,4 +1,27 @@
 # Changelog
+## v1.150.0 (19/12/2023)
+
+### Features:
+-  [#4931](https://github.com/telstra/open-kilda/pull/4931) Tool for dump/restore OpenTSDB data
+
+### Bug Fixes:
+-  [#5513](https://github.com/telstra/open-kilda/pull/5513) #5420: [TEST] Ignore failing WB5164 mirror check (Issue: [#5420](https://github.com/telstra/open-kilda/issues/5420)) [**tests**]
+-  [#5501](https://github.com/telstra/open-kilda/pull/5501) Adjust ordering of HA-flow history actions. (Issue: [#5366](https://github.com/telstra/open-kilda/issues/5366))
+
+### Improvements:
+-  [#5507](https://github.com/telstra/open-kilda/pull/5507) [TEST]: #5504: Storm: Updating network topology manipulation (Issue: [#5504](https://github.com/telstra/open-kilda/issues/5504)) [**tests**]
+-  [#5508](https://github.com/telstra/open-kilda/pull/5508) #5390: [TEST] Fixed tests after changes in history API pt.2 (Issues: [#5390](https://github.com/telstra/open-kilda/issues/5390) [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5491](https://github.com/telstra/open-kilda/pull/5491) Remove the deprecated authentication plugin for the MySQL container. (Issue: [#5460](https://github.com/telstra/open-kilda/issues/5460)) [**configuration**]
+-  [#5493](https://github.com/telstra/open-kilda/pull/5493) [TEST] Refactoring the way to choose switch pairs for test [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.149.0...v1.150.0).
+
+### Affected Components:
+history, otsdb
+
+---
+
 ## v1.149.0 (07/12/2023)
 
 ### Bug Fixes:
