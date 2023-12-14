@@ -18,6 +18,7 @@ package org.openkilda.testing.config;
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
 
 import org.openkilda.testing.model.topology.TopologyDefinition;
+import org.openkilda.testing.service.floodlight.FloodlightServiceImpl;
 import org.openkilda.testing.service.floodlight.IslandFloodlightService;
 import org.openkilda.testing.service.floodlight.model.Floodlight;
 import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode;
@@ -116,8 +117,7 @@ public class DefaultServiceConfig {
                                         @Value("#{'${floodlight.regions}'.split(',')}") List<String> regions,
                                         @Value("#{'${floodlight.modes}'.split(',')}") List<String> modes,
                                         @Autowired TopologyDefinition topo) {
-        if (openflows.size() != endpoints.size() || openflows.size() != containers.size()
-                || openflows.size() != regions.size() || openflows.size() != modes.size()) {
+        if (isFloodlightPropsCorrect(openflows, endpoints, containers, regions, modes)) {
             throw new IllegalArgumentException("Floodlight test properties are illegal. Sizes of floodlight.openflows,"
                     + " floodlight.endpoints, floodlight.containers, floodlight.regions, floodlight.modes should be "
                     + "equal");
@@ -129,6 +129,34 @@ public class DefaultServiceConfig {
                     EnumUtils.getEnumIgnoreCase(FloodlightConnectMode.class, modes.get(i))));
         }
         return floodlights;
+    }
+
+    @Bean
+    @Scope(SCOPE_PROTOTYPE)
+    public List<Floodlight> commonFloodlights(@Value("#{'${floodlight.openflows}'.split(',')}") List<String> openflows,
+                                        @Value("#{'${floodlight.endpoints}'.split(',')}") List<String> endpoints,
+                                        @Value("#{'${floodlight.containers}'.split(',')}") List<String> containers,
+                                        @Value("#{'${floodlight.regions}'.split(',')}") List<String> regions,
+                                        @Value("#{'${floodlight.modes}'.split(',')}") List<String> modes,
+                                        @Autowired TopologyDefinition topo) {
+        if (isFloodlightPropsCorrect(openflows, endpoints, containers, regions, modes)) {
+            throw new IllegalArgumentException("Floodlight test properties are illegal. Sizes of floodlight.openflows,"
+                    + " floodlight.endpoints, floodlight.containers, floodlight.regions, floodlight.modes should be "
+                    + "equal");
+        }
+        List<Floodlight> floodlights = new ArrayList<>();
+        for (int i = 0; i < regions.size(); i++) {
+            floodlights.add(new Floodlight(openflows.get(i), containers.get(i), regions.get(i),
+                    new FloodlightServiceImpl(endpoints.get(i)),
+                    EnumUtils.getEnumIgnoreCase(FloodlightConnectMode.class, modes.get(i))));
+        }
+        return floodlights;
+    }
+
+    private boolean isFloodlightPropsCorrect(List<String> openflows, List<String> endpoints, List<String> containers,
+                                             List<String> regions, List<String> modes) {
+        return openflows.size() != endpoints.size() || openflows.size() != containers.size()
+                || openflows.size() != regions.size() || openflows.size() != modes.size();
     }
 
     @Bean(name = "tsdbRestTemplate")
