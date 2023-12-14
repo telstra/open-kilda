@@ -202,12 +202,8 @@ class LagPortSpec extends HealthCheckSpecification {
     def "Able to create a singleSwitchFlow on a LAG port"() {
         given: "A switch with two traffgens and one LAG port"
         and: "A flow on the LAG port"
-        def allTraffGenSwitchIds = topology.activeTraffGens*.switchConnected*.dpId
-        assumeTrue(allTraffGenSwitchIds.size() > 1, "Unable to find active traffgen")
-        def swPair = topologyHelper.getAllSingleSwitchPairs().find {
-            it.src.dpId in allTraffGenSwitchIds && it.src.traffGens.size() > 1
-        }
-        assumeTrue(swPair.asBoolean(), "Unable to find required switch in topology")
+        def swPair = switchPairs.singleSwitch()
+                .withAtLeastNTraffgensOnSource(2).random()
         def traffgenSrcSwPort = swPair.src.traffGens[0].switchPort
         def traffgenDstSwPort = swPair.src.traffGens[1].switchPort
         def payload = new LagPortRequest(portNumbers: [traffgenSrcSwPort])
@@ -337,7 +333,7 @@ on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
 
     def "Unable to create a LAG port with port which is used as mirrorPort"() {
         given: "A flow with mirrorPoint"
-        def swP = topologyHelper.getNeighboringSwitchPair()
+        def swP = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.randomFlow(swP, false)
         flowHelperV2.addFlow(flow)
 

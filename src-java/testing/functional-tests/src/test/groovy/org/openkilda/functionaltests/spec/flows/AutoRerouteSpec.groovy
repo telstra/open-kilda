@@ -52,7 +52,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
     @IterationTag(tags = [TOPOLOGY_DEPENDENT], iterationNameRegex = /vxlan/)
     def "Flow is rerouted when one of the #description flow ISLs fails"() {
         given: "A flow with one alternative path at least"
-        def data = flowData(topologyHelper.getAllNeighboringSwitchPairs(), 1)
+        def data = flowData(switchPairs.all().neighbouring().getSwitchPairs(), 1)
         FlowRequestV2 flow = data[0]
         def allFlowPaths = data[1]
         flowHelperV2.addFlow(flow)
@@ -491,13 +491,10 @@ class AutoRerouteSpec extends HealthCheckSpecification {
     @Tags(HARDWARE)
     def "Flow in 'UP' status is not rerouted after switchUp event"() {
         given: "Two active neighboring switches which support round trip latency"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            swP.paths.findAll { path ->
-                path.size() == 2 && pathHelper.getInvolvedSwitches(path).every {
-                    it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD)
-                }
-            }
-        } ?: assumeTrue(false, "No suiting switches found.")
+        def switchPair = switchPairs.all()
+                .neighbouring()
+                .withIslRttSupport()
+                .random()
 
         and: "A flow on the given switch pair"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -547,10 +544,10 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
     def "Flow is not rerouted when switchUp event appear for a switch which is not related to the flow"() {
         given: "Given a flow in DOWN status on neighboring switches"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.findAll { it.size() == 2 }.size() == 1
-        } ?: assumeTrue(false, "No suiting switches found")
-
+        def switchPair = switchPairs.all()
+                .neighbouring()
+                .withExactlyNIslsBetweenSwitches(1)
+                .random()
         def flowPath = switchPair.paths.min { it.size() }
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
@@ -715,7 +712,8 @@ triggering one more reroute of the current path"
     }
 
     def noIntermediateSwitchFlow(int minAltPathsCount = 0, boolean getAllPaths = false) {
-        def flowWithPaths = getFlowWithPaths(topologyHelper.getAllNeighboringSwitchPairs(), minAltPathsCount)
+        def flowWithPaths = getFlowWithPaths(switchPairs.all().neighbouring().getSwitchPairs(),
+                minAltPathsCount)
         return getAllPaths ? flowWithPaths : flowWithPaths[0]
     }
 
@@ -754,9 +752,10 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
     def "Flow in 'Down' status is rerouted after switchUp event"() {
         given: "First switch pair with two parallel links and two available paths"
         assumeTrue(rerouteDelay * 2 < discoveryTimeout, "Reroute should be completed before link is FAILED")
-        def switchPair1 = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.findAll { it.size() == 2 }.size() > 1
-        } ?: assumeTrue(false, "No suiting switches found for the first flow")
+        def switchPair1 = switchPairs.all()
+                .neighbouring()
+                .withMoreThanNIslsBetweenSwitches(1)
+                .random()
         // disable auto-reroute on islDiscovery event
         northbound.toggleFeature(FeatureTogglesDto.builder().flowsRerouteOnIslDiscoveryEnabled(false).build())
 
@@ -1019,7 +1018,7 @@ Failed to find path with requested bandwidth= ignored"
     }
 
     def noIntermediateSwitchFlow(int minAltPathsCount = 0, boolean getAllPaths = false) {
-        def flowWithPaths = getFlowWithPaths(topologyHelper.getAllNeighboringSwitchPairs(), minAltPathsCount)
+        def flowWithPaths = getFlowWithPaths(switchPairs.all().neighbouring().getSwitchPairs(), minAltPathsCount)
         return getAllPaths ? flowWithPaths : flowWithPaths[0]
     }
 

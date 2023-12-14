@@ -132,7 +132,7 @@ class LinkSpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Get all flows (UP/DOWN) going through a particular link"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def switchPair = switchPairs.all().nonNeighbouring().random()
 
         and: "Forward flow from source switch to destination switch"
         def flow1 = flowHelperV2.randomFlow(switchPair).tap { it.pinned = true }
@@ -717,7 +717,7 @@ class LinkSpec extends HealthCheckSpecification {
 
     def "Unable to delete inactive link with flowPath"() {
         given: "An inactive link with flow on it"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.pinned = true
         flowHelperV2.addFlow(flow)

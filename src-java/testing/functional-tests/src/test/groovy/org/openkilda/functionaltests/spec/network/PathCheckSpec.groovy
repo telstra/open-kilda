@@ -22,7 +22,7 @@ class PathCheckSpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "No path validation errors for valid path without limitations"() {
         given: "Path for non-neighbouring switches"
-        def path = topologyHelper.getAllSwitchPairs().nonNeighbouring().random()
+        def path = switchPairs.all().nonNeighbouring().random()
                 .getPaths().sort { it.size() }.first()
 
         when: "Check the path without limitations"
@@ -39,7 +39,7 @@ class PathCheckSpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Path check errors returned for each segment and each type of problem"() {
         given: "Path of at least three switches"
-        def switchPair = topologyHelper.getAllSwitchPairs().nonNeighbouring().random()
+        def switchPair = switchPairs.all().nonNeighbouring().random()
         def path = switchPair.getPaths()
                 .sort { it.size() }
                 .first()
@@ -69,7 +69,7 @@ class PathCheckSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Latency check errors are returned for the whole existing flow"() {
         given: "Path of at least three switches"
-        def switchPair = topologyHelper.getAllSwitchPairs().nonNeighbouring().random()
+        def switchPair = switchPairs.all().nonNeighbouring().random()
         def path = switchPair.getPaths()
                 .sort { it.size() }
                 .first()
@@ -100,7 +100,7 @@ class PathCheckSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Path intersection check errors are returned for each segment of existing flow"() {
         given: "Flow has been created successfully"
-        def switchPair = topologyHelper.getAllSwitchPairs().nonNeighbouring().first()
+        def switchPair = switchPairs.all().nonNeighbouring().first()
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair, false))
         def flowPathDetails = northbound.getFlowPath(flow.flowId)
 
@@ -133,8 +133,8 @@ class PathCheckSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Path intersection check errors are returned for each segment of each flow in diverse group"() {
         given: "List of required neighbouring switches has been collected"
-        def firstSwitchPair = topologyHelper.getAllSwitchPairs().neighbouring().random()
-        def secondSwitchPair = topologyHelper.getAllSwitchPairs().neighbouring().excludePairs([firstSwitchPair])
+        def firstSwitchPair = switchPairs.all().neighbouring().random()
+        def secondSwitchPair = switchPairs.all().neighbouring().excludePairs([firstSwitchPair])
                 .includeSwitch(firstSwitchPair.dst).random()
 
         and:"Two flows in one diverse group have been created"
@@ -147,7 +147,7 @@ class PathCheckSpec extends HealthCheckSpecification {
         def flow2Path = northbound.getFlowPath(flow2.flowId)
 
         when: "Check potential path that has intersection ONLY with one flow from diverse group"
-        LinkedList<PathNode> pathToCheck = topologyHelper.getAllSwitchPairs().neighbouring().excludePairs([firstSwitchPair, secondSwitchPair])
+        LinkedList<PathNode> pathToCheck = switchPairs.all().neighbouring().excludePairs([firstSwitchPair, secondSwitchPair])
               .includeSwitch(firstSwitchPair.src).random().paths.first()
 
         if(pathToCheck.last().switchId != firstSwitchPair.src.dpId) {

@@ -22,7 +22,7 @@ class ContentionSpec extends BaseSpecification {
         when: "Create the same flow in parallel multiple times"
         def flowsAmount = 20
         def group = new DefaultPGroup(flowsAmount)
-        def flow = flowHelperV2.randomFlow(topologyHelper.notNeighboringSwitchPair)
+        def flow = flowHelperV2.randomFlow(switchPairs.all().nonNeighbouring().random())
         def tasks = (1..flowsAmount).collect {
             group.task { flowHelperV2.addFlow(flow) }
         }
@@ -88,7 +88,7 @@ class ContentionSpec extends BaseSpecification {
 
     def "Reroute can be simultaneously performed with sync rules requests, removeExcess=#removeExcess"() {
         given: "A flow with reroute potential"
-        def switches = topologyHelper.getNotNeighboringSwitchPair()
+        def switches = switchPairs.all().nonNeighbouring().random()
         def flow = flowHelperV2.randomFlow(switches)
         flowHelperV2.addFlow(flow)
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))

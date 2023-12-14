@@ -180,9 +180,9 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     def "Y-Flow reroute has been executed when more preferable path is available for both sub-flows (shared path cost was changed)" () {
         given: "The appropriate switches have been collected"
         //y-flow with shared path is created when shared_ep+ep1->neighbour && ep1+ep2->neighbour && shared_ep+ep2->not neighbour
-        def pairSharedEpAndEp1 = topologyHelper.getAllSwitchPairs().neighbouring().first()
-        def sharedEpNeighbouringSwitches = topologyHelper.getAllSwitchPairs().neighbouring().includeSwitch(pairSharedEpAndEp1.src).collectSwitches()
-        def pairEp1AndEp2 = topologyHelper.getAllSwitchPairs().neighbouring().excludePairs([pairSharedEpAndEp1])
+        def pairSharedEpAndEp1 = switchPairs.all().neighbouring().first()
+        def sharedEpNeighbouringSwitches = switchPairs.all().neighbouring().includeSwitch(pairSharedEpAndEp1.src).collectSwitches()
+        def pairEp1AndEp2 = switchPairs.all().neighbouring().excludePairs([pairSharedEpAndEp1])
                 .includeSwitch(pairSharedEpAndEp1.dst).excludeSwitches(sharedEpNeighbouringSwitches).first()
         def swT = new SwitchTriplet(shared: pairSharedEpAndEp1.src, ep1: pairEp1AndEp2.src, ep2: pairEp1AndEp2.dst)
 
@@ -231,9 +231,9 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     def "Y-Flow reroute has been executed when more preferable path is available for one of the sub-flows" () {
         given: "The appropriate switches have been collected"
         //y-flow with shared path is created when shared_ep+ep1->neighbour && ep1+ep2->neighbour && shared_ep+ep2->not neighbour
-        def pairSharedEpAndEp1 = topologyHelper.getAllSwitchPairs().neighbouring().first()
-        def sharedEpNeighbouringSwitches = topologyHelper.getAllSwitchPairs().neighbouring().includeSwitch(pairSharedEpAndEp1.src).collectSwitches()
-        def pairEp1AndEp2 = topologyHelper.getAllSwitchPairs().neighbouring().excludePairs([pairSharedEpAndEp1])
+        def pairSharedEpAndEp1 = switchPairs.all().neighbouring().first()
+        def sharedEpNeighbouringSwitches = switchPairs.all().neighbouring().includeSwitch(pairSharedEpAndEp1.src).collectSwitches()
+        def pairEp1AndEp2 = switchPairs.all().neighbouring().excludePairs([pairSharedEpAndEp1])
                 .includeSwitch(pairSharedEpAndEp1.dst).excludeSwitches(sharedEpNeighbouringSwitches).first()
         def swT = new SwitchTriplet(shared: pairSharedEpAndEp1.src, ep1: pairEp1AndEp2.src, ep2: pairEp1AndEp2.dst)
 

@@ -217,7 +217,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
 
     def "Unable to create #flowDescription flow with protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches without alt paths"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
         List<PathNode> broughtDownPorts = []
 
         switchPair.paths.sort { it.size() }[1..-1].unique {

@@ -169,7 +169,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
 
     def "Able to synchronize #switchKind switch (delete excess rules and meters)"() {
         given: "Flow with intermediate switches"
-        def switchPair = topologyHelper.getAllSwitchPairs().nonNeighbouring().random()
+        def switchPair = switchPairs.all().nonNeighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
         def switchId = getSwitch(flow)

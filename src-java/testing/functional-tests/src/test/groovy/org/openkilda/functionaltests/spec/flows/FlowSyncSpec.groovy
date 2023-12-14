@@ -29,7 +29,7 @@ class FlowSyncSpec extends HealthCheckSpecification {
     @Tags([SMOKE_SWITCHES, SMOKE])
     def "Able to synchronize a flow (install missing flow rules, reinstall existing) without rerouting"() {
         given: "An intermediate-switch flow with deleted rules on src switch"
-        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def switchPair = switchPairs.all().nonNeighbouring().random()
         assumeTrue(switchPair.asBoolean(), "Need a not-neighbouring switch pair for this test")
 
         def flow = flowHelperV2.randomFlow(switchPair)

@@ -467,7 +467,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
     def "Error is returned if there is no available path to #data.isolatedSwitchType switch"() {
         given: "A switch that has no connection to other switches"
-        def isolatedSwitch = topologyHelper.notNeighboringSwitchPair.src
+        def isolatedSwitch = switchPairs.all().nonNeighbouring().random().src
         def flow = data.getFlow(isolatedSwitch)
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
             antiflap.portDown(isolatedSwitch.dpId, port)
@@ -568,7 +568,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
     def "Unable to create a flow with #problem"() {
         given: "A flow with #problem"
-        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def switchPair = switchPairs.all().nonNeighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair, false)
         flow = update(flow)
         when: "Try to create a flow"
@@ -825,7 +825,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
     @Tags(LOW_PRIORITY)
     def "System allows to set/update description/priority/max-latency for a flow"() {
         given: "Two active neighboring switches"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
 
         and: "Value for each field"
         def initPriority = 100
@@ -878,7 +878,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
     def "System doesn't ignore encapsulationType when flow is created with ignoreBandwidth = true"() {
         given: "Two active switches"
-        def swPair = topologyHelper.getNeighboringSwitchPair().find {
+        def swPair = switchPairs.all().neighbouring().getSwitchPairs().find {
             [it.src, it.dst].any { !switchHelper.isVxlanEnabled(it.dpId) }
         } ?: assumeTrue(false, "Unable to find required switches in topology")
 
@@ -1245,7 +1245,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
     def "System allows to update single switch flow to multi switch flow"() {
         given: "A single switch flow with enabled lldp/arp on the dst side"
         assumeTrue(useMultitable, "This test can be run in multiTable mode due to lldp/arp")
-        def swPair = topologyHelper.getNeighboringSwitchPair()
+        def swPair = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.singleSwitchFlow(swPair.src)
         flow.destination.detectConnectedDevices.lldp = true
         flow.destination.detectConnectedDevices.arp = true
@@ -1401,7 +1401,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
     @Tags(LOW_PRIORITY)
     def "Unable to update to a flow with maxLatencyTier2 higher as maxLatency)"() {
         given: "A flow"
-        def swPair = topologyHelper.getRandomSwitchPair()
+        def swPair = switchPairs.singleSwitch().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
 
