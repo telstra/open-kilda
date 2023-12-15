@@ -86,23 +86,17 @@ import java.util.stream.Collectors;
 @Service
 public class LinkServiceImpl extends BaseService implements LinkService {
 
-    @Autowired
-    private Clock clock;
+    private final Clock clock;
 
-    @Autowired
-    private TaskScheduler taskScheduler;
+    private final TaskScheduler taskScheduler;
 
-    @Autowired
-    private CorrelationIdFactory idFactory;
+    private final CorrelationIdFactory idFactory;
 
-    @Autowired
-    private LinkMapper linkMapper;
+    private final LinkMapper linkMapper;
 
-    @Autowired
-    private FlowMapper flowMapper;
+    private final FlowMapper flowMapper;
 
-    @Autowired
-    private LinkPropsMapper linkPropsMapper;
+    private final LinkPropsMapper linkPropsMapper;
 
     /**
      * The kafka topic for the nb topology.
@@ -110,17 +104,23 @@ public class LinkServiceImpl extends BaseService implements LinkService {
     @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
     private String nbworkerTopic;
 
-    @Autowired
-    private MessagingChannel messagingChannel;
+    private final MessagingChannel messagingChannel;
 
     private BfdProperties bfdPropertiesDefault;
 
     private Duration bfdPropertiesApplyPeriod;
 
-    @Autowired
-    public LinkServiceImpl(MessagingChannel messagingChannel) {
+    public LinkServiceImpl(MessagingChannel messagingChannel, Clock clock, TaskScheduler taskScheduler,
+                           CorrelationIdFactory idFactory, LinkMapper linkMapper,
+                           FlowMapper flowMapper, LinkPropsMapper linkPropsMapper) {
         super(messagingChannel);
         this.messagingChannel = messagingChannel;
+        this.clock = clock;
+        this.taskScheduler = taskScheduler;
+        this.idFactory = idFactory;
+        this.linkMapper = linkMapper;
+        this.flowMapper = flowMapper;
+        this.linkPropsMapper = linkPropsMapper;
     }
 
     @Override

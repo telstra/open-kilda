@@ -31,7 +31,6 @@ import org.openkilda.northbound.service.LinkService;
 
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -56,8 +55,11 @@ import java.util.concurrent.CompletableFuture;
 @PropertySource("classpath:northbound.properties")
 public class LinkController extends BaseLinkController {
 
-    @Autowired
-    private LinkService linkService;
+    private final LinkService linkService;
+
+    public LinkController(LinkService linkService) {
+        this.linkService = linkService;
+    }
 
     /**
      * Get all available links.
@@ -146,13 +148,13 @@ public class LinkController extends BaseLinkController {
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<FlowResponsePayload>> getFlowsForLink(@RequestParam(value = "src_switch")
-                                                                                    SwitchId srcSwitch,
+                                                                        SwitchId srcSwitch,
                                                                         @RequestParam(value = "src_port")
-                                                                                Integer srcPort,
+                                                                        Integer srcPort,
                                                                         @RequestParam(value = "dst_switch")
-                                                                                    SwitchId dstSwitch,
+                                                                        SwitchId dstSwitch,
                                                                         @RequestParam(value = "dst_port")
-                                                                                    Integer dstPort) {
+                                                                        Integer dstPort) {
         return linkService.getFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 
@@ -167,9 +169,9 @@ public class LinkController extends BaseLinkController {
             produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<String>> rerouteFlowsForLink(@RequestParam(value = "src_switch") SwitchId srcSwitch,
-                                                                @RequestParam(value = "src_port") Integer srcPort,
-                                                                @RequestParam(value = "dst_switch") SwitchId dstSwitch,
-                                                                @RequestParam(value = "dst_port") Integer dstPort) {
+                                                               @RequestParam(value = "src_port") Integer srcPort,
+                                                               @RequestParam(value = "dst_switch") SwitchId dstSwitch,
+                                                               @RequestParam(value = "dst_port") Integer dstPort) {
         return linkService.rerouteFlowsForLink(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 

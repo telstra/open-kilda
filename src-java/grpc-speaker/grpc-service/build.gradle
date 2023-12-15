@@ -10,7 +10,7 @@ configurations {
 description = 'GRPC service'
 dependencies {
     implementation(platform('org.springframework:spring-framework-bom:6.0.6'))
-    implementation(platform('org.springframework.boot:spring-boot-dependencies:3.0.4'))
+    implementation(platform('org.springframework.boot:spring-boot-dependencies:3.1.0'))
 
     implementation project(':grpc-api')
     implementation project(':kilda-configuration')

@@ -54,7 +54,6 @@ import org.openkilda.northbound.service.YFlowService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -76,11 +75,14 @@ public class YFlowServiceImpl implements YFlowService {
     @Value("#{kafkaTopicsConfig.getPingTopic()}")
     private String pingTopic;
 
-    @Autowired
-    private MessagingChannel messagingChannel;
+    private final MessagingChannel messagingChannel;
 
-    @Autowired
-    private YFlowMapper flowMapper;
+    private final YFlowMapper flowMapper;
+
+    public YFlowServiceImpl(MessagingChannel messagingChannel, YFlowMapper flowMapper) {
+        this.messagingChannel = messagingChannel;
+        this.flowMapper = flowMapper;
+    }
 
     @Override
     public CompletableFuture<YFlow> createYFlow(YFlowCreatePayload createPayload) {
