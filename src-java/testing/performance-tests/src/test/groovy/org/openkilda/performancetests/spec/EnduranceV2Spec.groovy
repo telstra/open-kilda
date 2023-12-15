@@ -17,7 +17,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.performancetests.BaseSpecification
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import groovy.util.logging.Slf4j
 import org.junit.Assume
@@ -26,7 +26,6 @@ import org.springframework.web.client.HttpStatusCodeException
 import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
-import spock.lang.Unroll
 
 import java.util.concurrent.TimeUnit
 
@@ -51,7 +50,7 @@ class EnduranceV2Spec extends BaseSpecification {
     /**
      * Deploy topology and create certain amount of flows in the system. Define amount of events to happen during the
      * test and their chances to happen.
-     * An event can be one of the following: flow creation, flow deletion, isl blink, manual reroute of 25% of all flows 
+     * An event can be one of the following: flow creation, flow deletion, isl blink, manual reroute of 25% of all flows
      * isl port down or just being idle.
      * At the end of the test verify that all UP flows are indeed pingable and all DOWN flows are indeed not pingable.
      * Verify no rule discrepancies across all switches
@@ -99,8 +98,8 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
 
         then: "All Up flows are pingable"
         def allFlows = northboundV2.getAllFlows()
-        def assertions = new SoftAssertions()
-        def pingVerifications = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
+        def pingVerifications = new SoftAssertionsWrapper()
         allFlows.findAll { it.status == FlowState.UP.toString() }.forEach { flow ->
             pingVerifications.checkSucceeds {
                 def ping = northbound.pingFlow(flow.flowId, new PingInput())
@@ -122,7 +121,7 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
         and: "There are no rule discrepancies on switches"
         assertions.checkSucceeds {
             Wrappers.wait(60 + preset.switchesAmount) {
-                def soft = new SoftAssertions()
+                def soft = new SoftAssertionsWrapper()
                 topology.switches.each { sw ->
                     def validation = northbound.validateSwitch(sw.dpId)
                     soft.checkSucceeds { assert validation.rules.missing.empty, sw }
@@ -220,8 +219,8 @@ idle, mass manual reroute, isl break. Step repeats for pre-defined amount of tim
         then: "All Up flows are pingable"
         log.info "Starting validation phase"
         def allFlows = northbound.getAllFlows()
-        def assertions = new SoftAssertions()
-        def pingVerifications = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
+        def pingVerifications = new SoftAssertionsWrapper()
         withPool(10) {
             allFlows.findAll { it.status == FlowState.UP.toString() }.eachParallel { FlowPayload flow ->
                 if (isFlowPingable(flowHelperV2.toV2(flow))) {
@@ -252,7 +251,7 @@ idle, mass manual reroute, isl break. Step repeats for pre-defined amount of tim
         def switches = northbound.getAllSwitches()
         assertions.checkSucceeds {
             Wrappers.wait(60 + switches.size()) {
-                def soft = new SoftAssertions()
+                def soft = new SoftAssertionsWrapper()
                 topology.switches.each { sw ->
                     def validation = northbound.validateSwitch(sw.dpId)
                     soft.checkSucceeds { assert validation.rules.missing.empty, sw }

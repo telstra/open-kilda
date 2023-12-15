@@ -52,6 +52,8 @@ dependencies {
 
     implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'
+    implementation 'org.assertj:assertj-core:3.24.2'
+    implementation 'jakarta.annotation:jakarta.annotation-api:2.1.1'
     annotationProcessor 'org.mapstruct:mapstruct-processor'
 
     api 'org.junit.jupiter:junit-jupiter-api'

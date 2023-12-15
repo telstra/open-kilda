@@ -1,45 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
-import static groovyx.gpars.GParsPool.withPool
-import static org.hamcrest.MatcherAssert.assertThat
-import static org.hamcrest.Matchers.hasItem
-import static org.hamcrest.Matchers.notNullValue
-import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
-import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN
-import static org.openkilda.model.cookie.Cookie.ARP_INGRESS_COOKIE
-import static org.openkilda.model.cookie.Cookie.ARP_INPUT_PRE_DROP_COOKIE
-import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_COOKIE
-import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_ONE_SWITCH_COOKIE
-import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_VXLAN_COOKIE
-import static org.openkilda.model.cookie.Cookie.ARP_TRANSIT_COOKIE
-import static org.openkilda.model.cookie.Cookie.CATCH_BFD_RULE_COOKIE
-import static org.openkilda.model.cookie.Cookie.DROP_RULE_COOKIE
-import static org.openkilda.model.cookie.Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE
-import static org.openkilda.model.cookie.Cookie.LLDP_INGRESS_COOKIE
-import static org.openkilda.model.cookie.Cookie.LLDP_INPUT_PRE_DROP_COOKIE
-import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_COOKIE
-import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE
-import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE
-import static org.openkilda.model.cookie.Cookie.LLDP_TRANSIT_COOKIE
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_EGRESS_PASS_THROUGH_COOKIE
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_INGRESS_DROP_COOKIE
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_POST_INGRESS_DROP_COOKIE
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_PRE_INGRESS_PASS_THROUGH_COOKIE
-import static org.openkilda.model.cookie.Cookie.MULTITABLE_TRANSIT_DROP_COOKIE
-import static org.openkilda.model.cookie.Cookie.ROUND_TRIP_LATENCY_RULE_COOKIE
-import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
-import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
-import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_TURNING_COOKIE
-import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE
-import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE
-import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE
-import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
-import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_RULE_COOKIE
-import static org.openkilda.model.cookie.Cookie.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
-
+import groovy.transform.Memoized
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.model.FlowEncapsulationType
@@ -73,9 +34,7 @@ import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtendedResult
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult
 import org.openkilda.testing.tools.IslUtils
-import org.openkilda.testing.tools.SoftAssertions
-
-import groovy.transform.Memoized
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
@@ -83,6 +42,17 @@ import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
 import java.math.RoundingMode
+
+import static groovyx.gpars.GParsPool.withPool
+import static org.hamcrest.MatcherAssert.assertThat
+import static org.hamcrest.Matchers.hasItem
+import static org.hamcrest.Matchers.notNullValue
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN
+import static org.openkilda.model.cookie.Cookie.*
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 /**
  * Provides helper operations for some Switch-related content.
@@ -281,11 +251,11 @@ class SwitchHelper {
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                      VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE,
                      CATCH_BFD_RULE_COOKIE, ROUND_TRIP_LATENCY_RULE_COOKIE]
-                     + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
+                    + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
         } else if ((sw.noviflow || sw.nbFormat().manufacturer == "E") && sw.wb5164) {
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                      VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE]
-                     + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
+                    + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
         } else if (sw.ofVersion == "OF_12") {
             return [VERIFICATION_BROADCAST_RULE_COOKIE]
         } else {
@@ -388,11 +358,11 @@ class SwitchHelper {
         return response
     }
 
-    static SwitchFlowsPerPortResponse getFlowsV2(Switch sw, List<Integer> portIds = []){
+    static SwitchFlowsPerPortResponse getFlowsV2(Switch sw, List<Integer> portIds = []) {
         return northboundV2.get().getSwitchFlows(new SwitchId(sw.getDpId().getId()), portIds)
     }
 
-    static List<Integer> "get used ports" (SwitchId switchId) {
+    static List<Integer> "get used ports"(SwitchId switchId) {
         return northboundV2.get().getSwitchFlows(switchId, []).flowsByPort.keySet().asList()
     }
 
@@ -436,7 +406,7 @@ class SwitchHelper {
      */
     static void verifyMeterSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
                                             List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         if (switchValidateInfo.meters) {
             sections.each { section ->
                 if (section == "proper") {
@@ -453,7 +423,7 @@ class SwitchHelper {
 
     static void verifyMeterSectionsAreEmpty(SwitchValidationV2ExtendedResult switchValidateInfo,
                                             List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         if (switchValidateInfo.meters) {
             sections.each { section ->
                 if (section == "proper") {
@@ -477,7 +447,7 @@ class SwitchHelper {
      */
     static void verifyRuleSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
                                            List<String> sections = ["missing", "proper", "excess", "misconfigured"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         sections.each { String section ->
             if (section == "proper") {
                 assertions.checkSucceeds {
@@ -495,7 +465,7 @@ class SwitchHelper {
 
     static void verifyRuleSectionsAreEmpty(SwitchValidationV2ExtendedResult switchValidateInfo,
                                            List<String> sections = ["missing", "proper", "excess", "misconfigured"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         sections.each { String section ->
             if (section == "proper") {
                 assertions.checkSucceeds {
@@ -521,7 +491,7 @@ class SwitchHelper {
     static void verifyHexRuleSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
                                               List<String> sections = ["properHex", "excessHex", "missingHex",
                                                                        "misconfiguredHex"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         sections.each { String section ->
             if (section == "properHex") {
                 def defaultCookies = switchValidateInfo.rules.proper.findAll {
@@ -573,7 +543,7 @@ class SwitchHelper {
      */
     static void verifyLogicalPortsSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
                                                    List<String> sections = ["missing", "excess", "misconfigured"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         sections.each { String section ->
             assertions.checkSucceeds { assert switchValidateInfo.logicalPorts."$section".empty }
         }
@@ -659,7 +629,7 @@ class SwitchHelper {
 
     static void removeExcessRules(List<SwitchId> switches) {
         withPool {
-            switches.eachParallel {northbound.get().synchronizeSwitch(it, true)}
+            switches.eachParallel { northbound.get().synchronizeSwitch(it, true) }
         }
     }
 
@@ -706,13 +676,14 @@ class SwitchHelper {
             }
         }
     }
+
     static SwitchValidationV2ExtendedResult validate(SwitchId switchId) {
         return northboundV2.get().validateSwitch(switchId)
     }
 
     static List<SwitchValidationV2ExtendedResult> validate(List<SwitchId> switchesToValidate) {
         return switchesToValidate.collect { validate(it) }
-                    .findAll {!it.isAsExpected()}
+                .findAll { !it.isAsExpected() }
     }
 
     @Memoized

@@ -39,7 +39,7 @@ import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
-import org.springframework.http.client.support.BasicAuthorizationInterceptor;
+import org.springframework.http.client.support.BasicAuthenticationInterceptor;
 import org.springframework.http.client.support.HttpRequestWrapper;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.web.client.RestTemplate;
@@ -180,7 +180,7 @@ public class DefaultServiceConfig {
      */
     public static RestTemplate buildRestTemplateWithAuth(String endpoint, String username, String password) {
         RestTemplate restTemplate = buildLoggingRestTemplate(endpoint);
-        restTemplate.getInterceptors().add(new BasicAuthorizationInterceptor(username, password));
+        restTemplate.getInterceptors().add(new BasicAuthenticationInterceptor(username, password));
         return restTemplate;
     }
 
