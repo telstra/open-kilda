@@ -84,19 +84,19 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         [flowToBreak, intactFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
 
         where:
-        flowConfig      | switchPair                                        | item | switchNo | flowType
-        "single switch" | getTopologyHelper().getSingleSwitchPair()         | 0    | "single" | "forward"
-        "single switch" | getTopologyHelper().getSingleSwitchPair()         | 0    | "single" | "reverse"
-        "neighbouring"  | getTopologyHelper().getNeighboringSwitchPair()    | 0    | "first"  | "forward"
-        "neighbouring"  | getTopologyHelper().getNeighboringSwitchPair()    | 0    | "first"  | "reverse"
-        "neighbouring"  | getTopologyHelper().getNeighboringSwitchPair()    | 1    | "last"   | "forward"
-        "neighbouring"  | getTopologyHelper().getNeighboringSwitchPair()    | 1    | "last"   | "reverse"
-        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | 0    | "first"  | "forward"
-        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | 0    | "first"  | "reverse"
-        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | 1    | "middle" | "forward"
-        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | 1    | "middle" | "reverse"
-        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | -1   | "last"   | "forward"
-        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | -1   | "last"   | "reverse"
+        flowConfig      | switchPair                                   | item | switchNo | flowType
+        "single switch" | switchPairs.singleSwitch().random()          | 0    | "single" | "forward"
+        "single switch" | switchPairs.singleSwitch().random()          | 0    | "single" | "reverse"
+        "neighbouring"  | switchPairs.all().neighbouring().random()    | 0    | "first"  | "forward"
+        "neighbouring"  | switchPairs.all().neighbouring().random()    | 0    | "first"  | "reverse"
+        "neighbouring"  | switchPairs.all().neighbouring().random()    | 1    | "last"   | "forward"
+        "neighbouring"  | switchPairs.all().neighbouring().random()    | 1    | "last"   | "reverse"
+        "transit"       | switchPairs.all().nonNeighbouring().random() | 0    | "first"  | "forward"
+        "transit"       | switchPairs.all().nonNeighbouring().random() | 0    | "first"  | "reverse"
+        "transit"       | switchPairs.all().nonNeighbouring().random() | 1    | "middle" | "forward"
+        "transit"       | switchPairs.all().nonNeighbouring().random() | 1    | "middle" | "reverse"
+        "transit"       | switchPairs.all().nonNeighbouring().random() | -1   | "last"   | "forward"
+        "transit"       | switchPairs.all().nonNeighbouring().random() | -1   | "last"   | "reverse"
     }
 
     def "Unable to #data.description a non-existent flow"() {

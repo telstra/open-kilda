@@ -313,7 +313,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         [srcVlanId, srcInnerVlanId, dstVlanId, dstInnerVlanId, swPair] << [
                 [[10, 20, 30, 40],
                  [10, 20, 0, 0]],
-                getUniqueSwitchPairs(topologyHelper.getAllSingleSwitchPairs())
+                getUniqueSwitchPairs(switchPairs.singleSwitch().getSwitchPairs())
         ].combinations().collect { it.flatten() }
         trafficDisclaimer = swPair.src.traffGens.size > 1 ? "" : " !WARN: No traffic check!"
     }

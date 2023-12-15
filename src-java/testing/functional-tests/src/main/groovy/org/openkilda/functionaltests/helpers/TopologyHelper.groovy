@@ -41,60 +41,12 @@ class TopologyHelper {
     @Autowired
     FloodlightsHelper flHelper
 
-    /**
-     * Get a switch pair of random switches.
-     *
-     * @param forceDifferent whether to exclude the picked src switch when looking for dst switch
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
-    Tuple2<Switch, Switch> getRandomSwitchPair(boolean forceDifferent = true) {
-        def randomSwitch = { List<Switch> switches ->
-            switches[new Random().nextInt(switches.size())]
-        }
-        def src = randomSwitch(topology.activeSwitches)
-        def dst = randomSwitch(forceDifferent ? topology.activeSwitches - src : topology.activeSwitches)
-        return new Tuple2(src, dst)
+    List<SwitchPair> getAllSwitchPairs(boolean includeReverse = true) {
+        return getSwitchPairs(includeReverse)
     }
 
-    SwitchPairs getAllSwitchPairs(boolean includeReverse = false) {
-        return new SwitchPairs(getSwitchPairs(includeReverse))
-    }
-
-    /**
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
-    SwitchPair getSingleSwitchPair() {
-        return SwitchPair.singleSwitchInstance(topology.activeSwitches.first())
-    }
-
-    /**
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
     List<SwitchPair> getAllSingleSwitchPairs() {
         return topology.activeSwitches.collect { SwitchPair.singleSwitchInstance(it) }
-    }
-
-    /**
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
-    SwitchPair getNeighboringSwitchPair() {
-        getSwitchPairs().find {
-            it.paths.min { it.size() }?.size() == 2
-        }
-    }
-
-    /**
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
-    SwitchPair getNotNeighboringSwitchPair() {
-        getSwitchPairs().find {
-            it.paths.min { it.size() }?.size() > 2
-        }
     }
 
     /**
@@ -208,9 +160,9 @@ class TopologyHelper {
     }
 
     SwitchTriplet findSwitchTripletWithSharedEpInTheMiddleOfTheChain() {
-        def pairSharedEpAndEp1 = getAllSwitchPairs().neighbouring().random()
+        def pairSharedEpAndEp1 = new SwitchPairs(getAllSwitchPairs()).neighbouring().random()
         //shared endpoint should be in the middle of the switches chain to deploy ha-flow without shared path
-        def pairEp1AndEp2 = getAllSwitchPairs().neighbouring().excludePairs([pairSharedEpAndEp1]).includeSwitch(pairSharedEpAndEp1.src).random()
+        def pairEp1AndEp2 = new SwitchPairs(getAllSwitchPairs()).neighbouring().excludePairs([pairSharedEpAndEp1]).includeSwitch(pairSharedEpAndEp1.src).random()
         Switch thirdSwitch = pairSharedEpAndEp1.src == pairEp1AndEp2.dst ? pairEp1AndEp2.src : pairEp1AndEp2.dst
         return switchTriplets.find {
                     it.shared.dpId == pairSharedEpAndEp1.src.dpId

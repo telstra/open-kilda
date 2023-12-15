@@ -23,7 +23,7 @@ class BandwidthSpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Available bandwidth on ISLs changes respectively when creating/updating/deleting a flow"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def switchPair = switchPairs.all().nonNeighbouring().random()
 
         when: "Create a flow with a valid bandwidth"
         def linksBeforeFlowCreate = northbound.getAllLinks()
@@ -111,7 +111,7 @@ class BandwidthSpec extends HealthCheckSpecification {
 
     def "Unable to exceed bandwidth limit on ISL when creating a flow"() {
         given: "Two active switches"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
 
         when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL"
         def involvedBandwidths = []
@@ -135,7 +135,7 @@ class BandwidthSpec extends HealthCheckSpecification {
 
     def "Unable to exceed bandwidth limit on ISL when updating a flow"() {
         given: "Two active switches"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
 
         when: "Create a flow with a valid bandwidth"
         def maximumBandwidth = 1000
@@ -166,7 +166,7 @@ class BandwidthSpec extends HealthCheckSpecification {
 
     def "Able to exceed bandwidth limit on ISL when creating/updating a flow with ignore_bandwidth=true"() {
         given: "Two active switches"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
 
         when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL (ignore_bandwidth=true)"
         def linksBeforeFlowCreate = northbound.getAllLinks()
@@ -206,7 +206,7 @@ class BandwidthSpec extends HealthCheckSpecification {
 
     def "Able to update bandwidth to maximum link speed without using alternate links"() {
         given: "Two active neighboring switches"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
 
         // We need to handle the case when there are parallel links between chosen switches. So we make all parallel
         // links except the first link not preferable to avoid flow reroute when updating the flow.
@@ -247,7 +247,7 @@ class BandwidthSpec extends HealthCheckSpecification {
 
     def "System doesn't allow to exceed bandwidth limit on ISL while updating a flow with ignore_bandwidth=false"() {
         given: "Two active switches"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
 
         when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL (ignore_bandwidth=true)"
         def linksBeforeFlowCreate = northbound.getAllLinks()
@@ -288,7 +288,7 @@ class BandwidthSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Unable to exceed bandwidth limit on ISL when creating a flow [v1 api]"() {
         given: "Two active switches"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
 
         when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL"
         def involvedBandwidths = []

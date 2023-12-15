@@ -79,7 +79,7 @@ class SwapEndpointSpec extends HealthCheckSpecification {
         where:
         data << [
                 [description: "no vlan vs vlan on the same port on src switch"].tap {
-                    def switchPair = getTopologyHelper().getNotNeighboringSwitchPair()
+                    def switchPair = getTopologyHelper().getAllSwitchPairs().nonNeighbouring().random()
                     def flow1 = getFlowHelper().randomFlow(switchPair)
                     flow1.source.portNumber = getFreePort(switchPair.src, [switchPair.dst])
                     flow1.source.vlanId = 0
@@ -92,7 +92,7 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                             getFlowHelper().toFlowEndpointV2(flow2.destination))
                 },
                 [description: "same port, swap vlans on dst switch + third idle novlan flow on that port"].tap {
-                    def switchPair = getTopologyHelper().getNotNeighboringSwitchPair()
+                    def switchPair = getTopologyHelper().getAllSwitchPairs().nonNeighbouring().random()
                     def flow1 = getFlowHelper().randomFlow(switchPair)
                     def flow2 = getFlowHelper().randomFlow(switchPair, false, [flow1])
                     flow1.destination.portNumber = getFreePort(switchPair.dst, [switchPair.src])
@@ -108,7 +108,7 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                             getFlowHelper().toFlowEndpointV2(flow1.destination))
                 },
                 [description: "vlan on src1 <-> vlan on dst2, same port numbers"].tap {
-                    def switchPair = getTopologyHelper().getNotNeighboringSwitchPair()
+                    def switchPair = getTopologyHelper().getAllSwitchPairs().nonNeighbouring().random()
                     def flow1 = getFlowHelper().randomFlow(switchPair)
                     def flow2 = getFlowHelper().randomFlow(switchPair, false, [flow1])
                     flow1.source.portNumber = getFreePort(switchPair.src, [switchPair.dst])
@@ -122,7 +122,7 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                             getFlowHelper().toFlowEndpointV2(flow2.destination).tap { it.vlanId = flow1.source.vlanId })
                 },
                 [description: "port on dst1 <-> port on src2, vlans are equal"].tap {
-                    def switchPair = getTopologyHelper().getNotNeighboringSwitchPair()
+                    def switchPair = getTopologyHelper().getAllSwitchPairs().nonNeighbouring().random()
                     def flow1 = getFlowHelper().randomFlow(switchPair, false)
                     def flow2 = getFlowHelper().randomFlow(switchPair, false, [flow1])
                     flow1.destination.portNumber = getFreePort(switchPair.dst, [switchPair.src],
@@ -141,7 +141,7 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                             getFlowHelper().toFlowEndpointV2(flow2.destination))
                 },
                 [description: "switch on src1 <-> switch on dst2, other params random"].tap {
-                    def switchPair = getTopologyHelper().getNotNeighboringSwitchPair()
+                    def switchPair = getTopologyHelper().getAllSwitchPairs().nonNeighbouring().random()
                     def flow1 = getFlowHelper().randomFlow(switchPair)
                     def flow2 = getFlowHelper().randomFlow(switchPair, false, [flow1])
                     flow1.source.portNumber = getFreePort(switchPair.src, [switchPair.dst])
@@ -157,7 +157,7 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                                     .tap { it.switchId = flow1.source.datapath })
                 },
                 [description: "both endpoints swap, same switches"].tap {
-                    def switchPair = getTopologyHelper().getNotNeighboringSwitchPair()
+                    def switchPair = getTopologyHelper().getAllSwitchPairs().nonNeighbouring().random()
                     def flow1 = getFlowHelper().randomFlow(switchPair)
                     def flow2 = getFlowHelper().randomFlow(switchPair, false, [flow1])
                     flow1.source.portNumber = getFreePort(switchPair.src, [switchPair.dst])
@@ -173,7 +173,7 @@ class SwapEndpointSpec extends HealthCheckSpecification {
                             getFlowHelper().toFlowEndpointV2(flow1.destination))
                 },
                 [description: "endpoints src1 <-> dst2, same switches"].tap {
-                    def switchPair = getTopologyHelper().getNotNeighboringSwitchPair()
+                    def switchPair = getTopologyHelper().getAllSwitchPairs().nonNeighbouring().random()
                     def flow1 = getFlowHelper().randomFlow(switchPair)
                     def flow2 = getFlowHelper().randomFlow(switchPair, false, [flow1])
                     flow1.source.portNumber = getFreePort(switchPair.src, [switchPair.dst])
@@ -424,7 +424,7 @@ switches"() {
         endpointsPart << ["vlans", "ports", "switches"]
         proprtyName << ["vlanId", "portNumber", "datapath"]
         description = "src1 <-> dst2, dst1 <-> src2"
-        flow1SwitchPair = getTopologyHelper().getNotNeighboringSwitchPair()
+        flow1SwitchPair = getTopologyHelper().getAllSwitchPairs().nonNeighbouring().random()
         flow2SwitchPair = getDifferentNotNeighboringSwitchPair(flow1SwitchPair)
         flow1 = getFirstFlow(flow1SwitchPair, flow2SwitchPair)
         flow2 = getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1)
@@ -502,7 +502,7 @@ switches"() {
                      it.flow2Src = it.flow1.destination
                      it.flow2Dst = it.flow2.destination
                  }].collect { iterationData ->
-            def flow1SwitchPair = getTopologyHelper().getNotNeighboringSwitchPair()
+            def flow1SwitchPair = getTopologyHelper().getAllSwitchPairs().nonNeighbouring().random()
             def flow2SwitchPair = getDifferentNotNeighboringSwitchPair(flow1SwitchPair)
             def flow1 = getFirstFlow(flow1SwitchPair, flow2SwitchPair)
             [flow1SwitchPair: flow1SwitchPair, flow2SwitchPair: flow2SwitchPair, flow1: flow1].tap(iterationData)
@@ -515,7 +515,7 @@ switches"() {
 
     def "Unable to swap endpoints for existing flow and non-existing flow"() {
         given: "An active flow"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
         def flow1 = flowHelper.randomFlow(switchPair)
         def flow2 = flowHelper.randomFlow(switchPair)
         flowHelper.addFlow(flow1)
@@ -649,7 +649,7 @@ switches"() {
                      flow2Src = changePropertyValue(flow2.source, "portNumber", flow1.destination.portNumber)
                      flow2Dst = flow2.destination
                  }].collect { iterationData ->
-            def flow1SwitchPair = getTopologyHelper().getNotNeighboringSwitchPair()
+            def flow1SwitchPair = getTopologyHelper().getAllSwitchPairs().nonNeighbouring().random()
             def flow2SwitchPair = getDifferentNotNeighboringSwitchPair(flow1SwitchPair)
             def flow1 = getFirstFlow(flow1SwitchPair, flow2SwitchPair)
             [flow1SwitchPair: flow1SwitchPair, flow2SwitchPair: flow2SwitchPair, flow1: flow1].tap(iterationData)
@@ -702,7 +702,7 @@ switches"() {
                      flow2Src = changePropertyValue(flow2.source, "portNumber", flow1.source.portNumber)
                      flow2Dst = flow1.destination
                  }].collect { iterationData ->
-            def flow1SwitchPair = getTopologyHelper().getNotNeighboringSwitchPair()
+            def flow1SwitchPair = getTopologyHelper().getAllSwitchPairs().nonNeighbouring().random()
             def flow2SwitchPair = getDifferentNotNeighboringSwitchPair(flow1SwitchPair)
             def flow1 = getFirstFlow(flow1SwitchPair, flow2SwitchPair)
             def flow2 = getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1)
@@ -1168,7 +1168,7 @@ switches"() {
                      flow2Src = flow1.destination
                      flow2Dst = flow2.destination
                  }].collect { iterationData ->
-            def flow1SwitchPair = getTopologyHelper().getNotNeighboringSwitchPair()
+            def flow1SwitchPair = getTopologyHelper().getAllSwitchPairs().nonNeighbouring().random()
             def flow2SwitchPair = getDifferentNotNeighboringSwitchPair(flow1SwitchPair)
             def flow1 = getFlowHelper().randomFlow(flow1SwitchPair)
             def flow2 = getFlowHelper().randomFlow(flow2SwitchPair, false, [flow1]).tap {

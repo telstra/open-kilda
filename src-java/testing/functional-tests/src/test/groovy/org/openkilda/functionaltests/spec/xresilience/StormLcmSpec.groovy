@@ -21,6 +21,7 @@ import org.openkilda.testing.Constants
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
 import spock.lang.Isolated
+import spock.lang.Issue
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -58,7 +59,7 @@ class StormLcmSpec extends HealthCheckSpecification {
         List<FlowRequestV2> flows = []
         def flowsAmount = topology.activeSwitches.size() * 3
         flowsAmount.times {
-            def flow = flowHelperV2.randomFlow(*topologyHelper.getRandomSwitchPair(false), false, flows)
+            def flow = flowHelperV2.randomFlow(switchPairs.all().random(), false, flows)
             flow.maximumBandwidth = 500000
             flowHelperV2.addFlow(flow)
             flows << flow
@@ -110,10 +111,14 @@ class StormLcmSpec extends HealthCheckSpecification {
     }
 
     @Ignore
+    @Issue("https://github.com/telstra/open-kilda/issues/5506 (ISL between deactivated switches is in a DISCOVERED state)")
     @Tags(LOW_PRIORITY)
     def "System's able to fail an ISL if switches on both ends go offline during restart of network topology"() {
+        given: "Actual network topology"
+        String networkTopologyName = wfmManipulator.getStormActualNetworkTopology()
+
         when: "Kill network topology"
-        wfmManipulator.killTopology("network")
+        wfmManipulator.killTopology(networkTopologyName)
 
         and: "Disconnect switches on both ends of ISL"
         def islUnderTest = topology.islsForActiveSwitches.first()
@@ -121,7 +126,7 @@ class StormLcmSpec extends HealthCheckSpecification {
         def dstBlockData = lockKeeper.knockoutSwitch(islUnderTest.dstSwitch, RW)
 
         and: "Deploy network topology back"
-        wfmManipulator.deployTopology("network")
+        wfmManipulator.deployTopology(networkTopologyName)
         def networkDeployed = true
         TimeUnit.SECONDS.sleep(45) //after deploy topology needs more time to actually begin working
 
@@ -139,7 +144,7 @@ class StormLcmSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        !networkDeployed && wfmManipulator.deployTopology("network")
+        networkTopologyName && !networkDeployed && wfmManipulator.deployTopology(networkTopologyName)
         srcBlockData && lockKeeper.reviveSwitch(islUnderTest.srcSwitch, srcBlockData)
         dstBlockData && lockKeeper.reviveSwitch(islUnderTest.dstSwitch, dstBlockData)
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET * 3) {

@@ -202,7 +202,7 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
 
     def createFlow(waitForRules = false, boolean protectedPath = false) {
         Wrappers.silent {
-            def flow = flowHelper.randomFlow(*topoHelper.getRandomSwitchPair(), false, flows)
+            def flow = flowHelper.randomFlow(*topoHelper.getAllSwitchPairs().random(), false, flows)
             flow.allocateProtectedPath = protectedPath
             log.info "creating flow $flow.id"
             waitForRules ? flowHelper.addFlow(flow) : northbound.addFlow(flow)

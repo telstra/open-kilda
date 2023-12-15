@@ -44,7 +44,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
     @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])
     def "Missing flow rules/meters are installed on a new switch before connecting to the controller"() {
         given: "A switch with missing flow rules/meters and not connected to the controller"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
