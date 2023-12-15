@@ -45,6 +45,7 @@ import org.openkilda.testing.service.traffexam.networkpool.Inet4Network;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4NetworkPool;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4ValueException;
 
+import jakarta.annotation.PostConstruct;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.springframework.beans.factory.DisposableBean;
@@ -77,7 +78,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import javax.annotation.PostConstruct;
 
 @Service
 @Lazy
@@ -254,7 +254,7 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         ExamReport result;
         try {
             result = Failsafe.with(retryPolicy
-                    .handleIf((t, u) -> u instanceof ExamNotFinishedException))
+                            .handleIf((t, u) -> u instanceof ExamNotFinishedException))
                     .get(() -> fetchReport(exam));
         } finally {
             if (cleanup) {
@@ -368,8 +368,8 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
                     && exception.getMessage().contains("collision with existing object")) {
                 getAddresses(host).forEach(this::releaseAddress);
                 response = restTemplate.postForObject(
-                    makeHostUri(host).path("address").build(), payload,
-                    AddressResponse.class);
+                        makeHostUri(host).path("address").build(), payload,
+                        AddressResponse.class);
             } else {
                 throw exception;
             }
@@ -383,8 +383,8 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
 
     private List<Address> getAddresses(Host host) {
         return Arrays.stream(restTemplate.getForObject(makeHostUri(host).path("address").build(),
-                AddressListResponse.class)
-                .addresses)
+                        AddressListResponse.class)
+                        .addresses)
                 .peek(address -> address.setHost(host))
                 .collect(toList());
     }

@@ -29,7 +29,7 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.ExamReport
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
@@ -140,7 +140,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         then: "Traffic flows on both sub-flows, but does not exceed the y-flow bandwidth restriction (~halves for each sub-flow)"
         if (trafficApplicable) {
-            def assertions = new SoftAssertions()
+            def assertions = new SoftAssertionsWrapper()
             examReports.each { report ->
                 assertions.checkSucceeds {
 //                    def flowBwBits = yFlow.maximumBandwidth * 1000

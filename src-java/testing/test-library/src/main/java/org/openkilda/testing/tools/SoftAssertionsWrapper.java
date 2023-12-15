@@ -15,28 +15,36 @@
 
 package org.openkilda.testing.tools;
 
-import org.junit.rules.ErrorCollector;
+
+import org.assertj.core.api.SoftAssertions;
+import org.assertj.core.api.ThrowableAssert;
 
 import java.util.concurrent.Callable;
 
 /**
  * Allows to assert multiple times without failing, then fail with multiple assertion errors at once.
  */
-public class SoftAssertions extends ErrorCollector {
+public class SoftAssertionsWrapper {
 
-    public void verify() throws Throwable {
-        super.verify();
+    private final SoftAssertions softAssertions = new SoftAssertions();
+
+    public void verify() {
+        softAssertions.assertAll();
     }
 
     /**
      * Make an assertion. Delay potential assertion error throw until 'verify()' is called
      */
-    public Object checkSucceeds(Callable callable) {
-        Object result = super.checkSucceeds(callable);
-        if (result == null) { //Don't make spock 'then' blocks fail after 'assert' expressions in checkSucceeds
+    public boolean checkSucceeds(Callable<?> callable) {
+        try {
+            softAssertions.assertThatCode(wrap(callable)).doesNotThrowAnyException();
+        } catch (AssertionError e) {
             return true;
-        } else {
-            return result;
         }
+        return true;
+    }
+
+    private ThrowableAssert.ThrowingCallable wrap(Callable<?> callable) {
+        return callable::call;
     }
 }

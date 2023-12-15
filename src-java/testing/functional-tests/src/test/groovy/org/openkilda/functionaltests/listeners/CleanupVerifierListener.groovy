@@ -6,14 +6,13 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import static groovyx.gpars.GParsPool.withPool
 
 import org.openkilda.model.IslStatus
-import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import org.spockframework.runtime.model.IterationInfo
 import org.spockframework.runtime.model.SpecInfo
@@ -82,7 +81,7 @@ class CleanupVerifierListener extends AbstractSpringListener {
                 }
             }
         }
-        def regionVerifications = new SoftAssertions()
+        def regionVerifications = new SoftAssertionsWrapper()
         flHelper.fls.forEach { fl ->
             def expectedSwitchIds = topology.activeSwitches.findAll { fl.region in it.regions }*.dpId
             if (!expectedSwitchIds.empty) {

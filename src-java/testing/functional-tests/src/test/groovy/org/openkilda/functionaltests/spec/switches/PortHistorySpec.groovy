@@ -23,7 +23,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import spock.lang.Isolated
 import spock.lang.Narrative
@@ -263,7 +263,7 @@ class PortHistoryIsolatedSpec extends HealthCheckSpecification {
 
         then: "Antiflap statistic is available in port history"
         Wrappers.wait(WAIT_OFFSET + antiflapCooldown) {
-            new SoftAssertions().with {
+            new SoftAssertionsWrapper().with {
                 def history = northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort,
                         timestampBefore, System.currentTimeMillis())
                 checkSucceeds { assert history*.event

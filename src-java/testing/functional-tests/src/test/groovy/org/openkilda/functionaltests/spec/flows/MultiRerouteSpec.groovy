@@ -9,7 +9,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import java.util.concurrent.TimeUnit
 
@@ -63,7 +63,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         then: "Half of the flows are hosted on the preferable path"
         def flowsOnPrefPath
         wait(WAIT_OFFSET * 3) {
-            def assertions = new SoftAssertions()
+            def assertions = new SoftAssertionsWrapper()
             flowsOnPrefPath = flows.findAll {
                 pathHelper.convert(northbound.getFlowPath(it.flowId)) == prefPath
             }
@@ -77,7 +77,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         and: "Rest of the flows are hosted on another alternative paths"
         def restFlows = flows.findAll { !flowsOnPrefPath*.flowId.contains(it.flowId) }
         wait(WAIT_OFFSET * 2) {
-            def assertions = new SoftAssertions()
+            def assertions = new SoftAssertionsWrapper()
             restFlows.each { flow ->
                 assertions.checkSucceeds { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
                 assertions.checkSucceeds { assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) != prefPath }
