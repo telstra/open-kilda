@@ -20,6 +20,10 @@ import static org.openkilda.messaging.Utils.CORRELATION_ID;
 import org.openkilda.northbound.utils.RequestCorrelationId.RequestCorrelationClosable;
 
 import com.google.common.collect.ImmutableList;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,10 +37,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 /**
  * Spring Web filter which initializes the correlation context with either provided "correlation_id" (HTTP header) or a

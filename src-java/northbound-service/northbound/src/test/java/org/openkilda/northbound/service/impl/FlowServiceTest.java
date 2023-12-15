@@ -160,7 +160,8 @@ public class FlowServiceTest {
 
         @Bean
         public SwitchService switchService(MessagingChannel messagingChannel) {
-            return new SwitchServiceImpl(messagingChannel);
+            return new SwitchServiceImpl(messagingChannel, null, null, null,
+                    null, null);
         }
     }
 }

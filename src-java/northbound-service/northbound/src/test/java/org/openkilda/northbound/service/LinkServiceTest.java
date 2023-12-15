@@ -38,7 +38,9 @@ import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.MessageExchanger;
 import org.openkilda.northbound.config.KafkaConfig;
+import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.LinkMapper;
+import org.openkilda.northbound.converter.LinkPropsMapper;
 import org.openkilda.northbound.dto.BatchResults;
 import org.openkilda.northbound.dto.v1.links.LinkDto;
 import org.openkilda.northbound.dto.v1.links.LinkMaxBandwidthDto;
@@ -463,8 +465,11 @@ public class LinkServiceTest {
         }
 
         @Bean
-        public LinkService linkService(MessagingChannel messagingChannel) {
-            return new LinkServiceImpl(messagingChannel);
+        public LinkService linkService(MessagingChannel messagingChannel, Clock clock, TaskScheduler taskScheduler,
+                                       CorrelationIdFactory idFactory, LinkMapper linkMapper, FlowMapper flowMapper,
+                                       LinkPropsMapper linkPropsMapper) {
+            return new LinkServiceImpl(messagingChannel, clock, taskScheduler, idFactory, linkMapper, flowMapper,
+                    linkPropsMapper);
         }
 
         @Bean

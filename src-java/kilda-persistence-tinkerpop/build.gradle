@@ -16,11 +16,15 @@ dependencies {
     api('com.syncleus.ferma:ferma:3.3.0') {
         exclude group: 'org.codehaus.groovy'
     }
+    implementation 'io.netty:netty-all:4.1.86.Final'
     implementation('org.apache.tinkerpop:gremlin-core:3.3.11') {
         exclude group: 'org.codehaus.groovy'
+        exclude group: 'io.netty:netty-all'
     }
+
     implementation('org.apache.tinkerpop:gremlin-driver:3.3.11') {
         exclude group: 'org.codehaus.groovy'
+        exclude group: 'io.netty:netty-all'
     }
 
     api 'net.jodah:failsafe'
@@ -36,7 +40,9 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-params'
     testImplementation('org.apache.tinkerpop:tinkergraph-gremlin:3.3.11') {
         exclude group: 'org.codehaus.groovy'
+        exclude group: 'io.netty:netty-all'
     }
+    testImplementation 'io.netty:netty-all:4.1.86.Final'
     testImplementation 'org.mockito:mockito-junit-jupiter'
     testImplementation 'org.hamcrest:hamcrest-library'
 
@@ -55,7 +61,9 @@ configurations {
 dependencies {
     testArtifacts('org.apache.tinkerpop:tinkergraph-gremlin:3.3.11') {
         exclude group: 'org.codehaus.groovy'
+        exclude group: 'io.netty:netty-all'
     }
+    testArtifacts 'io.netty:netty-all:4.1.86.Final'
     testArtifacts project(':kilda-persistence-tinkerpop')
 }
 

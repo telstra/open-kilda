@@ -27,6 +27,7 @@ import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.messaging.exception.MessageNotSentException;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.PostConstruct;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -47,7 +48,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
 
 /**
  * Implementation of {@link MessagingChannel} for kafka.
