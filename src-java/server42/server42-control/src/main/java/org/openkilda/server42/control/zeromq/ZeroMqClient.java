@@ -20,6 +20,8 @@ import org.openkilda.server42.control.messaging.Control.CommandPacket;
 import org.openkilda.server42.control.messaging.Control.CommandPacketResponse;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -28,9 +30,6 @@ import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Poller;
 import org.zeromq.ZMQ.Socket;
 import zmq.ZError;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 
 // Lazy Pirate pattern from http://zguide.zeromq.org/page:all#Client-Side-Reliability-Lazy-Pirate-Pattern
 @Component
@@ -63,6 +62,7 @@ public class ZeroMqClient {
 
     /**
      * Send message to server and return result is success.
+     *
      * @return CommandPacketResponse or null in case of error
      */
     public CommandPacketResponse send(CommandPacket commandPacket) throws InvalidProtocolBufferException {

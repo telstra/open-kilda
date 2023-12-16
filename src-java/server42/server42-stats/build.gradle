@@ -7,6 +7,12 @@ configurations {
     implementation.exclude module: 'spring-boot-starter-logging'
 }
 
+configurations.configureEach {
+    //LoggerFactory is not a Logback LoggerContext but Logback is on the classpath. Either remove Logback or the competing implementation
+    exclude group: 'ch.qos.logback', module: 'logback-classic'
+    exclude group: 'ch.qos.logback', module: 'logback-core'
+}
+
 description = 'server42-stats'
 dependencies {
     implementation(platform('org.springframework:spring-framework-bom:6.0.6'))

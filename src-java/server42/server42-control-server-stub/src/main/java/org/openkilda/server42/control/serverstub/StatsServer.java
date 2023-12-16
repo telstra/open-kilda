@@ -20,6 +20,7 @@ import org.openkilda.server42.stats.messaging.Statistics.FlowLatencyPacket;
 import org.openkilda.server42.stats.messaging.Statistics.IslLatencyPacket;
 import org.openkilda.server42.stats.messaging.Statistics.LatencyPacketBucket;
 
+import jakarta.annotation.PostConstruct;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +33,6 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import javax.annotation.PostConstruct;
 
 /**
  * Send statistics to stats application.

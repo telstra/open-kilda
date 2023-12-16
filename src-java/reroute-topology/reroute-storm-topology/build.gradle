@@ -47,6 +47,7 @@ jar {
 shadowJar {
     classifier = ''
     mergeServiceFiles()
+    zip64 true
 }
 
 artifacts {

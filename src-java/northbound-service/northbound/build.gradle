@@ -12,6 +12,7 @@ compileJava.options.compilerArgs += '-Amapstruct.unmappedTargetPolicy=ERROR'
 description = 'Northbound Service'
 
 configurations.configureEach {
+    //LoggerFactory is not a Logback LoggerContext but Logback is on the classpath. Either remove Logback or the competing implementation
     exclude group: 'ch.qos.logback', module: 'logback-classic'
     exclude group: 'ch.qos.logback', module: 'logback-core'
 }
