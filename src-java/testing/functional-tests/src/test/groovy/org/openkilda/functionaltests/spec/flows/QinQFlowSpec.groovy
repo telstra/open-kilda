@@ -44,19 +44,16 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
-    def setupSpec() {
-        assumeTrue(useMultitable)
-    }
-
     @Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
     def "System allows to manipulate with QinQ flow\
 [srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.hwSwString()]#trafficDisclaimer"() {
         when: "Create a QinQ flow"
-        def qinqFlow = flowHelperV2.randomFlow(swPair)
-        qinqFlow.source.vlanId = srcVlanId
-        qinqFlow.source.innerVlanId = srcInnerVlanId
-        qinqFlow.destination.vlanId = dstVlanId
-        qinqFlow.destination.innerVlanId = dstInnerVlanId
+        def qinqFlow = flowHelperV2.randomFlow(swPair).tap {
+            source.vlanId = srcVlanId
+            source.innerVlanId = srcInnerVlanId
+            destination.vlanId = dstVlanId
+            destination.innerVlanId = dstInnerVlanId
+        }
         def response = flowHelperV2.addFlow(qinqFlow)
 
         then: "Response contains correct info about vlanIds"

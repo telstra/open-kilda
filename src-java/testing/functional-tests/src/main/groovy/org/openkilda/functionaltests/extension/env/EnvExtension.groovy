@@ -64,9 +64,6 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     @Value('${spring.profiles.active}')
     String profile
 
-    @Value('${use.multitable}')
-    boolean useMultitable
-
     @Value('${discovery.timeout}')
     int discoveryTimeout
 
@@ -82,8 +79,6 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     void notifyContextInitialized(ApplicationContext applicationContext) {
         applicationContext.autowireCapableBeanFactory.autowireBean(this)
         if (profile == "virtual") {
-            log.info("Multi table is enabled by default: $useMultitable")
-            northbound.updateKildaConfiguration(new KildaConfigurationDto(useMultiTable: useMultitable))
             isTopologyRebuildRequired ? buildVirtualEnvironment() : topology.setLabId(labService.getLabs().first().labId)
             log.info("Virtual topology is successfully created")
         } else if (profile == "hardware") {

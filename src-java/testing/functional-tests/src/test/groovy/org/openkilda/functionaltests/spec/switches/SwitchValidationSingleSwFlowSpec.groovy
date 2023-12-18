@@ -128,7 +128,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.first()
 
         when: "Create a flow"
-        def amountOfMultiTableFlRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 0 //2 SHARED_OF_FLOW, 2 MULTI_TABLE_INGRESS_RULES
+        def amountOfMultiTableFlRules = 4 //2 SHARED_OF_FLOW, 2 MULTI_TABLE_INGRESS_RULES
         def amountOfFlowRules = 2 //SERVICE_OR_FLOW_SEGMENT(ingress/egress)
         def amountOfSwRules = northbound.getSwitchRules(sw.dpId).flowEntries.size()
         def amountOfRules = amountOfSwRules + amountOfFlowRules + amountOfMultiTableFlRules
@@ -320,7 +320,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         then: "Rules and meters are created"
         def swValidateInfo = northbound.validateSwitch(sw.dpId)
         def properMeters = swValidateInfo.meters.proper.findAll({ !isDefaultMeter(it) })
-        def amountOfFlowRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 2
+        def amountOfFlowRules = 4
         properMeters.meterId.size() == 2
         swValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
 
@@ -408,7 +408,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def syncResponse = northbound.synchronizeSwitch(sw.dpId, false)
 
         then: "System detects missing rules, then installs them"
-        def amountOfFlowRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 2
+        def amountOfFlowRules = 4
         syncResponse.rules.missing.size() == amountOfFlowRules
         syncResponse.rules.missing.containsAll(createdCookies)
         syncResponse.rules.installed.size() == amountOfFlowRules
@@ -568,7 +568,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
 
         then: "Switch validation shows missing rules"
-        def amountOfFlowRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 2
+        def amountOfFlowRules = 4
         northbound.validateSwitch(sw.dpId).rules.missing.size() == amountOfFlowRules
         northbound.validateSwitch(sw.dpId).rules.missingHex.size() == amountOfFlowRules
 

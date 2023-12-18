@@ -133,16 +133,6 @@ class HealthCheckSpecification extends HealthCheckBaseSpecification {
                 //collectGrpcStats
             }
         }
-        Closure switchesConfigurationIsCorrect = {
-            withPool {
-                topology.activeSwitches.eachParallel { sw ->
-                    verifyAll(northbound.getSwitchProperties(sw.dpId)) {
-                        multiTable == useMultitable && sw.features.contains(SwitchFeature.MULTI_TABLE)
-                        //server42 props can be either on or off
-                    }
-                }
-            }
-        }
 
         if(enable) {
             Wrappers.wait(WAIT_FOR_LAB_TO_BE_OPERATIONAL) {
@@ -156,8 +146,7 @@ class HealthCheckSpecification extends HealthCheckBaseSpecification {
                      linksBandwidthAndSpeedMatch,
                      noExcessRulesMeters,
                      allSwitchesConnectedToExpectedRegion,
-                     featureTogglesInExpectedState,
-                     switchesConfigurationIsCorrect].eachParallel { it() }
+                     featureTogglesInExpectedState].eachParallel { it() }
                 }
             }
         } else {

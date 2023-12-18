@@ -355,35 +355,27 @@ class FlowHelperV2 {
         def server42 = swProps.server42FlowRtt && featureToggles.server42FlowRtt
                 && flow.source.switchId != flow.destination.switchId
 
-        if (swProps.multiTable) {
-            count++ // customer input rule
 
+        count++ // customer input rule
+
+        if (endpoint.vlanId != 0) {
+            count++; // pre ingress rule
+        }
+        count++ // multi table ingress rule
+
+        if (server42) {
             if (endpoint.vlanId != 0) {
-                count++; // pre ingress rule
+                count++ //shared server42 rule
             }
-            count++ // multi table ingress rule
+            count++ // ingress server42 rule
+            count++ // server42 input rule
+        }
 
-            if (server42) {
-                if (endpoint.vlanId != 0) {
-                    count++ //shared server42 rule
-                }
-                count++ // ingress server42 rule
-                count++ // server42 input rule
-            }
-
-            if (swProps.switchLldp || endpoint.detectConnectedDevices.lldp) {
-                count++  // lldp rule
-            }
-            if (swProps.switchArp || endpoint.detectConnectedDevices.arp) {
-                count++ // arp rule
-            }
-
-        } else { // single table
-            if (server42) {
-                count++;  // server42 ingress rule
-            }
-
-            count++; // single table ingress rule
+        if (swProps.switchLldp || endpoint.detectConnectedDevices.lldp) {
+            count++  // lldp rule
+        }
+        if (swProps.switchArp || endpoint.detectConnectedDevices.arp) {
+            count++ // arp rule
         }
         return count
     }

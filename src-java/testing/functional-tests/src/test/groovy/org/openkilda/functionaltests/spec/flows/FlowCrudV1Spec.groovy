@@ -579,13 +579,12 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
             validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
             validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
             def swProps = switchHelper.getCachedSwProps(it.dpId)
-            def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId,dstSwitch.dpId]) ? 1 : 0
-            if (swProps.multiTable && swProps.server42FlowRtt) {
+            if (swProps.server42FlowRtt) {
                 if ((flow.destination.getDatapath() == it.dpId && flow.destination.vlanId) || (flow.source.getDatapath() == it.dpId && flow.source.vlanId))
                     amountOfServer42Rules += 1
             }
-            def amountOfFlowRules = 2 + amountOfMultiTableRules + amountOfServer42Rules
+            def amountOfFlowRules = 3 + amountOfServer42Rules
             assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
         }
 

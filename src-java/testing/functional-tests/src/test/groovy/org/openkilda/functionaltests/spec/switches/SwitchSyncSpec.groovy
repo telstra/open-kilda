@@ -113,16 +113,12 @@ class SwitchSyncSpec extends HealthCheckSpecification {
             [switchPair.src, switchPair.dst].each {
                 def swProps = switchHelper.getCachedSwProps(it.dpId)
                 def amountFlowRules = 2 //INGRESS_REVERSE, INGRESS_FORWARD
-                def amountS42Rules = swProps.server42FlowRtt ? 1 : 0
-                def amountMultiTableSharedRules = 0
-                if (swProps.multiTable) {
-                    amountS42Rules = swProps.server42FlowRtt ? amountS42Rules + 2 : amountS42Rules
-                    amountMultiTableSharedRules += 1
-                }
+                def amountMultiTableSharedRules = 1
+                def amountS42Rules = swProps.server42FlowRtt ? 3 : 0
                 /**
                  * s42Rules
-                 * multi/single table: SERVER_42_FLOW_RTT_INGRESS_REVERSE
-                 * multiTable: SERVER_42_FLOW_RTT_INPUT, SERVER_42_FLOW_RTT_TURNING_COOKIE, SERVER42_QINQ_OUTER_VLAN
+                 * SERVER_42_FLOW_RTT_INGRESS_REVERSE, SERVER_42_FLOW_RTT_INPUT, SERVER_42_FLOW_RTT_TURNING_COOKIE,
+                 * SERVER42_QINQ_OUTER_VLAN (for QinQ flows, should not present in this test)
                  * some rule is in defaultCookies (SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE)
                  */
 
@@ -165,6 +161,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
 
         cleanup: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
+        switchHelper.synchronize(involvedSwitches*.getDpId())
     }
 
     def "Able to synchronize #switchKind switch (delete excess rules and meters)"() {
@@ -269,13 +266,13 @@ class SwitchSyncSpec extends HealthCheckSpecification {
                 def switchIdInSrcOrDst = (it.dpId in [switchPair.src.dpId, switchPair.dst.dpId])
                 def defaultAmountOfFlowRules = 2 // ingress + egress
                 def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
-                if (swProps.multiTable && swProps.server42FlowRtt) {
+                if (swProps.server42FlowRtt) {
                     if ((flow.destination.getSwitchId() == it.dpId && flow.destination.vlanId) || (
                             flow.source.getSwitchId() == it.dpId && flow.source.vlanId))
                         amountOfServer42Rules += 1
                 }
                 def rulesCount = defaultAmountOfFlowRules + amountOfServer42Rules +
-                        (switchIdInSrcOrDst && swProps.multiTable ? 1 : 0)
+                        (switchIdInSrcOrDst ? 1 : 0)
                 assert validationResultsMap[it.dpId].rules.missing.size() == rulesCount }
             [switchPair.src, switchPair.dst].each { assert validationResultsMap[it.dpId].meters.missing.size() == 1 }
         }

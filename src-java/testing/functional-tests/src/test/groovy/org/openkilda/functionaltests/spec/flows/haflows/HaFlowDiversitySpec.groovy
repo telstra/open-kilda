@@ -28,7 +28,6 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
     HaPathHelper haPathHelper
 
     def "Able to create diverse HA-Flows"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Switches with three not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.findAll {
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
@@ -89,7 +88,6 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
     }
 
     def "Able to create HA-Flow diverse with common flow"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Switches with two not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.find {
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
@@ -146,7 +144,6 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
     }
 
     def "Able to create HA-Flow diverse with y-flow"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "Switches with three not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.find {
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&

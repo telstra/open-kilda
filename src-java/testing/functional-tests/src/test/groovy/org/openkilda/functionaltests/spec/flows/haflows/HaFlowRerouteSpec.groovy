@@ -44,7 +44,6 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
 
     @Tags([TOPOLOGY_DEPENDENT])
     def "Valid HA-flow can be rerouted"() {
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         given: "An HA-flow"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
@@ -127,7 +126,6 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
 
     @Tags(SMOKE)
     def "HA-flow in 'Down' status is rerouted when discovering a new ISL"() {
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         given: "An HA-flow"
         def swT = topologyHelper.findSwitchTripletWithAlternativeFirstPortPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
@@ -193,7 +191,6 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
 
     @Tags(SMOKE)
     def "HA-flow goes to 'Down' status when ISl of the HA-flow fails and there is no alt path to reroute"() {
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         given: "An HA-flow without alternative paths"
         def swT = topologyHelper.findSwitchTripletWithDifferentEndpoints()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")

@@ -308,40 +308,29 @@ meters in flow rules at all (#data.flowType flow)"() {
         def srcSwitchRules = northbound.getSwitchRules(flow.source.switchId).flowEntries.findAll { !Cookie.isDefaultRule(it.cookie) }
         def dstSwitchRules = northbound.getSwitchRules(flow.destination.switchId).flowEntries.findAll { !Cookie.isDefaultRule(it.cookie) }
 
-        if (switchHelper.getCachedSwProps(flow.source.switchId).multiTable) {
-            def srcSwIngressFlowRules = srcSwitchRules.findAll { it.match.inPort == flow.source.portNumber.toString() }
-            assert srcSwIngressFlowRules.size() == 2 //shared + simple ingress
-            def srcSwIngressSharedRule = srcSwIngressFlowRules.find {
-                new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
-            }
-            def srcSwIngressNonSharedRule = srcSwIngressFlowRules.find {
-                new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW
-            }
-            assert srcSwIngressSharedRule.match.vlanVid == flow.source.vlanId.toString()
-            assert !srcSwIngressSharedRule.instructions.goToMeter
-            assert srcSwFlowMeters[0].meterId == srcSwIngressNonSharedRule.instructions.goToMeter
-        } else {
-            def srcSwFlowIngressRule = filterRules(srcSwitchRules, flow.source.portNumber, flow.source.vlanId, null)[0]
-            assert srcSwFlowMeters[0].meterId == srcSwFlowIngressRule.instructions.goToMeter
+        def srcSwIngressFlowRules = srcSwitchRules.findAll { it.match.inPort == flow.source.portNumber.toString() }
+        assert srcSwIngressFlowRules.size() == 2 //shared + simple ingress
+        def srcSwIngressSharedRule = srcSwIngressFlowRules.find {
+            new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
         }
+        def srcSwIngressNonSharedRule = srcSwIngressFlowRules.find {
+            new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW
+        }
+        assert srcSwIngressSharedRule.match.vlanVid == flow.source.vlanId.toString()
+        assert !srcSwIngressSharedRule.instructions.goToMeter
+        assert srcSwFlowMeters[0].meterId == srcSwIngressNonSharedRule.instructions.goToMeter
 
-        if (switchHelper.getCachedSwProps(flow.destination.switchId).multiTable) {
-            def dstSwIngressFlowRules = dstSwitchRules.findAll { it.match.inPort == flow.destination.portNumber.toString() }
-            assert dstSwIngressFlowRules.size() == 2 //shared + simple ingress
-            def dstSwIngressSharedRule = dstSwIngressFlowRules.find {
-                new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
-            }
-            def dstSwIngressNonSharedRule = dstSwIngressFlowRules.find {
-                new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW
-            }
-            assert dstSwIngressSharedRule.match.vlanVid == flow.destination.vlanId.toString()
-            assert !dstSwIngressSharedRule.instructions.goToMeter
-            assert dstSwFlowMeters[0].meterId == dstSwIngressNonSharedRule.instructions.goToMeter
-        } else {
-            def dstSwFlowIngressRule = filterRules(dstSwitchRules, flow.destination.portNumber, flow.destination.vlanId,
-                    null)[0]
-            assert dstSwFlowMeters[0].meterId == dstSwFlowIngressRule.instructions.goToMeter
+        def dstSwIngressFlowRules = dstSwitchRules.findAll { it.match.inPort == flow.destination.portNumber.toString() }
+        assert dstSwIngressFlowRules.size() == 2 //shared + simple ingress
+        def dstSwIngressSharedRule = dstSwIngressFlowRules.find {
+            new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
         }
+        def dstSwIngressNonSharedRule = dstSwIngressFlowRules.find {
+            new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW
+        }
+        assert dstSwIngressSharedRule.match.vlanVid == flow.destination.vlanId.toString()
+        assert !dstSwIngressSharedRule.instructions.goToMeter
+        assert dstSwFlowMeters[0].meterId == dstSwIngressNonSharedRule.instructions.goToMeter
 
         and: "The source and destination switches have no meters in the flow's egress rule"
         def srcSwFlowEgressRule = filterRules(srcSwitchRules, null, null, flow.source.portNumber)[0]
