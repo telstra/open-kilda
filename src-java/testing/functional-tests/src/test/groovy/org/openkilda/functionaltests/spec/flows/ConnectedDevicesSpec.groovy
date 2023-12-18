@@ -936,13 +936,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 "Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
 
         given: "Two switches connected to traffgen"
-        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
-        assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find two active traffgens")
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { sw ->
-                sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
-            }
-        } ?: assumeTrue(false, "No suiting switches found")
+        def swP = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
 
         and: "A QinQ flow with enabled connected devices"
         def tgService = traffExamProvider.get()
@@ -1028,13 +1022,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
     def "System doesn't detect devices only if vlan match with outerVlan of qinq flow"() {
         given: "Two switches connected to traffgen"
-        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
-        assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find two active traffgens")
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { sw ->
-                sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
-            }
-        } ?: assumeTrue(false, "No suiting switches found")
+        def swP = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
 
         and: "A QinQ flow with enabled connected devices"
         def tgService = traffExamProvider.get()
@@ -1419,10 +1407,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def tgSwitches = topology.activeTraffGens*.switchConnected
                                  .findAll { it.features.contains(SwitchFeature.MULTI_TABLE) }
         def unpickedTgSwitches = tgSwitches.unique(false) { [it.description, it.nbFormat().hardware].sort() }
-        List<SwitchPair> switchPairs = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.findAll {
-            it.src in tgSwitches && it.dst in tgSwitches
-        }
-        assumeTrue(switchPairs.size() > 0, "Unable to find a switchPair with traffgens on both sides")
+        List<SwitchPair> switchPairs = switchPairs.all().withTraffgensOnBothEnds().getSwitchPairs()
         def result = []
         while (!unpickedTgSwitches.empty) {
             def pair = switchPairs.sort(false) { switchPair ->

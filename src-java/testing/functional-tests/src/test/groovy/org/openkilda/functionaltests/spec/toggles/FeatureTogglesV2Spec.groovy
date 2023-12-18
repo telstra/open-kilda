@@ -134,10 +134,7 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
     def "Flow encapsulation type is changed while auto rerouting according to 'flows_reroute_using_default_encap_type' \
 feature toggle"() {
         given: "A switch pair which supports 'transit_vlan' and 'vxlan' encapsulation types"
-        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { switchHelper.isVxlanEnabled(it.dpId) } && it.paths.size() >= 2
-        }
-        assumeTrue(swPair as boolean, "Unable to find required switches in topology")
+        def swPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().withAtLeastNPaths(2).random()
 
         and: "The 'flows_reroute_using_default_encap_type' feature is enabled"
         def initFeatureToggle = northbound.getFeatureToggles()
@@ -223,10 +220,7 @@ feature toggle"() {
 'flows_reroute_using_default_encap_type' if switch doesn't support new type of encapsulation"() {
         given: "A switch pair which supports 'transit_vlan' and 'vxlan' encapsulation types"
         and: "The 'vxlan' encapsulation type is disable in swProps on the src switch"
-        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { switchHelper.isVxlanEnabled(it.dpId) } && it.paths.size() >= 2
-        }
-        assumeTrue(swPair as boolean, "Unable to find required switches in topology")
+        def swPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().withAtLeastNPaths(2).random()
         def initSrcSwProps = switchHelper.getCachedSwProps(swPair.src.dpId)
         northbound.updateSwitchProperties(swPair.src.dpId, initSrcSwProps.jacksonCopy().tap {
             it.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
@@ -308,9 +302,7 @@ feature toggle"() {
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
     def "System doesn't reroute flow when flows_reroute_on_isl_discovery: false"() {
         given: "A flow with alternative paths"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
         def allFlowPaths = switchPair.paths
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)

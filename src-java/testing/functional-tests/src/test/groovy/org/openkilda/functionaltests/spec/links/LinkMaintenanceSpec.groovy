@@ -50,8 +50,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
 
     def "Flows can be evacuated (rerouted) from a particular link when setting maintenance mode for it"() {
         given: "Two active not neighboring switches with two possible paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
-                assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNPaths(2).random()
 
         and: "Create a couple of flows going through these switches"
         def flow1 = flowHelperV2.randomFlow(switchPair)
@@ -99,8 +98,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Flows are rerouted to a path with link under maintenance when there are no other paths available"() {
         given: "Two active not neighboring switches with two possible paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
-                assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNPaths(2).random()
 
         and: "Create a couple of flows going through these switches"
         def flow1 = flowHelperV2.randomFlow(switchPair)

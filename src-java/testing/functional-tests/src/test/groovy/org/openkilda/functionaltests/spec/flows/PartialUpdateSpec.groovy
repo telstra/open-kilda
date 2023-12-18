@@ -49,7 +49,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     def "Able to partially update flow '#data.field' without reinstalling its rules"() {
         given: "A flow"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flow.tap{
             pathComputationStrategy = "cost"
@@ -121,7 +121,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Able to partially update flow #data.field without reinstalling its rules(v1)"() {
         given: "A flow"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
@@ -168,7 +168,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     def "Able to partially update flow #data.field which causes a reroute"() {
         given: "A flow"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll { !new Cookie(it.cookie).serviceFlag }
@@ -210,9 +210,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     def "Able to turn on diversity feature using partial update"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
-        def switchPair = topologyHelper.switchPairs.find {
-            it.paths.collect { pathHelper.getInvolvedIsls(it) }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
-        } ?: assumeTrue(false, "Can't find a switch pair with 2 not overlapping paths")
+        def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create 2 not diverse flows going through these switches"
         def flow1 = flowHelperV2.randomFlow(switchPair)
@@ -370,11 +368,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     def "Able to update flow encapsulationType using partial update"() {
         given: "A flow with a 'transit_vlan' encapsulation"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            [swP.src, swP.dst].every { switchHelper.isVxlanEnabled(it.dpId) }
-        }
-        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
-
+        def switchPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
         flowHelperV2.addFlow(flow)
@@ -523,7 +517,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Partial update with empty body does not actually update flow in any way(v1)"() {
         given: "A flow"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
@@ -552,9 +546,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     def "Partial update with empty body does not actually update flow in any way"() {
         given: "A flow"
-        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.collect { pathHelper.getInvolvedIsls(it) }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() > 1
-        } ?: assumeTrue(false, "Need at least 2 non-overlapping paths for diverse flow")
+        def swPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
         def helperFlow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(helperFlow)
         def flow = flowHelperV2.randomFlow(swPair).tap {
@@ -628,7 +620,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     @Unroll("Unable to partial update flow (#data.conflict)")
     def "Unable to partial update flow when there are conflicting vlans"() {
         given: "Two potential flows"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().random()
         def flow1 = flowHelperV2.randomFlow(swPair, false)
         def flow2 = flowHelperV2.randomFlow(swPair, false, [flow1])
         FlowPatchV2 patch = data.getPatch(flow1)
@@ -708,7 +700,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     def "Unable to update a flow to have both strict_bandwidth and ignore_bandwidth flags at the same time"() {
         given: "An existing flow without flag conflicts"
-        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0]).tap {
+        def flow = flowHelperV2.randomFlow(switchPairs.all().random()).tap {
             ignoreBandwidth = initialIgnore
             strictBandwidth = initialStrict
         }
@@ -738,7 +730,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Able to update vlanId via partialUpdate in case vlanId==0 and innerVlanId!=0"() {
         given: "A default flow"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().random()
         def defaultFlow = flowHelperV2.randomFlow(swPair).tap {
             source.vlanId = 0
             source.innerVlanId = 0
@@ -771,7 +763,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     @Unroll("Unable to partial update flow (maxLatency #maxLatencyAfter and maxLatencyTier2 #maxLatencyT2After)")
     def "Unable to partial update flow with maxLatency incorrect value"() {
         given: "Two potential flows"
-        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0]).tap {
+        def flow = flowHelperV2.randomFlow(switchPairs.all().random()).tap {
             maxLatency = maxLatencyBefore
             maxLatencyTier2 = maxLatencyT2Before
 

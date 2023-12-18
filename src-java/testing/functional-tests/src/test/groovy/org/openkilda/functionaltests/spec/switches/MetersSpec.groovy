@@ -1,11 +1,17 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.model.switches.Manufacturer
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.model.switches.Manufacturer.CENTEC
+import static org.openkilda.functionaltests.model.switches.Manufacturer.NOVIFLOW
+import static org.openkilda.functionaltests.model.switches.Manufacturer.OVS
+import static org.openkilda.functionaltests.model.switches.Manufacturer.WB5164
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule
 import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_COOKIE
@@ -291,11 +297,12 @@ on a #switchType switch"() {
 
     @Tags([TOPOLOGY_DEPENDENT])
     def "Source/destination switches have meters only in flow ingress rule and intermediate switches don't have \
-meters in flow rules at all (#data.flowType flow)"() {
-        assumeTrue(data.switchPair != null, "Unable to find required switch pair in topology")
+meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
+        def switchPair = switchPairs.all().nonNeighbouring()
+                                .withSwitchesManufacturedBy(srcSwitch, dstSwitch).random()
 
         when: "Create a flow between given switches"
-        def flow = flowHelperV2.randomFlow(data.switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
         then: "The source and destination switches have only one meter in the flow's ingress rule"
@@ -350,42 +357,12 @@ meters in flow rules at all (#data.flowType flow)"() {
         flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
-        data << [
-                [
-                        flowType  : "Centec-Centec",
-                        switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            it.src.centec && it.dst.centec && hasOf13Path(it)
-                        }
-                ],
-                [
-                        flowType  : "Noviflow-Noviflow",
-                        switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            it.src.noviflow && it.src.ofVersion == "OF_13" &&
-                                    it.dst.noviflow && it.dst.ofVersion == "OF_13" && hasOf13Path(it)
-                        }
-                ],
-                //TODO(rtretiak): unlock above iterations by introducing a more clever cost manipulation
-                [
-                        flowType  : "Centec-Noviflow",
-                        switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            ((it.src.centec && it.dst.noviflow && it.dst.ofVersion == "OF_13") ||
-                                    (it.src.noviflow && it.src.ofVersion == "OF_13" && it.dst.centec)) &&
-                                    hasOf13Path(it)
-                        }
-                ],
-                [
-                        flowType  : "Noviflow_Wb5164-Noviflow_Wb5164",
-                        switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            it.src.wb5164 && it.dst.wb5164 && hasOf13Path(it)
-                        }
-                ],
-                [
-                        flowType  : "OVS-OVS",
-                        switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            it.src.virtual && it.dst.virtual && hasOf13Path(it)
-                        }
-                ]
-        ]
+        srcSwitch | dstSwitch
+        CENTEC   | CENTEC
+        NOVIFLOW | NOVIFLOW
+        CENTEC   | NOVIFLOW
+        WB5164   | WB5164
+        OVS      | OVS
     }
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
@@ -712,15 +689,6 @@ meters in flow rules at all (#data.flowType flow)"() {
     def defaultMeters = { it.meterId <= MAX_SYSTEM_RULE_METER_ID }
 
     def flowMeters = { it.meterId > MAX_SYSTEM_RULE_METER_ID }
-
-    boolean hasOf13Path(SwitchPair pair) {
-        def possibleDefaultPaths = pair.paths.findAll {
-            it.size() == pair.paths.min { it.size() }.size()
-        }
-        !possibleDefaultPaths.find { path ->
-            path[1..-2].every { it.switchId.description.contains("OF_12") }
-        }
-    }
 
     void verifyBurstSizeOnWb5164(Long expected, Long actual) {
         //...ValidationServiceImpl.E_SWITCH_METER_RATE_EQUALS_DELTA_COEFFICIENT = 0.01

@@ -81,8 +81,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
 
     def "Able to synchronize switch (install missing rules and meters)"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.allNotNeighboringSwitchPairs.find { it.src.ofVersion != "OF_12" &&
-                it.dst.ofVersion != "OF_12" } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().random()
 
         and: "Create an intermediate-switch flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -230,12 +229,8 @@ class SwitchSyncSpec extends HealthCheckSpecification {
     }
 
     def "Able to synchronize switch with 'vxlan' rule(install missing rules and meters)"() {
-        given: "Two active not neighboring Noviflow switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
-            swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
-            }
-        } ?: assumeTrue(false, "Unable to find required switches in topology")
+        given: "Two active not neighboring switches which support VXLAN encapsulation"
+        def switchPair = switchPairs.all().nonNeighbouring().withBothSwitchesVxLanEnabled().random()
 
         and: "Create a flow with vxlan encapsulation"
         def flow = flowHelperV2.randomFlow(switchPair)

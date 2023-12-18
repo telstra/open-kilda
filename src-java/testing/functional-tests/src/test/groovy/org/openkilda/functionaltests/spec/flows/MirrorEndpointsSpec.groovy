@@ -231,10 +231,11 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Can create mirror point on protected flow and survive path swap, #mirrorDirection"() {
         given: "A flow with protected path"
-        SwitchPair swPair = topologyHelper.getSwitchPairs(true).find { SwitchPair pair ->
-            pair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2 &&
-                    [pair.src, pair.dst].every { it.traffGens } && pair.src.traffGens.size() > 1
-        } ?: assumeTrue(false, "Unable to find a switch pair with 2+ diverse paths and 3+ traffgens")
+        SwitchPair swPair = switchPairs.all()
+                .withTraffgensOnBothEnds()
+                .withAtLeastNTraffgensOnSource(2)
+                .withAtLeastNNonOverlappingPaths(2)
+                .random()
         def flow = flowHelperV2.randomFlow(swPair).tap { it.allocateProtectedPath = true }
         flowHelperV2.addFlow(flow)
 
@@ -367,13 +368,11 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         where:
         [data, mirrorDirection] << [
                 [[
-                         swPair: topologyHelper.getSwitchPairs(true).find { swP ->
-                             swP.paths.find { pathHelper.getInvolvedSwitches(it).every { switchHelper.isVxlanEnabled(it.dpId) } }
-                         },
+                         swPair: switchPairs.all().withBothSwitchesVxLanEnabled().random(),
                          encap : FlowEncapsulationType.VXLAN
                  ],
                  [
-                         swPair: topologyHelper.switchPairs[0],
+                         swPair: switchPairs.all().random(),
                          encap : FlowEncapsulationType.TRANSIT_VLAN
                  ]],
                 //^run all direction combinations for above data
@@ -385,7 +384,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Can create mirror point on unmetered pinned flow, #mirrorDirection"() {
         given: "An unmetered pinned flow"
-        def swPair = topologyHelper.switchPairs[0]
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair).tap {
             pinned = true
             maximumBandwidth = 0
@@ -474,7 +473,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Can create multiple mirror points for the same flow and switch"() {
         given: "A flow"
-        def swPair = topologyHelper.switchPairs[0]
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
 
@@ -544,7 +543,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     def "System also updates mirror rule after flow partial update"() {
         given: "A flow with mirror point"
-        def swPair = topologyHelper.switchPairs[0]
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
         def freePort = (topology.getAllowedPortsForSwitch(swPair.dst) - flow.destination.portNumber)[0]
@@ -591,10 +590,9 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Mirror point can be created for a default flow (0 vlan), #mirrorDirection"() {
         given: "A default flow"
-        def swPair = topologyHelper.getSwitchPairs(true).find { SwitchPair pair ->
-            [pair.src, pair.dst].every { it.traffGens } && pair.src.traffGens.size() > 1
-        }
-        assumeTrue(swPair as boolean, "Unable to find a switch pair: both with traffgens, src with at least 2")
+        def swPair = switchPairs.all()
+                .withTraffgensOnBothEnds()
+                .withAtLeastNTraffgensOnSource(2).random()
         def flow = flowHelperV2.randomFlow(swPair).tap { source.vlanId = 0 }
         flowHelperV2.addFlow(flow)
 
@@ -635,9 +633,10 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Flow mirror point works properly with a qinq flow, #mirrorDirection"() {
         given: "A qinq flow"
-        def swPair = topologyHelper.getSwitchPairs(true).find {
-            [it.src, it.dst].every { it.traffGens} && it.src.traffGens.size() > 1
-        } ?: assumeTrue(false, "Not able to find enough switches with traffgens and in multi-table mode")
+        def swPair = switchPairs.all()
+                .withTraffgensOnBothEnds()
+                .withAtLeastNTraffgensOnSource(2)
+                .random()
         def flow = flowHelperV2.randomFlow(swPair).tap {
             source.innerVlanId = 100
             destination.innerVlanId = 200
@@ -680,15 +679,12 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Unable to create a mirror endpoint with #data.testDescr on the transit switch"() {
         given: "A flow with transit switch"
-        List<PathNode> path
+        def swPair = switchPairs.all().nonNeighbouring().random()
         List<Switch> involvedSwitches
-        def swPair = topologyHelper.switchPairs.find {
-            path = it.paths.find {
-                involvedSwitches = pathHelper.getInvolvedSwitches(it)
-                involvedSwitches.size() > 2
-            }
+        List<PathNode> path = swPair.getPaths().find {
+            involvedSwitches = pathHelper.getInvolvedSwitches(it)
+            involvedSwitches.size() == 3
         }
-        assumeTrue(swPair as boolean, "Unable to find a switch pair with path of 2+ switches")
         def flow = flowHelperV2.randomFlow(swPair)
         swPair.paths.findAll { it != path }.each { pathHelper.makePathMorePreferable(path, it) }
         flowHelperV2.addFlow(flow)
@@ -761,7 +757,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         where:
         testData << [
                 new MirrorErrorTestData("Unable to create a mirror endpoint on the src sw and sink back to dst sw", {
-                    def swPair = topologyHelper.switchPairs[0]
+                    def swPair = switchPairs.all().random()
                     it.flow = flowHelperV2.randomFlow(swPair)
                     def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
                     it.mirrorPoint = FlowMirrorPointPayload.builder()
@@ -777,7 +773,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 the sink switch id cannot differ from the mirror point switch id./)
                 }),
                 new MirrorErrorTestData("Unable to create a mirror point with isl conflict", {
-                    def swPair = topologyHelper.switchPairs[0]
+                    def swPair = switchPairs.all().random()
                     it.flow = flowHelperV2.randomFlow(swPair)
                     def islPort = topology.getBusyPortsForSwitch(swPair.dst)[0]
                     it.mirrorPoint = FlowMirrorPointPayload.builder()
@@ -793,10 +789,7 @@ the sink switch id cannot differ from the mirror point switch id./)
 \'$swPair.dst.dpId\' is occupied by an ISL \(destination endpoint collision\)./)
                 }),
                 new MirrorErrorTestData("Unable to create a mirror point with s42Port conflict", {
-                    def s42Switches = topology.getActiveServer42Switches()*.dpId
-                    def swPair = topologyHelper.getSwitchPairs(true).find {
-                        it.dst.dpId in s42Switches
-                    }
+                    def swPair = switchPairs.all().withDestinationSwitchConnectedToServer42().random()
                     it.flow = flowHelperV2.randomFlow(swPair)
                     def s42Port = swPair.dst.prop.server42Port
                     it.mirrorPoint = FlowMirrorPointPayload.builder()
@@ -821,7 +814,7 @@ with these parameters./)
     @Tags([LOW_PRIORITY])
     def "Unable to create a mirror point with existing flow conflict, #mirrorDirection"() {
         given: "A flow"
-        def swPair = topologyHelper.switchPairs[0]
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair)
         def otherFlow = flowHelperV2.randomFlow(swPair, false, [flow])
         flowHelperV2.addFlow(flow)
@@ -854,7 +847,7 @@ with these parameters./)
     @Tags([LOW_PRIORITY])
     def "Unable to create a flow that conflicts with mirror point, #mirrorDirection"() {
         given: "A flow with mirror point"
-        def swPair = topologyHelper.switchPairs[0]
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
         def freePort = (topology.getAllowedPortsForSwitch(swPair.dst) - flow.destination.portNumber)[0]
@@ -896,7 +889,7 @@ with these parameters./)
     @Tags([LOW_PRIORITY])
     def "Unable to create mirror point with connected devices enabled, #mirrorDirection"() {
         given: "A flow with connected devices enabled"
-        def swPair = topologyHelper.switchPairs[0]
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair).tap {
             source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
         }
@@ -931,7 +924,7 @@ flow mirror point cannot be created this flow/).matches(error)
     @Tags([LOW_PRIORITY])
     def "Unable to update flow and enable connected devices if mirror is present, #mirrorDirection"() {
         given: "A flow with a mirror point"
-        def swPair = topologyHelper.switchPairs[0]
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
         def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
@@ -968,7 +961,7 @@ flow mirror point cannot be created this flow/).matches(error)
     @Tags([LOW_PRIORITY])
     def "Cannot enable connected devices on switch if mirror is present"() {
         given: "A flow with a mirror endpoint"
-        def swPair = topologyHelper.switchPairs[0]
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
         def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
@@ -1003,7 +996,7 @@ flow mirror point cannot be created this flow/).matches(error)
     @Tags([LOW_PRIORITY])
     def "Cannot create mirror on a switch with enabled connected devices"() {
         given: "A switch with enabled connected devices"
-        def swPair = topologyHelper.switchPairs[0]
+        def swPair = switchPairs.all().random()
         def originalProps = switchHelper.getCachedSwProps(swPair.src.dpId)
         northbound.updateSwitchProperties(swPair.src.dpId, originalProps.jacksonCopy().tap {
             it.switchArp = true
@@ -1038,7 +1031,7 @@ flow mirror point cannot be created this flow/).matches(error)
     @Tags([LOW_PRIORITY])
     def "Unable to create a mirror point with existing mirror point conflict, #mirrorDirection"() {
         given: "A flow with mirror point"
-        def swPair = topologyHelper.switchPairs[0]
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
         def freePort = (topology.getAllowedPortsForSwitch(swPair.dst) - flow.destination.portNumber)[0]
@@ -1158,7 +1151,7 @@ with existing flow mirror point \'$existingMirror.mirrorPointId\'./
     List<SwitchPair> getUniqueSwitchPairs(Closure additionalConditions = { true }) {
         def unpickedUniqueTgSwitches = topology.activeSwitches.findAll { it.traffGens }
                 .unique(false) { it.hwSwString }
-        def tgPairs = topologyHelper.getSwitchPairs(true).findAll {
+        def tgPairs = switchPairs.all().getSwitchPairs().findAll {
             additionalConditions(it)
         }
         assumeTrue(tgPairs.size() > 0, "Unable to find any switchPairs with requested conditions")

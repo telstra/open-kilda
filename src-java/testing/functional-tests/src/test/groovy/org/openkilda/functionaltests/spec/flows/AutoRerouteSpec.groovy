@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 
 import org.openkilda.functionaltests.error.flow.FlowNotReroutedExpectedError
+import org.openkilda.functionaltests.helpers.model.SwitchPairs
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -54,7 +55,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
     @IterationTag(tags = [TOPOLOGY_DEPENDENT], iterationNameRegex = /vxlan/)
     def "Flow is rerouted when one of the #description flow ISLs fails"() {
         given: "A flow with one alternative path at least"
-        def data = flowData(switchPairs.all().neighbouring().getSwitchPairs(), 1)
+        def data = flowData(switchPairs.all().neighbouring(), 1)
         FlowRequestV2 flow = data[0]
         def allFlowPaths = data[1]
         flowHelperV2.addFlow(flow)
@@ -83,10 +84,10 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         where:
         description | flowData
-        "vlan"      | { List<SwitchPair> switchPairs, Integer minAltPathsCount ->
+        "vlan"      | { SwitchPairs switchPairs, Integer minAltPathsCount ->
             getFlowWithPaths(switchPairs, minAltPathsCount)
         }
-        "vxlan"     | { List<SwitchPair> switchPairs, Integer minAltPathsCount ->
+        "vxlan"     | { SwitchPairs switchPairs, Integer minAltPathsCount ->
             getVxlanFlowWithPaths(switchPairs, minAltPathsCount)
         }
     }
@@ -614,7 +615,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         List<PathNode> mainPath, backupPath, thirdPath
         List<Isl> mainIsls, backupIsls
         Isl mainPathUniqueIsl, commonIsl
-        def swPair = topologyHelper.switchPairs.find { pair ->
+        def swPair = switchPairs.all().getSwitchPairs().find { pair ->
             //we are looking for 2 paths that have a common isl. This ISL should not be used in third path
             mainPath = pair.paths.find { path ->
                 mainIsls = pathHelper.getInvolvedIsls(path)
@@ -717,28 +718,23 @@ triggering one more reroute of the current path"
     }
 
     def noIntermediateSwitchFlow(int minAltPathsCount = 0, boolean getAllPaths = false) {
-        def flowWithPaths = getFlowWithPaths(switchPairs.all().neighbouring().getSwitchPairs(),
+        def flowWithPaths = getFlowWithPaths(switchPairs.all().neighbouring(),
                 minAltPathsCount)
         return getAllPaths ? flowWithPaths : flowWithPaths[0]
     }
 
     def intermediateSwitchFlow(int minAltPathsCount = 0, boolean getAllPaths = false) {
-        def flowWithPaths = getFlowWithPaths(topologyHelper.getAllNotNeighboringSwitchPairs(), minAltPathsCount)
+        def flowWithPaths = getFlowWithPaths(switchPairs.all().nonNeighbouring(), minAltPathsCount)
         return getAllPaths ? flowWithPaths : flowWithPaths[0]
     }
 
-    def getFlowWithPaths(List<SwitchPair> switchPairs, int minAltPathsCount) {
-        def switchPair = switchPairs.find { it.paths.size() > minAltPathsCount } ?:
-                assumeTrue(false, "No suiting switches found")
+    def getFlowWithPaths(SwitchPairs switchPairs, int minAltPathsCount) {
+        def switchPair = switchPairs.withAtLeastNPaths(minAltPathsCount + 1).random()
         return [flowHelperV2.randomFlow(switchPair), switchPair.paths]
     }
 
-    def getVxlanFlowWithPaths(List<SwitchPair> switchPairs, int minAltPathsCount) {
-        def switchPair = switchPairs.find {swP ->
-            swP.paths.findAll { path ->
-                pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
-            }.size() > minAltPathsCount
-        } ?: assumeTrue(false, "No suiting switches found")
+    def getVxlanFlowWithPaths(SwitchPairs switchPairs, int minAltPathsCount) {
+        def switchPair = switchPairs.withBothSwitchesVxLanEnabled().withAtLeastNPaths(minAltPathsCount + 1).random()
         return [flowHelperV2.randomFlow(switchPair), switchPair.paths]
     }
 
@@ -760,14 +756,14 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
         assumeTrue(rerouteDelay * 2 < discoveryTimeout, "Reroute should be completed before link is FAILED")
         def switchPair1 = switchPairs.all()
                 .neighbouring()
-                .withMoreThanNIslsBetweenSwitches(1)
+                .withAtLeastNIslsBetweenNeighbouringSwitches(2)
                 .random()
         // disable auto-reroute on islDiscovery event
         northbound.toggleFeature(FeatureTogglesDto.builder().flowsRerouteOnIslDiscoveryEnabled(false).build())
 
         and: "Second switch pair where the srс switch from the first switch pair is a transit switch"
         List<PathNode> secondFlowPath
-        def switchPair2 = topologyHelper.switchPairs.collectMany{ [it, it.reversed] }.find { swP ->
+        def switchPair2 = switchPairs.all().getSwitchPairs().find { swP ->
             swP.paths.find { pathCandidate ->
                 secondFlowPath = pathCandidate
                 def involvedSwitches = pathHelper.getInvolvedSwitches(pathCandidate)

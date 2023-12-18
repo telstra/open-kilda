@@ -70,7 +70,7 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         given: "Two active not neighboring switches and a switch to be maintained"
         TopologyDefinition.Switch sw
         List<PathNode> path
-        def switchPair = topologyHelper.switchPairs.find {
+        def switchPair = switchPairs.all().nonNeighbouring().getSwitchPairs().find {
             path = it.paths.find { aPath ->
                 sw = pathHelper.getInvolvedSwitches(aPath).find { aSw ->
                     it.paths.findAll { it != aPath }.find { !pathHelper.getInvolvedSwitches(it).contains(aSw) }

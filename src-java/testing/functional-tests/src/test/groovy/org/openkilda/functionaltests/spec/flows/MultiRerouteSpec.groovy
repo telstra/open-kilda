@@ -19,8 +19,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
     @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "Simultaneous reroute of multiple flows should not oversubscribe any ISLs"() {
         given: "Many flows on the same path, with alt paths available"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 2 } ?:
-                assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(3).first()
         List<FlowRequestV2> flows = []
         def currentPath = switchPair.paths.first()
         switchPair.paths.findAll { it != currentPath }.each { pathHelper.makePathMorePreferable(currentPath, it) }
