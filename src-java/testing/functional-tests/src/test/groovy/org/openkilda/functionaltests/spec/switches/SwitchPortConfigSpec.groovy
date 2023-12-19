@@ -45,7 +45,7 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
         and: "Port failure is logged in TSDB"
         def statsData = [:]
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
-            switchStats.of(isl.getSrcSwitch().getDpId(), [STATE]).get(STATE, isl.getSrcPort()).hasValue(0)
+            switchStats.of(isl.getSrcSwitch().getDpId()).get(STATE, isl.getSrcPort()).hasValue(0)
         }
 
         when: "Bring port up on the switch"
@@ -61,7 +61,7 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
 
         and: "Port UP event is logged in TSDB"
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
-            switchStats.of(isl.getSrcSwitch().getDpId(), [STATE]).get(STATE, isl.getSrcPort()).hasValue(1)
+            switchStats.of(isl.getSrcSwitch().getDpId()).get(STATE, isl.getSrcPort()).hasValue(1)
         }
 
         cleanup:

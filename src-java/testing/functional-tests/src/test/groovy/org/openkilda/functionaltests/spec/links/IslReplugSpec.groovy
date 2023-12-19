@@ -238,7 +238,7 @@ class IslReplugSpec extends HealthCheckSpecification {
 
         and: "Self-loop rule packet counter is incremented and logged in tsdb"
         Wrappers.wait(statsRouterRequestInterval) {
-            switchStats.of(expectedIsl.getSrcSwitch().getDpId(), [FLOW_SYSTEM_PACKETS])
+            switchStats.of(expectedIsl.getSrcSwitch().getDpId())
                     .get(FLOW_SYSTEM_PACKETS, DROP_LOOP_RULE.toHexString())
                     .hasNonZeroValuesAfter(beforeReplugTime.getTime())
         }

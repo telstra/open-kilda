@@ -19,7 +19,6 @@ import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 
 import org.openkilda.testing.service.tsdb.model.RawDataPoints;
-import org.openkilda.testing.service.tsdb.model.StatsMetric;
 import org.openkilda.testing.service.tsdb.model.StatsResult;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -40,7 +39,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
-@Service("tsdbService")
+@Service
 @Slf4j
 public class TsdbQueryServiceImpl implements TsdbQueryService {
 
@@ -51,18 +50,8 @@ public class TsdbQueryServiceImpl implements TsdbQueryService {
     String metricPrefix;
 
     @Override
-    public List<StatsResult> queryDataPointsForLastMinutes(List<StatsMetric> metrics,
-                                                           String idTag,
-                                                           String id,
-                                                           int minutes) {
-        String query = "";
-        if (!id.equals("*")) {
-            query = format("__name__=~\"%s%s*\", %s=\"%s\"",
-                metricPrefix, metrics.get(0).getPrefix(), idTag, id);
-        } else {
-            query = format("__name__=~\"%s%s*\"",
-                metricPrefix, metrics.get(0).getPrefix());
-        }
+    public List<StatsResult> queryDataPointsForLastMinutes(String query, int minutes) {
+        query = String.format(query, metricPrefix);
         final ObjectMapper objectMapper = new ObjectMapper();
         UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString("/api/v1/export");
         uriBuilder.queryParam("start", (new Date().getTime() - minutes * 60 * 1000) / 1000);
@@ -87,7 +76,7 @@ public class TsdbQueryServiceImpl implements TsdbQueryService {
     }
 
     @Override
-    public List<StatsResult> queryDataPointsForLastFiveMinutes(List<StatsMetric> metrics, String idTag, String id) {
-        return queryDataPointsForLastMinutes(metrics, idTag, id, 5);
+    public List<StatsResult> queryDataPointsForLastFiveMinutes(String query) {
+        return queryDataPointsForLastMinutes(query, 5);
     }
 }
