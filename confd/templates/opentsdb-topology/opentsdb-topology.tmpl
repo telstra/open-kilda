@@ -9,8 +9,6 @@ config:
 
 # spout definitions
 spouts:
-  - id: "input.opentsdb"
-    parallelism: {{ getv "/kilda_opentsdb_num_spouts" }}
   - id: "input.victoriametrics"
     parallelism: {{ getv "/kilda_opentsdb_num_spouts" }}
   - id: "zookeeper.spout"
@@ -18,19 +16,11 @@ spouts:
 
 # bolt definitions
 bolts:
-  - id: "DatapointParseBolt.opentsdb"
-    parallelism: {{ getv "/kilda_opentsdb_num_datapointparserbolt" }}
-    numTasks: {{ getv "/kilda_opentsdb_workers_datapointparserbolt" }}
   - id: "DatapointParseBolt.victoriametrics"
     parallelism: {{ getv "/kilda_opentsdb_num_datapointparserbolt" }}
     numTasks: {{ getv "/kilda_opentsdb_workers_datapointparserbolt" }}
-  - id: "OpenTsdbFilterBolt.opentsdb"
-    parallelism: {{ getv "/kilda_opentsdb_num_opentsdbfilterbolt" }}
   - id: "OpenTsdbFilterBolt.victoriametrics"
     parallelism: {{ getv "/kilda_opentsdb_num_opentsdbfilterbolt" }}
-  - id: "output.opentsdb"
-    parallelism: {{ getv "/kilda_opentsdb_num_output_bolt" }}
-    numTasks: {{ getv "/kilda_opentsdb_tasks_output_bolt" }}
   - id: "output.victoriametrics"
     parallelism: {{ getv "/kilda_opentsdb_num_output_bolt" }}
     numTasks: {{ getv "/kilda_opentsdb_tasks_output_bolt" }}
