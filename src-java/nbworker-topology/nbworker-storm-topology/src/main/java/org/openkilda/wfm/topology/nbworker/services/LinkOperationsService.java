@@ -127,7 +127,7 @@ public class LinkOperationsService {
                         + "force '{}'",
                 sourceSwitch, sourcePort, destinationSwitch, destinationPort, force);
 
-        return transactionManager.doInTransaction(() -> {
+        List<Isl> removedIsls = transactionManager.doInTransaction(() -> {
             List<Isl> isls = new ArrayList<>();
 
             islRepository.findByEndpoints(sourceSwitch, sourcePort,
@@ -154,10 +154,10 @@ public class LinkOperationsService {
             }
 
             isls.forEach(islRepository::remove);
-            log.info("ISLs {} have been removed from the database", isls);
-
             return isls;
         });
+        log.info("ISLs {} have been removed from the database", removedIsls);
+        return removedIsls;
     }
 
     /**
