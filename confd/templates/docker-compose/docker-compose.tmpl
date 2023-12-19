@@ -245,7 +245,7 @@ services:
         aliases:
          - kafka.pendev
     environment:
-      KAFKA_HEAP_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XshowSettings:all"
+      KAFKA_HEAP_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseContainerSupport -XshowSettings:all"
     mem_limit: ${KAFKA_MEM_LIMIT:-2g}
 
 
@@ -683,7 +683,7 @@ services:
       context: docker
       dockerfile: server42/Dockerfile
     image: kilda/server42
-    command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -jar server42-control.jar
+    command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseContainerSupport -jar server42-control.jar
     ports:
       - "9002:9002"
     depends_on:
@@ -705,7 +705,7 @@ services:
       context: docker
       dockerfile: server42/Dockerfile
     image: kilda/server42
-    command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -jar server42-stats.jar
+    command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseContainerSupport -jar server42-stats.jar
     ports:
       - "9003:9003"
     depends_on:
@@ -727,7 +727,7 @@ services:
       context: docker
       dockerfile: server42/Dockerfile
     image: kilda/server42
-    command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -jar server42-control-server-stub.jar
+    command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseContainerSupport -jar server42-control-server-stub.jar
     ports:
       - "5555:5555"
       - "5556:5556"
@@ -780,7 +780,7 @@ services:
       context: docker
       dockerfile: server42/Dockerfile
     image: kilda/server42
-    command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -jar server42-control-storm-stub.jar
+    command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseContainerSupport -jar server42-control-storm-stub.jar
     ports:
       - "9001:9001"
     depends_on:

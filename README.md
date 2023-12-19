@@ -265,7 +265,7 @@ FROM ${base_image}
 
 ADD BUILD/northbound/libs/northbound.jar /app/
 WORKDIR /app
-CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", "-agentlib:jdwp=transport=dt_socket,address=50505,suspend=n,server=y", "-jar", "northbound.jar"]
+CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseContainerSupport", "-agentlib:jdwp=transport=dt_socket,address=50505,suspend=n,server=y", "-jar", "northbound.jar"]
 ```
 
 Since debugging is done over the network, that also means we need to expose that port in Docker. For that purpose we need
