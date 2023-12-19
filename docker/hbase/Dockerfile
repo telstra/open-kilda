@@ -16,16 +16,23 @@
 ARG base_image=kilda/base-ubuntu
 FROM ${base_image}
 
-ENV PACKAGE hbase-2.5.6
+ENV PACKAGE hbase-1.2.4
 
 WORKDIR /tmp/
 
-RUN    wget -q https://archive.apache.org/dist/hbase/2.5.6/$PACKAGE-bin.tar.gz \
-    && wget -q https://archive.apache.org/dist/hbase/2.5.6/$PACKAGE-bin.tar.gz.sha512 \
-    && sed 's/\ //g' $PACKAGE-bin.tar.gz.sha512 | tr '[:upper:]' '[:lower:]' | tr -d '\n' > $PACKAGE.tmp.sha512 \
-    && awk -F ":" '{print $2 "  " $1}' $PACKAGE.tmp.sha512 > $PACKAGE-bin.tar.gz.sha512 \
-    && sha512sum -c $PACKAGE-bin.tar.gz.sha512 \
-    && tar -xzf $PACKAGE-bin.tar.gz --directory /opt/ \
+# Install OpenJDK 11
+RUN apt-get update && apt-get install -y openjdk-8-jdk
+
+# Set JAVA_HOME to OpenJDK 11
+ENV JAVA_VER 8
+ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
+
+RUN    wget -q https://archive.apache.org/dist/hbase/1.2.4/${PACKAGE}-bin.tar.gz \
+    && wget -q https://archive.apache.org/dist/hbase/1.2.4/${PACKAGE}-bin.tar.gz.md5 \
+    && sed 's/\ //g' ${PACKAGE}-bin.tar.gz.md5 > $PACKAGE.tmp.md5 \
+    && awk -F ":" '{print $2 " " $1}' $PACKAGE.tmp.md5 > ${PACKAGE}-bin.tar.gz.md5 \
+    && md5sum -c ${PACKAGE}-bin.tar.gz.md5 \
+    && tar -xzf ${PACKAGE}-bin.tar.gz --directory /opt/ \
     && ln -s /opt/$PACKAGE /opt/hbase \
     && rm -rfv /tmp/*
 
