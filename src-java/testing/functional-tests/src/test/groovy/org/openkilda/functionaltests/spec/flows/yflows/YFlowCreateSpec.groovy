@@ -64,7 +64,9 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         northboundV2.getYFlow(yFlow.YFlowId).YPoint
 
         and: "2 sub-flows are created, visible via regular 'dump flows' API"
-        northboundV2.getAllFlows()*.flowId.sort() == yFlow.subFlows*.flowId.sort()
+        def regularFlowIds = northboundV2.getAllFlows()*.flowId
+        yFlow.subFlows.first().flowId in regularFlowIds
+        yFlow.subFlows.last().flowId in regularFlowIds
 
         and: "History has relevant entries about y-flow creation"
         Wrappers.wait(FLOW_CRUD_TIMEOUT) { flowHelper.getLatestHistoryEntry(yFlow.YFlowId).payload.last().action == CREATE_SUCCESS_Y }

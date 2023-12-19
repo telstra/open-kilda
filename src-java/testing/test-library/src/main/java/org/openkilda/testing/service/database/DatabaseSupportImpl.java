@@ -221,6 +221,24 @@ public class DatabaseSupportImpl implements Database {
     }
 
     /**
+     * Set ISLs bandwidth to be equal to its speed (the default situation).
+     *
+     * @return true if at least 1 ISL was affected
+     */
+    @Override
+    public boolean resetIslsBandwidth(List<Isl> isls) {
+        return transactionManager.doInTransaction(() -> {
+            Collection<org.openkilda.model.Isl> dbIsls = getIsls(isls);
+            dbIsls.forEach(link -> {
+                link.setMaxBandwidth(link.getSpeed());
+                link.setAvailableBandwidth(link.getSpeed());
+                link.setDefaultMaxBandwidth(link.getSpeed());
+            });
+            return dbIsls.size() > 0;
+        });
+    }
+
+    /**
      * Remove all inactive switches.
      *
      * @return true if at least 1 switch was deleted

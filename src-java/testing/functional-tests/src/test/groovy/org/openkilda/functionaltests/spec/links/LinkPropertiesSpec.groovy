@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.error.link.LinkPropertiesNotUpdatedExpectedError
 
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -207,7 +209,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         !linkPropsAreDeleted && northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
-    @Tags(SMOKE)
+    @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "Newly discovered link gets cost and max bandwidth from link props"() {
         given: "An active ISL"
         def isl = topology.islsForActiveSwitches.first()

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.error.link.LinkBfdNotSetExpectedError
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -208,6 +210,7 @@ class BfdSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Deleting a failed BFD link also removes the BFD session from it"() {
         given: "An inactive a-switch link with BFD session"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow &&

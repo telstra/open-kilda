@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.model.stats.SwitchStats
 import org.openkilda.functionaltests.model.stats.SwitchStatsMetric
 import org.springframework.beans.factory.annotation.Autowired
@@ -27,7 +29,7 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
     @Autowired @Shared
     SwitchStats switchStats;
 
-    @Tags([TOPOLOGY_DEPENDENT, SMOKE])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE, ISL_RECOVER_ON_FAIL])
     def "Able to bring ISL-busy port down/up on an #isl.srcSwitch.ofVersion switch #isl.srcSwitch.dpId"() {
         when: "Bring port down on the switch"
         def portDownTime = new Date().getTime()

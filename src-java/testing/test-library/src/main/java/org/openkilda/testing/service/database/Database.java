@@ -46,6 +46,8 @@ public interface Database {
 
     boolean resetIslBandwidth(Isl isl);
 
+    boolean resetIslsBandwidth(List<Isl> isls);
+
     int getIslCost(Isl isl);
 
     boolean updateIslCost(Isl isl, int value);

@@ -69,6 +69,10 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Autowired @Shared
     FlowStats flowStats
 
+    def setupSpec() {
+        deleteAnyFlowsLeftoversIssue5480()
+    }
+
     @Tags([SMOKE, SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
     def "Able to CRUD a mirror endpoint on the src switch, mirror to the same switch diff port [#swPair.src.hwSwString, #mirrorDirection]#trafficDisclaimer"() {
         given: "A flow"
