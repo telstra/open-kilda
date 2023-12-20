@@ -21,7 +21,10 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get -q -o Acquire::CompressionTypes::Order=bz2 update \
     && apt-get install -yq --no-install-recommends \
         wget \
-        ca-certificates \
-    && wget https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.16.0-linux-amd64 -O /usr/local/bin/confd \
-    && chmod +x /usr/local/bin/confd \
-    && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
+        ca-certificates
+
+RUN wget https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.16.0-linux-amd64 -O /usr/local/bin/confd \
+    && chmod +x /usr/local/bin/confd
+
+RUN rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
+

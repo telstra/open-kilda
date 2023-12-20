@@ -37,19 +37,23 @@ RUN apt update \
         libtool-bin \
         gcc \
         build-essential \
-        automake \
-    && pip3 install setuptools==45.2.0 \
+        automake
+
+RUN pip3 install setuptools==45.2.0 \
     && pip3 install wheel==0.34.2 \
-    && pip3 install tox==3.14.4 \
-    && cd /root \
+    && pip3 install tox==3.14.4
+
+RUN cd /root \
     && wget https://github.com/kilda/ovs/archive/refs/tags/${OVS_VERSION}.tar.gz \
     && tar -xvf ${OVS_VERSION}.tar.gz \
     && cd ovs-${OVS_VERSION} \
     && ./boot.sh \
     && ./configure --prefix=/usr --localstatedir=/var --sysconfdir=/etc \
     && make \
-    && make install \
-    && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    && make install
+
+RUN rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 
 ADD merged-requirements.txt /
 RUN pip3 install -r merged-requirements.txt

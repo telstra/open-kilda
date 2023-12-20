@@ -47,8 +47,13 @@ RUN chmod 777 /app/* \
         openjdk-8-jdk \
         iptables \
         iproute2 \
-        rsync \
-    && pip3 install --upgrade pip \
-    && python3 -m pip install setuptools \
-    && echo "export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> ~/.bashrc \
-    && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
+        rsync
+
+RUN pip3 install --upgrade pip
+
+RUN python3 -m pip install setuptools
+
+RUN echo "export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> ~/.bashrc
+
+RUN rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
