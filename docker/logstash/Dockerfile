@@ -3,12 +3,15 @@ FROM ${base_image}
 
 COPY . /
 
-RUN \
-    export DEBIAN_FRONTEND=noninteractive && \
-    echo "deb http://archive.debian.org/debian stretch main" > /etc/apt/sources.list && \
-    apt -y update && \
-    apt -y install net-tools telnet netcat && \
-    rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN export DEBIAN_FRONTEND=noninteractive
+
+RUN echo "deb http://archive.debian.org/debian stretch main" > /etc/apt/sources.list
+
+RUN apt -y update && \
+    apt -y install net-tools telnet netcat
+
+RUN rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
 
 CMD ["-f", "/etc/logstash/conf.d/logstash.conf"]
 
