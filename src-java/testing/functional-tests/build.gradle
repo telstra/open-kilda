@@ -27,12 +27,13 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-slf4j-impl'
     implementation 'org.apache.logging.log4j:log4j-api'
     implementation 'org.apache.logging.log4j:log4j-core'
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.3'
 
     implementation 'org.hibernate.validator:hibernate-validator'
     implementation 'org.glassfish:javax.el'
 
-    implementation 'org.spockframework:spock-spring:2.1-M2-groovy-3.0'
-    implementation 'org.spockframework:spock-core:2.1-M2-groovy-3.0'
+    implementation 'org.spockframework:spock-spring:2.4-M1-groovy-3.0'
+    implementation 'org.spockframework:spock-core:2.4-M1-groovy-3.0'
     implementation('com.athaydes:spock-reports:2.1.1-groovy-3.0') { transitive = false }
     implementation 'net.jodah:failsafe'
     implementation 'org.hamcrest:hamcrest-all:1.3'
