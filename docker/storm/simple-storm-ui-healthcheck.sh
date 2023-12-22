@@ -5,7 +5,7 @@ set -eu${DEBUG:+x}
 set -o pipefail
 
 # Pre-check
-/usr/bin/jps | grep --silent core || exit 1
+/usr/bin/jps | grep --silent UIServer || exit 1
 
 
 CONFIG=${1:-/opt/apache-storm-2.5.0/conf/storm.yaml}
