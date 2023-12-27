@@ -15,10 +15,12 @@
 
 package org.openkilda.wfm.error;
 
+import lombok.Getter;
 import org.apache.storm.tuple.Tuple;
 
+@Getter
 public class MessageFormatException extends Exception {
-    private Tuple tuple;
+    private final Tuple tuple;
 
     public MessageFormatException(Tuple tuple, Throwable throwable) {
         super("Invalid input message/tuple", throwable);
@@ -26,11 +28,9 @@ public class MessageFormatException extends Exception {
         this.tuple = tuple;
     }
 
+    // TODO unused, consider to remove
     public MessageFormatException(String s, Throwable throwable) {
         super(s, throwable);
-    }
-
-    public Tuple getTuple() {
-        return tuple;
+        tuple = null;
     }
 }
