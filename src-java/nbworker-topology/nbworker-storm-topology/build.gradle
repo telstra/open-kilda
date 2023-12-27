@@ -28,8 +28,8 @@ dependencies {
     testImplementation project(path: ':kilda-persistence-api', configuration: 'testArtifacts')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
 
-    compileOnly('org.apache.storm:storm-core')
-    testImplementation('org.apache.storm:storm-core')
+    compileOnly('org.apache.storm:storm-core:2.6.0')
+    testImplementation('org.apache.storm:storm-core:2.6.0')
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine'
