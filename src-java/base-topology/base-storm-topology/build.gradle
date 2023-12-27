@@ -38,13 +38,13 @@ dependencies {
 
     api 'org.apache.storm:storm-kafka-client'
 
-    compileOnly 'org.apache.storm:storm-core'
-    testImplementation('org.apache.storm:storm-core') {
+    compileOnly 'org.apache.storm:storm-core:2.6.0'
+    testImplementation('org.apache.storm:storm-core:2.6.0') {
         exclude group: 'org.slf4j', module: 'log4j-over-slf4j'
     }
 
-    implementation jarjar.repackage('storm-flux-core-1.2.1-repackaged') {
-        from 'org.apache.storm:flux-core:1.2.1'
+    implementation jarjar.repackage('storm-flux-core-2.6.0-repackaged') {
+        from 'org.apache.storm:flux-core:2.6.0'
 
         // Remove bundled libraries as they conflict with other dependencies.
         classDelete 'org.apache.commons.**'
