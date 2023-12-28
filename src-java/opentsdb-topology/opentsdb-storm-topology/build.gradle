@@ -16,7 +16,6 @@ dependencies {
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
     implementation project(':blue-green')
 
-    runtimeOnly 'org.yaml:snakeyaml:1.30'
     runtimeOnly 'commons-logging:commons-logging:1.2'
     implementation('org.apache.storm:storm-opentsdb:1.2.1') {
         exclude group: 'org.apache.httpcomponents', module: 'httpclient'
@@ -24,8 +23,8 @@ dependencies {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
 
-    compileOnly('org.apache.storm:storm-core:2.6.0')
-    testImplementation('org.apache.storm:storm-core:2.6.0') {
+    compileOnly('org.apache.storm:storm-core:2.5.0')
+    testImplementation('org.apache.storm:storm-core:2.5.0') {
         exclude group: 'org.slf4j', module: 'log4j-over-slf4j'
     }
 

@@ -39,7 +39,7 @@ The build process described below requires to install a number of packages. It i
 The following packages are required for building OpenKilda controller:
  - Gradle 7.0+
  - Maven 3.3.9+
- - JDK 8+
+ - JDK 17+
  - Python 3.8+
  - Docker 19.03.3+
  - Docker Compose 1.20.0+
