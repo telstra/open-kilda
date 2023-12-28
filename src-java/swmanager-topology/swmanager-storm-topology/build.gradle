@@ -25,7 +25,10 @@ dependencies {
     implementation project(':rule-manager-api')
     implementation project(':rule-manager-implementation')
 
-    compileOnly('org.apache.storm:storm-core:2.5.0')
+    compileOnly('org.apache.storm:storm-core:2.5.0'){
+        exclude(group: 'org.yaml', module: 'snakeyaml')
+    }
+    implementation('org.yaml:snakeyaml:2.2')
     testImplementation('org.apache.storm:storm-core:2.5.0')
 
     implementation 'org.apache.commons:commons-lang3'

@@ -37,6 +37,6 @@ WORKDIR /opt/storm/
 
 COPY storm.yaml /opt/storm/conf/storm.yaml
 COPY log4j2 /opt/storm/log4j2
-COPY lib/*.jar /opt/storm/lib/
+# COPY lib/*.jar /opt/storm/lib/
 COPY simple-storm-supervisor-healthcheck.sh /simple-storm-supervisor-healthcheck.sh
 COPY simple-storm-ui-healthcheck.sh /simple-storm-ui-healthcheck.sh
