@@ -25,8 +25,8 @@ dependencies {
     implementation project(':rule-manager-api')
     implementation project(':rule-manager-implementation')
 
-    compileOnly('org.apache.storm:storm-core:2.6.0')
-    testImplementation('org.apache.storm:storm-core:2.6.0')
+    compileOnly('org.apache.storm:storm-core:2.5.0')
+    testImplementation('org.apache.storm:storm-core:2.5.0')
 
     implementation 'org.apache.commons:commons-lang3'
 

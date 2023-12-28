@@ -23,8 +23,8 @@ dependencies {
     aspect project(':kilda-persistence-api')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
 
-    compileOnly('org.apache.storm:storm-core:2.6.0')
-    testImplementation('org.apache.storm:storm-core:2.6.0')
+    compileOnly('org.apache.storm:storm-core:2.5.0')
+    testImplementation('org.apache.storm:storm-core:2.5.0')
 
     compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
 

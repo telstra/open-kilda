@@ -40,8 +40,8 @@ subprojects {
         implementation(platform('com.fasterxml.jackson:jackson-bom:2.10.0'))
 
         constraints {
-            compileOnly 'org.apache.storm:storm-core:2.6.0'
-            testImplementation 'org.apache.storm:storm-core:2.6.0'
+            compileOnly 'org.apache.storm:storm-core:2.5.0'
+            testImplementation 'org.apache.storm:storm-core:2.5.0'
             implementation 'org.apache.storm:storm-kafka-client:1.2.1'
 
             implementation 'org.squirrelframework:squirrel-foundation:0.3.10'
@@ -270,7 +270,7 @@ configure(subprojects.findAll { it.name.endsWith('-topology') }) {
     }
 
     dependencies {
-        localStormRuntime 'org.apache.storm:storm-core:2.6.0'
+        localStormRuntime 'org.apache.storm:storm-core:2.5.0'
     }
 
     sourceSets {

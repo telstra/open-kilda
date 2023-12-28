@@ -24,8 +24,8 @@ dependencies {
     implementation 'org.mapstruct:mapstruct-processor'
     annotationProcessor 'org.mapstruct:mapstruct-processor'
 
-    compileOnly('org.apache.storm:storm-core:2.6.0')
-    testImplementation('org.apache.storm:storm-core:2.6.0')
+    compileOnly('org.apache.storm:storm-core:2.5.0')
+    testImplementation('org.apache.storm:storm-core:2.5.0')
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine'

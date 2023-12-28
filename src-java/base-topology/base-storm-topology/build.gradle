@@ -38,8 +38,8 @@ dependencies {
 
     api 'org.apache.storm:storm-kafka-client'
 
-    compileOnly 'org.apache.storm:storm-core:2.6.0'
-    testImplementation('org.apache.storm:storm-core:2.6.0') {
+    compileOnly 'org.apache.storm:storm-core:2.5.0'
+    testImplementation('org.apache.storm:storm-core:2.5.0') {
         exclude group: 'org.slf4j', module: 'log4j-over-slf4j'
     }
 
