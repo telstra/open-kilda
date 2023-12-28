@@ -23,7 +23,10 @@ dependencies {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
 
-    compileOnly('org.apache.storm:storm-core:2.5.0')
+    compileOnly('org.apache.storm:storm-core:2.5.0'){
+        exclude(group: 'org.yaml', module: 'snakeyaml')
+    }
+    implementation('org.yaml:snakeyaml:2.2')
     testImplementation('org.apache.storm:storm-core:2.5.0') {
         exclude group: 'org.slf4j', module: 'log4j-over-slf4j'
     }

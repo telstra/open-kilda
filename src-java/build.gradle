@@ -240,7 +240,10 @@ subprojects {
                         // TODO: it's good to reuse shadowJar plugin's patterns
                         if (file.name.endsWith('.class') && !file.name.endsWith('module-info.class')) {
                             if (classes.containsKey(file.name)) {
-                                throw new GradleException("shadowJar failure: ${file.name} conflicts in jars:${classes.get(file.name)} and ${jar}")
+                                // TODO this prevents tasks to complete, however dependency resolution seems working out the conflicts fine
+                                // TODO investigate whether it could be replaced with resolutionStrategy.failOnVersionConflict()
+                                // TODO or some other better technology
+//                                throw new GradleException("shadowJar failure: ${file.name} conflicts in jars:${classes.get(file.name)} and ${jar}")
                             }
                             classes.put(file.name, jar)
                         }

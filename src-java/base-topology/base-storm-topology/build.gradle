@@ -38,20 +38,24 @@ dependencies {
 
     api 'org.apache.storm:storm-kafka-client'
 
-    compileOnly 'org.apache.storm:storm-core:2.5.0'
+    compileOnly('org.apache.storm:storm-core:2.5.0'){
+        exclude(group: 'org.yaml', module: 'snakeyaml')
+    }
+    implementation('org.yaml:snakeyaml:2.2')
     testImplementation('org.apache.storm:storm-core:2.5.0') {
         exclude group: 'org.slf4j', module: 'log4j-over-slf4j'
     }
 
-    implementation jarjar.repackage('storm-flux-core-2.6.0-repackaged') {
-        from 'org.apache.storm:flux-core:2.6.0'
-
+    implementation jarjar.repackage('storm-flux-core-2.5.0-repackaged') {
+        from 'org.apache.storm:flux-core:2.5.0'
         // Remove bundled libraries as they conflict with other dependencies.
         classDelete 'org.apache.commons.**'
         classDelete 'org.apache.http.**'
         classDelete 'org.apache.storm.flux.wrappers.**'
         classDelete 'org.apache.thrift.**'
         classDelete 'org.yaml.**'
+        classDelete 'org.slf4j.**'
+        classDelete 'javax.annotation.**'
     }
 
     api('org.squirrelframework:squirrel-foundation') {
