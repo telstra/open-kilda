@@ -132,7 +132,8 @@ subprojects {
             testImplementation 'io.netty:netty-all:4.1.91.Final'
             testRuntimeOnly 'javax.servlet:javax.servlet-api:3.1.0'
 
-            implementation 'javax.validation:validation-api:2.0.1.Final'
+            implementation 'jakarta.validation:jakarta.validation-api:2.0.2'
+
             implementation 'org.hibernate.validator:hibernate-validator:6.0.1.Final'
             implementation 'org.glassfish:javax.el:3.0.1-b12'
             testImplementation 'org.glassfish:javax.el:3.0.1-b12'

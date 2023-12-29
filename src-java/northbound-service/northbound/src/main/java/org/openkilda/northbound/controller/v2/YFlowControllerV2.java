@@ -32,8 +32,7 @@ import org.openkilda.northbound.service.YFlowService;
 import org.openkilda.northbound.validator.YFlowCreatePayloadValidator;
 import org.openkilda.northbound.validator.YFlowUpdatePayloadValidator;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -50,7 +49,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.concurrent.CompletableFuture;
 
-@Api
 @RestController
 @RequestMapping("/v2/y-flows")
 public class YFlowControllerV2 extends BaseController {
@@ -60,7 +58,7 @@ public class YFlowControllerV2 extends BaseController {
     /**
      * Creates a new Y-flow.
      */
-    @ApiOperation(value = "Creates a new Y-flow", response = YFlow.class)
+    @Operation(summary = "Creates a new Y-flow")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CompletableFuture<YFlow> createYFlow(@RequestBody YFlowCreatePayload flow) {
@@ -69,21 +67,21 @@ public class YFlowControllerV2 extends BaseController {
         return flowService.createYFlow(flow);
     }
 
-    @ApiOperation(value = "Dump all Y-flows", response = YFlowDump.class)
+    @Operation(summary = "Dump all Y-flows")
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<YFlowDump> dumpYFlows() {
         return flowService.dumpYFlows();
     }
 
-    @ApiOperation(value = "Gets Y-flow", response = YFlow.class)
+    @Operation(summary = "Gets Y-flow")
     @GetMapping(value = "/{y_flow_id:.+}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<YFlow> getYFlow(@PathVariable(name = "y_flow_id") String yFlowId) {
         return flowService.getYFlow(yFlowId);
     }
 
-    @ApiOperation(value = "Gets Y-flow paths", response = YFlowPaths.class)
+    @Operation(summary = "Gets Y-flow paths")
     @GetMapping(value = "/{y_flow_id:.+}/paths")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<YFlowPaths> getYFlowPaths(@PathVariable(name = "y_flow_id") String yFlowId) {
@@ -93,7 +91,7 @@ public class YFlowControllerV2 extends BaseController {
     /**
      * Update Y-flow.
      */
-    @ApiOperation(value = "Updates Y-flow", response = YFlow.class)
+    @Operation(summary = "Updates Y-flow")
     @PutMapping(value = "/{y_flow_id:.+}")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<YFlow> updateYFlow(@PathVariable(name = "y_flow_id") String yFlowId,
@@ -103,7 +101,7 @@ public class YFlowControllerV2 extends BaseController {
         return flowService.updateYFlow(yFlowId, flow);
     }
 
-    @ApiOperation(value = "Updates Y-flow partially", response = YFlow.class)
+    @Operation(summary = "Updates Y-flow partially")
     @PatchMapping(value = "/{y_flow_id:.+}")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<YFlow> patchYFlow(@PathVariable(name = "y_flow_id") String yFlowId,
@@ -111,44 +109,43 @@ public class YFlowControllerV2 extends BaseController {
         return flowService.patchYFlow(yFlowId, flowPatch);
     }
 
-    @ApiOperation(value = "Deletes Y-flow", response = YFlow.class)
+    @Operation(summary = "Deletes Y-flow")
     @DeleteMapping(value = "/{y_flow_id:.+}")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<YFlow> deleteYFlow(@PathVariable(name = "y_flow_id") String yFlowId) {
         return flowService.deleteYFlow(yFlowId);
     }
 
-    @ApiOperation(value = "Gets subordinate flows of Y-flow", response = SubFlowsDump.class)
+    @Operation(summary = "Gets subordinate flows of Y-flow")
     @GetMapping(value = "/{y_flow_id:.+}/flows")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<SubFlowsDump> getSubFlows(@PathVariable(name = "y_flow_id") String yFlowId) {
         return flowService.getSubFlows(yFlowId);
     }
 
-    @ApiOperation(value = "Reroute Y-flow", response = YFlowRerouteResult.class)
+    @Operation(summary = "Reroute Y-flow")
     @PostMapping(path = "/{y_flow_id:.+}/reroute")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<YFlowRerouteResult> rerouteYFlow(@PathVariable(name = "y_flow_id") String yFlowId) {
         return flowService.rerouteYFlow(yFlowId);
     }
 
-    @ApiOperation(value = "Validate Y-flow", response = YFlowValidationResult.class)
+    @Operation(summary = "Validate Y-flow")
     @PostMapping(path = "/{y_flow_id:.+}/validate")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<YFlowValidationResult> validateYFlow(@PathVariable("y_flow_id") String yFlowId) {
         return flowService.validateYFlow(yFlowId);
     }
 
-    @ApiOperation(value = "Synchronize Y-flow", response = YFlowSyncResult.class)
+    @Operation(summary = "Synchronize Y-flow")
     @PostMapping(path = "/{y_flow_id:.+}/sync")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<YFlowSyncResult> synchronizeYFlow(@PathVariable("y_flow_id") String yFlowId) {
         return flowService.synchronizeYFlow(yFlowId);
     }
 
-    @ApiOperation(
-            value = "Verify flow - using special network packet that is being routed in the same way as client traffic",
-            response = YFlowPingResult.class)
+    @Operation(summary =
+            "Verify flow - using special network packet that is being routed in the same way as client traffic")
     @PostMapping(path = "/{y_flow_id}/ping")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<YFlowPingResult> pingYFlow(
@@ -157,11 +154,10 @@ public class YFlowControllerV2 extends BaseController {
         return flowService.pingYFlow(yFlowId, payload);
     }
 
-    @ApiOperation(value = "Swap paths for y-flow with protected path", response = YFlow.class)
+    @Operation(summary = "Swap paths for y-flow with protected path")
     @PostMapping(path = "/{y_flow_id:.+}/swap")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<YFlow> swapYFlowPaths(@PathVariable("y_flow_id") String yFlowId) {
         return flowService.swapYFlowPaths(yFlowId);
     }
 }
-
