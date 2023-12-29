@@ -32,16 +32,17 @@ import org.openkilda.persistence.hibernate.entities.history.HibernateFlowEvent_;
 import org.openkilda.persistence.hibernate.utils.UniqueKeyUtil;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Root;
 
 public class HibernateHistoryFlowEventRepository
         extends HibernateGenericRepository<FlowEvent, FlowEventData, HibernateFlowEvent>
@@ -65,8 +66,8 @@ public class HibernateHistoryFlowEventRepository
             String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
         List<FlowEvent> results = getTransactionManager().doInTransaction(
                 () -> fetch(flowId, timeFrom, timeTo, maxCount).stream()
-                .map(FlowEvent::new)
-                .collect(Collectors.toList()));
+                        .map(FlowEvent::new)
+                        .collect(Collectors.toList()));
         Collections.reverse(results);
         return results;
     }
@@ -76,11 +77,11 @@ public class HibernateHistoryFlowEventRepository
             String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
         List<FlowStatusView> results = getTransactionManager().doInTransaction(
                 () -> fetch(flowId, timeFrom, timeTo, maxCount).stream()
-                .flatMap(entry -> entry.getActions().stream())
-                .map(this::extractStatusUpdates)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList()));
+                        .flatMap(entry -> entry.getActions().stream())
+                        .map(this::extractStatusUpdates)
+                        .filter(Optional::isPresent)
+                        .map(Optional::get)
+                        .collect(Collectors.toList()));
         Collections.reverse(results);
         return results;
     }

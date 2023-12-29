@@ -22,7 +22,7 @@ import org.openkilda.northbound.dto.v2.links.BfdProperties;
 import org.openkilda.northbound.dto.v2.links.BfdPropertiesPayload;
 import org.openkilda.northbound.service.LinkService;
 
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,7 +53,7 @@ public class LinkControllerV2 extends BaseLinkController {
     /**
      * Write/update/enable BFD properties for specific ISL.
      */
-    @ApiOperation(value = "Set/update BFD properties", response = BfdPropertiesPayload.class)
+    @Operation(summary = "Set/update BFD properties")
     @PutMapping(value = "/{src-switch}_{src-port}/{dst-switch}_{dst-port}/bfd")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<BfdPropertiesPayload> bfdPropertiesWrite(
@@ -71,7 +71,7 @@ public class LinkControllerV2 extends BaseLinkController {
     /**
      * Read BFD properties for specific ISL.
      */
-    @ApiOperation(value = "Read BFD properties", response = BfdPropertiesPayload.class)
+    @Operation(summary = "Read BFD properties")
     @GetMapping(value = "/{src-switch}_{src-port}/{dst-switch}_{dst-port}/bfd")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<BfdPropertiesPayload> bfdPropertiesRead(
@@ -87,7 +87,7 @@ public class LinkControllerV2 extends BaseLinkController {
     /**
      * Disable BFD for specific ISL.
      */
-    @ApiOperation(value = "Delete/disable BFD")
+    @Operation(summary = "Delete/disable BFD")
     @DeleteMapping(value = "/{src-switch}_{src-port}/{dst-switch}_{dst-port}/bfd")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public CompletableFuture<BfdPropertiesPayload> bfdPropertiesDelete(

@@ -21,9 +21,9 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -33,7 +33,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
 import org.usermanagement.model.Message;
 import org.usermanagement.model.Role;
 import org.usermanagement.model.UserInfo;
@@ -42,8 +41,6 @@ import org.usermanagement.service.UserService;
 
 import java.nio.file.AccessDeniedException;
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
 
 /**
  * The Class UserController.
@@ -63,7 +60,7 @@ public class UserController {
 
     @Autowired
     private ServerContext serverContext;
-    
+
     @Autowired
     private ActivityLogger activityLogger;
 
@@ -75,7 +72,7 @@ public class UserController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/role/{role_id}", method = RequestMethod.GET)
-    @Permissions(values = { IConstants.Permission.UM_ROLE_VIEW_USERS })
+    @Permissions(values = {IConstants.Permission.UM_ROLE_VIEW_USERS})
     public Role getUsersByRoleId(@PathVariable("role_id") final Long roleId) {
         return roleService.getUserByRoleId(roleId);
     }
@@ -88,7 +85,7 @@ public class UserController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.POST)
-    @Permissions(values = { IConstants.Permission.UM_USER_ADD })
+    @Permissions(values = {IConstants.Permission.UM_USER_ADD})
     public UserInfo createUser(@RequestBody final UserInfo userInfo) {
         return userService.createUser(userInfo);
     }
@@ -97,12 +94,12 @@ public class UserController {
      * Update user.
      *
      * @param userInfo the request
-     * @param userId the user id
+     * @param userId   the user id
      * @return the user info
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{user_id}", method = RequestMethod.PUT)
-    @Permissions(values = { IConstants.Permission.UM_USER_EDIT })
+    @Permissions(values = {IConstants.Permission.UM_USER_EDIT})
     public UserInfo updateUser(@RequestBody final UserInfo userInfo, @PathVariable("user_id") final Long userId) {
         userInfo.setUserId(userId);
         return userService.updateUser(userInfo, userId);
@@ -115,7 +112,7 @@ public class UserController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.GET)
-    @Permissions(values = { IConstants.Permission.MENU_USER_MANAGEMENT })
+    @Permissions(values = {IConstants.Permission.MENU_USER_MANAGEMENT})
     public List<UserInfo> getUsers() {
         return userService.getAllUsers();
     }
@@ -128,7 +125,7 @@ public class UserController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{user_id}", method = RequestMethod.GET)
-    @Permissions(values = { IConstants.Permission.MENU_USER_MANAGEMENT })
+    @Permissions(values = {IConstants.Permission.MENU_USER_MANAGEMENT})
     public UserInfo getUserById(@PathVariable("user_id") final Long userId) {
         UserInfo userInfo = userService.getUserById(userId);
         return userInfo;
@@ -141,7 +138,7 @@ public class UserController {
      */
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @RequestMapping(value = "/{user_id}", method = RequestMethod.DELETE)
-    @Permissions(values = { IConstants.Permission.UM_USER_DELETE })
+    @Permissions(values = {IConstants.Permission.UM_USER_DELETE})
     public void deleteUserById(@PathVariable("user_id") final Long userId) {
         userService.deleteUserById(userId);
     }
@@ -150,12 +147,12 @@ public class UserController {
      * Assign users by role id.
      *
      * @param roleId the role id
-     * @param role the request
+     * @param role   the request
      * @return the role
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/role/{role_id}", method = RequestMethod.PUT)
-    @Permissions(values = { IConstants.Permission.UM_ASSIGN_ROLE_TO_USERS })
+    @Permissions(values = {IConstants.Permission.UM_ASSIGN_ROLE_TO_USERS})
     public Role assignUsersByRoleId(@PathVariable("role_id") final Long roleId, @RequestBody final Role role) {
         return userService.assignUserByRoleId(roleId, role);
     }
@@ -164,7 +161,7 @@ public class UserController {
      * Change password.
      *
      * @param userInfo the request
-     * @param userId the user id
+     * @param userId   the user id
      * @return the reset password
      */
     @ResponseStatus(HttpStatus.OK)
@@ -182,7 +179,7 @@ public class UserController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/resetpassword/{id}", method = RequestMethod.GET)
-    @Permissions(values = { IConstants.Permission.UM_USER_RESET })
+    @Permissions(values = {IConstants.Permission.UM_USER_RESET})
     public Object resetPassword(@PathVariable("id") final Long userId) {
         userService.resetPassword(userId, false);
         return new Message("Password has been reset successfully");
@@ -196,7 +193,7 @@ public class UserController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/admin/resetpassword/{id}", method = RequestMethod.GET)
-    @Permissions(values = { IConstants.Permission.UM_USER_RESET_ADMIN })
+    @Permissions(values = {IConstants.Permission.UM_USER_RESET_ADMIN})
     public Object resetPasswordByAdmin(@PathVariable("id") final Long userId) {
         return userService.resetPassword(userId, true);
     }
@@ -209,7 +206,7 @@ public class UserController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/reset2fa/{user_id}", method = RequestMethod.PUT)
-    @Permissions(values = { IConstants.Permission.UM_USER_RESET2FA })
+    @Permissions(values = {IConstants.Permission.UM_USER_RESET2FA})
     public Message resetTwofa(@PathVariable("user_id") final Long userId) {
         LOGGER.info("Reset two fa. (userId: " + userId + ")");
         userService.reset2fa(userId);
@@ -249,7 +246,7 @@ public class UserController {
      * Validate otp.
      *
      * @param userInfo the user info
-     * @param request the request
+     * @param request  the request
      * @return true, if successful
      */
     @ResponseStatus(HttpStatus.OK)
@@ -258,7 +255,7 @@ public class UserController {
         LOGGER.info("Validate OTP. (userId: " + serverContext.getRequestContext().getUserId() + ")");
         return userService.validateOtp(serverContext.getRequestContext().getUserId(), userInfo.getCode());
     }
-    
+
     /**
      * Gets the logged in user info.
      *
@@ -270,7 +267,7 @@ public class UserController {
     public UserInfo getLoggedInUserInfo() throws AccessDeniedException {
         return userService.getLoggedInUserInfo();
     }
-    
+
     /**
      * Unlock user account.
      *
@@ -279,7 +276,7 @@ public class UserController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/unlock/account/{user_id}", method = RequestMethod.PUT)
-    @Permissions(values = { IConstants.Permission.UM_USER_ACCOUNT_UNLOCK })
+    @Permissions(values = {IConstants.Permission.UM_USER_ACCOUNT_UNLOCK})
     public Message unlockUserAccount(@PathVariable("user_id") final Long userId) {
         activityLogger.log(ActivityType.UNLOCK_USER_ACCOUNT, String.valueOf(userId));
         LOGGER.info("Reset user account. (userId: " + userId + ")");

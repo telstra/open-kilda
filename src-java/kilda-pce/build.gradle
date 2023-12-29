@@ -29,7 +29,7 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
 }
 
-
+compileJava.options.compilerArgs += '-Amapstruct.unmappedTargetPolicy=ERROR'
 
 test {
     useJUnitPlatform()

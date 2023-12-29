@@ -22,8 +22,10 @@ import org.openkilda.exception.TwoFaKeyNotSetException;
 import org.openkilda.security.CustomWebAuthenticationDetails;
 import org.openkilda.security.TwoFactorUtility;
 
-import org.apache.log4j.Logger;
-
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -43,27 +45,23 @@ import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
-
 /**
  * The Class LoginController : entertain requests of login module.
  *
  * @author Gaurav Chugh
- *
  */
 
 @Controller
 public class LoginController extends BaseController {
 
-    private static final Logger LOGGER = Logger.getLogger(LoginController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(LoginController.class);
 
     @Autowired
     private AuthenticationManager authenticationManager;
 
     @Autowired
     private UserService userService;
-    
+
     @Value("${application.name}")
     private String applicationName;
 
@@ -72,11 +70,11 @@ public class LoginController extends BaseController {
      *
      * @return the model and view
      */
-    @RequestMapping(value = { "/", "/login" })
+    @RequestMapping(value = {"/", "/login"})
     public ModelAndView login(final HttpServletRequest request) {
         return validateAndRedirect(request, IConstants.View.LOGIN);
     }
-    
+
     /**
      * Logout.
      *
@@ -93,14 +91,14 @@ public class LoginController extends BaseController {
      *
      * @param username the username
      * @param password the password
-     * @param request the request
+     * @param request  the request
      * @return the model and view
      */
-    
+
     @RequestMapping(value = "/authenticate", method = RequestMethod.POST)
     public ModelAndView authenticate(@RequestParam("username") String username,
-            @RequestParam("password") final String password, final HttpServletRequest request, 
-            RedirectAttributes redir) {
+                                     @RequestParam("password") final String password, final HttpServletRequest request,
+                                     RedirectAttributes redir) {
         ModelAndView modelAndView = new ModelAndView(IConstants.View.LOGIN);
         String error = null;
         username = username != null ? username.toLowerCase() : null;
@@ -166,10 +164,10 @@ public class LoginController extends BaseController {
             error = "Login Failed. Error: " + e.getMessage() + ".";
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         }
-        if (error != null) { 
+        if (error != null) {
             redir.addFlashAttribute("error", error);
         }
         return modelAndView;
     }
-    
+
 }

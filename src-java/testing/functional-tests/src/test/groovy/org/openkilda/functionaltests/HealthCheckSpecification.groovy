@@ -4,7 +4,6 @@ import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.openkilda.bluegreen.Signal.SHUTDOWN
 import static org.openkilda.bluegreen.Signal.START
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.bluegreen.Signal
 import org.openkilda.functionaltests.exception.IslNotFoundException
@@ -12,7 +11,7 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchFeature
 import org.openkilda.testing.model.topology.TopologyDefinition.Status
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import groovy.util.logging.Slf4j
 import org.apache.zookeeper.ZooKeeper
@@ -35,7 +34,7 @@ class HealthCheckSpecification extends HealthCheckBaseSpecification {
         }
         Closure allZookeeperNodesInExpectedState = {
             def zk = new ZooKeeper(zkConnectString, 5000, {})
-            def zkAssertions = new SoftAssertions()
+            def zkAssertions = new SoftAssertionsWrapper()
             def activeColor = getActiveNetworkColor(zk)
             def floodlightRegions = flHelper.getFls()*.region
             def pathsToCheck = ["connecteddevices", "floodlightrouter", "flowhs", "isllatency", "nbworker",
@@ -80,14 +79,14 @@ class HealthCheckSpecification extends HealthCheckBaseSpecification {
         }
 
         Closure linksBandwidthAndSpeedMatch = {
-            def speedBwAssertions = new SoftAssertions()
+            def speedBwAssertions = new SoftAssertionsWrapper()
             def links = northbound.getAllLinks()
             speedBwAssertions.checkSucceeds { assert links.findAll { it.availableBandwidth != it.speed }.empty }
             speedBwAssertions.verify()
         }
 
         Closure noExcessRulesMeters = {
-            def excessRulesAssertions = new SoftAssertions()
+            def excessRulesAssertions = new SoftAssertionsWrapper()
             withPool {
                 topology.activeSwitches.eachParallel { sw ->
                     def rules = northbound.validateSwitchRules(sw.dpId)
@@ -106,7 +105,7 @@ class HealthCheckSpecification extends HealthCheckBaseSpecification {
         }
 
         Closure allSwitchesConnectedToExpectedRegion = {
-            def regionVerifications = new SoftAssertions()
+            def regionVerifications = new SoftAssertionsWrapper()
             flHelper.fls.forEach { fl ->
                 def expectedSwitchIds = topology.activeSwitches.findAll { fl.region in it.regions }*.dpId
                 if (!expectedSwitchIds.empty) {

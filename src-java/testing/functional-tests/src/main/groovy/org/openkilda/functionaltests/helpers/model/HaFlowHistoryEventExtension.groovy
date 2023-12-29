@@ -9,7 +9,7 @@ import org.openkilda.testing.service.northbound.model.HaFlowActionType
 import org.openkilda.testing.service.northbound.model.HaFlowDumpPayload
 import org.openkilda.testing.service.northbound.model.HaFlowHistoryEntry
 import org.openkilda.testing.service.northbound.model.HaFlowHistoryPayload
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import groovy.transform.Canonical
 import groovy.transform.ToString
@@ -42,7 +42,7 @@ class HaFlowHistoryEventExtension {
     }
 
     void verifyBasicFields(String flowId, HaFlowActionType actionType) {
-        SoftAssertions assertions = new SoftAssertions()
+        SoftAssertionsWrapper assertions = new SoftAssertionsWrapper()
         assertions.checkSucceeds { assert haFlowId == flowId }
         assertions.checkSucceeds { assert taskId }
         assertions.checkSucceeds { assert timestampIso }
@@ -52,7 +52,7 @@ class HaFlowHistoryEventExtension {
     }
 
     void verifyDumpSection(DumpType dumpType, HaFlowExtended haFlow) {
-        SoftAssertions assertions = new SoftAssertions()
+        SoftAssertionsWrapper assertions = new SoftAssertionsWrapper()
         def dumps = dumps.findAll { it.dumpType == dumpType }
         assert dumps.size() == 1
         assertions.checkSucceeds { assert dumps[0].haFlowId == haFlow.haFlowId }

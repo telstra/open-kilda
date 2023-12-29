@@ -18,21 +18,21 @@ package org.usermanagement.dao.entity;
 import org.openkilda.entity.BaseEntity;
 import org.openkilda.saml.dao.entity.SamlConfigEntity;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
 
 @Entity
 @Table(name = "KILDA_ROLE")
@@ -56,21 +56,21 @@ public class RoleEntity extends BaseEntity implements Serializable {
     private StatusEntity statusEntity;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "ROLE_PERMISSION", joinColumns = { @JoinColumn(name = "role_id") }, inverseJoinColumns = {
-            @JoinColumn(name = "permission_id") })
+    @JoinTable(name = "ROLE_PERMISSION", joinColumns = {@JoinColumn(name = "role_id")}, inverseJoinColumns = {
+            @JoinColumn(name = "permission_id")})
     private Set<PermissionEntity> permissions = new HashSet<PermissionEntity>();
 
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "USER_ROLE", joinColumns = { @JoinColumn(name = "role_id") }, inverseJoinColumns = {
-            @JoinColumn(name = "user_id") })
+    @JoinTable(name = "USER_ROLE", joinColumns = {@JoinColumn(name = "role_id")}, inverseJoinColumns = {
+            @JoinColumn(name = "user_id")})
     private Set<UserEntity> users = new HashSet<UserEntity>();
-    
-    
+
+
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "SAML_USER_ROLES", joinColumns = { @JoinColumn(name = "role_id") }, inverseJoinColumns = {
-            @JoinColumn(name = "id") })
+    @JoinTable(name = "SAML_USER_ROLES", joinColumns = {@JoinColumn(name = "role_id")}, inverseJoinColumns = {
+            @JoinColumn(name = "id")})
     private Set<SamlConfigEntity> samlUsers = new HashSet<SamlConfigEntity>();
-    
+
     /* (non-Javadoc)
      * @see org.openkilda.entity.BaseEntity#id()
      */
@@ -99,8 +99,7 @@ public class RoleEntity extends BaseEntity implements Serializable {
     /**
      * Sets the role id.
      *
-     * @param roleId
-     *            the new role id
+     * @param roleId the new role id
      */
     public void setRoleId(final Long roleId) {
         this.roleId = roleId;
@@ -118,8 +117,7 @@ public class RoleEntity extends BaseEntity implements Serializable {
     /**
      * Sets the name.
      *
-     * @param name
-     *            the new name
+     * @param name the new name
      */
     public void setName(final String name) {
         this.name = name;
@@ -137,8 +135,7 @@ public class RoleEntity extends BaseEntity implements Serializable {
     /**
      * Sets the permissions.
      *
-     * @param permissions
-     *            the new permissions
+     * @param permissions the new permissions
      */
     public void setPermissions(final Set<PermissionEntity> permissions) {
         this.permissions = permissions;

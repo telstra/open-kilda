@@ -20,6 +20,13 @@ ENV PACKAGE hbase-1.2.4
 
 WORKDIR /tmp/
 
+# Install OpenJDK 11
+RUN apt-get update && apt-get install -y openjdk-8-jdk
+
+# Set JAVA_HOME to OpenJDK 11
+ENV JAVA_VER 8
+ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
+
 RUN    wget -q https://archive.apache.org/dist/hbase/1.2.4/${PACKAGE}-bin.tar.gz \
     && wget -q https://archive.apache.org/dist/hbase/1.2.4/${PACKAGE}-bin.tar.gz.md5 \
     && sed 's/\ //g' ${PACKAGE}-bin.tar.gz.md5 > $PACKAGE.tmp.md5 \

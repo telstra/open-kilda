@@ -43,7 +43,7 @@ public class WatchDog {
         return ! this.isAvailable();
     }
 
-    public boolean isAvailable() {
+    private boolean isAvailable() {
         long current = System.currentTimeMillis();
         if (current < lastReset) {
             lastReset = current;

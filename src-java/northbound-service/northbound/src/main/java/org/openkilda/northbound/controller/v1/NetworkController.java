@@ -23,8 +23,8 @@ import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.editor.CaseInsensitiveEnumEditor;
 import org.openkilda.northbound.service.NetworkService;
 
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
@@ -54,29 +54,32 @@ public class NetworkController extends BaseController {
      * Handles paths between two endpoints requests.
      */
     @GetMapping(path = "/paths")
-    @ApiOperation(value = "Get paths between two switches", response = PathsDto.class)
+    @Operation(description = "Get paths between two switches")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<PathsDto> getPaths(
             @RequestParam("src_switch") SwitchId srcSwitchId, @RequestParam("dst_switch") SwitchId dstSwitchId,
-            @ApiParam(value = "Valid values are: TRANSIT_VLAN, VXLAN. If encapsulation type is not specified, default "
+            @Parameter(description =
+                    "Valid values are: TRANSIT_VLAN, VXLAN. If encapsulation type is not specified, default "
                     + "value from OpenKilda Configuration will be used")
             @RequestParam(value = "encapsulation_type", required = false) FlowEncapsulationType encapsulationType,
-            @ApiParam(value = "Valid values are: COST, LATENCY, MAX_LATENCY, COST_AND_AVAILABLE_BANDWIDTH. If path "
+            @Parameter(description =
+                    "Valid values are: COST, LATENCY, MAX_LATENCY, COST_AND_AVAILABLE_BANDWIDTH. If path "
                     + "computation strategy is not specified, default value from OpenKilda Configuration will be used")
             @RequestParam(value = "path_computation_strategy", required = false)
                     PathComputationStrategy pathComputationStrategy,
-            @ApiParam(value = "Maximum latency of flow path in milliseconds. Required for MAX_LATENCY strategy. "
+            @Parameter(description = "Maximum latency of flow path in milliseconds. Required for MAX_LATENCY strategy. "
                     + "Other strategies will ignore this parameter. If max_latency is 0 LATENCY strategy will be used "
                     + "instead of MAX_LATENCY")
             @RequestParam(value = "max_latency", required = false) Long maxLatencyMs,
-            @ApiParam(value = "Second tier for flow path latency in milliseconds. If there is no path with required "
+            @Parameter(description =
+                    "Second tier for flow path latency in milliseconds. If there is no path with required "
                     + "max_latency, max_latency_tier2 with be used instead. Used only with MAX_LATENCY strategy. "
                     + "Other strategies will ignore this parameter.")
             @RequestParam(value = "max_latency_tier2", required = false) Long maxLatencyTier2Ms,
-            @ApiParam(value = "Maximum count of paths which will be calculated. "
+            @Parameter(description = "Maximum count of paths which will be calculated. "
                     + "If maximum path count is not specified, default value from OpenKilda Configuration will be used")
             @RequestParam(value = "max_path_count", required = false) Integer maxPathCount,
-            @ApiParam(value = "Calculate and show a protected path for each found paths")
+            @Parameter(description = "Calculate and show a protected path for each found paths")
             @RequestParam(value = "include_protected", required = false) Boolean includeProtectedPath) {
 
         Duration maxLatency = maxLatencyMs != null ? Duration.ofMillis(maxLatencyMs) : null;

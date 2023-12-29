@@ -5,6 +5,7 @@ plugins {
 
 compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
 compileJava.ajc.options.compilerArgs += '-verbose'
+compileJava.options.compilerArgs += '-Amapstruct.unmappedTargetPolicy=ERROR'
 
 description = 'Floodlight Router Storm Topology'
 dependencies {
@@ -23,8 +24,11 @@ dependencies {
     implementation 'org.mapstruct:mapstruct-processor'
     annotationProcessor 'org.mapstruct:mapstruct-processor'
 
-    compileOnly('org.apache.storm:storm-core')
-    testImplementation('org.apache.storm:storm-core')
+    compileOnly('org.apache.storm:storm-core:2.5.0'){
+        exclude(group: 'org.yaml', module: 'snakeyaml')
+    }
+    implementation('org.yaml:snakeyaml:2.2')
+    testImplementation('org.apache.storm:storm-core:2.5.0')
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine'
@@ -52,6 +56,7 @@ jar {
 shadowJar {
     classifier = ''
     mergeServiceFiles()
+    zip64 true
 }
 
 artifacts {

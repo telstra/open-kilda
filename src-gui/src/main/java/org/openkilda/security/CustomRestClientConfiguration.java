@@ -16,10 +16,12 @@
 package org.openkilda.security;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.ssl.SSLContextBuilder;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.io.HttpClientConnectionManager;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
+import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,14 +31,14 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 import javax.net.ssl.SSLContext;
 
 
 @Configuration
-public class CustomRestTemplateConfiguration {
-    private static final Logger LOGGER = LoggerFactory.getLogger(CustomRestTemplateConfiguration.class);
+public class CustomRestClientConfiguration {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CustomRestClientConfiguration.class);
 
     @Value("${victoria.trust.store}")
     private Resource victoriaTrustStore;
@@ -45,9 +47,9 @@ public class CustomRestTemplateConfiguration {
     private String trustStorePassword;
 
     @Bean
-    public RestTemplate restTemplate() {
+    public RestClient restClient() {
         try {
-            LOGGER.info("Configuring restTemplate with the trustStore:{}", victoriaTrustStore.getURL());
+            LOGGER.info("Configuring restClient with the trustStore:{}", victoriaTrustStore.getURL());
 
             if (!victoriaTrustStore.exists() || !victoriaTrustStore.isReadable()) {
                 LOGGER.error("Is resource exist? {}. Is resource readable? {}",
@@ -61,16 +63,21 @@ public class CustomRestTemplateConfiguration {
             LOGGER.debug("sslContext has been initialized");
             SSLConnectionSocketFactory sslConFactory = new SSLConnectionSocketFactory(sslContext);
             LOGGER.debug("sslConFactory has been initialized");
-            CloseableHttpClient httpClient = HttpClients.custom().setSSLSocketFactory(sslConFactory).build();
+            HttpClientConnectionManager connectionManager =
+                    PoolingHttpClientConnectionManagerBuilder.create().setSSLSocketFactory(sslConFactory).build();
+            LOGGER.debug("connectionManager has been initialized");
+            CloseableHttpClient httpClient = HttpClients.custom().setConnectionManager(connectionManager).build();
             LOGGER.debug("httpClient has been initialized");
             ClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
             LOGGER.debug("requestFactory has been initialized");
-            RestTemplate restTemplate = new RestTemplate(requestFactory);
-            LOGGER.info("restTemplate has been initialized");
-            return restTemplate;
+
+            RestClient restClient = RestClient.builder().requestFactory(requestFactory).build();
+
+            LOGGER.info("restClient has been initialized");
+            return restClient;
         } catch (Exception e) {
-            LOGGER.error("Failed to initialize RestTemplate with SSL context. Using a simple RestTemplate.", e);
-            return new RestTemplate();
+            LOGGER.error("Failed to initialize RestClient with SSL context. Using a simple RestClient.", e);
+            return RestClient.create();
         }
 
     }

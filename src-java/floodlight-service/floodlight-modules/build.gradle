@@ -4,6 +4,7 @@ plugins {
 
 compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
 compileJava.ajc.options.compilerArgs += '-verbose'
+compileJava.options.compilerArgs += '-Amapstruct.unmappedTargetPolicy=ERROR'
 
 description = 'Floodlight Service Modules'
 dependencies {

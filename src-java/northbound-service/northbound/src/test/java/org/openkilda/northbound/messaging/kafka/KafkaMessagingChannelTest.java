@@ -43,8 +43,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.SettableListenableFuture;
 
 import java.util.HashSet;
 import java.util.List;
@@ -270,15 +268,15 @@ public class KafkaMessagingChannelTest {
         }
 
         @Override
-        public ListenableFuture<SendResult<String, Message>> send(String topic, Message message) {
-            SettableListenableFuture<SendResult<String, Message>> future = new SettableListenableFuture<>();
+        public CompletableFuture<SendResult<String, Message>> send(String topic, Message message) {
+            CompletableFuture<SendResult<String, Message>> future = new CompletableFuture<>();
             ProducerRecord<String, Message> record = new ProducerRecord<>(topic, message);
 
             if (BROKEN_TOPIC.equals(topic)) {
                 // simulation of the inability to send the message.
-                future.setException(new RuntimeException("Server is unavailable"));
+                future.completeExceptionally(new RuntimeException("Server is unavailable"));
             } else {
-                future.set(new SendResult<>(record, null));
+                future.complete(new SendResult<>(record, null));
             }
             return future;
         }

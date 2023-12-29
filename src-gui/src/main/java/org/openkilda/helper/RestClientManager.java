@@ -31,7 +31,6 @@ import org.openkilda.utility.StringUtil;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpDelete;
@@ -66,7 +65,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
 import javax.net.ssl.SSLContext;
 
 /**
@@ -82,24 +80,24 @@ public class RestClientManager {
 
     @Autowired
     private ObjectMapper mapper;
-    
+
     @Autowired
     private ServerContext serverContext;
 
     /**
      * Invoke.
      *
-     * @param apiUrl the api url
-     * @param httpMethod the http method
-     * @param payload the payload
+     * @param apiUrl      the api url
+     * @param httpMethod  the http method
+     * @param payload     the payload
      * @param contentType the content type
-     * @param basicAuth the basic auth
+     * @param basicAuth   the basic auth
      * @return the http response
      */
     public HttpResponse invoke(final String apiUrl, final HttpMethod httpMethod, final String payload,
-            final String contentType, final String basicAuth) {
+                               final String contentType, final String basicAuth) {
         HttpResponse httpResponse = null;
-        try { 
+        try {
             RequestContext requestContext = serverContext.getRequestContext();
 
             HttpClient client = HttpClients.createDefault();
@@ -123,8 +121,8 @@ public class RestClientManager {
                 httpUriRequest = new HttpGet(apiUrl);
             }
 
-            if (!HttpMethod.POST.equals(httpMethod) && !HttpMethod.PUT.equals(httpMethod) 
-                    &&  !HttpMethod.PATCH.equals(httpMethod)  && !HttpMethod.DELETE.equals(httpMethod)) {
+            if (!HttpMethod.POST.equals(httpMethod) && !HttpMethod.PUT.equals(httpMethod)
+                    && !HttpMethod.PATCH.equals(httpMethod) && !HttpMethod.DELETE.equals(httpMethod)) {
                 // Setting Required Headers
                 if (!StringUtil.isNullOrEmpty(basicAuth)) {
                     LOGGER.debug("[invoke] Setting authorization in header as " + IAuthConstants.Header.AUTHORIZATION);
@@ -132,10 +130,10 @@ public class RestClientManager {
                     httpUriRequest.setHeader(IAuthConstants.Header.CORRELATION_ID, requestContext.getCorrelationId());
                 }
             }
-            if (HttpMethod.POST.equals(httpMethod) || HttpMethod.PUT.equals(httpMethod) 
-                     || HttpMethod.PATCH.equals(httpMethod)) {
+            if (HttpMethod.POST.equals(httpMethod) || HttpMethod.PUT.equals(httpMethod)
+                    || HttpMethod.PATCH.equals(httpMethod)) {
                 LOGGER.info("[invoke] Executing POST/ PUT request : httpEntityEnclosingRequest : "
-                         + httpEntityEnclosingRequest + " : payload : " + payload);
+                        + httpEntityEnclosingRequest + " : payload : " + payload);
                 // Setting POST/PUT related headers
                 httpEntityEnclosingRequest.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
@@ -151,13 +149,13 @@ public class RestClientManager {
                         + httpEntityEnclosingRequest + " : payload : " + payload);
                 // Setting DELETE related headers
                 httpEntityEnclosingRequest.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
-                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.EXTRA_AUTH, 
+                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.EXTRA_AUTH,
                         String.valueOf(System.currentTimeMillis()));
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.CORRELATION_ID,
                         requestContext.getCorrelationId());
                 // Setting request payload
-                
+
                 httpEntityEnclosingRequest.setEntity(new StringEntity(payload));
                 httpResponse = client.execute(httpEntityEnclosingRequest);
                 LOGGER.debug("[invoke] Call executed successfully");
@@ -173,13 +171,14 @@ public class RestClientManager {
         }
         return httpResponse;
     }
+
     /**
      * Invoke.
      *
      * @param apiRequestDto the api request dto
      * @return the http response
      */
-    
+
     public HttpResponse invoke(final ApiRequestDto apiRequestDto) {
         HttpResponse httpResponse = null;
 
@@ -276,12 +275,12 @@ public class RestClientManager {
         }
         return headersMap;
     }
-    
+
     /**
      * Gets the response list.
      *
-     * @param <T> the generic type
-     * @param response the response
+     * @param <T>           the generic type
+     * @param response      the response
      * @param responseClass the response class
      * @return the response list
      */
@@ -293,8 +292,8 @@ public class RestClientManager {
     /**
      * Gets the response.
      *
-     * @param <T> the generic type
-     * @param response the response
+     * @param <T>           the generic type
+     * @param response      the response
      * @param responseClass the response class
      * @return the response
      */
@@ -305,15 +304,15 @@ public class RestClientManager {
     /**
      * Gets the response.
      *
-     * @param <T> the generic type
-     * @param <E> the element type
-     * @param response the response
-     * @param responseClass the response class
+     * @param <T>            the generic type
+     * @param <E>            the element type
+     * @param response       the response
+     * @param responseClass  the response class
      * @param dependentClass the dependent class
      * @return the response
      */
     private <T, E> T getResponse(final HttpResponse response, final Class<T> responseClass,
-            final Class<E> dependentClass) {
+                                 final Class<E> dependentClass) {
         T obj = null;
         try {
             LOGGER.info("[getResponse]  : StatusCode " + response.getStatusLine().getStatusCode());

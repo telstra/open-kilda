@@ -30,8 +30,11 @@ dependencies {
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
     testImplementation project(':kilda-utils:stubs')
 
-    compileOnly('org.apache.storm:storm-core')
-    testImplementation('org.apache.storm:storm-core')
+    compileOnly('org.apache.storm:storm-core:2.5.0') {
+        exclude(group: 'org.yaml', module: 'snakeyaml')
+    }
+    implementation('org.yaml:snakeyaml:2.2')
+    testImplementation('org.apache.storm:storm-core:2.5.0')
 
     implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'
@@ -63,6 +66,7 @@ jar {
 shadowJar {
     classifier = ''
     mergeServiceFiles()
+    zip64 true
 }
 
 artifacts {

@@ -19,7 +19,7 @@ import org.openkilda.messaging.model.HealthCheck;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.service.HealthCheckService;
 
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,7 +54,7 @@ public class HealthCheckController extends BaseController {
      *
      * @return health-check model entity
      */
-    @ApiOperation(value = "Gets health-check status", response = HealthCheck.class)
+    @Operation(summary = "Gets health-check status")
     @GetMapping(value = "/health-check")
     public ResponseEntity<HealthCheck> getHealthCheck() {
         logger.debug("getHealthCheck");

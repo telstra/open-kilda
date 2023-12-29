@@ -65,7 +65,6 @@ import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
-import org.apache.storm.spout.SleepSpoutWaitStrategy;
 import org.apache.storm.thrift.TException;
 import org.apache.storm.topology.BoltDeclarer;
 import org.apache.storm.topology.IRichBolt;
@@ -161,7 +160,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         return Optional.empty();
     }
 
-    protected void setup() throws TException, NameCollisionException {
+    protected void setup() throws Exception {
         if (topologyConfig.getUseLocalCluster()) {
             setupLocal();
         } else {
@@ -177,17 +176,16 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         StormSubmitter.submitTopology(topologyName, config, createTopology());
     }
 
-    private void setupLocal() throws NameCollisionException {
+    private void setupLocal() throws Exception {
         Config config = makeStormConfig();
         config.setDebug(true);
 
-        LocalCluster cluster = new LocalCluster();
-        cluster.submitTopology(topologyName, config, createTopology());
+        try (LocalCluster cluster = new LocalCluster()) {
+            cluster.submitTopology(topologyName, config, createTopology());
 
-        logger.info("Start Topology: {} (local)", topologyName);
-        localExecutionMainLoop();
-
-        cluster.shutdown();
+            logger.info("Start Topology: {} (local)", topologyName);
+            localExecutionMainLoop();
+        }
     }
 
     protected static int handleLaunchException(Exception error) {
@@ -236,14 +234,8 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
         Config stormConfig = new Config();
 
         getTopologyWorkers().ifPresent(stormConfig::setNumWorkers);
-        if (topologyConfig.getDisruptorWaitTimeout() != null) {
-            stormConfig.put(Config.TOPOLOGY_DISRUPTOR_WAIT_TIMEOUT_MILLIS, topologyConfig.getDisruptorWaitTimeout());
-        }
-        if (topologyConfig.getDisruptorBatchTimeout() != null) {
-            stormConfig.put(Config.TOPOLOGY_DISRUPTOR_BATCH_TIMEOUT_MILLIS, topologyConfig.getDisruptorBatchTimeout());
-        }
+
         if (topologyConfig.getSpoutWaitSleepTime() != null) {
-            stormConfig.put(Config.TOPOLOGY_SPOUT_WAIT_STRATEGY, SleepSpoutWaitStrategy.class.getName());
             stormConfig.put(Config.TOPOLOGY_SLEEP_SPOUT_WAIT_STRATEGY_TIME_MS, topologyConfig.getSpoutWaitSleepTime());
         }
         if (topologyConfig.getUseLocalCluster()) {

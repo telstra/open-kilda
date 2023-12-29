@@ -17,21 +17,21 @@ package org.usermanagement.dao.entity;
 
 import org.openkilda.entity.BaseEntity;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
 
 @Entity
 @Table(name = "KILDA_PERMISSION")
@@ -60,10 +60,12 @@ public class PermissionEntity extends BaseEntity implements Serializable {
     @JoinColumn(name = "status_id", nullable = false)
     private StatusEntity statusEntity;
 
-    /** The roles. */
+    /**
+     * The roles.
+     */
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(name = "ROLE_PERMISSION", joinColumns = { @JoinColumn(name = "permission_id") }, inverseJoinColumns = {
-            @JoinColumn(name = "role_id") })
+    @JoinTable(name = "ROLE_PERMISSION", joinColumns = {@JoinColumn(name = "permission_id")}, inverseJoinColumns = {
+            @JoinColumn(name = "role_id")})
     private Set<RoleEntity> roles = new HashSet<RoleEntity>();
 
     /* (non-Javadoc)
@@ -73,7 +75,7 @@ public class PermissionEntity extends BaseEntity implements Serializable {
     public Long id() {
         return permissionId;
     }
-    
+
     public Long getPermissionId() {
         return permissionId;
     }

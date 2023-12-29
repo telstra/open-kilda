@@ -21,6 +21,7 @@ import org.openkilda.log.model.ActivityInfo;
 import org.openkilda.log.model.LogInfo;
 import org.openkilda.service.UserActivityLogService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -33,8 +34,6 @@ import org.springframework.web.servlet.ModelAndView;
 
 import java.util.List;
 
-import javax.servlet.http.HttpServletRequest;
-
 /**
  * The Class LogActivityController.
  */
@@ -43,10 +42,12 @@ import javax.servlet.http.HttpServletRequest;
 @RequestMapping(path = "/api/useractivity", produces = MediaType.APPLICATION_JSON_VALUE)
 public class LogActivityController extends BaseController {
 
-    /** The user activity log service. */
+    /**
+     * The user activity log service.
+     */
     @Autowired
     private UserActivityLogService userActivityLogService;
-    
+
     /**
      * UserManagement.
      *
@@ -54,7 +55,7 @@ public class LogActivityController extends BaseController {
      * @return the model and view
      */
     @RequestMapping
-    @Permissions(values = { IConstants.Permission.MENU_USER_ACTIVITY })
+    @Permissions(values = {IConstants.Permission.MENU_USER_ACTIVITY})
     public ModelAndView useractivity(final HttpServletRequest request) {
         return validateAndRedirect(request, IConstants.View.ACTIVITY_LOGS);
     }
@@ -62,19 +63,19 @@ public class LogActivityController extends BaseController {
     /**
      * Gets the logs.
      *
-     * @param userIds the user ids
+     * @param userIds    the user ids
      * @param activities the activities
-     * @param startTime the start time
-     * @param endTime the end time
+     * @param startTime  the start time
+     * @param endTime    the end time
      * @return the logs
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(path = "/log", method = RequestMethod.GET)
-    @Permissions(values = { IConstants.Permission.MENU_USER_ACTIVITY })
+    @Permissions(values = {IConstants.Permission.MENU_USER_ACTIVITY})
     public List<LogInfo> getLogs(final @RequestParam(name = "userId", required = false) List<Long> userIds,
-            final @RequestParam(name = "activity", required = false) List<String> activities,
-            final @RequestParam(name = "startTime", required = false) String startTime,
-            final @RequestParam(name = "endTime", required = false) String endTime) {
+                                 final @RequestParam(name = "activity", required = false) List<String> activities,
+                                 final @RequestParam(name = "startTime", required = false) String startTime,
+                                 final @RequestParam(name = "endTime", required = false) String endTime) {
         return userActivityLogService.getActivityLog(userIds, activities, startTime, endTime);
     }
 
@@ -85,7 +86,7 @@ public class LogActivityController extends BaseController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(path = "/info", method = RequestMethod.GET)
-    @Permissions(values = { IConstants.Permission.MENU_USER_ACTIVITY })
+    @Permissions(values = {IConstants.Permission.MENU_USER_ACTIVITY})
     public ActivityInfo getActivityInfo() {
         return userActivityLogService.getActivityInfo();
     }

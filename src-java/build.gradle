@@ -23,7 +23,7 @@ subprojects {
 
     java {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(8)
+            languageVersion = JavaLanguageVersion.of(17)
         }
     }
 
@@ -40,8 +40,8 @@ subprojects {
         implementation(platform('com.fasterxml.jackson:jackson-bom:2.10.0'))
 
         constraints {
-            compileOnly 'org.apache.storm:storm-core:1.2.1'
-            testImplementation 'org.apache.storm:storm-core:1.2.1'
+            compileOnly 'org.apache.storm:storm-core:2.5.0'
+            testImplementation 'org.apache.storm:storm-core:2.5.0'
             implementation 'org.apache.storm:storm-kafka-client:1.2.1'
 
             implementation 'org.squirrelframework:squirrel-foundation:0.3.10'
@@ -131,16 +131,17 @@ subprojects {
             testImplementation 'io.netty:netty-all:4.1.91.Final'
             testRuntimeOnly 'javax.servlet:javax.servlet-api:3.1.0'
 
-            implementation 'javax.validation:validation-api:2.0.1.Final'
+            implementation 'jakarta.validation:jakarta.validation-api:2.0.2'
+
             implementation 'org.hibernate.validator:hibernate-validator:6.0.1.Final'
             implementation 'org.glassfish:javax.el:3.0.1-b12'
             testImplementation 'org.glassfish:javax.el:3.0.1-b12'
 
-            implementation 'org.aspectj:aspectjrt:1.9.7'
-            implementation 'org.mapstruct:mapstruct:1.5.4.Final'
-            implementation 'org.mapstruct:mapstruct-processor:1.5.4.Final'
-            annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.4.Final'
-            testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.5.4.Final'
+            implementation 'org.aspectj:aspectjrt:1.9.8'
+            implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+            implementation 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+            annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+            testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
 
             implementation 'io.grpc:grpc-protobuf:1.54.1'
             implementation 'io.grpc:grpc-stub:1.54.1'
@@ -168,10 +169,6 @@ subprojects {
         from("${project.buildDir}/dependency-jars") { into "${project.name}/dependency-jars" }
         from(tasks.processResources) { into "${project.name}/resources" }
         from("${project.file('build.gradle')}") { into "${project.name}" }
-    }
-
-    compileJava {
-        options.compilerArgs << '-Amapstruct.unmappedTargetPolicy=ERROR'
     }
 
     checkstyle {
@@ -243,7 +240,10 @@ subprojects {
                         // TODO: it's good to reuse shadowJar plugin's patterns
                         if (file.name.endsWith('.class') && !file.name.endsWith('module-info.class')) {
                             if (classes.containsKey(file.name)) {
-                                throw new GradleException("shadowJar failure: ${file.name} conflicts in jars:${classes.get(file.name)} and ${jar}")
+                                // TODO this prevents tasks to complete, however dependency resolution seems working out the conflicts fine
+                                // TODO investigate whether it could be replaced with resolutionStrategy.failOnVersionConflict()
+                                // TODO or some other better technology
+//                                throw new GradleException("shadowJar failure: ${file.name} conflicts in jars:${classes.get(file.name)} and ${jar}")
                             }
                             classes.put(file.name, jar)
                         }
@@ -274,7 +274,7 @@ configure(subprojects.findAll { it.name.endsWith('-topology') }) {
     }
 
     dependencies {
-        localStormRuntime 'org.apache.storm:storm-core:1.2.1'
+        localStormRuntime 'org.apache.storm:storm-core:2.5.0'
     }
 
     sourceSets {

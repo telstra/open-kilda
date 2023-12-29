@@ -22,8 +22,11 @@ dependencies {
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
     implementation project(':blue-green')
 
-    compileOnly('org.apache.storm:storm-core')
-    testImplementation('org.apache.storm:storm-core')
+    compileOnly('org.apache.storm:storm-core:2.5.0'){
+        exclude(group: 'org.yaml', module: 'snakeyaml')
+    }
+    implementation('org.yaml:snakeyaml:2.2')
+    testImplementation('org.apache.storm:storm-core:2.5.0')
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine'
@@ -52,6 +55,7 @@ jar {
 shadowJar {
     classifier = ''
     mergeServiceFiles()
+    zip64 true
 }
 
 artifacts {

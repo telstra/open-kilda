@@ -22,13 +22,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.SecurityFilterChain;
 
 /**
  * Spring security configuration.
@@ -36,7 +38,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @Configuration
 @EnableWebSecurity
 @PropertySource("classpath:northbound.properties")
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
+public class SecurityConfig {
     /**
      * Default role for admin user.
      */
@@ -72,11 +74,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Autowired
     private NorthboundBasicAuthenticationEntryPoint authenticationEntryPoint;
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+    @Bean
+    public InMemoryUserDetailsManager userDetailsService() {
         // get username from environment variable, otherwise use default
         String username = System.getenv(envUsername);
         if (username == null || username.isEmpty()) {
@@ -87,19 +86,22 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         if (password == null || password.isEmpty()) {
             password = defaultPassword;
         }
-        auth.inMemoryAuthentication().withUser(username).password(password).roles(DEFAULT_ROLE);
+        UserDetails user = User.withDefaultPasswordEncoder()
+                .username(username)
+                .password(password)
+                .roles(DEFAULT_ROLE)
+                .build();
+        return new InMemoryUserDetailsManager(user);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
+    @Bean
+    protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf().disable()
-                .authorizeRequests().antMatchers("/v1/health-check").permitAll().and()
-                .authorizeRequests().anyRequest().fullyAuthenticated().and()
+                .authorizeHttpRequests().requestMatchers("/v1/health-check").permitAll().and()
+                .authorizeHttpRequests().anyRequest().fullyAuthenticated().and()
                 .httpBasic().authenticationEntryPoint(authenticationEntryPoint).and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+        return http.build();
     }
 
     @Bean

@@ -17,6 +17,8 @@ package org.usermanagement.service;
 
 import org.openkilda.utility.StringUtil;
 
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,8 +30,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
 
 /**
  * Service Layer of sending emails.

@@ -21,7 +21,7 @@ dependencies {
     }
 
     // Conflicts with storm local run over IDE.
-    api ('org.apache.zookeeper:zookeeper:3.4.0') {
+    api ('org.apache.zookeeper:zookeeper:3.8.1') {
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'
         exclude group: 'log4j', module: 'log4j'
     }

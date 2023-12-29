@@ -139,24 +139,17 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
             RULES, METERS, GROUPS, LOGICAL_PORTS);
     public static final Set<ValidationFilter> VALID_EXCLUDE_FILTERS = Sets.newHashSet(FLOW_INFO);
 
+    private final MessagingChannel messagingChannel;
 
-    @Autowired
-    private MessagingChannel messagingChannel;
+    private final SwitchMapper switchMapper;
 
-    @Autowired
-    private SwitchMapper switchMapper;
+    private final LagPortMapper lagPortMapper;
 
-    @Autowired
-    private LagPortMapper lagPortMapper;
+    private final ConnectedDeviceMapper connectedDeviceMapper;
 
-    @Autowired
-    private ConnectedDeviceMapper connectedDeviceMapper;
+    private final PortPropertiesMapper portPropertiesMapper;
 
-    @Autowired
-    private PortPropertiesMapper portPropertiesMapper;
-
-    @Autowired
-    private FlowMapper flowMapper;
+    private final FlowMapper flowMapper;
 
     @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
     private String floodlightTopic;
@@ -171,9 +164,16 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     private String switchManagerTopic;
 
     @Autowired
-    public SwitchServiceImpl(MessagingChannel messagingChannel) {
+    public SwitchServiceImpl(MessagingChannel messagingChannel, SwitchMapper switchMapper,
+                             LagPortMapper lagPortMapper, ConnectedDeviceMapper connectedDeviceMapper,
+                             PortPropertiesMapper portPropertiesMapper, FlowMapper flowMapper) {
         super(messagingChannel);
         this.messagingChannel = messagingChannel;
+        this.switchMapper = switchMapper;
+        this.lagPortMapper = lagPortMapper;
+        this.connectedDeviceMapper = connectedDeviceMapper;
+        this.portPropertiesMapper = portPropertiesMapper;
+        this.flowMapper = flowMapper;
     }
 
     /**
@@ -531,10 +531,10 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId);
 
         return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
-                            .thenApply(response -> GetFlowsPerPortForSwitchResponse.unite(
-                                    response.stream().map(GetFlowsPerPortForSwitchResponse.class::cast)
-                                            .collect(Collectors.toList())))
-                            .thenApply(switchMapper::toSwitchFlowsPerPortResponseV2Api);
+                .thenApply(response -> GetFlowsPerPortForSwitchResponse.unite(
+                        response.stream().map(GetFlowsPerPortForSwitchResponse.class::cast)
+                                .collect(Collectors.toList())))
+                .thenApply(switchMapper::toSwitchFlowsPerPortResponseV2Api);
     }
 
 

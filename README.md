@@ -35,7 +35,7 @@ The build process described below requires to install a number of packages. It i
 The following packages are required for building OpenKilda controller:
  - Gradle 7.0+
  - Maven 3.3.9+
- - JDK 8+
+ - JDK 17+
  - Python 3.8+
  - Docker 19.03.3+
  - Docker Compose 1.20.0+
@@ -60,7 +60,7 @@ Install required packages:
 ```shell
 sudo apt update && sudo apt-get install -y \
   maven \
-  openjdk-8-jdk \
+  openjdk-17-jdk \
   python \
   python3.8 \
   python3-pip \
@@ -100,7 +100,7 @@ The following commands will install necessary dependencies on Ubuntu 20.04:
 sudo apt update && sudo apt install -y \
   maven \
   make \
-  openjdk-8-jdk \
+  openjdk-17-jdk \
   openvswitch-switch \
   python3-pip \
   tox \
@@ -261,7 +261,7 @@ FROM ${base_image}
 
 ADD BUILD/northbound/libs/northbound.jar /app/
 WORKDIR /app
-CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", "-agentlib:jdwp=transport=dt_socket,address=50505,suspend=n,server=y", "-jar", "northbound.jar"]
+CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseContainerSupport", "-agentlib:jdwp=transport=dt_socket,address=50505,suspend=n,server=y", "-jar", "northbound.jar"]
 ```
 
 Since debugging is done over the network, that also means we need to expose that port in Docker. For that purpose we need

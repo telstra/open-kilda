@@ -20,10 +20,10 @@ import org.openkilda.constants.Status;
 import org.openkilda.controller.BaseController;
 import org.openkilda.saml.model.SamlConfig;
 
-import org.apache.log4j.Logger;
-
+import jakarta.servlet.http.HttpServletRequest;
 import org.opensaml.saml2.core.NameID;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -41,23 +41,21 @@ import org.usermanagement.util.MessageUtils;
 
 import java.util.Set;
 
-import javax.servlet.http.HttpServletRequest;
-
 @Controller
 @RequestMapping(value = "/saml")
 public class SamlController extends BaseController {
 
-    private static final Logger LOGGER = Logger.getLogger(SamlController.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SamlController.class);
 
     @Autowired
     private UserService userService;
-    
+
     @Autowired
     private RoleService roleService;
-    
+
     @Autowired
     private MessageUtils messageUtil;
-    
+
     /**
      * Saml Authenticate.
      *
@@ -66,7 +64,7 @@ public class SamlController extends BaseController {
      */
     @RequestMapping(value = "/authenticate")
     public ModelAndView samlAuthenticate(final HttpServletRequest request, RedirectAttributes redir) {
-        
+
         ModelAndView modelAndView = null;
         String error = null;
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -97,7 +95,7 @@ public class SamlController extends BaseController {
                     userService.populateUserInfo(userInfo1, username);
                     userService.updateLoginDetail(username);
                     modelAndView = new ModelAndView(IConstants.View.REDIRECT_HOME);
-                }  else {
+                } else {
                     error = messageUtil.getAttributeUserDoesNotExist();
                     LOGGER.warn("User is not logged in, redirected to login page. Requested view name: ");
                     request.getSession(false);
@@ -108,7 +106,7 @@ public class SamlController extends BaseController {
             error = messageUtil.getAttributeAuthenticationFailure();
             LOGGER.warn("User is not logged in, redirected to login page. Requested view name: ");
             modelAndView = new ModelAndView(IConstants.View.LOGIN);
-        } 
+        }
         if (error != null) {
             redir.addFlashAttribute("error", error);
         }

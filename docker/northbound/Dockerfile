@@ -18,4 +18,4 @@ FROM ${base_image}
 
 ADD BUILD/northbound/libs/northbound.jar /app/
 WORKDIR /app
-CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", "-jar", "northbound.jar"]
+CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseContainerSupport", "-jar", "northbound.jar"]
