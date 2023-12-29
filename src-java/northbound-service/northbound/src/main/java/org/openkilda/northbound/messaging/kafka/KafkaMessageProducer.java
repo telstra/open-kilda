@@ -29,7 +29,8 @@ import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
-import org.springframework.util.concurrent.ListenableFuture;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Kafka message producer.
@@ -54,19 +55,18 @@ public class KafkaMessageProducer implements MessageProducer {
      * {@inheritDoc}
      */
     @Override
-    public ListenableFuture<SendResult<String, Message>> send(final String topic, final Message message) {
-        ListenableFuture<SendResult<String, Message>> future =
+    public CompletableFuture<SendResult<String, Message>> send(final String topic, final Message message) {
+        CompletableFuture<SendResult<String, Message>> future =
                 kafkaTemplate.send(topic, message.getCorrelationId(), message);
-        future.addCallback(
-                success -> {
-                    healthCheckService.updateKafkaStatus(HEALTH_CHECK_OPERATIONAL_STATUS);
-                    logger.debug("Message sent: topic={}, message={}", topic, message);
-                },
-                error -> {
-                    healthCheckService.updateKafkaStatus(HEALTH_CHECK_NON_OPERATIONAL_STATUS);
-                    logger.error("Unable to send message: topic={}, message={}", topic, message, error);
-                }
-        );
+        future.whenComplete((success, error) -> {
+            if (error == null) {
+                healthCheckService.updateKafkaStatus(HEALTH_CHECK_OPERATIONAL_STATUS);
+                logger.debug("Message sent: topic={}, message={}", topic, message);
+            } else {
+                healthCheckService.updateKafkaStatus(HEALTH_CHECK_NON_OPERATIONAL_STATUS);
+                logger.error("Unable to send message: topic={}, message={}", topic, message, error);
+            }
+        });
 
         return future;
     }

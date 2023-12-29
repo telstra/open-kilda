@@ -34,9 +34,9 @@ import org.openkilda.northbound.service.HaFlowService;
 import org.openkilda.northbound.utils.flowhistory.FlowHistoryHelper;
 import org.openkilda.northbound.utils.flowhistory.FlowHistoryRangeConstraints;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -57,7 +57,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-@Api(tags = {DRAFT_API_TAG})
+@Tag(name = DRAFT_API_TAG)
 @RestController
 @RequestMapping("/v2/ha-flows")
 public class HaFlowControllerV2 extends BaseController {
@@ -68,35 +68,35 @@ public class HaFlowControllerV2 extends BaseController {
         this.flowService = flowService;
     }
 
-    @ApiOperation(value = "Creates a new HA-flow", response = HaFlow.class)
+    @Operation(summary = "Creates a new HA-flow")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CompletableFuture<HaFlow> createHaFlow(@Valid @RequestBody HaFlowCreatePayload flow) {
         return flowService.createHaFlow(flow);
     }
 
-    @ApiOperation(value = "Dump all HA-flows", response = HaFlowDump.class)
+    @Operation(summary = "Dump all HA-flows")
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<HaFlowDump> dumpHaFlows() {
         return flowService.dumpHaFlows();
     }
 
-    @ApiOperation(value = "Gets HA-flow", response = HaFlow.class)
+    @Operation(summary = "Gets HA-flow")
     @GetMapping(value = "/{ha_flow_id:.+}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<HaFlow> getHaFlow(@PathVariable(name = "ha_flow_id") String haFlowId) {
         return flowService.getHaFlow(haFlowId);
     }
 
-    @ApiOperation(value = "Gets HA-flow paths", response = HaFlowPaths.class)
+    @Operation(summary = "Gets HA-flow paths")
     @GetMapping(value = "/{ha_flow_id:.+}/paths")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<HaFlowPaths> getHaFlowPaths(@PathVariable(name = "ha_flow_id") String haFlowId) {
         return flowService.getHaFlowPaths(haFlowId);
     }
 
-    @ApiOperation(value = "Updates HA-flow", response = HaFlow.class)
+    @Operation(summary = "Updates HA-flow")
     @PutMapping(value = "/{ha_flow_id:.+}")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<HaFlow> updateHaFlow(@PathVariable(name = "ha_flow_id") String haFlowId,
@@ -104,7 +104,7 @@ public class HaFlowControllerV2 extends BaseController {
         return flowService.updateHaFlow(haFlowId, flow);
     }
 
-    @ApiOperation(value = "Updates HA-flow partially", response = HaFlow.class)
+    @Operation(summary = "Updates HA-flow partially")
     @PatchMapping(value = "/{ha_flow_id:.+}")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<HaFlow> patchHaFlow(@PathVariable(name = "ha_flow_id") String haFlowId,
@@ -112,37 +112,36 @@ public class HaFlowControllerV2 extends BaseController {
         return flowService.patchHaFlow(haFlowId, flowPatch);
     }
 
-    @ApiOperation(value = "Deletes HA-flow", response = HaFlow.class)
+    @Operation(summary = "Deletes HA-flow")
     @DeleteMapping(value = "/{ha_flow_id:.+}")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<HaFlow> deleteHaFlow(@PathVariable(name = "ha_flow_id") String haFlowId) {
         return flowService.deleteHaFlow(haFlowId);
     }
 
-    @ApiOperation(value = "Reroute HA-flow", response = HaFlowRerouteResult.class)
+    @Operation(summary = "Reroute HA-flow")
     @PostMapping(path = "/{ha_flow_id:.+}/reroute")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<HaFlowRerouteResult> rerouteHaFlow(@PathVariable(name = "ha_flow_id") String haFlowId) {
         return flowService.rerouteHaFlow(haFlowId);
     }
 
-    @ApiOperation(value = "Validate HA-flow", response = HaFlowValidationResult.class)
+    @Operation(summary = "Validate HA-flow")
     @PostMapping(path = "/{ha_flow_id:.+}/validate")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<HaFlowValidationResult> validateHaFlow(@PathVariable("ha_flow_id") String haFlowId) {
         return flowService.validateHaFlow(haFlowId);
     }
 
-    @ApiOperation(value = "Synchronize HA-flow", response = HaFlowSyncResult.class)
+    @Operation(summary = "Synchronize HA-flow")
     @PostMapping(path = "/{ha_flow_id:.+}/sync")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<HaFlowSyncResult> synchronizeHaFlow(@PathVariable("ha_flow_id") String haFlowId) {
         return flowService.synchronizeHaFlow(haFlowId);
     }
 
-    @ApiOperation(
-            value = "Verify flow - using special network packet that is being routed in the same way as client traffic",
-            response = HaFlowPingResult.class)
+    @Operation(summary =
+            "Verify flow - using special network packet that is being routed in the same way as client traffic")
     @PostMapping(path = "/{ha_flow_id}/ping")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<HaFlowPingResult> pingHaFlow(
@@ -151,7 +150,7 @@ public class HaFlowControllerV2 extends BaseController {
         return flowService.pingHaFlow(haFlowId, payload);
     }
 
-    @ApiOperation(value = "Swap paths for HA-flow with protected path", response = HaFlow.class)
+    @Operation(summary = "Swap paths for HA-flow with protected path")
     @PostMapping(path = "/{ha_flow_id:.+}/swap")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public CompletableFuture<HaFlow> swapHaFlowPaths(@PathVariable("ha_flow_id") String haFlowId) {
@@ -162,15 +161,16 @@ public class HaFlowControllerV2 extends BaseController {
      * Gets flow history.
      */
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    @ApiOperation(value = "Gets history for HA-flow", response = HaFlowHistoryEntry.class, responseContainer = "List")
+    @Operation(summary = "Gets history for HA-flow")
     @GetMapping(path = "/{ha-flow_id}/history")
     public CompletableFuture<ResponseEntity<List<HaFlowHistoryEntry>>> getHistory(
             @PathVariable("ha-flow_id") String haFlowId,
-            @ApiParam(value = "Linux epoch time in seconds or milliseconds. Default: 0 (1 January 1970 00:00:00).")
+            @Parameter(description =
+                    "Linux epoch time in seconds or milliseconds. Default: 0 (1 January 1970 00:00:00).")
             @RequestParam(value = "timeFrom", required = false) Optional<Long> optionalTimeFrom,
-            @ApiParam(value = "Linux epoch time in seconds or milliseconds. Default: now.")
+            @Parameter(description = "Linux epoch time in seconds or milliseconds. Default: now.")
             @RequestParam(value = "timeTo", required = false) Optional<Long> optionalTimeTo,
-            @ApiParam(value = "Return at most N latest records. "
+            @Parameter(description = "Return at most N latest records. "
                     + "Default: if `timeFrom` or/and `timeTo` parameters are presented default value of "
                     + "`maxCount` is infinite (all records in time interval will be returned). "
                     + "Otherwise default value of `maxCount` will be equal to 100. In This case response will contain "

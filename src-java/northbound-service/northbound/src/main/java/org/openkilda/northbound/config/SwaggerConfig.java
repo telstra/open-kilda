@@ -15,39 +15,26 @@
 
 package org.openkilda.northbound.config;
 
-import static org.openkilda.messaging.Utils.CORRELATION_ID;
-
-import org.openkilda.model.SwitchId;
-
+import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import springfox.documentation.builders.ApiInfoBuilder;
-import springfox.documentation.builders.ParameterBuilder;
-import springfox.documentation.builders.RequestHandlerSelectors;
-import springfox.documentation.schema.ModelRef;
-import springfox.documentation.service.Tag;
-import springfox.documentation.spi.DocumentationType;
-import springfox.documentation.spring.web.plugins.Docket;
-import springfox.documentation.swagger2.annotations.EnableSwagger2;
-
-import java.util.Collections;
 
 @Configuration
-@EnableSwagger2
 public class SwaggerConfig {
     public static final String DRAFT_API_TAG = "DRAFT";
 
-    private final ParameterBuilder correlationIdParameter = new ParameterBuilder()
-                .name(CORRELATION_ID)
-                .description("Request's unique identifier")
-                .parameterType("header")
-                .modelRef(new ModelRef("string"));
+    //    private final ParameterBuilder correlationIdParameter = new ParameterBuilder()
+    //                .name(CORRELATION_ID)
+    //                .description("Request's unique identifier")
+    //                .parameterType("header")
+    //                .modelRef(new ModelRef("string"));
 
     /**
      * Swagger configuration for API version 1.
      *
      * @return {@link Docket} instance
      */
+    /* TODO transform this into swagger 3 format
     @Bean
     public Docket apiV1() {
         return new Docket(DocumentationType.SWAGGER_2)
@@ -64,12 +51,22 @@ public class SwaggerConfig {
                 .apis(RequestHandlerSelectors.basePackage("org.openkilda.northbound.controller.v1"))
                 .build();
     }
+    */
+
+    @Bean
+    public GroupedOpenApi apiV1() {
+        return GroupedOpenApi.builder()
+                .group("API v1")
+                .pathsToMatch("/api/v1/**")
+                .build();
+    }
 
     /**
      * Swagger configuration for API version 2.
      *
      * @return {@link Docket} instance
      */
+    /*
     @Bean
     public Docket apiV2() {
         return new Docket(DocumentationType.SWAGGER_2)
@@ -85,5 +82,14 @@ public class SwaggerConfig {
                 .apis(RequestHandlerSelectors.basePackage("org.openkilda.northbound.controller.v2"))
                 .build()
                 .tags(new Tag(DRAFT_API_TAG, "This API is still under development and may be changed in the future"));
+     }
+     */
+
+    @Bean
+    public GroupedOpenApi apiV2() {
+        return GroupedOpenApi.builder()
+                .group("API v2")
+                .pathsToMatch("/api/v2/**")
+                .build();
     }
 }

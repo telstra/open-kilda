@@ -34,8 +34,8 @@ import org.openkilda.northbound.utils.flowhistory.FlowHistoryHelper;
 import org.openkilda.northbound.utils.flowhistory.FlowHistoryRangeConstraints;
 import org.openkilda.northbound.validator.FlowRequestV2Validator;
 
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -65,7 +65,7 @@ public class FlowControllerV2 extends BaseController {
     @Autowired
     private FlowService flowService;
 
-    @ApiOperation(value = "Creates new flow", response = FlowResponseV2.class)
+    @Operation(summary = "Creates new flow")
     @PostMapping
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponseV2> createFlow(@RequestBody FlowRequestV2 flow) {
@@ -73,7 +73,7 @@ public class FlowControllerV2 extends BaseController {
         return flowService.createFlow(flow);
     }
 
-    @ApiOperation(value = "Updates flow", response = FlowResponseV2.class)
+    @Operation(summary = "Updates flow")
     @PutMapping(value = "/{flow_id:.+}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponseV2> updateFlow(@PathVariable(name = "flow_id") String flowId,
@@ -88,14 +88,14 @@ public class FlowControllerV2 extends BaseController {
      * @param flowId id of flow to be rerouted.
      * @return the flow with updated path.
      */
-    @ApiOperation(value = "Reroute flow", response = FlowRerouteResponseV2.class)
+    @Operation(summary = "Reroute flow")
     @PostMapping(path = "/{flow_id}/reroute")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowRerouteResponseV2> rerouteFlow(@PathVariable("flow_id") String flowId) {
         return flowService.rerouteFlowV2(flowId);
     }
 
-    @ApiOperation(value = "Deletes flow", response = FlowResponseV2.class)
+    @Operation(summary = "Deletes flow")
     @DeleteMapping(value = "/{flow_id:.+}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponseV2> deleteFlow(@PathVariable(name = "flow_id") String flowId) {
@@ -108,7 +108,7 @@ public class FlowControllerV2 extends BaseController {
      * @param flowId flow id
      * @return flow
      */
-    @ApiOperation(value = "Gets flow", response = FlowResponseV2.class)
+    @Operation(summary = "Gets flow")
     @GetMapping(value = "/{flow_id:.+}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponseV2> getFlow(@PathVariable(name = "flow_id") String flowId) {
@@ -120,7 +120,7 @@ public class FlowControllerV2 extends BaseController {
      *
      * @return list of flow
      */
-    @ApiOperation(value = "Dumps all flows", response = FlowResponseV2.class, responseContainer = "List")
+    @Operation(summary = "Dumps all flows")
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<FlowResponseV2>> getFlows(
@@ -134,7 +134,7 @@ public class FlowControllerV2 extends BaseController {
      * @param flowId flow id
      * @return list of flow
      */
-    @ApiOperation(value = "Gets flow status", response = FlowIdStatusPayload.class)
+    @Operation(summary = "Gets flow status")
     @GetMapping(value = "/status/{flow_id:.+}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowIdStatusPayload> statusFlow(@PathVariable(name = "flow_id") String flowId) {
@@ -144,7 +144,7 @@ public class FlowControllerV2 extends BaseController {
     /**
      * Bulk update for flow.
      */
-    @ApiOperation(value = "Swap flow endpoints", response = SwapFlowEndpointPayload.class)
+    @Operation(summary = "Swap flow endpoints")
     @PostMapping("/swap-endpoint")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<SwapFlowEndpointPayload> swapFlowEndpoint(@RequestBody SwapFlowEndpointPayload payload) {
@@ -158,11 +158,11 @@ public class FlowControllerV2 extends BaseController {
      * @param flowId flow id
      * @return flow
      */
-    @ApiOperation(value = "Updates flow", response = FlowResponseV2.class)
+    @Operation(summary = "Updates flow")
     @PatchMapping(value = "/{flow_id:.+}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowResponseV2> patchFlow(@PathVariable(name = "flow_id") String flowId,
-                                                       @ApiParam(value = "To remove flow from a diverse group, "
+                                                       @Parameter(description = "To remove flow from a diverse group, "
                                                                + "need to pass the parameter \"diverse_flow_id\" "
                                                                + "equal to the empty string.")
                                                        @Valid @RequestBody FlowPatchV2 flowPatchDto) {
@@ -176,7 +176,7 @@ public class FlowControllerV2 extends BaseController {
      * @param switchId filter by switch id
      * @return list of flow loops
      */
-    @ApiOperation(value = "Get flow loops", response = FlowLoopResponse.class, responseContainer = "List")
+    @Operation(summary = "Get flow loops")
     @GetMapping(value = "/loops")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<FlowLoopResponse>> getFlowLoops(
@@ -192,7 +192,7 @@ public class FlowControllerV2 extends BaseController {
      * @param flowLoopPayload parameters for flow loop
      * @return created flow loop
      */
-    @ApiOperation(value = "Create flow loop", response = FlowLoopResponse.class)
+    @Operation(summary = "Create flow loop")
     @PostMapping(value = "/{flow_id}/loops")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowLoopResponse> createFlowLoop(@PathVariable(name = "flow_id") String flowId,
@@ -206,7 +206,7 @@ public class FlowControllerV2 extends BaseController {
      * @param flowId flow id
      * @return deleted flow loop
      */
-    @ApiOperation(value = "Delete flow loop", response = FlowLoopResponse.class)
+    @Operation(summary = "Delete flow loop")
     @DeleteMapping(value = "/{flow_id}/loops")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowLoopResponse> deleteFlowLoop(@PathVariable(name = "flow_id") String flowId) {
@@ -217,16 +217,16 @@ public class FlowControllerV2 extends BaseController {
      * Gets flow statuses from history.
      */
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    @ApiOperation(value = "Gets flow status timestamps for flow from history",
-            response = FlowHistoryStatusesResponse.class)
+    @Operation(summary = "Gets flow status timestamps for flow from history")
     @GetMapping(path = "/{flow_id}/history/statuses")
     public CompletableFuture<ResponseEntity<FlowHistoryStatusesResponse>> getFlowStatusTimestamps(
             @PathVariable("flow_id") String flowId,
-            @ApiParam(value = "Linux epoch time in seconds or milliseconds. Default: 0 (1 January 1970 00:00:00).")
+            @Parameter(description =
+                    "Linux epoch time in seconds or milliseconds. Default: 0 (1 January 1970 00:00:00).")
             @RequestParam(value = "timeFrom", required = false) Optional<Long> optionalTimeFrom,
-            @ApiParam(value = "Linux epoch time in seconds or milliseconds. Default: now.")
+            @Parameter(description = "Linux epoch time in seconds or milliseconds. Default: now.")
             @RequestParam(value = "timeTo", required = false) Optional<Long> optionalTimeTo,
-            @ApiParam(value = "Return at most N latest records. "
+            @Parameter(description = "Return at most N latest records. "
                     + "Default: if `timeFrom` or/and `timeTo` parameters are presented default value of "
                     + "`maxCount` is infinite (all records in time interval will be returned). "
                     + "Otherwise default value of `maxCount` will be equal to 100. In This case response will contain "
@@ -245,15 +245,16 @@ public class FlowControllerV2 extends BaseController {
      * Gets flow history.
      */
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    @ApiOperation(value = "Gets history for flow", response = FlowHistoryEntry.class, responseContainer = "List")
+    @Operation(summary = "Gets history for flow")
     @GetMapping(path = "/{flow_id}/history")
     public CompletableFuture<ResponseEntity<List<FlowHistoryEntry>>> getHistory(
             @PathVariable("flow_id") String flowId,
-            @ApiParam(value = "Linux epoch time in seconds or milliseconds. Default: 0 (1 January 1970 00:00:00).")
+            @Parameter(description =
+                    "Linux epoch time in seconds or milliseconds. Default: 0 (1 January 1970 00:00:00).")
             @RequestParam(value = "timeFrom", required = false) Optional<Long> optionalTimeFrom,
-            @ApiParam(value = "Linux epoch time in seconds or milliseconds. Default: now.")
+            @Parameter(description = "Linux epoch time in seconds or milliseconds. Default: now.")
             @RequestParam(value = "timeTo", required = false) Optional<Long> optionalTimeTo,
-            @ApiParam(value = "Return at most N latest records. "
+            @Parameter(description = "Return at most N latest records. "
                     + "Default: if `timeFrom` or/and `timeTo` parameters are presented default value of "
                     + "`maxCount` is infinite (all records in time interval will be returned). "
                     + "Otherwise default value of `maxCount` will be equal to 100. In This case response will contain "
@@ -265,7 +266,7 @@ public class FlowControllerV2 extends BaseController {
         return FlowHistoryHelper.getFlowHistoryEvents(flowService, flowId, constraints);
     }
 
-    @ApiOperation(value = "Creates a new flow mirror point", response = FlowMirrorPointResponseV2.class)
+    @Operation(summary = "Creates a new flow mirror point")
     @PostMapping(path = "/{flow_id}/mirror")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowMirrorPointResponseV2> createFlowMirrorPoint(
@@ -274,7 +275,7 @@ public class FlowControllerV2 extends BaseController {
         return flowService.createFlowMirrorPoint(flowId, mirrorPoint);
     }
 
-    @ApiOperation(value = "Deletes the flow mirror point", response = FlowMirrorPointResponseV2.class)
+    @Operation(summary = "Deletes the flow mirror point")
     @DeleteMapping(path = "/{flow_id}/mirror/{mirror_point_id}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowMirrorPointResponseV2> deleteFlowMirrorPoint(
@@ -283,7 +284,7 @@ public class FlowControllerV2 extends BaseController {
         return flowService.deleteFlowMirrorPoint(flowId, mirrorPointId);
     }
 
-    @ApiOperation(value = "Get list of flow mirror points", response = FlowMirrorPointsResponseV2.class)
+    @Operation(summary = "Get list of flow mirror points")
     @GetMapping(path = "/{flow_id}/mirror")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowMirrorPointsResponseV2> getFlowMirrorPoints(@PathVariable("flow_id") String flowId) {

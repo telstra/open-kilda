@@ -36,7 +36,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
-import org.springframework.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -97,11 +96,12 @@ public class KafkaMessagingChannel implements MessagingChannel {
         CompletableFuture<InfoData> future = new CompletableFuture<>();
         pendingRequests.put(message.getCorrelationId(), future);
 
-        ListenableFuture<SendResult<String, Message>> futureResult = messageProducer.send(topic, message);
-        futureResult.addCallback(
-                success -> { },
-                error -> future.completeExceptionally(new MessageNotSentException(error.getMessage()))
-        );
+        CompletableFuture<SendResult<String, Message>> futureResult = messageProducer.send(topic, message);
+        futureResult.whenComplete((success, error) -> {
+            if (error != null) {
+                future.completeExceptionally(new MessageNotSentException(error.getMessage()));
+            }
+        });
 
         return future.whenComplete((response, error) -> pendingRequests.remove(message.getCorrelationId()));
     }
@@ -117,11 +117,12 @@ public class KafkaMessagingChannel implements MessagingChannel {
         messagesChains.put(message.getCorrelationId(), new ArrayList<>());
         chunkedMessageIdsPerRequest.put(message.getCorrelationId(), new HashSet<>());
 
-        ListenableFuture<SendResult<String, Message>> futureResult = messageProducer.send(topic, message);
-        futureResult.addCallback(
-                sentResult -> { },
-                error -> future.completeExceptionally(new MessageNotSentException(error.getMessage()))
-        );
+        CompletableFuture<SendResult<String, Message>> futureResult = messageProducer.send(topic, message);
+        futureResult.whenComplete((sentResult, error) -> {
+            if (error != null) {
+                future.completeExceptionally(new MessageNotSentException(error.getMessage()));
+            }
+        });
 
         return future.whenComplete((response, error) -> {
             pendingChunkedRequests.remove(message.getCorrelationId());

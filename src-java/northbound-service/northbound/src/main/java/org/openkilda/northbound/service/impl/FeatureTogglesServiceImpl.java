@@ -39,7 +39,7 @@ public class FeatureTogglesServiceImpl implements FeatureTogglesService {
      * The kafka topic for the nb topology.
      */
     @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
-    private String nbworkerTopic;
+    private String nbworkerTopic = "kilda.topo.nb.storm";
 
     @Autowired
     private MessagingChannel messagingChannel;
