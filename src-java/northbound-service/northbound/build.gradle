@@ -1,5 +1,5 @@
 plugins {
-    id 'org.springframework.boot' version '2.2.13.RELEASE'
+    id("org.springframework.boot") version "2.7.18"
 }
 
 configurations {
@@ -37,7 +37,6 @@ dependencies {
     implementation('org.springframework.boot:spring-boot-starter-web')
     implementation('org.springframework.boot:spring-boot-starter')
     implementation 'org.springframework.boot:spring-boot-starter-log4j2'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.security:spring-security-config:6.0.2'
     implementation 'org.springframework.security:spring-security-web'
     implementation 'org.springframework.boot:spring-boot-starter-tomcat'
@@ -75,7 +74,7 @@ dependencies {
     implementation 'org.apache.commons:commons-collections4'
     implementation 'com.sabre.oss.conf4j:conf4j-spring-boot:1.0'
 
-    implementation 'javax.validation:validation-api'
+    implementation 'jakarta.validation:jakarta.validation-api'
 
     implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'
@@ -95,7 +94,7 @@ dependencies {
 }
 
 bootJar {
-    mainClassName = 'org.openkilda.northbound.Application'
+    mainClass = 'org.openkilda.northbound.Application'
     archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
 }
 
