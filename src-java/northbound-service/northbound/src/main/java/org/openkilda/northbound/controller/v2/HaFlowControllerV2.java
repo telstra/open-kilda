@@ -34,6 +34,7 @@ import org.openkilda.northbound.utils.flowhistory.FlowHistoryRangeConstraints;
 
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,7 +53,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import javax.validation.Valid;
 
 @RestController
 @RequestMapping("/v2/ha-flows")

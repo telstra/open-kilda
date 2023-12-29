@@ -34,6 +34,7 @@ import org.openkilda.northbound.validator.YFlowUpdatePayloadValidator;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -48,7 +49,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.concurrent.CompletableFuture;
-import javax.validation.Valid;
 
 @Api
 @RestController
