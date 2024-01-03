@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.error.flow.FlowEndpointsNotSwappedExpectedError
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
@@ -1029,11 +1031,10 @@ switches"() {
         database.resetCosts(topology.isls)
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/3770")
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Unable to swap endpoints for two flows when one of them is inactive"() {
         setup: "Create two flows with different source and the same destination switches"
-        List<SwitchPair> switchPairs = getSwitchPairs().all().neighbouring().getSwitchPairs().inject(null) { result, switchPair ->
+        def switchPairs = getSwitchPairs().all().neighbouring().getSwitchPairs().inject(null) { result, switchPair ->
             if (result) return result
             def halfDifferent = getHalfDifferentNeighboringSwitchPair(switchPair, "dst")
             if (halfDifferent) result = [switchPair, halfDifferent]
@@ -1078,35 +1079,26 @@ switches"() {
 
         then: "An error is received (500 code)"
         def exc = thrown(HttpServerErrorException)
-        exc.rawStatusCode == 500
-        def error = exc.responseBodyAsString.to(MessageError)
-        error.errorMessage == "Could not swap endpoints"
-        error.errorDescription.contains("Not enough bandwidth or no path found")
+        new FlowEndpointsNotSwappedExpectedError(~/Not enough bandwidth or no path found/).matches(exc)
 
         and: "All involved switches are valid"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            involvedSwIds.each { swId ->
-                verifyAll(northbound.validateSwitch(swId)) {
-                    rules.missing.empty
-                    rules.excess.empty
-                    rules.misconfigured.empty
-                    meters.missing.empty
-                    meters.excess.empty
-                    meters.misconfigured.empty
-                }
-            }
+            assert switchHelper.validate(involvedSwIds).isEmpty()
         }
         Boolean isTestCompleted = true
 
         cleanup: "Restore topology and delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
+        //https://github.com/telstra/open-kilda/issues/3770
+        switchHelper.synchronize(involvedSwIds)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
         if (!isTestCompleted) {
-            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
+            switchHelper.synchronize([flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId,
+                                      flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
+                    .unique())
         }
         database.resetCosts(topology.isls)
     }
@@ -1189,8 +1181,12 @@ switches"() {
 
     def "A protected flow with swapped endpoint allows traffic on main and protected paths"() {
         given: "Two protected flows with different source and destination switches"
-        def flow1SwitchPair = switchPairs.all().neighbouring().withAtLeastNTraffgensOnDestination(1).random()
-        def flow2SwitchPair = switchPairs.all().neighbouring()
+        def flow1SwitchPair = switchPairs.all(false)
+                .neighbouring()
+                .withAtLeastNTraffgensOnDestination(1)
+                .random()
+        def flow2SwitchPair = switchPairs.all(false)
+                .neighbouring()
                 .excludeSwitches([flow1SwitchPair.getSrc(), flow1SwitchPair.getDst()])
                 .withAtLeastNTraffgensOnSource(1)
                 .random()

@@ -55,6 +55,7 @@ class MetersSpec extends HealthCheckSpecification {
     static MIN_RATE_KBPS = 64
     static CENTEC_MIN_BURST = 1024 // Driven by the Centec specification
     static CENTEC_MAX_BURST = 32000 // Driven by the Centec specification
+    static final String NOT_OVS_REGEX = /^(?!.*\bOVS\b).*/
 
     @Value('${burst.coefficient}')
     double burstCoefficient
@@ -64,6 +65,7 @@ class MetersSpec extends HealthCheckSpecification {
     }
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Able to delete a meter from a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -102,6 +104,7 @@ class MetersSpec extends HealthCheckSpecification {
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Unable to delete a meter with invalid ID=#meterId on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -198,8 +201,8 @@ class MetersSpec extends HealthCheckSpecification {
                 assumeTrue(false, "Unable to find Noviflow Wb5164 switches in topology"))
     }
 
-    @Tags([TOPOLOGY_DEPENDENT])
-    @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /ignore_bandwidth=false/)
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Meters are created/deleted when creating/deleting a single-switch flow with ignore_bandwidth=#ignoreBandwidth \
 on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
@@ -263,6 +266,7 @@ on a #switchType switch"() {
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Meters are not created when creating a single-switch flow with maximum_bandwidth=0 on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -296,6 +300,7 @@ on a #switchType switch"() {
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Source/destination switches have meters only in flow ingress rule and intermediate switches don't have \
 meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
         def switchPair = switchPairs.all().nonNeighbouring()
@@ -366,6 +371,7 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
     }
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Meter burst size is correctly set on #data.switchType switches for #flowRate flow rate"() {
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible switch"
         def switches = data.switches
@@ -527,6 +533,7 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
     }
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "System allows to reset meter values to defaults without reinstalling rules for #data.description flow"() {
         given: "Switches combination (#data.description)"
         assumeTrue(data.switches.size() > 1, "Desired switch combination is not available in current topology")

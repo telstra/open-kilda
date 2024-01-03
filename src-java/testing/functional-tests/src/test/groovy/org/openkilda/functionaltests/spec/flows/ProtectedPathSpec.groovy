@@ -15,6 +15,7 @@ import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_S
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -1012,11 +1013,10 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         }
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2762")
     def "System reuses current protected path when can't find new non overlapping protected path while intentional\
  rerouting"() {
         given: "Two active neighboring switches with three diverse paths"
-        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(3).random()
+        def switchPair = switchPairs.all().neighbouring().withExactlyNNonOverlappingPaths(3).random()
 
         and: "A flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -1032,8 +1032,10 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
 
         when: "Make the current and protected path less preferable than alternatives"
         def alternativePaths = switchPair.paths.findAll { it != currentPath && it != currentProtectedPath }
-        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
-        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentProtectedPath) }
+        withPool {
+            alternativePaths.eachParallel { pathHelper.makePathMorePreferable(it, currentPath) }
+            alternativePaths.eachParallel { pathHelper.makePathMorePreferable(it, currentProtectedPath) }
+        }
 
         and: "Init intentional reroute"
         def rerouteResponse = northboundV2.rerouteFlow(flow.flowId)
@@ -1042,10 +1044,14 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         rerouteResponse.rerouted
 
         and: "Flow main path should be rerouted to a new path and ignore protected path"
-        def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.flowId)
-        def newCurrentPath = pathHelper.convert(flowPathInfoAfterRerouting)
-        newCurrentPath != currentPath
-        newCurrentPath != currentProtectedPath
+        def flowPathInfoAfterRerouting
+        def newCurrentPath
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            flowPathInfoAfterRerouting = northbound.getFlowPath(flow.flowId)
+            newCurrentPath = pathHelper.convert(flowPathInfoAfterRerouting)
+            newCurrentPath != currentPath
+            newCurrentPath != currentProtectedPath
+        }
 
         and: "Flow protected path shouldn't be rerouted due to lack of non overlapping path"
         pathHelper.convert(flowPathInfoAfterRerouting.protectedPath) == currentProtectedPath
@@ -1469,7 +1475,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
     def "System doesn't reroute main flow path when protected path is broken and new alt path is available\
 (altPath is more preferable than mainPath)"() {
         given: "Two active neighboring switches with three diverse paths at least"
-        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(3).random()
+        def switchPair = switchPairs.all().neighbouring().withExactlyNNonOverlappingPaths(3).random()
 
 
         and: "A flow with protected path"

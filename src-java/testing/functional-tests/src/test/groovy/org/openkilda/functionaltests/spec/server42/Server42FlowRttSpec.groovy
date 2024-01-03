@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.server42
 
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.helpers.model.SwitchPairs
 import org.openkilda.functionaltests.model.switches.Manufacturer
 
 import static groovyx.gpars.GParsPool.withPool
@@ -16,6 +18,7 @@ import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
 import static org.openkilda.functionaltests.model.stats.Origin.FLOW_MONITORING
 import static org.openkilda.functionaltests.model.stats.Origin.SERVER_42
 import static org.openkilda.functionaltests.model.switches.Manufacturer.WB5164
+import static org.openkilda.model.FlowEncapsulationType.VXLAN
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
@@ -32,9 +35,7 @@ import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchFeature
-import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
@@ -73,20 +74,22 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     Integer flowSlaCheckIntervalSeconds
 
     @Tags(TOPOLOGY_DEPENDENT)
-    def "Create a #data.flowDescription flow with server42 Rtt feature and check datapoints in tsdb"() {
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = /(NS|WB)/)
+    def "Create a #flowDescription flow with server42 Rtt feature and check datapoints in tsdb"() {
         given: "Two active switches, src has server42 connected"
-        def switchPair = data.switchPair
+        def switchPair = switchPairFilter(switchPairs.all().withBothSwitchesConnectedToServer42()).random()
 
         when: "Set server42FlowRtt toggle to true"
         def flowRttFeatureStartState = changeFlowRttToggle(true)
 
         and: "server42FlowRtt is enabled on src and dst switches"
         def server42Switch = switchPair.src
-        def initialSwitchRtt = [server42Switch, switchPair.dst].collectEntries { [it, changeFlowRttSwitch(it, true)] }
+        def initialSwitchRtt = [server42Switch, switchPair.dst]
+                .collectEntries { [it, changeFlowRttSwitch(it, true)] }
 
         and: "Create a flow"
         def flow = flowHelperV2.randomFlow(switchPair)
-        flow.tap(data.flowTap)
+        flow.tap(flowTap)
         flowHelperV2.addFlow(flow)
 
         then: "Check if stats for forward are available"
@@ -98,51 +101,30 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         revertToOrigin([flow], flowRttFeatureStartState, initialSwitchRtt)
 
         where:
-        data << [[
-                         flowDescription: "default flow",
-                         switchPair     : switchPairs.all().withBothSwitchesConnectedToServer42().random(),
-                         flowTap        : { FlowRequestV2 fl ->
-                             fl.source.vlanId = 0
-                             fl.destination.vlanId = 0
-                         }
-                 ],
-                 [
-                         flowDescription: "protected flow",
-                         switchPair     : switchPairs.all()
-                                 .withBothSwitchesConnectedToServer42()
-                                 .withAtLeastNNonOverlappingPaths(2)
-                                 .random(),
-                         flowTap        : { FlowRequestV2 fl -> fl.allocateProtectedPath = true }
-                 ],
-                 [
-                         flowDescription: "vxlan flow on NS switch",
-                         switchPair     : switchPairs.all()
-                                 .withBothSwitchesConnectedToServer42()
-                                 .withBothSwitchesVxLanEnabled()
-                                 .withSourceSwitchNotManufacturedBy(WB5164)
-                                 .random(),
-                         flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
-                 ],
-                 [
-                         flowDescription: "qinq flow",
-                         switchPair     : switchPairs.all().withBothSwitchesConnectedToServer42().random(),
-                         flowTap        : { FlowRequestV2 fl ->
-                             fl.source.vlanId = 10
-                             fl.source.innerVlanId = 100
-                             fl.destination.vlanId = 20
-                             fl.destination.innerVlanId = 200
-                         }
-                 ],
-                 [
-                         flowDescription: "vxlan flow on WB switch",
-                         switchPair     : switchPairs.all()
-                                 .withBothSwitchesConnectedToServer42()
-                                 .withBothSwitchesVxLanEnabled()
-                                 .withSourceSwitchManufacturedBy(WB5164)
-                                 .random(),
-                         flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
-                 ],
-        ]
+        flowDescription           | switchPairFilter                   | flowTap
+        "default flow"            | { SwitchPairs swPairs -> swPairs } | { FlowRequestV2 fl ->
+                                                                                            fl.source.vlanId = 0
+                                                                                            fl.destination.vlanId = 0
+                                                                         }
+        "protected flow"          | { SwitchPairs swPairs -> swPairs
+                                    .withAtLeastNNonOverlappingPaths(2)}| { FlowRequestV2 fl ->
+                                                                                    fl.allocateProtectedPath = true }
+        "vxlan flow on NS switch" | { SwitchPairs swPairs -> swPairs
+                                        .withBothSwitchesVxLanEnabled()
+                                        .withSourceSwitchNotManufacturedBy(WB5164)
+                                    }                                   | { FlowRequestV2 fl ->
+                                                                                        fl.encapsulationType = VXLAN }
+        "qinq flow"               | { SwitchPairs swPairs -> swPairs }  | { FlowRequestV2 fl ->
+                                                                                fl.source.vlanId = 10
+                                                                                fl.source.innerVlanId = 100
+                                                                                fl.destination.vlanId = 20
+                                                                                fl.destination.innerVlanId = 200
+                                                                          }
+        "vxlan flow on WB switch" | { SwitchPairs swPairs -> swPairs
+                                .withBothSwitchesVxLanEnabled()
+                                .withSourceSwitchManufacturedBy(WB5164)
+                                    }                                   | { FlowRequestV2 fl ->
+                                                                                        fl.encapsulationType = VXLAN }
     }
 
     def "Flow rtt stats are available in forward and reverse directions for new flows"() {
@@ -620,7 +602,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                                  .withBothSwitchesVxLanEnabled()
                                  .withSourceSwitchNotManufacturedBy(WB5164)
                                  .random(),
-                         flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
+                         flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = VXLAN }
                  ],
                  [
                          flowDescription: "qinq",

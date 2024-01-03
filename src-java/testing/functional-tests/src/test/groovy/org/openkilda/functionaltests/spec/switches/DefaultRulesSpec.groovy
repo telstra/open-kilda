@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -371,7 +372,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         ].combinations()
     }
 
-    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES, HARDWARE])
     def "Able to delete/install the server42 Flow RTT turning rule on a switch"() {
         setup: "Select a switch which support server42 turning rule"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST) } ?:

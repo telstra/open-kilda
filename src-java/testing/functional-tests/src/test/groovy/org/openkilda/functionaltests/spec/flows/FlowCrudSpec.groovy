@@ -1,63 +1,39 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-
+import groovy.util.logging.Slf4j
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithMissingPathExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotDeletedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithMissingPathExpectedError
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.model.PathComputationStrategy
-import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
-import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
-import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
-import org.openkilda.northbound.dto.v2.flows.FlowStatistics
-
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
-import static org.openkilda.messaging.info.event.IslChangeType.MOVED
-import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
-import static org.openkilda.messaging.payload.flow.FlowState.UP
-import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
-import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
+import org.openkilda.northbound.dto.v2.flows.FlowStatistics
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -66,6 +42,28 @@ import spock.lang.Shared
 import spock.lang.Unroll
 
 import javax.inject.Provider
+
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
+import static org.openkilda.messaging.payload.flow.FlowState.UP
+import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN
+import static org.openkilda.model.FlowEncapsulationType.VXLAN
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/crud")
@@ -879,37 +877,32 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
     def "System doesn't ignore encapsulationType when flow is created with ignoreBandwidth = true"() {
         given: "Two active switches"
-        def swPair = switchPairs.all().neighbouring().getSwitchPairs().find {
-            [it.src, it.dst].any { !switchHelper.isVxlanEnabled(it.dpId) }
-        } ?: assumeTrue(false, "Unable to find required switches in topology")
+        def swPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().random()
 
-        def srcProps = switchHelper.getCachedSwProps(swPair.src.dpId)
-        def dstProps = switchHelper.getCachedSwProps(swPair.dst.dpId)
-        def endpointName = "source"
+        def initialSrcProps = switchHelper.getCachedSwProps(swPair.src.dpId)
+        def initialSupportedEncapsulations = initialSrcProps.getSupportedTransitEncapsulation().collect()
+        switchHelper.updateSwitchProperties(swPair.getSrc(), initialSrcProps.tap {
+            it.supportedTransitEncapsulation = [TRANSIT_VLAN.toString()]})
 
-        def swWithoutVxlan = swPair.src
-        def encapsTypesWithoutVxlan = srcProps.supportedTransitEncapsulation.collect { it.toString().toUpperCase() }
-
-        if (srcProps.supportedTransitEncapsulation.contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())) {
-            swWithoutVxlan = swPair.dst
-            encapsTypesWithoutVxlan = dstProps.supportedTransitEncapsulation.collect { it.toString().toUpperCase() }
-            endpointName = "destination"
-        }
 
         when: "Create a flow with not supported encapsulation type on the switches"
         def flow = flowHelperV2.randomFlow(swPair)
         flow.ignoreBandwidth = true
         flow.maximumBandwidth = 0
-        flow.encapsulationType = FlowEncapsulationType.VXLAN
+        flow.encapsulationType = VXLAN
         flowHelperV2.addFlow(flow)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        new FlowNotCreatedExpectedError(~/Flow\'s $endpointName endpoint $swWithoutVxlan.dpId doesn\'t support \
-requested encapsulation type $FlowEncapsulationType.VXLAN. Choose one of the supported encapsulation \
+        new FlowNotCreatedExpectedError(~/Flow\'s source endpoint ${swPair.getSrc().getDpId()} doesn\'t support \
+requested encapsulation type $VXLAN. Choose one of the supported encapsulation \
 types .* or update switch properties and add needed encapsulation type./).matches(exc)
+
         cleanup:
         !exc && flowHelperV2.deleteFlow(flow.flowId)
+        initialSrcProps && switchHelper.updateSwitchProperties(swPair.getSrc(), initialSrcProps.tap {
+            it.supportedTransitEncapsulation = initialSupportedEncapsulations
+        })
     }
 
     def "Flow status accurately represents the actual state of the flow and flow rules"() {
