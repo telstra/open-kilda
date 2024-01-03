@@ -46,7 +46,7 @@ public class FlowHistoryRangeConstraints {
     public FlowHistoryRangeConstraints(Optional<Long> timeFromInput,
                                        Optional<Long> timeToInput,
                                        Optional<Integer> maxCountInput) {
-        if (timeFromInput.isPresent() && timeToInput.isPresent() && timeFromInput.get() > timeToInput.get()) {
+        if (isTimeFromAfterTimeTo(timeFromInput, timeToInput)) {
             throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
                     ErrorType.PARAMETERS_INVALID, format("Invalid 'timeFrom' and 'timeTo' arguments: %s and %s",
                     timeFromInput.get(), timeToInput.get()),
@@ -74,6 +74,10 @@ public class FlowHistoryRangeConstraints {
         contentRangeRequiredPredicate = size ->
                 (!maxCountInput.isPresent() && !timeFromInput.isPresent() && !timeToInput.isPresent()
                         && size > DEFAULT_MAX_HISTORY_RECORD_COUNT);
+    }
+
+    private boolean isTimeFromAfterTimeTo(Optional<Long> timeFromInput, Optional<Long> timeToInput) {
+        return timeFromInput.isPresent() && timeToInput.isPresent() && timeFromInput.get() > timeToInput.get();
     }
 
     public boolean isContentRangeRequired(int size) {
