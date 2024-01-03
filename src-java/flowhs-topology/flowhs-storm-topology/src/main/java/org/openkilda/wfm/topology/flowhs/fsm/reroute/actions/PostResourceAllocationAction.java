@@ -15,6 +15,8 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.reroute.actions;
 
+import static org.openkilda.wfm.topology.flowhs.fsm.reroute.FlowRerouteFsm.Event.REROUTE_IS_NOT_REQUIRED;
+
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.info.InfoMessage;
@@ -68,7 +70,16 @@ public class PostResourceAllocationAction extends
                 && stateMachine.getNewProtectedForwardPath() == null
                 && stateMachine.getNewProtectedReversePath() == null) {
             stateMachine.setOperationResultMessage(rerouteResponse);
-            stateMachine.fireRerouteIsSkipped("Reroute is unsuccessful. Couldn't find new path(s)");
+
+            if (stateMachine.getOriginalFlowStatus() == FlowStatus.UP) {
+                stateMachine.saveActionToHistory(
+                        "Rerouting is skipped because the flow is already in UP status and no new paths found");
+                stateMachine.setErrorReason("No errors. Rerouting is skipped.");
+                stateMachine.setNewFlowStatus(stateMachine.getOriginalFlowStatus());
+                stateMachine.fire(REROUTE_IS_NOT_REQUIRED);
+            } else {
+                stateMachine.fireErrorRerouteIsSkipped("Reroute is unsuccessful. Couldn't find new path(s)");
+            }
         } else {
             if (stateMachine.isEffectivelyDown()) {
                 log.warn("Flow {} is mentioned as effectively DOWN, so it will be forced to DOWN state if reroute fail",

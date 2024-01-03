@@ -34,6 +34,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.reroute.HaFlowRerouteFsm.State;
 import org.openkilda.wfm.topology.flowhs.model.CrossingPaths;
+import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
+import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -60,7 +62,17 @@ public class PostResourceAllocationAction extends
         HaFlowPath currentForwardPath = stateMachine.getOriginalHaFlow().getForwardPath();
 
         if (stateMachine.getNewPrimaryPathIds() == null && stateMachine.getNewProtectedPathIds() == null) {
-            stateMachine.fireError(Event.REROUTE_IS_SKIPPED, "Reroute is unsuccessful. Couldn't find new path(s)");
+            if (stateMachine.getOriginalFlowStatus() == FlowStatus.UP) {
+                FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
+                        .of(stateMachine.getCommandContext().getCorrelationId())
+                        .withAction(
+                            "Rerouting is skipped because the HA-flow is already in UP status and no new paths found"));
+                stateMachine.setNewHaFlowStatus(stateMachine.getOriginalFlowStatus());
+                stateMachine.setErrorReason("No errors. Rerouting is skipped");
+                stateMachine.fire(Event.REROUTE_IS_NOT_REQUIRED);
+            } else {
+                stateMachine.fireError(Event.REROUTE_IS_SKIPPED_ERROR, "Couldn't find new paths");
+            }
         } else {
             if (stateMachine.isEffectivelyDown()) {
                 log.warn("HA-flow {} is mentioned as effectively DOWN, so it will be forced to DOWN state if reroute "
