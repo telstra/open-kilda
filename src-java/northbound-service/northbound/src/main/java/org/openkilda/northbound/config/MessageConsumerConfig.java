@@ -77,7 +77,8 @@ public class MessageConsumerConfig {
     /**
      * Kafka group id.
      */
-    @Value("#{kafkaGroupConfig.getGroupId()}")
+    //@Value("#{kafkaGroupConfig.getGroupId()}")
+    @Value("${kafkaGroupConfig:northbound-consumer}")
     private String groupId;
 
     /**
