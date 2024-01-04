@@ -26,7 +26,6 @@ import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.CompletableFuture;
@@ -38,7 +37,7 @@ public class FeatureTogglesServiceImpl implements FeatureTogglesService {
     /**
      * The kafka topic for the nb topology.
      */
-    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
+    //@Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
     private String nbworkerTopic = "kilda.topo.nb.storm";
 
     @Autowired
