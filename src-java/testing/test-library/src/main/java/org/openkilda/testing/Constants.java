@@ -23,6 +23,7 @@ import java.util.UUID;
 public final class Constants {
     public static final Integer DEFAULT_COST = 700;
     public static final Integer WAIT_OFFSET = 15;
+    public static final Integer HEALTH_CHECK_TIME = 30;
     public static final Integer PROTECTED_PATH_INSTALLATION_TIME = 20;
     public static final Integer PATH_INSTALLATION_TIME = 15;
     public static final Integer FLOW_CRUD_TIMEOUT = 30;
