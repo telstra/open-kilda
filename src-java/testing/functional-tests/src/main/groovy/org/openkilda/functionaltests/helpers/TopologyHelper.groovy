@@ -42,49 +42,6 @@ class TopologyHelper {
     @Autowired
     PathHelper pathHelper
 
-    List<SwitchPair> getAllSwitchPairs(boolean includeReverse = true) {
-        return getSwitchPairs(includeReverse)
-    }
-
-    List<SwitchPair> getAllSingleSwitchPairs() {
-        return topology.activeSwitches.collect { SwitchPair.singleSwitchInstance(it) }
-    }
-
-    /**
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
-    List<SwitchPair> getAllNeighboringSwitchPairs() {
-        getSwitchPairs().findAll {
-            it.paths.min { it.size() }?.size() == 2
-        }
-    }
-
-    /**
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
-    List<SwitchPair> getAllNotNeighboringSwitchPairs() {
-        getSwitchPairs().findAll {
-            it.paths.min { it.size() }?.size() > 2
-        }
-    }
-
-    def traffgenEnabled = { SwitchPair swPair ->
-        def tgSwitches = topology.activeTraffGens*.switchConnected
-        swPair.src in tgSwitches && swPair.dst in tgSwitches
-    }
-
-    /**
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
-    List<SwitchPair> getSwitchPairs(boolean includeReverse = false) {
-        //get deep copy
-        def result = getSwitchPairsCached().collect()
-        return includeReverse ? result.collectMany { [it, it.reversed] } : result
-    }
-
     List<SwitchTriplet> getSwitchTriplets(boolean includeReverse = false, boolean includeSingleSwitch = false) {
         //get deep copy
         def mapper = new ObjectMapper()
@@ -231,19 +188,7 @@ class TopologyHelper {
         }.findAll().unique()
     }
 
-    @Memoized
-    private List<SwitchPair> getSwitchPairsCached() {
-        return [topology.activeSwitches, topology.activeSwitches].combinations()
-                .findAll { src, dst -> src != dst } //non-single-switch
-                .unique { it.sort() } //no reversed versions of same flows
-                .collect { Switch src, Switch dst ->
-                    new SwitchPair(src: src,
-                            dst: dst,
-                            paths: getDbPathsCached(src.dpId, dst.dpId),
-                            northboundService: northbound,
-                            topologyDefinition: topology)
-                }
-    }
+
 
     @Memoized
     private List<SwitchTriplet> getSwitchTripletsCached(boolean includeSingleSwitch) {

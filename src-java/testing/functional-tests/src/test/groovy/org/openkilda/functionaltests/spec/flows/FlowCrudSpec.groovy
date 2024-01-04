@@ -505,19 +505,20 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 [
                         isolatedSwitchType: "source",
                         getFlow           : { Switch theSwitch ->
-                            getFlowHelperV2().randomFlow(getTopologyHelper().getAllNotNeighboringSwitchPairs()
-                                    .collectMany { [it, it.reversed] }.find {
-                                it.src == theSwitch
-                            })
+                            getFlowHelperV2().randomFlow(switchPairs.all()
+                                    .nonNeighbouring()
+                                    .includeSourceSwitch(theSwitch)
+                                    .random())
                         }
                 ],
                 [
                         isolatedSwitchType: "destination",
                         getFlow           : { Switch theSwitch ->
-                            getFlowHelperV2().randomFlow(getTopologyHelper().getAllNotNeighboringSwitchPairs()
-                                    .collectMany { [it, it.reversed] }.find {
-                                it.dst == theSwitch
-                            })
+                            getFlowHelperV2().randomFlow(switchPairs.all()
+                                    .nonNeighbouring()
+                                    .includeSourceSwitch(theSwitch)
+                                    .random()
+                                    .getReversed())
                         }
                 ]
         ]
@@ -778,9 +779,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
     def "System allows to CRUD protected flow"() {
         given: "Two active not neighboring switches with two diverse paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -915,7 +914,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
     def "Flow status accurately represents the actual state of the flow and flow rules"() {
         when: "Create a flow on a long path"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().random()
         def longPath = swPair.paths.max { it.size() }
         swPair.paths.findAll { it != longPath }.each { pathHelper.makePathMorePreferable(longPath, it) }
         def flow = flowHelperV2.randomFlow(swPair)
@@ -1092,9 +1091,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
     @Tags(LOW_PRIORITY)
     def "System reroutes flow to more preferable path while updating"() {
         given: "Two active not neighboring switches with two possible paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNPaths(2).random()
 
         and: "A flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -1137,13 +1134,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
     def "System doesn't rebuild path for a flow to more preferable path while updating portNumber/vlanId"() {
         given: "Two active switches connected to traffgens with two possible paths at least"
-        def activeTraffGens = topology.activeTraffGens
-        def allTraffgenSwitches = activeTraffGens*.switchConnected ?:
-                assumeTrue(false, "Should be at least two active traffgens connected to switches")
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            allTraffgenSwitches*.dpId.contains(swP.src.dpId) && allTraffgenSwitches*.dpId.contains(swP.dst.dpId) &&
-                    swP.paths.size() >= 2
-        } ?: assumeTrue(false, "Unable to find required switches/paths in topology")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
 
         and: "A flow"
         def flow = flowHelperV2.randomFlow(switchPair, false)
@@ -1190,9 +1181,9 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         then: "Update the flow: port number and vlanId on the src/dst endpoints"
         def updatedFlow = flow.jacksonCopy().tap {
-            it.source.portNumber = activeTraffGens.find { it.switchConnected.dpId == switchPair.src.dpId }.switchPort
+            it.source.portNumber = switchPair.getSrc().getTraffGens().first().getSwitchPort()
             it.source.vlanId = updatedFlowDstEndpoint.source.vlanId - 1
-            it.destination.portNumber = activeTraffGens.find { it.switchConnected.dpId == switchPair.dst.dpId }.switchPort
+            it.destination.portNumber = switchPair.getDst().getTraffGens().first().getSwitchPort()
             it.destination.vlanId = updatedFlowDstEndpoint.destination.vlanId - 1
         }
         flowHelperV2.updateFlow(flow.flowId, updatedFlow)
@@ -1287,7 +1278,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
     def "Unable to create a flow with both strict_bandwidth and ignore_bandwidth flags"() {
         when: "Try to create a flow with strict_bandwidth:true and ignore_bandwidth:true"
-        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0]).tap {
+        def flow = flowHelperV2.randomFlow(switchPairs.all().random()).tap {
             strictBandwidth = true
             ignoreBandwidth = true
         }
@@ -1305,7 +1296,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
     @Tags([LOW_PRIORITY])
     def "Unable to update flow with incorrect id in request body"() {
         given:"A flow"
-        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
+        def flow = flowHelperV2.randomFlow(switchPairs.all().random())
         def oldFlowId = flowHelperV2.addFlow(flow).getFlowId()
         def newFlowId = "new_flow_id"
 
@@ -1326,7 +1317,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
     @Tags([LOW_PRIORITY])
     def "Unable to update flow with incorrect id in request path"() {
         given: "A flow"
-        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
+        def flow = flowHelperV2.randomFlow(switchPairs.all().random())
         flowHelperV2.addFlow(flow)
         def newFlowId = "new_flow_id"
 
@@ -1347,7 +1338,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
     @Tags(LOW_PRIORITY)
     def "Able to #method update with empty VLAN stats and non-zero VLANs (#5063)"() {
         given: "A flow with non empty vlans stats and with src and dst vlans set to '0'"
-        def switches = topologyHelper.getSwitchPairs().shuffled().first()
+        def switches = switchPairs.all().random()
         def flowRequest = flowHelperV2.randomFlow(switches, false).tap {
             it.source.tap { it.vlanId = 0 }
             it.destination.tap { it.vlanId = 0 }
@@ -1457,7 +1448,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithoutTransitSwitch() {
-        def switchPairs = topologyHelper.getAllNeighboringSwitchPairs().sort(traffgensPrioritized)
+        def switchPairs = switchPairs.all(false).neighbouring().getSwitchPairs().sort(traffgensPrioritized)
                 .unique { [it.src, it.dst]*.description.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->
@@ -1485,7 +1476,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithTransitSwitch() {
-        def switchPairs = topologyHelper.getAllNotNeighboringSwitchPairs().sort(traffgensPrioritized)
+        def switchPairs = switchPairs.all().nonNeighbouring().getSwitchPairs().sort(traffgensPrioritized)
                 .unique { [it.src, it.dst]*.description.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->

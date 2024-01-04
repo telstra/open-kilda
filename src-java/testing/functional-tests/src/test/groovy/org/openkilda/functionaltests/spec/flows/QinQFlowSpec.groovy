@@ -318,7 +318,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
     def "System doesn't allow to create a QinQ flow with incorrect innerVlanIds\
 (src:#srcInnerVlanId, dst:#dstInnerVlanId)"() {
         given: "A switch pair with enabled multi table mode"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs()[0]
+        def swP = switchPairs.all().neighbouring().random()
 
         when: "Try to create a QinQ flow with incorrect innerVlanId"
         def flow = flowHelperV2.randomFlow(swP)
@@ -345,7 +345,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
      */
     def "Flow with innerVlan and vlanId=0 is transformed into a regular vlan flow without innerVlan"() {
         when: "Create a flow with vlanId=0 and innerVlanId!=0"
-        def swP = topologyHelper.switchPairs[0]
+        def swP = switchPairs.all().random()
         def flow = flowHelper.randomFlow(swP)
         flow.source.vlanId = 0
         flow.source.innerVlanId = 123
@@ -366,9 +366,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
     def "System allow to create/update/delete a protected QinQ flow via APIv1"() {
         given: "Two switches with enabled multi table mode"
-        def swP = topologyHelper.getSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "Not able to find enough switches with 2 diverse paths")
+        def swP = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create a QinQ flow"
         def flow = flowHelper.randomFlow(swP)
@@ -436,9 +434,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
     def "System allows to create QinQ flow and vlan flow with the same vlan on the same port"() {
         given: "Two switches with enabled multi table mode"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.src.traffGens && it.dst.traffGens
-        } ?: assumeTrue(false, "Not able to find enough switches with traffgens")
+        def swP = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
 
         when: "Create a QinQ flow"
         def flowWithQinQ = flowHelperV2.randomFlow(swP)
@@ -474,7 +470,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
     def "System detects conflict QinQ flows(oVlan: #conflictVlan, iVlan: #conflictInnerVlanId)"() {
         given: "Two switches with enabled multi table mode"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs()[0]
+        def swP = switchPairs.all().neighbouring().random()
 
         when: "Create a first flow"
         def flow = flowHelperV2.randomFlow(swP)
@@ -505,9 +501,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
     def "System allows to create more than one QinQ flow on the same port and with the same vlan"() {
         given: "Two switches connected to traffgen and enabled multiTable mode"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.src.traffGens && it.dst.traffGens
-        } ?: assumeTrue(false, "Not able to find enough switches with traffgens")
+        def swP = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
 
         when: "Create a first QinQ flow"
         def flow1 = flowHelperV2.randomFlow(swP)
@@ -809,21 +803,17 @@ class QinQFlowSpec extends HealthCheckSpecification {
         [srcVlanId, srcInnerVlanId, dstVlanId, dstInnerVlanId, swPair] << [
                 [[10, 20, 30, 40],
                  [10, 20, 0, 0]],
-                getUniqueSwitchPairs(topologyHelper.getSwitchPairs().findAll { SwitchPair swP ->
-                    def allTraffGenSwitchIds = getTopology().getActiveTraffGens()*.switchConnected*.dpId
-                    [swP.src, swP.dst].every { it.dpId in allTraffGenSwitchIds } &&
-                            swP.paths.find {
-                        pathHelper.getInvolvedSwitches(it).every { switchHelper.isVxlanEnabled(it.dpId) }
-                    }})
+                getUniqueSwitchPairs(switchPairs.all()
+                        .withTraffgensOnBothEnds()
+                        .withBothSwitchesVxLanEnabled()
+                        .getSwitchPairs())
         ].combinations().collect { it.flatten() }
         trafficDisclaimer = swPair.src.traffGens && swPair.dst.traffGens ? "" : " !WARN: No traffic check!"
     }
 
     def "System is able to synchronize switch(flow rules)"() {
         given: "Two switches connected to traffgen and enabled multiTable mode"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.src.traffGens && it.dst.traffGens
-        } ?: assumeTrue(false, "Not able to find enough switches with traffgens")
+        def swP = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
 
         and: "A QinQ flow on the given switches"
         def flow = flowHelperV2.randomFlow(swP)
@@ -873,9 +863,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
     def "System doesn't rebuild flow path to more preferable path while updating innerVlanId"() {
         given: "Two active switches connected to traffgens with two possible paths at least"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.src.traffGens && it.dst.traffGens && it.paths.size() > 2
-        } ?: assumeTrue(false, "Not able to find enough switches with traffgens and diverse paths")
+        def switchPair = switchPairs.all().neighbouring()
+                .withTraffgensOnBothEnds()
+                .withAtLeastNPaths(2)
+                .random()
 
         and: "A flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -938,7 +929,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
     }
 
     @Memoized
-    List<SwitchPair> getUniqueSwitchPairs(List<SwitchPair> suitablePairs = topologyHelper.getSwitchPairs(true)) {
+    List<SwitchPair> getUniqueSwitchPairs(List<SwitchPair> suitablePairs = switchPairs.all().getSwitchPairs()) {
         def unpickedUniqueSwitches = topology.activeSwitches.collect { it.hwSwString }.unique(false)
         def unpickedSuitableSwitches = unpickedUniqueSwitches.intersect(
                 suitablePairs.collectMany { [it.src.hwSwString, it.dst.hwSwString] }.unique(false))

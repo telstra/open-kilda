@@ -70,8 +70,6 @@ class BaseSpecification extends Specification {
     @Autowired @Shared
     StatsHelper statsHelper
     @Autowired @Shared
-    LabService labService
-    @Autowired @Shared
     SwitchPairs switchPairs
 
     @Value('${spring.profiles.active}') @Shared

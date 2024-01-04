@@ -20,7 +20,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
     def "Can create more than 2 affinity flows"() {
         when: "Create flow1"
-        def swPair = topologyHelper.getSwitchPairs()[0]
+        def swPair = switchPairs.all().random()
         def flow1 = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow1)
 
@@ -76,9 +76,9 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         cost-wise. leastUncommonPaths2 are paths on swPair2 that have the least uncommon ISLs with path1 (but not
         guaranteed to have any common ones); one of these paths should be chosen regardless of cost-optimal
         uncommonPath2 when creating affinity flow */
-        topologyHelper.getSwitchPairs().find { swP1Candidate ->
+        switchPairs.all().getSwitchPairs().find{ swP1Candidate ->
             swPair1 = swP1Candidate
-            swPair2 = (topologyHelper.getSwitchPairs(true) - swP1Candidate).find { swP2Candidate ->
+            swPair2 = (switchPairs.all().getSwitchPairs() - swP1Candidate).find { swP2Candidate ->
                 if (swP1Candidate.dst.dpId != swP2Candidate.dst.dpId) return false
                 path1 = swP1Candidate.paths.find { path1Candidate ->
                     List<Tuple2<List<PathNode>, Integer>> scoreList = []
@@ -124,15 +124,8 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
     def "Affinity flows can have no overlapping switches at all"() {
         given: "Two switch pairs with not overlapping short paths available"
-        SwitchPair swPair1, swPair2
-        topologyHelper.getAllNeighboringSwitchPairs().find { swP1Candidate ->
-            swPair1 = swP1Candidate
-            swPair2 = topologyHelper.getAllNeighboringSwitchPairs().find { swP2Candidate ->
-                [swP2Candidate.src.dpId, swP2Candidate.dst.dpId].every {
-                    it !in [swP1Candidate.src.dpId, swP1Candidate.dst.dpId]
-                }
-            }
-        } ?: assumeTrue(false, "No suiting switches found")
+        def swPair1 = switchPairs.all().neighbouring().random()
+        def swPair2 = switchPairs.all().neighbouring().excludeSwitches([swPair1.src, swPair1.dst]).random()
 
         and: "First flow"
         def flow = flowHelperV2.randomFlow(swPair1)
@@ -152,9 +145,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
     def "Affinity flow on the same endpoints #willOrNot take the same path if main path cost #exceedsOrNot affinity penalty"() {
         given: "A neighboring switch pair with parallel ISLs"
-        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.findAll { it.size() == 2 }.size() > 1
-        } ?: assumeTrue(false, "Need a pair of parallel ISLs for this test")
+        def swPair = switchPairs.all().neighbouring().withAtLeastNIslsBetweenNeighbouringSwitches(2).random()
 
         and: "First flow"
         def flow = flowHelperV2.randomFlow(swPair)
@@ -187,7 +178,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
     def "Cannot create affinity flow if target flow has affinity with diverse flow"() {
         given: "Existing flows with diversity"
-        def swPair = topologyHelper.getSwitchPairs()[0]
+        def swPair = switchPairs.all().random()
         def flow1 = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow1)
         def affinityFlow = flowHelperV2.randomFlow(swPair, false, [flow1]).tap { affinityFlowId = flow1.flowId }
@@ -218,7 +209,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
     def "Cannot create affinity flow if target flow has another diverse group"() {
         given: "Existing flows with diversity"
-        def swPair = topologyHelper.getSwitchPairs()[0]
+        def swPair = switchPairs.all().random()
         def flow1 = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow1)
         def affinityFlow = flowHelperV2.randomFlow(swPair, false, [flow1]).tap { affinityFlowId = flow1.flowId }
@@ -248,7 +239,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(oneSwitchFlow)
 
         when: "Create an affinity flow targeting the one-switch flow"
-        def swPair = topologyHelper.getSwitchPairs(true).find { it.src.dpId == sw.dpId }
+        def swPair = switchPairs.all().includeSourceSwitch(sw).random()
         def affinityFlow = flowHelperV2.randomFlow(swPair, false, [oneSwitchFlow]).tap { affinityFlowId = oneSwitchFlow.flowId }
         flowHelperV2.addFlow(affinityFlow)
 
@@ -271,7 +262,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
     def "Error is returned if affinity_with references a non existing flow"() {
         when: "Create an affinity flow that targets non-existing flow"
-        def swPair = topologyHelper.getSwitchPairs()[0]
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair).tap { diverseFlowId = NON_EXISTENT_FLOW_ID }
         flowHelperV2.addFlow(flow)
 

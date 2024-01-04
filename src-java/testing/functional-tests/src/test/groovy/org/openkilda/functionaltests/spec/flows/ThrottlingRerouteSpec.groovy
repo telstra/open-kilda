@@ -43,15 +43,14 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
     int rerouteHardTimeout
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
-    //    unignored. Tests needs supervision next builds
     def "Reroute is not performed while new reroutes are being issued"() {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
         /* Here we will pick only short flows that consist of 2 switches, so that we can maximize amount of unique
         flows found*/
-        def switchPairs = topologyHelper.getAllNeighboringSwitchPairs()
+        def swPairs = switchPairs.all(false).neighbouring().getSwitchPairs()
 
-        assumeTrue(switchPairs.size() > 3, "Topology is too small to run this test")
-        def flows = switchPairs.take(5).collect { switchPair ->
+        assumeTrue(swPairs.size() > 3, "Topology is too small to run this test")
+        def flows = swPairs.take(5).collect { switchPair ->
             def flow = flowHelperV2.randomFlow(switchPair)
             flowHelperV2.addFlow(flow)
             flow
@@ -110,7 +109,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
         /* Here we will pick only short flows that consist of 2 switches, so that we can maximize amount of unique
         flows found*/
-        def switchPairs = topologyHelper.getAllNeighboringSwitchPairs()
+        def switchPairs = switchPairs.all().neighbouring().getSwitchPairs()
 
         /*due to port anti-flap we cannot continuously quickly reroute one single flow until we reach hardTimeout,
         thus we need certain amount of flows to continuously provide reroute triggers for them in a loop.

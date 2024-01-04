@@ -78,9 +78,7 @@ class FlowSyncSpec extends HealthCheckSpecification {
     @Ignore("After PR4817 flow sync never change existing paths")
     def "Able to synchronize a flow (install missing flow rules, reinstall existing) with rerouting"() {
         given: "An intermediate-switch flow with two possible paths at least and deleted rules on src switch"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
-                assumeTrue(false, "No suiting switches found to build an intermediate-switch flow " +
-                        "with two possible paths at least.")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNPaths(2).random()
 
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)

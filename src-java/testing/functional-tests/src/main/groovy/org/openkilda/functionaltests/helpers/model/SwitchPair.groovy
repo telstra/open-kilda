@@ -55,6 +55,15 @@ class SwitchPair {
                 topologyDefinition: topologyDefinition)
     }
 
+    boolean hasOf13Path() {
+        def possibleDefaultPaths = paths.findAll {
+            it.size() == paths.min { it.size() }.size()
+        }
+        !possibleDefaultPaths.find { path ->
+            path[1..-2].every { it.switchId.description.contains("OF_12") }
+        }
+    }
+
     @Override
     String toString() {
         return "$src.dpId-$dst.dpId"

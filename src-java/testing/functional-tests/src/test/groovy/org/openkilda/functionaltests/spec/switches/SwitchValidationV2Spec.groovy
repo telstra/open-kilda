@@ -158,13 +158,7 @@ class SwitchValidationV2Spec extends HealthCheckSpecification {
 
     def "Able to validate and sync a transit switch with proper rules and no meters"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
-            def possibleDefaultPaths = pair.paths.findAll { it.size() == pair.paths.min { it.size() }.size() }
-            //ensure the path won't have only OF_12 intermediate switches
-            !possibleDefaultPaths.find { path ->
-                path[1..-2].every { it.switchId.description.contains("OF_12") }
-            }
-        } ?: assumeTrue(false, "No not-neighbouring switch pairs found")
+        def switchPair = switchPairs.all().nonNeighbouring().random()
 
         when: "Create an intermediate-switch flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -495,14 +489,7 @@ misconfigured"
 
     def "Able to validate and sync a switch with missing transit rule"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
-            def possibleDefaultPaths = pair.paths.findAll { it.size() == pair.paths.min { it.size() }.size() }
-            //ensure the path won't have only OF_12 intermediate switches
-            def hasOf13Path = !possibleDefaultPaths.find { path ->
-                path[1..-2].every { it.switchId.description.contains("OF_12") }
-            }
-            hasOf13Path && pair.src.ofVersion != "OF_12" && pair.dst.ofVersion != "OF_12"
-        } ?: assumeTrue(false, "No not-neighbouring switch pairs found")
+        def switchPair = switchPairs.all().nonNeighbouring().random()
         and: "Create an intermediate-switch flow"
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
@@ -559,28 +546,25 @@ misconfigured"
 
     def "Able to validate and sync a switch with missing egress rule"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
-            def possibleDefaultPaths = pair.paths.findAll { it.size() == pair.paths.min { it.size() }.size() }
-            //ensure the path won't have only OF_12 intermediate switches
-            def hasOf13Path = !possibleDefaultPaths.find { path ->
-                path[1..-2].every { it.switchId.description.contains("OF_12") }
-            }
-            hasOf13Path && pair.src.ofVersion != "OF_12" && pair.dst.ofVersion != "OF_12"
-        } ?: assumeTrue(false, "No not-neighbouring switch pairs found")
+        def switchPair = switchPairs.all().nonNeighbouring().random()
+
         and: "Create an intermediate-switch flow"
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
         def rulesOnSrc = northbound.getSwitchRules(switchPair.src.dpId).flowEntries
         def rulesOnDst = northbound.getSwitchRules(switchPair.dst.dpId).flowEntries
+
         when: "Delete created rules on the srcSwitch"
         def egressCookie = database.getFlow(flow.flowId).reversePath.cookie.value
         northbound.deleteSwitchRules(switchPair.src.dpId, egressCookie)
+
         then: "Rule info is moved into the 'missing' section on the srcSwitch"
         verifyAll(northboundV2.validateSwitch(switchPair.src.dpId)) {
             it.rules.missing*.cookie == [egressCookie]
             it.rules.proper.size() == rulesOnSrc.size() - 1
             it.rules.excess.empty
         }
+
         and: "Rule info is NOT moved into the 'missing' section on the dstSwitch and transit switches"
         def dstSwitchValidateInfo = northboundV2.validateSwitch(switchPair.dst.dpId)
         dstSwitchValidateInfo.rules.proper*.cookie.sort() == rulesOnDst*.cookie.sort()
@@ -592,17 +576,21 @@ misconfigured"
             assert transitSwitchValidateInfo.rules.proper*.cookie.findAll { !new Cookie(it).serviceFlag }.size() == 2
             transitSwitchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
         }
+
         when: "Synchronize the switch"
         with(northbound.synchronizeSwitch(switchPair.src.dpId, false)) {
             rules.installed == [egressCookie]
         }
+
         then: "Repeated validation shows no discrepancies"
         verifyAll(northboundV2.validateSwitch(switchPair.dst.dpId)) {
             it.rules.proper*.cookie.sort() == rulesOnDst*.cookie.sort()
             it.verifyRuleSectionsAreEmpty(["missing", "excess"])
         }
+
         when: "Delete the flow"
         def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+
         then: "Check that the switch validate request returns empty sections on all involved switches"
         Wrappers.wait(WAIT_OFFSET) {
             involvedSwitchIds.findAll { !it.description.contains("OF_12") }.each { switchId ->
@@ -612,6 +600,7 @@ misconfigured"
             }
         }
         def testIsCompleted = true
+
         cleanup:
         flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         if (involvedSwitchIds && !testIsCompleted) {
@@ -630,14 +619,8 @@ misconfigured"
 
     def "Able to validate and sync an excess ingress/egress/transit rule + meter"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
-            def possibleDefaultPaths = pair.paths.findAll { it.size() == pair.paths.min { it.size() }.size() }
-            //ensure the path won't have only OF_12 intermediate switches
-            def hasOf13Path = !possibleDefaultPaths.find { path ->
-                path[1..-2].every { it.switchId.description.contains("OF_12") }
-            }
-            hasOf13Path && pair.src.ofVersion != "OF_12" && pair.dst.ofVersion != "OF_12"
-        } ?: assumeTrue(false, "Unable to find required switches in topology")
+        def switchPair = switchPairs.all().nonNeighbouring().random()
+
         and: "Create an intermediate-switch flow"
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair))
         def createdCookiesSrcSw = northbound.getSwitchRules(switchPair.src.dpId).flowEntries*.cookie
@@ -756,11 +739,8 @@ misconfigured"
     @Tags(TOPOLOGY_DEPENDENT)
     def "Able to validate and sync a switch with missing 'vxlan' ingress/transit/egress rule + meter"() {
         given: "Two active not neighboring VXLAN supported switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
-            swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
-            }
-        } ?: assumeTrue(false, "Unable to find required switches in topology")
+        def switchPair = switchPairs.all().nonNeighbouring().withBothSwitchesVxLanEnabled().random()
+
         and: "Create a flow with vxlan encapsulation"
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair).tap { it.encapsulationType = FlowEncapsulationType.VXLAN})
         and: "Remove required rules and meters from switches"
@@ -863,9 +843,7 @@ misconfigured"
 
     def "Able to validate and sync a missing 'protected path' egress rule"() {
         given: "A flow with protected path"
-        def swPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No switch pair with at least 2 diverse paths")
+        def swPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
         def flow = flowHelperV2.randomFlow(swPair).tap { allocateProtectedPath = true }
         flowHelperV2.addFlow(flow)
         def flowInfo = northbound.getFlowPath(flow.flowId)
@@ -919,9 +897,7 @@ misconfigured"
 
     def "Able to validate and sync a missing 'connected device' #data.descr rule"() {
         given: "A flow with enabled connected devices"
-        def swPair = topologyHelper.switchPairs.find {
-            [it.src, it.dst].every { it.features.contains(SwitchFeature.MULTI_TABLE) }
-        }
+        def swPair = switchPairs.all().random()
         Map<Switch, SwitchPropertiesDto> initialProps = [swPair.src, swPair.dst]
                 .collectEntries { [(it): switchHelper.getCachedSwProps(it.dpId)] }
         def flow = flowHelper.randomFlow(swPair)

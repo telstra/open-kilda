@@ -10,6 +10,7 @@ import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.model.switches.Manufacturer.WB5164
 import static org.openkilda.model.MeterId.LACP_REPLY_METER_ID
 import static org.openkilda.model.cookie.Cookie.DROP_SLOW_PROTOCOLS_LOOP_COOKIE
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
@@ -161,11 +162,7 @@ class LagPortSpec extends HealthCheckSpecification {
 
     def "Able to create a flow on a LAG port"() {
         given: "A switchPair with a LAG port on the src switch"
-        def allTraffGenSwitchIds = topology.activeTraffGens*.switchConnected*.dpId
-        assumeTrue(allTraffGenSwitchIds.size() > 1, "Unable to find required switches in topology")
-        def switchPair = topologyHelper.getSwitchPairs().find {
-            [it.src, it.dst].every { it.dpId in allTraffGenSwitchIds }
-        }
+        def switchPair = switchPairs.all().withTraffgensOnBothEnds().random()
         def traffgenSrcSwPort = switchPair.src.traffGens.switchPort[0]
         def portsArray = (topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1] << traffgenSrcSwPort).unique()
         def payload = new LagPortRequest(portNumbers: portsArray)
@@ -269,7 +266,7 @@ class LagPortSpec extends HealthCheckSpecification {
 
     def "Unable to delete a LAG port in case flow on it"() {
         given: "A flow on a LAG port"
-        def switchPair = topologyHelper.getSwitchPairs().first()
+        def switchPair = switchPairs.all().random()
         def portsArray = topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1]
         def payload = new LagPortRequest(portNumbers: portsArray)
         def lagPort = northboundV2.createLagLogicalPort(switchPair.src.dpId, payload).logicalPortNumber
@@ -940,7 +937,7 @@ occupied by other LAG group\(s\)./).matches(exc)
 
     def "Unable decrease bandwidth on LAG port lower than connected flows bandwidth sum"() {
         given: "Flows on a LAG port with switch ports"
-        def switchPair = topologyHelper.getSwitchPairs().first()
+        def switchPair = switchPairs.all().random()
         def testPorts = topology.getAllowedPortsForSwitch(switchPair.src).takeRight(2).sort()
         assert testPorts.size > 1
         def maximumBandwidth = testPorts.sum { northbound.getPort(switchPair.src.dpId, it).currentSpeed }

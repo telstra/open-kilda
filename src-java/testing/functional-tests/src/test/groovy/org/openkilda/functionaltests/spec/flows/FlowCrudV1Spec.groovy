@@ -535,19 +535,20 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
                 [
                         isolatedSwitchType: "source",
                         getFlow           : { Switch theSwitch ->
-                            getFlowHelper().randomFlow(getTopologyHelper().getAllNotNeighboringSwitchPairs()
-                                    .collectMany { [it, it.reversed] }.find {
-                                it.src == theSwitch
-                            })
+                            getFlowHelper().randomFlow(switchPairs.all()
+                                    .nonNeighbouring()
+                                    .includeSourceSwitch(theSwitch)
+                                    .random())
                         }
                 ],
                 [
                         isolatedSwitchType: "destination",
                         getFlow           : { Switch theSwitch ->
-                            getFlowHelper().randomFlow(getTopologyHelper().getAllNotNeighboringSwitchPairs()
-                                    .collectMany { [it, it.reversed] }.find {
-                                it.dst == theSwitch
-                            })
+                            getFlowHelper().randomFlow(switchPairs.all()
+                                    .nonNeighbouring()
+                                    .includeSourceSwitch(theSwitch)
+                                    .random()
+                                    .getReversed())
                         }
                 ]
         ]
@@ -863,9 +864,7 @@ are not connected to the controller/).matches(exc)
     @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "System doesn't create flow when reverse path has different bandwidth than forward path on the second link"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.find { it.unique(false) { it.switchId }.size() >= 4 }
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withPathHavingAtLeastNSwitches(4).random()
 
         and: "Select path for further manipulation with it"
         def selectedPath = switchPair.paths.max { it.size() }
@@ -954,7 +953,7 @@ are not connected to the controller/).matches(exc)
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithoutTransitSwitch() {
-        def switchPairs = topologyHelper.getAllNeighboringSwitchPairs().sort(traffgensPrioritized)
+        def switchPairs = switchPairs.all(false).neighbouring().getSwitchPairs().sort(traffgensPrioritized)
                 .unique { [it.src, it.dst]*.description.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->
@@ -982,7 +981,7 @@ are not connected to the controller/).matches(exc)
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithTransitSwitch() {
-        def switchPairs = topologyHelper.getAllNotNeighboringSwitchPairs().sort(traffgensPrioritized)
+        def switchPairs = switchPairs.all().nonNeighbouring().getSwitchPairs().sort(traffgensPrioritized)
                 .unique { [it.src, it.dst]*.description.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->

@@ -61,10 +61,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
     ])
     def "Able to create flowLoop for a #data.flowDescription flow"() {
         given: "An active and valid  #data.flowDescription flow"
-        def allTraffGenSwIds = topology.activeTraffGens*.switchConnected*.dpId
-        assumeTrue((allTraffGenSwIds.size() > 1), "Unable to find switches connected to traffGens")
-        def switchPair = data.switchPair(allTraffGenSwIds)
-        assumeTrue(switchPair != null, "Unable to find required switch pair in topology")
+        def switchPair = data.switchPair
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.tap(data.flowTap)
         flowHelperV2.addFlow(flow)
@@ -194,16 +191,12 @@ class FlowLoopSpec extends HealthCheckSpecification {
         where:
         data << [[
                          flowDescription: "pinned",
-                         switchPair     : { List<SwitchId> switchIds ->
-                             getSwPairConnectedToTraffGenForSimpleFlow(switchIds)
-                         },
+                         switchPair     : switchPairs.all().withTraffgensOnBothEnds().random(),
                          flowTap        : { FlowRequestV2 fl -> fl.pinned = true }
                  ],
                  [
                          flowDescription: "default",
-                         switchPair     : { List<SwitchId> switchIds ->
-                             getSwPairConnectedToTraffGenForSimpleFlow(switchIds)
-                         },
+                         switchPair     : switchPairs.all().withTraffgensOnBothEnds().random(),
                          flowTap        : { FlowRequestV2 fl ->
                              fl.source.vlanId = 0
                              fl.destination.vlanId = 0
@@ -211,23 +204,25 @@ class FlowLoopSpec extends HealthCheckSpecification {
                  ],
                  [
                          flowDescription: "protected",
-                         switchPair     : { List<SwitchId> switchIds ->
-                             getSwPairConnectedToTraffGenForProtectedFlow(switchIds)
-                         },
+                         switchPair     : switchPairs.all()
+                                 .withTraffgensOnBothEnds()
+                                 .withAtLeastNNonOverlappingPaths(2)
+                                 .random(),
                          flowTap        : { FlowRequestV2 fl -> fl.allocateProtectedPath = true }
                  ],
                  [
                          flowDescription: "vxlan",
-                         switchPair     : { List<SwitchId> switchIds ->
-                             getSwPairConnectedToTraffGenForVxlanFlow(switchIds)
-                         },
+                         switchPair     : switchPairs.all()
+                                 .withTraffgensOnBothEnds()
+                                 .withBothSwitchesVxLanEnabled()
+                                 .random(),
                          flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
                  ],
                  [
                          flowDescription: "qinq",
-                         switchPair     : { List<SwitchId> switchIds ->
-                             getSwPairConnectedToTraffGenForQinQ(switchIds)
-                         },
+                         switchPair     : switchPairs.all()
+                                 .withTraffgensOnBothEnds()
+                                 .random(),
                          flowTap        : { FlowRequestV2 fl ->
                              fl.source.vlanId = 10
                              fl.source.innerVlanId = 100
@@ -241,7 +236,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Able to delete a flow with created flowLoop on it"() {
         given: "A active multi switch flow"
-        def switchPair = topologyHelper.switchPairs.first()
+        def switchPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
@@ -292,11 +287,11 @@ class FlowLoopSpec extends HealthCheckSpecification {
     @Tags(ISL_RECOVER_ON_FAIL)
     def "System is able to reroute a flow when flowLoop is created on it"() {
         given: "A multi switch flow with one alternative path at least"
-        def allTraffGenSwIds = topology.activeTraffGens*.switchConnected*.dpId
-        assumeTrue((allTraffGenSwIds.size() > 1), "Unable to find switches connected to traffGens")
-        // pick swPair for protected flow, we can fail any ISL on a flow path and be sure that an alternative path is available
-        def switchPair = getSwPairConnectedToTraffGenForProtectedFlow(allTraffGenSwIds)
-        assumeTrue(switchPair != null, "Unable to find required switch pair in topology")
+        def switchPair = switchPairs.all()
+                .nonNeighbouring()
+                .withTraffgensOnBothEnds()
+                .withAtLeastNNonOverlappingPaths(2)
+                .random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
@@ -398,11 +393,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Systems allows to get all flowLoops that goes through a switch"() {
         given: "Two active switches"
-        def switchPair = topologyHelper.switchPairs.find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        }
-        assumeTrue(switchPair != null, "Unable to find required switch pair in topology")
-
+        def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
         and: "Three multi switch flows"
         def flow1 = flowHelperV2.randomFlow(switchPair)
         flow1.allocateProtectedPath = true
@@ -448,14 +439,10 @@ class FlowLoopSpec extends HealthCheckSpecification {
     @Tags(ISL_RECOVER_ON_FAIL)
     def "System is able to autoSwapPath for a protected flow when flowLoop is created on it"() {
         given: "Two active switches with three diverse paths at least"
-        def allTraffGenSwIds = topology.activeTraffGens*.switchConnected*.dpId
-        assumeTrue((allTraffGenSwIds.size() > 1), "Unable to find switches connected to traffGens")
-        def switchPair = topologyHelper.getSwitchPairs().find {
-            [it.dst, it.src].every { it.dpId in allTraffGenSwIds } && it.paths.unique(false) {
-                a, b -> a.intersect(b) == [] ? 1 : 0
-            }.size() >= 3
-        } ?: assumeTrue(false, "No suiting switches found")
-
+        def switchPair = switchPairs.all()
+                .withAtLeastNNonOverlappingPaths(3)
+                .withTraffgensOnBothEnds()
+                .random()
 
         and: "A protected unmetered flow with flowLoop on the src switch"
         def flow = flowHelperV2.randomFlow(switchPair).tap {
@@ -789,34 +776,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
-    }
-
-    def "getSwPairConnectedToTraffGenForSimpleFlow"(List<SwitchId> switchIds) {
-        getTopologyHelper().getSwitchPairs().collectMany { [it, it.reversed] }.find { swP ->
-            [swP.dst, swP.src].every { it.dpId in switchIds }
-        }
-    }
-
-    def "getSwPairConnectedToTraffGenForProtectedFlow"(List<SwitchId> switchIds) {
-        getTopologyHelper().getSwitchPairs().find {
-            [it.dst, it.src].every { it.dpId in switchIds } && it.paths.unique(false) {
-                a, b -> a.intersect(b) == [] ? 1 : 0
-            }.size() >= 2
-        }
-    }
-
-    def "getSwPairConnectedToTraffGenForVxlanFlow"(List<SwitchId> switchIds) {
-        getTopologyHelper().getSwitchPairs().find {
-            [it.dst, it.src].every {
-                it.dpId in switchIds && switchHelper.isVxlanEnabled(it.dpId)
-            }
-        }
-    }
-
-    def "getSwPairConnectedToTraffGenForQinQ"(List<SwitchId> switchIds) {
-        return getTopologyHelper().getSwitchPairs().find { swP ->
-            [swP.dst, swP.src].every { it.dpId in switchIds }
-        }
     }
 
     def getFlowLoopRules(SwitchId switchId) {

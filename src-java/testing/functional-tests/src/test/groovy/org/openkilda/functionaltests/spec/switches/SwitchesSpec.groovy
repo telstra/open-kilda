@@ -12,6 +12,8 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.functionaltests.model.switches.Manufacturer.CENTEC
+import static org.openkilda.functionaltests.model.switches.Manufacturer.CENTEC
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
@@ -68,9 +70,7 @@ class SwitchesSpec extends HealthCheckSpecification {
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Systems allows to get a flow that goes through a switch"() {
         given: "Two active not neighboring switches with two diverse paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "A protected flow"
         def protectedFlow = flowHelperV2.randomFlow(switchPair)
@@ -195,8 +195,7 @@ class SwitchesSpec extends HealthCheckSpecification {
 
     def "Systems allows to get all flows that goes through a DEACTIVATED switch"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().first() ?:
-                assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().random()
 
         and: "A simple flow"
         def simpleFlow = flowHelperV2.randomFlow(switchPair)

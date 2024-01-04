@@ -147,13 +147,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
 
     def "Able to validate and sync a transit switch with proper rules and no meters"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
-            def possibleDefaultPaths = pair.paths.findAll { it.size() == pair.paths.min { it.size() }.size() }
-            //ensure the path won't have only OF_12 intermediate switches
-            !possibleDefaultPaths.find { path ->
-                path[1..-2].every { it.switchId.description.contains("OF_12") }
-            }
-        } ?: assumeTrue(false, "No not-neighbouring switch pairs found")
+        def switchPair = switchPairs.all().nonNeighbouring().random()
 
         when: "Create an intermediate-switch flow"
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair))
@@ -489,14 +483,7 @@ misconfigured"
 
     def "Able to validate and sync a switch with missing transit rule"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
-            def possibleDefaultPaths = pair.paths.findAll { it.size() == pair.paths.min { it.size() }.size() }
-            //ensure the path won't have only OF_12 intermediate switches
-            def hasOf13Path = !possibleDefaultPaths.find { path ->
-                path[1..-2].every { it.switchId.description.contains("OF_12") }
-            }
-            hasOf13Path && pair.src.ofVersion != "OF_12" && pair.dst.ofVersion != "OF_12"
-        } ?: assumeTrue(false, "No not-neighbouring switch pairs found")
+        def switchPair = switchPairs.all().nonNeighbouring().random()
 
         and: "Create an intermediate-switch flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -560,14 +547,7 @@ misconfigured"
 
     def "Able to validate and sync a switch with missing egress rule"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
-            def possibleDefaultPaths = pair.paths.findAll { it.size() == pair.paths.min { it.size() }.size() }
-            //ensure the path won't have only OF_12 intermediate switches
-            def hasOf13Path = !possibleDefaultPaths.find { path ->
-                path[1..-2].every { it.switchId.description.contains("OF_12") }
-            }
-            hasOf13Path && pair.src.ofVersion != "OF_12" && pair.dst.ofVersion != "OF_12"
-        } ?: assumeTrue(false, "No not-neighbouring switch pairs found")
+        def switchPair = switchPairs.all().nonNeighbouring().random()
 
         and: "Create an intermediate-switch flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -641,14 +621,7 @@ misconfigured"
 
     def "Able to validate and sync an excess ingress/egress/transit rule + meter"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { pair ->
-            def possibleDefaultPaths = pair.paths.findAll { it.size() == pair.paths.min { it.size() }.size() }
-            //ensure the path won't have only OF_12 intermediate switches
-            def hasOf13Path = !possibleDefaultPaths.find { path ->
-                path[1..-2].every { it.switchId.description.contains("OF_12") }
-            }
-            hasOf13Path && pair.src.ofVersion != "OF_12" && pair.dst.ofVersion != "OF_12"
-        } ?: assumeTrue(false, "Unable to find required switches in topology")
+        def switchPair = switchPairs.all().nonNeighbouring().random()
 
         and: "Create an intermediate-switch flow"
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair))
@@ -778,11 +751,7 @@ misconfigured"
     @Tags(TOPOLOGY_DEPENDENT)
     def "Able to validate and sync a switch with missing 'vxlan' ingress/transit/egress rule + meter"() {
         given: "Two active not neighboring VXLAN supported switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
-            swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
-            }
-        } ?: assumeTrue(false, "Unable to find required switches in topology")
+        def switchPair = switchPairs.all().nonNeighbouring().withBothSwitchesVxLanEnabled().random()
 
         and: "Create a flow with vxlan encapsulation"
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair).tap {it.encapsulationType = FlowEncapsulationType.VXLAN})
@@ -895,9 +864,7 @@ misconfigured"
 
     def "Able to validate and sync a missing 'protected path' egress rule"() {
         given: "A flow with protected path"
-        def swPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No switch pair with at least 2 diverse paths")
+        def swPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
         def flow = flowHelperV2.randomFlow(swPair).tap { allocateProtectedPath = true }
         flowHelperV2.addFlow(flow)
         def flowInfo = northbound.getFlowPath(flow.flowId)
@@ -958,9 +925,7 @@ misconfigured"
 
     def "Able to validate and sync a missing 'connected device' #data.descr rule"() {
         given: "A flow with enabled connected devices"
-        def swPair = topologyHelper.switchPairs.find {
-            [it.src, it.dst].every { it.features.contains(SwitchFeature.MULTI_TABLE) }
-        }
+        def swPair = switchPairs.all().random()
         Map<Switch, SwitchPropertiesDto> initialProps = [swPair.src, swPair.dst]
                 .collectEntries { [(it): switchHelper.getCachedSwProps(it.getDpId())] }
         def flow = flowHelper.randomFlow(swPair)

@@ -55,9 +55,9 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
                     && it.pathsEp1.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
         }
         assumeTrue(switchTriplet != null, "Couldn't find appropriate switch triplet")
-        switchPair = topologyHelper.getSwitchPairs(false).find {
-            [it.getSrc(), it.getDst()].toSet() == ([switchTriplet.getShared(), switchTriplet.getEp1()].toSet())
-        }
+        switchPair = switchPairs.all()
+                .includeSwitch(switchTriplet.getShared())
+                .includeSwitch(switchTriplet.getEp1()).random()
         def flowDefinition = flowHelperV2.randomFlow(switchPair, false).tap { allocateProtectedPath = true }
         flowId = flowHelperV2.addFlow(flowDefinition).getFlowId()
         switchFlowGoesThrough = pathHelper.getInvolvedSwitches(flowId).find {
