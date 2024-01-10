@@ -1,13 +1,14 @@
 package org.openkilda.functionaltests.spec.xresilience
 
-import spock.lang.Ignore
-
+import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowPathPayload
@@ -33,19 +34,19 @@ class ChaosSpec extends HealthCheckSpecification {
      * This test simulates a busy network with a lot of flows. Random ISLs across the topology begin to blink,
      * causing some of the flows to reroute. Verify that system remains stable.
      */
-    @Ignore("https://github.com/telstra/open-kilda/issues/5222")
+    @Tags(LOW_PRIORITY)
     def "Nothing breaks when multiple flows get rerouted due to randomly failing ISLs"() {
         setup: "Create multiple random flows"
         def flowsAmount = topology.activeSwitches.size() * 10
         List<FlowRequestV2> flows = []
         flowsAmount.times {
-            def flow = flowHelperV2.randomFlow(*topologyHelper.randomSwitchPair, false, flows)
+            def flow = flowHelperV2.randomFlow(switchPairs.all().random(), false, flows)
             flowHelperV2.addFlow(flow)
             flows << flow
         }
 
         when: "Random ISLs 'blink' for some time"
-        def islsAmountToBlink = topology.islsForActiveSwitches.size() * 5
+        def islsAmountToBlink = topology.islsForActiveSwitches.size() * 3
         def r = new Random()
         islsAmountToBlink.times {
             //have certain instabilities with blinking centec ports, thus exclude them here
@@ -60,7 +61,7 @@ class ChaosSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET + antiflapCooldown + discoveryInterval) {
             northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.empty
         }
-        TimeUnit.SECONDS.sleep(rerouteDelay) //all throttled reroutes should start executing
+        TimeUnit.SECONDS.sleep(rerouteDelay * flowsAmount) //all throttled reroutes should start executing
 
         Wrappers.wait(PATH_INSTALLATION_TIME * 3 + flowsAmount) {
             flows.each { flow ->
@@ -73,8 +74,31 @@ class ChaosSpec extends HealthCheckSpecification {
         and: "All switches are valid"
         switchHelper.validate(topology.activeSwitches*.dpId).isEmpty()
 
+        and: "Collecting all flows that still have some rerouting process in progress"
+        def flowsWithPostponedReroute = flows.parallelStream().findAll { flow ->
+            !northbound.getFlowHistory(flow.flowId).last().payload
+                    .find { it.action in  ["Flow was rerouted successfully", "Failed to reroute the flow"]}
+        }
+
+        and: "Waiting for reroute execution"
+        withPool {
+            flowsWithPostponedReroute.eachParallel { flow ->
+                Wrappers.wait(WAIT_OFFSET * 3) {
+                    def lastAction = northbound.getFlowHistory(flow.flowId).last()
+                    if(lastAction.payload.find { it.action == "Flow rerouting operation has been started."}) {
+                        assert lastAction.payload
+                                .find { it.action in  ["Flow was rerouted successfully", "Failed to reroute the flow"] }
+                    }
+                }
+            }
+        }
+
         cleanup:
-        flows && flows.each { northboundV2.deleteFlow(it.flowId) }
+        //flows can not be deleted in parallel due to the issue https://github.com/telstra/open-kilda/issues/3934
+        // it seems like a race condition when flows with the same sw_port are deleted in parallel
+        // (deletion of shared rule MULTI_TABLE_INGRESS_RULES is skipped)
+        flows.each { flow -> flowHelperV2.deleteFlow(flow.flowId) }
+
         // Wait for meters deletion from all OF_13 switches since it impacts other tests.
         Wrappers.wait(WAIT_OFFSET * 2 + flowsAmount * RULES_DELETION_TIME) {
             topology.activeSwitches.findAll { it.ofVersion == "OF_13" }.each {
@@ -83,6 +107,8 @@ class ChaosSpec extends HealthCheckSpecification {
                 }.empty
             }
         }
+        assert switchHelper.synchronizeAndCollectFixedDiscrepancies(topology.activeSwitches.dpId).isEmpty()
+
         database.resetCosts(topology.isls)
     }
 
