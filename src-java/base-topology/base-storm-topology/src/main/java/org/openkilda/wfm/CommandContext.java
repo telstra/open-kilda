@@ -17,6 +17,8 @@ package org.openkilda.wfm;
 
 import org.openkilda.messaging.Message;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.BeanSerializer;
 import lombok.Data;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
@@ -27,6 +29,7 @@ import java.util.UUID;
  * Class that contains command context information.
  */
 @Data
+@DefaultSerializer(BeanSerializer.class)
 public class CommandContext implements Serializable {
     private final String correlationId;
     private final long createTime;
@@ -71,8 +74,11 @@ public class CommandContext implements Serializable {
     }
 
     /**
-     * Create new {@link CommandContext} object using data from current one. Produced object receive extended/nested
-     * correlation ID i.e. it contain original correlation ID plus part passed in argument.
+     * Creates a new {@link CommandContext} object using data from the current one. This produces an object with
+     * extended correlation ID: the original correlation ID followed by a colon and the correlationIdExtension.
+     * This is used to chain different commands.
+     * @param correlationIdExtension additional correlation ID
+     * @return a composite CommandContext
      */
     public CommandContext fork(String correlationIdExtension) {
         CommandContext nested = new CommandContext(correlationId + " : " + correlationIdExtension);

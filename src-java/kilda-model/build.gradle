@@ -1,9 +1,11 @@
 description = 'Kilda Data Model'
+
 dependencies {
     implementation 'com.google.guava:guava'
     compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
     implementation 'org.apache.commons:commons-collections4'
     implementation 'org.apache.commons:commons-lang3'
+    // TODO this no longer true. However, storm might still have some requirements on this.
     // current storm version is 1.2.1.
     // kryo package with version >= 5.0 is not compatible with old storm serialization
     implementation 'com.esotericsoftware:kryo:4.0.3'
