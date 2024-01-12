@@ -56,7 +56,21 @@ import java.util.List;
 //@ConfigurationType(EnvironmentConfig.class)
 public class AppConfig {
     private KafkaTopicsConfig kafkaTopicsConfig;
+    private KafkaNorthboundConfig kafkaNorthboundConfig;
     private EnvironmentConfig environmentConfig;
+
+    @Bean(name = "kafkaGroupConfig")
+    public KafkaNorthboundConfig getKafkaNorthboundConfig() {
+        if (kafkaNorthboundConfig != null) {
+            return kafkaNorthboundConfig;
+        } else {
+            synchronized (this) {
+                kafkaNorthboundConfig = new JdkProxyStaticConfigurationFactory()
+                        .createConfiguration(KafkaNorthboundConfig.class, new MapConfigurationSource(emptyMap()));
+                return kafkaNorthboundConfig;
+            }
+        }
+    }
 
     @Bean(CONF4J_CONFIGURATION_VALUE_PROCESSORS)
     List<ConfigurationValueProcessor> configurationValueProcessors(EnvironmentConfig environmentConfig) {
