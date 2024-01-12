@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows.haflows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
@@ -12,43 +13,34 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v2.haflows.HaFlow
 
 import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Shared
 
+@Tags([HA_FLOW])
 class HaFlowSyncSpec extends HealthCheckSpecification {
-    @Autowired
-    @Shared
-    HaFlowHelper haFlowHelper
-
-    @Autowired
-    @Shared
-    HaFlowHelper haPathHelper
-
     @Autowired
     @Shared
     SwitchRulesFactory switchRulesFactory
 
     @Tags([SMOKE_SWITCHES, SMOKE])
-    def "Able to synchronize an HA-flow (install missing rules, reinstall existing). protectedPath=#data.protectedPath"() {
-        given: "An HA-flow with deleted rules on shared switch"
+    def "Able to synchronize an HA-Flow (install missing rules, reinstall existing). protectedPath=#data.protectedPath"() {
+        given: "An HA-Flow with deleted rules on shared switch"
         def swT = data.protectedPath
                 ? topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
                 : topologyHelper.findSwitchTripletWithDifferentEndpoints()
         assumeTrue(swT != null, "Can't find required switch triplet")
 
-        def createRequest = haFlowHelper.randomHaFlow(swT)
-        createRequest.allocateProtectedPath = data.protectedPath
-        def haFlow = haFlowHelper.addHaFlow(createRequest)
-        def initialHaFlowPaths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
+        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).withProtectedPath(data.protectedPath).create()
+        def initialHaFlowPaths = haFlow.retrievedAllEntityPaths()
+
         def switchToManipulate = swT.shared
         def switchRules = switchRulesFactory.get(switchToManipulate.dpId)
         def haFlowRulesToDelete = switchRules.forHaFlow(haFlow)
@@ -64,35 +56,33 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
             assert switchRulesFactory.get(switchToManipulate.dpId).forHaFlow(haFlow).isEmpty()
         }
 
-        when: "Synchronize the HA-flow"
+        when: "Synchronize the HA-Flow"
         def syncTime = new Date()
-        def syncResponse = northboundV2.syncHaFlow(haFlow.haFlowId)
-        Wrappers.wait(WAIT_OFFSET) {
-            haFlowHelper.assertHaFlowAndSubFlowStatuses(haFlow.haFlowId, FlowState.UP)
-        }
+        def syncResponse = haFlow.sync()
 
-        then: "The HA-flow is synced"
+        then: "The Ha-flow is synced"
         syncResponse.synced
         syncResponse.error == null
         syncResponse.unsyncedSwitches == null
+        haFlow.waitForBeingInState(FlowState.UP)
 
-        and: "The HA-flow is not rerouted"
-        northboundV2.getHaFlowPaths(haFlow.haFlowId) == initialHaFlowPaths
+        and: "The HA-Flow is not rerouted"
+        haFlow.retrievedAllEntityPaths() == initialHaFlowPaths
 
-        and: "The HA-flow is valid"
-        northboundV2.validateHaFlow(haFlow.haFlowId).asExpected
+        and: "The HA-Flow is valid"
+        haFlow.validate().asExpected
 
-        and: "Missing HA-flow rules are installed (existing ones are reinstalled) on all switches"
+        and: "Missing HA-Flow rules are installed (existing ones are reinstalled) on all switches"
         withPool {
-            haPathHelper.getInvolvedSwitches(initialHaFlowPaths).eachParallel { SwitchId swId ->
+            initialHaFlowPaths.getInvolvedSwitches().eachParallel { SwitchId swId ->
                 Wrappers.wait(RULES_INSTALLATION_TIME) {
                     haRulesAreSynced(swId, haFlow, syncTime)
                 }
             }
         }
 
-        cleanup: "Delete the HA-flow"
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+        cleanup: "Delete the HA-Flow"
+        haFlow && haFlow.delete()
         switchToManipulate && switchHelper.synchronize(switchToManipulate.getDpId())
 
         where: data << [
@@ -101,41 +91,37 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         ]
     }
 
-    def "Able to synchronize an HA-flow if HA-flow switch is inactive protectedPath=#data.protectedPath"() {
-        given: "An HA-flow with down shared endpoint"
+    def "Able to synchronize an HA-Flow if Ha-flow switch is inactive protectedPath=#data.protectedPath"() {
+        given: "An HA-Flow with down shared endpoint"
         def swT = data.protectedPath
                 ? topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
                 : topologyHelper.findSwitchTripletWithDifferentEndpoints()
         assumeTrue(swT != null, "Can't find required switch triplet")
-        def createRequest = haFlowHelper.randomHaFlow(swT)
-        createRequest.allocateProtectedPath = data.protectedPath
-        def haFlow = haFlowHelper.addHaFlow(createRequest)
-        def initialHaFlowPaths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
+
+        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).withProtectedPath(data.protectedPath).create()
+        def initialHaFlowPaths = haFlow.retrievedAllEntityPaths()
+
         def downSwitch = swT.shared
         def blockData = switchHelper.knockoutSwitch(downSwitch, RW)
-        Wrappers.wait(rerouteDelay + FLOW_CRUD_TIMEOUT + WAIT_OFFSET) {
-            assert haFlowHelper.getHaFlowStatus(haFlow.haFlowId) == FlowState.DOWN.toString()
-        }
+        haFlow.waitForBeingInState(FlowState.DOWN, rerouteDelay + FLOW_CRUD_TIMEOUT + WAIT_OFFSET)
 
-        when: "Synchronize the HA-flow"
+        when: "Synchronize the HA-Flow"
         def syncTime = new Date()
-        def syncResponse = northboundV2.syncHaFlow(haFlow.haFlowId)
-        Wrappers.wait(WAIT_OFFSET) {
-            haFlowHelper.assertHaFlowAndSubFlowStatuses(haFlow.haFlowId, FlowState.DOWN)
-        }
+        def syncResponse = haFlow.sync()
 
-        then: "The HA-flow is not synced"
+        then: "The HA-Flow is not synced"
         !syncResponse.synced
         !syncResponse.error.isEmpty()
+        haFlow.waitForBeingInState(FlowState.DOWN)
 
-        and: "Rules on don switch are not synced"
+        and: "Rules on down switch are not synced"
         syncResponse.unsyncedSwitches == [downSwitch.dpId] as Set
 
-        and: "The HA-flow is not rerouted"
-        northboundV2.getHaFlowPaths(haFlow.haFlowId) == initialHaFlowPaths
+        and: "The HA-Flow is not rerouted"
+        haFlow.retrievedAllEntityPaths() == initialHaFlowPaths
 
-        and: "Missing HA-flow rules are installed (existing ones are reinstalled) on UP involved switches"
-        def upInvolvedSwitches = haPathHelper.getInvolvedSwitches(initialHaFlowPaths) - [downSwitch.dpId]
+        and: "Missing HA-Flow rules are installed (existing ones are reinstalled) on UP involved switches"
+        def upInvolvedSwitches = initialHaFlowPaths.getInvolvedSwitches(true) - [downSwitch.dpId]
         withPool {
             upInvolvedSwitches.eachParallel { SwitchId swId ->
                 Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -144,12 +130,12 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
             }
         }
 
-        cleanup: "Delete the HA-flow"
+        cleanup: "Delete the HA-Flow"
         downSwitch && blockData && switchHelper.reviveSwitch(downSwitch, blockData, true)
         haFlow && Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert haFlowHelper.getHaFlowStatus(haFlow.haFlowId) != FlowState.IN_PROGRESS.toString()
+            assert haFlow.retrieveDetails().status != FlowState.IN_PROGRESS
         }
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+        haFlow && haFlow.delete()
 
         where: data << [
                 [protectedPath: false],
@@ -157,7 +143,7 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         ]
     }
 
-    private void haRulesAreSynced(SwitchId swId, HaFlow haFlow, Date syncTime) {
+    private void haRulesAreSynced(SwitchId swId, HaFlowExtended haFlow, Date syncTime) {
         assert switchHelper.validate(swId).asExpected
         def haRules = switchRulesFactory.get(swId).forHaFlow(haFlow)
         assert !haRules.isEmpty()

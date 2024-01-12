@@ -20,8 +20,8 @@ class SwitchMeters {
         this.switchId = switchId
     }
 
-    Set<FlowMeter> forHaFlow(HaFlow haFlow) {
-        return database.getHaFlowMeters(haFlow)
+    Set<FlowMeter> forHaFlow(HaFlowExtended haFlow) {
+        return database.getHaFlowMeters(haFlow.subFlows, haFlow.haFlowId)
                 .findAll {it.getSwitchId() == switchId}
     }
 

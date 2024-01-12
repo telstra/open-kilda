@@ -1,13 +1,13 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import org.openkilda.functionaltests.helpers.HaPathHelper
-
 import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.helpers.HaFlowHelper
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.YFlowHelper
+import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
@@ -16,18 +16,13 @@ import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify the ability to create diverse HA-Flows in the system.")
+@Tags([HA_FLOW])
 class HaFlowDiversitySpec extends HealthCheckSpecification {
     @Autowired
     @Shared
-    HaFlowHelper haFlowHelper
-    @Autowired
-    @Shared
     YFlowHelper yFlowHelper
-    @Autowired
-    @Shared
-    HaPathHelper haPathHelper
 
-    def "Able to create diverse HA-Flows"() {
+    def "Able to create diverse Ha-Flows"() {
         given: "Switches with three not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.findAll {
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
@@ -39,55 +34,49 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         }.shuffled().first()
         assumeTrue(swT != null, "Unable to find suitable switches")
 
-        when: "Create three HA-Flows with diversity enabled"
-        def haFlowRequest1 = haFlowHelper.randomHaFlow(swT)
-        def haFlow1 = haFlowHelper.addHaFlow(haFlowRequest1)
-        def haFlowRequest2 = haFlowHelper.randomHaFlow(swT, false, [haFlowRequest1])
-                .tap { it.diverseFlowId = haFlow1.haFlowId }
-        def haFlow2 = haFlowHelper.addHaFlow(haFlowRequest2)
-        def haFlowRequest3 = haFlowHelper.randomHaFlow(swT, false, [haFlowRequest1, haFlowRequest2])
-                .tap { it.diverseFlowId = haFlow2.haFlowId }
-        def haFlow3 = haFlowHelper.addHaFlow(haFlowRequest3)
+        when: "Create three Ha-Flows with diversity enabled"
+        def haFlow1 = HaFlowExtended.build(swT, northboundV2, topology).create()
+        def haFlow2 = HaFlowExtended.build(swT, northboundV2, topology, false, haFlow1.occupiedEndpoints())
+                .withDiverseFlow(haFlow1.haFlowId).create()
+        def haFlow3 = HaFlowExtended.build(swT, northboundV2, topology, false,
+                haFlow1.occupiedEndpoints() + haFlow1.occupiedEndpoints()).withDiverseFlow(haFlow2.haFlowId).create()
 
-        then: "Ha-Flow create response contains info about diverse haFlow"
+        then: "HA-Flow create response contains info about diverse haFlow"
         !haFlow1.diverseWithHaFlows
         haFlow2.diverseWithHaFlows == [haFlow1.haFlowId] as Set
         haFlow3.diverseWithHaFlows.sort() == [haFlow1.haFlowId, haFlow2.haFlowId].sort()
 
-        and: "All HA-Flows have diverse HA-Flow IDs in response"
-        northboundV2.getHaFlow(haFlow1.haFlowId).diverseWithHaFlows.sort() == [haFlow2.haFlowId, haFlow3.haFlowId].sort()
-        northboundV2.getHaFlow(haFlow2.haFlowId).diverseWithHaFlows.sort() == [haFlow1.haFlowId, haFlow3.haFlowId].sort()
-        northboundV2.getHaFlow(haFlow3.haFlowId).diverseWithHaFlows.sort() == [haFlow1.haFlowId, haFlow2.haFlowId].sort()
+        and: "All Ha-Flows have diverse HA-Flow IDs in response"
+        haFlow1.retrieveDetails().diverseWithHaFlows.sort() == [haFlow2.haFlowId, haFlow3.haFlowId].sort()
+        haFlow2.retrieveDetails().diverseWithHaFlows.sort() == [haFlow1.haFlowId, haFlow3.haFlowId].sort()
+        haFlow3.retrieveDetails().diverseWithHaFlows.sort() == [haFlow1.haFlowId, haFlow2.haFlowId].sort()
 
-        and: "All HA-Flows have different paths"
-        def haFlow1Path, haFlow2Path, haFlow3Path
+        and: "All Ha-Flows have different paths"
+        def haFlow1InvolvedIsls, haFlow2InvolvedIsls, haFlow3InvolvedIsls
         withPool {
-            (haFlow1Path, haFlow2Path, haFlow3Path) = [haFlow1, haFlow2, haFlow3].collectParallel {
-                northboundV2.getHaFlowPaths(it.getHaFlowId())
+            (haFlow1InvolvedIsls, haFlow2InvolvedIsls, haFlow3InvolvedIsls) = [haFlow1, haFlow2, haFlow3].collectParallel {
+                it.retrievedAllEntityPaths().getInvolvedIsls()
             }
         }
-        assert haPathHelper."get common ISLs"(haFlow1Path, haFlow2Path).isEmpty()
-        assert haPathHelper."get common ISLs"(haFlow2Path, haFlow3Path).isEmpty()
-        assert haPathHelper."get common ISLs"(haFlow1Path, haFlow3Path).isEmpty()
 
-        and: "Ha-flows histories contains 'diverse?' information"
-        //TODO add checks when history records will be added
+        haFlow1InvolvedIsls.intersect(haFlow2InvolvedIsls).isEmpty()
+        haFlow2InvolvedIsls.intersect(haFlow3InvolvedIsls).isEmpty()
+        haFlow1InvolvedIsls.intersect(haFlow3InvolvedIsls).isEmpty()
 
-        and: "Ha-flow passes flow validation"
-        //TODO add validation when https://github.com/telstra/open-kilda/issues/5153 will be implemented
-
-        when: "Delete HA-Flows"
-        [haFlow1, haFlow2, haFlow3].each { it && haFlowHelper.deleteHaFlow(it.haFlowId) }
-        def haFlowsAreDeleted = true
-
-        then: "HaFlows' histories contain 'diverseGroupId' information in 'delete' operation"
-        //TODO add checks when history records will be added
+        and: "HA-Flow passes flow validation"
+        withPool {
+            [haFlow1, haFlow2, haFlow3].eachParallel { HaFlowExtended haFlow ->
+                def validationResponse = haFlow.validate()
+                assert validationResponse.asExpected
+                assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty() }
+            }
+        }
 
         cleanup:
-        !haFlowsAreDeleted && [haFlow1, haFlow2, haFlow3].each { it && haFlowHelper.deleteHaFlow(it.haFlowId) }
+        [haFlow1, haFlow2, haFlow3].findAll().each { haFlow -> haFlow.delete() }
     }
 
-    def "Able to create HA-Flow diverse with common flow"() {
+    def "Able to create HA-Flow diverse with regular flow that is already in diverse group with another HA-Flow"() {
         given: "Switches with two not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.find {
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
@@ -97,18 +86,16 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create an HA-Flow without diversity"
-        def haFlowRequest1 = haFlowHelper.randomHaFlow(swT)
-        def haFlow1 = haFlowHelper.addHaFlow(haFlowRequest1)
+        def haFlow1 = HaFlowExtended.build(swT, northboundV2, topology).create()
 
-        and: "Create a simple multiSwitch flow diverse with ha flow"
+        and: "Create a regular multiSwitch Flow diverse with previously created HA-Flow"
         def flowRequest = flowHelperV2.randomFlow(swT.shared, swT.ep1, false)
                 .tap { diverseFlowId = haFlow1.getHaFlowId() }
         def flow = flowHelperV2.addFlow(flowRequest)
 
-        and: "Create an HA-Flow diverse with simple flow"
-        def haFlowRequest2 = haFlowHelper.randomHaFlow(swT)
-                .tap { it.diverseFlowId = flow.flowId }
-        def haFlow2 = haFlowHelper.addHaFlow(haFlowRequest2)
+        and: "Create an additional HA-Flow diverse with simple flow that has another HA-Flow in diverse group"
+        def haFlow2 = HaFlowExtended.build(swT, northboundV2, topology, false, haFlow1.occupiedEndpoints())
+                .withDiverseFlow(flow.flowId).create()
 
         then: "Create response contains correct info about diverse flows"
         !haFlow1.diverseWithHaFlows
@@ -121,29 +108,37 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         haFlow2.diverseWithFlows == [flow.flowId] as Set
         !haFlow2.diverseWithYFlows
 
-        when: "Get flow and HA-Flows"
-        def getHaFlow1 = northboundV2.getHaFlow(haFlow1.haFlowId)
-        def getHaFlow2 = northboundV2.getHaFlow(haFlow2.haFlowId)
-        def getFlow = northboundV2.getFlow(flow.flowId)
+        when: "Get Flow and Ha-Flows details"
+        def haFlow1Details = haFlow1.retrieveDetails()
+        def haFlow2Details = haFlow2.retrieveDetails()
+        def regularFlowDetails = northboundV2.getFlow(flow.flowId)
 
-        then: "All get flow responses have correct diverse flow IDs"
-        getHaFlow1.diverseWithHaFlows == [haFlow2.haFlowId] as Set
-        getHaFlow1.diverseWithFlows == [flow.flowId] as Set
-        !getHaFlow1.diverseWithYFlows
-        getHaFlow2.diverseWithHaFlows == [haFlow1.haFlowId] as Set
-        getHaFlow2.diverseWithFlows == [flow.flowId] as Set
-        !getHaFlow2.diverseWithYFlows
-        getFlow.diverseWithHaFlows.sort() == [haFlow1.haFlowId, haFlow2.haFlowId].sort()
-        !getFlow.diverseWith
-        !getFlow.diverseWithYFlows
+        then: "All get Flow responses have correct diverse flow IDs"
+        haFlow1Details.diverseWithHaFlows == [haFlow2.haFlowId] as Set
+        haFlow1Details.diverseWithFlows == [flow.flowId] as Set
+        !haFlow1Details.diverseWithYFlows
+        haFlow2Details.diverseWithHaFlows == [haFlow1.haFlowId] as Set
+        haFlow2Details.diverseWithFlows == [flow.flowId] as Set
+        !haFlow2Details.diverseWithYFlows
+        regularFlowDetails.diverseWithHaFlows.sort() == [haFlow1.haFlowId, haFlow2.haFlowId].sort()
+        !regularFlowDetails.diverseWith
+        !regularFlowDetails.diverseWithYFlows
+
+        and: "HA-Flow passes flow validation"
+        withPool {
+            [haFlow1, haFlow2].eachParallel { HaFlowExtended haFlow ->
+                def validationResponse = haFlow.validate()
+                assert validationResponse.asExpected
+                assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty()}
+            }
+        }
 
         cleanup:
-        haFlow1 && haFlowHelper.deleteHaFlow(haFlow1.haFlowId)
-        haFlow2 && haFlowHelper.deleteHaFlow(haFlow2.haFlowId)
+        [haFlow1, haFlow2].each { haFlow -> haFlow && haFlow.delete() }
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    def "Able to create HA-Flow diverse with y-flow"() {
+    def "Able to create HA-Flow diverse with Y-Flow that is in diverse group with another HA-Flow"() {
         given: "Switches with three not overlapping paths at least"
         def swT = topologyHelper.switchTriplets.find {
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
@@ -154,17 +149,19 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         }
         assumeTrue(swT != null, "Unable to find suitable switches")
 
-        when: "Create three HA-Flows with diversity enabled"
-        def haFlowRequest1 = haFlowHelper.randomHaFlow(swT)
-        def haFlow1 = haFlowHelper.addHaFlow(haFlowRequest1)
+        when: "Create an HA-Flow without diversity"
+        def haFlow1 = HaFlowExtended.build(swT, northboundV2, topology).create()
+
+        and: "Create a Y-Flow diverse with previously created HA-Flow"
         def yFlowRequest1 = yFlowHelper.randomYFlow(swT, false)
                 .tap { it.diverseFlowId = haFlow1.haFlowId }
         def yFlow = yFlowHelper.addYFlow(yFlowRequest1)
-        def haFlowRequest2 = haFlowHelper.randomHaFlow(swT, false, [haFlowRequest1])
-                .tap { it.diverseFlowId = yFlow.getYFlowId() }
-        def haFlow2 = haFlowHelper.addHaFlow(haFlowRequest2)
 
-        then: "HaFlow create response contains info about diverse haFlow"
+        and: "Create an additional HA-Flow diverse with Y-Flow that has another HA-Flow in diverse group"
+        def haFlow2 = HaFlowExtended.build(swT, northboundV2, topology, false, haFlow1.occupiedEndpoints())
+                .withDiverseFlow(yFlow.getYFlowId()).create()
+
+        then: "The last HA-Flow create response contains info about diverse haFlow"
         !haFlow1.diverseWithHaFlows
         !haFlow1.diverseWithFlows
         !haFlow1.diverseWithYFlows
@@ -175,25 +172,33 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         !haFlow2.diverseWithFlows
         haFlow2.diverseWithYFlows == [yFlow.getYFlowId()] as Set
 
-        when: "Get y-flow and HA-Flows"
-        def getHaFlow1 = northboundV2.getHaFlow(haFlow1.haFlowId)
-        def getHaFlow2 = northboundV2.getHaFlow(haFlow2.haFlowId)
-        def getYFlow = northboundV2.getYFlow(yFlow.getYFlowId())
+        when: "Get Y-flow and Ha-Flows details"
+        def haFlow1Details = haFlow1.retrieveDetails()
+        def haFlow2Details = haFlow2.retrieveDetails()
+        def yFlowDetails = northboundV2.getYFlow(yFlow.getYFlowId())
 
         then: "All get flow responses have correct diverse flow IDs"
-        getHaFlow1.diverseWithHaFlows == [haFlow2.haFlowId] as Set
-        !getHaFlow1.diverseWithFlows
-        getHaFlow1.diverseWithYFlows == [yFlow.getYFlowId()] as Set
-        getHaFlow2.diverseWithHaFlows == [haFlow1.haFlowId] as Set
-        !getHaFlow2.diverseWithFlows
-        getHaFlow2.diverseWithYFlows == [yFlow.getYFlowId()] as Set
-        getYFlow.diverseWithHaFlows.sort() == [haFlow1.haFlowId, haFlow2.haFlowId].sort()
-        !getYFlow.diverseWithFlows
-        !getYFlow.diverseWithYFlows
+        haFlow1Details.diverseWithHaFlows == [haFlow2.haFlowId] as Set
+        !haFlow1Details.diverseWithFlows
+        haFlow1Details.diverseWithYFlows == [yFlow.getYFlowId()] as Set
+        haFlow2Details.diverseWithHaFlows == [haFlow1.haFlowId] as Set
+        !haFlow2Details.diverseWithFlows
+        haFlow2Details.diverseWithYFlows == [yFlow.getYFlowId()] as Set
+        yFlowDetails.diverseWithHaFlows.sort() == [haFlow1.haFlowId, haFlow2.haFlowId].sort()
+        !yFlowDetails.diverseWithFlows
+        !yFlowDetails.diverseWithYFlows
+
+        and: "HA-Flow passes flow validation"
+        withPool {
+            [haFlow1, haFlow2].eachParallel { HaFlowExtended haFlow ->
+                def validationResponse = haFlow.validate()
+                assert validationResponse.asExpected
+                assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty()}
+            }
+        }
 
         cleanup:
-        haFlow1 && haFlowHelper.deleteHaFlow(haFlow1.haFlowId)
-        haFlow2 && haFlowHelper.deleteHaFlow(haFlow2.haFlowId)
+        [haFlow1, haFlow2].each { haFlow -> haFlow && haFlow.delete() }
         yFlow && yFlowHelper.deleteYFlow(yFlow.getYFlowId())
     }
 }
