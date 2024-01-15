@@ -46,7 +46,7 @@ public class KafkaMessageListener {
      */
     @KafkaHandler
     public void onMessage(
-            @Header(name = KafkaHeaders.RECEIVED_MESSAGE_KEY, required = false) String key,
+            @Header(name = KafkaHeaders.RECEIVED_KEY, required = false) String key,
             Message message) {
         try (MDCCloseable closable = MDC.putCloseable(Utils.CORRELATION_ID, message.getCorrelationId())) {
             log.debug("Message received: {} - {}", Thread.currentThread().getId(), message);

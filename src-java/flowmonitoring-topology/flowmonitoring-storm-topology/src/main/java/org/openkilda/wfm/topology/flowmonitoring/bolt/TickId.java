@@ -16,10 +16,12 @@
 package org.openkilda.wfm.topology.flowmonitoring.bolt;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
-import com.esotericsoftware.kryo.serializers.EnumNameSerializer;
+import com.esotericsoftware.kryo.serializers.DefaultSerializers;
 
-@DefaultSerializer(EnumNameSerializer.class)
-enum TickId {
+import java.io.Serializable;
+
+@DefaultSerializer(DefaultSerializers.EnumSerializer.class)
+public enum TickId implements Serializable {
     CACHE_UPDATE,
     SLA_CHECK
 }
