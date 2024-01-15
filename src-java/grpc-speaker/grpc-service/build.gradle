@@ -21,26 +21,9 @@ dependencies {
     implementation('org.springframework.boot:spring-boot-starter-web')
     implementation 'org.springframework.security:spring-security-config:6.0.2'
     implementation 'org.springframework.security:spring-security-web'
-    implementation ('org.springframework.kafka:spring-kafka') {
-        version {
-            strictly '2.3.13.RELEASE'
-        }
-        // This conflicts with kafka_2.11
-        exclude module:'kafka_2.12'
-        exclude group: 'org.apache.kafka', module: 'kafka-clients'
-    }
-    implementation('org.apache.kafka:kafka-clients') {
-        version {
-            strictly '2.3.1'
-        }
-    }
-    implementation('org.apache.kafka:kafka_2.11') {
-        version {
-            strictly '2.3.1'
-        }
-        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
-        exclude group: 'log4j', module: 'log4j'
-    }
+    implementation ('org.springframework.kafka:spring-kafka:3.1.1')
+    implementation('org.apache.kafka:kafka-clients:3.6.1')
+    implementation('org.apache.kafka:kafka_2.11')
 
     implementation 'org.slf4j:slf4j-api'
     implementation 'io.grpc:grpc-protobuf'
@@ -87,4 +70,10 @@ bootJar.dependsOn generateVersionTxt
 
 test {
     useJUnitPlatform()
+}
+
+configurations.all {
+    resolutionStrategy {
+        force('org.apache.kafka:kafka-clients:3.6.1')
+    }
 }

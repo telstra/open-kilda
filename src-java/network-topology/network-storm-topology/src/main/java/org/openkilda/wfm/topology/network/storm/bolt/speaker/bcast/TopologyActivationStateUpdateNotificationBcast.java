@@ -15,7 +15,17 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast;
 
-public class TopologyActivationStateUpdateNotificationBcast extends SpeakerBcast {
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.BeanSerializer;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
+
+import java.io.Serializable;
+
+@EqualsAndHashCode(callSuper = true)
+@Value
+@DefaultSerializer(BeanSerializer.class)
+public class TopologyActivationStateUpdateNotificationBcast extends SpeakerBcast implements Serializable {
     private final boolean isActive;
 
     public TopologyActivationStateUpdateNotificationBcast(boolean isActive) {

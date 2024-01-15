@@ -24,10 +24,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
@@ -86,9 +87,11 @@ public class SecurityConfig {
         if (password == null || password.isEmpty()) {
             password = defaultPassword;
         }
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(16);
 
-        UserDetails user = User.withDefaultPasswordEncoder()
-                .username(username)
+        UserDetails user = User
+                .withUsername(username)
+                .passwordEncoder(encoder::encode)
                 .password(password)
                 .roles(DEFAULT_ROLE)
                 .build();
@@ -97,15 +100,21 @@ public class SecurityConfig {
 
     @Bean
     protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf().disable().authorizeHttpRequests().requestMatchers("/health-check").permitAll().and()
-                .authorizeHttpRequests().anyRequest().fullyAuthenticated().and()
-                .httpBasic().authenticationEntryPoint(authenticationEntryPoint).and()
-                .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+        http.csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(authorizationManagerRequestMatcherRegistry ->
+                        authorizationManagerRequestMatcherRegistry.requestMatchers("/health-check")
+                                .permitAll())
+                .authorizeHttpRequests(authorizationManagerRequestMatcherRegistry ->
+                        authorizationManagerRequestMatcherRegistry.anyRequest().fullyAuthenticated())
+                .httpBasic(httpSecurityHttpBasicConfigurer ->
+                        httpSecurityHttpBasicConfigurer.authenticationEntryPoint(authenticationEntryPoint));
+        http.sessionManagement(httpSecuritySessionManagementConfigurer ->
+                httpSecuritySessionManagementConfigurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         return http.build();
     }
 
     @Bean
     public static PasswordEncoder passwordEncoder() {
-        return NoOpPasswordEncoder.getInstance();
+        return new BCryptPasswordEncoder();
     }
 }
