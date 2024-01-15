@@ -653,12 +653,6 @@ class SwitchHelper {
         reviveSwitch(sw, flResourceAddress, false)
     }
 
-    static void removeExcessRules(List<SwitchId> switches) {
-        withPool {
-            switches.eachParallel {northbound.get().synchronizeSwitch(it, true)}
-        }
-    }
-
     static void verifySectionInSwitchValidationInfo(SwitchValidationV2ExtendedResult switchValidateInfo,
                                                     List<String> sections = ["groups", "meters", "logical_ports", "rules"]) {
         sections.each { String section ->
@@ -692,6 +686,62 @@ class SwitchHelper {
                     }
         }
         assert synchronizationResult.isEmpty()
+    }
+
+    /**
+     * Synchronizes each switch from the list and returns a map of SwitchSyncResults, where the key is
+     * SwitchId and the value is result of synchronization if there were entries which had to be fixed.
+     * I.e. if all the switches were in expected state, then empty list is returned. If there were only
+     * two switches in unexpected state, than resulting map will have only two entries, etc.
+     * @param switchesToSynchronize SwitchIds which should be synchronized
+     * @return Map of SwitchIds and SwitchSyncResults for switches which weren't in expected state before
+     * the synchronization
+     */
+    static Map<SwitchId, SwitchSyncResult> synchronizeAndGetFixedEntries(List<SwitchId> switchesToSynchronize) {
+        return withPool {
+            switchesToSynchronize.collectParallel { [it, northbound.get().synchronizeSwitch(it, true)] }
+            .collectEntries { [(it[0]): it[1]] }
+                    .findAll {
+                        [it.getValue().getRules().getMissing(),
+                        it.getValue().getRules().getMisconfigured(),
+                        it.getValue().getRules().getExcess(),
+                        it.getValue().getMeters().getMissing(),
+                        it.getValue().getMeters().getMisconfigured(),
+                        it.getValue().getMeters().getExcess()].any {!it.isEmpty()}
+                    }
+        }
+    }
+
+    /**
+     * Synchronizes switch and returns optional SwitchSyncResults if the switch was in unexpected state
+     * before the synchronization
+     * @param switchToSynchronize SwitchId to synchronize
+     * @return optional SwitchSyncResult if the switch was in unexpected state
+     * before the synchronization
+     */
+    static Optional<SwitchSyncResult> synchronizeAndGetFixedEntries(SwitchId switchToSynchronize) {
+        return Optional.ofNullable(synchronizeAndGetFixedEntries([switchToSynchronize]).get(switchToSynchronize))
+    }
+
+    /**
+     * Alias for the method for the same name but accepts Set instead of List
+     * @param switchesToSynchronize
+     * @return
+     */
+    static Map<SwitchId, SwitchSyncResult> synchronizeAndGetFixedEntries(Set<SwitchId> switchesToSynchronize) {
+        return synchronizeAndGetFixedEntries(switchesToSynchronize as List)
+    }
+
+    static Map<SwitchId, SwitchValidationV2ExtendedResult> validateAndGetFixedEntries(List<SwitchId> switchesToValidate) {
+        return withPool {
+            switchesToValidate.collectParallel { [it, northboundV2.get().validateSwitch(it)] }
+                    .collectEntries { [(it[0]): it[1]] }
+                    .findAll { !it.getValue().isAsExpected() }
+        }
+    }
+
+    static Optional<SwitchValidationV2ExtendedResult> validateAndGetFixedEntries(SwitchId switchToValidate) {
+        return Optional.ofNullable(validateAndGetFixedEntries([switchToValidate]).get(switchToValidate))
     }
 
     static void synchronizeAndValidateRulesInstallation(Switch srcSwitch, Switch dstSwitch) {

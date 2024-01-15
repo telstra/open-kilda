@@ -168,16 +168,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "Involved switches pass switch validation"
-        pathHelper.getInvolvedSwitches(flow.flowId).each { sw ->
-            verifyAll(northbound.validateSwitch(sw.dpId)) {
-                rules.missing.empty
-                rules.excess.empty
-                rules.misconfigured.empty
-                meters.missing.empty
-                meters.excess.empty
-                meters.misconfigured.empty
-            }
-        }
+        switchHelper.validateAndGetFixedEntries(pathHelper.getInvolvedSwitches(flow.flowId)*.getDpId()).isEmpty()
 
         and: "Check if stats for forward and reverse flows are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
@@ -210,16 +201,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         expect: "Involved switches pass switch validation"
         Wrappers.wait(RULES_INSTALLATION_TIME) { //wait for s42 rules
-            pathHelper.getInvolvedSwitches(flow.flowId).each { sw ->
-                verifyAll(northbound.validateSwitch(sw.dpId)) {
-                    rules.missing.empty
-                    rules.excess.empty
-                    rules.misconfigured.empty
-                    meters.missing.empty
-                    meters.excess.empty
-                    meters.misconfigured.empty
-                }
-            }
+            switchHelper.synchronizeAndGetFixedEntries(pathHelper.getInvolvedSwitches(flow.flowId)*.getDpId()).isEmpty()
         }
 
         when: "Wait for several seconds"
@@ -301,16 +283,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Involved switches pass switch validation"
         Wrappers.wait(RULES_INSTALLATION_TIME) {  //wait for s42 rules
-            pathHelper.getInvolvedSwitches(flow.flowId).each { sw ->
-                verifyAll(northbound.validateSwitch(sw.dpId)) {
-                    rules.missing.empty
-                    rules.excess.empty
-                    rules.misconfigured.empty
-                    meters.missing.empty
-                    meters.excess.empty
-                    meters.misconfigured.empty
-                }
-            }
+            switchHelper.validateAndGetFixedEntries(pathHelper.getInvolvedSwitches(flow.flowId)*.getDpId()).isEmpty()
         }
 
         and: "Stats for both directions are available"
@@ -322,7 +295,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         when: "Disable flow rtt on dst switch"
         changeFlowRttSwitch(switchPair.dst, false)
         Wrappers.wait(RULES_INSTALLATION_TIME, 3) {
-            northboundV2.validateSwitch(switchPair.dst.dpId).isAsExpected()
+            assert !switchHelper.validateAndGetFixedEntries(switchPair.dst.dpId).isPresent()
         }
         checkpointTime = new Date().getTime() + SERVER42_STATS_LAG * 1000
 
@@ -366,7 +339,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "System detects missing rule on the src switch"
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert northbound.validateSwitch(switchPair.src.dpId).rules.missing == [cookieToDelete]
+            assert switchHelper.validateAndGetFixedEntries(switchPair.src.dpId).get()
+                    .rules.missing*.getCookie() == [cookieToDelete]
         }
         def timeWhenMissingRuleIsDetected = new Date().getTime()
 
@@ -396,7 +370,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Missing ingress server42 rule is reinstalled on the src switch"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert northbound.validateSwitch(switchPair.src.dpId).rules.missing.empty
+            assert !switchHelper.validateAndGetFixedEntries(switchPair.src.dpId).isPresent()
             assert northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
                 new Cookie(it.cookie).getType() == CookieType.SERVER_42_FLOW_RTT_INGRESS
             }*.cookie.size() == 1
@@ -473,9 +447,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         and: "All switches are valid"
         def involvedSwitches = [fl1SwPair.src, fl1SwPair.dst, fl2SwPair.src, fl2SwPair.dst]*.dpId.unique()
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            involvedSwitches.each { swId ->
-                northbound.validateSwitch(swId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
+            assert switchHelper.validateAndGetFixedEntries(involvedSwitches).isEmpty()
         }
 
         and: "server42 stats are available for the flow2 in the forward direction"
@@ -583,12 +555,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "The src switch is valid"
-        [switchPair.src, switchPair.dst].each {
-            with(northbound.validateSwitch(it.dpId)) {
-                it.verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
-                it.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
-            }
-        }
+        switchHelper.synchronizeAndGetFixedEntries(switchPair.toList()*.getDpId()).isEmpty()
 
         cleanup: "Revert system to original state"
         revertToOrigin([flow], flowRttFeatureStartState, initialSwitchRtt)
@@ -648,10 +615,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "The src switch is valid"
-        with(northbound.validateSwitch(switchPair.src.dpId)) {
-            it.verifyRuleSectionsAreEmpty()
-            it.verifyMeterSectionsAreEmpty()
-        }
+        !switchHelper.synchronizeAndGetFixedEntries(switchPair.src.dpId).isPresent()
 
         when: "Create a flow on the given switch pair"
         def flowCreateTime = new Date()
@@ -684,10 +648,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "The src switch is valid"
-        with(northbound.validateSwitch(switchPair.src.dpId)) {
-            it.verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
-            it.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
-        }
+        !switchHelper.synchronizeAndGetFixedEntries(switchPair.src.dpId).isPresent()
 
         and: "Flow rtt stats are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {

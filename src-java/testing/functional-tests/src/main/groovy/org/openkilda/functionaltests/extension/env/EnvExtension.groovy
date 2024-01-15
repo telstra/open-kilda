@@ -235,22 +235,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     }
 
     Closure noExcessRulesMeters = { TopologyDefinition topologyDefinition ->
-        def excessRulesAssertions = new SoftAssertions()
-        withPool {
-            (topologyDefinition.activeSwitches).eachParallel { sw ->
-                def rules = northbound.validateSwitchRules(sw.dpId)
-                excessRulesAssertions.checkSucceeds { assert rules.excessRules.empty, sw }
-                excessRulesAssertions.checkSucceeds { assert rules.missingRules.empty, sw }
-                if (!sw.virtual && sw.ofVersion != "OF_12") {
-                    excessRulesAssertions.checkSucceeds {
-                        assert northbound.getAllMeters(sw.dpId).meterEntries.findAll {
-                            it.meterId > MAX_SYSTEM_RULE_METER_ID
-                        }.isEmpty(), "Switch has meters above system max ones"
-                    }
-                }
-            }
-            excessRulesAssertions.verify()
-        }
+        switchHelper.synchronizeAndGetFixedEntries(topologyDefinition.activeSwitches*.getDpId())
     }
 
     Closure allSwitchesConnectedToExpectedRegion = { TopologyDefinition topologyDefinition ->

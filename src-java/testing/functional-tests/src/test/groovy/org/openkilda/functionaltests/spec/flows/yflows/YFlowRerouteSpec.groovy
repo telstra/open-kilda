@@ -107,11 +107,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches pass switch validation"
-        def involvedSwitches = pathHelper.getInvolvedYSwitches(paths)
-        involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        switchHelper.synchronizeAndGetFixedEntries(pathHelper.getInvolvedYSwitches(paths)*.getDpId()).isEmpty()
 
         when: "Traffic starts to flow on both sub-flows with maximum bandwidth (if applicable)"
         def traffExam = traffExamProvider.get()

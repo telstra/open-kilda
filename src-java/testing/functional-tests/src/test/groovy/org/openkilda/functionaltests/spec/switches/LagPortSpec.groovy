@@ -97,10 +97,7 @@ class LagPortSpec extends HealthCheckSpecification {
         }
 
         and: "Switch is valid"
-        with(northbound.validateSwitch(sw.dpId)) {
-            it.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty()
-        }
+        !switchHelper.synchronizeAndGetFixedEntries(sw.dpId).isPresent()
 
         when: "Update the LAG port"
         def payloadUpdate = new LagPortRequest(portNumbers: portsArrayUpdate)
@@ -128,11 +125,7 @@ class LagPortSpec extends HealthCheckSpecification {
         }
 
         and: "Switch is valid"
-        with(northbound.validateSwitch(sw.dpId)) {
-            it.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty()
-            it.verifyLogicalPortsSectionsAreEmpty()
-        }
+        !switchHelper.synchronizeAndGetFixedEntries(sw.dpId).isPresent()
 
         when: "Delete the LAG port"
         def deleteResponse = northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
@@ -254,10 +247,7 @@ class LagPortSpec extends HealthCheckSpecification {
         }
 
         and: "Switch is valid"
-        with(northbound.validateSwitch(sw.dpId)) {
-            it.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty()
-        }
+        !switchHelper.synchronizeAndGetFixedEntries(sw.dpId).isPresent()
 
         cleanup:
         blockData && !swIsActivated && switchHelper.reviveSwitch(sw, blockData, true)
@@ -450,7 +440,7 @@ occupied by other LAG group\(s\)./).matches(exc)
         grpc.deleteSwitchLogicalPort(northbound.getSwitch(sw.dpId).address, lagPort)
 
         then: "System detects that LAG port is missed"
-        def lagPortMissingInfo = northbound.validateSwitch(sw.dpId).logicalPorts.missing
+        def lagPortMissingInfo = switchHelper.validateAndGetFixedEntries(sw.dpId).get().logicalPorts.missing
         lagPortMissingInfo.size() == 1
         with (lagPortMissingInfo[0]) {
             type == LogicalPortType.LAG.toString()
@@ -459,10 +449,10 @@ occupied by other LAG group\(s\)./).matches(exc)
         }
 
         when: "Synchronize the switch"
-        northbound.synchronizeSwitch(sw.dpId, false)
+        switchHelper.synchronizeAndGetFixedEntries(sw.dpId)
 
         then: "LAG port is reinstalled"
-        northbound.validateSwitch(sw.dpId).logicalPorts.missing.empty
+        switchHelper.validateAndGetFixedEntries(sw.dpId).get().logicalPorts.missing.empty
 
         cleanup:
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
@@ -483,7 +473,7 @@ occupied by other LAG group\(s\)./).matches(exc)
         grpc.createLogicalPort(swAddress, request)
 
         then: "System detects misconfigured LAG port"
-        !northbound.validateSwitch(sw.dpId).logicalPorts.misconfigured.empty
+        !switchHelper.validateAndGetFixedEntries(sw.dpId).get().logicalPorts.misconfigured.empty
 
         cleanup:
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
@@ -915,11 +905,7 @@ occupied by other LAG group\(s\)./).matches(exc)
     private void assertSwitchHasCorrectLacpRulesAndMeters(
             Switch sw, mustContainCookies, mustNotContainsCookies, mustContainLacpMeter) {
         // validate switch
-        with(northbound.validateSwitch(sw.dpId)) {
-            it.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty()
-            it.verifyLogicalPortsSectionsAreEmpty()
-        }
+        !switchHelper.validateAndGetFixedEntries(sw.dpId).isPresent()
 
         // check cookies
         def hexCookies = northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.collect { Cookie.toString(it) }

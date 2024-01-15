@@ -69,11 +69,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         northboundV2.getHaFlowPaths(haFlow.haFlowId) == currentPathResponse
 
         and: "And involved switches pass validation"
-        withPool {
-            haFlowHelper.getInvolvedSwitches(currentPathResponse).eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndGetFixedEntries(haFlowHelper.getInvolvedSwitches(currentPathResponse)).isEmpty()
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
@@ -145,11 +141,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
 
         and: "And involved switches pass validation"
         def allInvolvedSwitchIds = oldInvolvedSwitchIds + haFlowHelper.getInvolvedSwitches(getPathsResponse)
-        withPool {
-            allInvolvedSwitchIds.eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndGetFixedEntries(allInvolvedSwitchIds).isEmpty()
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
@@ -205,11 +197,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
 
         and: "And involved switches pass validation"
         def allInvolvedSwitchIds = oldInvolvedSwitchIds + haFlowHelper.getInvolvedSwitches(updatedPaths)
-        withPool {
-            allInvolvedSwitchIds.eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndGetFixedEntries(allInvolvedSwitchIds).isEmpty()
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected

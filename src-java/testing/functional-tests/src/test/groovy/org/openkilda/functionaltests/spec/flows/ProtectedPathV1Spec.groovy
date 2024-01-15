@@ -319,11 +319,11 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
 
         and: "No rule discrepancies on every switch of the flow on the main path"
         def mainSwitches = pathHelper.getInvolvedSwitches(currentPath)
-        mainSwitches.each { verifySwitchRules(it.dpId) }
+        switchHelper.synchronizeAndGetFixedEntries(mainSwitches*.getDpId()).isEmpty()
 
         and: "No rule discrepancies on every switch of the flow on the protected path)"
         def protectedSwitches = pathHelper.getInvolvedSwitches(currentProtectedPath)
-        protectedSwitches.each { verifySwitchRules(it.dpId) }
+        switchHelper.synchronizeAndGetFixedEntries(protectedSwitches*.getDpId()).isEmpty()
 
         and: "The flow allows traffic(on the main path)"
         def traffExam = traffExamProvider.get()
@@ -382,21 +382,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         and: "Transit switches store the correct info about rules and meters"
         def involvedTransitSwitches = (currentPath[1..-2].switchId + currentProtectedPath[1..-2].switchId).unique()
         Wrappers.wait(WAIT_OFFSET) {
-            involvedTransitSwitches.each { switchId ->
-                def amountOfRules = (switchId in currentProtectedPath*.switchId &&
-                        switchId in currentPath*.switchId) ? 4 : 2
-                if (northbound.getSwitch(switchId).description.contains("OF_12")) {
-                    def switchValidateInfo = northbound.validateSwitchRules(switchId)
-                    assert switchValidateInfo.properRules.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRules
-                    assert switchValidateInfo.missingRules.size() == 0
-                    assert switchValidateInfo.excessRules.size() == 0
-                } else {
-                    def switchValidateInfo = northbound.validateSwitch(switchId)
-                    assert switchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRules
-                    switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
-                    switchValidateInfo.verifyMeterSectionsAreEmpty()
-                }
-            }
+            assert switchHelper.validateAndGetFixedEntries(involvedTransitSwitches).isEmpty()
         }
 
         and: "No rule discrepancies when doing flow validation"
@@ -407,11 +393,11 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
 
         and: "No rule discrepancies on every switch of the flow on the main path"
         def newMainSwitches = pathHelper.getInvolvedSwitches(newCurrentPath)
-        newMainSwitches.each { verifySwitchRules(it.dpId) }
+        switchHelper.synchronizeAndGetFixedEntries(newMainSwitches*.getDpId()).isEmpty()
 
         and: "No rule discrepancies on every switch of the flow on the protected path)"
         def newProtectedSwitches = pathHelper.getInvolvedSwitches(newCurrentProtectedPath)
-        newProtectedSwitches.each { verifySwitchRules(it.dpId) }
+        switchHelper.synchronizeAndGetFixedEntries(newProtectedSwitches*.getDpId()).isEmpty()
 
         and: "The flow allows traffic(on the protected path)"
         withPool {

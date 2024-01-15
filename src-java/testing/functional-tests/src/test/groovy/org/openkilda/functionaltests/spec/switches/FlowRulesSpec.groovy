@@ -427,7 +427,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         involvedSwitches.each { switchId ->
             northbound.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
             Wrappers.wait(RULES_DELETION_TIME) {
-                assert northbound.validateSwitchRules(switchId).missingRules.size() == amountOfRulesMap[switchId]
+                assert switchHelper.validateAndGetFixedEntries(switchId).get().getRules().getMissing().size()
+                        == amountOfRulesMap[switchId]
             }
         }
 
@@ -445,13 +446,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         and: "No missing rules were found after rules validation"
-        involvedSwitches.each { switchId ->
-            verifyAll(northbound.validateSwitchRules(switchId)) {
-                properRules.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRulesMap[switchId]
-                missingRules.empty
-                excessRules.empty
-            }
-        }
+        switchHelper.synchronizeAndGetFixedEntries(involvedSwitches).isEmpty()
 
         cleanup: "Delete the flow and reset costs"
         flow && flowHelperV2.deleteFlow(flow.flowId)

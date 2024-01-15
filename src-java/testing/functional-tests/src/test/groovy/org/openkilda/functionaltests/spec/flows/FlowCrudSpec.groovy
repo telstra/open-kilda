@@ -107,9 +107,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
 
         expect: "No rule discrepancies on every switch of the flow"
-        wait(WAIT_OFFSET) { //due to instability on jenkins
-            switches.each { verifySwitchRules(it.dpId) }
-        }
+        switchHelper.synchronizeAndGetFixedEntries(switches*.getDpId()).isEmpty()
+
 
         and: "No discrepancies when doing flow validation"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
@@ -143,7 +142,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
 
         and: "No rule discrepancies on every switch of the flow"
-        switches.each { sw -> wait(WAIT_OFFSET) { verifySwitchRules(sw.dpId) } }
+        switchHelper.synchronizeAndGetFixedEntries(switches*.getDpId()).isEmpty()
 
         cleanup:
         !flowIsDeleted && flow && flowHelperV2.deleteFlow(flow.flowId)
@@ -346,7 +345,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         expect: "No rule discrepancies on the switch"
-        verifySwitchRules(flow.source.switchId)
+        !switchHelper.synchronizeAndGetFixedEntries(flow.source.switchId).isPresent()
 
         and: "No discrepancies when doing flow validation"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
@@ -359,7 +358,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def flowIsDeleted = true
 
         and: "No rule discrepancies on the switch after delete"
-        wait(WAIT_OFFSET) { verifySwitchRules(flow.source.switchId) }
+        !switchHelper.synchronizeAndGetFixedEntries(flow.source.switchId).isPresent()
 
         cleanup:
         !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
@@ -549,9 +548,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "All related switches have no discrepancies in rules"
         switches.each {
-            def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
-            validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
+            assert !switchHelper.synchronizeAndGetFixedEntries(it.dpId).isPresent()
             def swProps = switchHelper.getCachedSwProps(it.dpId)
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId, dstSwitch.dpId]) ? 1 : 0
             if (swProps.server42FlowRtt) {
@@ -559,7 +556,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
                     amountOfServer42Rules += 1
             }
             def amountOfFlowRules = 3 + amountOfServer42Rules
-            assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
+            assert switchHelper.validate(it.getDpId()).rules.proper.findAll { !new Cookie(it.getCookie()).serviceFlag }
+                    .size() == amountOfFlowRules
         }
 
         cleanup: "Remove the flow"
@@ -1011,10 +1009,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
 
         and: "The src switch passes switch validation"
-        with(northbound.validateSwitch(srcSwitch.dpId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        !switchHelper.synchronizeAndGetFixedEntries(srcSwitch.getDpId()).isPresent()
 
         when: "Update the flow: switch id on the dst endpoint"
         def newDstSwitch = allSwitches[2]
@@ -1069,12 +1064,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "The new and old dst switches pass switch validation"
         wait(RULES_DELETION_TIME) {
-            [dstSwitch, newDstSwitch]*.dpId.each { switchId ->
-                with(northbound.validateSwitch(switchId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
+            assert switchHelper.validateAndGetFixedEntries([dstSwitch.getDpId(), newDstSwitch.getDpId()]).isEmpty()
         }
 
         cleanup:
@@ -1111,14 +1101,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "All involved switches pass switch validation"
         def involvedSwitchIds = (currentPath*.switchId + newCurrentPath*.switchId).unique()
-        withPool {
-            involvedSwitchIds.eachParallel { SwitchId swId ->
-                with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
-        }
+        switchHelper.synchronizeAndGetFixedEntries(involvedSwitchIds).isEmpty()
 
         cleanup: "Revert system to original state"
         flow && flowHelperV2.deleteFlow(flow.flowId)
@@ -1211,14 +1194,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
 
         and: "All involved switches pass switch validation"
-        withPool {
-            currentPath*.switchId.eachParallel { SwitchId swId ->
-                with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
-        }
+        switchHelper.synchronizeAndGetFixedEntries(currentPath*.switchId).isEmpty()
 
         cleanup: "Revert system to original state"
         flow && flowHelperV2.deleteFlow(flow.flowId)
@@ -1258,12 +1234,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
 
         and: "Involved switches pass switch validation"
-        [swPair.src, swPair.dst].each { sw ->
-            with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        switchHelper.synchronizeAndGetFixedEntries(swPair.toList()*.dpId).isEmpty()
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)

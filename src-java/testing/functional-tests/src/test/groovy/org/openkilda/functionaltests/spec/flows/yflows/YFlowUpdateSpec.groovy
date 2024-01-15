@@ -57,10 +57,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         expect northboundV2.getYFlow(yFlow.YFlowId), sameBeanAs(yFlow, ignores)
 
         and: "All related switches have no discrepancies"
-        involvedSwitches.each { sw ->
-            northboundV2.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northboundV2.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        switchHelper.synchronizeAndGetFixedEntries(involvedSwitches*.getDpId()).isEmpty()
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
@@ -134,10 +131,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         expect northboundV2.getYFlow(yFlow.YFlowId), sameBeanAs(yFlow, ignores)
 
         and: "All related switches have no discrepancies"
-        involvedSwitches.each { sw ->
-            northboundV2.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northboundV2.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        switchHelper.synchronizeAndGetFixedEntries(involvedSwitches*.getDpId()).isEmpty()
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
@@ -184,9 +178,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         expect northboundV2.getYFlow(yFlow.YFlowId), sameBeanAs(yFlow, ignores)
 
         and: "All related switches have no discrepancies"
-        northboundV2.validateSwitch(switchId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        northboundV2.validateSwitch(switchId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-
+        !switchHelper.synchronizeAndGetFixedEntries(switchId).isPresent()
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
@@ -216,10 +208,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         expect northboundV2.getYFlow(yFlow.YFlowId), sameBeanAs(yFlow, ignores)
 
         and: "All related switches have no discrepancies"
-        involvedSwitches.each { sw ->
-            northboundV2.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northboundV2.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        switchHelper.synchronizeAndGetFixedEntries(involvedSwitches*.getDpId()).isEmpty()
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)

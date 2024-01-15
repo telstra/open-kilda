@@ -309,11 +309,11 @@ class SwitchesSpec extends HealthCheckSpecification {
                 [descr    : "synchronizing rules on",
                  operation: { getNorthbound().synchronizeSwitchRules(NON_EXISTENT_SWITCH_ID) }],
                 [descr    : "synchronizing",
-                 operation: { getNorthbound().synchronizeSwitch(NON_EXISTENT_SWITCH_ID, true) }],
+                 operation: { switchHelper.validateAndGetFixedEntries(NON_EXISTENT_SWITCH_ID) }],
                 [descr    : "validating rules on",
                  operation: { getNorthbound().validateSwitchRules(NON_EXISTENT_SWITCH_ID) }],
                 [descr    : "validating",
-                 operation: { getNorthbound().validateSwitch(NON_EXISTENT_SWITCH_ID) }]
+                 operation: { switchHelper.validateAndGetFixedEntries(NON_EXISTENT_SWITCH_ID) }]
         ]
     }
 

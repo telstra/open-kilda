@@ -7,7 +7,6 @@ import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -95,8 +94,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(switchPair.dst.dpId).empty
 
         and: "The src switch is valid"
-        northbound.validateSwitch(switchPair.src.dpId)
-                .verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        switchHelper.synchronizeAndGetFixedEntries([switchPair.getSrc().getDpId()]).isEmpty()
 
         when: "Send traffic via flow in the forward direction"
         def traffExam = traffExamProvider.get()
@@ -173,8 +171,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         }
 
         and: "The src switch is valid"
-        northbound.validateSwitch(switchPair.src.dpId)
-                .verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        !switchHelper.synchronizeAndGetFixedEntries(switchPair.getSrc().getDpId()).isPresent()
 
         and: "Flow allows traffic"
         withPool {
@@ -272,16 +269,11 @@ class FlowLoopSpec extends HealthCheckSpecification {
             assert getFlowLoopRules(switchPair.dst.dpId).empty
         }
 
-        and: "The dst switch is valid"
-        northbound.validateSwitch(switchPair.src.dpId)
-                .verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        def testIsCompleted = true
+        and: "Both switches are valid"
+        switchHelper.synchronizeAndGetFixedEntries(switchPair.toList()*.getDpId()).isEmpty()
 
         cleanup: "Delete the flow"
         flow && !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
-        !testIsCompleted && [switchPair.src.dpId, switchPair.dst.dpId].each {
-            northbound.synchronizeSwitch(it, true)
-        }
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -326,8 +318,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(switchPair.dst.dpId).size() == 2
 
         and: "The src switch is valid"
-        northbound.validateSwitch(switchPair.src.dpId)
-                .verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        !switchHelper.synchronizeAndGetFixedEntries(switchPair.getSrc().getDpId()).isPresent()
 
         and: "Flow doesn't allow traffic, because it is grubbed by flowLoop rules"
         def traffExam = traffExamProvider.get()
@@ -355,6 +346,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
     def "System is able to detect and sync missing flowLoop rules"() {
         given: "An active flow with created flowLoop on the src switch"
         def switchPair = switchPairs.all().neighbouring().random()
+        def sourceSwitchId = switchPair.getSrc().getDpId()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
         northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
@@ -365,15 +357,15 @@ class FlowLoopSpec extends HealthCheckSpecification {
         }
 
         when: "Delete flowLoop rules"
-        flowLoopRules.each { northbound.deleteSwitchRules(switchPair.src.dpId, it) }
+        flowLoopRules.each { northbound.deleteSwitchRules(sourceSwitchId, it) }
 
         then: "System detects missing flowLoop rules"
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert northbound.validateSwitch(switchPair.src.dpId).rules.missing.sort() == flowLoopRules.sort()
+            assert northbound.validateSwitch(sourceSwitchId).rules.missing.sort() == flowLoopRules.sort()
         }
 
         when: "Sync the src switch"
-        def syncResponse = northbound.synchronizeSwitch(switchPair.src.dpId, true)
+        def syncResponse = switchHelper.synchronizeAndGetFixedEntries(sourceSwitchId).get()
 
         then: "Sync response contains flowLoop rules into the installed section"
         syncResponse.rules.installed.sort() == flowLoopRules.sort()
@@ -481,8 +473,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
             def flowLoopRules = getFlowLoopRules(switchPair.src.dpId)
             assert flowLoopRules.size() == 2
             assert flowLoopRules*.packetCount.every { it == 0 }
-            northbound.validateSwitch(switchPair.src.dpId)
-                    .verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            assert !switchHelper.validateAndGetFixedEntries(switchPair.getSrc().getDpId()).isPresent()
         }
 
         when: "Send traffic via flow"
@@ -543,7 +534,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         and: "The switch is valid"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert getFlowLoopRules(sw.dpId).size() == 2
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            assert !switchHelper.validateAndGetFixedEntries(sw.getDpId()).isPresent()
         }
 
 
@@ -563,12 +554,10 @@ class FlowLoopSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "The switch is valid"
-        northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        def testIsCompleted = true
+        !switchHelper.synchronizeAndGetFixedEntries(sw.getDpId()).isPresent()
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        !testIsCompleted && northbound.synchronizeSwitch(sw.dpId, true)
     }
 
     @Tags(LOW_PRIORITY)
@@ -596,8 +585,8 @@ class FlowLoopSpec extends HealthCheckSpecification {
         and: "The switch is valid"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert getFlowLoopRules(sw.dpId).size() == 2
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
+        !switchHelper.synchronizeAndGetFixedEntries(sw.getDpId()).isPresent()
 
         when: "Delete the flow with created flowLoop"
         flowHelperV2.deleteFlow(flow.flowId)
@@ -607,12 +596,10 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(sw.dpId).empty
 
         and: "The switch is valid"
-        northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        def testIsCompleted = true
+        !switchHelper.synchronizeAndGetFixedEntries(sw.getDpId()).isPresent()
 
         cleanup: "Delete the flow"
         !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
-        !testIsCompleted && northbound.synchronizeSwitch(sw.dpId, true)
     }
 
     @Tags(LOW_PRIORITY)
@@ -632,9 +619,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "The src/dst switches are valid"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            [switchPair.src, switchPair.dst].each {
-                northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
+            assert switchHelper.validateAndGetFixedEntries(switchPair.toList()*.getDpId()).isEmpty()
         }
 
         and: "No extra rules are created on the src/dst switches"
@@ -751,11 +736,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(sw.dpId).empty
 
         and: "The switch is valid"
-        northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        def switchIsValid = true
-
-        cleanup:
-        !switchIsValid && northbound.synchronizeSwitch(sw.dpId, true)
+        !switchHelper.synchronizeAndGetFixedEntries(sw.getDpId()).isPresent()
     }
 
     @Tags(LOW_PRIORITY)

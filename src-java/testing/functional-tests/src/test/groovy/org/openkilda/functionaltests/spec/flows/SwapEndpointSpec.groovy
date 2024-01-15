@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import org.openkilda.functionaltests.error.flow.FlowEndpointsNotSwappedExpectedError
-
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
@@ -17,6 +15,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flow.FlowEndpointsNotSwappedExpectedError
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -1083,7 +1082,7 @@ switches"() {
 
         and: "All involved switches are valid"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert switchHelper.validate(involvedSwIds).isEmpty()
+            assert switchHelper.validateAndGetFixedEntries(involvedSwIds).isEmpty()
         }
         Boolean isTestCompleted = true
 
@@ -1096,9 +1095,10 @@ switches"() {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
         if (!isTestCompleted) {
-            switchHelper.synchronize([flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId,
-                                      flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
-                    .unique())
+            switchHelper.synchronizeAndGetFixedEntries([flow1SwitchPair.src.dpId,
+                    flow1SwitchPair.dst.dpId,
+                    flow2SwitchPair.src.dpId,
+                    flow2SwitchPair.dst.dpId])
         }
         database.resetCosts(topology.isls)
     }
@@ -1428,13 +1428,8 @@ switches"() {
                 pathHelper.getInvolvedSwitches(flow2.flowId)).unique().findAll { it.dpId != swPair1.src.dpId }
         def deleteResponses = [flow1, flow2].collect { flowHelperV2.deleteFlow(it.flowId) }
 
-        then: "Related switch have no rule anomalies"
-        switches.each {
-            def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyRuleSectionsAreEmpty()
-            validation.verifyMeterSectionsAreEmpty()
-        }
-        def isSwitchValid = true
+        then: "Related switches have no rule anomalies"
+        switchHelper.synchronizeAndGetFixedEntries(switches*.getDpId()).isEmpty()
 
         cleanup:
         deleteResponses?.size() != 2 && [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
@@ -1442,7 +1437,6 @@ switches"() {
             database.setSwitchStatus(swPair1.src.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(swPair1.src, blockData, true)
         }
-        !isSwitchValid && switches.each { northbound.synchronizeSwitch(it.dpId, true) }
     }
 
     def "Able to swap endpoints for a flow with flowLoop"() {
@@ -1571,23 +1565,12 @@ switches"() {
     }
 
     void validateSwitches(SwitchPair switchPair) {
-        validateSwitches([switchPair.src, switchPair.dst])
+        validateSwitches(switchPair.toList())
     }
 
     void validateSwitches(List<Switch> switches) {
         Wrappers.wait(RULES_DELETION_TIME + RULES_INSTALLATION_TIME) {
-            switches.each {
-                if (it.ofVersion == "OF_13") {
-                    def validationResult = northbound.validateSwitch(it.dpId)
-                    //below verification should also include 'misconfigured' after #4708 is fixed
-                    validationResult.verifyRuleSectionsAreEmpty(["missing", "excess"])
-                    validationResult.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
-                } else {
-                    def validationResult = northbound.validateSwitchRules(it.dpId)
-                    assert validationResult.missingRules.size() == 0
-                    assert validationResult.excessRules.size() == 0
-                }
-            }
+            assert switchHelper.validateAndGetFixedEntries(switches*.getDpId()).isEmpty()
         }
     }
 

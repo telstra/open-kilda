@@ -263,11 +263,11 @@ class DefaultRulesSpec extends HealthCheckSpecification {
             excessRules.empty
             properRules.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
         }
-        verifyAll(northbound.validateSwitch(sw.dpId)) {
-            rules.missing == deletedRules
+        verifyAll(switchHelper.validateAndGetFixedEntries(sw.dpId).get()) {
+            rules.missing*.getCookie() == deletedRules
             rules.misconfigured.empty
             rules.excess.empty
-            rules.proper.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
+            rules.proper*.getCookie().sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
         }
 
         cleanup: "Install default rules back"
@@ -329,11 +329,11 @@ class DefaultRulesSpec extends HealthCheckSpecification {
             excessRules.empty
             properRules.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
         }
-        verifyAll(northbound.validateSwitch(sw.dpId)) {
-            rules.missing == deletedRules
+        verifyAll(switchHelper.validateAndGetFixedEntries(sw.dpId).get()) {
+            rules.missing*.getCookie() == deletedRules
             rules.misconfigured.empty
             rules.excess.empty
-            rules.proper.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
+            rules.proper*.getCookie().sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
         }
 
         cleanup: "Install default rules back"
@@ -399,11 +399,11 @@ class DefaultRulesSpec extends HealthCheckSpecification {
             excessRules.empty
             properRules.sort() == sw.defaultCookies.findAll { it != SERVER_42_FLOW_RTT_TURNING_COOKIE }.sort()
         }
-        verifyAll(northbound.validateSwitch(sw.dpId)) {
-            rules.missing == [SERVER_42_FLOW_RTT_TURNING_COOKIE]
+        verifyAll(switchHelper.validateAndGetFixedEntries(sw.dpId).get()) {
+            rules.missing*.getCookie() == [SERVER_42_FLOW_RTT_TURNING_COOKIE]
             rules.misconfigured.empty
             rules.excess.empty
-            rules.proper.sort() == sw.defaultCookies.findAll { it != SERVER_42_FLOW_RTT_TURNING_COOKIE }.sort()
+            rules.proper*.getCookie().sort() == sw.defaultCookies.findAll { it != SERVER_42_FLOW_RTT_TURNING_COOKIE }.sort()
         }
 
         when: "Install the server42 turning rule"
@@ -458,11 +458,11 @@ class DefaultRulesSpec extends HealthCheckSpecification {
             excessRules.empty
             properRules.sort() == sw.defaultCookies.findAll { it != SERVER_42_ISL_RTT_TURNING_COOKIE }.sort()
         }
-        verifyAll(northbound.validateSwitch(sw.dpId)) {
-            rules.missing == [SERVER_42_ISL_RTT_TURNING_COOKIE]
+        verifyAll(switchHelper.validateAndGetFixedEntries(sw.dpId).get()) {
+            rules.missing*.getCookie() == [SERVER_42_ISL_RTT_TURNING_COOKIE]
             rules.misconfigured.empty
             rules.excess.empty
-            rules.proper.sort() == sw.defaultCookies.findAll { it != SERVER_42_ISL_RTT_TURNING_COOKIE }.sort()
+            rules.proper*.getCookie().sort() == sw.defaultCookies.findAll { it != SERVER_42_ISL_RTT_TURNING_COOKIE }.sort()
         }
 
         when: "Install the server42 ISL RTT turning rule"

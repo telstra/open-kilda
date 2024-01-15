@@ -427,7 +427,7 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
 
         and: "Src/dst switches are valid"
         wait(WAIT_OFFSET * 2) { //due to instability
-            [flow.source.switchId, flow.destination.switchId].each { verifySwitchRules(it) }
+            switchHelper.validateAndGetFixedEntries([flow.source.switchId, flow.destination.switchId]).isEmpty()
         }
 
         cleanup:

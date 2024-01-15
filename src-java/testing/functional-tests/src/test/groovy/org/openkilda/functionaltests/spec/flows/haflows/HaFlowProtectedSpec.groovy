@@ -60,14 +60,10 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
         // and: "HA-Flow and related sub-flows are valid"
         // northboundV2.validateHaFlow(haFlow.haFlowId).asExpected
 
-        and: "All involved switches passes switch validation"
-        withPool {
-            (switchesBeforeUpdate + switchesAfterUpdate).eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        and: "All involved switches pass switch validation"
+        switchHelper.synchronizeAndGetFixedEntries(switchesBeforeUpdate + switchesAfterUpdate).isEmpty()
 
-        and: "HA-flow pass validation"
+        and: "HA-flow passes validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
 
         cleanup:
@@ -106,12 +102,8 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
         // and: "HA-Flow and related sub-flows are valid"
         // northboundV2.validateHaFlow(haFlow.haFlowId).asExpected
 
-        and: "All involved switches passes switch validation"
-        withPool {
-            (switchesBeforeUpdate + switchesAfterUpdate).eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        and: "All involved switches pass switch validation"
+        switchHelper.synchronizeAndGetFixedEntries(switchesBeforeUpdate + switchesAfterUpdate).isEmpty()
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
@@ -147,11 +139,7 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
         expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlow, ignores)
 
         and: "And involved switches pass validation"
-        withPool {
-            haFlowHelper.getInvolvedSwitches(haFlow.haFlowId).eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndGetFixedEntries(haFlowHelper.getInvolvedSwitches(haFlow.haFlowId)).isEmpty()
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected

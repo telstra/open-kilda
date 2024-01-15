@@ -230,7 +230,7 @@ round trip latency rule is removed on the dst switch"() {
         northbound.deleteSwitchRules(dstSw.dpId, DeleteRulesAction.REMOVE_ROUND_TRIP_LATENCY)
         def isRoundTripRuleDeleted = true
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert northbound.validateSwitch(dstSw.dpId).rules.missing.size() == 1
+            assert switchHelper.validateAndGetFixedEntries(dstSw.dpId).get().rules.missing.size() == 1
         }
 
         then: "The round trip latency ISL is FAILED"
@@ -268,7 +268,7 @@ round trip latency rule is removed on the dst switch"() {
         northbound.installSwitchRules(dstSw.dpId, InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY)
         isRoundTripRuleDeleted = false
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert northbound.validateSwitch(dstSw.dpId).rules.missing.empty
+            assert !switchHelper.validateAndGetFixedEntries(dstSw.dpId).isPresent()
         }
 
         then: "Round trip status is available for the given ISL in both directions"
@@ -287,7 +287,7 @@ round trip latency rule is removed on the dst switch"() {
                 assert allLinks.findAll { it.state == DISCOVERED }.size() == topology.islsForActiveSwitches.size() * 2
                 assert islUtils.getIslInfo(allLinks, roundTripIsl).get().roundTripStatus == DISCOVERED
                 assert islUtils.getIslInfo(allLinks, roundTripIsl.reversed).get().roundTripStatus == DISCOVERED
-                assert northbound.validateSwitch(dstSw.dpId).rules.missing.empty
+                assert !switchHelper.validateAndGetFixedEntries(dstSw.dpId).isPresent()
             }
         }
         database.resetCosts(topology.isls)

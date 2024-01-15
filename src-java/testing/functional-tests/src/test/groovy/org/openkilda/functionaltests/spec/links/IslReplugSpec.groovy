@@ -90,11 +90,8 @@ class IslReplugSpec extends HealthCheckSpecification {
         def newIslIsRemoved = true
 
         and: "The src and dst switches of the isl pass switch validation"
-        [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique().each { swId ->
-            with(northbound.validateSwitch(swId)) { validationResponse ->
-                validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        switchHelper.synchronizeAndGetFixedEntries(
+                [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique()).isEmpty()
 
         cleanup:
         if (!originIslIsUp) {
@@ -157,11 +154,8 @@ class IslReplugSpec extends HealthCheckSpecification {
         /* Need wait because of parallel s42 tests. Sw validation may show a missing s42 rule. Just wait for it.
         If problem persists, add a 'read' resource lock for s42_toggle */
         Wrappers.wait(WAIT_OFFSET) {
-            [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique().each { swId ->
-                with(northbound.validateSwitch(swId)) { validationResponse ->
-                    validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
+            switchHelper.validateAndGetFixedEntries(
+                    [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique()).isEmpty()
         }
 
         cleanup:
