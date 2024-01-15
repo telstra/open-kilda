@@ -298,10 +298,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         }
 
         and: "The src switch passes switch validation"
-        with(northbound.validateSwitch(srcSwitch.dpId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(srcSwitch.dpId).isPresent()
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
@@ -352,18 +349,12 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "The new and old dst switches pass switch validation"
         Wrappers.wait(RULES_DELETION_TIME) {
-            [dstSwitch, newDstSwitch]*.dpId.each { switchId ->
-                with(northbound.validateSwitch(switchId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
+            assert switchHelper.validateAndCollectFoundDiscrepancies([dstSwitch, newDstSwitch]*.dpId).isEmpty()
         }
-        def dstSwitchesAreFine = false
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        !dstSwitchesAreFine && [dstSwitch, newDstSwitch]*.dpId.each { northbound.synchronizeSwitch(it, true) }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies([dstSwitch, newDstSwitch]*.dpId)
     }
 
     def "Able to update flow encapsulationType using partial update"() {
@@ -445,10 +436,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         }
 
         and: "The switch passes switch validation"
-        with(northbound.validateSwitch(flow.source.switchId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.source.switchId).isPresent()
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
@@ -505,10 +493,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         }
 
         and: "The switch passes switch validation"
-        with(northbound.validateSwitch(flow.source.switchId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.source.switchId).isPresent()
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)

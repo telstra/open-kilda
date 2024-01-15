@@ -192,12 +192,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         timedLoop(3) { checkIslRttRules(isl.dstSwitch.dpId, true) }
 
         and: "Involved switches pass the switch validation"
-        [isl.srcSwitch.dpId, isl.dstSwitch.dpId, newIsl.dstSwitch.dpId].each { swId ->
-            with(northbound.validateSwitch(swId)) { validationResponse ->
-                validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validationResponse.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies([isl.srcSwitch.dpId, isl.dstSwitch.dpId, newIsl.dstSwitch.dpId])
+                .isEmpty()
 
         and: "Expect ISL RTT for new ISL in forward/reverse directions"
         wait(islSyncWaitSeconds, 2) {
@@ -223,12 +219,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         wait(RULES_DELETION_TIME) { checkIslRttRules(newIsl.dstSwitch.dpId, true) }
 
         and: "All involved switches pass switch validation"
-        [isl.srcSwitch.dpId, isl.dstSwitch.dpId, newIsl.dstSwitch.dpId].each { swId ->
-            with(northbound.validateSwitch(swId)) { validationResponse ->
-                validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validationResponse.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies([isl.srcSwitch.dpId, isl.dstSwitch.dpId, newIsl.dstSwitch.dpId])
+                .isEmpty()
 
         cleanup:
         revertToOrigin(islRttFeatureStartState, initialSwitchRtt)
@@ -527,10 +519,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         checkIslRttRules(isl.srcSwitch.dpId, true)
 
         and: "Switch is valid"
-        with(northbound.validateSwitch(isl.srcSwitch.dpId)) {
-            it.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty()
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(isl.srcSwitch.dpId).isPresent()
 
         and: "ISL RTT stats in both directions are available"
         wait(islSyncWaitSeconds, 2) {
@@ -572,9 +561,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         def checkpointTime = new Date()
 
         and: "Switch validation shows deleted rules as missing"
-        def validateInfo = northbound.validateSwitch(isl.srcSwitch.dpId)
-        validateInfo.verifyRuleSectionsAreEmpty(["misconfigured", "excess"])
-        northbound.validateSwitch(isl.srcSwitch.dpId).rules.missing.sort() == rulesToDelete*.cookie.sort()
+        def validateInfo = switchHelper.validateAndCollectFoundDiscrepancies(isl.srcSwitch.dpId).get()
+        validateInfo.rules.missing*.getCookie().sort() == rulesToDelete*.cookie.sort()
 
         and: "No ISL Rtt stats in forward/reverse directions"
         wait(islSyncWaitSeconds, 2) {
@@ -584,7 +572,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         }
 
         when: "Sync the src switch"
-        def syncResponse = northbound.synchronizeSwitch(isl.srcSwitch.dpId, false)
+        def syncResponse = switchHelper.synchronizeAndCollectFixedDiscrepancies(isl.srcSwitch.dpId).get()
         checkpointTime = new Date()
 
         then: "Sync response contains ISL Rtt rules into the installed section"

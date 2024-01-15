@@ -112,11 +112,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         and: "All involved switches passes switch validation"
         def yFlowPaths = northboundV2.getYFlowPaths(yFlow.YFlowId)
-        def involvedSwitches = pathHelper.getInvolvedYSwitches(yFlowPaths)
-        involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        def involvedSwitches = pathHelper.getInvolvedYSwitches(yFlowPaths)*.getDpId()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         when: "Traffic starts to flow on both sub-flows with maximum bandwidth (if applicable)"
         def traffExam = traffExamProvider.get()
@@ -243,11 +240,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         and: "All involved switches passes switch validation"
         def yFlowPaths = northboundV2.getYFlowPaths(yFlow.YFlowId)
-        def involvedSwitches = pathHelper.getInvolvedYSwitches(yFlowPaths)
-        involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        def involvedSwitches = pathHelper.getInvolvedYSwitches(yFlowPaths)*.getDpId()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         when: "Restore port status"
         def portUp = antiflap.portUp(islToBreak.dstSwitch.dpId, islToBreak.dstPort)
@@ -285,11 +279,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         and: "All involved switches passes switch validation"
         def yFlowPathsAfter = northboundV2.getYFlowPaths(yFlow.YFlowId)
-        def involvedSwitchesAfter = pathHelper.getInvolvedYSwitches(yFlowPathsAfter)
-        involvedSwitchesAfter.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(pathHelper.getInvolvedYSwitches(yFlowPathsAfter)*.getDpId()).isEmpty()
 
         cleanup: "Revert system to original state"
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)

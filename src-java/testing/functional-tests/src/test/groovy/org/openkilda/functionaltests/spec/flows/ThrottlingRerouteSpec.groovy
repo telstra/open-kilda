@@ -198,11 +198,11 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         then: "The flow is not present in NB"
         !northboundV2.getAllFlows().find { it.flowId == flow.flowId}
 
-        and: "Related switches have no excess rules"
-        //wait, server42 rules may take some time to disappear after flow removal
-        Wrappers.wait(RULES_DELETION_TIME) { pathHelper.getInvolvedSwitches(PathHelper.convert(path)).each {
-            verifySwitchRules(it.dpId)
-        }}
+        and: "Related switches have no excess rules, though need to wait until server42 rules are deleted"
+        Wrappers.wait(RULES_DELETION_TIME) {
+            switchHelper.validateAndCollectFoundDiscrepancies(
+                    pathHelper.getInvolvedSwitches(PathHelper.convert(path))*.getDpId()).isEmpty()
+        }
 
         cleanup:
         flow && !flowIsDeleted && northboundV2.deleteFlow(flow.flowId)

@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -65,13 +65,13 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         northbound.deleteMeter(switchPair.src.dpId, nonDefaultMeterIds[0])
         northbound.deleteSwitchRules(switchPair.src.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northbound.validateSwitch(switchPair.src.dpId)) {
-                it.rules.missing.containsAll(createdCookies)
-                it.rules.missingHex.containsAll(createdHexCookies)
-                it.verifyRuleSectionsAreEmpty(["proper", "excess"])
-                it.verifyHexRuleSectionsAreEmpty(["properHex", "excessHex"])
+            with(switchHelper.validateAndCollectFoundDiscrepancies(switchPair.src.dpId).get()) {
+                it.rules.missing*.cookie.containsAll(createdCookies)
+                it.rules.excess.empty
+                it.rules.misconfigured.empty
                 it.meters.missing.size() == 1
-                it.verifyMeterSectionsAreEmpty(["proper", "misconfigured", "excess"])
+                it.meters.excess.empty
+                it.meters.misconfigured.empty
             }
         }
 
@@ -81,19 +81,12 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         switchHelper.reviveSwitch(switchPair.src, blockData)
 
         then: "Missing flow rules/meters were synced during switch activation"
-        def switchValidationInfo = northbound.validateSwitch(switchPair.src.dpId)
-        verifyAll {
-            switchValidationInfo.rules.proper.containsAll(createdCookies)
-            switchValidationInfo.rules.properHex.containsAll(createdHexCookies)
-            switchValidationInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
-            switchValidationInfo.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex"])
-            switchValidationInfo.meters.proper*.meterId == originalMeterIds.sort()
-            switchValidationInfo.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.src.dpId).isPresent()
+        def switchIsSynchronized = true
 
         cleanup: "Delete the flow and activate switch if required"
         flowHelperV2.deleteFlow(flow.flowId)
-        blockData && !switchValidationInfo && switchHelper.reviveSwitch(switchPair.src, blockData, true)
+        blockData && !switchIsSynchronized && switchHelper.reviveSwitch(switchPair.src, blockData, true)
 
     }
 
@@ -145,13 +138,13 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         producer.flush()
 
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northbound.validateSwitch(sw.dpId)) {
+            verifyAll(switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get()) {
                 it.rules.excess.size() == 3
-                it.rules.excessHex.size() == 3
-                it.verifyRuleSectionsAreEmpty(["proper", "missing"])
-                it.verifyHexRuleSectionsAreEmpty(["properHex", "missingHex"])
+                it.rules.misconfigured.empty
+                it.rules.missing.empty
                 it.meters.excess.size() == 1
-                it.verifyMeterSectionsAreEmpty(["missing", "proper", "misconfigured"])
+                it.meters.misconfigured.empty
+                it.meters.missing.empty
             }
         }
 
@@ -161,14 +154,11 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         switchHelper.reviveSwitch(sw, blockData)
 
         then: "Excess meters/rules were synced during switch activation"
-        def switchValidationInfo = northbound.validateSwitch(sw.dpId)
-        verifyAll {
-            switchValidationInfo.verifyRuleSectionsAreEmpty(["missing", "excess", "proper"])
-            switchValidationInfo.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "properHex"])
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
+        def isSwitchSynchronized = true
 
         cleanup:
-        blockData && !switchValidationInfo && switchHelper.reviveSwitch(sw, blockData, true)
+        blockData && !isSwitchSynchronized && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
     @Tags([SMOKE_SWITCHES])
@@ -219,13 +209,13 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         producer.flush()
 
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northbound.validateSwitch(sw.dpId)) {
+            verifyAll(switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get()) {
                 it.rules.excess.size() == 3
-                it.rules.excessHex.size() == 3
-                it.verifyRuleSectionsAreEmpty(["proper", "missing"])
-                it.verifyHexRuleSectionsAreEmpty(["properHex", "missingHex"])
+                it.rules.missing.empty
+                it.rules.misconfigured.empty
                 it.meters.excess.size() == 1
-                it.verifyMeterSectionsAreEmpty(["missing", "proper", "misconfigured"])
+                it.meters.misconfigured.empty
+                it.meters.missing.empty
             }
         }
 
@@ -235,14 +225,11 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         switchHelper.reviveSwitch(sw, blockData)
 
         then: "Excess meters/rules were synced during switch activation"
-        def switchValidationInfo = northbound.validateSwitch(sw.dpId)
-        verifyAll {
-            switchValidationInfo.verifyRuleSectionsAreEmpty(["missing", "excess", "proper"])
-            switchValidationInfo.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "properHex"])
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
+        def isSwitchSynchronized = true
 
         cleanup:
-        blockData && !switchValidationInfo && switchHelper.reviveSwitch(sw, blockData, true)
+        blockData && !isSwitchSynchronized && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
     @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])

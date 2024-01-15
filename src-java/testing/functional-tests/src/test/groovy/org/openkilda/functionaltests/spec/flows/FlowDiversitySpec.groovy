@@ -353,7 +353,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
             [flow1, flow2, flow3].eachParallel { it && flowHelperV2.deleteFlow(it.flowId) }
         }
         //https://github.com/telstra/open-kilda/issues/5221
-        switchHelper.synchronize([switchPair.getSrc().getDpId(), switchPair.getDst().getDpId()])
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
     }
 
     @Tags([LOW_PRIORITY])

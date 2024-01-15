@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import org.openkilda.functionaltests.error.flow.FlowEndpointsNotSwappedExpectedError
-
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
@@ -17,6 +15,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flow.FlowEndpointsNotSwappedExpectedError
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -42,7 +41,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
-import spock.lang.Ignore
 
 import javax.inject.Provider
 
@@ -541,7 +539,7 @@ switches"() {
 
         cleanup: "Delete the flow"
         flow1 && flowHelper.deleteFlow(flow1.id)
-        !isTestComplete && [switchPair.src.dpId, switchPair.dst.dpId].each { northbound.synchronizeSwitch(it, true) }
+        !isTestComplete && switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
     }
 
     @Tags(LOW_PRIORITY)
@@ -569,8 +567,10 @@ switches"() {
         cleanup: "Delete flows"
         [flow1, flow2, flow3].each { it && flowHelper.deleteFlow(it.id) }
         if (!isTestCompleted) {
-            [data.flow1SwitchPair.src.dpId, data.flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, data.flow2SwitchPair.dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
+            switchHelper.synchronizeAndCollectFixedDiscrepancies([data.flow1SwitchPair.src.dpId,
+                                                                  data.flow1SwitchPair.dst.dpId,
+                                                                  flow2SwitchPair.src.dpId,
+                                                                  data.flow2SwitchPair.dst.dpId])
         }
 
         where:
@@ -686,8 +686,10 @@ switches"() {
         cleanup: "Delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!isTestCompleted) {
-            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
+            switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
+                                                                  flow1SwitchPair.dst.dpId,
+                                                                  flow2SwitchPair.src.dpId,
+                                                                  flow2SwitchPair.dst.dpId])
         }
 
         where:
@@ -750,7 +752,7 @@ switches"() {
 
         cleanup: "Delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-        !isTestCompleted && [swPair.src.dpId, swPair.dst.dpId].each { northbound.synchronizeSwitch(it, true) }
+        !isTestCompleted && switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.toList()*.getDpId())
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -841,8 +843,10 @@ switches"() {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
         if (!isSwitchValid) {
-            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
+            switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
+                                                                  flow1SwitchPair.dst.dpId,
+                                                                  flow2SwitchPair.src.dpId,
+                                                                  flow2SwitchPair.dst.dpId])
         }
         database.resetCosts(topology.isls)
     }
@@ -931,8 +935,10 @@ switches"() {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
         if (!isTestCompleted) {
-            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
+            switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
+                                                                  flow1SwitchPair.dst.dpId,
+                                                                  flow2SwitchPair.src.dpId,
+                                                                  flow2SwitchPair.dst.dpId])
         }
         database.resetCosts(topology.isls)
     }
@@ -1025,8 +1031,10 @@ switches"() {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
         if (!isSwitchValid) {
-            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
+            switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
+                                                                  flow1SwitchPair.dst.dpId,
+                                                                  flow2SwitchPair.src.dpId,
+                                                                  flow2SwitchPair.dst.dpId])
         }
         database.resetCosts(topology.isls)
     }
@@ -1084,10 +1092,10 @@ switches"() {
         and: "All involved switches are valid"
         /** https://github.com/telstra/open-kilda/issues/3770
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert switchHelper.validate(involvedSwIds).isEmpty()
+            assert switchHelper.validateAndGetFixedEntries(involvedSwIds).isEmpty()
         }
         Boolean isTestCompleted = true **/
-        switchHelper.synchronize(involvedSwIds)
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwIds)
 
         cleanup: "Restore topology and delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
@@ -1126,8 +1134,10 @@ switches"() {
         cleanup: "Delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!isSwitchValid) {
-            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
+            switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
+                                                                  flow1SwitchPair.dst.dpId,
+                                                                  flow2SwitchPair.src.dpId,
+                                                                  flow2SwitchPair.dst.dpId])
         }
 
         where:
@@ -1235,8 +1245,10 @@ switches"() {
         cleanup: "Delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!isSwitchValid) {
-            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
+            switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
+                                                                  flow1SwitchPair.dst.dpId,
+                                                                  flow2SwitchPair.src.dpId,
+                                                                  flow2SwitchPair.dst.dpId])
         }
     }
 
@@ -1268,8 +1280,7 @@ switches"() {
 
         cleanup: "Delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-        !isSwitchValid && [switchPair.src.dpId, switchPair.dst.dpId].each { northbound.synchronizeSwitch(it, true) }
-
+        !isSwitchValid && switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
 
         where:
         data << [{
@@ -1325,7 +1336,7 @@ switches"() {
 
         cleanup: "Delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-        !isSwitchValid && [switchPair.src.dpId, switchPair.dst.dpId].each { northbound.synchronizeSwitch(it, true) }
+        !isSwitchValid && switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
 
         where:
         data << [{
@@ -1423,13 +1434,8 @@ switches"() {
                 pathHelper.getInvolvedSwitches(flow2.flowId)).unique().findAll { it.dpId != swPair1.src.dpId }
         def deleteResponses = [flow1, flow2].collect { flowHelperV2.deleteFlow(it.flowId) }
 
-        then: "Related switch have no rule anomalies"
-        switches.each {
-            def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyRuleSectionsAreEmpty()
-            validation.verifyMeterSectionsAreEmpty()
-        }
-        def isSwitchValid = true
+        then: "Related switches have no rule anomalies"
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(switches*.getDpId()).isEmpty()
 
         cleanup:
         deleteResponses?.size() != 2 && [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
@@ -1437,7 +1443,6 @@ switches"() {
             database.setSwitchStatus(swPair1.src.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(swPair1.src, blockData, true)
         }
-        !isSwitchValid && switches.each { northbound.synchronizeSwitch(it.dpId, true) }
     }
 
     def "Able to swap endpoints for a flow with flowLoop"() {
@@ -1519,8 +1524,10 @@ switches"() {
         cleanup: "Restore topology and delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!switchesAreValid) {
-            [flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId, flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
-                    .unique().each { northbound.synchronizeSwitch(it, true) }
+            switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
+                                                                  flow1SwitchPair.dst.dpId,
+                                                                  flow2SwitchPair.src.dpId,
+                                                                  flow2SwitchPair.dst.dpId])
         }
     }
 
@@ -1566,23 +1573,12 @@ switches"() {
     }
 
     void validateSwitches(SwitchPair switchPair) {
-        validateSwitches([switchPair.src, switchPair.dst])
+        validateSwitches(switchPair.toList())
     }
 
     void validateSwitches(List<Switch> switches) {
         Wrappers.wait(RULES_DELETION_TIME + RULES_INSTALLATION_TIME) {
-            switches.each {
-                if (it.ofVersion == "OF_13") {
-                    def validationResult = northbound.validateSwitch(it.dpId)
-                    //below verification should also include 'misconfigured' after #4708 is fixed
-                    validationResult.verifyRuleSectionsAreEmpty(["missing", "excess"])
-                    validationResult.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
-                } else {
-                    def validationResult = northbound.validateSwitchRules(it.dpId)
-                    assert validationResult.missingRules.size() == 0
-                    assert validationResult.excessRules.size() == 0
-                }
-            }
+            assert switchHelper.validateAndCollectFoundDiscrepancies(switches*.getDpId()).isEmpty()
         }
     }
 

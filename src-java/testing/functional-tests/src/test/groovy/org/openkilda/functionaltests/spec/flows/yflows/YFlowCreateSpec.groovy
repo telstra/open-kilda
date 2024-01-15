@@ -100,11 +100,8 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches pass switch validation"
-        def involvedSwitches = pathHelper.getInvolvedYSwitches(paths)
-        involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        def involvedSwitches = pathHelper.getInvolvedYSwitches(paths)*.getDpId()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         and: "Bandwidth is properly consumed on shared and non-shared ISLs"
         def allLinksAfter = northbound.getAllLinks()
@@ -191,11 +188,8 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         and: "All involved switches pass switch validation"
         // https://github.com/telstra/open-kilda/issues/3411
-        northbound.synchronizeSwitch(yFlow.sharedEndpoint.switchId, true)
-        involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        switchHelper.synchronize(yFlow.sharedEndpoint.switchId)
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         cleanup:
         yFlow && !flowRemoved && yFlowHelper.deleteYFlow(yFlow.YFlowId)

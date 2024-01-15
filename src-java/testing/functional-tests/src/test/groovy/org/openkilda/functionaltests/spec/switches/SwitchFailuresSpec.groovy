@@ -114,9 +114,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         }
 
         and: "Blinking switch has no rule anomalies"
-        def validation = northbound.validateSwitch(swPair.src.dpId)
-        validation.verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
-        validation.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
+        !switchHelper.validateAndCollectFoundDiscrepancies(swPair.src.dpId).isPresent()
 
         and: "Flow validation is OK"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
@@ -153,10 +151,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         }
 
         and: "Dst switch validation shows no missing rules"
-        with(northbound.validateSwitch(dstSwitch.dpId)) {
-            it.verifyRuleSectionsAreEmpty(["missing", "proper", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "proper", "excess"])
-        }
+        !switchHelper.validateAndCollectFoundDiscrepancies(dstSwitch.dpId).isPresent()
 
         when: "Try to validate flow"
         northbound.validateFlow(flow.flowId)

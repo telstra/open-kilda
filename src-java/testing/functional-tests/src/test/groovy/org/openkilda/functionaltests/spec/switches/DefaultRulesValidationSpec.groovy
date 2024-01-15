@@ -48,11 +48,11 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
         }
 
         and: "Rule validation shows all expected default rules in 'proper' section"
-        verifyAll(northbound.validateSwitch(sw.dpId)) {
+        verifyAll(switchHelper.validate(sw.dpId)) {
             rules.missing.empty
             rules.misconfigured.empty
             rules.excess.empty
-            assertThat sw.toString(), rules.proper, containsInAnyOrder(sw.defaultCookies.toArray())
+            assertThat sw.toString(), rules.proper*.cookie, containsInAnyOrder(sw.defaultCookies.toArray())
         }
 
         cleanup: "Restore original switch props"

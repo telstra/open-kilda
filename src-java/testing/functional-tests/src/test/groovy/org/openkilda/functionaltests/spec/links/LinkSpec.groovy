@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.links
 
-import static groovyx.gpars.GParsPool.withPool
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
@@ -794,14 +794,7 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         and: "Source and destination switches pass switch validation"
-        withPool {
-            [switchPair.src.dpId, switchPair.dst.dpId].eachParallel { SwitchId swId ->
-                with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId()).isEmpty()
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
@@ -854,17 +847,11 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         and: "The src/dst switches are valid"
-        /** https://github.com/telstra/open-kilda/issues/3906
-        [isl.srcSwitch, isl.dstSwitch].each {
-            //Similar to https://github.com/telstra/open-kilda/issues/3906 but for Server42 ISL RTT rules.
-            if (!it.prop || (it.prop.server42IslRtt == "DISABLED")) {
-                def validateInfo = northbound.validateSwitch(it.dpId).rules
-                assert validateInfo.missing.empty
-                assert validateInfo.excess.empty
-                assert validateInfo.misconfigured.empty
-            }
-        } */
-
+        //https://github.com/telstra/open-kilda/issues/3906
+        def switchesNotAffectedBy3906 = [isl.srcSwitch, isl.dstSwitch].findAll {
+            !it.prop || (it.prop.server42IslRtt == "DISABLED")
+        }
+        switchHelper.validateAndCollectFoundDiscrepancies(switchesNotAffectedBy3906*.getDpId()).isEmpty()
 
         cleanup:
         aSwitchForwardRuleIsDeleted && lockKeeper.addFlows([isl.aswitch])

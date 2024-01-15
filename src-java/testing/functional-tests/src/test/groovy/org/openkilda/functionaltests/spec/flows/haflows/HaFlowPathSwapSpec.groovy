@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.flows.haflows
 
 import org.openkilda.functionaltests.model.stats.HaFlowStats
 
-import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
@@ -18,7 +17,6 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -86,11 +84,7 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
 
         and: "All involved switches pass switch validation"
         def involvedSwitches = haFlowHelper.getInvolvedSwitches(haFlowPathInfoAfter)
-        withPool {
-            involvedSwitches.eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         and: "Traffic passes through HA-Flow"
         if (swT.isHaTraffExamAvailable()) {

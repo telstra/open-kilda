@@ -47,6 +47,11 @@ class SwitchPair {
     }
 
     @JsonIgnore
+    List<Switch> toList() {
+        return [src, dst]
+    }
+
+    @JsonIgnore
     SwitchPair getReversed() {
         new SwitchPair(src: dst,
                 dst: src,

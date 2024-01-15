@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.extension.env
 
 import static groovyx.gpars.GParsExecutorsPool.withPool
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.SWITCHES_ACTIVATION_TIME
 import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -15,7 +14,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
-import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto
@@ -235,22 +233,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     }
 
     Closure noExcessRulesMeters = { TopologyDefinition topologyDefinition ->
-        def excessRulesAssertions = new SoftAssertions()
-        withPool {
-            (topologyDefinition.activeSwitches).eachParallel { sw ->
-                def rules = northbound.validateSwitchRules(sw.dpId)
-                excessRulesAssertions.checkSucceeds { assert rules.excessRules.empty, sw }
-                excessRulesAssertions.checkSucceeds { assert rules.missingRules.empty, sw }
-                if (!sw.virtual && sw.ofVersion != "OF_12") {
-                    excessRulesAssertions.checkSucceeds {
-                        assert northbound.getAllMeters(sw.dpId).meterEntries.findAll {
-                            it.meterId > MAX_SYSTEM_RULE_METER_ID
-                        }.isEmpty(), "Switch has meters above system max ones"
-                    }
-                }
-            }
-            excessRulesAssertions.verify()
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(topologyDefinition.activeSwitches*.getDpId())
     }
 
     Closure allSwitchesConnectedToExpectedRegion = { TopologyDefinition topologyDefinition ->

@@ -184,11 +184,6 @@ class SwitchHelper {
         database.get().getSwitch(sw.dpId).features
     }
 
-    static void synchronize(Switch sw) {
-        northbound.get().synchronizeSwitch(sw.dpId, true)
-        assert northboundV2.get().validateSwitch(sw.dpId).asExpected
-    }
-
     static List<Long> getDefaultCookies(Switch sw) {
         def swProps = northbound.get().getSwitchProperties(sw.dpId)
         def multiTableRules = []
@@ -564,18 +559,6 @@ class SwitchHelper {
         }
     }
 
-    /**
-     * Verifies that specified logical port sections in the validation response are empty.
-     */
-    static void verifyLogicalPortsSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
-                                                   List<String> sections = ["missing", "excess", "misconfigured"]) {
-        def assertions = new SoftAssertions()
-        sections.each { String section ->
-            assertions.checkSucceeds { assert switchValidateInfo.logicalPorts."$section".empty }
-        }
-        assertions.verify()
-    }
-
     static SwitchProperties getDummyServer42Props() {
         return new SwitchProperties(true, 33, "00:00:00:00:00:00", 1, null)
     }
@@ -653,12 +636,6 @@ class SwitchHelper {
         reviveSwitch(sw, flResourceAddress, false)
     }
 
-    static void removeExcessRules(List<SwitchId> switches) {
-        withPool {
-            switches.eachParallel {northbound.get().synchronizeSwitch(it, true)}
-        }
-    }
-
     static void verifySectionInSwitchValidationInfo(SwitchValidationV2ExtendedResult switchValidateInfo,
                                                     List<String> sections = ["groups", "meters", "logical_ports", "rules"]) {
         sections.each { String section ->
@@ -678,32 +655,81 @@ class SwitchHelper {
         assert result == switchValidateInfo.asExpected
     }
 
-    static SwitchSyncResult synchronize(SwitchId switchId) {
-        return northbound.get().synchronizeSwitch(switchId, true)
+    static SwitchSyncResult synchronize(SwitchId switchId, boolean removeExcess=true) {
+        return northbound.get().synchronizeSwitch(switchId, removeExcess)
     }
 
-    static void synchronize(List<SwitchId> switchesToSynchronize) {
-        def synchronizationResult = withPool {
-            switchesToSynchronize.collectParallel { synchronize(it) }
+    /**
+     * Synchronizes each switch from the list and returns a map of SwitchSyncResults, where the key is
+     * SwitchId and the value is result of synchronization if there were entries which had to be fixed.
+     * I.e. if all the switches were in expected state, then empty list is returned. If there were only
+     * two switches in unexpected state, than resulting map will have only two entries, etc.
+     * @param switchesToSynchronize SwitchIds which should be synchronized
+     * @return Map of SwitchIds and SwitchSyncResults for switches which weren't in expected state before
+     * the synchronization
+     */
+    static Map<SwitchId, SwitchSyncResult> synchronizeAndCollectFixedDiscrepancies(List<SwitchId> switchesToSynchronize) {
+        return withPool {
+            switchesToSynchronize.collectParallel { [it, northbound.get().synchronizeSwitch(it, true)] }
+            .collectEntries { [(it[0]): it[1]] }
                     .findAll {
-                        !(it.getRules().getExcess().isEmpty() ||
-                                it.getRules().getMisconfigured().isEmpty() ||
-                                it.getRules().getMissing().isEmpty())
+                        [it.getValue().getRules().getMissing(),
+                        it.getValue().getRules().getMisconfigured(),
+                        it.getValue().getRules().getExcess(),
+                        it.getValue().getMeters().getMissing(),
+                        it.getValue().getMeters().getMisconfigured(),
+                        it.getValue().getMeters().getExcess()].any {!it.isEmpty()}
                     }
         }
-        assert synchronizationResult.isEmpty()
+    }
+
+    /**
+     * Synchronizes the switch and returns an optional SwitchSyncResult if the switch was in an unexpected state
+     * before the synchronization.
+     * @param switchToSynchronize SwitchId to synchronize
+     * @return optional SwitchSyncResult if the switch was in an unexpected state
+     * before the synchronization
+     */
+    static Optional<SwitchSyncResult> synchronizeAndCollectFixedDiscrepancies(SwitchId switchToSynchronize) {
+        return Optional.ofNullable(synchronizeAndCollectFixedDiscrepancies([switchToSynchronize]).get(switchToSynchronize))
+    }
+
+    /**
+     * Alias for the method for the same name but accepts Set instead of List
+     * @param switchesToSynchronize
+     * @return
+     */
+    static Map<SwitchId, SwitchSyncResult> synchronizeAndCollectFixedDiscrepancies(Set<SwitchId> switchesToSynchronize) {
+        return synchronizeAndCollectFixedDiscrepancies(switchesToSynchronize as List)
+    }
+
+    static Map<SwitchId, SwitchValidationV2ExtendedResult> validateAndCollectFoundDiscrepancies(List<SwitchId> switchesToValidate) {
+        return withPool {
+            switchesToValidate.collectParallel { [it, northboundV2.get().validateSwitch(it)] }
+                    .collectEntries { [(it[0]): it[1]] }
+                    .findAll { !it.getValue().isAsExpected() }
+        }
+    }
+
+    static Optional<SwitchValidationV2ExtendedResult> validateAndCollectFoundDiscrepancies(SwitchId switchToValidate) {
+        return Optional.ofNullable(validateAndCollectFoundDiscrepancies([switchToValidate]).get(switchToValidate))
     }
 
     static void synchronizeAndValidateRulesInstallation(Switch srcSwitch, Switch dstSwitch) {
-        synchronize([srcSwitch.dpId, dstSwitch.dpId])
+        synchronizeAndCollectFixedDiscrepancies([srcSwitch.dpId, dstSwitch.dpId])
         [srcSwitch, dstSwitch].each { sw ->
             Wrappers.wait(RULES_INSTALLATION_TIME) {
                 validate(sw.dpId).verifyRuleSectionsAreEmpty()
             }
         }
     }
-    static SwitchValidationV2ExtendedResult validate(SwitchId switchId) {
-        return northboundV2.get().validateSwitch(switchId)
+
+    static SwitchValidationV2ExtendedResult validate(SwitchId switchId, String include = null, String exclude = null) {
+        return northboundV2.get().validateSwitch(switchId, include, exclude)
+    }
+
+    static SwitchValidationExtendedResult validateV1(SwitchId switchId) {
+        return northbound.get().validateSwitch(switchId)
     }
 
     static List<SwitchValidationV2ExtendedResult> validate(List<SwitchId> switchesToValidate) {

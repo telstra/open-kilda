@@ -1,14 +1,12 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.YFlowHelper
-import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
 
@@ -60,14 +58,10 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
         // and: "HA-Flow and related sub-flows are valid"
         // northboundV2.validateHaFlow(haFlow.haFlowId).asExpected
 
-        and: "All involved switches passes switch validation"
-        withPool {
-            (switchesBeforeUpdate + switchesAfterUpdate).eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        and: "All involved switches pass switch validation"
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(switchesBeforeUpdate + switchesAfterUpdate).isEmpty()
 
-        and: "HA-flow pass validation"
+        and: "HA-flow passes validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
 
         cleanup:
@@ -106,12 +100,8 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
         // and: "HA-Flow and related sub-flows are valid"
         // northboundV2.validateHaFlow(haFlow.haFlowId).asExpected
 
-        and: "All involved switches passes switch validation"
-        withPool {
-            (switchesBeforeUpdate + switchesAfterUpdate).eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        and: "All involved switches pass switch validation"
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(switchesBeforeUpdate + switchesAfterUpdate).isEmpty()
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
@@ -147,11 +137,7 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
         expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlow, ignores)
 
         and: "And involved switches pass validation"
-        withPool {
-            haFlowHelper.getInvolvedSwitches(haFlow.haFlowId).eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlowHelper.getInvolvedSwitches(haFlow.haFlowId)).isEmpty()
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
