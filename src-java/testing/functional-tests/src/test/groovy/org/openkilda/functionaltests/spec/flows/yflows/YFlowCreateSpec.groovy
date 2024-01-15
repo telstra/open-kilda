@@ -5,6 +5,7 @@ import org.openkilda.functionaltests.error.yflow.YFlowNotCreatedWithConflictExpe
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
@@ -408,7 +409,7 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
         }
     }
 
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([HARDWARE])
     def "System forbids to create a y-flow with conflict: shared endpoint port is inside a LAG group"() {
         given: "A LAG port"
         def swT = topologyHelper.switchTriplets.find { it.shared.features.contains(SwitchFeature.LAG) }

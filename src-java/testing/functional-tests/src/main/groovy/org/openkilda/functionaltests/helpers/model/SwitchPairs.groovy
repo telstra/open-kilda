@@ -63,6 +63,13 @@ class SwitchPairs {
         return this
     }
 
+    SwitchPairs withExactlyNNonOverlappingPaths(int nonOverlappingPaths) {
+        switchPairs = switchPairs.findAll {
+            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() == nonOverlappingPaths
+        }
+        return this
+    }
+
     SwitchPairs withShortestPathShorterThanOthers() {
         switchPairs = switchPairs.findAll { it.getPaths()[0].size() != it.getPaths()[1].size() }
         return this
@@ -119,7 +126,7 @@ class SwitchPairs {
     }
 
     SwitchPairs excludeSwitches(List<Switch> switchesList) {
-        switchPairs = switchPairs.findAll { !(it.src in switchesList) || !(it.dst in switchesList) }
+        switchPairs = switchPairs.findAll { !(it.src in switchesList) && !(it.dst in switchesList) }
         return this
     }
 

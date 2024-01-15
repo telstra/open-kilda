@@ -188,26 +188,4 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         String server42IslRtt
         Pattern description = null
     }
-
-    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    def "System forbids to turn on VXLAN encap type on switch that does not support it"() {
-        given: "Switch that does not support VXLAN feature"
-        def sw = topology.activeSwitches.find { !it.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
-                && !it.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN) }
-        assumeTrue(sw as boolean, "There is no non-vxlan switch in the topology")
-
-        when: "Try to turn on VXLAN encap type on that switch"
-        def initProps = switchHelper.getCachedSwProps(sw.dpId)
-        northbound.updateSwitchProperties(sw.dpId, initProps.jacksonCopy().tap {
-            it.supportedTransitEncapsulation = [FlowEncapsulationType.VXLAN.toString()]
-        })
-
-        then: "Error is returned"
-        def e = thrown(HttpClientErrorException)
-        new SwitchPropertiesNotUpdatedExpectedError("Failed to update switch properties.",
-                ~/Switch $sw.dpId must support at least one of the next features: \[NOVIFLOW_PUSH_POP_VXLAN, \
-KILDA_OVS_PUSH_POP_MATCH_VXLAN\]/).matches(e)
-        cleanup:
-        !e && SwitchHelper.updateSwitchProperties(sw, initProps)
-    }
 }

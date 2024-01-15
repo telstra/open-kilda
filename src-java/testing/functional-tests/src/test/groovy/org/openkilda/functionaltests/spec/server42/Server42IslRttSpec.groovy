@@ -314,6 +314,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tags([HARDWARE])
     def "SERVER_42_ISL_RTT rules are updated according to changes in swProps"() {
         def server42switchIds = topology.getActiveServer42Switches()*.dpId
         def sw = topology.getActiveServer42Switches().find { it.wb5164 && it.dpId in server42switchIds }
