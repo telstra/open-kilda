@@ -46,6 +46,13 @@ public class FlowHistoryRangeConstraints {
     public FlowHistoryRangeConstraints(Optional<Long> timeFromInput,
                                        Optional<Long> timeToInput,
                                        Optional<Integer> maxCountInput) {
+        if (isTimeFromAfterTimeTo(timeFromInput, timeToInput)) {
+            throw new MessageException(RequestCorrelationId.getId(), System.currentTimeMillis(),
+                    ErrorType.PARAMETERS_INVALID, format("Invalid 'timeFrom' and 'timeTo' arguments: %s and %s",
+                    timeFromInput.get(), timeToInput.get()),
+                    "'timeFrom' must be less than or equal to 'timeTo'");
+        }
+
         this.timeFrom = timeFromInput.map(LongToInstantConverter::convert).orElseGet(() -> Instant.ofEpochSecond(0L));
         this.timeTo = timeToInput.map(LongToInstantConverter::convert).orElseGet(Instant::now);
 
@@ -66,7 +73,11 @@ public class FlowHistoryRangeConstraints {
 
         contentRangeRequiredPredicate = size ->
                 (!maxCountInput.isPresent() && !timeFromInput.isPresent() && !timeToInput.isPresent()
-                        && size == DEFAULT_MAX_HISTORY_RECORD_COUNT);
+                        && size > DEFAULT_MAX_HISTORY_RECORD_COUNT);
+    }
+
+    private boolean isTimeFromAfterTimeTo(Optional<Long> timeFromInput, Optional<Long> timeToInput) {
+        return timeFromInput.isPresent() && timeToInput.isPresent() && timeFromInput.get() > timeToInput.get();
     }
 
     public boolean isContentRangeRequired(int size) {
