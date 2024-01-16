@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.error.InvalidRequestParametersExpectedError
+
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ONLY_IN_DB
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
@@ -326,16 +328,23 @@ class FlowHistorySpec extends HealthCheckSpecification {
                         expectedHistory: bigHistory[0..-2] //101
                 ],
                 [
-                        descr: "timeBefore > timeAfter returns empty results",
-                        params: [flowWithHistory, bigHistory[2].timestamp, bigHistory[0].timestamp],
-                        expectedHistory: []
-                ],
-                [
                         descr: "Calling history for never existed flow returns empty results",
                         params: [NON_EXISTENT_FLOW_ID],
                         expectedHistory: []
                 ]
         ]
+    }
+
+    @Tags(LOW_PRIORITY)
+    def "Check history: timeBefore > timeAfter returns error"() {
+        when: "Request history with timeBefore > timeAfter returns error"
+        northbound.getFlowHistory(flowWithHistory, bigHistory[2].timestamp, bigHistory[0].timestamp)
+
+        then: "Error is returned"
+        def exc = thrown(HttpClientErrorException)
+        new InvalidRequestParametersExpectedError(
+                "Invalid 'timeFrom' and 'timeTo' arguments: ${bigHistory[2].timestamp} and ${bigHistory[0].timestamp + 1}",
+        ~/'timeFrom' must be less than or equal to 'timeTo'/).matches(exc)
     }
 
     @Tags([LOW_PRIORITY])
