@@ -1,5 +1,19 @@
 # Changelog
-## v1.150.0 (19/12/2023)
+## v1.151.0 (02/01/2024)
+
+### Improvements:
+-  [#5512](https://github.com/telstra/open-kilda/pull/5512) [TEST] Remove single-table support and checks in functional tests [**tests**]
+-  [#5502](https://github.com/telstra/open-kilda/pull/5502) Log message about isl removal only after transaction commit
+-  [#5510](https://github.com/telstra/open-kilda/pull/5510) [TEST]: Improvement #5390: Cleanup: Optional ISLs resetting if required (Issue: [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+
+### Other changes:
+-  [#5515](https://github.com/telstra/open-kilda/pull/5515) [TEST] Remove openTSDB support in tests [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.150.0...v1.151.0).
+
+---
+
+## v1.150.0 (15/12/2023)
 
 ### Features:
 -  [#4931](https://github.com/telstra/open-kilda/pull/4931) Tool for dump/restore OpenTSDB data
