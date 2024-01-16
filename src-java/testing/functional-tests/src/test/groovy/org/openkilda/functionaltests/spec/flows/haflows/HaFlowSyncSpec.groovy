@@ -39,7 +39,6 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
 
     @Tags([SMOKE_SWITCHES, SMOKE])
     def "Able to synchronize an HA-flow (install missing rules, reinstall existing). protectedPath=#data.protectedPath"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "An HA-flow with deleted rules on shared switch"
         def swT = data.protectedPath
                 ? topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
@@ -103,7 +102,6 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
     }
 
     def "Able to synchronize an HA-flow if HA-flow switch is inactive protectedPath=#data.protectedPath"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
         given: "An HA-flow with down shared endpoint"
         def swT = data.protectedPath
                 ? topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()

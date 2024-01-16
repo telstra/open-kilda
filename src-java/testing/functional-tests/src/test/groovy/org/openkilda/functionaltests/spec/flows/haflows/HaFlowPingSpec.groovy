@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowHelper
@@ -57,7 +59,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Able to turn off periodic pings on a HA-flow"() {
         given: "An HA-flow with periodic pings turned on"
-        def swT = topologyHelper.findSwitchTripletWithSharedEpInTheMiddleOfTheChain()
+        def swT = topologyHelper.findSwitchTripletWithYPointOnSharedEp()
         def haFlowRequest = haFlowHelper.randomHaFlow(swT).tap {
             it.periodicPings = true
         }
@@ -66,7 +68,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         assert !paths.sharedPath.forward, "Ha-flow has shared path and one of the sub-flow is a Y-Point and ping is disable for such kind of Ha-flow"
         assert northboundV2.getHaFlow(haFlow.haFlowId).periodicPings
         wait(STATS_LOGGING_TIMEOUT) {
-            assert flowStats.latencyOf(haFlow.getSubFlows().get(0).getFlowId()).get(LATENCY, REVERSE).hasNonZeroValues()
+            assert flowStats.of(haFlow.getSubFlows().get(0).getFlowId()).get(LATENCY, REVERSE).hasNonZeroValues()
         }
         when: "Turn off periodic pings"
         def updatedHaFlow = haFlowHelper.partialUpdateHaFlow(
@@ -80,7 +82,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         and: "There is no metrics for HA-subflows"
         timedLoop(pingInterval + WAIT_OFFSET) {
             [haFlow.subFlows*.flowId, [FORWARD, REVERSE]].combinations().each {String flowId, Direction direction ->
-                    def stats = flowStats.latencyOf(flowId).get(LATENCY, direction)
+                    def stats = flowStats.of(flowId).get(LATENCY, direction)
                     assert stats != null && !stats.hasNonZeroValuesAfter(afterUpdateTime + 1000)
             }
         }
@@ -89,10 +91,10 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
     }
 
-    @Tags([LOW_PRIORITY])
+    @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
     def "Unable to ping one of the HA-subflows via periodic pings if related ISL is broken"() {
         given: "Pinned HA-flow with periodic pings turned on which won't be rerouted after ISL fails"
-        def swT = topologyHelper.findSwitchTripletWithSharedEpInTheMiddleOfTheChain()
+        def swT = topologyHelper.findSwitchTripletWithYPointOnSharedEp()
         def haFlowRequest = haFlowHelper.randomHaFlow(swT).tap {
             it.periodicPings = true
             it.pinned = true
@@ -117,17 +119,17 @@ class HaFlowPingSpec extends HealthCheckSpecification {
 
         and: "Metrics for the HA-subflow with broken ISL have 'error' status in tsdb"
         wait(pingInterval + WAIT_OFFSET * 2, 2) {
+            def stats = flowStats.of(subFlowWithBrokenIsl)
             [FORWARD, REVERSE].each { Direction direction ->
-                def stats = flowStats.latencyOf(subFlowWithBrokenIsl).get(LATENCY, direction, ERROR)
-                assert stats != null && stats.dataPoints.keySet().find { it >= afterFailTime}
+                stats.get(LATENCY, direction, ERROR).dataPoints.keySet().find { it >= afterFailTime}
             }
         }
 
         and: "Metrics for HA-subflow with active ISL have 'success' status in tsdb"
-        wait(pingInterval + WAIT_OFFSET * 2, 2) {
+        wait(pingInterval + WAIT_OFFSET * 4, 2) {
+            def stats = flowStats.of(subFlowWithActiveIsl)
             [FORWARD, REVERSE].each { Direction direction ->
-                def stats = flowStats.latencyOf(subFlowWithActiveIsl).get(LATENCY, direction, SUCCESS)
-                assert stats != null && stats.hasNonZeroValuesAfter(afterFailTime)
+                stats.get(LATENCY, direction, SUCCESS).hasNonZeroValuesAfter(afterFailTime)
             }
         }
 
@@ -140,7 +142,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
 
     def "Able to turn on periodic pings on a HA-flow"() {
         when: "Create a HA-flow with periodic pings turned on"
-        def swT = topologyHelper.findSwitchTripletWithSharedEpInTheMiddleOfTheChain()
+        def swT = topologyHelper.findSwitchTripletWithYPointOnSharedEp()
         def beforeCreationTime = new Date().getTime()
         def haFlowRequest = haFlowHelper.randomHaFlow(swT).tap {
             it.periodicPings = true
@@ -160,7 +162,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
             withPool {
                 [haFlow.subFlows*.flowId, [FORWARD, REVERSE]].combinations().eachParallel {
                     String flowId, Direction direction ->
-                        flowStats.latencyOf(flowId).get(LATENCY, direction, SUCCESS).hasNonZeroValuesAfter(beforeCreationTime)
+                        flowStats.of(flowId).get(LATENCY, direction, SUCCESS).hasNonZeroValuesAfter(beforeCreationTime)
                 }
             }
         }

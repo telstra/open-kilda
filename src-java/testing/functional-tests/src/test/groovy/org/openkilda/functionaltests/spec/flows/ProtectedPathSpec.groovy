@@ -2,6 +2,8 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -182,15 +184,15 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         }*.cookie
         def srcSwProps = switchHelper.getCachedSwProps(switchPair.src.dpId)
         def amountOfserver42Rules = srcSwProps.server42FlowRtt ? 1 : 0
-        def amountOfFlowRulesSrcSw = srcSwProps.multiTable ? (3 + amountOfserver42Rules) : (2 + amountOfserver42Rules)
-        if (srcSwProps.multiTable && srcSwProps.server42FlowRtt && flow.source.vlanId) {
+        def amountOfFlowRulesSrcSw = 3 + amountOfserver42Rules
+        if (srcSwProps.server42FlowRtt && flow.source.vlanId) {
             amountOfFlowRulesSrcSw += 1
         }
         assert createdCookiesSrcSw.size() == amountOfFlowRulesSrcSw
         def dstSwProps = switchHelper.getCachedSwProps(switchPair.dst.dpId)
         def amountOfserver42RulesDstSw = dstSwProps.server42FlowRtt ? 1 : 0
-        def amountOfFlowRulesDstSw = dstSwProps.multiTable ? (3 + amountOfserver42RulesDstSw) : (2 + amountOfserver42RulesDstSw)
-        if (dstSwProps.multiTable && dstSwProps.server42FlowRtt && flow.destination.vlanId) {
+        def amountOfFlowRulesDstSw = 3 + amountOfserver42RulesDstSw
+        if (dstSwProps.server42FlowRtt && flow.destination.vlanId) {
             amountOfFlowRulesDstSw += 1
         }
         assert createdCookiesDstSw.size() == amountOfFlowRulesDstSw
@@ -324,6 +326,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "System is able to switch #flowDescription flows to protected paths"() {
         given: "Two active not neighboring switches with three diverse paths at least"
         def initialIsls = northbound.getAllLinks()
@@ -413,6 +416,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
+    @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute(no bw)"() {
         given: "Two switches with 2 diverse paths at least"
         def switchPair = topologyHelper.switchPairs.find {
@@ -473,6 +477,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         database.resetCosts(topology.isls)
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute(no path)"() {
         given: "Two switches with 2 diverse paths at least"
         def switchPair = topologyHelper.switchPairs.find {
@@ -594,6 +599,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         "an unmetered"  | 0
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "System is able to switch #flowDescription flow to protected path and ignores more preferable path when reroute\
  is automatical"() {
         given: "Two active not neighboring switches with three diverse paths at least"
@@ -695,7 +701,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tags(LOW_PRIORITY)
+    @Tags([LOW_PRIORITY, ISL_PROPS_DB_RESET])
     def "Able to update a flow to enable protected path when there is not enough bandwidth"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -729,6 +735,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         isls.each { database.resetIslBandwidth(it) }
     }
 
+    @Tags(ISL_PROPS_DB_RESET)
     def "Able to create a flow with protected path when there is not enough bandwidth and ignoreBandwidth=true"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -758,6 +765,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         isls.each { database.resetIslBandwidth(it) }
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "System is able to recalculate protected path when protected path is broken"() {
         given: "Two active not neighboring switches with two diverse paths at least"
         def allIsls = northbound.getAllLinks()
@@ -853,6 +861,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         database.resetCosts(topology.isls)
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "Able to update #flowDescription flow to enable protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
@@ -904,6 +913,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         "an unmetered"  | 0
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "#flowDescription flow is DEGRADED when protected and alternative paths are not available"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
@@ -969,6 +979,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         "An unmetered"  | 0
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "System properly reroutes both paths if protected path breaks during auto-swap"() {
         given: "Switch pair with at least 4 diverse paths"
         def switchPair = topologyHelper.switchPairs.find {
@@ -1077,6 +1088,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Protected path is created in different POP even if this path is not preferable"(){
         given: "Not neighboring switch pair with three diverse paths at least"
         def allPaths // all possible paths
@@ -1244,6 +1256,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
                 "Could not swap paths: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 
+    @Tags(ISL_PROPS_DB_RESET)
     def "Unable to create a flow with protected path when there is not enough bandwidth"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -1272,7 +1285,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
-    @Tags(LOW_PRIORITY)
+    @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
     def "Unable to swap paths for an inactive flow"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -1429,6 +1442,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "Unable to create #flowDescription flow with protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches without alt paths"
@@ -1477,6 +1491,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         "an unmetered"  | 0
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "System doesn't reroute main flow path when protected path is broken and new alt path is available\
 (altPath is more preferable than mainPath)"() {
         given: "Two active neighboring switches with three diverse paths at least"

@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
@@ -108,7 +109,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
 
         expect: "No rule discrepancies on every switch of the flow"
-        wait(WAIT_OFFSET) { //due to instability on jenkins in multiTable mode + server42
+        wait(WAIT_OFFSET) { //due to instability on jenkins
             switches.each { verifySwitchRules(it.dpId) }
         }
 
@@ -465,6 +466,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Error is returned if there is no available path to #data.isolatedSwitchType switch"() {
         given: "A switch that has no connection to other switches"
         def isolatedSwitch = switchPairs.all().nonNeighbouring().random().src
@@ -552,13 +554,12 @@ class FlowCrudSpec extends HealthCheckSpecification {
             validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
             validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
             def swProps = switchHelper.getCachedSwProps(it.dpId)
-            def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId, dstSwitch.dpId]) ? 1 : 0
-            if (swProps.multiTable && swProps.server42FlowRtt) {
+            if (swProps.server42FlowRtt) {
                 if ((flow.destination.getSwitchId() == it.dpId && flow.destination.vlanId) || (flow.source.getSwitchId() == it.dpId && flow.source.vlanId))
                     amountOfServer42Rules += 1
             }
-            def amountOfFlowRules = 2 + amountOfMultiTableRules + amountOfServer42Rules
+            def amountOfFlowRules = 3 + amountOfServer42Rules
             assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
         }
 
@@ -697,6 +698,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         ]
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Unable to create a flow on an isl port when ISL status is FAILED"() {
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -996,7 +998,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
         and: "Flow rules are recreated"
         def flowInfoFromDb2 = database.getFlow(flow.flowId)
         wait(RULES_INSTALLATION_TIME) {
-            def isMultiTableEnabled = switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable
             with(northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
                 !new Cookie(it.cookie).serviceFlag
             }) { rules ->
@@ -1006,8 +1007,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
                 def ingressRule = rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }
                 ingressRule.match.inPort == updatedFlow.source.portNumber.toString()
                 //vlan is matched in shared rule
-                isMultiTableEnabled ? !ingressRule.match.vlanVid : (ingressRule.match.vlanVid == updatedFlow.source
-                        .vlanId.toString())
+                !ingressRule.match.vlanVid
             }
         }
 
@@ -1244,7 +1244,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
     @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])
     def "System allows to update single switch flow to multi switch flow"() {
         given: "A single switch flow with enabled lldp/arp on the dst side"
-        assumeTrue(useMultitable, "This test can be run in multiTable mode due to lldp/arp")
         def swPair = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.singleSwitchFlow(swPair.src)
         flow.destination.detectConnectedDevices.lldp = true

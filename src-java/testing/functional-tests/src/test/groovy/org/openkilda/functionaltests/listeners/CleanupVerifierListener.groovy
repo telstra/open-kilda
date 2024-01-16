@@ -47,8 +47,6 @@ class CleanupVerifierListener extends AbstractSpringListener {
     Database database
     @Autowired
     SwitchHelper switchHelper
-    @Value('${use.multitable}')
-    boolean useMultitable
 
     @Override
     void afterIteration(IterationInfo iteration) {
@@ -73,7 +71,6 @@ class CleanupVerifierListener extends AbstractSpringListener {
         withPool {
             topology.activeSwitches.eachParallel { Switch sw ->
                 def swProps = northbound.getSwitchProperties(sw.dpId)
-                assert swProps.multiTable == useMultitable
                 def s42Config = sw.prop
                 if (s42Config) {
                     assert swProps.server42FlowRtt == s42Config.server42FlowRtt

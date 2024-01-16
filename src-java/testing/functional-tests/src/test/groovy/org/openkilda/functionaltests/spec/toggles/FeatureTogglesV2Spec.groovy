@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.toggles
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.error.flow.FlowForbiddenToCreateExpectedError
 import org.openkilda.functionaltests.error.flow.FlowForbiddenToDeleteExpectedError
 import org.openkilda.functionaltests.error.flow.FlowForbiddenToUpdateExpectedError
@@ -127,7 +129,7 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
         newFlow && !deletedNewFlow && flowHelper.deleteFlow(newFlow.id)
     }
 
-    @Tags(HARDWARE)
+    @Tags([HARDWARE, ISL_RECOVER_ON_FAIL])
     @ResourceLock(DEFAULT_FLOW_ENCAP)
     def "Flow encapsulation type is changed while auto rerouting according to 'flows_reroute_using_default_encap_type' \
 feature toggle"() {
@@ -215,7 +217,7 @@ feature toggle"() {
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2955")
-    @Tags(HARDWARE)
+    @Tags([HARDWARE, ISL_RECOVER_ON_FAIL])
     @ResourceLock(DEFAULT_FLOW_ENCAP)
     def "Flow encapsulation type is not changed while syncing/auto rerouting/updating according to \
 'flows_reroute_using_default_encap_type' if switch doesn't support new type of encapsulation"() {
@@ -303,7 +305,7 @@ feature toggle"() {
         database.resetCosts(topology.isls)
     }
 
-    @Tags(LOW_PRIORITY)
+    @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
     def "System doesn't reroute flow when flows_reroute_on_isl_discovery: false"() {
         given: "A flow with alternative paths"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {

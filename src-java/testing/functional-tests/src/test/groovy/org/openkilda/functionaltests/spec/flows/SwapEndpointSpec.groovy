@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
@@ -266,15 +267,15 @@ switches"() {
                      it.flow2Src = changePropertyValue(it.flow2.source, "datapath", it.flow1.destination.datapath)
                      it.flow2Dst = changePropertyValue(it.flow2.destination, "datapath", it.flow1.source.datapath)
                  }].collect { iterationData ->
-            def switchPairs = getTopologyHelper().getAllNotNeighboringSwitchPairs().inject(null) { result, switchPair ->
+            def swPairs = switchPairs.all().nonNeighbouring().getSwitchPairs().inject(null) { result, switchPair ->
                 if (result) return result
                 def halfDifferent = getHalfDifferentNotNeighboringSwitchPair(switchPair, "src")
                 if (halfDifferent) result = [switchPair, halfDifferent]
                 return result
             }
-            def flow1 = getFirstFlow(switchPairs?.get(0), switchPairs?.get(1))
-            def flow2 = getSecondFlow(switchPairs?.get(0), switchPairs?.get(1), flow1)
-            [switchPairs: switchPairs, flow1: flow1, flow2: flow2].tap(iterationData)
+            def flow1 = getFirstFlow(swPairs?.get(0), swPairs?.get(1))
+            def flow2 = getSecondFlow(swPairs?.get(0), swPairs?.get(1), flow1)
+            [switchPairs: swPairs, flow1: flow1, flow2: flow2].tap(iterationData)
         }
     }
 
@@ -750,6 +751,7 @@ switches"() {
         !isTestCompleted && [swPair.src.dpId, swPair.dst.dpId].each { northbound.synchronizeSwitch(it, true) }
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Able to swap endpoints for two flows when all bandwidth on ISL is consumed"() {
         setup: "Create two flows with different source and the same destination switches"
         List<SwitchPair> switchPairs = topologyHelper.allNeighboringSwitchPairs.inject(null) { result, switchPair ->
@@ -843,6 +845,7 @@ switches"() {
         database.resetCosts(topology.isls)
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Unable to swap endpoints for two flows when not enough bandwidth on ISL"() {
         setup: "Create two flows with different source and the same destination switches"
         List<SwitchPair> switchPairs = topologyHelper.allNeighboringSwitchPairs.inject(null) { result, switchPair ->
@@ -932,7 +935,7 @@ switches"() {
         database.resetCosts(topology.isls)
     }
 
-    @Tags(LOW_PRIORITY)
+    @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
     def "Able to swap endpoints for two flows when not enough bandwidth on ISL and ignore_bandwidth=true"() {
         setup: "Create two flows with different source and the same destination switches"
         List<SwitchPair> switchPairs = topologyHelper.allNeighboringSwitchPairs.inject(null) { result, switchPair ->
@@ -1027,6 +1030,7 @@ switches"() {
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/3770")
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Unable to swap endpoints for two flows when one of them is inactive"() {
         setup: "Create two flows with different source and the same destination switches"
         List<SwitchPair> switchPairs = topologyHelper.allNeighboringSwitchPairs.inject(null) { result, switchPair ->
@@ -1359,11 +1363,7 @@ switches"() {
                      flow2Src = flow2.source
                      flow2Dst = flow1.destination
                  }].collect { iterationData ->
-            def switchPair = getTopologyHelper().getAllNeighboringSwitchPairs().find {
-                [it.src, it.dst].every { sw ->
-                    getNorthbound().getSwitchProperties(sw.dpId).multiTable
-                }
-            }
+            def switchPair = getTopologyHelper().getAllNeighboringSwitchPairs().shuffled().first()
             def flow1 = getFirstFlow(switchPair, switchPair).tap {
                 source.innerVlanId = 300
                 destination.innerVlanId = 400

@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.links
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -35,6 +36,10 @@ import java.util.concurrent.TimeUnit
 class LinkSpec extends HealthCheckSpecification {
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
+
+    def setupSpec() {
+        deleteAnyFlowsLeftoversIssue5480()
+    }
 
     @Tags([SMOKE_SWITCHES, SMOKE, LOCKKEEPER])
     def "Link (not BFD) status is properly changed when link connectivity is broken (not port down)"() {
@@ -129,7 +134,7 @@ class LinkSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tags(SMOKE)
+    @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "Get all flows (UP/DOWN) going through a particular link"() {
         given: "Two active not neighboring switches"
         def switchPair = switchPairs.all().nonNeighbouring().random()
@@ -357,6 +362,7 @@ class LinkSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.contains("ISL must NOT be in active state")
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Able to delete an inactive #islDescription link and re-discover it back afterwards"() {
         given: "An inactive link"
         assumeTrue(isl as boolean, "Unable to locate $islDescription ISL for this test")
@@ -715,6 +721,7 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Unable to delete inactive link with flowPath"() {
         given: "An inactive link with flow on it"
         def switchPair = switchPairs.all().neighbouring().random()
@@ -748,6 +755,7 @@ class LinkSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Able to delete an active link with flowPath if using force delete"() {
         given: "Two active neighboring switches and two possible paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
@@ -849,18 +857,17 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         and: "The src/dst switches are valid"
-        //https://github.com/telstra/open-kilda/issues/3906
-        if (!useMultitable) {
-            [isl.srcSwitch, isl.dstSwitch].each {
-                //Similar to https://github.com/telstra/open-kilda/issues/3906 but for Server42 ISL RTT rules.
-                if (!it.prop || (it.prop.server42IslRtt == "DISABLED")) {
-                    def validateInfo = northbound.validateSwitch(it.dpId).rules
-                    assert validateInfo.missing.empty
-                    assert validateInfo.excess.empty
-                    assert validateInfo.misconfigured.empty
-                }
+        /** https://github.com/telstra/open-kilda/issues/3906
+        [isl.srcSwitch, isl.dstSwitch].each {
+            //Similar to https://github.com/telstra/open-kilda/issues/3906 but for Server42 ISL RTT rules.
+            if (!it.prop || (it.prop.server42IslRtt == "DISABLED")) {
+                def validateInfo = northbound.validateSwitch(it.dpId).rules
+                assert validateInfo.missing.empty
+                assert validateInfo.excess.empty
+                assert validateInfo.misconfigured.empty
             }
-        }
+        } */
+
 
         cleanup:
         aSwitchForwardRuleIsDeleted && lockKeeper.addFlows([isl.aswitch])

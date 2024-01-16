@@ -2,9 +2,11 @@ package org.openkilda.functionaltests.spec.flows.haflows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.HaPathHelper
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -33,6 +35,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
     @Shared
     HaPathHelper haPathHelper
 
+    @Tags(ISL_PROPS_DB_RESET)
     def "Not able to reroute to a path with not enough bandwidth available"() {
         given: "An HA-flow with alternate paths available"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
@@ -85,6 +88,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tags(ISL_PROPS_DB_RESET)
     def "Able to reroute to a better path if it has enough bandwidth"() {
         given: "An HA-flow with alternate paths available"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
@@ -158,6 +162,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         thinIsl && [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
     }
 
+    @Tags(ISL_PROPS_DB_RESET)
     def "Able to reroute to a path with not enough bandwidth available in case ignoreBandwidth=true"() {
         given: "A HA-flow with alternate paths available"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()

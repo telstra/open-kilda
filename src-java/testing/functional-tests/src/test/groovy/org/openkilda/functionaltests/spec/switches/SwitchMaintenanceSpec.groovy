@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -119,6 +120,7 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Link discovered by a switch under maintenance is marked as maintained"() {
         given: "An active link"
         def isl = topology.islsForActiveSwitches.first()

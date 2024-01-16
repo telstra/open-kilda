@@ -2,6 +2,8 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
@@ -186,6 +188,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         flowHelper.deleteFlow(flow.id)
     }
 
+    @Tags(ISL_PROPS_DB_RESET)
     def "Unable to create a flow with protected path when there is not enough bandwidth"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -215,6 +218,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         !exc && flowHelper.deleteFlow(flow.id)
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Unable to create #flowDescription flow with protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches without alt paths"
         def switchPair = switchPairs.all().neighbouring().random()
@@ -286,15 +290,15 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         }*.cookie
         def srcSwProps = switchHelper.getCachedSwProps(switchPair.src.dpId)
         def amountOfserver42Rules = srcSwProps.server42FlowRtt ? 1 : 0
-        def amountOfFlowRulesSrcSw = srcSwProps.multiTable ? (3 + amountOfserver42Rules) : (2 + amountOfserver42Rules)
-        if (srcSwProps.multiTable && srcSwProps.server42FlowRtt && flow.source.vlanId) {
+        def amountOfFlowRulesSrcSw = 3 + amountOfserver42Rules
+        if (srcSwProps.server42FlowRtt && flow.source.vlanId) {
             amountOfFlowRulesSrcSw += 1
         }
         assert createdCookiesSrcSw.size() == amountOfFlowRulesSrcSw
         def dstSwProps = switchHelper.getCachedSwProps(switchPair.dst.dpId)
         def amountOfserver42RulesDstSw = dstSwProps.server42FlowRtt ? 1 : 0
-        def amountOfFlowRulesDstSw = dstSwProps.multiTable ? (3 + amountOfserver42RulesDstSw) : (2 + amountOfserver42RulesDstSw)
-        if (dstSwProps.multiTable && dstSwProps.server42FlowRtt && flow.destination.vlanId) {
+        def amountOfFlowRulesDstSw = 3 + amountOfserver42RulesDstSw
+        if (dstSwProps.server42FlowRtt && flow.destination.vlanId) {
             amountOfFlowRulesDstSw += 1
         }
         assert createdCookiesDstSw.size() == amountOfFlowRulesDstSw
@@ -463,6 +467,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 "Could not swap paths: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Unable to swap paths for an inactive flow"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
         def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {

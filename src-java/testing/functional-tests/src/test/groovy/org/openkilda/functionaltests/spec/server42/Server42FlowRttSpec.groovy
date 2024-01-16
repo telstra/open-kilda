@@ -91,7 +91,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Check if stats for forward are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
+            flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
         }
 
         cleanup: "Revert system to original state"
@@ -173,11 +173,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                  * (if there are 10 flows on port number 5, then there will be installed one INPUT rule);
                  * - SERVER_42_FLOW_RTT_INGRESS is installed for each flow.
                  */
-                def amountOfRules = northbound.getSwitchProperties(it.dpId).multiTable ? 4 : 2
                 assert northbound.getSwitchRules(it.dpId).flowEntries.findAll {
                     new Cookie(it.cookie).getType() in  [CookieType.SERVER_42_FLOW_RTT_INPUT,
                                                          CookieType.SERVER_42_FLOW_RTT_INGRESS]
-                }.size() == amountOfRules
+                }.size() == 4
             }
         }
 
@@ -195,8 +194,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "Check if stats for forward and reverse flows are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
         }
 
         cleanup: "Revert system to original state"
@@ -245,10 +244,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         SECONDS.sleep(statsWaitSeconds)
 
         then: "Expect no flow rtt stats for forward flow"
-        flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42) == null
+        flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).isEmpty()
 
         and: "Expect no flow rtt stats for reversed flow"
-        flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42) == null
+        flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
 
         when: "Enable global rtt toggle"
         changeFlowRttToggle(true)
@@ -258,10 +257,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         SECONDS.sleep(statsWaitSeconds)
 
         then: "Expect no flow rtt stats for forward flow"
-        flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42) == null
+        flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).isEmpty()
 
         and: "Expect no flow rtt stats for reversed flow"
-        flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42) == null
+        flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
 
         when: "Enable switch rtt toggle on src and dst"
         changeFlowRttSwitch(switchPair.src, true)
@@ -270,9 +269,9 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Stats for forward and reverse flow are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
             //https://github.com/telstra/open-kilda/issues/4678
-            //assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+            //assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
         }
 
         when: "Disable switch rtt toggle on dst (still enabled on src)"
@@ -281,7 +280,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Stats for forward and reverse flow are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET, 1) {
-            def stats = flowStats.rttOf(flow.getFlowId())
+            def stats = flowStats.of(flow.getFlowId())
             assert stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
             //https://github.com/telstra/open-kilda/issues/4678
             //assert stats.get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
@@ -295,10 +294,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         SECONDS.sleep(statsWaitSeconds)
 
         then: "Expect no flow rtt stats for forward flow"
-        !flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+        !flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
 
         and: "Expect no flow rtt stats for reversed flow"
-        !flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+        !flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
 
         cleanup: "Revert system to original state"
         revertToOrigin([flow, reversedFlow], flowRttFeatureStartState, initialSwitchRtt)
@@ -336,8 +335,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "Stats for both directions are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValues()
         }
 
         when: "Disable flow rtt on dst switch"
@@ -349,12 +348,12 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Stats are available in forward direction"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
 
         }
 
         and: "Stats are not available in reverse direction"
-        !flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+        !flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
 
         cleanup: "Revert system to original state"
         revertToOrigin([flow], flowRttFeatureStartState, initialSwitchRtt)
@@ -378,8 +377,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValues()
         }
 
         when: "Delete ingress server42 rule related to the flow on the src switch"
@@ -408,11 +407,11 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         northbound.getFlowStatus(flow.flowId).status == FlowState.UP
 
         and: "server42 stats for forward direction are not increased"
-        !flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
+        !flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
 
         and: "server42 stats for reverse direction are increased"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET) {
-            flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
+            flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
         }
 
         when: "Synchronize the flow"
@@ -429,7 +428,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "server42 stats for forward direction are available again"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET, 1) {
-            flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsReinstalled)
+            flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsReinstalled)
         }
 
         cleanup: "Revert system to original state"
@@ -466,8 +465,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         //make sure stats for the flow1 in forward directions are available and not available for the flow2
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert flowStats.rttOf(flow1.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
-            assert flowStats.rttOf(flow2.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42) == null
+            assert flowStats.of(flow1.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
+            assert flowStats.of(flow2.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).isEmpty()
         }
 
         when: "Try to swap src endpoints for two flows"
@@ -510,12 +509,12 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "server42 stats are available for the flow2 in the forward direction"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert flowStats.rttOf(flow2.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
+            assert flowStats.of(flow2.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
         }
 
         and: "server42 stats are not available any more for the flow1 in the forward direction"
         //give one second extra after swap
-        !flowStats.rttOf(flow1.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42)
+        !flowStats.of(flow1.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42)
                 .hasNonZeroValuesAfter(timeWhenEndpointWereSwapped + 1000)
 
         cleanup:
@@ -546,14 +545,14 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Stats from server42 only for forward direction are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42) == null
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
         }
 
         and: "Stats from flow monitoring feature for reverse direction only are available"
         Wrappers.wait(flowSlaCheckIntervalSeconds * 3, 1) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING) == null
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, FLOW_MONITORING).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).isEmpty()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, FLOW_MONITORING).hasNonZeroValues()
         }
 
         when: "Disable server42FlowRtt on the src switch"
@@ -561,7 +560,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Stats from flow monitoring feature for forward direction are available"
         Wrappers.wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET * 2, 1) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
 
         cleanup: "Revert system to original state"
@@ -609,8 +608,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Check if stats for forward/reverse directions are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET, 1) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(flowUpdateTime)
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(flowUpdateTime)
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(flowUpdateTime)
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(flowUpdateTime)
         }
 
         and: "Flow is valid"
@@ -697,8 +696,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Flow rtt stats are not available due to incorrect s42 port on the src switch"
         Wrappers.timedLoop(STATS_FROM_SERVER42_LOGGING_TIMEOUT / 2) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42) == null
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42) == null
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).isEmpty()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
         }
 
         when: "Set correct config for the server42 on the src switch"
@@ -728,8 +727,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "Flow rtt stats are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValues()
         }
 
         cleanup:
@@ -771,8 +770,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         then: "Stats from server42 for forward/reverse directions are available"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValues()
         }
 
         cleanup: "Revert system to original state"
@@ -863,9 +862,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
     def "getSwPairConnectedToS42ForQinQ"(List<SwitchId> switchIdsConnectedToS42) {
         getTopologyHelper().getSwitchPairs().find { swP ->
-            [swP.dst, swP.src].every { it.dpId in switchIdsConnectedToS42 && !it.wb5164 } && swP.paths.findAll { path ->
-                pathHelper.getInvolvedSwitches(path).every { getNorthbound().getSwitchProperties(it.dpId).multiTable }
-            }
+            [swP.dst, swP.src].every { it.dpId in switchIdsConnectedToS42 && !it.wb5164 }
         }
     }
 

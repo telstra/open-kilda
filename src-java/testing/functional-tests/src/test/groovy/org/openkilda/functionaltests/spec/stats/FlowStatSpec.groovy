@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.stats
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.model.stats.FlowStats
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -149,7 +151,7 @@ class FlowStatSpec extends HealthCheckSpecification {
                 (int) flow.maximumBandwidth, 3).tap { udp = true }
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
-        //statsHelper."force kilda to collect stats"()
+        statsHelper."force kilda to collect stats"()
 
         then: "Stats is not empty for main path cookies"
         def flowInfo = database.getFlow(flow.flowId)
@@ -184,7 +186,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         and: "Generate traffic on the flow"
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
-        //statsHelper."force kilda to collect stats"()
+        statsHelper."force kilda to collect stats"()
 
 
         then: "Stats is not empty for new main path cookies"
@@ -207,6 +209,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "System collects stats when a protected flow was automatically rerouted"() {
         given: "Two active not neighboring switches with three not overlapping paths at least"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
@@ -283,6 +286,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "System collects stat when protected flow is DEGRADED"() {
         given: "Two active not neighboring switches with two not overlapping paths at least"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
@@ -486,8 +490,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         given: "Two active neighboring switches connected to the traffgens"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
         def switchPair = topologyHelper.switchPairs.find {
-            [it.src, it.dst].every { it.dpId in traffGenSwitches } &&
-                    switchHelper.getCachedSwProps(it.src.dpId).multiTable
+            [it.src, it.dst].every { it.dpId in traffGenSwitches }
         } ?: assumeTrue(false, "No suiting switches found")
 
 

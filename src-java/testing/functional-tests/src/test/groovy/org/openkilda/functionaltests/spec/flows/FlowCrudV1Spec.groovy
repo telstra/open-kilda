@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithMissingPathExpectedError
@@ -492,6 +495,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Error is returned if there is no available path to #data.isolatedSwitchType switch"() {
         given: "A switch that has no connection to other switches"
         def isolatedSwitch = switchPairs.all().nonNeighbouring().random().src
@@ -579,13 +583,12 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
             validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
             validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
             def swProps = switchHelper.getCachedSwProps(it.dpId)
-            def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId,dstSwitch.dpId]) ? 1 : 0
-            if (swProps.multiTable && swProps.server42FlowRtt) {
+            if (swProps.server42FlowRtt) {
                 if ((flow.destination.getDatapath() == it.dpId && flow.destination.vlanId) || (flow.source.getDatapath() == it.dpId && flow.source.vlanId))
                     amountOfServer42Rules += 1
             }
-            def amountOfFlowRules = 2 + amountOfMultiTableRules + amountOfServer42Rules
+            def amountOfFlowRules = 3 + amountOfServer42Rules
             assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
         }
 
@@ -665,6 +668,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         ]
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Unable to create a flow on an isl port when ISL status is FAILED"() {
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
@@ -856,6 +860,7 @@ are not connected to the controller/).matches(exc)
         flows.each { it && flowHelper.deleteFlow(it) }
     }
 
+    @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "System doesn't create flow when reverse path has different bandwidth than forward path on the second link"() {
         given: "Two active not neighboring switches"
         def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {

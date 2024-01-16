@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.error.PortNotFoundExpectedError
 import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
 
@@ -115,6 +117,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         new PortNotFoundExpectedError(sw.dpId, nonExistentPort, ~/Port not found exception/).matches(exc)    }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "System doesn't discover link when port discovery property is disabled"() {
         given: "A deleted link"
         def sw = topology.activeSwitches.first()

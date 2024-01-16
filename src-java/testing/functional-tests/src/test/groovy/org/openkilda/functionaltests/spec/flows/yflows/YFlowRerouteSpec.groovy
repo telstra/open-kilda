@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 
 import org.openkilda.functionaltests.error.yflow.YFlowRerouteExpectedError
@@ -53,12 +54,11 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     @Autowired @Shared
     FlowStats flowStats
 
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT, ISL_RECOVER_ON_FAIL])
     def "Valid y-flow can be rerouted"() {
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         given: "A qinq y-flow"
         def swT = topologyHelper.switchTriplets.find { it ->
-            def yPoints = yFlowHelper.findPotentialYPoints(it)
+            def yPoints = topologyHelper.findPotentialYPoints(it)
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
                     [it.pathsEp1, it.pathsEp2].every { it.size() > 1 } &&
                     it.ep1 != it.ep2 && yPoints.size() == 1 && yPoints[0] != it.shared &&
@@ -288,7 +288,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
-    @Tags([LOW_PRIORITY])
+    @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
     def "Y-Flow reroute has not been executed when one sub-flow is on the best path and there is no alternative path for another sub-flow due to the down ISLs" () {
         given: "Y-Flow has been created successfully"
         def swT = topologyHelper.switchTriplets.findAll{ SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it)}.first()

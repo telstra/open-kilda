@@ -1,21 +1,17 @@
 package org.openkilda.functionaltests.model.stats
 
 
-import org.openkilda.functionaltests.helpers.StatsHelper
+import org.openkilda.testing.service.tsdb.TsdbQueryService
 import org.openkilda.testing.service.tsdb.model.StatsResult
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
-
 @Component
-class YFlowStats {
-    private static StatsHelper statsHelper
-    private List<StatsResult> stats
-    private String metricPrefix
+class YFlowStats extends AbstractStats {
 
     @Autowired
-    YFlowStats(StatsHelper statsHelper){
-        YFlowStats.statsHelper = statsHelper
+    YFlowStats(TsdbQueryService tsdbQueryService) {
+        AbstractStats.tsdbQueryService = tsdbQueryService
     }
 
     static YFlowStats of(String yFlowId){
@@ -23,12 +19,11 @@ class YFlowStats {
     }
 
     YFlowStats(String yFlowId) {
-        this.metricPrefix = statsHelper.getMetricPrefix()
-        this.stats = statsHelper.getTsdb().queryDataPointsForLastFiveMinutes(YFlowStatsMetric.values() as List,
-        "y_flow_id", yFlowId)
+        stats = tsdbQueryService.queryDataPointsForLastFiveMinutes(
+                /__name__=~"%s${YFlowStatsMetric.prefix}*", y_flow_id="${yFlowId}"/)
     }
 
     StatsResult get(YFlowStatsMetric metric) {
-        return this.stats.find {it.metric.equals(metricPrefix + metric.getValue())}
+        return getStats(metric)
     }
 }

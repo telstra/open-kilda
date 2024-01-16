@@ -16,26 +16,12 @@ import static java.util.concurrent.TimeUnit.SECONDS
 @Component
 class StatsHelper {
     @Autowired
-    @Qualifier("tsdbService")
-    TsdbQueryService tsdb
-    @Autowired
-    @Qualifier("legacyTsdbService")
-    TsdbQueryService legacyTsdb
-    @Value('${use.legacy.tsdb:false}')
-    boolean useLegacyTsdb
-    @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
-    @Value('${tsdb.metric.prefix}')
-    String metricPrefix
     final String KAFKA_STORM_SPEAKER_TOPIC = "kilda.speaker.storm"
     final int KAFKA_MESSAGE_SEND_TIMEOUT = 5 //seconds
 
     KafkaProducer kafkaProducer = null
-
-    TsdbQueryService getTsdb() {
-        return useLegacyTsdb ? legacyTsdb : tsdb
-    }
 
     void "force kilda to collect stats"(String flowId = "generic") {
         getKafkaProducer().send(new ProducerRecord(KAFKA_STORM_SPEAKER_TOPIC,

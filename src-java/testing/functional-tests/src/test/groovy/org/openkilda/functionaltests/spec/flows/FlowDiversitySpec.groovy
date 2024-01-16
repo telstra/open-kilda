@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
@@ -208,7 +209,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
-    @Tags(SMOKE)
+    @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "Diverse flows are built through the same path if there are no alternative paths available"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
         def switchPair = getSwitchPair(2)

@@ -44,11 +44,6 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         Map<SwitchId, SwitchPropertiesDto> initSwProps = [srcSwitch, dstSwitch, newDstSwitch].collectEntries {
             [(it): switchHelper.getCachedSwProps(it.dpId)]
         }
-        initSwProps.each { sw, swProps ->
-            switchHelper.updateSwitchProperties(sw, swProps.jacksonCopy().tap {
-                it.multiTable = true
-            })
-        }
 
         def bandwidth = 1000
         def vlanFlow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)

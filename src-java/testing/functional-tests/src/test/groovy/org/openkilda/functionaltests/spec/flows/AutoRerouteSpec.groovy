@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.error.flow.FlowNotReroutedExpectedError
 
 import static groovyx.gpars.GParsPool.withPool
@@ -48,7 +50,7 @@ import java.util.concurrent.TimeUnit
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
 class AutoRerouteSpec extends HealthCheckSpecification {
 
-    @Tags(SMOKE)
+    @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     @IterationTag(tags = [TOPOLOGY_DEPENDENT], iterationNameRegex = /vxlan/)
     def "Flow is rerouted when one of the #description flow ISLs fails"() {
         given: "A flow with one alternative path at least"
@@ -89,7 +91,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tags(SMOKE)
+    @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "Strict bandwidth true: Flow status is set to DOWN after reroute if no alternative path with enough bandwidth"() {
         given: "A flow with one alternative path at least"
         List<FlowRequestV2> helperFlows = []
@@ -183,6 +185,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Single switch flow changes status on switch up/down events"() {
         given: "Single switch flow"
         def sw = topology.getActiveSwitches()[0]
@@ -246,7 +249,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tags(SMOKE)
+    @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "Flow goes to 'Down' status when one of the flow ISLs fails and there is no alt path to reroute"() {
         given: "A flow without alternative paths"
         def data = noIntermediateSwitchFlow(0, true)
@@ -309,7 +312,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         false       | 2 //original + 1 retry with ignore bw
     }
 
-    @Tags(SMOKE)
+    @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "Flow in 'Down' status is rerouted when discovering a new ISL"() {
         given: "An intermediate-switch flow with one alternative path at least"
         def data = noIntermediateSwitchFlow(1, true)
@@ -369,7 +372,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tags(SMOKE)
+    @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "Flow in 'Up' status is not rerouted when discovering a new ISL and more preferable path is available"() {
         given: "A flow with one alternative path at least"
         def data = noIntermediateSwitchFlow(1, true)
@@ -542,6 +545,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Flow is not rerouted when switchUp event appear for a switch which is not related to the flow"() {
         given: "Given a flow in DOWN status on neighboring switches"
         def switchPair = switchPairs.all()
@@ -574,11 +578,11 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         def blockData = switchHelper.knockoutSwitch(switchToManipulate, RW)
         def isSwitchActivated = false
         wait(WAIT_OFFSET) {
-            def prevHistorySize = flowHelper.getHistorySize(flow.flowId)
             timedLoop(4) {
-                //history size should no longer change for the flow, all retries should give up
-                def newHistorySize = flowHelper.getHistorySize(flow.flowId)
-                assert newHistorySize == prevHistorySize
+                //waiting for the last retry in the scope of flow rerouting due to the ISL failure
+                assert northbound.getFlowHistory(flow.flowId).findAll {
+                    it.action == "Flow rerouting" && it.details =~ /Reason: ISL .* become INACTIVE/ && it.taskId.contains("retry #1 ignore_bw true")
+                }
                 assert northbound.getFlowStatus(flow.flowId).status == FlowState.DOWN
             sleep(500)
             }
@@ -604,6 +608,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "System properly handles multiple flow reroutes if ISL on new path breaks while first reroute is in progress"() {
         given: "Switch pair that have at least 3 paths and 2 paths that have at least 1 common isl"
         List<PathNode> mainPath, backupPath, thirdPath
@@ -749,6 +754,7 @@ triggering one more reroute of the current path"
 @Isolated
 class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
     //isolation: global toggle flowsRerouteOnIslDiscoveryEnabled is changed
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Flow in 'Down' status is rerouted after switchUp event"() {
         given: "First switch pair with two parallel links and two available paths"
         assumeTrue(rerouteDelay * 2 < discoveryTimeout, "Reroute should be completed before link is FAILED")
@@ -908,7 +914,7 @@ Failed to find path with requested bandwidth= ignored"
         database.resetCosts(topology.isls)
     }
 
-    @Tags(SMOKE)
+    @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     /** isolation: test verifies that flow is rerouted by blinking not involved isl,
      * it can be triggered by parallel test, not by action from this test
      * as a result 'retry' may merge the reroute details with one of the 'become Active' reasons from parallel topologies

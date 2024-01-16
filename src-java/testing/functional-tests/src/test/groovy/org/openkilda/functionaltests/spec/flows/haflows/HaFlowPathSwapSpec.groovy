@@ -84,7 +84,7 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
         and: "Ha-Flow and related sub-flows are valid"
         northboundV2.validateHaFlow(haFlowId).asExpected
 
-        and: "All involved switches passes switch validation"
+        and: "All involved switches pass switch validation"
         def involvedSwitches = haFlowHelper.getInvolvedSwitches(haFlowPathInfoAfter)
         withPool {
             involvedSwitches.eachParallel { SwitchId switchId ->
