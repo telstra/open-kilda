@@ -683,6 +683,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         then: "Human readable error is returned" //system can't update the flow when it is down
         def exc = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError(~/Source switch $switchPair.src.dpId is not connected to the controller/).matches(exc)
+
         then: "FlowLoop is not created"
         !northbound.getFlow(flow.flowId).loopSwitchId
 
