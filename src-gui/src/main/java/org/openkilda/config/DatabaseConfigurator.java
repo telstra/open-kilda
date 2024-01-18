@@ -19,8 +19,6 @@ import org.openkilda.dao.entity.VersionEntity;
 import org.openkilda.dao.repository.VersionRepository;
 
 import com.ibatis.common.jdbc.ScriptRunner;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
@@ -40,6 +38,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import javax.sql.DataSource;
 
 @Repository("databaseConfigurator")
@@ -95,7 +96,7 @@ public class DatabaseConfigurator {
                     list.add(versionEntity);
                     newVersionList.add(versionEntity.getVersionNumber());
                 }
-                versionEntityRepository.saveAll(list);
+                versionEntityRepository.save(list);
                 versionNumberList = newVersionList;
             } catch (Exception e) {
                 LOGGER.warn("Failed to load version list", e);
@@ -108,7 +109,7 @@ public class DatabaseConfigurator {
             Resource[] resources = resolver.getResources("classpath:" + SCRIPT_LOCATION + "/*");
             List<String> dbScripts = Arrays.stream(resources)
                     .map(Resource::getFilename)
-                    .toList();
+                    .collect(Collectors.toList());
             ArrayList<Long> sortedList = new ArrayList<Long>();
             for (String scriptFile : dbScripts) {
                 String scriptFileName = scriptFile.replaceFirst("[.][^.]+$", "");

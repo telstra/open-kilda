@@ -19,8 +19,6 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.constants.Status;
 import org.openkilda.saml.service.SamlService;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import org.opensaml.saml2.core.NameID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +37,8 @@ import org.usermanagement.model.UserInfo;
 import org.usermanagement.util.MessageUtils;
 
 import java.nio.file.AccessDeniedException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 
 public abstract class BaseController {
 

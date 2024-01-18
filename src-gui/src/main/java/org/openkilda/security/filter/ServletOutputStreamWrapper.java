@@ -15,12 +15,11 @@
 
 package org.openkilda.security.filter;
 
-import jakarta.servlet.ServletOutputStream;
-import jakarta.servlet.WriteListener;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import javax.servlet.ServletOutputStream;
+import javax.servlet.WriteListener;
 
 /**
  * ServletOutputStreamWrapper is a wrapper of {@link ServletOutputStream}. The data passed is

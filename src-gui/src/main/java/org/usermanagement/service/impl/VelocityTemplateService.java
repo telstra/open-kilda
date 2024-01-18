@@ -15,7 +15,6 @@
 
 package org.usermanagement.service.impl;
 
-import jakarta.annotation.PostConstruct;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
@@ -26,6 +25,7 @@ import org.usermanagement.service.TemplateService;
 import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
+import javax.annotation.PostConstruct;
 
 @Service
 public class VelocityTemplateService implements TemplateService {

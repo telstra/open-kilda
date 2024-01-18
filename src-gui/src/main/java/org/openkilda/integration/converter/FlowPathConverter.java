@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2024 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,32 +15,28 @@
 
 package org.openkilda.integration.converter;
 
+import static org.openkilda.utility.SwitchUtil.customSwitchName;
+
 import org.openkilda.integration.model.response.FlowPathNode;
 import org.openkilda.integration.model.response.FlowPayload;
 import org.openkilda.integration.model.response.OtherFlows;
-import org.openkilda.integration.service.SwitchIntegrationService;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
 
-@Component
-public class FlowPathConverter {
 
-    @Autowired
-    SwitchIntegrationService switchIntegrationService;
+public final class FlowPathConverter {
+
+    private FlowPathConverter() {
+    }
 
     /**
      * Gets the flow path.
      *
-     * @param flowId the flowid
      * @param flowPayload the Flow Payload
      * @return the flow path
      */
-    public FlowPayload getFlowPath(final String flowId, final FlowPayload flowPayload) {
-        Map<String, String> csNames = switchIntegrationService.getSwitchNames();
+    public static FlowPayload getFlowPath(final FlowPayload flowPayload, Map<String, String> csNames) {
         setSwitchName(flowPayload.getForward(), csNames);
         setSwitchName(flowPayload.getReverse(), csNames);
         if (flowPayload.getProtectedPath() != null) {
@@ -58,18 +54,16 @@ public class FlowPathConverter {
         }
         return flowPayload;
     }
-    
+
     /**
      * Sets the switch name.
      *
      * @param pathNodes the path nodes
-     * @param csNames the cs names
+     * @param csNames   the cs names
      */
-    private void setSwitchName(List<FlowPathNode> pathNodes, Map<String, String> csNames) {
-        pathNodes.parallelStream().forEach((pathNode) -> {
-            pathNode.setSwitchName(
-                    switchIntegrationService.customSwitchName(csNames, pathNode.getSwitchId()));
-        });
+    private static void setSwitchName(List<FlowPathNode> pathNodes, Map<String, String> csNames) {
+        pathNodes.parallelStream().forEach((pathNode)
+                -> pathNode.setSwitchName(customSwitchName(csNames, pathNode.getSwitchId())));
     }
 
 }

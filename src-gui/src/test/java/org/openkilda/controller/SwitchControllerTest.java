@@ -3,7 +3,7 @@
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
  *   You may obtain a copy of the License at
- *  
+ *
  *       http://www.apache.org/licenses/LICENSE-2.0
  *
  *   Unless required by applicable law or agreed to in writing, software
@@ -15,7 +15,7 @@
 
 package org.openkilda.controller;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -40,9 +40,8 @@ import org.openkilda.util.TestSwitchMock;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -69,7 +68,7 @@ public class SwitchControllerTest {
 
     @Mock
     private SwitchService serviceSwitch;
-    
+
     @Mock
     private ServerContext serverContext;
 
@@ -82,7 +81,7 @@ public class SwitchControllerTest {
     @SuppressWarnings("unused")
     private static final String switchUuid = "00:00:00:00:00:00:00:01";
 
-    @Before
+    @BeforeEach
     public void init() {
         MockitoAnnotations.initMocks(this);
         mockMvc = MockMvcBuilders.standaloneSetup(switchController).build();
@@ -103,7 +102,7 @@ public class SwitchControllerTest {
             assertTrue(false);
         }
     }
-    
+
     @Test
     public void testGetAllSwitchFlows() {
         ResponseEntity<List<?>> responseList = new ResponseEntity<List<?>>(HttpStatus.OK);
@@ -117,7 +116,7 @@ public class SwitchControllerTest {
             assertTrue(false);
         }
     }
-    
+
     @Test
     public void testGetSwitchById() throws Exception {
         SwitchInfo switchInfo = new SwitchInfo();
@@ -139,14 +138,14 @@ public class SwitchControllerTest {
             assertTrue(false);
         }
     }
-    
+
     @Test
     public void testDeleteSwitch() {
         SwitchInfo switcheInfo = new SwitchInfo();
         try {
             when(serviceSwitch.deleteSwitch(TestSwitchMock.SWITCH_ID, false)).thenReturn(switcheInfo);
             mockMvc.perform(delete("/api/switch/{switchId}", TestSwitchMock.SWITCH_ID, true)
-                    .contentType(MediaType.APPLICATION_JSON))
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception e) {
@@ -154,12 +153,12 @@ public class SwitchControllerTest {
             assertTrue(false);
         }
     }
-    
+
     @Test
     public void testDeleteSwitchIfSwitchIdNotPassed() {
         try {
             mockMvc.perform(delete("/api/switch/{switchId}", TestSwitchMock.SWITCH_ID_NULL, true)
-                    .contentType(MediaType.APPLICATION_JSON))
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isNotFound());
             assertTrue(true);
         } catch (Exception e) {
@@ -176,12 +175,12 @@ public class SwitchControllerTest {
         switchInfo.setEvacuate(TestSwitchMock.EVACUATE_STATUS);
         String inputJson = mapToJson(switchInfo);
         mockMvc.perform(
-                    post("/api/switch/under-maintenance/{switchId}", TestSwitchMock.SWITCH_ID)
-                            .content(inputJson).contentType(MediaType.APPLICATION_JSON)).andExpect(
-                    status().isOk());
+                post("/api/switch/under-maintenance/{switchId}", TestSwitchMock.SWITCH_ID)
+                        .content(inputJson).contentType(MediaType.APPLICATION_JSON)).andExpect(
+                status().isOk());
     }
 
-    
+
     @Test
     public void testIslMaintenance() throws Exception {
         LinkUnderMaintenanceDto linkUnderMaintenanceDto = new LinkUnderMaintenanceDto();
@@ -193,15 +192,15 @@ public class SwitchControllerTest {
 
         String inputJson = mapToJson(linkUnderMaintenanceDto);
         MvcResult mvcResult = mockMvc.perform(MockMvcRequestBuilders
-                .patch("/api/switch/links/under-maintenance")
-                .content(inputJson)
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON))
+                        .patch("/api/switch/links/under-maintenance")
+                        .content(inputJson)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
                 .andReturn();
         int status = mvcResult.getResponse().getStatus();
         assertEquals(200, status);
     }
-    
+
     @Test
     public void testDeleteIsl() throws Exception {
         LinkParametersDto linkParametersDto = new LinkParametersDto();
@@ -214,15 +213,15 @@ public class SwitchControllerTest {
         String inputJson = mapToJson(linkParametersDto);
         when(serviceSwitch.deleteLink(linkParametersDto, TestIslMock.USER_ID)).thenReturn(islLinkInfo);
         MvcResult mvcResult = mockMvc.perform(MockMvcRequestBuilders
-                .delete("/api/switch/links")
-                .content(inputJson)
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON))
+                        .delete("/api/switch/links")
+                        .content(inputJson)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
                 .andReturn();
         int status = mvcResult.getResponse().getStatus();
         assertEquals(200, status);
     }
-    
+
     @Test
     public void testUpdateIslBfdFlag() throws Exception {
         LinkParametersDto linkParametersDto = new LinkParametersDto();
@@ -232,31 +231,31 @@ public class SwitchControllerTest {
         linkParametersDto.setDstSwitch(TestIslMock.DST_SWITCH);
         linkParametersDto.setEnableBfd(TestIslMock.ENABLE_BFD_FLAG);
         String inputJson = mapToJson(linkParametersDto);
-        
+
         MvcResult mvcResult = mockMvc.perform(MockMvcRequestBuilders
-                .patch("/api/switch/link/enable-bfd")
-                .content(inputJson)
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON))
+                        .patch("/api/switch/link/enable-bfd")
+                        .content(inputJson)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
                 .andReturn();
         int status = mvcResult.getResponse().getStatus();
         assertEquals(200, status);
 
     }
-    
+
     @Test
     public void testUpdateSwitchPortProperty() throws Exception {
         try {
             SwitchProperty switchProperty = new SwitchProperty();
             switchProperty.setDiscoveryEnabled(true);
             String inputJson = mapToJson(switchProperty);
-            
+
             MvcResult mvcResult = mockMvc.perform(MockMvcRequestBuilders
-                    .put("/api/switch/{switchId}/ports/{port}/properties", 
-                        TestSwitchMock.SWITCH_ID, TestSwitchMock.PORT)
-                    .content(inputJson)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .accept(MediaType.APPLICATION_JSON))
+                            .put("/api/switch/{switchId}/ports/{port}/properties",
+                                    TestSwitchMock.SWITCH_ID, TestSwitchMock.PORT)
+                            .content(inputJson)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .accept(MediaType.APPLICATION_JSON))
                     .andReturn();
             int status = mvcResult.getResponse().getStatus();
             assertEquals(200, status);
@@ -264,7 +263,7 @@ public class SwitchControllerTest {
             System.out.println("Exception is: " + e);
         }
     }
-    
+
     @Test
     public void testUpdateSwitchPortPropertyIfSwitchIdNotPassed() throws Exception {
         try {
@@ -272,9 +271,9 @@ public class SwitchControllerTest {
             switchProperty.setDiscoveryEnabled(true);
             String inputJson = mapToJson(switchProperty);
             mockMvc.perform(
-                    put("/api/switch/{switchId}/ports/{port}/properties", 
-                        TestSwitchMock.SWITCH_ID_NULL, TestSwitchMock.PORT)
-                        .content(inputJson).contentType(MediaType.APPLICATION_JSON)).andExpect(
+                    put("/api/switch/{switchId}/ports/{port}/properties",
+                            TestSwitchMock.SWITCH_ID_NULL, TestSwitchMock.PORT)
+                            .content(inputJson).contentType(MediaType.APPLICATION_JSON)).andExpect(
                     status().isNotFound());
             assertTrue(true);
         } catch (Exception e) {
@@ -282,17 +281,17 @@ public class SwitchControllerTest {
             assertTrue(false);
         }
     }
-    
+
     @Test
     public void testUpdateSwitchPortPropertyIfPortNotPassed() throws Exception {
         try {
             SwitchProperty switchProperty = new SwitchProperty();
             switchProperty.setDiscoveryEnabled(true);
             String inputJson = mapToJson(switchProperty);
-            mockMvc.perform(put("/api/switch/{switchId}/ports/{port}/properties", 
-                    TestSwitchMock.SWITCH_ID, TestSwitchMock.SWITCH_ID_NULL)
-                    .content(inputJson).contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+            mockMvc.perform(put("/api/switch/{switchId}/ports/{port}/properties",
+                            TestSwitchMock.SWITCH_ID, TestSwitchMock.SWITCH_ID_NULL)
+                            .content(inputJson).contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound());
             assertTrue(true);
         } catch (Exception ex) {
             System.out.println("Exception is: " + ex);
@@ -304,56 +303,56 @@ public class SwitchControllerTest {
     public void testUpdateSwitchPortPropertyIfSwitchPropertyNotPassed() throws Exception {
         try {
             mockMvc.perform(
-                    put("/api/switch/{switchId}/ports/{port}/properties", 
-                        TestSwitchMock.SWITCH_ID, TestSwitchMock.PORT)
-                        .contentType(MediaType.APPLICATION_JSON)).andExpect(
+                    put("/api/switch/{switchId}/ports/{port}/properties",
+                            TestSwitchMock.SWITCH_ID, TestSwitchMock.PORT)
+                            .contentType(MediaType.APPLICATION_JSON)).andExpect(
                     status().isBadRequest());
-            assertTrue(true);  
+            assertTrue(true);
         } catch (Exception e) {
             System.out.println("Exception is: " + e);
             assertTrue(false);
         }
     }
-    
+
     @Test
     public void testGetSwitchPortProperties() {
         SwitchProperty switchProperty = new SwitchProperty();
         try {
             when(serviceSwitch.getSwitchPortProperty(TestSwitchMock.SWITCH_ID, TestSwitchMock.PORT))
-                .thenReturn(switchProperty);
-            mockMvc.perform(get("/api/switch/{switchId}/ports/{port}/properties", TestSwitchMock.SWITCH_ID, 
-            TestSwitchMock.SWITCH_PORT).contentType(MediaType.APPLICATION_JSON))
+                    .thenReturn(switchProperty);
+            mockMvc.perform(get("/api/switch/{switchId}/ports/{port}/properties", TestSwitchMock.SWITCH_ID,
+                            TestSwitchMock.SWITCH_PORT).contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception e) {
             assertTrue(false);
         }
-    }    
-    
+    }
+
     @Test
     public void testGetSwitchPortPropertiesIfSwitchIdNotPassed() {
         try {
             mockMvc.perform(get("/api/switch/ports/{port}/properties", TestSwitchMock.PORT)
-                    .contentType(MediaType.APPLICATION_JSON))
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isNotFound());
             assertTrue(true);
         } catch (Exception e) {
             assertTrue(false);
         }
     }
-    
+
     @Test
     public void testGetSwitchPortPropertiesIfPortNotPassed() {
         try {
             mockMvc.perform(get("/api/switch/{switchId}/ports/properties", TestSwitchMock.SWITCH_ID)
-                    .contentType(MediaType.APPLICATION_JSON))
+                            .contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isNotFound());
             assertTrue(true);
         } catch (Exception e) {
             assertTrue(false);
         }
     }
-    
+
     protected String mapToJson(Object obj) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
         return objectMapper.writeValueAsString(obj);

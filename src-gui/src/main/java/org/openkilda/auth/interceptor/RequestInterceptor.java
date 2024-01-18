@@ -23,16 +23,13 @@ import org.openkilda.constants.IConstants.ApplicationSetting;
 import org.openkilda.constants.Status;
 import org.openkilda.service.ApplicationSettingService;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
-import org.springframework.web.servlet.AsyncHandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.dao.repository.UserRepository;
 import org.usermanagement.model.Permission;
@@ -47,9 +44,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 @Component
-public class RequestInterceptor implements AsyncHandlerInterceptor {
+public class RequestInterceptor extends HandlerInterceptorAdapter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RequestInterceptor.class);
     private static final String CORRELATION_ID = "correlation_id";
@@ -105,7 +105,8 @@ public class RequestInterceptor implements AsyncHandlerInterceptor {
 
     @Override
     public void postHandle(final HttpServletRequest request, final HttpServletResponse response, final Object handler,
-                           final ModelAndView modelAndView) {
+                           final ModelAndView modelAndView) throws Exception {
+        super.postHandle(request, response, handler, modelAndView);
         MDC.remove(CORRELATION_ID);
     }
 

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2024 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  */
 
 package org.openkilda.service;
+
+import static org.openkilda.utility.SwitchUtil.customSwitchName;
 
 import org.openkilda.constants.IConstants;
 import org.openkilda.integration.converter.FlowConverter;
@@ -89,9 +91,6 @@ public class FlowService {
     @Autowired
     private StoreService storeService;
 
-    @Autowired
-    private FlowConverter flowConverter;
-
     /**
      * get All Flows.
      *
@@ -105,7 +104,7 @@ public class FlowService {
         if (CollectionUtil.isEmpty(statuses) || statuses.contains("active")) {
             flows = flowsIntegrationService.getFlows();
             if (flows == null) {
-                flows = new ArrayList<FlowInfo>();
+                flows = new ArrayList<>();
             }
         }
         if (!controller) {
@@ -148,13 +147,13 @@ public class FlowService {
                 FlowCount flowInfo = new FlowCount();
                 if (flow.getSource() != null) {
                     flowInfo.setSrcSwitch(flow.getSource().getSwitchId());
-                    String srcSwitchName = switchIntegrationService.customSwitchName(csNames,
+                    String srcSwitchName = customSwitchName(csNames,
                             flow.getSource().getSwitchId());
                     flowInfo.setSrcSwitchName(srcSwitchName);
                 }
                 if (flow.getDestination() != null) {
                     flowInfo.setDstSwitch(flow.getDestination().getSwitchId());
-                    String dstSwitchName = switchIntegrationService.customSwitchName(csNames,
+                    String dstSwitchName = customSwitchName(csNames,
                             flow.getDestination().getSwitchId());
                     flowInfo.setDstSwitchName(dstSwitchName);
                 }
@@ -229,7 +228,7 @@ public class FlowService {
         }
         Map<String, String> csNames = switchIntegrationService.getSwitchNames();
         if (flow != null) {
-            flowInfo = flowConverter.toFlowV2Info(flow, csNames);
+            flowInfo = FlowConverter.toFlowV2Info(flow, csNames);
         }
         UserInfo userInfo = userService.getLoggedInUserInfo();
         try {
@@ -283,7 +282,7 @@ public class FlowService {
 
                         flowInfo.setDiscrepancy(discrepancy);
                     } else {
-                        flowConverter.toFlowInfo(flowInfo, inventoryFlow, csNames);
+                        FlowConverter.toFlowInfo(flowInfo, inventoryFlow, csNames);
                     }
                 }
             }
@@ -417,7 +416,7 @@ public class FlowService {
                 flows.get(index).setInventoryFlow(true);
             } else {
                 FlowInfo flowObj = new FlowInfo();
-                flowConverter.toFlowInfo(flowObj, inventoryFlow, csNames);
+                FlowConverter.toFlowInfo(flowObj, inventoryFlow, csNames);
                 flowObj.setInventoryFlow(true);
                 discrepancyFlow.add(flowObj);
             }
