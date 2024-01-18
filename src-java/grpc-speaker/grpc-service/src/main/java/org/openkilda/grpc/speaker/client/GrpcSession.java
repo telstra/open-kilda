@@ -290,7 +290,7 @@ public class GrpcSession implements Closeable {
         GrpcResponseObserver<CliReply> observer = new GrpcResponseObserver<>(address, SET_CONFIG_REMOTE_LOG_SERVER);
 
         RemoteLogServer logServer = RemoteLogServer.newBuilder()
-                .setIpaddr(remoteServer.getIpAddress())
+                .setIpaddr(verifyHostAddress(remoteServer.getIpAddress()))
                 .setPort(remoteServer.getPort())
                 .build();
         extendChain(() -> stub.setConfigRemoteLogServer(logServer, observer), observer.future);
