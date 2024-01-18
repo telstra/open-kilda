@@ -110,7 +110,7 @@ public class StoreService {
                     urlEntrySet.getValue(), linkStoreRequestUrlsEntity.getUrlEntity()));
             linkStoreRequestUrlsEntitiesList.add(linkStoreRequestUrlsEntity);
         }
-        linkStoreRequestUrlsEntitiesList = linkStoreRequestUrlsRepository.saveAll(linkStoreRequestUrlsEntitiesList);
+        linkStoreRequestUrlsEntitiesList = linkStoreRequestUrlsRepository.save(linkStoreRequestUrlsEntitiesList);
 
         Map<String, UrlDto> urls = new HashMap<String, UrlDto>();
         for (LinkStoreRequestUrlsEntity linkStoreRequestUrlsEntity : linkStoreRequestUrlsEntitiesList) {
@@ -210,7 +210,7 @@ public class StoreService {
             switchStoreRequestUrlsEntitiesList.add(switchStoreRequestUrlsEntity);
         }
         switchStoreRequestUrlsEntitiesList
-                = switchStoreRequestUrlsRepository.saveAll(switchStoreRequestUrlsEntitiesList);
+                = switchStoreRequestUrlsRepository.save(switchStoreRequestUrlsEntitiesList);
 
         Map<String, UrlDto> urls = new HashMap<String, UrlDto>();
         for (SwitchStoreRequestUrlsEntity switchStoreRequestUrlsEntity : switchStoreRequestUrlsEntitiesList) {

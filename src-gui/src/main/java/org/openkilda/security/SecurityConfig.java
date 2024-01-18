@@ -24,6 +24,7 @@ import org.openkilda.utility.StringUtil;
 
 import lombok.Getter;
 import lombok.Setter;
+
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.MultiThreadedHttpConnectionManager;
 import org.apache.velocity.app.VelocityEngine;
@@ -40,8 +41,9 @@ import org.springframework.core.io.Resource;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.saml.SAMLAuthenticationProvider;
 import org.springframework.security.saml.SAMLBootstrap;
 import org.springframework.security.saml.SAMLEntryPoint;
@@ -103,7 +105,7 @@ import java.util.Timer;
 @Configuration
 @DependsOn("ApplicationContextProvider")
 @EnableWebSecurity
-public class SecurityConfig {
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     @Value("${server.contextPath}")
     String contextPath;
@@ -133,30 +135,43 @@ public class SecurityConfig {
     @Autowired
     private SamlRepository samlRepository;
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf().ignoringRequestMatchers("/saml/**")
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()).and()
-                .authorizeHttpRequests()
-                .requestMatchers("/login", "/authenticate", "/saml/authenticate",
-                        "/forgotpassword", "/401", "/saml/login/**",
-                        "/saml/metadata/**", "/saml/SSO/**")
-                .permitAll()
-                .and().addFilterBefore(metadataGeneratorFilter(), ChannelProcessingFilter.class)
-                .exceptionHandling().accessDeniedHandler(accessDeniedHandler).and()
-                .headers().addHeaderWriter(new StaticHeadersWriter("X-Content-Security-Policy",
-                        "default-src 'self'"))
-                .addHeaderWriter(new StaticHeadersWriter("Feature-Policy", "none"))
-                .addHeaderWriter(new StaticHeadersWriter("Referrer-Policy", "same-origin"))
-                .and().sessionManagement().invalidSessionUrl("/401");
-        return http.build();
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.springframework.security.config.annotation.web.configuration.
+     * WebSecurityConfigurerAdapter
+     * #configure(org.springframework.security.config.annotation.web.builders.
+     * HttpSecurity)
+     */
+    @Override
+    protected void configure(final HttpSecurity http) throws Exception {
+        http.csrf().ignoringAntMatchers("/saml/**")
+        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()).and()
+        .authorizeRequests()
+        .antMatchers("/login", "/authenticate", "/saml/authenticate", "/forgotpassword", "/401", "/saml/login/**",
+             "/saml/metadata/**", "/saml/SSO/**")
+      .permitAll()
+      .and().addFilterBefore(metadataGeneratorFilter(), ChannelProcessingFilter.class)
+      .exceptionHandling().accessDeniedHandler(accessDeniedHandler).and()
+      .headers().addHeaderWriter(new StaticHeadersWriter("X-Content-Security-Policy", "default-src 'self'"))
+      .addHeaderWriter(new StaticHeadersWriter("Feature-Policy", "none"))
+      .addHeaderWriter(new StaticHeadersWriter("Referrer-Policy", "same-origin"))
+      .and().sessionManagement().invalidSessionUrl("/401");
+
     }
 
-    @Bean
-    public WebSecurityCustomizer webSecurityCustomizer() {
-        return (web) -> web.ignoring().requestMatchers("/ignore1", "/ignore2");
+    @Override
+    public void configure(final WebSecurity web) throws Exception {
+        web.ignoring().antMatchers("/resources/**", "/ui/**", "/lib/**");
     }
 
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.springframework.security.config.annotation.web.configuration.
+     * WebSecurityConfigurerAdapter #authenticationManager()
+     */
+    @Override
     @Bean("authenticationManager")
     public ProviderManager authenticationManager() {
         List<AuthenticationProvider> authProviderList = new ArrayList<AuthenticationProvider>();
@@ -287,8 +302,8 @@ public class SecurityConfig {
 
     @Bean
     public SAMLLogoutFilter samlLogoutFilter() {
-        return new SAMLLogoutFilter(successLogoutHandler(), new LogoutHandler[]{logoutHandler()},
-                new LogoutHandler[]{logoutHandler()});
+        return new SAMLLogoutFilter(successLogoutHandler(), new LogoutHandler[] { logoutHandler() },
+                new LogoutHandler[] { logoutHandler() });
     }
 
     @Bean
@@ -381,25 +396,27 @@ public class SecurityConfig {
             throws MetadataProviderException, IOException {
         List<MetadataProvider> metadataProviderList = new ArrayList<>();
         List<SamlConfigEntity> samlConfigEntityList = samlRepository.findAll();
-        for (final SamlConfigEntity samlConfigEntity : samlConfigEntityList) {
-            if (samlConfigEntity.getUrl() != null) {
-                UrlMetadataProvider urlMetadataProvider = new UrlMetadataProvider(new Timer(true),
-                        new HttpClient(), samlConfigEntity.getUuid());
-                urlMetadataProvider.setParserPool(ParserPoolHolder.getPool());
-                ExtendedMetadataDelegate metadataDelegate = new ExtendedMetadataDelegate(urlMetadataProvider,
-                        extendedMetadata());
-                metadataDelegate.setMetadataTrustCheck(false);
-                metadataDelegate.setMetadataRequireSignature(false);
-                metadataProviderList.add(metadataDelegate);
-            } else {
-                DbMetadataProvider metadataProvider = new DbMetadataProvider(new Timer(true),
-                        samlConfigEntity.getUuid());
-                metadataProvider.setParserPool(ParserPoolHolder.getPool());
-                ExtendedMetadataDelegate metadataDelegate = new ExtendedMetadataDelegate(metadataProvider,
-                        extendedMetadata());
-                metadataDelegate.setMetadataTrustCheck(false);
-                metadataDelegate.setMetadataRequireSignature(false);
-                metadataProviderList.add(metadataDelegate);
+        if (samlConfigEntityList != null) {
+            for (final SamlConfigEntity samlConfigEntity : samlConfigEntityList) {
+                if (samlConfigEntity.getUrl() != null) {
+                    UrlMetadataProvider urlMetadataProvider = new UrlMetadataProvider(new Timer(true),
+                            new HttpClient(), samlConfigEntity.getUuid());
+                    urlMetadataProvider.setParserPool(ParserPoolHolder.getPool());
+                    ExtendedMetadataDelegate metadataDelegate = new ExtendedMetadataDelegate(urlMetadataProvider,
+                            extendedMetadata());
+                    metadataDelegate.setMetadataTrustCheck(false);
+                    metadataDelegate.setMetadataRequireSignature(false);
+                    metadataProviderList.add(metadataDelegate);
+                } else {
+                    DbMetadataProvider metadataProvider = new DbMetadataProvider(new Timer(true),
+                            samlConfigEntity.getUuid());
+                    metadataProvider.setParserPool(ParserPoolHolder.getPool());
+                    ExtendedMetadataDelegate metadataDelegate = new ExtendedMetadataDelegate(metadataProvider,
+                            extendedMetadata());
+                    metadataDelegate.setMetadataTrustCheck(false);
+                    metadataDelegate.setMetadataRequireSignature(false);
+                    metadataProviderList.add(metadataDelegate);
+                }
             }
         }
         return new CachingMetadataManager(metadataProviderList);

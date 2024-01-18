@@ -18,7 +18,6 @@ package org.usermanagement.controller;
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -33,6 +32,7 @@ import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.PermissionService;
 
 import java.util.List;
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * The Class PermissionController.

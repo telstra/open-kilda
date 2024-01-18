@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2024 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,12 +15,13 @@
 
 package org.openkilda.integration.converter;
 
+import static org.openkilda.utility.SwitchUtil.customSwitchName;
+
 import org.openkilda.integration.model.Flow;
 import org.openkilda.integration.model.FlowEndpoint;
 import org.openkilda.integration.model.FlowV2;
 import org.openkilda.integration.model.FlowV2Endpoint;
 import org.openkilda.integration.model.response.SwitchFlowsPerPort;
-import org.openkilda.integration.service.SwitchIntegrationService;
 import org.openkilda.integration.source.store.dto.InventoryFlow;
 import org.openkilda.model.FlowBandwidth;
 import org.openkilda.model.FlowDiscrepancy;
@@ -30,25 +31,17 @@ import org.openkilda.model.SwitchFlowsInfoPerPort;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.StringUtil;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * The Class FlowConverter.
- */
-@Component
-public class FlowConverter {
 
-    /**
-     * The switch integration service.
-     */
-    @Autowired
-    SwitchIntegrationService switchIntegrationService;
+public final class FlowConverter {
+
+
+    private FlowConverter() {
+    }
 
     /**
      * To flows info.
@@ -56,10 +49,9 @@ public class FlowConverter {
      * @param flows the flows
      * @return the list
      */
-    public List<FlowInfo> toFlowsInfo(final List<Flow> flows) {
+    public static List<FlowInfo> toFlowsInfo(final List<Flow> flows, Map<String, String> csNames) {
         if (!CollectionUtil.isEmpty(flows)) {
             final List<FlowInfo> flowsInfo = new ArrayList<>();
-            final Map<String, String> csNames = switchIntegrationService.getSwitchNames();
             flows.forEach(flow -> {
                 flowsInfo.add(toFlowInfo(flow, csNames));
             });
@@ -74,7 +66,8 @@ public class FlowConverter {
      * @param switchFlowsPerPort switch flowsPer port
      * @return the list
      */
-    public SwitchFlowsInfoPerPort toFlowV2InfosPerPorts(final SwitchFlowsPerPort switchFlowsPerPort) {
+    public static SwitchFlowsInfoPerPort toFlowV2InfosPerPorts(final SwitchFlowsPerPort switchFlowsPerPort,
+                                                               Map<String, String> csNames) {
         if (switchFlowsPerPort == null || switchFlowsPerPort.getFlowsByPort() == null
                 || switchFlowsPerPort.getFlowsByPort().isEmpty()) {
             return null;
@@ -82,11 +75,10 @@ public class FlowConverter {
         final SwitchFlowsInfoPerPort switchFlowsInfoPerPort = new SwitchFlowsInfoPerPort();
 
         Map<Integer, List<FlowInfo>> flowsByPortsMap = switchFlowsPerPort.getFlowsByPort().entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> toFlowV2sInfo(e.getValue())));
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> toFlowV2sInfo(e.getValue(), csNames)));
         switchFlowsInfoPerPort.setFlowsByPort(flowsByPortsMap);
 
         return switchFlowsInfoPerPort;
-
     }
 
 
@@ -96,16 +88,13 @@ public class FlowConverter {
      * @param flowV2s the flowV2s
      * @return the list
      */
-    public List<FlowInfo> toFlowV2sInfo(final List<FlowV2> flowV2s) {
+    public static List<FlowInfo> toFlowV2sInfo(final List<FlowV2> flowV2s, Map<String, String> csNames) {
         if (!CollectionUtil.isEmpty(flowV2s)) {
             final List<FlowInfo> flowsInfo = new ArrayList<>();
-            final Map<String, String> csNames = switchIntegrationService.getSwitchNames();
-            flowV2s.forEach(flow -> {
-                flowsInfo.add(toFlowV2Info(flow, csNames));
-            });
+            flowV2s.forEach(flow -> flowsInfo.add(toFlowV2Info(flow, csNames)));
             return flowsInfo;
         }
-        return null;
+        return new ArrayList<>();
     }
 
 
@@ -116,7 +105,7 @@ public class FlowConverter {
      * @param csNames the cs names
      * @return the flow info
      */
-    public FlowInfo toFlowInfo(final Flow flow, Map<String, String> csNames) {
+    public static FlowInfo toFlowInfo(final Flow flow, Map<String, String> csNames) {
         FlowInfo flowInfo = new FlowInfo();
         flowInfo.setFlowid(flow.getId());
         flowInfo.setMaximumBandwidth(flow.getMaximumBandwidth());
@@ -131,7 +120,7 @@ public class FlowConverter {
         flowInfo.setPathComputationStrategy(flow.getPathComputationStrategy());
         flowInfo.setPinned(flow.isPinned());
         flowInfo.setPeriodicPings(flow.isPeriodicPings());
-        flowInfo.setMaxLatency(Long.valueOf(flow.getMaxLatency()));
+        flowInfo.setMaxLatency((long) flow.getMaxLatency());
         flowInfo.setPriority(flow.getPriority());
         flowInfo.setTargetPathComputationStrategy(flow.getTargetPathComputationStrategy());
         flowInfo.setStatusInfo(flow.getStatusInfo());
@@ -144,7 +133,7 @@ public class FlowConverter {
         flowInfo.setControllerFlow(true);
         FlowEndpoint source = flow.getSource();
         if (source != null) {
-            String switchName = switchIntegrationService.customSwitchName(csNames, source.getSwitchId());
+            String switchName = customSwitchName(csNames, source.getSwitchId());
             flowInfo.setSourceSwitchName(switchName);
             flowInfo.setSourceSwitch(source.getSwitchId());
             flowInfo.setSrcPort(source.getPortId());
@@ -155,7 +144,7 @@ public class FlowConverter {
         }
         FlowEndpoint destination = flow.getDestination();
         if (destination != null) {
-            String switchName = switchIntegrationService.customSwitchName(csNames, destination.getSwitchId());
+            String switchName = customSwitchName(csNames, destination.getSwitchId());
             flowInfo.setTargetSwitchName(switchName);
             flowInfo.setTargetSwitch(destination.getSwitchId());
             flowInfo.setDstPort(destination.getPortId());
@@ -176,8 +165,8 @@ public class FlowConverter {
      * @param csNames       the cs names
      * @return the flow info
      */
-    public FlowInfo toFlowInfo(final FlowInfo flowInfo, final InventoryFlow inventoryFlow,
-                               final Map<String, String> csNames) {
+    public static FlowInfo toFlowInfo(final FlowInfo flowInfo, final InventoryFlow inventoryFlow,
+                                      final Map<String, String> csNames) {
 
         FlowDiscrepancy discrepancy = new FlowDiscrepancy();
         discrepancy.setControllerDiscrepancy(true);
@@ -199,7 +188,7 @@ public class FlowConverter {
         if (!StringUtil.isNullOrEmpty(inventoryFlow.getSource().getId())) {
             flowInfo.setSourceSwitch(inventoryFlow.getSource().getId());
             flowInfo.setSourceSwitchName(
-                    switchIntegrationService.customSwitchName(csNames, inventoryFlow.getSource().getId()));
+                    customSwitchName(csNames, inventoryFlow.getSource().getId()));
         }
         if (inventoryFlow.getSource().getPortId() != null) {
             flowInfo.setSrcPort(inventoryFlow.getSource().getPortId());
@@ -213,7 +202,7 @@ public class FlowConverter {
         if (!StringUtil.isNullOrEmpty(inventoryFlow.getDestination().getId())) {
             flowInfo.setTargetSwitch(inventoryFlow.getDestination().getId());
             flowInfo.setTargetSwitchName(
-                    switchIntegrationService.customSwitchName(csNames, inventoryFlow.getDestination().getId()));
+                    customSwitchName(csNames, inventoryFlow.getDestination().getId()));
         }
         if (inventoryFlow.getDestination().getPortId() != null) {
             flowInfo.setDstPort(inventoryFlow.getDestination().getPortId());
@@ -239,7 +228,7 @@ public class FlowConverter {
      * @param csNames the cs names
      * @return the flow info
      */
-    public FlowInfo toFlowV2Info(final FlowV2 flow, Map<String, String> csNames) {
+    public static FlowInfo toFlowV2Info(final FlowV2 flow, Map<String, String> csNames) {
         FlowInfo flowInfo = new FlowInfo();
         flowInfo.setFlowid(flow.getId());
         flowInfo.setYFlowId(flow.getYFlowId());
@@ -269,7 +258,7 @@ public class FlowConverter {
         flowInfo.setControllerFlow(true);
         FlowV2Endpoint source = flow.getSource();
         if (source != null) {
-            String switchName = switchIntegrationService.customSwitchName(csNames, source.getSwitchId());
+            String switchName = customSwitchName(csNames, source.getSwitchId());
             flowInfo.setSourceSwitchName(switchName);
             flowInfo.setSourceSwitch(source.getSwitchId());
             flowInfo.setSrcPort(source.getPortId());
@@ -280,7 +269,7 @@ public class FlowConverter {
         }
         FlowV2Endpoint destination = flow.getDestination();
         if (destination != null) {
-            String switchName = switchIntegrationService.customSwitchName(csNames, destination.getSwitchId());
+            String switchName = customSwitchName(csNames, destination.getSwitchId());
             flowInfo.setTargetSwitchName(switchName);
             flowInfo.setTargetSwitch(destination.getSwitchId());
             flowInfo.setDstPort(destination.getPortId());
@@ -290,26 +279,5 @@ public class FlowConverter {
             flowInfo.setDstArp(destination.getDetectedDevice().isArp());
         }
         return flowInfo;
-    }
-
-    /**
-     * To flow with switch names.
-     *
-     * @param flow the flow
-     * @return the flow
-     */
-    public FlowV2 toFlowWithSwitchNames(final FlowV2 flow) {
-        final Map<String, String> csNames = switchIntegrationService.getSwitchNames();
-        FlowV2Endpoint source = flow.getSource();
-        if (source != null) {
-            String switchName = switchIntegrationService.customSwitchName(csNames, source.getSwitchId());
-            source.setSwitchName(switchName);
-        }
-        FlowV2Endpoint destination = flow.getDestination();
-        if (destination != null) {
-            String switchName = switchIntegrationService.customSwitchName(csNames, destination.getSwitchId());
-            destination.setSwitchName(switchName);
-        }
-        return flow;
     }
 }
