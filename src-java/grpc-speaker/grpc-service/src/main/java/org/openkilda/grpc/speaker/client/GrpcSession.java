@@ -420,7 +420,7 @@ public class GrpcSession implements Closeable {
     }
 
     /**
-     * Verify address and create a channel
+     * Verify address and create a channel.
      * @param address - remote address
      */
     public static ManagedChannel makeChannel(String address) {
