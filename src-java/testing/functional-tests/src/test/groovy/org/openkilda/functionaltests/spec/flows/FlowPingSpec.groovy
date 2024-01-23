@@ -95,12 +95,7 @@ class FlowPingSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to ping a flow with vxlan"() {
         given: "A flow with random vxlan"
-        //defining switches pair with vxlan support
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            [swP.src, swP.dst].every { switchHelper.isVxlanEnabled(it.dpId) }
-        }
-        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
-
+        def switchPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.encapsulationType = FlowEncapsulationType.VXLAN
         flowHelperV2.addFlow(flow)
@@ -293,13 +288,7 @@ class FlowPingSpec extends HealthCheckSpecification {
     @Tags(TOPOLOGY_DEPENDENT)
     def "Flow ping can detect a broken path for a vxlan flow on an intermediate switch"() {
         given: "A vxlan flow with intermediate switch(es)"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
-            swP.paths.findAll { path ->
-                pathHelper.getInvolvedSwitches(path).every {
-                    switchHelper.isVxlanEnabled(it.dpId)
-                }
-            }.size() >= 1
-        } ?: assumeTrue(false, "Unable to find required switches in topology")
+        def switchPair = switchPairs.all().nonNeighbouring().withBothSwitchesVxLanEnabled().random()
 
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.encapsulationType = FlowEncapsulationType.VXLAN

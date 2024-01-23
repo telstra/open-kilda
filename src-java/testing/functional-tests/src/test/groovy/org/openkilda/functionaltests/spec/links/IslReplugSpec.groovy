@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeNotNull
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.FLOW_SYSTEM_PACKETS
@@ -30,6 +31,7 @@ class IslReplugSpec extends HealthCheckSpecification {
     @Autowired @Shared
     SwitchStats switchStats
 
+    @Tags(HARDWARE)
     def "Round-trip ISL status changes to MOVED when replugging it into another switch"() {
         given: "A connected a-switch link, round-trip-enabled"
         and: "A non-connected a-switch link with round-trip support"
@@ -230,7 +232,8 @@ class IslReplugSpec extends HealthCheckSpecification {
         def expectedIsl = islUtils.replug(islToPlug, true, islToPlugInto, true, true)
 
         then: "The potential self-loop ISL is not present in the list of ISLs (wait for discovery interval)"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        sleep(discoveryInterval * 1000)
+        Wrappers.wait(WAIT_OFFSET) {
             def allLinks = northbound.getAllLinks()
             !islUtils.getIslInfo(allLinks, expectedIsl).present
             !islUtils.getIslInfo(allLinks, expectedIsl.reversed).present

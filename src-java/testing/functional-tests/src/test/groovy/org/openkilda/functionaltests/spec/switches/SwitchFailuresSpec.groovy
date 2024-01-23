@@ -92,7 +92,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
     @Ignore("https://github.com/telstra/open-kilda/issues/3398")
     def "System is able to finish the reroute if switch blinks in the middle of it"() {
         given: "A flow"
-        def swPair = topologyHelper.allNotNeighboringSwitchPairs.find { it.paths.size() > 1 }
+        def swPair = switchPairs.all().nonNeighbouring().withAtLeastNPaths(2).random()
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(swPair))
 
         when: "Current path breaks and reroute starts"

@@ -97,7 +97,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
 
     }
 
-    @Tags([HARDWARE])
+    @Tags([SMOKE_SWITCHES])
     def "Excess transitVlanRules/meters are synced from a new switch before connecting to the controller"() {
         given: "A switch with excess rules/meters and not connected to the controller"
         def sw = topology.getActiveSwitches().first()
@@ -171,7 +171,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         blockData && !switchValidationInfo && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
-    @Tags([HARDWARE])
+    @Tags([SMOKE_SWITCHES])
     def "Excess vxlanRules/meters are synced from a new switch before connecting to the controller"() {
         given: "A switch with excess rules/meters and not connected to the controller"
         def sw = topology.getActiveSwitches().find { switchHelper.isVxlanEnabled(it.dpId) }

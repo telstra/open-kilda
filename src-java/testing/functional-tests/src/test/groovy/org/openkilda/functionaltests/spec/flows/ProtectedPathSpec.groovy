@@ -15,6 +15,7 @@ import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_S
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -67,9 +68,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Able to create a flow with protected path when maximumBandwidth=#bandwidth, vlan=#vlanId"() {
         given: "Two active not neighboring switches with two diverse paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -105,9 +104,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     @Tags([SMOKE_SWITCHES, SMOKE])
     def "Able to enable/disable protected path on a flow"() {
         given: "Two active not neighboring switches with two diverse paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create flow without protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -163,13 +160,11 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     def "Able to swap main and protected paths manually"() {
         given: "A simple flow"
         def tgSwitches = topology.getActiveTraffGens()*.getSwitchConnected()
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            def allowsTraffexam = it.src in tgSwitches && it.dst in tgSwitches
-            def usesUniqueSwitches = it.paths.collectMany { pathHelper.getInvolvedSwitches(it) }
-                    .unique { it.dpId }.size() > 3
-            return allowsTraffexam && usesUniqueSwitches
-        } ?: assumeTrue(false, "No suiting switches found")
-
+        def switchPair = switchPairs.all()
+                .nonNeighbouring()
+                .withTraffgensOnBothEnds()
+                .withPathHavingAtLeastNSwitches(4)
+                .random()
         def flow = flowHelperV2.randomFlow(switchPair, true)
         flow.allocateProtectedPath = false
         flowHelperV2.addFlow(flow)
@@ -330,9 +325,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     def "System is able to switch #flowDescription flows to protected paths"() {
         given: "Two active not neighboring switches with three diverse paths at least"
         def initialIsls = northbound.getAllLinks()
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(3).random()
         def uniquePathCount = switchPair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size()
 
         when: "Create 5 flows with protected paths"
@@ -419,9 +412,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute(no bw)"() {
         given: "Two switches with 2 diverse paths at least"
-        def switchPair = topologyHelper.switchPairs.find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() > 1
-        } ?: assumeTrue(false, "No switches with at least 2 diverse paths")
+        def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair).tap { allocateProtectedPath = true }
@@ -480,9 +471,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute(no path)"() {
         given: "Two switches with 2 diverse paths at least"
-        def switchPair = topologyHelper.switchPairs.find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() > 1
-        } ?: assumeTrue(false, "No switches with at least 2 diverse paths")
+        def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair).tap { allocateProtectedPath = true }
@@ -546,9 +535,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
  is intentional"() {
         // 'and ignores protected path' means that the main path won't changed to protected
         given: "Two active neighboring switches with four diverse paths at least"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 4
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(4).random()
 
         and: "A flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -603,9 +590,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
     def "System is able to switch #flowDescription flow to protected path and ignores more preferable path when reroute\
  is automatical"() {
         given: "Two active not neighboring switches with three diverse paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(3).random()
 
         def uniquePathCount = switchPair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size()
 
@@ -767,11 +752,9 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
 
     @Tags(ISL_RECOVER_ON_FAIL)
     def "System is able to recalculate protected path when protected path is broken"() {
-        given: "Two active not neighboring switches with two diverse paths at least"
+        given: "Two active not neighboring switches with three diverse paths at least"
         def allIsls = northbound.getAllLinks()
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(3).random()
 
         when: "Create a flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -865,9 +848,8 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "Able to update #flowDescription flow to enable protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
+
 
         and: "A flow without protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -917,9 +899,8 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /unmetered/)
     def "#flowDescription flow is DEGRADED when protected and alternative paths are not available"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
+
 
         and: "A flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -982,9 +963,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
     @Tags(ISL_RECOVER_ON_FAIL)
     def "System properly reroutes both paths if protected path breaks during auto-swap"() {
         given: "Switch pair with at least 4 diverse paths"
-        def switchPair = topologyHelper.switchPairs.find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 4
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all(false).withAtLeastNNonOverlappingPaths(4).random()
 
         and: "A protected flow"
         def flow = flowHelperV2.randomFlow(switchPair).tap { it.allocateProtectedPath = true }
@@ -1034,13 +1013,10 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         }
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2762")
     def "System reuses current protected path when can't find new non overlapping protected path while intentional\
  rerouting"() {
         given: "Two active neighboring switches with three diverse paths"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() == 3
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withExactlyNNonOverlappingPaths(3).random()
 
         and: "A flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -1056,8 +1032,10 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
 
         when: "Make the current and protected path less preferable than alternatives"
         def alternativePaths = switchPair.paths.findAll { it != currentPath && it != currentProtectedPath }
-        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
-        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentProtectedPath) }
+        withPool {
+            alternativePaths.eachParallel { pathHelper.makePathMorePreferable(it, currentPath) }
+            alternativePaths.eachParallel { pathHelper.makePathMorePreferable(it, currentProtectedPath) }
+        }
 
         and: "Init intentional reroute"
         def rerouteResponse = northboundV2.rerouteFlow(flow.flowId)
@@ -1066,10 +1044,14 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         rerouteResponse.rerouted
 
         and: "Flow main path should be rerouted to a new path and ignore protected path"
-        def flowPathInfoAfterRerouting = northbound.getFlowPath(flow.flowId)
-        def newCurrentPath = pathHelper.convert(flowPathInfoAfterRerouting)
-        newCurrentPath != currentPath
-        newCurrentPath != currentProtectedPath
+        def flowPathInfoAfterRerouting
+        def newCurrentPath
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            flowPathInfoAfterRerouting = northbound.getFlowPath(flow.flowId)
+            newCurrentPath = pathHelper.convert(flowPathInfoAfterRerouting)
+            newCurrentPath != currentPath
+            newCurrentPath != currentProtectedPath
+        }
 
         and: "Flow protected path shouldn't be rerouted due to lack of non overlapping path"
         pathHelper.convert(flowPathInfoAfterRerouting.protectedPath) == currentProtectedPath
@@ -1094,7 +1076,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
         def allPaths // all possible paths
         def allPathsWithThreeSwitches //all possible paths with 3 involved switches
         def allPathCandidates // 3 diverse paths at least
-        def swPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
+        def swPair = switchPairs.all().nonNeighbouring().getSwitchPairs().find { swP ->
             allPaths = swP.paths
             allPathsWithThreeSwitches = allPaths.findAll { pathHelper.getInvolvedSwitches(it).size() == 3 }
             allPathCandidates = allPathsWithThreeSwitches.unique(false) { a, b ->
@@ -1288,9 +1270,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
     def "Unable to swap paths for an inactive flow"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "A flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -1495,9 +1475,8 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
     def "System doesn't reroute main flow path when protected path is broken and new alt path is available\
 (altPath is more preferable than mainPath)"() {
         given: "Two active neighboring switches with three diverse paths at least"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withExactlyNNonOverlappingPaths(3).random()
+
 
         and: "A flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -1566,8 +1545,7 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
     @Tags(LOW_PRIORITY)
     def "System doesn't allow to enable the pinned flag on a protected flow"() {
         given: "A protected flow"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
-                assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.allocateProtectedPath = true
         flowHelperV2.addFlow(flow)

@@ -1,63 +1,39 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-
+import groovy.util.logging.Slf4j
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithMissingPathExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotDeletedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithMissingPathExpectedError
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.model.PathComputationStrategy
-import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
-import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
-import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
-import org.openkilda.northbound.dto.v2.flows.FlowStatistics
-
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
-import static org.openkilda.messaging.info.event.IslChangeType.MOVED
-import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
-import static org.openkilda.messaging.payload.flow.FlowState.UP
-import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
-import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
+import org.openkilda.northbound.dto.v2.flows.FlowStatistics
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -66,6 +42,28 @@ import spock.lang.Shared
 import spock.lang.Unroll
 
 import javax.inject.Provider
+
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
+import static org.openkilda.messaging.payload.flow.FlowState.UP
+import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN
+import static org.openkilda.model.FlowEncapsulationType.VXLAN
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/crud")
@@ -505,19 +503,20 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 [
                         isolatedSwitchType: "source",
                         getFlow           : { Switch theSwitch ->
-                            getFlowHelperV2().randomFlow(getTopologyHelper().getAllNotNeighboringSwitchPairs()
-                                    .collectMany { [it, it.reversed] }.find {
-                                it.src == theSwitch
-                            })
+                            getFlowHelperV2().randomFlow(switchPairs.all()
+                                    .nonNeighbouring()
+                                    .includeSourceSwitch(theSwitch)
+                                    .random())
                         }
                 ],
                 [
                         isolatedSwitchType: "destination",
                         getFlow           : { Switch theSwitch ->
-                            getFlowHelperV2().randomFlow(getTopologyHelper().getAllNotNeighboringSwitchPairs()
-                                    .collectMany { [it, it.reversed] }.find {
-                                it.dst == theSwitch
-                            })
+                            getFlowHelperV2().randomFlow(switchPairs.all()
+                                    .nonNeighbouring()
+                                    .includeSourceSwitch(theSwitch)
+                                    .random()
+                                    .getReversed())
                         }
                 ]
         ]
@@ -778,9 +777,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
     def "System allows to CRUD protected flow"() {
         given: "Two active not neighboring switches with two diverse paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -880,42 +877,37 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
     def "System doesn't ignore encapsulationType when flow is created with ignoreBandwidth = true"() {
         given: "Two active switches"
-        def swPair = switchPairs.all().neighbouring().getSwitchPairs().find {
-            [it.src, it.dst].any { !switchHelper.isVxlanEnabled(it.dpId) }
-        } ?: assumeTrue(false, "Unable to find required switches in topology")
+        def swPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().random()
 
-        def srcProps = switchHelper.getCachedSwProps(swPair.src.dpId)
-        def dstProps = switchHelper.getCachedSwProps(swPair.dst.dpId)
-        def endpointName = "source"
+        def initialSrcProps = switchHelper.getCachedSwProps(swPair.src.dpId)
+        def initialSupportedEncapsulations = initialSrcProps.getSupportedTransitEncapsulation().collect()
+        switchHelper.updateSwitchProperties(swPair.getSrc(), initialSrcProps.tap {
+            it.supportedTransitEncapsulation = [TRANSIT_VLAN.toString()]})
 
-        def swWithoutVxlan = swPair.src
-        def encapsTypesWithoutVxlan = srcProps.supportedTransitEncapsulation.collect { it.toString().toUpperCase() }
-
-        if (srcProps.supportedTransitEncapsulation.contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())) {
-            swWithoutVxlan = swPair.dst
-            encapsTypesWithoutVxlan = dstProps.supportedTransitEncapsulation.collect { it.toString().toUpperCase() }
-            endpointName = "destination"
-        }
 
         when: "Create a flow with not supported encapsulation type on the switches"
         def flow = flowHelperV2.randomFlow(swPair)
         flow.ignoreBandwidth = true
         flow.maximumBandwidth = 0
-        flow.encapsulationType = FlowEncapsulationType.VXLAN
+        flow.encapsulationType = VXLAN
         flowHelperV2.addFlow(flow)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        new FlowNotCreatedExpectedError(~/Flow\'s $endpointName endpoint $swWithoutVxlan.dpId doesn\'t support \
-requested encapsulation type $FlowEncapsulationType.VXLAN. Choose one of the supported encapsulation \
+        new FlowNotCreatedExpectedError(~/Flow\'s source endpoint ${swPair.getSrc().getDpId()} doesn\'t support \
+requested encapsulation type $VXLAN. Choose one of the supported encapsulation \
 types .* or update switch properties and add needed encapsulation type./).matches(exc)
+
         cleanup:
         !exc && flowHelperV2.deleteFlow(flow.flowId)
+        initialSrcProps && switchHelper.updateSwitchProperties(swPair.getSrc(), initialSrcProps.tap {
+            it.supportedTransitEncapsulation = initialSupportedEncapsulations
+        })
     }
 
     def "Flow status accurately represents the actual state of the flow and flow rules"() {
         when: "Create a flow on a long path"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().random()
         def longPath = swPair.paths.max { it.size() }
         swPair.paths.findAll { it != longPath }.each { pathHelper.makePathMorePreferable(longPath, it) }
         def flow = flowHelperV2.randomFlow(swPair)
@@ -1092,9 +1084,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
     @Tags(LOW_PRIORITY)
     def "System reroutes flow to more preferable path while updating"() {
         given: "Two active not neighboring switches with two possible paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNPaths(2).random()
 
         and: "A flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -1137,13 +1127,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
     def "System doesn't rebuild path for a flow to more preferable path while updating portNumber/vlanId"() {
         given: "Two active switches connected to traffgens with two possible paths at least"
-        def activeTraffGens = topology.activeTraffGens
-        def allTraffgenSwitches = activeTraffGens*.switchConnected ?:
-                assumeTrue(false, "Should be at least two active traffgens connected to switches")
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            allTraffgenSwitches*.dpId.contains(swP.src.dpId) && allTraffgenSwitches*.dpId.contains(swP.dst.dpId) &&
-                    swP.paths.size() >= 2
-        } ?: assumeTrue(false, "Unable to find required switches/paths in topology")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
 
         and: "A flow"
         def flow = flowHelperV2.randomFlow(switchPair, false)
@@ -1190,9 +1174,9 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         then: "Update the flow: port number and vlanId on the src/dst endpoints"
         def updatedFlow = flow.jacksonCopy().tap {
-            it.source.portNumber = activeTraffGens.find { it.switchConnected.dpId == switchPair.src.dpId }.switchPort
+            it.source.portNumber = switchPair.getSrc().getTraffGens().first().getSwitchPort()
             it.source.vlanId = updatedFlowDstEndpoint.source.vlanId - 1
-            it.destination.portNumber = activeTraffGens.find { it.switchConnected.dpId == switchPair.dst.dpId }.switchPort
+            it.destination.portNumber = switchPair.getDst().getTraffGens().first().getSwitchPort()
             it.destination.vlanId = updatedFlowDstEndpoint.destination.vlanId - 1
         }
         flowHelperV2.updateFlow(flow.flowId, updatedFlow)
@@ -1287,7 +1271,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
     def "Unable to create a flow with both strict_bandwidth and ignore_bandwidth flags"() {
         when: "Try to create a flow with strict_bandwidth:true and ignore_bandwidth:true"
-        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0]).tap {
+        def flow = flowHelperV2.randomFlow(switchPairs.all().random()).tap {
             strictBandwidth = true
             ignoreBandwidth = true
         }
@@ -1305,7 +1289,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
     @Tags([LOW_PRIORITY])
     def "Unable to update flow with incorrect id in request body"() {
         given:"A flow"
-        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
+        def flow = flowHelperV2.randomFlow(switchPairs.all().random())
         def oldFlowId = flowHelperV2.addFlow(flow).getFlowId()
         def newFlowId = "new_flow_id"
 
@@ -1326,7 +1310,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
     @Tags([LOW_PRIORITY])
     def "Unable to update flow with incorrect id in request path"() {
         given: "A flow"
-        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
+        def flow = flowHelperV2.randomFlow(switchPairs.all().random())
         flowHelperV2.addFlow(flow)
         def newFlowId = "new_flow_id"
 
@@ -1347,7 +1331,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
     @Tags(LOW_PRIORITY)
     def "Able to #method update with empty VLAN stats and non-zero VLANs (#5063)"() {
         given: "A flow with non empty vlans stats and with src and dst vlans set to '0'"
-        def switches = topologyHelper.getSwitchPairs().shuffled().first()
+        def switches = switchPairs.all().random()
         def flowRequest = flowHelperV2.randomFlow(switches, false).tap {
             it.source.tap { it.vlanId = 0 }
             it.destination.tap { it.vlanId = 0 }
@@ -1457,7 +1441,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithoutTransitSwitch() {
-        def switchPairs = topologyHelper.getAllNeighboringSwitchPairs().sort(traffgensPrioritized)
+        def switchPairs = switchPairs.all(false).neighbouring().getSwitchPairs().sort(traffgensPrioritized)
                 .unique { [it.src, it.dst]*.description.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->
@@ -1485,7 +1469,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithTransitSwitch() {
-        def switchPairs = topologyHelper.getAllNotNeighboringSwitchPairs().sort(traffgensPrioritized)
+        def switchPairs = switchPairs.all().nonNeighbouring().getSwitchPairs().sort(traffgensPrioritized)
                 .unique { [it.src, it.dst]*.description.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->

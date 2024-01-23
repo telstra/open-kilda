@@ -15,6 +15,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -134,10 +135,7 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
     def "Flow encapsulation type is changed while auto rerouting according to 'flows_reroute_using_default_encap_type' \
 feature toggle"() {
         given: "A switch pair which supports 'transit_vlan' and 'vxlan' encapsulation types"
-        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { switchHelper.isVxlanEnabled(it.dpId) } && it.paths.size() >= 2
-        }
-        assumeTrue(swPair as boolean, "Unable to find required switches in topology")
+        def swPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().withAtLeastNPaths(2).random()
 
         and: "The 'flows_reroute_using_default_encap_type' feature is enabled"
         def initFeatureToggle = northbound.getFeatureToggles()
@@ -216,17 +214,13 @@ feature toggle"() {
         database.resetCosts(topology.isls)
     }
 
-    @Ignore("https://github.com/telstra/open-kilda/issues/2955")
-    @Tags([HARDWARE, ISL_RECOVER_ON_FAIL])
+    @Tags([ISL_RECOVER_ON_FAIL, LOW_PRIORITY])
     @ResourceLock(DEFAULT_FLOW_ENCAP)
     def "Flow encapsulation type is not changed while syncing/auto rerouting/updating according to \
 'flows_reroute_using_default_encap_type' if switch doesn't support new type of encapsulation"() {
         given: "A switch pair which supports 'transit_vlan' and 'vxlan' encapsulation types"
-        and: "The 'vxlan' encapsulation type is disable in swProps on the src switch"
-        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { switchHelper.isVxlanEnabled(it.dpId) } && it.paths.size() >= 2
-        }
-        assumeTrue(swPair as boolean, "Unable to find required switches in topology")
+        and: "The 'vxlan' encapsulation type is disabled in swProps on the src switch"
+        def swPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().withAtLeastNPaths(2).random()
         def initSrcSwProps = switchHelper.getCachedSwProps(swPair.src.dpId)
         northbound.updateSwitchProperties(swPair.src.dpId, initSrcSwProps.jacksonCopy().tap {
             it.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
@@ -257,16 +251,17 @@ feature toggle"() {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.FAILED
         }
 
-        then: "Flow is rerouted"
-        wait(WAIT_OFFSET + rerouteDelay) {
-            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) != currentPath
-        }
+        then: "Flow is not rerouted"
+        sleep(rerouteDelay * 1000)
+        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
 
         and: "Encapsulation type is NOT changed according to kilda configuration"
         northboundV2.getFlow(flow.flowId).encapsulationType != vxlanEncapsulationType.toString().toLowerCase()
 
-        and: "Flow is in UP state"
-        northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+        and: "Flow is in DOWN state"
+        wait(WAIT_OFFSET) {
+            northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
+        }
 
         when: "Update the flow"
         northboundV2.updateFlow(flow.flowId, flow.tap { it.description = description + " updated" })
@@ -277,8 +272,10 @@ feature toggle"() {
         then: "Encapsulation type is NOT changed according to kilda configuration"
         northboundV2.getFlow(flow.flowId).encapsulationType != vxlanEncapsulationType.toString().toLowerCase()
 
-        and: "Flow is in UP state"
-        northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+        and: "Flow is rerouted and in UP state"
+        wait(RULES_INSTALLATION_TIME) {
+            northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+        }
 
         when: "Synchronize the flow"
         with(northbound.synchronizeFlow(flow.flowId)) { !it.rerouted }
@@ -286,7 +283,7 @@ feature toggle"() {
         then: "Encapsulation type is NOT changed according to kilda configuration"
         northboundV2.getFlow(flow.flowId).encapsulationType != vxlanEncapsulationType.toString().toLowerCase()
 
-        and: "Flow is in UP state"
+        and: "Flow is still in UP state"
         northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
 
         cleanup:
@@ -308,9 +305,7 @@ feature toggle"() {
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
     def "System doesn't reroute flow when flows_reroute_on_isl_discovery: false"() {
         given: "A flow with alternative paths"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
         def allFlowPaths = switchPair.paths
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)

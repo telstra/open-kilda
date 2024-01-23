@@ -105,9 +105,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
     @Tags(ISL_RECOVER_ON_FAIL)
     def "ISL is marked as 'unstable' after port down and system takes it into account during flow creation"() {
         given: "Two active neighboring switches with two parallel links"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.findAll { it.size() == 2 }.size() > 1
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNIslsBetweenNeighbouringSwitches(2).random()
 
         and: "Two possible paths for further manipulation with them"
         def firstPath = switchPair.paths.min { it.size() }

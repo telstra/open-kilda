@@ -51,11 +51,7 @@ class FlowStatSpec extends HealthCheckSpecification {
 
     def "System is able to collect stats after intentional swapping flow path to protected"() {
         given: "Two active neighboring switches with two diverse paths at least"
-        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches &&
-                    it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
         def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "Flow with protected path"
@@ -128,11 +124,11 @@ class FlowStatSpec extends HealthCheckSpecification {
 
     def "System collects stats when a protected flow was intentionally rerouted"() {
         given: "Two active not neighboring switches with three diverse paths at least"
-        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches &&
-                    it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all()
+                .nonNeighbouring()
+                .withTraffgensOnBothEnds()
+                .withAtLeastNNonOverlappingPaths(3)
+                .random()
         def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "A flow with protected path"
@@ -212,11 +208,11 @@ class FlowStatSpec extends HealthCheckSpecification {
     @Tags(ISL_RECOVER_ON_FAIL)
     def "System collects stats when a protected flow was automatically rerouted"() {
         given: "Two active not neighboring switches with three not overlapping paths at least"
-        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches &&
-                    it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all()
+                .nonNeighbouring()
+                .withTraffgensOnBothEnds()
+                .withAtLeastNNonOverlappingPaths(3)
+                .random()
         def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "A flow with protected path"
@@ -290,10 +286,11 @@ class FlowStatSpec extends HealthCheckSpecification {
     def "System collects stat when protected flow is DEGRADED"() {
         given: "Two active not neighboring switches with two not overlapping paths at least"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches &&
-                    it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all()
+                .nonNeighbouring()
+                .withTraffgensOnBothEnds()
+                .withAtLeastNNonOverlappingPaths(2)
+                .random()
         def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "A flow with protected path"
@@ -366,10 +363,7 @@ class FlowStatSpec extends HealthCheckSpecification {
     @Tags([SMOKE_SWITCHES])
     def "System collects stats when flow is pinned and unmetered"() {
         given: "Two active not neighboring switches"
-        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withTraffgensOnBothEnds().random()
         def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "An unmetered flow"
@@ -405,10 +399,7 @@ class FlowStatSpec extends HealthCheckSpecification {
 
     def "System is able to collect stats after partial updating(port) on a flow endpoint"() {
         given: "Two active neighboring switches connected to the traffgens"
-        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.switchPairs.find {
-            [it.src, it.dst].every { it.dpId in traffGenSwitches }
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
         def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "A flow with updated port on src endpoint via partial update"
@@ -447,10 +438,7 @@ class FlowStatSpec extends HealthCheckSpecification {
 
     def "System is able to collect stats after partial updating(vlan) on a flow endpoint"() {
         given: "Two active neighboring switches connected to the traffgens"
-        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.switchPairs.find {
-            [it.src, it.dst].every { it.dpId in traffGenSwitches }
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
         def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "A flow with updated vlan on src endpoint via partial update"
@@ -488,10 +476,7 @@ class FlowStatSpec extends HealthCheckSpecification {
 
     def "System is able to collect stats after partial updating(inner vlan) on a flow endpoint"() {
         given: "Two active neighboring switches connected to the traffgens"
-        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.switchPairs.find {
-            [it.src, it.dst].every { it.dpId in traffGenSwitches }
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
 
 
         and: "A flow with updated inner vlan on src endpoint via partial update"

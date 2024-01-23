@@ -393,11 +393,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to validate and sync missing rules for #description on terminating/transit switches"() {
-        given: "Two active not neighboring switches with the longest available path"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().max { pair ->
-            pair.paths.max { it.size() }.size()
-        }
-        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
+        given: "Two active not neighboring switches with a long available path"
+        def switchPair = switchPairs.all().nonNeighbouring().random()
         def longPath = switchPair.paths.max { it.size() }
         switchPair.paths.findAll { it != longPath }.each { pathHelper.makePathMorePreferable(longPath, it) }
 
@@ -484,9 +481,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
     def "Able to synchronize rules for a flow with protected path"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "Create a flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -709,11 +704,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY, SMOKE_SWITCHES])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
     def "Able to synchronize rules for a flow with VXLAN encapsulation"() {
         given: "Two active not neighboring Noviflow switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
-            swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
-            }
-        } ?: assumeTrue(false, "Unable to find required switches in topology")
+        def switchPair = switchPairs.all().nonNeighbouring().withBothSwitchesVxLanEnabled().random()
 
         and: "Create a flow with vxlan encapsulation"
         def flow = flowHelperV2.randomFlow(switchPair)

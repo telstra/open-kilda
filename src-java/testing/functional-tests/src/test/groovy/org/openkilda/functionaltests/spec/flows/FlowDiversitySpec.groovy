@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsExecutorsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -14,7 +13,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
@@ -50,7 +48,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Able to create diverse flows"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
-        def switchPair = getSwitchPair(3)
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(3).random()
 
         when: "Create three flows with diversity enabled"
         def flow1 = flowHelperV2.randomFlow(switchPair, false)
@@ -103,7 +101,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
     def "Able to update flows to become diverse"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
-        def switchPair = getSwitchPair(3)
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(3).random()
 
         and: "Create three flows"
         def flow1 = flowHelperV2.randomFlow(switchPair, false)
@@ -157,7 +155,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Able to update flows to become not diverse"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
-        def switchPair = getSwitchPair(3)
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(3).random()
 
         and: "Create three flows with diversity enabled"
         def flow1 = flowHelperV2.randomFlow(switchPair, false)
@@ -212,7 +210,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "Diverse flows are built through the same path if there are no alternative paths available"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
-        def switchPair = getSwitchPair(2)
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "Create a flow going through these switches"
         def flow1 = flowHelperV2.randomFlow(switchPair)
@@ -252,7 +250,11 @@ class FlowDiversitySpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Links and switches get extra cost that is considered while calculating diverse flow paths"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
-        def switchPair = getSwitchPair(3)
+        def switchPair = switchPairs.all()
+                .neighbouring()
+                .withAtLeastNNonOverlappingPaths(3)
+                .withAtLeastNIslsBetweenNeighbouringSwitches(2)
+                .random()
 
         and: "Create a flow going through these switches"
         def flow1 = flowHelperV2.randomFlow(switchPair)
@@ -300,7 +302,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
     def "Able to get flow paths with correct overlapping segments stats (casual flows)"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
-        def switchPair = getSwitchPair(3)
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(3).random()
 
         and: "Create three flows with diversity enabled"
         def flow1 = flowHelperV2.randomFlow(switchPair, false)
@@ -390,7 +392,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Able to create diverse flows [v1 api]"() {
         given: "Two active neighboring switches with three not overlapping paths at least"
-        def switchPair = getSwitchPair(3)
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(3).random()
 
         when: "Create three flows with diversity enabled"
         def flow1 = flowHelper.randomFlow(switchPair, false)
@@ -411,13 +413,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         cleanup: "Delete flows"
         [flow1, flow2, flow3].each { it && flowHelper.deleteFlow(it.id) }
-    }
-
-    SwitchPair getSwitchPair(minNotOverlappingPaths) {
-        topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.collect { pathHelper.getInvolvedIsls(it) }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >=
-                    minNotOverlappingPaths
-        } ?: assumeTrue(false, "No suiting switches found")
     }
 
     void verifySegmentsStats(List<FlowPathPayload> flowPaths, Map expectedValuesMap) {

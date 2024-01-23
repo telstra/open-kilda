@@ -100,7 +100,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         }
 
         and: "System is able to successfully create a valid flow between regions"
-        def swPair = topologyHelper.switchPairs.find { pair ->
+        def swPair = switchPairs.all().getSwitchPairs().find { pair ->
             [pair.src, pair.dst].any { updatedRegions[it.dpId].contains(regionToBreak) }  &&
                     updatedRegions[pair.src.dpId] != updatedRegions[pair.dst.dpId]
         }

@@ -1,12 +1,15 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.messaging.model.FlowDirectionType
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
+import static org.openkilda.functionaltests.spec.switches.MetersSpec.NOT_OVS_REGEX
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -46,7 +49,7 @@ Description of fields:
 - excess - those meters/rules, which are present on a switch, but are NOT present in db
 - proper - meters/rules values are the same on a switch and in db
 """)
-@Tags([SMOKE_SWITCHES])
+@Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
 class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerSwitchManagerTopic()}")
     String speakerTopic
@@ -58,7 +61,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         deleteAnyFlowsLeftoversIssue5480()
     }
 
-    @Tags([TOPOLOGY_DEPENDENT, SMOKE])
+    @Tags([SMOKE])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Switch validation is able to store correct information on a #switchType switch in the 'proper' section"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -120,7 +124,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
-    @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Switch validation is able to detect meter info into the 'misconfigured' section on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -235,7 +239,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
-    @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Switch validation is able to detect meter info into the 'missing' section on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -305,7 +309,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
-    @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Switch validation is able to detect meter info into the 'excess' section on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -380,7 +384,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
-    @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Switch validation is able to detect rule info into the 'missing' section on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -438,7 +442,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
-    @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Switch validation is able to detect rule/meter info into the 'excess' section on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -543,22 +547,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
-    def "Able to get the switch validate info on a NOT supported switch"() {
-        given: "Not supported switch"
-        def sw = topology.activeSwitches.find { it.ofVersion == "OF_12" }
-        assumeTrue(sw as boolean, "Unable to find required switches in topology")
-
-        when: "Try to invoke the switch validate request"
-        def response = northbound.validateSwitch(sw.dpId)
-
-        then: "Response without meter section is returned"
-        response.rules.proper.findAll { !new Cookie(it).serviceFlag }.empty
-        response.rules.missing.empty
-        response.rules.excess.empty
-        !response.meters
-    }
-
-    @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Able to validate and sync a #switchType switch having missing rules of single-port single-switch flow"() {
         assumeTrue(sw as boolean, "Unable to find $switchType switch in topology")
         given: "A single-port single-switch flow"

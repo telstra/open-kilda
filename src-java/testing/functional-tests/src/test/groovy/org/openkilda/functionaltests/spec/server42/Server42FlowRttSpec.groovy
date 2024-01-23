@@ -1,5 +1,9 @@
 package org.openkilda.functionaltests.spec.server42
 
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.helpers.model.SwitchPairs
+import org.openkilda.functionaltests.model.switches.Manufacturer
+
 import static groovyx.gpars.GParsPool.withPool
 import static java.util.concurrent.TimeUnit.SECONDS
 import static org.assertj.core.api.Assertions.assertThat
@@ -13,6 +17,8 @@ import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
 import static org.openkilda.functionaltests.model.stats.Origin.FLOW_MONITORING
 import static org.openkilda.functionaltests.model.stats.Origin.SERVER_42
+import static org.openkilda.functionaltests.model.switches.Manufacturer.WB5164
+import static org.openkilda.model.FlowEncapsulationType.VXLAN
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
@@ -29,9 +35,7 @@ import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchFeature
-import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
@@ -69,24 +73,23 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     @Value('${flow.sla.check.interval.seconds}')
     Integer flowSlaCheckIntervalSeconds
 
-    def "Create a #data.flowDescription flow with server42 Rtt feature and check datapoints in tsdb"() {
+    @Tags(TOPOLOGY_DEPENDENT)
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = /(NS|WB)/)
+    def "Create a #flowDescription flow with server42 Rtt feature and check datapoints in tsdb"() {
         given: "Two active switches, src has server42 connected"
-        def server42switches = topology.getActiveServer42Switches();
-        assumeTrue((server42switches.size() > 0), "Unable to find active server42")
-        def server42switchesDpIds = server42switches*.dpId;
-        def switchPair = data.switchPair(server42switchesDpIds)
-        assumeTrue(switchPair != null, "Was not able to find a switch with a server42 connected")
+        def switchPair = switchPairFilter(switchPairs.all().withBothSwitchesConnectedToServer42()).random()
 
         when: "Set server42FlowRtt toggle to true"
         def flowRttFeatureStartState = changeFlowRttToggle(true)
 
         and: "server42FlowRtt is enabled on src and dst switches"
         def server42Switch = switchPair.src
-        def initialSwitchRtt = [server42Switch, switchPair.dst].collectEntries { [it, changeFlowRttSwitch(it, true)] }
+        def initialSwitchRtt = [server42Switch, switchPair.dst]
+                .collectEntries { [it, changeFlowRttSwitch(it, true)] }
 
         and: "Create a flow"
         def flow = flowHelperV2.randomFlow(switchPair)
-        flow.tap(data.flowTap)
+        flow.tap(flowTap)
         flowHelperV2.addFlow(flow)
 
         then: "Check if stats for forward are available"
@@ -98,52 +101,36 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         revertToOrigin([flow], flowRttFeatureStartState, initialSwitchRtt)
 
         where:
-        data << [[
-                         flowDescription: "default flow",
-                         switchPair     : { List<SwitchId> switchIds -> getSwPairConnectedToS42ForSimpleFlow(switchIds) },
-                         flowTap        : { FlowRequestV2 fl ->
-                             fl.source.vlanId = 0
-                             fl.destination.vlanId = 0
-                         }
-                 ],
-                 [
-                         flowDescription: "protected flow",
-                         switchPair     : { List<SwitchId> switchIds -> getSwPairConnectedToS42ForProtectedFlow(switchIds) },
-                         flowTap        : { FlowRequestV2 fl -> fl.allocateProtectedPath = true }
-                 ],
-                 [
-                         flowDescription: "vxlan flow on NS switch",
-                         switchPair     : { List<SwitchId> switchIds ->
-                             getSwPairConnectedToS42ForVxlanFlowOnNonWbSwitch(switchIds) },
-                         flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
-                 ],
-                 [
-                         flowDescription: "qinq flow",
-                         switchPair     : { List<SwitchId> switchIds -> getSwPairConnectedToS42ForQinQ(switchIds) },
-                         flowTap        : { FlowRequestV2 fl ->
-                             fl.source.vlanId = 10
-                             fl.source.innerVlanId = 100
-                             fl.destination.vlanId = 20
-                             fl.destination.innerVlanId = 200
-                         }
-                 ],
-                 [
-                         flowDescription: "vxlan flow on WB switch",
-                         switchPair     : { List<SwitchId> switchIds ->
-                             getSwPairConnectedToS42ForVxlanFlowOnWbSwitch(switchIds) },
-                         flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
-                 ],
-        ]
+        flowDescription           | switchPairFilter                   | flowTap
+        "default flow"            | { SwitchPairs swPairs -> swPairs } | { FlowRequestV2 fl ->
+                                                                                            fl.source.vlanId = 0
+                                                                                            fl.destination.vlanId = 0
+                                                                         }
+        "protected flow"          | { SwitchPairs swPairs -> swPairs
+                                    .withAtLeastNNonOverlappingPaths(2)}| { FlowRequestV2 fl ->
+                                                                                    fl.allocateProtectedPath = true }
+        "vxlan flow on NS switch" | { SwitchPairs swPairs -> swPairs
+                                        .withBothSwitchesVxLanEnabled()
+                                        .withSourceSwitchNotManufacturedBy(WB5164)
+                                    }                                   | { FlowRequestV2 fl ->
+                                                                                        fl.encapsulationType = VXLAN }
+        "qinq flow"               | { SwitchPairs swPairs -> swPairs }  | { FlowRequestV2 fl ->
+                                                                                fl.source.vlanId = 10
+                                                                                fl.source.innerVlanId = 100
+                                                                                fl.destination.vlanId = 20
+                                                                                fl.destination.innerVlanId = 200
+                                                                          }
+        "vxlan flow on WB switch" | { SwitchPairs swPairs -> swPairs
+                                .withBothSwitchesVxLanEnabled()
+                                .withSourceSwitchManufacturedBy(WB5164)
+                                    }                                   | { FlowRequestV2 fl ->
+                                                                                        fl.encapsulationType = VXLAN }
     }
 
     def "Flow rtt stats are available in forward and reverse directions for new flows"() {
         given: "Two active switches with switch having server42"
-        def server42switches = topology.getActiveServer42Switches()
-        def server42switchesDpIds = server42switches*.dpId
-        SwitchPair switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
-            [it.src, it.dst].every { it.dpId in server42switchesDpIds }
-        }
-        assumeTrue(switchPair != null, "Was not able to find a switch with a server42 connected")
+        SwitchPair switchPair = switchPairs.all().withBothSwitchesConnectedToServer42().random()
+
         and: "server42FlowRtt feature toggle is set to true"
         def flowRttFeatureStartState = changeFlowRttToggle(true)
 
@@ -204,12 +191,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
     def "Flow rtt stats are available only if both global and switch toggles are 'on' on both endpoints"() {
         given: "Two active switches with having server42"
-        def server42switches = topology.getActiveServer42Switches()
-        def server42switchesDpIds = server42switches*.dpId
-        def switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
-            [it.src, it.dst].every { it.dpId in server42switchesDpIds }
-        }
-        assumeTrue(switchPair != null, "Was not able to find a switch with a server42 connected")
+        def switchPair = switchPairs.all().withBothSwitchesConnectedToServer42().random()
         def statsWaitSeconds = 4
 
         and: "server42FlowRtt toggle is turned off"
@@ -306,10 +288,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT])
     def "Flow rtt stats are available if both endpoints are connected to the same server42, same pop"() {
         given: "Two active switches connected to the same server42 instance"
-        def switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
-            it.src.prop?.server42MacAddress != null && it.src.prop?.server42MacAddress == it.dst.prop?.server42MacAddress
-        }
-        assumeTrue(switchPair != null, "Was not able to find 2 switches on the same server42")
+        def switchPair = switchPairs.all().withBothSwitchesConnectedToSameServer42Instance().random()
+
         and: "server42FlowRtt feature enabled globally and on src/dst switch"
         def flowRttFeatureStartState = changeFlowRttToggle(true)
         def initialSwitchRtt = [switchPair.src, switchPair.dst].collectEntries { [it, changeFlowRttSwitch(it, true)] }
@@ -362,10 +342,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     @Tags(HARDWARE) //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
     def "Able to synchronize a flow (install missing server42 rules)"() {
         given: "A switch pair connected to server42"
-        def server42switches = topology.getActiveServer42Switches();
-        def server42switchesDpIds = server42switches*.dpId;
-        def switchPair = getSwPairConnectedToS42ForSimpleFlow(server42switchesDpIds)
-        assumeTrue(switchPair != null, "Was not able to find a switch with a server42 connected")
+        def switchPair = switchPairs.all().withBothSwitchesConnectedToServer42().random()
         //enable server42 in featureToggle and on the switches
         def flowRttFeatureStartState = changeFlowRttToggle(true)
         def server42Switch = switchPair.src
@@ -438,19 +415,13 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Able to swapEndpoint for a flow with enabled server42 on it"() {
         given: "Two switch pairs with different src switches and the same dst switch"
-        def switchIdsConnectedToS42 = topology.getActiveServer42Switches()*.dpId
-        SwitchPair fl2SwPair = null
-        SwitchPair fl1SwPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find { firstSwP ->
-            def firstOk =
-                    firstSwP.src.dpId in switchIdsConnectedToS42 && !switchIdsConnectedToS42.contains(firstSwP.dst.dpId)
-            fl2SwPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find { secondSwP ->
-                secondSwP.dst.dpId == firstSwP.dst.dpId && secondSwP.src.dpId != firstSwP.src.dpId &&
-                        !switchIdsConnectedToS42.contains(secondSwP.src.dpId)
-            }
-            firstOk && fl2SwPair
-        }
-        assumeTrue(fl1SwPair.asBoolean() && fl2SwPair.asBoolean(),
-                "Required switch pairs were not found in the given topology")
+        def fl1SwPair = switchPairs.all().withOnlySourceSwitchConnectedToServer42().random()
+        def fl2SwPair = switchPairs.all()
+                .excludeSwitches(topology.getActiveServer42Switches())
+                .includeSourceSwitch(fl1SwPair.getDst())
+                .excludeDestinationSwitches([fl1SwPair.getSrc()])
+                .random()
+                .getReversed()
 
         and: "server42 is enabled on the src sw of the first switch pair"
         def flowRttFeatureStartState = changeFlowRttToggle(true)
@@ -526,11 +497,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
     def "Rtt statistic is available for a flow in case switch is not connected to server42"() {
         given: "Two active switches, only src has server42 connected"
-        def server42SwIds = topology.getActiveServer42Switches()*.dpId
-        def switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
-            it.src.dpId in server42SwIds && !(it.dst.dpId in server42SwIds)
-        }
-        assumeTrue(switchPair != null, "Was not able to find a switch with needed connection")
+        def switchPair = switchPairs.all().withOnlySourceSwitchConnectedToServer42().random()
 
         when: "Set server42FlowRtt toggle to true"
         def flowRttFeatureStartState = changeFlowRttToggle(true)
@@ -630,13 +597,16 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         data << [
                  [
                          flowDescription: "vxlan",
-                         switchPair     : { List<SwitchId> switchIds ->
-                             getSwPairConnectedToS42ForVxlanFlowOnNonWbSwitch(switchIds) },
-                         flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
+                         switchPair     : switchPairs.all()
+                                 .withBothSwitchesConnectedToServer42()
+                                 .withBothSwitchesVxLanEnabled()
+                                 .withSourceSwitchNotManufacturedBy(WB5164)
+                                 .random(),
+                         flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = VXLAN }
                  ],
                  [
                          flowDescription: "qinq",
-                         switchPair     : { List<SwitchId> switchIds -> getSwPairConnectedToS42ForQinQ(switchIds) },
+                         switchPair     : switchPairs.all().withBothSwitchesConnectedToServer42().random(),
                          flowTap        : { FlowRequestV2 fl ->
                              fl.source.vlanId = 10
                              fl.source.innerVlanId = 100
@@ -651,13 +621,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     @Tags(HARDWARE) //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
     def "Flow rtt stats are available after updating switch properties related to server42"(){
         given: "Two active switches, src has server42 connected with incorrect config in swProps"
-        def server42switches = topology.getActiveServer42Switches()
-        assumeTrue((server42switches.size() > 0), "Unable to find active server42")
-        def server42switchesDpIds = server42switches*.dpId;
-        def switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
-            it.src.dpId in server42switchesDpIds && !server42switchesDpIds.contains(it.dst.dpId)
-        }
-        assumeTrue(switchPair != null, "Was not able to find a switch with a server42 connected")
+        def switchPair = switchPairs.all().withOnlySourceSwitchConnectedToServer42().random()
 
         def flowRttFeatureStartState = changeFlowRttToggle(true)
         def initialFlowRttSw = changeFlowRttSwitch(switchPair.src, true)
@@ -741,11 +705,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     @Tags(HARDWARE)
     def "Rtt statistic is available for a flow on a LAG port"() {
         given: "Two active switches, both have server42 connected"
-        def server42SwIds = topology.getActiveServer42Switches()*.dpId
-        def switchPair = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.find {
-            [it.src, it.dst].every { it.dpId in server42SwIds}
-        }
-        assumeTrue(switchPair != null, "Was not able to find switches with needed connection")
+        def switchPair = switchPairs.all().withBothSwitchesConnectedToServer42().random()
 
         and: "server42FlowRtt toggle is set to true"
         def flowRttFeatureStartState = changeFlowRttToggle(true)
@@ -834,46 +794,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
             Wrappers.wait(RULES_INSTALLATION_TIME) {
                 assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
                         .containsExactlyInAnyOrder(*sw.defaultCookies).as(sw.dpId.toString())
-            }
-        }
-    }
-
-    def "getSwPairConnectedToS42ForSimpleFlow"(List<SwitchId> switchIdsConnectedToS42) {
-        getTopologyHelper().getSwitchPairs().collectMany { [it, it.reversed] }.find { swP ->
-            [swP.dst, swP.src].every { it.dpId in switchIdsConnectedToS42 }
-        }
-    }
-
-    def "getSwPairConnectedToS42ForProtectedFlow"(List<SwitchId> switchIdsConnectedToS42) {
-        getTopologyHelper().getSwitchPairs().find {
-            [it.dst, it.src].every { it.dpId in switchIdsConnectedToS42 } && it.paths.unique(false) {
-                a, b -> a.intersect(b) == [] ? 1 : 0
-            }.size() >= 2
-        }
-    }
-
-    def "getSwPairConnectedToS42ForVxlanFlowOnNonWbSwitch"(List<SwitchId> switchIdsConnectedToS42) {
-        getTopologyHelper().getSwitchPairs().find { swP ->
-            [swP.dst, swP.src].every { it.dpId in switchIdsConnectedToS42 && !it.wb5164 } && swP.paths.findAll { path ->
-                pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
-            }
-        }
-    }
-
-    def "getSwPairConnectedToS42ForQinQ"(List<SwitchId> switchIdsConnectedToS42) {
-        getTopologyHelper().getSwitchPairs().find { swP ->
-            [swP.dst, swP.src].every { it.dpId in switchIdsConnectedToS42 && !it.wb5164 }
-        }
-    }
-
-    def "getSwPairConnectedToS42ForVxlanFlowOnWbSwitch"(List<SwitchId> switchIdsConnectedToS42) {
-        getTopologyHelper().getSwitchPairs(true).find { swP ->
-            swP.src.wb5164 && [swP.dst, swP.src].every { it.dpId in switchIdsConnectedToS42 && !it.wb5164 } &&
-                    swP.paths.findAll { path ->
-                pathHelper.getInvolvedSwitches(path).every {
-                    getNorthbound().getSwitchProperties(it.dpId).supportedTransitEncapsulation
-                            .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
-                }
             }
         }
     }

@@ -43,7 +43,6 @@ import java.util.Objects;
 @Slf4j
 public final class FlowHistoryService {
 
-    private Instant lastHistoryEntryTime;
     private final HistoryUpdateCarrier carrier;
 
     private FlowHistoryService(HistoryUpdateCarrier carrier) {
@@ -72,7 +71,7 @@ public final class FlowHistoryService {
                     .haFlowDumpData(parameters.getFlowDumpData())
                     .haFlowHistoryData(HaFlowHistoryData.builder()
                             .action(parameters.getAction())
-                            .time(getNextHistoryEntryTime())
+                            .time(Instant.now())
                             .description(parameters.getDescription())
                             .haFlowId(haFlowId)
                             .build())
@@ -102,7 +101,7 @@ public final class FlowHistoryService {
                     .flowDumpData(parameters.getFlowDumpData())
                     .flowHistoryData(FlowHistoryData.builder()
                             .action(parameters.getAction())
-                            .time(getNextHistoryEntryTime())
+                            .time(Instant.now())
                             .description(parameters.getDescription())
                             .flowId(flowId)
                             .build())
@@ -121,7 +120,7 @@ public final class FlowHistoryService {
      */
     public boolean saveNewHaFlowEvent(HaFlowEventData eventData) {
         try {
-            Instant timestamp = getNextHistoryEntryTime();
+            Instant timestamp = Instant.now();
             String haFlowId = Objects.requireNonNull(eventData.getHaFlowId());
             String taskId = Objects.requireNonNull(eventData.getTaskId());
 
@@ -158,7 +157,7 @@ public final class FlowHistoryService {
      */
     public boolean saveNewFlowEvent(FlowEventData eventData) {
         try {
-            Instant timestamp = getNextHistoryEntryTime();
+            Instant timestamp = Instant.now();
             String flowId = Objects.requireNonNull(eventData.getFlowId());
             String taskId = Objects.requireNonNull(eventData.getTaskId());
 
@@ -207,20 +206,5 @@ public final class FlowHistoryService {
         } catch (RuntimeException e) {
             log.error("An error occurred when trying to save an error to History", e);
         }
-    }
-
-    /**
-     * This is a workaround to preserve ordering when there are fast consecutive calls.
-     * // TODO decide if it worth to replace it with IDs of the events in this stream of events.
-     * @return possibly adjusted time of the event
-     */
-    private Instant getNextHistoryEntryTime() {
-        Instant now = Instant.now();
-        if (lastHistoryEntryTime == null || lastHistoryEntryTime.isBefore(now)) {
-            lastHistoryEntryTime = now;
-        } else {
-            lastHistoryEntryTime = lastHistoryEntryTime.plusMillis(1);
-        }
-        return lastHistoryEntryTime;
     }
 }

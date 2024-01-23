@@ -54,11 +54,8 @@ class MaxLatencySpec extends HealthCheckSpecification {
 
     def setupSpec() {
         //setup: Two active switches with two diverse paths
-        List<List<PathNode>> paths
-        switchPair = topologyHelper.switchPairs.find {
-            paths = it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            paths.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        switchPair = switchPairs.all(false).withAtLeastNNonOverlappingPaths(2).first()
+        def paths = switchPair.getPaths().unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
         mainPath = paths[0]
         alternativePath = paths[1]
         mainIsls = pathHelper.getInvolvedIsls(mainPath)

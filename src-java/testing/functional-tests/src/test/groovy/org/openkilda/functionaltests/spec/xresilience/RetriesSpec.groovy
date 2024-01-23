@@ -40,7 +40,7 @@ and at least 1 path must remain safe"
         List<PathNode> mainPath, failoverPath, safePath
         Switch switchToBreak //will belong to failoverPath and be absent in safePath
         Isl islToBreak //will be used to break the mainPath. This ISL is not used in safePath or failoverPath
-        def switchPair = topologyHelper.switchPairs.find { swPair ->
+        def switchPair = switchPairs.all().getSwitchPairs().find { swPair ->
             if(swPair.paths.size() >= 3) {
                 failoverPath = swPair.paths.find { failoverPathCandidate ->
                     def failoverSwitches = pathHelper.getInvolvedSwitches(failoverPathCandidate)
@@ -130,13 +130,8 @@ and at least 1 path must remain safe"
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "System tries to retry rule installation during #data.description if previous one is failed"(){
         given: "Two active neighboring switches with two diverse paths at least"
-        def allPaths
-        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            allPaths = it.paths
-            allPaths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2 &&
-                    allPaths.find { it.size() > 2 }
-        } ?: assumeTrue(false, "No switch pair with at least 2 diverse paths")
-
+        def swPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
+        def allPaths = swPair.getPaths()
         List<PathNode> mainPath = allPaths.min { it.size() }
         //find path with more than two switches
         List<PathNode> protectedPath = allPaths.findAll { it != mainPath && it.size() != 2 }.min { it.size() }
@@ -268,7 +263,7 @@ and at least 1 path must remain safe"
 
     def "Flow is successfully deleted from the system even if some rule delete commands fail (no rollback for delete)"() {
         given: "A flow"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().first()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
 
@@ -295,22 +290,17 @@ and at least 1 path must remain safe"
 
     def "System retries the intentional rerouteV1 if it fails to install rules on a switch"() {
         given: "Two active neighboring switches with two diverse paths at least(main and backup paths)"
-        def allPaths
-        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            allPaths = it.paths
-            allPaths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2 &&
-                    allPaths.find { it.size() > 2 }
-        }
+        def swPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
-        List<PathNode> mainPath = allPaths.min { it.size() }
+        List<PathNode> mainPath = swPair.paths.min { it.size() }
         //find path with more than two switches
-        List<PathNode> backupPath = allPaths.findAll { it != mainPath && it.size() != 2 }.min { it.size() }
+        List<PathNode> backupPath = swPair.paths.findAll { it != mainPath && it.size() != 2 }.min { it.size() }
 
         and: "All alternative paths unavailable (bring ports down)"
         def broughtDownIsls = []
         def otherIsls = []
         def involvedIsls = (pathHelper.getInvolvedIsls(mainPath) + pathHelper.getInvolvedIsls(backupPath)).unique()
-        allPaths.findAll { it != mainPath && it != backupPath }.each {
+        swPair.paths.findAll { it != mainPath && it != backupPath }.each {
             pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) }.each {
                 otherIsls.add(it)
             }
@@ -406,7 +396,7 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
     //isolation: requires no 'up' events in the system while flow is Down
     def "System does not retry after global timeout for reroute operation"() {
         given: "A flow with ability to reroute"
-        def swPair = topologyHelper.switchPairs.find { it.paths.size() > 1 }
+        def swPair = switchPairs.all().withAtLeastNPaths(2).random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
 
