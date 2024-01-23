@@ -17,10 +17,11 @@ package org.openkilda.grpc.speaker.client;
 
 import org.openkilda.grpc.speaker.exception.GrpcRequestFailureException;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 class GrpcSessionTest {
 
     @Test
