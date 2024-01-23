@@ -43,6 +43,7 @@ import org.openkilda.messaging.info.grpc.GetSwitchInfoResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.CompletableFuture;
@@ -50,6 +51,7 @@ import java.util.concurrent.CompletionException;
 
 @Slf4j
 @Component
+@DependsOn("kafkaTopicsConfig")
 public class MessageProcessor {
 
     @Autowired

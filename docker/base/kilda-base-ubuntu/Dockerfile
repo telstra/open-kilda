@@ -19,7 +19,7 @@ FROM ${base_image}
 ENV DEBIAN_FRONTEND noninteractive
 
 ###############################################
-# Install pip and Java8 in base container     #
+# Install pip and Java in the base container  #
 ###############################################
 
 ENV JAVA_VER 17

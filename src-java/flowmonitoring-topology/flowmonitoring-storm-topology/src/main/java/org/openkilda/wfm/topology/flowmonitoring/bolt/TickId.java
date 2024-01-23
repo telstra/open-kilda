@@ -1,4 +1,4 @@
-/* Copyright 2020 Telstra Open Source
+/* Copyright 2024 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,25 +13,15 @@
  *   limitations under the License.
  */
 
-package org.openkilda.bluegreen;
+package org.openkilda.wfm.topology.flowmonitoring.bolt;
 
 import com.esotericsoftware.kryo.DefaultSerializer;
-import com.esotericsoftware.kryo.serializers.FieldSerializer;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.esotericsoftware.kryo.serializers.DefaultSerializers;
 
 import java.io.Serializable;
-import java.util.UUID;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder(toBuilder = true)
-@DefaultSerializer(FieldSerializer.class)
-public class LifecycleEvent implements Serializable {
-    private Signal signal;
-    private UUID uuid;
-    private long messageId;
+@DefaultSerializer(DefaultSerializers.EnumSerializer.class)
+public enum TickId implements Serializable {
+    CACHE_UPDATE,
+    SLA_CHECK
 }
