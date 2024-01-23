@@ -419,7 +419,7 @@ public class GrpcSession implements Closeable {
                 }), operation);
     }
 
-    private static ManagedChannel makeChannel(String address) {
+    public static ManagedChannel makeChannel(String address) {
         return ManagedChannelBuilder.forAddress(verifyHostAddress(address), PORT)
                 .usePlaintext()
                 .build();
