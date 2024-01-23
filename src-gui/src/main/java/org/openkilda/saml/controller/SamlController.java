@@ -20,7 +20,6 @@ import org.openkilda.constants.Status;
 import org.openkilda.controller.BaseController;
 import org.openkilda.saml.model.SamlConfig;
 
-import jakarta.servlet.http.HttpServletRequest;
 import org.opensaml.saml2.core.NameID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +39,7 @@ import org.usermanagement.service.UserService;
 import org.usermanagement.util.MessageUtils;
 
 import java.util.Set;
+import javax.servlet.http.HttpServletRequest;
 
 @Controller
 @RequestMapping(value = "/saml")

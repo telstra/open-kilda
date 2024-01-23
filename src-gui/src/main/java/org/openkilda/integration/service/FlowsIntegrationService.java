@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2024 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -39,7 +39,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -47,6 +46,7 @@ import org.springframework.web.util.UriUtils;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.List;
 import javax.validation.constraints.NotNull;
 
@@ -61,23 +61,21 @@ public class FlowsIntegrationService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FlowsIntegrationService.class);
 
-    @Autowired
-    private RestClientManager restClientManager;
+    private final SwitchIntegrationService switchIntegrationService;
+    private final RestClientManager restClientManager;
+    private final ApplicationProperties applicationProperties;
+    private final ApplicationService applicationService;
+    private final ObjectMapper objectMapper;
 
-    @Autowired
-    private FlowPathConverter flowPathConverter;
-
-    @Autowired
-    private FlowConverter flowConverter;
-
-    @Autowired
-    private ApplicationProperties applicationProperties;
-
-    @Autowired
-    private ApplicationService applicationService;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    public FlowsIntegrationService(SwitchIntegrationService switchIntegrationService,
+                                   RestClientManager restClientManager, ApplicationProperties applicationProperties,
+                                   ApplicationService applicationService, ObjectMapper objectMapper) {
+        this.switchIntegrationService = switchIntegrationService;
+        this.restClientManager = restClientManager;
+        this.applicationProperties = applicationProperties;
+        this.applicationService = applicationService;
+        this.objectMapper = objectMapper;
+    }
 
     /**
      * Gets the flows.
@@ -88,9 +86,9 @@ public class FlowsIntegrationService {
 
         List<FlowV2> flowList = getAllFlowList();
         if (flowList != null) {
-            return flowConverter.toFlowV2sInfo(flowList);
+            return FlowConverter.toFlowV2sInfo(flowList, switchIntegrationService.getSwitchNames());
         }
-        return null;
+        return new ArrayList<>();
     }
 
     /**
@@ -113,6 +111,9 @@ public class FlowsIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while retriving flow status with id: " + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (UnsupportedEncodingException e) {
+            LOGGER.warn("Error occurred while retriving flow status with id:" + flowId, e);
+            throw new IntegrationException(e);
         }
     }
 
@@ -130,7 +131,7 @@ public class FlowsIntegrationService {
                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 FlowPayload flowPayload = restClientManager.getResponse(response, FlowPayload.class);
-                return flowPathConverter.getFlowPath(flowId, flowPayload);
+                return FlowPathConverter.getFlowPath(flowPayload, switchIntegrationService.getSwitchNames());
             } else {
                 String content = IoUtil.toString(response.getEntity().getContent());
                 throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
@@ -266,6 +267,9 @@ public class FlowsIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while getting flow by id:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (UnsupportedEncodingException e) {
+            LOGGER.warn("Error occurred while getting flow by id:" + flowId, e);
+            throw new IntegrationException(e);
         }
         return null;
     }
@@ -314,7 +318,7 @@ public class FlowsIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while updating flow:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (JsonProcessingException e) {
+        } catch (JsonProcessingException | UnsupportedEncodingException e) {
             LOGGER.warn("Error occurred while updating flow:" + flowId, e);
             throw new IntegrationException(e.getMessage(), e);
         }
@@ -340,6 +344,9 @@ public class FlowsIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while deleting flow:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (UnsupportedEncodingException e) {
+            LOGGER.warn("Error occurred while deleting flow:" + flowId, e);
+            throw new IntegrationException(e);
         }
     }
 
@@ -419,7 +426,11 @@ public class FlowsIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while retriving flow history with id: " + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
+        } catch (UnsupportedEncodingException e) {
+            LOGGER.error("Error occurred while retriving flow history with id: " + flowId, e);
+            e.printStackTrace();
         }
+        return null;
     }
 
     /**

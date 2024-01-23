@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2024 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  */
 
 package org.openkilda.integration.service;
+
+import static org.openkilda.utility.SwitchUtil.customSwitchName;
 
 import org.openkilda.config.ApplicationProperties;
 import org.openkilda.constants.IConstants;
@@ -65,10 +67,8 @@ public class NetworkIntegrationService {
         NetworkPathInfo networkPath = getNetworkPath(srcSwitch, dstSwitch, strategy, maxLatency);
         if (networkPath != null) {
             List<Path> pathList = networkPath.getPaths();
-            pathList.forEach(path -> {
-                path.getNode().forEach(node -> node.setSwitchName(switchIntegrationService
-                        .customSwitchName(switchIntegrationService.getSwitchNames(), node.getSwitchId())));
-            });
+            pathList.forEach(path -> path.getNode().forEach(node -> node.setSwitchName(
+                    customSwitchName(switchIntegrationService.getSwitchNames(), node.getSwitchId()))));
             return networkPath;
         }
         return null;

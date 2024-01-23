@@ -20,10 +20,10 @@ import org.openkilda.auth.interceptor.RequestInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
 @Configuration
-public class RequestInterceptorConfig implements WebMvcConfigurer {
+public class RequestInterceptorConfig extends WebMvcConfigurerAdapter {
 
     @Autowired
     private RequestInterceptor requestInterceptor;

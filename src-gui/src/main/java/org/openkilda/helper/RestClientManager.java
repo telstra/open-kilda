@@ -53,7 +53,6 @@ import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -75,14 +74,16 @@ public class RestClientManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RestClientManager.class);
 
-    @Autowired
-    private AuthPropertyService authPropertyService;
+    private final AuthPropertyService authPropertyService;
+    private final ObjectMapper mapper;
+    private final ServerContext serverContext;
 
-    @Autowired
-    private ObjectMapper mapper;
-
-    @Autowired
-    private ServerContext serverContext;
+    public RestClientManager(AuthPropertyService authPropertyService,
+                             ObjectMapper mapper, ServerContext serverContext) {
+        this.authPropertyService = authPropertyService;
+        this.mapper = mapper;
+        this.serverContext = serverContext;
+    }
 
     /**
      * Invoke.

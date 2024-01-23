@@ -18,8 +18,8 @@ package org.openkilda.test;
 import org.openkilda.util.IConstantsTest;
 import org.openkilda.utility.IoUtil;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,27 +68,22 @@ public class BaseTest {
 
                 if (url.contains(".css")) {
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.CSS_PATH + fileName);
-                    Assert.assertTrue(true);
                 }
                 if (url.contains(".js")) {
                     if (fileName.contains(IConstantsTest.JQUERY_FILE)) {
                         fileName = IConstantsTest.JQUERY_MIN_FILE;
                     }
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.JAVASCRIPT_PATH + fileName);
-                    Assert.assertTrue(true);
                 }
                 if (url.contains("ttf") || url.contains("woff2") || url.contains("woff")) {
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.FONTS_PATH + fileName);
-                    Assert.assertTrue(true);
                 }
                 if (url.contains("Roboto")) {
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.CSS_PATH + "roboto.css");
-                    Assert.assertTrue(true);
                 }
-
             } catch (Exception e) {
                 LOGGER.error("exception occurred Inside method executeKildaFiles.", e);
-                Assert.assertTrue(false);
+                Assertions.fail();
             }
         }
         LOGGER.info("executeKildaFiles has been successfully executed");
