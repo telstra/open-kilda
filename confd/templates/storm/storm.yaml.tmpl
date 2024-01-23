@@ -73,14 +73,8 @@ ui.childopts: "-Xmx128m"
 supervisor.childopts: "-Xmx128m"
 worker.childopts: "-Xmx280m"
 
-topology.testing.always.try.serialize: True
+topology.testing.always.try.serialize: true
 
-topology.kryo.register:
-    - org.openkilda.wfm.CommandContext
-    - org.openkilda.messaging.command.CommandMessage
-    - org.openkilda.bluegreen.LifecycleEvent
-    - org.openkilda.bluegreen.Signal
-    - org.openkilda.messaging.command.discovery.PortsCommandData
-    - org.openkilda.wfm.topology.ping.bolt.TickId
-    - org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast.TopologyActivationStateUpdateNotificationBcast
-    - java.util.UUID: org.openkilda.bluegreen.UuidKryoSerializer
+topology.skip.missing.kryo.registrations: true
+topology.fall.back.on.java.serialization: true
+
