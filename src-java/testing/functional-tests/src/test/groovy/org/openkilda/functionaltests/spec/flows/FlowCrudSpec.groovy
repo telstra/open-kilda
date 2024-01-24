@@ -42,8 +42,7 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 import spock.lang.Unroll
-
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -78,6 +77,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     final static Long IMPOSSIBLY_HIGH_BANDWIDTH = Long.MAX_VALUE
     final static FlowStatistics FLOW_STATISTICS_CAUSING_ERROR =
             new FlowStatistics([[4096, 0].shuffled().first(), 2001] as Set)
+
     @Autowired
     @Shared
     Provider<TraffExamService> traffExamProvider
