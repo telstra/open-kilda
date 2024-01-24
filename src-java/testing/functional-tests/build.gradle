@@ -16,6 +16,7 @@ dependencies {
 
     implementation 'com.fasterxml.jackson.core:jackson-annotations'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation 'jakarta.inject:jakarta.inject-api:2.0.1'
 
     implementation 'org.codehaus.groovy:groovy-all:3.0.17'
 

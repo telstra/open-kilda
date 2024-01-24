@@ -45,7 +45,6 @@ import org.openkilda.testing.service.traffexam.networkpool.Inet4Network;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4NetworkPool;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4ValueException;
 
-import jakarta.annotation.PostConstruct;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.springframework.beans.factory.DisposableBean;
@@ -64,6 +63,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriBuilder;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import jakarta.annotation.PostConstruct;
 import java.net.Inet4Address;
 import java.net.URI;
 import java.net.URISyntaxException;
