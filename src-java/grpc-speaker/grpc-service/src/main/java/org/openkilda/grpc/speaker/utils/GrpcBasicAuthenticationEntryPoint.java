@@ -58,7 +58,7 @@ public class GrpcBasicAuthenticationEntryPoint extends BasicAuthenticationEntryP
             throws IOException {
         String realm = String.format("Basic realm=%s", getRealmName());
         response.addHeader(HttpHeaders.WWW_AUTHENTICATE, realm);
-        response.setContentType(MediaType.APPLICATION_JSON_UTF8_VALUE);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
         String correlationId = Optional.ofNullable(request.getHeader(CORRELATION_ID)).orElse(DEFAULT_CORRELATION_ID);

@@ -176,6 +176,8 @@ public abstract class ZkClient implements Watcher {
 
     @VisibleForTesting
     ZooKeeper getZk() throws IOException {
+        log.error("Creating ZooKeeper connection. connectionString {}, sessionTimeout {}, this {}.",
+                connectionString, sessionTimeout, this);
         return new ZooKeeper(connectionString, sessionTimeout, this);
     }
 
@@ -216,6 +218,8 @@ public abstract class ZkClient implements Watcher {
         String nodePath = getPaths(path);
         if (zookeeper.exists(nodePath, false) == null) {
             try {
+                log.error("Creating a ZooKeeper node. zookeeper state: {}, zookeeper: {}",
+                        zookeeper.getState(), zookeeper);
                 zookeeper.create(nodePath, value,
                         Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
             } catch (Exception e) {
