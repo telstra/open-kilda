@@ -19,14 +19,14 @@ import static com.sabre.oss.conf4j.spring.Conf4jSpringConstants.CONF4J_CONFIGURA
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
 
-import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
-import com.sabre.oss.conf4j.source.MapConfigurationSource;
 import org.openkilda.config.EnvironmentConfig;
 import org.openkilda.config.KafkaTopicsConfig;
 import org.openkilda.config.naming.KafkaNamingForConfigurationValueProcessor;
 import org.openkilda.config.naming.KafkaNamingStrategy;
 
+import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
 import com.sabre.oss.conf4j.processor.ConfigurationValueProcessor;
+import com.sabre.oss.conf4j.source.MapConfigurationSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
