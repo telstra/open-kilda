@@ -47,7 +47,7 @@ services:
   odb1:
     container_name: odb1
     hostname: odb1.pendev
-    image: orientdb:3.0.34
+    image: orientdb:3.2
     command: dserver.sh
     volumes:
       - ./docker/orientdb/config/odb1:/orientdb/config
@@ -178,7 +178,7 @@ services:
       context: docker/db-mysql-migration
       dockerfile: Dockerfile
       args:
-        base_image: "liquibase/liquibase:${LIQUIBASE_TAG:-4.4}"
+        base_image: "liquibase/liquibase:${LIQUIBASE_TAG:-4.21}"
     command: /kilda/migrate-develop.sh
     volumes:
       - ./docker/db-mysql-migration/migrations:/liquibase/changelog
@@ -570,7 +570,10 @@ services:
 {{if not (exists "/no_elasticsearch")}}
   elasticsearch:
     container_name: elasticsearch
-    image: kilda/elasticsearch:latest
+    image: elasticsearch:7.17.10
+    environment:
+      - "discovery.type=single-node"
+      - xpack.security.enabled=false
     hostname: elasticsearch.pendev
     ports:
       - "9200:9200"
@@ -579,15 +582,15 @@ services:
       default:
         aliases:
          - elasticsearch.pendev
-    environment:
-      ES_JAVA_OPTS: "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
     mem_limit: ${ELASTIC_MEM_LIMIT:-3g}
 {{end}}
 {{if not (exists "/no_kibana")}}
   kibana:
-    image: kibana:5.6.12
+    image: kibana:7.17.10
     container_name: kibana
     hostname: kibana.pendev{{if not (exists "/no_elasticsearch")}}
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch.pendev:9200
     depends_on:
       elasticsearch:
         condition: service_started{{end}}

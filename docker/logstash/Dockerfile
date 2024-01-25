@@ -1,11 +1,10 @@
-ARG base_image=logstash:5.6.12
+ARG base_image=logstash:8.6.2
 FROM ${base_image}
 
 COPY . /
-
+USER root
 RUN \
     export DEBIAN_FRONTEND=noninteractive && \
-    echo "deb http://archive.debian.org/debian stretch main" > /etc/apt/sources.list && \
     apt -y update && \
     apt -y install net-tools telnet netcat && \
     rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*

@@ -32,6 +32,8 @@
 ##
 ################################################################
 
+#-XX:+IgnoreUnrecognizedVMOptions
+
 ## GC configuration
 -XX:+UseConcMarkSweepGC
 -XX:CMSInitiatingOccupancyFraction=75
