@@ -1,9 +1,5 @@
 package org.openkilda.functionaltests.spec.server42
 
-import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.functionaltests.helpers.model.SwitchPairs
-import org.openkilda.functionaltests.model.switches.Manufacturer
-
 import static groovyx.gpars.GParsPool.withPool
 import static java.util.concurrent.TimeUnit.SECONDS
 import static org.assertj.core.api.Assertions.assertThat
@@ -29,9 +25,11 @@ import static org.openkilda.testing.Constants.STATS_FROM_SERVER42_LOGGING_TIMEOU
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.functionaltests.helpers.model.SwitchPairs
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.payload.flow.FlowState
@@ -539,10 +537,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     @Tags(HARDWARE) //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
     def "Flow rtt stats are still available after updating a #data.flowDescription flow"() {
         given: "Two active switches, connected to the server42"
-        def server42switches = topology.getActiveServer42Switches()
-        assumeTrue((server42switches.size() > 1), "Unable to find active server42")
-        def server42switchesDpIds = server42switches*.dpId;
-        def switchPair = data.switchPair(server42switchesDpIds)
+        def switchPair = data.switchPair
         assumeTrue(switchPair != null, "Was not able to find a switchPair with a server42 connection")
 
         and: "server42FlowRtt toggle is set to true"
