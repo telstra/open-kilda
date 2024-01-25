@@ -75,28 +75,16 @@ Do not change this file, all changes will be lost. Change corresponding template
             <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
         </JsonLayout>
     </Socket>
-
-    <Syslog name="syslog" format="RFC5424" charset="UTF-8" host="localhost" port="514"
-            protocol="UDP" appName="[${sys:daemon.name}]" mdcId="mdc" includeMDC="true"
-            facility="LOCAL5" enterpriseNumber="18060" newLine="true" exceptionPattern="%rEx{full}"
-            messageId="[${sys:user.name}:S0]" id="storm" immediateFlush="true" immediateFail="true"/>
 </appenders>
 <loggers>
-
-    <Logger name="org.apache.storm.logging.filters.AccessLoggingFilter" level="info" additivity="false">
-        <AppenderRef ref="WEB-ACCESS"/>
-        <AppenderRef ref="syslog"/>
-    </Logger>
     <Logger name="org.apache.storm.logging.ThriftAccessLogger" level="info" additivity="false">
         <AppenderRef ref="THRIFT-ACCESS"/>
-        <AppenderRef ref="syslog"/>
     </Logger>
     <Logger name="org.apache.storm.metric.LoggingClusterMetricsConsumer" level="info" additivity="false">
         <appender-ref ref="METRICS"/>
     </Logger>
     <root level="info"> <!-- We log everything -->
         <appender-ref ref="A1"/>
-        <appender-ref ref="syslog"/>
         <appender-ref ref="LOGSTASH"/>
     </root>
 </loggers>
