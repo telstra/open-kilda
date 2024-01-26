@@ -32,8 +32,8 @@ public class RoutingMetadataTest {
     public void buildRoutingMetadata() {
         RoutingMetadata routingMetadata = RoutingMetadata.builder().build(FEATURES);
 
-        Assertions.assertEquals(0x0000_0000_F000_0000L, routingMetadata.getMask());
-        Assertions.assertEquals(0x0000_0000_1000_0000L, routingMetadata.getValue());
+        Assertions.assertEquals(0x0000_0000_E000_0000L, routingMetadata.getMask());
+        Assertions.assertEquals(0x0000_0000_2000_0000L, routingMetadata.getValue());
     }
 
     @Test
@@ -42,30 +42,30 @@ public class RoutingMetadataTest {
                 .haSubFlowType(HaSubFlowType.HA_SUB_FLOW_1)
                 .build(FEATURES);
 
-        Assertions.assertEquals(0x0000_0000_F001_0000L, routingMetadata.getMask());
-        Assertions.assertEquals(0x0000_0000_1000_0000L, routingMetadata.getValue());
+        Assertions.assertEquals(0x0000_0000_F000_0000L, routingMetadata.getMask());
+        Assertions.assertEquals(0x0000_0000_2000_0000L, routingMetadata.getValue());
 
         routingMetadata = RoutingMetadata.builder()
                 .haSubFlowType(HaSubFlowType.HA_SUB_FLOW_2)
                 .build(FEATURES);
 
-        Assertions.assertEquals(0x0000_0000_F001_0000L, routingMetadata.getMask());
-        Assertions.assertEquals(0x0000_0000_1001_0000L, routingMetadata.getValue());
+        Assertions.assertEquals(0x0000_0000_F000_0000L, routingMetadata.getMask());
+        Assertions.assertEquals(0x0000_0000_3000_0000L, routingMetadata.getValue());
     }
 
     @Test
     public void buildRoutingMetadataHaFlowWithOuterVlan() {
         RoutingMetadata routingMetadata = RoutingMetadata.builder().outerVlanId(1).build(FEATURES);
 
-        Assertions.assertEquals(0x0000_0000_F000_FFF8L, routingMetadata.getMask());
-        Assertions.assertEquals(0x0000_0000_1000_0018L, routingMetadata.getValue());
+        Assertions.assertEquals(0x0000_0000_E000_FFF8L, routingMetadata.getMask());
+        Assertions.assertEquals(0x0000_0000_2000_0018L, routingMetadata.getValue());
 
         routingMetadata = RoutingMetadata.builder()
                 .haSubFlowType(HaSubFlowType.HA_SUB_FLOW_1)
                 .outerVlanId(1)
                 .build(FEATURES);
 
-        Assertions.assertEquals(0x0000_0000_F001_FFF8L, routingMetadata.getMask());
-        Assertions.assertEquals(0x0000_0000_1000_0018L, routingMetadata.getValue());
+        Assertions.assertEquals(0x0000_0000_F000_FFF8L, routingMetadata.getMask());
+        Assertions.assertEquals(0x0000_0000_2000_0018L, routingMetadata.getValue());
     }
 }

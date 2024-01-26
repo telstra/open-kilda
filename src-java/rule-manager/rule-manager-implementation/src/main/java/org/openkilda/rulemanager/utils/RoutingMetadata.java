@@ -31,17 +31,18 @@ import java.util.Set;
 @EqualsAndHashCode(of = {"value", "mask"})
 public class RoutingMetadata {
     // update ALL_FIELDS if modify fields list
-    private static final BitField TYPE_FIELD               = new BitField(0x0000_0000_F000_0000L);
+    private static final BitField TYPE_FIELD               = new BitField(0x0000_0000_E000_0000L);
+    private static final BitField HA_SUB_FLOW_TYPE_FIELD   = new BitField(0x0000_0000_1000_0000L);
     private static final BitField LLDP_MARKER_FLAG         = new BitField(0x0000_0000_0000_0001L);
     private static final BitField ONE_SWITCH_FLOW_FLAG     = new BitField(0x0000_0000_0000_0002L);
     private static final BitField ARP_MARKER_FLAG          = new BitField(0x0000_0000_0000_0004L);
     private static final BitField OUTER_VLAN_PRESENCE_FLAG = new BitField(0x0000_0000_0000_0008L);
-    private static final BitField HA_SUB_FLOW_TYPE_FIELD   = new BitField(0x0000_0000_0001_0000L);
     private static final BitField OUTER_VLAN_FIELD         = new BitField(0x0000_0000_0000_FFF0L);
-    // NOTE: port count is 2048. At this moment only 1000 ports can be used
+
+    // NOTE: port count is 4096. At this moment only 1000 ports can be used
     // on Noviflow switches. But according to open flow specs port count could be up to 65536.
     // So we increased port count to maximum possible value.
-    private static final BitField INPUT_PORT_FIELD         = new BitField(0x0000_0000_0FFE_0000L);
+    private static final BitField INPUT_PORT_FIELD         = new BitField(0x0000_0000_0FFF_0000L);
 
     public static final int FULL_MASK = -1;
     static final long MAX_INPUT_PORT = INPUT_PORT_FIELD.getMask() >> INPUT_PORT_FIELD.getOffset();
