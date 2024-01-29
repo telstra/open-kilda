@@ -16,6 +16,7 @@
 package org.openkilda.model;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.collect.Sets.newHashSet;
 import static java.lang.String.format;
 
 import org.openkilda.model.FlowPath.FlowPathData;
@@ -327,6 +328,13 @@ public class Flow implements CompositeDataEntity<Flow.FlowData> {
                 && Objects.equals(path.getDestSwitchId(), getSrcSwitchId())
                 && (!isOneSwitchFlow() || path.getCookie() != null
                 && path.getCookie().getDirection() == FlowPathDirection.REVERSE);
+    }
+
+    /**
+     * Get up to 2 endpoint switchIds.
+     */
+    public Set<SwitchId> getEndpointSwitchIds() {
+        return newHashSet(getSrcSwitchId(), getDestSwitchId());
     }
 
     private FlowPath validateForwardPath(FlowPath path) {

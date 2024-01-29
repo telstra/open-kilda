@@ -317,6 +317,21 @@ public abstract class FlowProcessingWithHistorySupportAction<T extends FlowProce
         return Optional.of(groupId.orElseThrow(() -> new FlowNotFoundException(diverseFlowId)));
     }
 
+    /**
+     * Finds path IDs of paths which can use same shared rules as paths of flow use on endpoint switches.
+     * Excludes paths IDs of flow paths from the result.
+     */
+    protected Set<PathId> getPathIdsWhichCanUseSharedRules(Flow flow) {
+        Set<PathId> pathIds = new HashSet<>();
+        for (SwitchId switchId : flow.getEndpointSwitchIds()) {
+            pathIds.addAll(flowPathRepository.findBySrcSwitch(switchId, false).stream()
+                    .map(FlowPath::getPathId)
+                    .collect(Collectors.toSet()));
+        }
+        pathIds.removeAll(flow.getPathIds());
+        return pathIds;
+    }
+
     private static boolean isUseSharedRule(Flow flow, FlowEndpoint endpoint) {
         return flow.getPaths().stream()
                 .filter(path -> flow.isActualPathId(path.getPathId()))

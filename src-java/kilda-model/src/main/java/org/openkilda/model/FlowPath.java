@@ -128,6 +128,18 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
     }
 
     /**
+     * Get all switches used by the path (including segment switches).
+     */
+    public Set<SwitchId> getAllInvolvedSwitches() {
+        Set<SwitchId> switchIds = new HashSet<>();
+        for (PathSegment segment : getSegments()) {
+            switchIds.add(segment.getSrcSwitchId());
+            switchIds.add(segment.getDestSwitchId());
+        }
+        return switchIds;
+    }
+
+    /**
      * Checks whether the flow path goes through a single switch.
      *
      * @return true if source and destination switches are the same, otherwise false

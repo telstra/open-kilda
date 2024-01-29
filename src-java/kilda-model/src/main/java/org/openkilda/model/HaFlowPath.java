@@ -189,10 +189,7 @@ public class HaFlowPath implements CompositeDataEntity<HaFlowPath.HaFlowPathData
     public Set<SwitchId> getAllInvolvedSwitches() {
         Set<SwitchId> switchIds = new HashSet<>();
         for (FlowPath subPath : getSubPaths()) {
-            for (PathSegment segment : subPath.getSegments()) {
-                switchIds.add(segment.getSrcSwitchId());
-                switchIds.add(segment.getDestSwitchId());
-            }
+            switchIds.addAll(subPath.getAllInvolvedSwitches());
         }
         return switchIds;
     }

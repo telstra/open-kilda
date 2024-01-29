@@ -94,7 +94,7 @@ public abstract class HaFlowRuleManagerProcessingAction<T extends FlowProcessing
 
     /**
      * Finds path IDs of paths which can use same shared rules as paths of HA-flow use on endpoint switches.
-     * Excludes paths IDs of HA-fLow suf paths from the result.
+     * Excludes paths IDs of HA-fLow sub paths from the result.
      */
     protected Set<PathId> getPathIdsWhichCanUseSharedRules(HaFlow haFlow) {
         Set<PathId> pathIds = new HashSet<>();

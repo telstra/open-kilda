@@ -87,6 +87,13 @@ public class RuleManagerImpl implements RuleManager {
     @Override
     public List<SpeakerData> buildRulesForFlowPath(
             FlowPath flowPath, boolean filterOutUsedSharedRules, DataAdapter adapter) {
+        return buildRulesForFlowPath(flowPath, filterOutUsedSharedRules, true, true, adapter);
+    }
+
+    @Override
+    public List<SpeakerData> buildRulesForFlowPath(
+            FlowPath flowPath, boolean filterOutUsedSharedRules, boolean ingress, boolean nonIngress,
+            DataAdapter adapter) {
         List<SpeakerData> result = new ArrayList<>();
         Flow flow = adapter.getFlow(flowPath.getPathId());
         PathId oppositePathId = flow.getOppositePathId(flowPath.getPathId()).orElse(null);
@@ -97,28 +104,28 @@ public class RuleManagerImpl implements RuleManager {
             if (filterOutUsedSharedRules) {
                 overlappingAdapters = getOverlappingIngressAdapters(flowPath, adapter);
             }
-            result.addAll(buildIngressCommands(adapter.getSwitch(flowPath.getSrcSwitchId()), flowPath, flow,
-                    encapsulation, overlappingAdapters, adapter.getSwitchProperties(flowPath.getSrcSwitchId()),
-                    adapter.getFeatureToggles()));
+            if (ingress) {
+                result.addAll(buildIngressCommands(adapter.getSwitch(flowPath.getSrcSwitchId()), flowPath, flow,
+                        encapsulation, overlappingAdapters, adapter.getSwitchProperties(flowPath.getSrcSwitchId()),
+                        adapter.getFeatureToggles()));
+            }
         }
 
-        if (flowPath.isOneSwitchPath()) {
-            return result;
-        }
+        if (!flowPath.isOneSwitchPath() && nonIngress) {
+            result.addAll(buildEgressCommands(
+                    adapter.getSwitch(flowPath.getDestSwitchId()), flowPath, flow, encapsulation));
 
-        result.addAll(buildEgressCommands(
-                adapter.getSwitch(flowPath.getDestSwitchId()), flowPath, flow, encapsulation));
+            for (int i = 1; i < flowPath.getSegments().size(); i++) {
+                PathSegment firstSegment = flowPath.getSegments().get(i - 1);
+                PathSegment secondSegment = flowPath.getSegments().get(i);
+                result.addAll(buildTransitCommands(adapter.getSwitch(firstSegment.getDestSwitchId()),
+                        flowPath, encapsulation, firstSegment, secondSegment));
+            }
 
-        for (int i = 1; i < flowPath.getSegments().size(); i++) {
-            PathSegment firstSegment = flowPath.getSegments().get(i - 1);
-            PathSegment secondSegment = flowPath.getSegments().get(i);
-            result.addAll(buildTransitCommands(adapter.getSwitch(firstSegment.getDestSwitchId()),
-                    flowPath, encapsulation, firstSegment, secondSegment));
-        }
-
-        if (flow.isLooped() && !flow.isProtectedPath(flowPath.getPathId())) {
-            Switch loopedSwitch = adapter.getSwitch(flow.getLoopSwitchId());
-            result.addAll(buildTransitLoopCommands(loopedSwitch, flowPath, flow, encapsulation));
+            if (flow.isLooped() && !flow.isProtectedPath(flowPath.getPathId())) {
+                Switch loopedSwitch = adapter.getSwitch(flow.getLoopSwitchId());
+                result.addAll(buildTransitLoopCommands(loopedSwitch, flowPath, flow, encapsulation));
+            }
         }
 
         return postProcessCommands(result);

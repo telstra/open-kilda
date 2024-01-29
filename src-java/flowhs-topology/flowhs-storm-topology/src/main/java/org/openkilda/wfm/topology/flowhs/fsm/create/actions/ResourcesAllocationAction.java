@@ -26,6 +26,8 @@ import org.openkilda.model.FlowPath;
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.FlowPathStatus;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.HaFlow;
+import org.openkilda.model.HaFlowPath;
 import org.openkilda.model.PathId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchProperties;
@@ -44,6 +46,10 @@ import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslEndpoints;
 import org.openkilda.persistence.repositories.SwitchPropertiesRepository;
 import org.openkilda.persistence.repositories.YFlowRepository;
+import org.openkilda.rulemanager.DataAdapter;
+import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.SpeakerData;
+import org.openkilda.rulemanager.adapter.PersistenceDataAdapter;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.error.FlowAlreadyExistException;
 import org.openkilda.wfm.error.FlowNotFoundException;
@@ -57,12 +63,14 @@ import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.create.FlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.mapper.RequestedFlowMapper;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilder;
 import org.openkilda.wfm.topology.flowhs.service.FlowCommandBuilderFactory;
 import org.openkilda.wfm.topology.flowhs.service.FlowPathBuilder;
 
+import com.google.common.collect.Lists;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
@@ -72,12 +80,16 @@ import org.apache.commons.collections4.map.LazyMap;
 import org.apache.commons.lang3.StringUtils;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class ResourcesAllocationAction extends
@@ -92,10 +104,11 @@ public class ResourcesAllocationAction extends
 
     private final FlowPathBuilder flowPathBuilder;
     private final FlowCommandBuilderFactory commandBuilderFactory;
+    private final RuleManager ruleManager;
 
     public ResourcesAllocationAction(PathComputer pathComputer, PersistenceManager persistenceManager,
                                      int pathAllocationRetriesLimit, int pathAllocationRetryDelay,
-                                     FlowResourcesManager resourcesManager) {
+                                     FlowResourcesManager resourcesManager, RuleManager ruleManager) {
         super(persistenceManager);
 
         this.pathComputer = pathComputer;
@@ -108,6 +121,7 @@ public class ResourcesAllocationAction extends
 
         this.flowPathBuilder = new FlowPathBuilder();
         this.commandBuilderFactory = new FlowCommandBuilderFactory(resourcesManager);
+        this.ruleManager = ruleManager;
     }
 
     @Override
@@ -233,6 +247,43 @@ public class ResourcesAllocationAction extends
         } catch (FailsafeException ex) {
             throw ex.getCause();
         }
+    }
+
+    private List<SpeakerData> buildIngressRules(Flow flow) {
+        Set<PathId> overlappingPathIds = getPathIdsWhichCanUseSharedRules(flow);
+        List<SpeakerData> result = new ArrayList<>();
+
+        result.addAll(buildIngressRules(flow.getForwardPath(), overlappingPathIds));
+        result.addAll(buildIngressRules(flow.getReversePath(), overlappingPathIds));
+        return result;
+    }
+
+    private List<SpeakerData> buildIngressRules(FlowPath path, Set<PathId> overlappingPathIds) {
+        Set<SwitchId> switchIds = path.getAllInvolvedSwitches();
+        Set<PathId> pathIds = new HashSet<>(overlappingPathIds);
+        pathIds.add(path.getPathId());
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, pathIds, switchIds);
+        return ruleManager.buildRulesForFlowPath(path, true, true, false, dataAdapter);
+    }
+
+    private List<SpeakerData> buildNonIngressRules(FlowCreateFsm stateMachine, Flow flow) {
+        List<FlowPath> paths = Lists.newArrayList(flow.getForwardPath(), flow.getReversePath());
+        Set<SwitchId> switchIds = flow.getForwardPath().getAllInvolvedSwitches(); // reverse path has same switches
+
+        if (flow.getProtectedForwardPath() != null && flow.getProtectedReversePath() != null) {
+            paths.add(flow.getProtectedForwardPath());
+            paths.add(flow.getProtectedReversePath());
+            switchIds.addAll(flow.getProtectedForwardPath().getAllInvolvedSwitches()); // reverse path has same switches
+        }
+        Set<PathId> pathIds = paths.stream().map(FlowPath::getPathId).collect(Collectors.toSet());
+        DataAdapter dataAdapter = new PersistenceDataAdapter(persistenceManager, pathIds, switchIds);
+
+        List<SpeakerData> result = new ArrayList<>();
+
+        for (FlowPath path : paths) {
+            ruleManager.buildRulesForFlowPath(path, false, false, true, dataAdapter);
+        }
+        return result;
     }
 
     private void createSpeakerRequestFactories(FlowCreateFsm stateMachine, Flow flow) {
