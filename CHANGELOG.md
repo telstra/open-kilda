@@ -1,4 +1,16 @@
 # Changelog
+## v1.153.0 (29/01/2024)
+
+### Improvements:
+-  [#5544](https://github.com/telstra/open-kilda/pull/5544) Avoid non-existing directory warnings on WFM container creation
+-  [#5546](https://github.com/telstra/open-kilda/pull/5546) 5390: [TEST]: Fix flaky protected path test [**tests**]
+
+### Other changes:
+-  [#5540](https://github.com/telstra/open-kilda/pull/5540) 5521: [TEST] Update History validation test (Issue: [#5221](https://github.com/telstra/open-kilda/issues/5221)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.152.0...v1.153.0).
+
+---
 
 ## v1.152.0 (19/01/2024)
 

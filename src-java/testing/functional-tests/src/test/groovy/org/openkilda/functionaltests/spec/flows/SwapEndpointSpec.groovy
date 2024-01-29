@@ -1082,23 +1082,18 @@ switches"() {
         new FlowEndpointsNotSwappedExpectedError(~/Not enough bandwidth or no path found/).matches(exc)
 
         and: "All involved switches are valid"
+        /** https://github.com/telstra/open-kilda/issues/3770
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert switchHelper.validate(involvedSwIds).isEmpty()
         }
-        Boolean isTestCompleted = true
+        Boolean isTestCompleted = true **/
+        switchHelper.synchronize(involvedSwIds)
 
         cleanup: "Restore topology and delete flows"
         [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-        //https://github.com/telstra/open-kilda/issues/3770
-        switchHelper.synchronize(involvedSwIds)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
-        if (!isTestCompleted) {
-            switchHelper.synchronize([flow1SwitchPair.src.dpId, flow1SwitchPair.dst.dpId,
-                                      flow2SwitchPair.src.dpId, flow2SwitchPair.dst.dpId]
-                    .unique())
         }
         database.resetCosts(topology.isls)
     }

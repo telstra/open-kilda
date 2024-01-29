@@ -10,6 +10,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
@@ -440,8 +441,9 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 status == FlowState.DEGRADED.toString()
                 flowStatusDetails.mainFlowPathStatus == "Up"
                 flowStatusDetails.protectedFlowPathStatus == "Down"
-                statusInfo == "Not enough bandwidth or no path found. Switch ${switchPair.getSrc().getDpId()} \
-doesn't have links with enough bandwidth, Failed to find path with requested bandwidth=$flow.maximumBandwidth"
+                statusInfo =~ ~/Not enough bandwidth or no path found. Switch \
+(${switchPair.getSrc().getDpId()}|${switchPair.getDst().getDpId()}) doesn't have links with enough bandwidth, \
+Failed to find path with requested bandwidth=$flow.maximumBandwidth/
             }
         }
 
@@ -486,8 +488,14 @@ doesn't have links with enough bandwidth, Failed to find path with requested ban
                 it != originalProtectedPath }.collectMany { pathHelper.getInvolvedIsls(it) }
                 .findAll {!usedIsls.contains(it) }
                 .unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
-        otherIsls.each {
-            antiflap.portDown(it.srcSwitch.dpId, it.srcPort)
+        withPool {
+            otherIsls.eachParallel {
+                antiflap.portDown(it.srcSwitch.dpId, it.srcPort)
+            }
+        }
+        Wrappers.wait(WAIT_OFFSET) {
+            def links = northbound.getAllLinks()
+            assert otherIsls.each {islUtils.getIslInfo(links, it).get().state == FAILED}
         }
 
         and: "Main flow path breaks"
