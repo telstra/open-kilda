@@ -192,7 +192,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Delete the flows"
         [qinqFlow.flowId, vlanFlow.id].each { it && flowHelperV2.deleteFlow(it) }
-        def flowsAreDeleted = true
 
         then: "Flows rules are deleted"
         involvedSwitchesforBothFlows.each { sw ->
@@ -208,10 +207,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
                 new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
             }.empty
         }
-
-        cleanup:
-        qinqFlow && !flowsAreDeleted && flowHelperV2.deleteFlow(qinqFlow.flowId)
-        vlanFlow && !flowsAreDeleted && flowHelper.deleteFlow(vlanFlow.id)
 
         where:
         [srcVlanId, srcInnerVlanId, dstVlanId, dstInnerVlanId, swPair] << [
@@ -277,7 +272,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(qinqFlow.flowId)
-        def qinqFlowIsDeleted = true
 
         then: "Flow rules are deleted"
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
@@ -287,9 +281,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
             new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
         }.empty
-
-        cleanup:
-        qinqFlow && !qinqFlowIsDeleted && flowHelperV2.deleteFlow(qinqFlow.flowId)
 
         where:
         [srcVlanId, srcInnerVlanId, dstVlanId, dstInnerVlanId, swPair] << [
@@ -314,8 +305,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(expectedErrorDescription).matches(exc)
-        cleanup:
-        !exc && flowHelper.deleteFlow(flow.flowId)
 
         where:
         srcInnerVlanId | dstInnerVlanId | expectedErrorDescription
@@ -344,9 +333,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "Flow is valid"
         northbound.validateFlow(flow.id).each { assert it.asExpected }
-
-        cleanup:
-        flowHelperV2.deleteFlow(flow.id)
     }
 
     def "System allow to create/update/delete a protected QinQ flow via APIv1"() {
@@ -396,7 +382,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
             assert !northbound.getFlowStatus(flow.id)
             assert northbound.getFlowHistory(flow.id).find { it.payload.last().action == DELETE_SUCCESS }
         }
-        def flowIsDeleted = true
 
         then: "Flows rules are deleted"
         [swP.src, swP.dst].each { sw ->
@@ -412,9 +397,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
                 new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
             }.empty
         }
-
-        cleanup:
-        !flowIsDeleted && flowHelperV2.deleteFlow(flow.id)
     }
 
     def "System allows to create QinQ flow and vlan flow with the same vlan on the same port"() {
@@ -447,10 +429,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
                 assert traffExam.waitExam(direction).hasTraffic()
             }
         }
-
-        cleanup:
-        flowWithQinQ && flowHelperV2.deleteFlow(flowWithQinQ.flowId)
-        flowWithoutQinQ && flowHelperV2.deleteFlow(flowWithoutQinQ.flowId)
     }
 
     def "System detects conflict QinQ flows(oVlan: #conflictVlan, iVlan: #conflictInnerVlanId)"() {
@@ -474,9 +452,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedWithConflictExpectedError(~/Requested flow \'${conflictFlow.getFlowId()}\' conflicts with\
  existing flow \'${flow.getFlowId()}\'./).matches(exc)
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        !exc && northboundV2.deleteFlow(conflictFlow.flowId)
 
         where:
         vlan | innerVlan | conflictVlan | conflictInnerVlanId
@@ -528,7 +503,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Delete the second flow"
         flowHelperV2.deleteFlow(flow2.flowId)
-        def flow2IsDeleted = true
 
         then: "The first flow is still valid and pingable"
         northbound.validateFlow(flow1.flowId).each { assert it.asExpected }
@@ -545,10 +519,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
                 assert traffExam.waitExam(direction).hasTraffic()
             }
         }
-
-        cleanup:
-        flow1 && flowHelperV2.deleteFlow(flow1.flowId)
-        !flow2IsDeleted && flowHelperV2.deleteFlow(flow2.flowId)
     }
 
     def "System allows to create a single-switch-port QinQ flow\
@@ -590,16 +560,12 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(qinqFlow.flowId)
-        def flowIsDeleted = true
 
         then: "Flow rules are deleted"
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
             assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
                     .containsExactlyInAnyOrder(*sw.defaultCookies)
         }
-
-        cleanup:
-        qinqFlow && !flowIsDeleted && flowHelperV2.deleteFlow(qinqFlow.flowId)
 
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
@@ -751,7 +717,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Delete the flows"
         [qinqFlow.flowId, vlanFlow.id].each { flowHelperV2.deleteFlow(it) }
-        def flowsAreDeleted = true
 
         then: "Flows rules are deleted"
         involvedSwitchesforBothFlows.each { sw ->
@@ -767,10 +732,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
                 new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
             }.empty
         }
-
-        cleanup:
-        qinqFlow && !flowsAreDeleted && flowHelperV2.deleteFlow(qinqFlow.flowId)
-        vlanFlow && !flowsAreDeleted && flowHelper.deleteFlow(vlanFlow.id)
 
         where:
         [srcVlanId, srcInnerVlanId, dstVlanId, dstInnerVlanId, swPair] << [
@@ -819,9 +780,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
                 assert traffExam.waitExam(direction).hasTraffic()
             }
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System doesn't rebuild flow path to more preferable path while updating innerVlanId"() {
@@ -880,7 +838,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         switchHelper.synchronizeAndCollectFixedDiscrepancies(currentPath*.switchId).isEmpty()
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 

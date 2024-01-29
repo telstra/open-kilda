@@ -177,7 +177,6 @@ class UnstableIslSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology, delete the flow and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         broughtDownPorts.each { it && antiflap.portUp(it.switchId, it.portNo) }
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {

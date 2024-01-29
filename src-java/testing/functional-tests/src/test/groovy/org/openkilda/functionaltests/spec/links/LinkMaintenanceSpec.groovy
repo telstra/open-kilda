@@ -91,7 +91,6 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         !(isl in pathHelper.getInvolvedIsls(flow2PathUpdated))
 
         cleanup: "Delete flows and unset maintenance mode"
-        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         isl && northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, false, false))
     }
 
@@ -155,7 +154,6 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
 
         cleanup: "Restore topology, delete flows, unset maintenance mode and reset costs"
         broughtDownPorts.each { it && antiflap.portUp(it.switchId, it.portNo) }
-        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         islUnderMaintenance && northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(
                 islUnderMaintenance, false, false))
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {

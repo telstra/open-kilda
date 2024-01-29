@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests
 
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.testing.model.topology.TopologyDefinition
 
 import org.springframework.beans.factory.ObjectFactory
@@ -9,12 +10,21 @@ class SpecThreadScope implements Scope {
 
     @Override
     Object get(String name, ObjectFactory<?> objectFactory) {
-        TopologyDefinition topo = BaseSpecification.threadLocalTopology.get();
-        if (topo == null) {
-            topo = (TopologyDefinition) objectFactory.getObject();
-            BaseSpecification.threadLocalTopology.set(topo)
+        if (name.equals("getTopologyDefinition")) {
+            TopologyDefinition topo = BaseSpecification.threadLocalTopology.get();
+            if (topo == null) {
+                topo = (TopologyDefinition) objectFactory.getObject();
+                BaseSpecification.threadLocalTopology.set(topo)
+            }
+            return topo;
+        } else {
+            CleanupManager cleanupManager = BaseSpecification.threadLocalCleanupManager.get();
+            if (cleanupManager == null) {
+                cleanupManager = (CleanupManager) objectFactory.getObject();
+                BaseSpecification.threadLocalCleanupManager.set(cleanupManager)
+            }
+            return cleanupManager;
         }
-        return topo;
     }
 
     @Override

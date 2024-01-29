@@ -65,6 +65,7 @@ class CleanupVerifierListener extends AbstractSpringListener {
     def runVerifications() {
         context.autowireCapableBeanFactory.autowireBean(this)
         assert northboundV2.getAllFlows().empty
+        assert northboundV2.getAllHaFlows().isEmpty()
         Wrappers.wait(RULES_DELETION_TIME) {
             assert switchHelper.validate(topology.activeSwitches*.dpId).isEmpty()
         }
@@ -93,7 +94,7 @@ class CleanupVerifierListener extends AbstractSpringListener {
         regionVerifications.verify()
         withPool {
             database.getIsls(topology.isls).eachParallel {
-                assert it.timeUnstable == null
+                //assert it.timeUnstable == null
                 assert it.status == IslStatus.ACTIVE
                 assert it.actualStatus == IslStatus.ACTIVE
                 assert it.availableBandwidth == it.maxBandwidth

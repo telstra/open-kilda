@@ -48,9 +48,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         def newFlowInfo = northboundV2.getFlow(flow.flowId)
         !newFlowInfo.pinned
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to CRUD unmetered one-switch pinned flow"() {
@@ -73,9 +70,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         def newFlowInfo = northboundV2.getFlow(flow.flowId)
         !newFlowInfo.pinned
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -163,7 +157,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         def islsAreUp = true
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (islsToBreak && !islsAreUp) {
             islsToBreak.each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
@@ -197,7 +190,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
     }
@@ -219,8 +211,8 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
         new PinnedFlowNotReroutedExpectedError().matches(e)
+
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
@@ -238,9 +230,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
-
-        cleanup:
-        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System doesn't allow to enable the protected path flag on a pinned flow"() {
@@ -259,9 +248,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not update flow"
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY])
@@ -279,9 +265,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
-
-        cleanup:
-        !exc && flowHelper.deleteFlow(flow.id)
     }
 
     @Tags([LOW_PRIORITY])
@@ -301,8 +284,5 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not update flow"
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
-
-        cleanup:
-        flow && flowHelper.deleteFlow(flow.id)
     }
 }

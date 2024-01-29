@@ -128,7 +128,6 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         srcInterfaceName && lockKeeper.cleanupLinkDelay(srcInterfaceName)
         dstInterfaceName && lockKeeper.cleanupLinkDelay(dstInterfaceName)
         initFeatureToggle && northbound.toggleFeature(initFeatureToggle)
@@ -181,7 +180,6 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         srcInterfaceName && lockKeeper.cleanupLinkDelay(srcInterfaceName)
         dstInterfaceName && lockKeeper.cleanupLinkDelay(dstInterfaceName)
         initFeatureToggle && northbound.toggleFeature(initFeatureToggle)

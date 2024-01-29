@@ -1,11 +1,15 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.functionaltests.model.cleanup.CleanupAfter
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+
 import static org.openkilda.functionaltests.helpers.FlowHelper.KILDA_ALLOWED_VLANS
 import static FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_MIRROR_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ONLY_IN_DB
+import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
 import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
 import static org.openkilda.messaging.payload.flow.FlowState.UP
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
@@ -53,6 +57,8 @@ class FlowHelperV2 {
     NorthboundServiceV2 northboundV2
     @Autowired @Qualifier("islandNb")
     NorthboundService northbound
+    @Autowired
+    CleanupManager cleanupManager
 
     def random = new Random()
     def faker = new Faker()
@@ -157,8 +163,9 @@ class FlowHelperV2 {
     /**
      * Adds flow and waits for it to become in expected state ('Up' by default)
      */
-    FlowResponseV2 addFlow(FlowRequestV2 flow, FlowState expectedFlowState = UP) {
+    FlowResponseV2 addFlow(FlowRequestV2 flow, FlowState expectedFlowState = UP, cleanupAfter = TEST) {
         log.debug("Adding flow '${flow.flowId}'")
+        cleanupManager.addAction({safeDeleteFlow(flow.getFlowId())}, cleanupAfter)
         def response = northboundV2.addFlow(flow)
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             assert northboundV2.getFlowStatus(flow.flowId).status == expectedFlowState
@@ -180,6 +187,7 @@ class FlowHelperV2 {
      * Sends flow create request but doesn't wait for flow to go up.
      */
     FlowResponseV2 attemptToAddFlow(FlowRequestV2 flow) {
+        cleanupManager.addAction({safeDeleteFlow(flow.getFlowId())}, TEST)
         return northboundV2.addFlow(flow)
     }
 
@@ -195,6 +203,12 @@ class FlowHelperV2 {
             assert northbound.getFlowHistory(flowId).find { it.payload.last().action == DELETE_SUCCESS }
         }
         return response
+    }
+
+    def safeDeleteFlow(String flowId) {
+        if (flowId in northboundV2.getAllFlows()*.getFlowId()) {
+            deleteFlow(flowId)
+        }
     }
 
     /**

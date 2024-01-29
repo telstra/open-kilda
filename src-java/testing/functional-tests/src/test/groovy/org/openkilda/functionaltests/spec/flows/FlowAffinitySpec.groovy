@@ -46,7 +46,6 @@ class FlowAffinitySpec extends HealthCheckSpecification {
 
         when: "Delete flows"
         [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
-        def flowsAreDeleted = true
 
         then: "Flow1 history contains 'affinityGroupId' information in 'delete' operation"
         verifyAll(flowHelper.getEarliestHistoryEntryByAction(flow1.flowId, DELETE_ACTION).dumps) {
@@ -61,9 +60,6 @@ class FlowAffinitySpec extends HealthCheckSpecification {
                 !it.find { it.type == "stateAfter" }?.affinityGroupId
             }
         }
-
-        cleanup:
-        !flowsAreDeleted && [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     def "Affinity flows are created close even if cost is not optimal, same dst"() {
@@ -117,7 +113,6 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         !northboundV2.rerouteFlow(affinityFlow.flowId).rerouted
 
         cleanup:
-        [flow, affinityFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
     }
@@ -138,9 +133,6 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         then: "It's path has no overlapping segments with the first flow"
         pathHelper.convert(northbound.getFlowPath(flow.flowId))
                 .intersect(pathHelper.convert(northbound.getFlowPath(affinityFlow.flowId))).empty
-
-        cleanup:
-        [flow, affinityFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     def "Affinity flow on the same endpoints #willOrNot take the same path if main path cost #exceedsOrNot affinity penalty"() {
@@ -166,7 +158,6 @@ class FlowAffinitySpec extends HealthCheckSpecification {
                 pathHelper.convert(northbound.getFlowPath(affinityFlow.flowId))) == expectSamePaths
 
         cleanup:
-        [flow, affinityFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
         linkProps && northbound.deleteLinkProps(linkProps)
 
         where:
@@ -200,11 +191,6 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         then: "Error is returned"
         def e2 = thrown(HttpClientErrorException)
         expectedError.matches(e2)
-
-        cleanup:
-        [flow1, affinityFlow].each { flowHelperV2.deleteFlow(it.flowId) }
-        !e && flowHelperV2.deleteFlow(affinityFlow2.flowId)
-        !e2 && affinityFlow3 && flowHelperV2.deleteFlow(affinityFlow3.flowId)
     }
 
     def "Cannot create affinity flow if target flow has another diverse group"() {
@@ -227,9 +213,6 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         def e = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(
                 ~/Couldn't create a diverse group with flow in a different diverse group than main affinity flow/).matches(e)
-        cleanup:
-        [flow1, flow2, affinityFlow, diverseFlow].each { flowHelperV2.deleteFlow(it.flowId) }
-        !e && flowHelperV2.deleteFlow(affinityFlow2.flowId)
     }
 
     def "Able to create an affinity flow with a 1-switch flow"() {
@@ -254,10 +237,6 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         and: "Affinity flow history contain 'affinityGroupId' information"
             assert flowHelper.getEarliestHistoryEntryByAction(affinityFlow.flowId, CREATE_ACTION).dumps
                     .find { it.type == "stateAfter" }?.affinityGroupId == oneSwitchFlow.flowId
-
-        cleanup:
-        oneSwitchFlow && flowHelperV2.deleteFlow(oneSwitchFlow.flowId)
-        affinityFlow && flowHelperV2.deleteFlow(affinityFlow.flowId)
     }
 
     def "Error is returned if affinity_with references a non existing flow"() {
@@ -269,7 +248,5 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(~/Failed to find diverse flow id $NON_EXISTENT_FLOW_ID/).matches(e)
-        cleanup:
-        !e && flowHelperV2.deleteFlow(flow.flowId)
     }
 }

@@ -186,7 +186,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         sleep(10000) //subsequent test fails due to traffexam. Was not able to track down the reason
 
         where:
@@ -226,9 +225,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         Wrappers.wait(PATH_INSTALLATION_TIME) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to CRUD a vxlan flow with protected path"() {
@@ -341,9 +337,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction ->
             assert direction.discrepancies.empty
         }
-
-        cleanup: "Delete the flow and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([SMOKE_SWITCHES])
@@ -375,9 +368,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                 assert traffExam.waitExam(direction).hasTraffic()
             }
         }
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(defaultFlow.flowId)
     }
 
     def "Unable to create a VXLAN flow when src and dst switches do not support it"() {
@@ -422,7 +412,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
 
         cleanup:
-        addedFlow && flowHelperV2.deleteFlow(addedFlow.flowId)
         initProps.each { sw, swProps ->
             SwitchHelper.updateSwitchProperties(sw, swProps)
         }
@@ -468,7 +457,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) != noVxlanPath
 
         cleanup: "Restore all the changed sw props and remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         isVxlanEnabledOnNoVxlanSw && initNoVxlanSwProps && switchHelper.updateSwitchProperties(noVxlanSw, initNoVxlanSwProps)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
@@ -497,7 +485,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                 dstSupportedEncapsulationTypes)
 
         cleanup:
-        !exc && flowHelperV2.deleteFlow(flow.flowId)
         switchHelper.updateSwitchProperties(switchPair.dst, originDstSwProps)
     }
 
@@ -566,9 +553,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                 }.match.tunnelId
             }
         }
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         encapsulationCreate                | encapsulationUpdate

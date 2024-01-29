@@ -135,7 +135,6 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
 
         cleanup:
         [haFlow1, haFlow2].each { haFlow -> haFlow && haFlow.delete() }
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to create HA-Flow diverse with Y-Flow that is in diverse group with another HA-Flow"() {

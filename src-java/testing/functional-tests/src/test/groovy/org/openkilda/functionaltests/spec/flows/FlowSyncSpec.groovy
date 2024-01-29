@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
@@ -18,7 +17,6 @@ import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.time.TimeCategory
-import spock.lang.Ignore
 import spock.lang.Shared
 
 class FlowSyncSpec extends HealthCheckSpecification {
@@ -69,9 +67,6 @@ class FlowSyncSpec extends HealthCheckSpecification {
 
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     List<FlowEntry> getFlowRules(Switch sw) {

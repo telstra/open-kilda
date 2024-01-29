@@ -138,7 +138,7 @@ class SwitchValidationV2Spec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Switch validate request returns only default rules information"
         Wrappers.wait(WAIT_OFFSET) {
@@ -151,7 +151,6 @@ class SwitchValidationV2Spec extends HealthCheckSpecification {
         def testIsCompleted = true
 
         cleanup:
-        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
@@ -182,7 +181,7 @@ class SwitchValidationV2Spec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         def involvedSwitches = pathHelper.getInvolvedSwitches(flowPath)
@@ -196,7 +195,6 @@ class SwitchValidationV2Spec extends HealthCheckSpecification {
         def testIsCompleted = true
 
         cleanup:
-        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         if (involvedSwitches && !testIsCompleted) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches*.getDpId())
             withPool {
@@ -327,7 +325,7 @@ misconfigured"
         }
 
         when: "Delete the flow"
-        def deletedFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -339,7 +337,6 @@ misconfigured"
         def testIsCompleted = true
 
         cleanup:
-        flow && !deletedFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
@@ -413,7 +410,7 @@ misconfigured"
         }
 
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -425,7 +422,6 @@ misconfigured"
         def testIsCompleted = true
 
         cleanup:
-        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
@@ -465,7 +461,8 @@ misconfigured"
             it.rules.proper*.cookie.findAll { !new Cookie(it).serviceFlag }.sort() == (untouchedCookies + ingressCookie).sort()
         }
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
+
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
             def srcSwitchValidateInfoAfterDelete = switchHelper.validate(srcSwitch.dpId)
@@ -476,7 +473,6 @@ misconfigured"
         def testIsCompleted = true
 
         cleanup:
-        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
@@ -508,7 +504,7 @@ misconfigured"
             it.verifyRuleSectionsAreEmpty(["missing", "excess"])
         }
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
         then: "Check that the switch validate request returns empty sections on all involved switches"
         Wrappers.wait(WAIT_OFFSET) {
             involvedSwitches.each { sw ->
@@ -522,7 +518,6 @@ misconfigured"
         def testIsCompleted = true
 
         cleanup:
-        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         involvedSwitches && !testIsCompleted && switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches*.getDpId())
     }
 
@@ -571,7 +566,7 @@ misconfigured"
         }
 
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections on all involved switches"
         Wrappers.wait(WAIT_OFFSET) {
@@ -584,7 +579,6 @@ misconfigured"
         def testIsCompleted = true
 
         cleanup:
-        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         if (involvedSwitchIds && !testIsCompleted) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds)
             withPool {
@@ -693,8 +687,10 @@ misconfigured"
         assert syncResultsMap[switchPair.src.dpId].meters.excess.meterId[0] == excessMeterId
         assert syncResultsMap[switchPair.src.dpId].meters.removed.size() == 1
         assert syncResultsMap[switchPair.src.dpId].meters.removed.meterId[0] == excessMeterId
+
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
+
         then: "Check that the switch validate request returns empty sections on all involved switches"
         Wrappers.wait(WAIT_OFFSET) {
             involvedSwitches.findAll { !it.description.contains("OF_12") }.each { switchId ->
@@ -706,7 +702,6 @@ misconfigured"
         def testIsCompleted = true
 
         cleanup:
-        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         producer && producer.close()
         flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(switchPair.src, switchPair.dst)
     }
@@ -809,7 +804,6 @@ misconfigured"
         def testIsCompleted = true
 
         cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(switchPair.src, switchPair.dst)
     }
 
@@ -863,8 +857,6 @@ misconfigured"
             it.verifyRuleSectionsAreEmpty(["missing", "excess"])
             it.rules.proper*.cookie.sort() == rulesPerSwitch[swPair.src.dpId]
         }
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to validate and sync a missing 'connected device' #data.descr rule"() {
@@ -906,6 +898,7 @@ misconfigured"
             it.meters.missing.empty
             it.meters.excess.empty
         }
+
         when: "Delete the flow"
         def deleteFlow = flowHelper.deleteFlow(flow.id)
 
@@ -914,8 +907,8 @@ misconfigured"
             it.verifyRuleSectionsAreEmpty()
             it.verifyMeterSectionsAreEmpty()
         }
+
         cleanup:
-        flow && !deleteFlow && flowHelper.deleteFlow(flow.id)
         initialProps.each {
             switchHelper.updateSwitchProperties(it.key, it.value)
         }
