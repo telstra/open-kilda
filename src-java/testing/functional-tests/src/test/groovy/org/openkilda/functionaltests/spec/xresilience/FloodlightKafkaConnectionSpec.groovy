@@ -112,7 +112,6 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
         cleanup:
         nonRtlShouldFail?.join()
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         knockoutData.each { it.each { sw, data -> lockKeeper.reviveSwitch(sw, data) } }
         if(flOut) {
             lockKeeper.reviveFloodlight(regionToBreak)

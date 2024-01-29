@@ -78,9 +78,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
             assert direction.discrepancies.empty
         }
 
-        cleanup: "Delete the flow"
-        flow && flowHelper.deleteFlow(flow.id)
-
         where:
         bandwidth | vlanId
         1000      | 3378
@@ -136,9 +133,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 assert rules.every { it != protectedForwardCookie && it != protectedReverseCookie }
             }
         }
-
-        cleanup: "Delete the flow"
-        flow && flowHelper.deleteFlow(flow.id)
     }
 
     def "Unable to create a single switch flow with protected path"() {
@@ -156,9 +150,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == "Couldn't setup protected path for one-switch flow"
-
-        cleanup:
-        !exc && flowHelper.deleteFlow(flow.id)
     }
 
     def "Unable to update a single switch flow to enable protected path"() {
@@ -178,9 +169,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not update flow"
         errorDetails.errorDescription == "Couldn't setup protected path for one-switch flow"
-
-        cleanup:
-        flowHelper.deleteFlow(flow.id)
     }
 
     @Tags(ISL_PROPS_DB_RESET)
@@ -208,9 +196,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 "Couldn't find non overlapping protected path"
 
         cleanup:
-        !exc && flowHelper.deleteFlow(flow.id)
         isls.each { database.resetIslBandwidth(it) }
-        !exc && flowHelper.deleteFlow(flow.id)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -248,7 +234,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 " Couldn't find non overlapping protected path"
 
         cleanup:
-        !exc && flowHelper.deleteFlow(flow.id)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -404,9 +389,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 assert traffExam.waitExam(direction).hasTraffic()
             }
         }
-
-        cleanup:
-        flow && flowHelper.deleteFlow(flow.id)
     }
 
     def "Unable to perform the 'swap' request for a flow without protected path"() {
@@ -428,9 +410,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorDescription ==
                 "Could not swap paths: Flow $flow.id doesn't have protected path"
-
-        cleanup:
-        flow && flowHelper.deleteFlow(flow.id)
     }
 
     def "Unable to swap paths for a non-existent flow"() {
@@ -547,7 +526,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
-        flow && flowHelper.deleteFlow(flow.id)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -571,9 +549,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not update flow"
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
-
-        cleanup: "Delete the flow"
-        flow && flowHelper.deleteFlow(flow.id)
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {

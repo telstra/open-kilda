@@ -94,7 +94,6 @@ class PathCheckSpec extends HealthCheckSpecification {
 
         cleanup:
         pathHelper."remove ISL properties artifacts after manipulating paths weights"()
-        Wrappers.silent { flowHelperV2.deleteFlow(flow.getFlowId()) }
     }
 
     @Tags(LOW_PRIORITY)
@@ -127,7 +126,6 @@ class PathCheckSpec extends HealthCheckSpecification {
 
         cleanup:
         pathHelper."remove ISL properties artifacts after manipulating paths weights"()
-        Wrappers.silent { flowHelperV2.deleteFlow(flow.getFlowId()) }
     }
 
     @Tags(LOW_PRIORITY)
@@ -173,11 +171,6 @@ class PathCheckSpec extends HealthCheckSpecification {
             checkErrors.getValidationMessages().size() == 2
             checkErrors.getValidationMessages().find { it.contains"The following segment intersects with the flow ${flow1.flowId}" }
             checkErrors.getValidationMessages().find { it.contains"The following segment intersects with the flow ${flow2.flowId}" }
-        }
-
-        cleanup:
-        [flow1, flow2]. each { flow ->
-            flow &&  Wrappers.silent{flowHelperV2.deleteFlow(flow.getFlowId())}
         }
     }
 }

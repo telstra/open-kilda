@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests
 
 import org.openkilda.functionaltests.helpers.model.SwitchPairs
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -96,6 +97,7 @@ class BaseSpecification extends Specification {
     int statsRouterRequestInterval
 
     static ThreadLocal<TopologyDefinition> threadLocalTopology = new ThreadLocal<>()
+    static ThreadLocal<CleanupManager> threadLocalCleanupManager = new ThreadLocal<>()
 
     def setupSpec() {
         log.info "Booked lab with id ${topology.getLabId().toString()} for spec ${this.class.simpleName}, thread: " +

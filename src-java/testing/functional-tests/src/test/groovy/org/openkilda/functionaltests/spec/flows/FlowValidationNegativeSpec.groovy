@@ -78,9 +78,6 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
             switchHelper.synchronizeAndCollectFixedDiscrepancies(nonAffectedSwitches).isEmpty()
         }
 
-        cleanup: "Delete the flows"
-        [flowToBreak, intactFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
-
         where:
         flowConfig      | switchPair                                   | item | switchNo | flowType
         "single switch" | switchPairs.singleSwitch().random()          | 0    | "single" | "forward"
@@ -195,9 +192,6 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         then: "Flow validate detects discrepancies for all deleted rules"
         def responseValidateFlow2 = northbound.validateFlow(flow.flowId).findAll { !it.discrepancies.empty }*.discrepancies
         assert responseValidateFlow2.size() == 4
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     /**

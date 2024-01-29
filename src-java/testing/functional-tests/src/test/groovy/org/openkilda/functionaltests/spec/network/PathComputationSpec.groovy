@@ -70,8 +70,6 @@ class PathComputationSpec extends HealthCheckSpecification {
 
         cleanup: "Restore kilda config and remove flows, restore costs and latencies"
         initConfig && northbound.updateKildaConfiguration(initConfig)
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        flow2 && flowHelperV2.deleteFlow(flow2.flowId)
         originalLatencies && originalLatencies.each { isl, latency -> database.updateIslLatency(isl, latency) }
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
@@ -104,7 +102,6 @@ class PathComputationSpec extends HealthCheckSpecification {
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == costEffectivePath
 
         cleanup: "Remove the flow, reset latencies and costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         originalLatencies && originalLatencies.each { isl, latency -> database.updateIslLatency(isl, latency) }
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
@@ -142,9 +139,6 @@ class PathComputationSpec extends HealthCheckSpecification {
             pathComputationStrategy == latencyStrategy
             !targetPathComputationStrategy
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Target path computation strategy is applied after updating/rerouting a flow"() {
@@ -185,8 +179,5 @@ class PathComputationSpec extends HealthCheckSpecification {
             pathComputationStrategy == costStrategy
             !targetPathComputationStrategy
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 }

@@ -78,9 +78,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         and: "Flow rules have not been reinstalled"
         assertThat(northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.toArray()).containsAll(originalCookies)
 
-        cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-
         where:
         data << [
                 [
@@ -142,9 +139,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
 
-        cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-
         where:
         data << [
                 [
@@ -192,9 +186,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         !newCookies.findAll { new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW  }
                 .any { it in originalCookies.findAll { new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW } }
 
-        cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-
         where:
         data << [
                 [
@@ -228,9 +219,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         then: "Flows use diverse paths"
         pathHelper.getInvolvedIsls(flow1.flowId).intersect(pathHelper.getInvolvedIsls(flow2.flowId)).empty
-
-        cleanup:
-        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     def "Able to do partial update on a single-switch flow"() {
@@ -256,9 +244,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
-
-        cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to update a flow port and vlan using partial update"() {
@@ -299,9 +284,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "The src switch passes switch validation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(srcSwitch.dpId).isPresent()
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to update a flow endpoint using partial update"() {
@@ -353,7 +335,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         switchHelper.synchronizeAndCollectFixedDiscrepancies([dstSwitch, newDstSwitch]*.dpId)
     }
 
@@ -384,9 +365,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         !northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll { def cookie = new Cookie(it.cookie)
             !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT
         }.any { it in originalCookies }
-
-        cleanup: "Remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -437,9 +415,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "The switch passes switch validation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.source.switchId).isPresent()
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -494,9 +469,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "The switch passes switch validation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.source.switchId).isPresent()
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY])
@@ -524,9 +496,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
-
-        cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Partial update with empty body does not actually update flow in any way"() {
@@ -558,9 +527,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
-
-        cleanup: "Remove flows"
-        [flow, helperFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     def "Unable to partial update a flow in case new port is an isl port on a #data.switchType switch"() {
@@ -580,8 +546,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         then: "Error is returned"
         def exc = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError(data.descriptionPattern(isl)).matches(exc)
-        cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [
@@ -620,9 +584,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         then: "Error is returned, stating a readable reason of conflict"
         def error = thrown(HttpClientErrorException)
         new FlowNotUpdatedWithConflictExpectedError(data.errorDescription(flow1, flow2, patch)).matches(error)
-
-        cleanup:
-        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
 
         where:
         data <<[
@@ -702,9 +663,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         new FlowNotUpdatedExpectedError(
                 ~/Can not turn on ignore bandwidth flag and strict bandwidth flag at the same time/).matches(error)
 
-        cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
-
         where:
         initialIgnore   | initialStrict | updateIgnore  | updateStrict
         false           | false         | true          | true
@@ -740,9 +698,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
             it.source.vlanId == newSrcInnerVlanId
             it.source.innerVlanId == defaultFlow.source.vlanId
         }
-
-        cleanup:
-        defaultFlow && flowHelperV2.deleteFlow(defaultFlow.flowId)
     }
 
     @Unroll("Unable to partial update flow (maxLatency #maxLatencyAfter and maxLatencyTier2 #maxLatencyT2After)")
@@ -764,9 +719,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         then: "Bad Request response is returned"
         def error = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError("Invalid flow data", description).matches(error)
-
-        cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         maxLatencyBefore | maxLatencyT2Before | maxLatencyAfter | maxLatencyT2After | description

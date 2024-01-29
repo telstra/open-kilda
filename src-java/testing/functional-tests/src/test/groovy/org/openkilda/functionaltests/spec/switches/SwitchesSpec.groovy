@@ -174,7 +174,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         getSwitchFlowsResponse6*.id.sort() == [protectedFlow.flowId, singleFlow.flowId, defaultFlow.flowId].sort()
 
         cleanup: "Delete the flows"
-        [protectedFlow, singleFlow, defaultFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
         doPortDowns && portsToDown.each { antiflap.portUp(switchPair.src.dpId, it) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -213,7 +212,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         switchFlowsResponseSrcSwitch*.id.sort() == [simpleFlow.flowId, singleFlow.flowId].sort()
 
         cleanup: "Revive the src switch and delete the flows"
-        [simpleFlow, singleFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
         blockData && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 

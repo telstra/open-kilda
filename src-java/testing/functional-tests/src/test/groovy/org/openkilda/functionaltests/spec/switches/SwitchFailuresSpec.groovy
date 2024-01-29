@@ -78,7 +78,6 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (switchesAreOffline) {
             switchHelper.reviveSwitch(isl.srcSwitch, srcBlockData)
             switchHelper.reviveSwitch(isl.dstSwitch, dstBlockData)
@@ -121,7 +120,6 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
         cleanup:
         lockKeeper.cleanupTrafficShaperRules(swPair.dst.regions)
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         islToBreak && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         database.resetCosts(topology.isls)
     }
@@ -183,10 +181,9 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { assert it.discrepancies.empty }
 
         and: "Flow can be removed"
-        def deleteFlow = flowHelper.deleteFlow(flow.flowId)
+        flowHelper.deleteFlow(flow.flowId)
 
         cleanup:
-        flow && !deleteFlow && flowHelper.deleteFlow(flow.flowId)
         blockData && !swIsOnline && switchHelper.reviveSwitch(srcSwitch, blockData)
     }
 

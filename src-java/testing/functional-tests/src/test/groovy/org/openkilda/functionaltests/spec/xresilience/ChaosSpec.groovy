@@ -74,7 +74,6 @@ class ChaosSpec extends HealthCheckSpecification {
         switchHelper.validate(topology.activeSwitches*.dpId).isEmpty()
 
         cleanup:
-        flows && flows.each { northboundV2.deleteFlow(it.flowId) }
         // Wait for meters deletion from all OF_13 switches since it impacts other tests.
         Wrappers.wait(WAIT_OFFSET * 2 + flowsAmount * RULES_DELETION_TIME) {
             topology.activeSwitches.findAll { it.ofVersion == "OF_13" }.each {

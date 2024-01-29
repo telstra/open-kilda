@@ -117,9 +117,6 @@ class FlowStatSpec extends HealthCheckSpecification {
         then: "System collects stats for previous egress cookie of protected path with non zero value"
         def newFlowStats = stats.of(flow.getFlowId())
         newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, protectedReverseCookie).hasNonZeroValues()
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System collects stats when a protected flow was intentionally rerouted"() {
@@ -201,7 +198,6 @@ class FlowStatSpec extends HealthCheckSpecification {
         !newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, newProtectedReverseCookie).hasNonZeroValues()
 
         cleanup: "revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
@@ -274,7 +270,6 @@ class FlowStatSpec extends HealthCheckSpecification {
         !newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValuesAfter(timeAfterSwap)
 
         cleanup:
-        flow && flowHelper.deleteFlow(flow.id)
         islToBreak && portIsDown && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
@@ -350,7 +345,6 @@ class FlowStatSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         protectedIsls && srcPortIsDown && antiflap.portUp(protectedIsls[0].srcSwitch.dpId, protectedIsls[0].srcPort)
         protectedIsls && dstPortIsDown && antiflap.portUp(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
         broughtDownPorts && broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
@@ -392,9 +386,6 @@ class FlowStatSpec extends HealthCheckSpecification {
             stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValues()
             stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValues()
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System is able to collect stats after partial updating(port) on a flow endpoint"() {
@@ -431,9 +422,6 @@ class FlowStatSpec extends HealthCheckSpecification {
             stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValues()
             stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValues()
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System is able to collect stats after partial updating(vlan) on a flow endpoint"() {
@@ -469,9 +457,6 @@ class FlowStatSpec extends HealthCheckSpecification {
             stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValues()
             stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValues()
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System is able to collect stats after partial updating(inner vlan) on a flow endpoint"() {
@@ -505,8 +490,5 @@ class FlowStatSpec extends HealthCheckSpecification {
             stats.get(FLOW_RAW_BYTES, switchPair.getSrc().getDpId(), mainForwardCookie).hasNonZeroValues()
             stats.get(FLOW_RAW_BYTES, switchPair.getSrc().getDpId(), mainReverseCookie).hasNonZeroValues()
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 }

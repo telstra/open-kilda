@@ -90,9 +90,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
             assert direction.discrepancies.empty
         }
 
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-
         where:
         bandwidth | vlanId
         1000      | 3378
@@ -151,9 +148,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 assert rules.every { it != protectedForwardCookie && it != protectedReverseCookie }
             }
         }
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(SMOKE)
@@ -300,9 +294,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 assert traffExam.waitExam(direction).hasTraffic()
             }
         }
-
-        cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -377,7 +368,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         flows.each { assert pathHelper.convert(northbound.getFlowPath(it.flowId)) == currentProtectedPath }
 
         cleanup: "Revert system to original state"
-        flows.each { it && flowHelperV2.deleteFlow(it.flowId) }
         if (portDown && !portUp) {
             antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
@@ -446,7 +436,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         mainIslDown && !mainIslUp && antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
         otherIsls && otherIsls.collectMany{[it, it.reversed]}.each { database.resetIslBandwidth(it) }
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(mainIsl).state == IslChangeType.DISCOVERED }
@@ -514,7 +503,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         mainIslDown && !mainIslUp && antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
         otherIsls && otherIsls.each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -568,7 +556,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         where:
@@ -633,7 +620,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentProtectedPath
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (portDown && !portUp) {
             antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
@@ -672,9 +658,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         def newFlowPathInfo = northbound.getFlowPath(flow.flowId)
         pathHelper.convert(newFlowPathInfo) == currentPath
         pathHelper.convert(newFlowPathInfo.protectedPath) == currentProtectedPath
-
-        cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY, ISL_PROPS_DB_RESET])
@@ -707,7 +690,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup: "Delete the flow and restore available bandwidth"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         isls.each { database.resetIslBandwidth(it) }
     }
 
@@ -737,7 +719,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         database.getTransitVlans(flowInfo.protectedForwardPathId, flowInfo.protectedReversePathId).size() == 1
 
         cleanup: "Delete the flow and restore available bandwidth"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         isls.each { database.resetIslBandwidth(it) }
     }
 
@@ -825,7 +806,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         pathHelper.convert(northbound.getFlowPath(flow.flowId).protectedPath) == newProtectedPath
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (portDown && !portUp) {
             antiflap.portUp(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
@@ -873,7 +853,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -938,7 +917,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup: "Restore topology, delete flow and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort) } }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -993,7 +971,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if(portsDown) {
             [mainPathIsl, protectedPathIsl].each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
             Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -1057,7 +1034,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
@@ -1179,7 +1155,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
 
         cleanup:
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         broughtDownPorts && broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
@@ -1212,9 +1187,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorDescription ==
                 "Could not swap paths: Flow $flow.flowId doesn't have protected path"
-
-        cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -1255,7 +1227,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
 
         cleanup: "Restore available bandwidth"
         isls.each { database.resetIslBandwidth(it) }
-        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
@@ -1361,7 +1332,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -1385,9 +1355,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == "Couldn't setup protected path for one-switch flow"
-
-        cleanup:
-        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -1408,9 +1375,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not update flow"
         errorDetails.errorDescription == "Couldn't setup protected path for one-switch flow"
-
-        cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -1449,7 +1413,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
                 " Couldn't find non overlapping protected path"
 
         cleanup: "Restore topology, delete flows and reset costs"
-        !exc && flowHelperV2.deleteFlow(flow.flowId)
         broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
@@ -1523,7 +1486,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         pathHelper.convert(newFlowPathInfo.protectedPath) == alternativePath
 
         cleanup: "Restore topology, delete flow and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         antiflap.portUp(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
         broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -1550,9 +1512,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not update flow"
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {

@@ -137,9 +137,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         and: "No rule discrepancies on every switch of the flow"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(switches*.getDpId()).isEmpty()
 
-        cleanup:
-        !flowIsDeleted && flow && flowHelper.deleteFlow(flow.id)
-
         where:
         /*Some permutations may be missed, since at current implementation we only take 'direct' possible flows
         * without modifying the costs of ISLs.
@@ -165,9 +162,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
 
         then: "Both flows are successfully created"
         northbound.getAllFlows()*.id.containsAll(flows*.id)
-
-        cleanup: "Delete flows"
-        flows.each { it && flowHelper.deleteFlow(it.id) }
 
         where:
         data << [
@@ -352,9 +346,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         and: "No rule discrepancies on the switch after delete"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.source.datapath).isPresent()
 
-        cleanup:
-        !flowIsDeleted && flowHelper.deleteFlow(flow.id)
-
         where:
         flow << getSingleSwitchSinglePortFlows()
     }
@@ -370,9 +361,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
 
         then: "Validation of flow with zero bandwidth must be succeed"
         northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
-
-        cleanup: "Delete the flow"
-        flow && flowHelper.deleteFlow(flow.id)
     }
 
     def "Unable to create single-switch flow with the same ports and vlans on both sides"() {
@@ -387,9 +375,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         def error = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(
                 ~/It is not allowed to create one-switch flow for the same ports and VLANs/).matches(error)
-
-        cleanup:
-        !error && flowHelper.deleteFlow(flow.id)
     }
 
     @Unroll("Unable to create flow with #data.conflict")
@@ -411,10 +396,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         then: "Error is returned, stating a readable reason of conflict"
         def error = thrown(HttpClientErrorException)
         new FlowNotCreatedWithConflictExpectedError(data.getErrorDescription(flow, conflictingFlow)).matches(error)
-
-        cleanup: "Delete the dominant flow"
-        flowHelper.deleteFlow(flow.id)
-        !error && flowHelper.deleteFlow(conflictingFlow.id)
 
         where:
         data << getConflictingData() + [
@@ -453,9 +434,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         def error = thrown(HttpClientErrorException)
         new FlowNotUpdatedWithConflictExpectedError(data.getErrorDescription(flow1, conflictingFlow, "update")).matches(error)
 
-        cleanup:
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-
         where:
         data << getConflictingData()
     }
@@ -491,7 +469,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         forwardIsls.collect { it.reversed }.reverse() == reverseIsls
 
         cleanup: "Delete the flow and reset costs"
-        flow && flowHelper.deleteFlow(flow.id)
         database.resetCosts(topology.isls)
     }
 
@@ -521,7 +498,6 @@ ${isolatedSwitch.dpId.toString()} doesn\'t have links with enough bandwidth, \
 Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(error)
 
         cleanup:
-        !error && flowHelper.deleteFlow(flow.id)
         topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
             antiflap.portUp(isolatedSwitch.dpId, port)
         }
@@ -562,7 +538,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         def switches = pathHelper.getInvolvedSwitches(paths.min { pathHelper.getCost(it) })
 
         when: "Init creation of a new flow"
-        northbound.addFlow(flow)
+        flowHelper.attemptToAddFlow(flow)
 
         and: "Immediately remove the flow"
         northbound.deleteFlow(flow.id)
@@ -594,9 +570,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
             assert syncResult.rules.proper
                     .findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
         }
-
-        cleanup: "Remove the flow"
-        flow && flowHelper.deleteFlow(flow.id)
     }
 
     def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {
@@ -612,8 +585,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         then: "Flow is not created"
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(data.errorDescription(isl)).matches(exc)
-        cleanup:
-        !exc && flow && flowHelper.deleteFlow(flow.id)
 
         where:
         data << [
@@ -649,8 +620,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         then:
         def exc = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError(data.message(isl)).matches(exc)
-        cleanup:
-        flow && flowHelper.deleteFlow(flow.id)
 
         where:
         data << [
@@ -687,8 +656,8 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         then: "Flow is not created"
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)).matches(exc)
+
         cleanup:
-        !exc && flow && flowHelper.deleteFlow(flow.id)
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
         database.resetCosts(topology.isls)
@@ -749,9 +718,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         !newFlowInfo.pinned
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
-        cleanup: "Delete the flow"
-        flow && flowHelper.deleteFlow(flow.id)
-
         where:
         flowDescription | bandwidth
         "a metered"     | 1000
@@ -779,9 +745,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         !newFlowInfo.pinned
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
 
-        cleanup: "Delete the flow"
-        flow && flowHelper.deleteFlow(flow.id)
-
         where:
         flowDescription | bandwidth
         "a metered"     | 1000
@@ -802,9 +765,9 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(~/Source switch ${sw.getDpId()} and Destination switch ${sw.getDpId()} \
 are not connected to the controller/).matches(exc)
+
         cleanup: "Activate the switch and reset costs"
         blockData && switchHelper.reviveSwitch(sw, blockData, true)
-        !exc && flowHelper.deleteFlow(flow.id)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2625")
@@ -857,9 +820,6 @@ are not connected to the controller/).matches(exc)
         def validateSwitchInfo = switchHelper.validate(sw.dpId)
         validateSwitchInfo.isAsExpected()
         validateSwitchInfo.meters.proper.size() == amountOfFlows * 2 // one flow creates two meters
-
-        cleanup: "Delete the flows and excess meters"
-        flows.each { it && flowHelper.deleteFlow(it) }
     }
 
     @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
@@ -900,8 +860,8 @@ are not connected to the controller/).matches(exc)
         then: "Flow is not created"
         def e = thrown(HttpClientErrorException)
         new FlowNotCreatedWithMissingPathExpectedError(~/Not enough bandwidth or no path found./).matches(e)
+
         cleanup: "Restore topology, delete the flow and reset costs"
-        !e && flowHelperV2.deleteFlow(flow.id)
         if (islsToBreak) {
             withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort) } }
             Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
