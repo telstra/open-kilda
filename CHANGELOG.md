@@ -1,4 +1,39 @@
 # Changelog
+## v1.153.0 (29/01/2024)
+
+### Improvements:
+-  [#5544](https://github.com/telstra/open-kilda/pull/5544) Avoid non-existing directory warnings on WFM container creation
+-  [#5546](https://github.com/telstra/open-kilda/pull/5546) 5390: [TEST]: Fix flaky protected path test [**tests**]
+
+### Other changes:
+-  [#5540](https://github.com/telstra/open-kilda/pull/5540) 5521: [TEST] Update History validation test (Issue: [#5221](https://github.com/telstra/open-kilda/issues/5221)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.152.0...v1.153.0).
+
+---
+
+## v1.152.0 (19/01/2024)
+
+### Bug Fixes:
+-  [#5520](https://github.com/telstra/open-kilda/pull/5520) Add ordering for simple flow history actions (Issue: [#5519](https://github.com/telstra/open-kilda/issues/5519))
+-  [#5521](https://github.com/telstra/open-kilda/pull/5521) Add parameters validation to get flow and HA-flow history API.
+
+### Improvements:
+-  [#5536](https://github.com/telstra/open-kilda/pull/5536) upgrade java version in sonargate.yml
+-  [#5514](https://github.com/telstra/open-kilda/pull/5514) [TEST]: 5162: Refactoring HC [**tests**]
+-  [#5518](https://github.com/telstra/open-kilda/pull/5518) Add default options for gradle (Issue: [#5155](https://github.com/telstra/open-kilda/issues/5155)) [**configuration**]
+
+### Other changes:
+-  [#5525](https://github.com/telstra/open-kilda/pull/5525) [TEST] Refactoring the way to choose switch pairs for test pt.2 [**tests**]
+-  [#5532](https://github.com/telstra/open-kilda/pull/5532) [TEST] Unignore tests which can be run [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.151.0...v1.152.0).
+
+### Affected Components:
+history
+
+---
+
 ## v1.151.0 (02/01/2024)
 
 ### Improvements:
