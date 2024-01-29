@@ -38,7 +38,8 @@ import org.openkilda.messaging.info.switches.RulesSyncEntry;
 import org.openkilda.messaging.info.switches.SwitchSyncResponse;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.MessageExchanger;
-import org.openkilda.northbound.config.KafkaConfig;
+import org.openkilda.northbound.config.KafkaNorthboundGroupConfig;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
 import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.LagPortMapper;
@@ -257,7 +258,7 @@ public class SwitchServiceTest {
     }
 
     @TestConfiguration
-    @Import(KafkaConfig.class)
+    @Import({KafkaTopicsNorthboundConfig.class, KafkaNorthboundGroupConfig.class})
     @ComponentScan({"org.openkilda.northbound.converter"})
     @PropertySource({"classpath:northbound.properties"})
     static class Config {
@@ -267,11 +268,12 @@ public class SwitchServiceTest {
         }
 
         @Bean
-        public SwitchService switchService(MessagingChannel messagingChannel, SwitchMapper switchMapper,
+        public SwitchService switchService(KafkaTopicsNorthboundConfig kafkaTopicsNorthboundConfig,
+                                           MessagingChannel messagingChannel, SwitchMapper switchMapper,
                                            LagPortMapper lagPortMapper, ConnectedDeviceMapper connectedDeviceMapper,
                                            PortPropertiesMapper portPropertiesMapper, FlowMapper flowMapper) {
-            return new SwitchServiceImpl(messagingChannel, switchMapper, lagPortMapper, connectedDeviceMapper,
-                    portPropertiesMapper, flowMapper);
+            return new SwitchServiceImpl(kafkaTopicsNorthboundConfig, messagingChannel, switchMapper, lagPortMapper,
+                    connectedDeviceMapper, portPropertiesMapper, flowMapper);
         }
     }
 }

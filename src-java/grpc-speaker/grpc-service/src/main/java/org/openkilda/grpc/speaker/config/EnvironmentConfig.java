@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2024 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -13,15 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.grpc.speaker;
+package org.openkilda.grpc.speaker.config;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import static java.lang.String.format;
 
-@SpringBootApplication
-public class GrpcSpeaker {
+import lombok.Getter;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 
-    public static void main(String[] args) {
-        SpringApplication.run(GrpcSpeaker.class, args);
+@Getter
+public class EnvironmentConfig {
+    @Value("${environment.naming.prefix:}")
+    private String namingPrefix;
+
+    public String addPrefixAndGet(String target) {
+        return StringUtils.isBlank(namingPrefix) ? target : format("%s_%s", namingPrefix, target);
     }
 }

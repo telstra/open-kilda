@@ -73,6 +73,7 @@ import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.messaging.payload.history.FlowStatusTimestampsEntry;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
 import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.FlowStatusMapper;
@@ -100,8 +101,6 @@ import org.openkilda.northbound.utils.RequestCorrelationId;
 import org.openkilda.northbound.utils.flowhistory.FlowHistoryRangeConstraints;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -121,47 +120,32 @@ import java.util.stream.Collectors;
 @Service
 public class FlowServiceImpl implements FlowService {
 
-    /**
-     * The kafka topic for the new flow topology.
-     */
-    @Value("#{kafkaTopicsConfig.getFlowHsTopic()}")
-    private String flowHsTopic;
+    private final String flowHsTopic;
+    private final String nbworkerTopic;
+    private final String rerouteTopic;
+    private final String pingTopic;
 
-    /**
-     * The kafka topic for `nbWorker` topology.
-     */
-    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
-    private String nbworkerTopic;
+    private final FlowMapper flowMapper;
+    private final FlowStatusMapper flowStatusMapper;
+    private final PathMapper pathMapper;
+    private final ConnectedDeviceMapper connectedDeviceMapper;
+    private final MessagingChannel messagingChannel;
+    private final CorrelationIdFactory idFactory;
 
-    /**
-     * The kafka topic for `reroute` topology.
-     */
-    @Value("#{kafkaTopicsConfig.getTopoRerouteTopic()}")
-    private String rerouteTopic;
-
-    /**
-     * The kafka topic for `ping` topology.
-     */
-    @Value("#{kafkaTopicsConfig.getPingTopic()}")
-    private String pingTopic;
-
-    @Autowired
-    private FlowMapper flowMapper;
-
-    @Autowired
-    private FlowStatusMapper flowStatusMapper;
-
-    @Autowired
-    private PathMapper pathMapper;
-
-    @Autowired
-    private ConnectedDeviceMapper connectedDeviceMapper;
-
-    @Autowired
-    private MessagingChannel messagingChannel;
-
-    @Autowired
-    private CorrelationIdFactory idFactory;
+    public FlowServiceImpl(KafkaTopicsNorthboundConfig kafkaTopicsNorthboundConfig, FlowMapper flowMapper,
+                           FlowStatusMapper flowStatusMapper, PathMapper pathMapper, CorrelationIdFactory idFactory,
+                           ConnectedDeviceMapper connectedDeviceMapper, MessagingChannel messagingChannel) {
+        this.flowHsTopic = kafkaTopicsNorthboundConfig.getFlowHsTopic();
+        this.nbworkerTopic = kafkaTopicsNorthboundConfig.getTopoNbTopic();
+        this.rerouteTopic = kafkaTopicsNorthboundConfig.getTopoRerouteTopic();
+        this.pingTopic = kafkaTopicsNorthboundConfig.getPingTopic();
+        this.flowMapper = flowMapper;
+        this.flowStatusMapper = flowStatusMapper;
+        this.pathMapper = pathMapper;
+        this.connectedDeviceMapper = connectedDeviceMapper;
+        this.messagingChannel = messagingChannel;
+        this.idFactory = idFactory;
+    }
 
     /**
      * {@inheritDoc}
