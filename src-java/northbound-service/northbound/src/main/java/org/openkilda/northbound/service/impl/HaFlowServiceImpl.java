@@ -41,6 +41,7 @@ import org.openkilda.messaging.nbtopology.request.GetFlowHistoryRequest;
 import org.openkilda.messaging.nbtopology.request.GetFlowStatusTimestampsRequest;
 import org.openkilda.messaging.payload.history.FlowStatusTimestampsEntry;
 import org.openkilda.messaging.payload.history.HaFlowHistoryEntry;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
 import org.openkilda.northbound.converter.FlowStatusMapper;
 import org.openkilda.northbound.converter.HaFlowMapper;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
@@ -62,7 +63,6 @@ import org.openkilda.northbound.utils.flowhistory.FlowHistoryRangeConstraints;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -75,14 +75,11 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class HaFlowServiceImpl implements HaFlowService {
-    @Value("#{kafkaTopicsConfig.getFlowHsTopic()}")
-    private String flowHsTopic;
-    @Value("#{kafkaTopicsConfig.getTopoRerouteTopic()}")
-    private String rerouteTopic;
-    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
-    private String nbworkerTopic;
-    @Value("#{kafkaTopicsConfig.getPingTopic()}")
-    private String pingTopic;
+
+    private final String flowHsTopic;
+    private final String rerouteTopic;
+    private final String nbworkerTopic;
+    private final String pingTopic;
 
     private final FlowStatusMapper flowStatusMapper;
 
@@ -92,10 +89,15 @@ public class HaFlowServiceImpl implements HaFlowService {
     @Autowired
     public HaFlowServiceImpl(MessagingChannel messagingChannel,
                              HaFlowMapper flowMapper,
-                             FlowStatusMapper flowStatusMapper) {
+                             FlowStatusMapper flowStatusMapper,
+                             KafkaTopicsNorthboundConfig kafkaTopicsNorthboundConfig) {
         this.messagingChannel = messagingChannel;
         this.flowMapper = flowMapper;
         this.flowStatusMapper = flowStatusMapper;
+        this.flowHsTopic = kafkaTopicsNorthboundConfig.getFlowHsTopic();
+        this.rerouteTopic = kafkaTopicsNorthboundConfig.getTopoRerouteTopic();
+        this.nbworkerTopic = kafkaTopicsNorthboundConfig.getTopoNbTopic();
+        this.pingTopic = kafkaTopicsNorthboundConfig.getPingTopic();
     }
 
     @Override
