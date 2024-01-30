@@ -24,12 +24,10 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.Optional;
 import java.util.stream.Stream;
 
-@Tag(name = "Base Controller")
 @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Operation is successful"),
         @ApiResponse(responseCode = "400", description = "Invalid input data",

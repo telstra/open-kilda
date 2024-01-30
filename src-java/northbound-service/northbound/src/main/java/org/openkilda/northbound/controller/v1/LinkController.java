@@ -31,6 +31,7 @@ import org.openkilda.northbound.service.LinkService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -53,6 +54,7 @@ import java.util.concurrent.CompletableFuture;
 @RestController
 @RequestMapping("/v1")
 @PropertySource("classpath:northbound.properties")
+@Tag(name = "Link Controller", description = "performs operations on switches' links")
 public class LinkController extends BaseLinkController {
 
     private final LinkService linkService;

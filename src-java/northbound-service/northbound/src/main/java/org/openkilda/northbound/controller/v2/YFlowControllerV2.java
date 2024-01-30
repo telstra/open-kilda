@@ -33,6 +33,7 @@ import org.openkilda.northbound.validator.YFlowCreatePayloadValidator;
 import org.openkilda.northbound.validator.YFlowUpdatePayloadValidator;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -51,6 +52,7 @@ import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/v2/y-flows")
+@Tag(name = "Y-flow Controller", description = "performs CRUD and other operations for Y-flows")
 public class YFlowControllerV2 extends BaseController {
     @Autowired
     private YFlowService flowService;
