@@ -5,10 +5,10 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Java11
+    - name: Set up Java17
       uses: actions/setup-java@v1
       with:
-        java-version: '11'
+        java-version: '17'
     - name: Install confd
       run: |
         sudo apt-get install wget
