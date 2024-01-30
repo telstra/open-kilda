@@ -37,7 +37,7 @@ dependencies {
     implementation 'com.sabre.oss.conf4j:conf4j-spring-boot'
 
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
-    implementation 'io.swagger.core.v3:swagger-core:2.2.19'
+    implementation 'io.swagger.core.v3:swagger-core-jakarta:2.2.20'
 
     implementation files('lib/noviflow-grpc-lib-1.0.jar')
     //system group: 'io.grpc.noviflow', name: 'noviflow-grpc-lib', version:'1.0'

@@ -102,7 +102,8 @@ public class SecurityConfig {
     protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorizationManagerRequestMatcherRegistry ->
-                        authorizationManagerRequestMatcherRegistry.requestMatchers("/v1/health-check")
+                        authorizationManagerRequestMatcherRegistry.requestMatchers("/v1/health-check",
+                                        "/api/swagger-ui/**")
                                 .permitAll().anyRequest().authenticated())
                 .httpBasic(httpSecurityHttpBasicConfigurer ->
                         httpSecurityHttpBasicConfigurer.authenticationEntryPoint(authenticationEntryPoint));

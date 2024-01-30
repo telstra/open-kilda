@@ -22,6 +22,7 @@ import org.openkilda.northbound.dto.v2.flows.PathValidateResponse;
 import org.openkilda.northbound.service.NetworkService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,6 +35,7 @@ import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/v2/network")
+@Tag(name = "Network Controller", description = "shows information about network paths")
 public class NetworkControllerV2 {
 
     private final NetworkService networkService;

@@ -23,6 +23,7 @@ import org.openkilda.northbound.dto.v2.links.BfdPropertiesPayload;
 import org.openkilda.northbound.service.LinkService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,6 +41,7 @@ import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/v2/links")
+@Tag(name = "Link Controller", description = "performs operations on switches' links")
 public class LinkControllerV2 extends BaseLinkController {
     private static final int BFD_INTERVAL_MIN = 100;
     private static final short BFD_MULTIPLIER_MIN = 1;

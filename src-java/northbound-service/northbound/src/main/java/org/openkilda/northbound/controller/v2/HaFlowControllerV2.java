@@ -55,7 +55,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-@Tag(name = DRAFT_API_TAG)
+@Tag(name = "HA-flow Controller", description = "performs CRUD and other operations for HA-flows")
 @RestController
 @RequestMapping("/v2/ha-flows")
 public class HaFlowControllerV2 extends BaseController {

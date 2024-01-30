@@ -43,6 +43,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
@@ -71,6 +72,7 @@ import java.util.concurrent.CompletableFuture;
 @RestController
 @RequestMapping("/v1/flows")
 @PropertySource("classpath:northbound.properties")
+@Tag(name = "Flow Controller", description = "performs CRUD and other operations for simple flows")
 public class FlowController extends BaseController {
 
     /**

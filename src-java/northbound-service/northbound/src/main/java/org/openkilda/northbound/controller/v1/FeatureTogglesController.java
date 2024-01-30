@@ -20,6 +20,7 @@ import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.service.FeatureTogglesService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
@@ -38,6 +39,7 @@ import java.util.concurrent.CompletableFuture;
 @RestController
 @RequestMapping("/v1/features")
 @PropertySource("classpath:northbound.properties")
+@Tag(name = "Feature toggles controller", description = "enables or disables OpenKilda features")
 public class FeatureTogglesController extends BaseController {
 
     @Autowired

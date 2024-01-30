@@ -15,81 +15,48 @@
 
 package org.openkilda.northbound.config;
 
+import static org.openkilda.messaging.Utils.CORRELATION_ID;
+
+import io.swagger.v3.oas.models.parameters.HeaderParameter;
+import org.springdoc.core.customizers.OperationCustomizer;
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class SwaggerConfig {
-    public static final String DRAFT_API_TAG = "DRAFT";
 
-    //    private final ParameterBuilder correlationIdParameter = new ParameterBuilder()
-    //                .name(CORRELATION_ID)
-    //                .description("Request's unique identifier")
-    //                .parameterType("header")
-    //                .modelRef(new ModelRef("string"));
-
-    /**
-     * Swagger configuration for API version 1.
-     *
-     * @return {@link Docket} instance
-     */
-    /* TODO transform this into swagger 3 format
-    @Bean
-    public Docket apiV1() {
-        return new Docket(DocumentationType.SWAGGER_2)
-                .directModelSubstitute(SwitchId.class, String.class)
-                .groupName("API v1")
-                .apiInfo(new ApiInfoBuilder()
-                        .title("Northbound")
-                        .description("Kilda SDN Controller API <h1>NOTE: There are features "
-                                + "that are present in API v2 but are not present in API v1.</h1>")
-                        .version("1.0")
-                        .build())
-                .globalOperationParameters(Collections.singletonList(correlationIdParameter.build()))
-                .select()
-                .apis(RequestHandlerSelectors.basePackage("org.openkilda.northbound.controller.v1"))
-                .build();
-    }
-    */
-
-    @Bean
+    @Bean(name = "apiV1")
     public GroupedOpenApi apiV1() {
         return GroupedOpenApi.builder()
-                .group("API v1")
-                .pathsToMatch("/api/v1/**")
+                .group("api_v1")
+                .pathsToMatch("/v1/**")
+                .displayName("OpenKilda Northbound API v1")
+                .packagesToScan("org.openkilda.northbound.controller.v1")
+                .addOperationCustomizer(addCorrelationIdHeader())
                 .build();
     }
-
-    /**
-     * Swagger configuration for API version 2.
-     *
-     * @return {@link Docket} instance
-     */
-    /*
-    @Bean
-    public Docket apiV2() {
-        return new Docket(DocumentationType.SWAGGER_2)
-                .directModelSubstitute(SwitchId.class, String.class)
-                .groupName("API v2")
-                .apiInfo(new ApiInfoBuilder()
-                        .title("Northbound")
-                        .description("Kilda SDN Controller API")
-                        .version("2.0")
-                        .build())
-                .globalOperationParameters(Collections.singletonList(correlationIdParameter.required(true).build()))
-                .select()
-                .apis(RequestHandlerSelectors.basePackage("org.openkilda.northbound.controller.v2"))
-                .build()
-                .tags(new Tag(DRAFT_API_TAG, "This API is still under development and may be changed in the future"));
-     }
-     */
 
     @Bean
     public GroupedOpenApi apiV2() {
         return GroupedOpenApi.builder()
-                .group("API v2")
-                .pathsToMatch("/api/v2/**")
+                .group("api_v2")
+                .pathsToMatch("/v2/**")
+                .packagesToScan("org.openkilda.northbound.controller.v2")
+                .displayName("OpenKilda Northbound API v2")
+                .addOperationCustomizer(addCorrelationIdHeader())
                 .build();
+    }
+
+    private OperationCustomizer addCorrelationIdHeader() {
+        return (operation, handlerMethod) -> {
+            operation.addParametersItem(
+                    new HeaderParameter()
+                            .name(CORRELATION_ID)
+                            .description("Request's unique identifier.")
+                            .required(true)
+            );
+            return operation;
+        };
     }
 }
