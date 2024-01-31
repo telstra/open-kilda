@@ -46,6 +46,8 @@ dependencies {
         exclude group: 'org.slf4j', module: 'log4j-over-slf4j'
     }
 
+    implementation 'org.rocksdb:rocksdbjni:8.10.0' because 'required for Storm integration tests'
+
     implementation jarjar.repackage('storm-flux-core-2.5.0-repackaged') {
         from 'org.apache.storm:flux-core:2.5.0'
         // Remove bundled libraries as they conflict with other dependencies.
