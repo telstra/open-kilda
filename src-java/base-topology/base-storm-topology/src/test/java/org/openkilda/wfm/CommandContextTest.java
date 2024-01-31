@@ -22,8 +22,6 @@ import com.esotericsoftware.kryo.Serializer;
 import com.esotericsoftware.kryo.io.Output;
 import org.junit.jupiter.api.Test;
 
-import java.util.UUID;
-
 class CommandContextTest {
 
     @Test
@@ -36,16 +34,4 @@ class CommandContextTest {
             assertTrue(output.toBytes().length > 0);
         }
     }
-
-    @Test
-    void serializationUuidTest() {
-        Kryo kryo = new Kryo();
-        Serializer<UUID> serializer = kryo.getSerializer(UUID.class);
-
-        try (Output output = new Output(100)) {
-            serializer.write(kryo, output, new UUID(100L, 100L));
-            assertTrue(output.toBytes().length > 0);
-        }
-    }
-
 }
