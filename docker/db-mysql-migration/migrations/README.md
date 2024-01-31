@@ -49,7 +49,7 @@ can execute liquibase with arbitrary parameters.
 
 To create an image, navigate to the root of the OpenKilda project and execute:
 ```shell script
-docker-compose build db_mysql_migration
+docker compose build db_mysql_migration
 ```
 
 For executing a migration script (you can override other environment variables as well). `NO_SLEEP` parameter will exit the
