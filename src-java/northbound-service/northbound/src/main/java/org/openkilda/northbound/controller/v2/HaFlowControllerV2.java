@@ -15,8 +15,6 @@
 
 package org.openkilda.northbound.controller.v2;
 
-import static org.openkilda.northbound.config.SwaggerConfig.DRAFT_API_TAG;
-
 import org.openkilda.messaging.payload.history.HaFlowHistoryEntry;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.v2.haflows.HaFlow;
@@ -57,7 +55,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-@Tag(name = DRAFT_API_TAG)
+@Tag(name = "HA-flow Controller", description = "performs CRUD and other operations for HA-flows")
 @RestController
 @RequestMapping("/v2/ha-flows")
 public class HaFlowControllerV2 extends BaseController {

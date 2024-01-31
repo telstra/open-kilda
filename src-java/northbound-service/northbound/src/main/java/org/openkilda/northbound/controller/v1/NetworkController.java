@@ -25,6 +25,7 @@ import org.openkilda.northbound.service.NetworkService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
@@ -45,6 +46,7 @@ import java.util.concurrent.CompletableFuture;
 @RestController
 @RequestMapping("/v1/network")
 @PropertySource("classpath:northbound.properties")
+@Tag(name = "Network Controller", description = "shows information about network paths")
 public class NetworkController extends BaseController {
 
     @Autowired

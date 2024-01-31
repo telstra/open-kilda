@@ -45,8 +45,8 @@ public class RequestCorrelationInspectorFilter extends OncePerRequestFilter {
             "/v1/**",
             // swagger related patterns
             "/swagger*/**",
-            "/webjars/**",
-            "/v2/api-docs"
+            "/v3/api-docs/**",
+            "/webjars/**"
     );
 
     private final PathMatcher matcher = new AntPathMatcher();

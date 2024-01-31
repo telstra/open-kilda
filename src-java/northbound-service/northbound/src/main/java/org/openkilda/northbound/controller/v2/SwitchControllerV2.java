@@ -35,6 +35,7 @@ import org.openkilda.northbound.service.SwitchService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -62,6 +63,7 @@ import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/v2/switches")
+@Tag(name = "Switch Controller", description = "performs CRUD and other operations on switches")
 public class SwitchControllerV2 extends BaseController {
 
     @Autowired

@@ -35,6 +35,7 @@ import org.openkilda.messaging.model.grpc.SwitchInfoStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
@@ -54,6 +55,7 @@ import java.util.concurrent.CompletableFuture;
 @RestController
 @RequestMapping(value = "/noviflow", produces = MediaType.APPLICATION_JSON_VALUE)
 @PropertySource("classpath:grpc-service.properties")
+@Tag(name = "Noviflow Controller")
 @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Operation is successful"),
         @ApiResponse(responseCode = "400", description = "Invalid input data"),

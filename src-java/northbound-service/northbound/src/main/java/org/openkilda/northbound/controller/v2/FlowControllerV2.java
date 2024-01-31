@@ -36,6 +36,7 @@ import org.openkilda.northbound.validator.FlowRequestV2Validator;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -60,6 +61,7 @@ import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/v2/flows")
+@Tag(name = "Flow controller", description = "performs CRUD and other operations for simple flows")
 public class FlowControllerV2 extends BaseController {
 
     @Autowired
