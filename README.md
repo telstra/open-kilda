@@ -42,11 +42,6 @@ The following packages are required for building OpenKilda controller:
  - GNU Make 4.1+
  - Open vSwitch 2.9+
 
-#### Python dependency notice
-
-We do not recommend upgrading pip and install docker-compose using the methods described below, bypassing the packer managers. Instead, please read the documentation for installing the [pip](https://pip.pypa.io/en/stable/installation/#upgrading-pip) and the [docker-compose](https://docs.docker.com/compose/install/).
-
-
 #### Dependency installation on Ubuntu 18.04
 
 For running a virtual environment (that is a Docker instance with the Open vSwitch service) it is required to have Linux kernel 4.18+ for OVS meters support.
@@ -88,11 +83,6 @@ wget -P /tmp/ https://bootstrap.pypa.io/get-pip.py \
   && sudo python3.8 /tmp/get-pip.py
 ```
 
-After pip upgrade install Docker compose:
-```shell
-sudo pip3 install docker-compose
-```
-
 #### Dependency installation on Ubuntu 20.04
 
 The following commands will install necessary dependencies on Ubuntu 20.04:
@@ -116,11 +106,6 @@ sudo pip3 install pip --upgrade
 ```shell
 wget -P /tmp/ https://bootstrap.pypa.io/get-pip.py \
   && sudo python3.8 /tmp/get-pip.py
-```
-
-After pip upgrade install Docker compose:
-```shell
-sudo pip3 install docker-compose
 ```
 
 #### Gradle
@@ -147,7 +132,6 @@ sudo apt-get install -y ca-certificates curl gnupg lsb-release \
   docker-ce \
   docker-ce-cli \
   containerd.io \
-  docker-compose-plugin \
 && sudo usermod -aG docker $USER
 # re-login or reboot to apply the usermod command
 ```
@@ -282,7 +266,7 @@ northbound:
 After making these changes, we need to configure a remote debugging in a debugger. For example, in IntelliJ IDEA: navigate to ```Edit Configurations -> Remote```
 and set up the debug port as ```50505```. For more details, please see the documentation of a particular debugger application.
 
-Next, we just run ```docker-compose up```. If everything above was done correctly you must see:
+Next, we just run ```docker compose up```. If everything above was done correctly you must see:
 
 ```
 "java -agentlib:jdwp=transport=dt_socket,address=50505,suspend=n,server=y -jar northbound.jar"
@@ -337,7 +321,7 @@ wfm:
     - "50506:50506"
 ```
 
-After executing ```docker-compose up``` you should see the following log record ```Listening for transport dt_socket at address: 50506```
+After executing ```docker compose up``` you should see the following log record ```Listening for transport dt_socket at address: 50506```
 in the WFM logs.
 
 Now, after we configure the remote debugger to connect to the port ```50506```, we'll be able to debug both components: WFM and Storm.
@@ -346,7 +330,7 @@ For more details, please see the documentation of a particular debugger applicat
 
 In order to debug a topology, for example, ```NetworkTopology```: 
 create (or open if already exists) ```NetworkTopology.main``` application debug configuration and add ```--local``` to Program arguments, 
-execute ```docker-compose up``` and run in the debug mode ```NetworkTopology.main```.
+execute ```docker compose up``` and run in the debug mode ```NetworkTopology.main```.
 
 ### How to run tests
 
@@ -407,7 +391,7 @@ git clone git@github.com:<your_github_account>/open-kilda.git vm-dev
 cd vm-dev
 git checkout mvp1rc
 make build-base
-docker-compose build
+docker compose build
 make unit
 make up-test-mode
 ```
