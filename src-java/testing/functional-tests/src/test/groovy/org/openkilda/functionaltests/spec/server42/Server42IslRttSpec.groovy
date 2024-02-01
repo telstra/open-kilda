@@ -1,9 +1,5 @@
 package org.openkilda.functionaltests.spec.server42
 
-import org.openkilda.functionaltests.model.stats.IslStats
-import org.springframework.beans.factory.annotation.Autowired
-import spock.lang.Unroll
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.Assertions.assertThat
@@ -28,6 +24,7 @@ import static spock.util.matcher.HamcrestSupport.expect
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
+import org.openkilda.functionaltests.model.stats.IslStats
 import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchFeature
@@ -38,10 +35,13 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Isolated
 import spock.lang.ResourceLock
 import spock.lang.Shared
+import spock.lang.Unroll
 
 @Slf4j
 @ResourceLock(S42_TOGGLE)
@@ -314,6 +314,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         }
     }
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/5557")
     @Tags([HARDWARE])
     def "SERVER_42_ISL_RTT rules are updated according to changes in swProps"() {
         def server42switchIds = topology.getActiveServer42Switches()*.dpId
