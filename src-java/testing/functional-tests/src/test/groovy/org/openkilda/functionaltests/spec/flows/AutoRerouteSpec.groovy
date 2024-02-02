@@ -67,7 +67,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         allFlowPaths.findAll { it != flowPath }.each { altFlowIsls.addAll(pathHelper.getInvolvedIsls(it)) }
         def islToFail = flowIsls.find { !(it in altFlowIsls) && !(it.reversed in altFlowIsls) }
         antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        wait(WAIT_OFFSET) { northbound.getLink(islToFail).state == FAILED }
+        wait(WAIT_OFFSET) { assert northbound.getLink(islToFail).state == FAILED }
 
         then: "The flow was rerouted after reroute delay"
         wait(rerouteDelay + WAIT_OFFSET) {
