@@ -93,7 +93,7 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
 
         cleanup: "Delete the HA-flow"
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
-        switchToManipulate && switchToManipulate.synchronize()
+        switchToManipulate && switchHelper.synchronize(switchToManipulate.getDpId())
 
         where: data << [
                 [protectedPath: false],
@@ -158,7 +158,7 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
     }
 
     private void haRulesAreSynced(SwitchId swId, HaFlow haFlow, Date syncTime) {
-        assert northboundV2.validateSwitch(swId).asExpected
+        assert switchHelper.validate(swId).asExpected
         def haRules = switchRulesFactory.get(swId).forHaFlow(haFlow)
         assert !haRules.isEmpty()
         haRules.each {

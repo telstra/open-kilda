@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.xresilience
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
+
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
@@ -106,10 +106,9 @@ and at least 1 path must remain safe"
         !pathHelper.getInvolvedIsls(currentPath).contains(islToBreak.reversed)
 
         and: "All related switches have no rule anomalies"
-        [mainPath, failoverPath, currentPath].collectMany { pathHelper.getInvolvedSwitches(it) }.unique()
-                .findAll { it != switchToBreak }.each {
-            northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        def switchesToVerify = [mainPath, failoverPath, currentPath].collectMany { pathHelper.getInvolvedSwitches(it) }.unique()
+                .findAll { it != switchToBreak }
+        switchHelper.validateAndCollectFoundDiscrepancies(switchesToVerify*.getDpId()).isEmpty()
 
         cleanup:
         flow && flowHelperV2.deleteFlow(flow.flowId)
@@ -200,12 +199,7 @@ and at least 1 path must remain safe"
         and: "All involved switches pass switch validation(except dst switch)"
         def involvedSwitchIds = pathHelper.getInvolvedSwitches(protectedPath)[0..-2]*.dpId
         wait(WAIT_OFFSET / 2) {
-            involvedSwitchIds.each { swId ->
-                with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
+            switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitchIds).isEmpty()
         }
 
         when: "Connect dst switch back to the controller"
@@ -230,7 +224,7 @@ and at least 1 path must remain safe"
         if (!isSwitchActivated && blockData) {
             database.setSwitchStatus(swToManipulate.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(swToManipulate, blockData)
-            northbound.synchronizeSwitch(swToManipulate.dpId, true)
+            switchHelper.synchronize(swToManipulate.dpId)
         }
         broughtDownIsls.every { northbound.portUp(it.srcSwitch.dpId, it.srcPort) }
         wait(discoveryInterval + WAIT_OFFSET + antiflapCooldown) {
@@ -346,12 +340,7 @@ and at least 1 path must remain safe"
         and: "All involved switches pass switch validation(except dst switch)"
         def involvedSwitchIds = pathHelper.getInvolvedSwitches(backupPath)[0..-2]*.dpId
         wait(WAIT_OFFSET / 2) {
-            involvedSwitchIds.each { swId ->
-                with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
+            switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitchIds).isEmpty()
         }
 
         when: "Connect dst switch back to the controller"
@@ -376,7 +365,7 @@ and at least 1 path must remain safe"
         if (!isSwitchActivated && blockData) {
             database.setSwitchStatus(swToManipulate.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(swToManipulate, blockData)
-            northbound.synchronizeSwitch(swToManipulate.dpId, true)
+            switchHelper.synchronize(swToManipulate.dpId)
         }
         broughtDownIsls.every { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
         wait(discoveryInterval + WAIT_OFFSET) {
@@ -427,7 +416,7 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
 
         and: "Src/dst switches are valid"
         wait(WAIT_OFFSET * 2) { //due to instability
-            [flow.source.switchId, flow.destination.switchId].each { verifySwitchRules(it) }
+            switchHelper.validateAndCollectFoundDiscrepancies([flow.source.switchId, flow.destination.switchId]).isEmpty()
         }
 
         cleanup:

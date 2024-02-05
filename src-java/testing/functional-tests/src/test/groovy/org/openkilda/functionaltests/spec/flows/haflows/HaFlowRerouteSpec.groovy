@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.spec.flows.haflows
 
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.model.stats.HaFlowStats
 
 import static groovyx.gpars.GParsPool.withPool
@@ -24,7 +23,6 @@ import org.openkilda.functionaltests.helpers.HaFlowHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
 import org.openkilda.model.history.DumpType
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.northbound.model.HaFlowActionType
@@ -95,11 +93,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
 
         and: "All involved switches pass switch validation"
         def allInvolvedSwitchIds = haFlowHelper.getInvolvedSwitches(oldPaths) + haFlowHelper.getInvolvedSwitches(newPaths)
-        withPool {
-            allInvolvedSwitchIds.eachParallel { SwitchId switchId ->
-                northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
         
         and: "Traffic passes through HA-Flow"
         if (swT.isHaTraffExamAvailable()) {
@@ -176,11 +170,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
 
         and: "All involved switches pass switch validation"
         def allInvolvedSwitchIds = haFlowHelper.getInvolvedSwitches(oldPaths) + haFlowHelper.getInvolvedSwitches(newPaths)
-        withPool {
-            allInvolvedSwitchIds.eachParallel { SwitchId switchId ->
-                northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
 
         cleanup: "Bring port involved in the original path up and delete the HA-flow"
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
@@ -233,11 +223,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches pass switch validation"
-        withPool {
-            haFlowHelper.getInvolvedSwitches(oldPaths).eachParallel { SwitchId switchId ->
-                northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlowHelper.getInvolvedSwitches(oldPaths)).isEmpty()
 
         cleanup: "Bring port involved in the original path up and delete the HA-flow"
         haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)

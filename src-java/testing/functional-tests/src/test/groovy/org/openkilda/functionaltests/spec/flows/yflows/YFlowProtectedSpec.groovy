@@ -68,12 +68,9 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
             assert northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
         }
 
-        and: "All involved switches passes switch validation"
+        and: "All involved switches pass switch validation"
         def involvedSwitches = pathHelper.getInvolvedYSwitches(northboundV2.getYFlowPaths(yFlow.YFlowId))
-        involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches*.getDpId()).isEmpty()
 
         when: "Disable protected path via partial update"
         def patch = YFlowPatchPayload.builder().allocateProtectedPath(false).build()
@@ -98,10 +95,7 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches passes switch validation"
-        involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches*.getDpId()).isEmpty()
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)

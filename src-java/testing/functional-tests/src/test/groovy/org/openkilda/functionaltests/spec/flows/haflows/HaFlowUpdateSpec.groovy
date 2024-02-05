@@ -1,14 +1,11 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.haflow.HaFlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.helpers.HaFlowHelper
-import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
@@ -46,11 +43,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlow, ignores)
 
         and: "And involved switches pass validation"
-        withPool {
-            haFlowHelper.getInvolvedSwitches(haFlow.haFlowId).eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlowHelper.getInvolvedSwitches(haFlow.haFlowId)).isEmpty()
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
@@ -120,11 +113,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlow, ignores)
 
         and: "And involved switches pass validation"
-        withPool {
-            haFlowHelper.getInvolvedSwitches(haFlow.haFlowId).eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlowHelper.getInvolvedSwitches(haFlow.haFlowId)).isEmpty()
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
@@ -150,11 +139,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlow, ignores)
 
         and: "And involved switches pass validation"
-        withPool {
-            haFlowHelper.getInvolvedSwitches(haFlow.haFlowId).eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlowHelper.getInvolvedSwitches(haFlow.haFlowId)).isEmpty()
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
@@ -277,11 +262,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         new HaFlowNotUpdatedExpectedError(data.errorDescription).matches(exc)
 
         and: "And involved switches pass validation"
-        withPool {
-            involvedSwitchIds.eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
@@ -340,12 +321,9 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
         new HaFlowNotUpdatedExpectedError(data.errorDescrPattern).matches(exc)
+
         and: "And involved switches pass validation"
-        withPool {
-            involvedSwitchIds.eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected

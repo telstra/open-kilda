@@ -115,12 +115,6 @@ class BaseSpecification extends Specification {
                 "but current active profile is '${this.profile}'")
     }
 
-    void verifySwitchRules(SwitchId switchId) {
-        def rules = northbound.validateSwitchRules(switchId)
-        assert rules.excessRules.empty
-        assert rules.missingRules.empty
-    }
-
     // this cleanup section should be removed after fixing the issue https://github.com/telstra/open-kilda/issues/5480
     void deleteAnyFlowsLeftoversIssue5480() {
         Wrappers.benchmark("Deleting flows leftovers") {

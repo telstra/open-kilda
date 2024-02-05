@@ -52,15 +52,15 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         }
 
         and: "Switch validation detects missing y-flow rule"
-        with(northbound.validateSwitch(swIdToManipulate).rules) {
+        with(switchHelper.validate(swIdToManipulate).rules) {
             it.misconfigured.empty
             it.excess.empty
             it.missing.size() == sharedRules.size()
-            it.missing.sort() == sharedRules*.cookie.sort()
+            it.missing*.cookie.sort() == sharedRules*.cookie.sort()
         }
 
         when: "Synchronize the shared switch"
-        northbound.synchronizeSwitch(swIdToManipulate, false)
+        switchHelper.synchronize(swIdToManipulate, false)
 
         then: "Y-Flow/subFlow passes flow validation"
         northboundV2.validateYFlow(yFlow.YFlowId).asExpected
@@ -69,7 +69,7 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         }
 
         and: "Switch passes validation"
-        northbound.validateSwitch(swIdToManipulate).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        switchHelper.validate(swIdToManipulate).isAsExpected()
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
@@ -114,11 +114,11 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         northbound.validateFlow(subFl_2.flowId).each { direction -> assert direction.asExpected }
 
         and: "Switch validation detects missing reverse rule only for the subFlow_1"
-        with(northbound.validateSwitch(swIdToManipulate).rules) {
+        with(switchHelper.validate(swIdToManipulate).rules) {
             it.misconfigured.empty
             it.excess.empty
             it.missing.size() == 1
-            it.missing[0] == cookieToDelete
+            it.missing[0].getCookie() == cookieToDelete
         }
 
         when: "Sync y-flow"
@@ -134,7 +134,7 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         }
 
         and: "Switches pass validation"
-        northbound.validateSwitch(swIdToManipulate).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        switchHelper.validate(swIdToManipulate).isAsExpected()
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)

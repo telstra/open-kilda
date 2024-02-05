@@ -101,7 +101,7 @@ class ContentionSpec extends BaseSpecification {
         withPool {
             def rerouteTask = { northboundV2.rerouteFlow(flow.flowId) }
             rerouteTask.callAsync()
-            3.times { relatedSwitches.eachParallel { northbound.synchronizeSwitch(it.dpId, removeExcess) } }
+            3.times { relatedSwitches.eachParallel { switchHelper.synchronize(it.dpId, removeExcess) } }
         }
 
         then: "Flow is Up and path has changed"
@@ -112,11 +112,7 @@ class ContentionSpec extends BaseSpecification {
 
         and: "Related switches have no rule discrepancies"
         Wrappers.wait(WAIT_OFFSET) {
-            relatedSwitches.each {
-                def validation = northbound.validateSwitch(it.dpId)
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
-            }
+            switchHelper.validateAndCollectFoundDiscrepancies(relatedSwitches*.getDpId()).isEmpty()
         }
         def switchesOk = true
 
@@ -126,7 +122,7 @@ class ContentionSpec extends BaseSpecification {
         cleanup: "remove flow and reset costs"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        !switchesOk && relatedSwitches.each { northbound.synchronizeSwitch(it.dpId, true) }
+        !switchesOk && switchHelper.synchronizeAndCollectFixedDiscrepancies(relatedSwitches*.getDpId())
 
         where: removeExcess << [
                 false,

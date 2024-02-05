@@ -5,7 +5,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.cookie.Cookie.LLDP_INGRESS_COOKIE
@@ -1234,9 +1233,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flowHelperV2.updateFlow(flow.flowId, flow)
 
         then: "Check excess rules are not registered on device"
-        wait(WAIT_OFFSET) {
-             verifySwitchRules(sw.dpId)
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
+
         cleanup: "Remove created flow and registered devices, revert switch props"
         flow && flowHelperV2.deleteFlow(flow.flowId)
         sw && database.removeConnectedDevices(sw.dpId)
@@ -1424,15 +1422,9 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     }
 
     private void validateFlowAndSwitches(Flow flow) {
-        northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-        [flow.srcSwitch, flow.destSwitch].each {
-            def validation = northbound.validateSwitch(it.switchId)
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
-            if (it.ofVersion != "OF_12") {
-                validation.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
-            }
-        }
+        assert northbound.validateFlow(flow.flowId).each { assert it.asExpected }
+        assert switchHelper.synchronizeAndCollectFixedDiscrepancies([flow.srcSwitch.getSwitchId(), flow.destSwitch.getSwitchId()])
+                .isEmpty()
     }
 
     private void waitForSrcDevicesInputRules(Flow flow) {
