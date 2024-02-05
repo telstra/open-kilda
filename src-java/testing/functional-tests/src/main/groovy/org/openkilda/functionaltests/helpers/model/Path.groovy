@@ -4,6 +4,7 @@ import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats
 import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2
+import org.openkilda.northbound.dto.v2.flows.FlowPathV2.PathNodeV2
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.northbound.payloads.PathDto
@@ -98,5 +99,9 @@ class Path {
                 intersectingSwitchSize,
                 intersectingIslSize ? intersectingIslSize / basePathIsls.size() * 100 as int : 0,
                 intersectingSwitchSize / basePathSwitches.size() * 100 as int,)
+    }
+
+    List<PathNodeV2> retrieveNodes() {
+        nodes.getNodes()
     }
 }

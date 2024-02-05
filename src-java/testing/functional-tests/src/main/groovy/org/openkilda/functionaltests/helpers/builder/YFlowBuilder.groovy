@@ -182,6 +182,11 @@ class YFlowBuilder {
         return this
     }
 
+    YFlowBuilder withEp2Vlan(Integer vlan) {
+        yFlow.subFlows.last().endpoint.vlanId = vlan
+        return this
+    }
+
     YFlowBuilder withEp1AndEp2Vlan(Integer subFlow1Vlan, Integer subFlow2Vlan) {
         yFlow.subFlows.first().endpoint.vlanId = subFlow1Vlan
         yFlow.subFlows.last().endpoint.vlanId = subFlow2Vlan

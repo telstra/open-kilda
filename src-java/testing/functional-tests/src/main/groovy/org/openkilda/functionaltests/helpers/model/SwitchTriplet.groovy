@@ -55,4 +55,8 @@ class SwitchTriplet {
     static Closure TRAFFGEN_CAPABLE = { SwitchTriplet swT ->
         !(swT.ep1.getTraffGens().isEmpty() || swT.ep2.getTraffGens().isEmpty() || swT.shared.getTraffGens().isEmpty())
     }
+
+    static Closure NOT_WB_ENDPOINTS = {
+        SwitchTriplet swT -> !swT.shared.wb5164 && !swT.ep1.wb5164 && !swT.ep2.wb5164
+    }
 }
