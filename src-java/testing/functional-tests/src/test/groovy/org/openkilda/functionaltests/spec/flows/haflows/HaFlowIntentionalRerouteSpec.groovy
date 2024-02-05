@@ -11,7 +11,7 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.HaFlowAllEntityPaths
+import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
@@ -209,13 +209,13 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    private getAlternativesPaths(HaFlowAllEntityPaths actualPathNodes, List<List<PathNode>> existingPaths) {
+    private getAlternativesPaths(FlowWithSubFlowsEntityPath actualPathNodes, List<List<PathNode>> existingPaths) {
         existingPaths.findAll {
             !actualPathNodes.subFlowPaths.collect { it.path.forward.nodes.toPathNode() }.contains(it)
         }
     }
 
-    private void assertRerouteResponsePaths(HaFlowAllEntityPaths haFlowPath, HaFlowRerouteResult rerouteResponse) {
+    private void assertRerouteResponsePaths(FlowWithSubFlowsEntityPath haFlowPath, HaFlowRerouteResult rerouteResponse) {
         assert haFlowPath.subFlowPaths.size() == rerouteResponse.subFlowPaths.size()
         haFlowPath.subFlowPaths.each {subFlow ->
             def rerouteSubFlowPath =  rerouteResponse.subFlowPaths.find { it.flowId == subFlow.flowId}.nodes

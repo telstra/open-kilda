@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.helpers.model
 
 import org.openkilda.messaging.payload.flow.PathNodePayload
+import org.openkilda.northbound.dto.v2.flows.FlowPathV2.PathNodeV2
 
 import groovy.transform.Canonical
 import groovy.transform.EqualsAndHashCode
@@ -78,5 +79,9 @@ class Path {
 
     boolean hasProtectedPathWithLatencyAbove(Long latencyMs) {
         return protectedPath && protectedPath.getLatencyMs() > latencyMs
+    }
+
+    List<PathNodeV2> retrieveNodes() {
+        nodes.getNodes()
     }
 }
