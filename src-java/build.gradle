@@ -27,7 +27,7 @@ subprojects {
         }
     }
 
-    tasks.withType(JavaCompile) {
+    tasks.withType(JavaCompile).configureEach {
         options.encoding = 'UTF-8'
         options.fork = true
     }
@@ -41,6 +41,13 @@ subprojects {
         implementation(platform('com.fasterxml.jackson:jackson-bom:2.10.0'))
 
         constraints {
+            compileOnly('org.projectlombok:lombok:1.18.26')
+            testCompileOnly 'org.projectlombok:lombok:1.18.26'
+            annotationProcessor 'org.projectlombok:lombok:1.18.26'
+            testAnnotationProcessor 'org.projectlombok:lombok:1.18.26'
+            annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+            testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+
             compileOnly 'org.apache.storm:storm-core:2.5.0'
             testImplementation 'org.apache.storm:storm-core:2.5.0'
             implementation 'org.apache.storm:storm-kafka-client:1.2.1'
@@ -57,27 +64,23 @@ subprojects {
             implementation 'com.google.code.gson:gson:2.10.1'
             implementation 'com.fasterxml.uuid:java-uuid-generator:4.0.1'
 
-            implementation('org.apache.kafka:kafka-clients') {
-                version {
-                    strictly '2.3.1'
-                }
-            }
-            implementation('org.apache.kafka:kafka_2.11') {
-                version {
-                    strictly '2.3.1'
-                }
-            }
+//            implementation('org.apache.kafka:kafka-clients') {
+//                version {
+//                    strictly '2.3.1'
+//                }
+//            }
+//            implementation('org.apache.kafka:kafka_2.11') {
+//                version {
+//                    strictly '2.3.1'
+//                }
+//            }
+//            implementation("org.apache.kafka:kafka-clients:3.6.1")
+//            implementation("org.apache.kafka:kafka_2.13:3.6.1")
+
 
             implementation 'com.sabre.oss.conf4j:conf4j-api:1.0'
             implementation 'com.sabre.oss.conf4j:conf4j-core:1.0'
             implementation 'com.sabre.oss.conf4j:conf4j-spring-boot:1.0'
-
-            compileOnly 'org.projectlombok:lombok:1.18.26'
-            testCompileOnly 'org.projectlombok:lombok:1.18.26'
-            annotationProcessor 'org.projectlombok:lombok:1.18.26'
-            testAnnotationProcessor 'org.projectlombok:lombok:1.18.26'
-            annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
-            testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
 
             implementation 'org.slf4j:slf4j-api:2.0.10'
 
@@ -146,17 +149,16 @@ subprojects {
             testImplementation 'io.grpc:grpc-testing:1.54.1'
             implementation 'com.google.protobuf:protobuf-java-util:3.22.3'
 
-            implementation 'io.springfox:springfox-swagger2:2.9.2'
-            implementation 'io.springfox:springfox-swagger-ui:2.9.2'
         }
     }
 
-    task collectDependencyJars(type: Copy) {
+    tasks.register('collectDependencyJars', Copy) {
         into "$buildDir/dependency-jars"
         from configurations.runtimeClasspath
     }
 
-    task buildAndCopyArtifacts(type: Copy, dependsOn: 'build') {
+    tasks.register('buildAndCopyArtifacts', Copy) {
+        dependsOn 'build'
         onlyIf {
             project.hasProperty('destPath')
         }
@@ -195,7 +197,7 @@ subprojects {
     }*/
 
     jacoco {
-        toolVersion = '0.8.7'
+        toolVersion = '0.8.11'
     }
 
     jacocoTestReport {
@@ -208,7 +210,7 @@ subprojects {
         }
     }
 
-    task generateVersionTxt() {
+    tasks.register('generateVersionTxt') {
         doLast {
             File file = new File("$buildDir/version.txt")
             file.write('')
@@ -219,33 +221,35 @@ subprojects {
                 def grgit = Grgit.open(currentDir: rootDir)
                 gitRevision = grgit.describe(tags: true)
                 grgit.close()
-            } catch (IllegalStateException e) {
+            } catch (IllegalStateException ignored) {
                 // repo is missing/unavailable
             }
             file.append("\nRevision: ${gitRevision}")
         }
     }
 
-    tasks.withType(ShadowJar) {
-        // The step detects a conflict in dependency jars' content and fails the build if found.
-        doFirst {
-            Map<String, String> classes = new HashMap<>()
-            getIncludedDependencies().each { jar ->
-                if(jar.isFile()) {
-                    JarFile jf = new JarFile(jar)
-                    jf.entries().each { file ->
-                        // TODO: it's good to reuse shadowJar plugin's patterns
-                        if (file.name.endsWith('.class') && !file.name.endsWith('module-info.class')) {
-                            if (classes.containsKey(file.name)) {
-                                // TODO this prevents tasks to complete, however dependency resolution seems working out the conflicts fine
-                                // TODO investigate whether it could be replaced with resolutionStrategy.failOnVersionConflict()
-                                // TODO or some other better technology
+    tasks.withType(ShadowJar).tap {
+        configureEach {
+            // The step detects a conflict in dependency jars' content and fails the build if found.
+            doFirst {
+                Map<String, String> classes = new HashMap<>()
+                getIncludedDependencies().each { jar ->
+                    if (jar.isFile()) {
+                        JarFile jf = new JarFile(jar)
+                        jf.entries().each { file ->
+                            // TODO: it's good to reuse shadowJar plugin's patterns
+                            if (file.name.endsWith('.class') && !file.name.endsWith('module-info.class')) {
+                                if (classes.containsKey(file.name)) {
+                                    // TODO this prevents tasks to complete, however dependency resolution seems working out the conflicts fine
+                                    // TODO investigate whether it could be replaced with resolutionStrategy.failOnVersionConflict()
+                                    // TODO or some other better technology
 //                                throw new GradleException("shadowJar failure: ${file.name} conflicts in jars:${classes.get(file.name)} and ${jar}")
+                                }
+                                classes.put(file.name, jar)
                             }
-                            classes.put(file.name, jar)
                         }
+                        jf.close()
                     }
-                    jf.close()
                 }
             }
         }
@@ -253,7 +257,7 @@ subprojects {
 }
 
 //TODO: the task handles Floodlight build only, should we rename the task?
-task buildAndCopyArtifacts(type: Copy) {
+tasks.register('buildAndCopyArtifacts', Copy) {
     onlyIf {
         project.hasProperty('destPath')
     }

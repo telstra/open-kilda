@@ -43,13 +43,15 @@ dependencies {
         exclude group: 'log4j', module: 'log4j'
     }
     testImplementation 'org.assertj:assertj-core:3.24.2'
+    testImplementation("org.slf4j:slf4j-simple:2.0.11")
 }
 
 test {
     include '**/unit/spec/**/*Spec.*'
 }
 
-task functionalTest(type: Test, dependsOn: 'compileGroovy') {
+tasks.register('functionalTest', Test) {
+    dependsOn 'compileGroovy'
     description = 'Runs functional tests.'
     include '**/functionaltests/spec/**/*Spec.*'
     if (System.getProperty('excludeTests')) {
@@ -58,7 +60,7 @@ task functionalTest(type: Test, dependsOn: 'compileGroovy') {
             def excludeTerm = "**/${it.trim()}*"
             logger.info "exclude $excludeTerm"
             exclude excludeTerm
-         }
+        }
     }
     systemProperty 'tags', System.getProperty('tags')
     if (System.getProperty('parallel.topologies')) {
@@ -71,13 +73,13 @@ task functionalTest(type: Test, dependsOn: 'compileGroovy') {
         properties.load(it)
     }
     properties.keys().each { k ->
-        if (System.getProperty(k)) {
-            systemProperty k, System.getProperty(k)
+        if (System.getProperty(k as String)) {
+            systemProperty k as String, System.getProperty(k as String)
         }
     }
 }
 
-task runTest(type: Test) {
+tasks.register('runTest', Test) {
     //usually used together with `--tests`
     description = 'Includes all tests from functional-tests module.'
     include '**/functionaltests/**'
@@ -87,7 +89,7 @@ task runTest(type: Test) {
     }
 }
 
-tasks.withType(Test) {
+tasks.withType(Test).configureEach {
     useJUnitPlatform()
     outputs.upToDateWhen { false } //never cache results of functional tests, always rerun tests
     //if there is a failed/unstable test, create log file for further processing in Jenkins pipeline
@@ -96,7 +98,7 @@ tasks.withType(Test) {
         it.write 'false'
     }
     afterTest { desc, result ->
-        if (result.resultType as String == 'FAILURE' ) {
+        if (result.resultType as String == 'FAILURE') {
             unstableLog.write 'true'
         }
     }

@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.utils;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -51,6 +52,7 @@ public class LoggerContextInitializerTest {
         Optional<CommandContext> result = LoggerContextInitializer.extract(tuple);
 
         //then
+        assertTrue(result.isPresent());
         Assertions.assertEquals(correlationId, result.get().getCorrelationId());
     }
 
@@ -70,6 +72,7 @@ public class LoggerContextInitializerTest {
         Optional<CommandContext> result = LoggerContextInitializer.extract(tuple);
 
         //then
+        assertTrue(result.isPresent());
         Assertions.assertEquals(correlationId, result.get().getCorrelationId());
     }
 
