@@ -48,7 +48,7 @@ public class HibernatePortEvent extends EntityBase implements PortEventData {
     @GeneratedValue(generator = "UUID")
     @GenericGenerator(
             name = "UUID",
-            strategy = "org.hibernate.id.UUIDGenerator"
+            type = org.hibernate.id.uuid.UuidGenerator.class
     )
     @JdbcTypeCode(SqlTypes.UUID)
     @Column(name = "id", columnDefinition = "string(36)")

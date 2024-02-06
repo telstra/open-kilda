@@ -21,12 +21,12 @@ import org.openkilda.model.PathComputationStrategy;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Builder;
 import lombok.Value;
 
 import java.io.Serializable;
 import java.util.List;
-import javax.validation.constraints.PositiveOrZero;
 
 @Value
 @Builder

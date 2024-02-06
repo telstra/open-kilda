@@ -21,7 +21,6 @@ import static org.openkilda.messaging.Utils.DEFAULT_CORRELATION_ID;
 import static org.openkilda.messaging.Utils.EXTRA_AUTH;
 import static org.openkilda.messaging.Utils.MAPPER;
 import static org.openkilda.northbound.controller.mock.TestMessageMock.ERROR_FLOW_ID;
-import static org.springframework.http.MediaType.APPLICATION_JSON_UTF8_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
@@ -272,7 +271,7 @@ public class FlowControllerTest {
                         .header(CORRELATION_ID, DEFAULT_CORRELATION_ID)
                         .contentType(APPLICATION_JSON_VALUE))
                 .andExpect(status().isUnauthorized())
-                .andExpect(content().contentType(APPLICATION_JSON_UTF8_VALUE))
+                .andExpect(content().contentType(APPLICATION_JSON_VALUE))
                 .andReturn();
 
         MessageError response = MAPPER.readValue(result.getResponse().getContentAsString(), MessageError.class);

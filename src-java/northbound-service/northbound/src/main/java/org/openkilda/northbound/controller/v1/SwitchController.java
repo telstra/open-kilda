@@ -390,7 +390,7 @@ public class SwitchController extends BaseController {
      */
     @Operation(summary = "Update \"Under maintenance\" flag for the switch.")
     @PostMapping(path = "/{switch-id}/under-maintenance",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+            produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<SwitchDto> updateLinkUnderMaintenance(
             @PathVariable("switch-id") SwitchId switchId,
@@ -426,7 +426,7 @@ public class SwitchController extends BaseController {
      * @return all flows for a particular switch.
      */
     @Operation(summary = "Get a list of flows that goes through a particular switch, based on arguments.")
-    @GetMapping(value = "/{switch-id}/flows", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+    @GetMapping(value = "/{switch-id}/flows", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<FlowPayload>> getFlowsForSwitch(@PathVariable(value = "switch-id") SwitchId switchId,
                                                                   @RequestParam(value = "port", required = false)
