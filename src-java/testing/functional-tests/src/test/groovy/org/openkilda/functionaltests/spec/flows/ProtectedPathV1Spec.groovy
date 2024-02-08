@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -264,7 +263,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
 
     def "Able to swap main and protected paths manually"() {
         given: "A simple flow"
-        def tgSwitches = topology.getActiveTraffGens()*.getSwitchConnected()
         def switchPair = switchPairs.all()
                 .nonNeighbouring()
                 .withTraffgensOnBothEnds()
@@ -319,11 +317,11 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
 
         and: "No rule discrepancies on every switch of the flow on the main path"
         def mainSwitches = pathHelper.getInvolvedSwitches(currentPath)
-        mainSwitches.each { verifySwitchRules(it.dpId) }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(mainSwitches*.getDpId()).isEmpty()
 
         and: "No rule discrepancies on every switch of the flow on the protected path)"
         def protectedSwitches = pathHelper.getInvolvedSwitches(currentProtectedPath)
-        protectedSwitches.each { verifySwitchRules(it.dpId) }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(protectedSwitches*.getDpId()).isEmpty()
 
         and: "The flow allows traffic(on the main path)"
         def traffExam = traffExamProvider.get()
@@ -367,36 +365,21 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         and: "Old meter is deleted on the src and dst switches"
         Wrappers.wait(WAIT_OFFSET) {
             [switchPair.src.dpId, switchPair.dst.dpId].each { switchId ->
-                def switchValidateInfo = northbound.validateSwitch(switchId)
+                def switchValidateInfo = switchHelper.validate(switchId)
                 if(switchValidateInfo.meters) {
                     assert switchValidateInfo.meters.proper.findAll({dto -> !isDefaultMeter(dto)}).size() == 1
-                    switchValidateInfo.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
                 }
-                assert switchValidateInfo.rules.proper.findAll { def cookie = new Cookie(it)
+                assert switchValidateInfo.rules.proper.findAll { def cookie = new Cookie(it.getCookie())
                     !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT }.size() ==
                         (switchId == switchPair.src.dpId) ? amountOfFlowRulesSrcSw + 1 : amountOfFlowRulesDstSw + 1
-                switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
+                switchValidateInfo.isAsExpected()
             }
         }
 
         and: "Transit switches store the correct info about rules and meters"
         def involvedTransitSwitches = (currentPath[1..-2].switchId + currentProtectedPath[1..-2].switchId).unique()
         Wrappers.wait(WAIT_OFFSET) {
-            involvedTransitSwitches.each { switchId ->
-                def amountOfRules = (switchId in currentProtectedPath*.switchId &&
-                        switchId in currentPath*.switchId) ? 4 : 2
-                if (northbound.getSwitch(switchId).description.contains("OF_12")) {
-                    def switchValidateInfo = northbound.validateSwitchRules(switchId)
-                    assert switchValidateInfo.properRules.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRules
-                    assert switchValidateInfo.missingRules.size() == 0
-                    assert switchValidateInfo.excessRules.size() == 0
-                } else {
-                    def switchValidateInfo = northbound.validateSwitch(switchId)
-                    assert switchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRules
-                    switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
-                    switchValidateInfo.verifyMeterSectionsAreEmpty()
-                }
-            }
+            assert switchHelper.validateAndCollectFoundDiscrepancies(involvedTransitSwitches).isEmpty()
         }
 
         and: "No rule discrepancies when doing flow validation"
@@ -407,11 +390,11 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
 
         and: "No rule discrepancies on every switch of the flow on the main path"
         def newMainSwitches = pathHelper.getInvolvedSwitches(newCurrentPath)
-        newMainSwitches.each { verifySwitchRules(it.dpId) }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(newMainSwitches*.getDpId()).isEmpty()
 
         and: "No rule discrepancies on every switch of the flow on the protected path)"
         def newProtectedSwitches = pathHelper.getInvolvedSwitches(newCurrentProtectedPath)
-        newProtectedSwitches.each { verifySwitchRules(it.dpId) }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(newProtectedSwitches*.getDpId()).isEmpty()
 
         and: "The flow allows traffic(on the protected path)"
         withPool {

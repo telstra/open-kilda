@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.listeners
 
-import static groovyx.gpars.GParsPool.withPool
+import org.openkilda.functionaltests.helpers.SwitchHelper
+
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
@@ -33,6 +34,9 @@ class DoCleanupListener extends AbstractSpringListener {
     @Autowired
     PortAntiflapHelper antiflap
 
+    @Autowired
+    SwitchHelper switchHelper
+
 
     @Override
     void error(ErrorInfo error) {
@@ -40,11 +44,7 @@ class DoCleanupListener extends AbstractSpringListener {
         def thrown = error.exception
         if (thrown instanceof AssertionError) {
             if (thrown.getMessage() && thrown.getMessage().contains("SwitchValidationExtendedResult(")) {
-                withPool {
-                    topology.activeSwitches.eachParallel { sw ->
-                        northbound.synchronizeSwitch(sw.dpId, true)
-                    }
-                }
+                switchHelper.synchronizeAndCollectFixedDiscrepancies(topology.activeSwitches*.dpId)
             }
         }
         if (error.method.name && ISL_PROPS_DB_RESET in error.method.getAnnotation(Tags)?.value()) {

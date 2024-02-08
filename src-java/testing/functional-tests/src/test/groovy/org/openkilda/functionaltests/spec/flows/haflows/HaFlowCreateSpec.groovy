@@ -3,7 +3,6 @@ package org.openkilda.functionaltests.spec.flows.haflows
 import org.openkilda.functionaltests.error.haflow.HaFlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.haflow.HaFlowNotCreatedWithConflictExpectedError
 
-import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
@@ -16,7 +15,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPingPayload
 
@@ -77,11 +75,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         }
 
         and: "And involved switches pass validation"
-        withPool {
-            involvedSwitchIds.eachParallel { SwitchId swId ->
-                assert northboundV2.validateSwitch(swId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
 
         cleanup:
         haFlow && !flowRemoved && haFlowHelper.deleteHaFlow(haFlow.haFlowId)

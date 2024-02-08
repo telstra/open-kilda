@@ -3,7 +3,6 @@ package org.openkilda.functionaltests.spec.flows
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeFalse
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -21,7 +20,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -98,13 +96,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def involvedSwitchesFlow1 = pathHelper.getInvolvedSwitches(
                 pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId))
         )
-        involvedSwitchesFlow1.each {sw ->
-            with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesFlow1*.getDpId()).isEmpty()
 
         when: "Create a vlan flow on the same port as QinQ flow"
         def vlanFlow = flowHelper.randomFlow(swPair).tap {
@@ -123,12 +115,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         and: "Involved switches pass switch validation"
         def involvedSwitchesFlow2 = pathHelper.getInvolvedSwitches(pathHelper.convert(northbound.getFlowPath(vlanFlow.id)))
         def involvedSwitchesforBothFlows = (involvedSwitchesFlow1 + involvedSwitchesFlow2).unique { it.dpId }
-        involvedSwitchesforBothFlows.each { sw ->
-            with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesforBothFlows*.getDpId()).isEmpty()
 
         and: "Both flows are pingable"
         [qinqFlow.flowId, vlanFlow.id].each {
@@ -272,9 +259,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Involved switches pass switch validation"
-        def validationInfo = northbound.validateSwitch(swPair.src.dpId)
-        validationInfo.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        validationInfo.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
 
         and: "Traffic examination is successful (if possible)"
         if(!trafficDisclaimer) {
@@ -599,11 +584,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
         northbound.validateFlow(qinqFlow.flowId).each { assert it.asExpected }
 
         and: "Involved switches pass switch validation"
-        pathHelper.getInvolvedSwitches(pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId))).each {
-            def validationInfo = northbound.validateSwitch(it.dpId)
-            validationInfo.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validationInfo.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(
+                pathHelper.getInvolvedSwitches(
+                        pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId)))*.getDpId()).isEmpty()
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(qinqFlow.flowId)
@@ -687,12 +670,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def involvedSwitchesFlow1 = pathHelper.getInvolvedSwitches(
                 pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId))
         )
-        involvedSwitchesFlow1.each {sw ->
-            with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesFlow1*.getDpId()).isEmpty()
 
         when: "Create a vlan flow on the same port as QinQ flow"
         def vlanFlow = flowHelper.randomFlow(swPair).tap {
@@ -711,12 +689,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         and: "Involved switches pass switch validation"
         def involvedSwitchesFlow2 = pathHelper.getInvolvedSwitches(pathHelper.convert(northbound.getFlowPath(vlanFlow.id)))
         def involvedSwitchesforBothFlows = (involvedSwitchesFlow1 + involvedSwitchesFlow2).unique { it.dpId }
-        involvedSwitchesforBothFlows.each { sw ->
-            with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesforBothFlows*.getDpId()).isEmpty()
 
         and: "Both flows are pingable"
         [qinqFlow.flowId, vlanFlow.id].each {
@@ -827,20 +800,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "System detects missing rules on the src switch"
         def amountOfServer42Rules = switchHelper.getCachedSwProps(swP.src.dpId).server42FlowRtt ? 2 : 0
-        with(northbound.validateSwitch(swP.src.dpId).rules) {
+        with(switchHelper.synchronizeAndCollectFixedDiscrepancies(swP.src.dpId).get().rules) {
             it.excess.empty
-            it.excessHex.empty
             it.missing.size() == 3 + amountOfServer42Rules //ingress, egress, shared, server42
-            it.missingHex.size() == 3 + amountOfServer42Rules
         }
-
-        when: "Synchronize the src switch"
-        northbound.synchronizeSwitch(swP.src.dpId, false)
-
-        then: "Missing rules are reinstalled"
-        def validateSwResponse = northbound.validateSwitch(swP.src.dpId)
-        validateSwResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        validateSwResponse.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
 
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
@@ -914,14 +877,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "All involved switches pass switch validation"
-        withPool {
-            currentPath*.switchId.eachParallel { SwitchId swId ->
-                with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(currentPath*.switchId).isEmpty()
 
         cleanup: "Revert system to original state"
         flow && flowHelperV2.deleteFlow(flow.flowId)

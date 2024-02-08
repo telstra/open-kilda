@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import org.openkilda.functionaltests.model.switches.Manufacturer
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -27,7 +26,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.meter.MeterEntry
 import org.openkilda.messaging.info.rule.FlowEntry
@@ -231,11 +229,7 @@ on a #switchType switch"() {
         newMeterEntries*.rate.each { verifyRateSizeOnWb5164(it, flow.maximumBandwidth) }
 
         and: "Switch validation shows no discrepancies in meters"
-        def metersValidation = northbound.validateSwitch(sw.dpId).meters
-        metersValidation.proper.size() == 2 + sw.defaultMeters.size()
-        metersValidation.excess.empty
-        metersValidation.missing.empty
-        metersValidation.misconfigured.empty
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
 
         and: "Flow validation shows no discrepancies in meters"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
@@ -400,11 +394,7 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
         newMeters*.burstSize.each { assert it == switchHelper.getExpectedBurst(sw.dpId, flowRate) }
 
         and: "Switch validation shows no discrepancies in meters"
-        def metersValidation = northbound.validateSwitch(sw.dpId).meters
-        metersValidation.proper.size() == 2 + sw.defaultMeters.size()
-        metersValidation.excess.empty
-        metersValidation.missing.empty
-        metersValidation.misconfigured.empty
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
 
         and: "Flow validation shows no discrepancies in meters"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
@@ -457,11 +447,7 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
         newMeters*.burstSize.every { it == expectedBurstSize }
 
         and: "Switch validation shows no discrepancies in meters"
-        def metersValidation = northbound.validateSwitch(sw.dpId).meters
-        metersValidation.proper.size() == 2 + sw.defaultMeters.size()
-        metersValidation.excess.empty
-        metersValidation.missing.empty
-        metersValidation.misconfigured.empty
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
 
         and: "Flow validation shows no discrepancies in meters"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
@@ -516,11 +502,7 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
         }
 
         and: "Switch validation shows no discrepancies in meters"
-        def metersValidation = northbound.validateSwitch(sw.dpId).meters
-        metersValidation.proper.size() == 2 + sw.defaultMeters.size()
-        metersValidation.excess.empty
-        metersValidation.missing.empty
-        metersValidation.misconfigured.empty
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
 
         and: "Flow validation shows no discrepancies in meters"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }

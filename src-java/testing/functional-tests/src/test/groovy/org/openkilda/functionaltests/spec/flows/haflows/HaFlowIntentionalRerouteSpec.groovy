@@ -14,7 +14,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths
 import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlow
@@ -69,11 +68,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         northboundV2.getHaFlowPaths(haFlow.haFlowId) == currentPathResponse
 
         and: "And involved switches pass validation"
-        withPool {
-            haFlowHelper.getInvolvedSwitches(currentPathResponse).eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlowHelper.getInvolvedSwitches(currentPathResponse)).isEmpty()
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
@@ -145,11 +140,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
 
         and: "And involved switches pass validation"
         def allInvolvedSwitchIds = oldInvolvedSwitchIds + haFlowHelper.getInvolvedSwitches(getPathsResponse)
-        withPool {
-            allInvolvedSwitchIds.eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
@@ -205,11 +196,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
 
         and: "And involved switches pass validation"
         def allInvolvedSwitchIds = oldInvolvedSwitchIds + haFlowHelper.getInvolvedSwitches(updatedPaths)
-        withPool {
-            allInvolvedSwitchIds.eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
 
         and: "HA-flow pass validation"
         northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected

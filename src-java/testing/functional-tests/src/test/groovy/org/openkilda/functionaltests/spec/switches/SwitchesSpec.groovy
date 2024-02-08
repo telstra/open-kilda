@@ -6,14 +6,11 @@ import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
 import spock.lang.Shared
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
-import static org.openkilda.functionaltests.model.switches.Manufacturer.CENTEC
-import static org.openkilda.functionaltests.model.switches.Manufacturer.CENTEC
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
@@ -309,11 +306,11 @@ class SwitchesSpec extends HealthCheckSpecification {
                 [descr    : "synchronizing rules on",
                  operation: { getNorthbound().synchronizeSwitchRules(NON_EXISTENT_SWITCH_ID) }],
                 [descr    : "synchronizing",
-                 operation: { getNorthbound().synchronizeSwitch(NON_EXISTENT_SWITCH_ID, true) }],
+                 operation: { switchHelper.synchronize(NON_EXISTENT_SWITCH_ID) }],
                 [descr    : "validating rules on",
                  operation: { getNorthbound().validateSwitchRules(NON_EXISTENT_SWITCH_ID) }],
                 [descr    : "validating",
-                 operation: { getNorthbound().validateSwitch(NON_EXISTENT_SWITCH_ID) }]
+                 operation: { switchHelper.validate(NON_EXISTENT_SWITCH_ID) }]
         ]
     }
 

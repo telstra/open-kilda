@@ -101,7 +101,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         }
 
         expect: "No rule discrepancies on every switch of the flow"
-        switches.each { verifySwitchRules(it.dpId) }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(switches*.getDpId()).isEmpty()
 
         and: "No discrepancies when doing flow validation"
         northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
@@ -135,7 +135,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         }
 
         and: "No rule discrepancies on every switch of the flow"
-        switches.each { sw -> Wrappers.wait(WAIT_OFFSET) { verifySwitchRules(sw.dpId) } }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(switches*.getDpId()).isEmpty()
 
         cleanup:
         !flowIsDeleted && flow && flowHelper.deleteFlow(flow.id)
@@ -337,7 +337,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         flowHelper.addFlow(flow)
 
         expect: "No rule discrepancies on the switch"
-        verifySwitchRules(flow.source.datapath)
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.source.datapath).isPresent()
 
         and: "No discrepancies when doing flow validation"
         northbound.validateFlow(flow.id).each { direction -> assert direction.asExpected }
@@ -350,7 +350,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         def flowIsDeleted = true
 
         and: "No rule discrepancies on the switch after delete"
-        Wrappers.wait(WAIT_OFFSET) { verifySwitchRules(flow.source.datapath) }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.source.datapath).isPresent()
 
         cleanup:
         !flowIsDeleted && flowHelper.deleteFlow(flow.id)
@@ -580,9 +580,10 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
 
         and: "All related switches have no discrepancies in rules"
         switches.each {
-            def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
-            validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
+            def syncResult = switchHelper.synchronize(it.getDpId())
+            with (syncResult) {
+                assert [rules.installed, rules.removed, meters.installed, meters.removed].every {it.empty}
+            }
             def swProps = switchHelper.getCachedSwProps(it.dpId)
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId,dstSwitch.dpId]) ? 1 : 0
             if (swProps.server42FlowRtt) {
@@ -590,7 +591,8 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
                     amountOfServer42Rules += 1
             }
             def amountOfFlowRules = 3 + amountOfServer42Rules
-            assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
+            assert syncResult.rules.proper
+                    .findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
         }
 
         cleanup: "Remove the flow"
@@ -830,7 +832,7 @@ are not connected to the controller/).matches(exc)
         }
         producer.close()
 
-        assert northbound.validateSwitch(sw.dpId).meters.excess.size() == amountOfExcessMeters
+        assert switchHelper.validate(sw.dpId).meters.excess.size() == amountOfExcessMeters
 
         when: "Create several flows"
         List<String> flows = []
@@ -852,9 +854,8 @@ are not connected to the controller/).matches(exc)
          in reality we've already created excess meters 32..42
          excess meters should NOT be just allocated to the created flow
          they should be recreated(burst size should be recalculated) */
-        def validateSwitchInfo = northbound.validateSwitch(sw.dpId)
-        validateSwitchInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
-        validateSwitchInfo.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
+        def validateSwitchInfo = switchHelper.validate(sw.dpId)
+        validateSwitchInfo.isAsExpected()
         validateSwitchInfo.meters.proper.size() == amountOfFlows * 2 // one flow creates two meters
 
         cleanup: "Delete the flows and excess meters"

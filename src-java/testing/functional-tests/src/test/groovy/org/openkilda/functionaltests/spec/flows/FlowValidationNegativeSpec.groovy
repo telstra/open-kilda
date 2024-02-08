@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
+
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
@@ -66,18 +66,16 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         rules[damagedSwitch.toString()] == cookieToDelete.toString()
 
         and: "Affected switch should have one missing rule with the same cookie as the damaged flow"
-        def switchValidationResult = northbound.validateSwitchRules(damagedSwitch)
-        switchValidationResult.missingRules.size() == 1
-        switchValidationResult.missingRules[0] == cookieToDelete
+        def switchSynchronizationResult = switchHelper.synchronizeAndCollectFixedDiscrepancies(damagedSwitch).get()
+        switchSynchronizationResult.getRules().getMissing() == [cookieToDelete]
 
         and: "There should be no excess rules on the affected switch"
-        switchValidationResult.excessRules.size() == 0
+        switchSynchronizationResult.getRules().getExcess().isEmpty()
 
         and: "Validation of non-affected switches (if any) should succeed"
         if (damagedFlowSwitches.size() > 1) {
-            def nonAffectedSwitches = damagedFlowSwitches.findAll { it != damagedFlowSwitches[item] }
-            nonAffectedSwitches.each { sw -> assert northbound.validateSwitchRules(sw).missingRules.size() == 0 }
-            nonAffectedSwitches.each { sw -> assert northbound.validateSwitchRules(sw).excessRules.size() == 0 }
+            def nonAffectedSwitches = damagedFlowSwitches.findAll { it != damagedSwitch }
+            switchHelper.synchronizeAndCollectFixedDiscrepancies(nonAffectedSwitches).isEmpty()
         }
 
         cleanup: "Delete the flows"

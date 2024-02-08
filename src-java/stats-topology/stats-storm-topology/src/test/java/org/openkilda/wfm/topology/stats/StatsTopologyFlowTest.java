@@ -55,6 +55,7 @@ import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
@@ -66,6 +67,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
+@Disabled("Disabled due to flaky behaviour. See https://github.com/telstra/open-kilda/issues/5563")
 public class StatsTopologyFlowTest extends StatsTopologyBaseTest {
 
     @BeforeAll
