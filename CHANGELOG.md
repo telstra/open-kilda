@@ -1,4 +1,21 @@
 # Changelog
+## v1.154.0 (06/02/2024)
+
+### Bug Fixes:
+-  [#5552](https://github.com/telstra/open-kilda/pull/5552) 3566 Add validation for remotelog server ip (Issue: [#3566](https://github.com/telstra/open-kilda/issues/3566))
+-  [#5529](https://github.com/telstra/open-kilda/pull/5529) Allow BAD_OUT_PORT from OF errors
+-  [#5564](https://github.com/telstra/open-kilda/pull/5564) disable PingTopologyTests and StatsTopologyTests [**tests**]
+
+### Improvements:
+-  [#5548](https://github.com/telstra/open-kilda/pull/5548) 5390: [TEST]: Replace switch validation with switch synchronization where possible [**tests**]
+-  [#5558](https://github.com/telstra/open-kilda/pull/5558) [TEST]: Refactoring: Server42 [**tests**]
+-  [#5565](https://github.com/telstra/open-kilda/pull/5565) 5551 Add code check style guide
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.153.0...v1.154.0)
+
+---
+
 ## v1.153.0 (29/01/2024)
 
 ### Improvements:
