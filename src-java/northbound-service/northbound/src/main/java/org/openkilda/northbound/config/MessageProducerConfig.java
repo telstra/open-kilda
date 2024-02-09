@@ -19,7 +19,7 @@ import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_COMPONENT_NAME_PROPER
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.PRODUCER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
-import static org.openkilda.northbound.config.KafkaNorthboundConfig.NORTHBOUND_COMPONENT_NAME;
+import static org.openkilda.northbound.config.KafkaNorthboundGroupConfig.NORTHBOUND_COMPONENT_NAME;
 
 import org.openkilda.bluegreen.kafka.interceptors.VersioningProducerInterceptor;
 import org.openkilda.messaging.Message;

@@ -19,7 +19,7 @@ import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_COMPONENT_NAME_PROPER
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_RUN_ID_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_CONNECTION_STRING_PROPERTY;
 import static org.openkilda.bluegreen.kafka.Utils.CONSUMER_ZOOKEEPER_RECONNECTION_DELAY_PROPERTY;
-import static org.openkilda.grpc.speaker.config.KafkaGrpcSpeakerConfig.GRPC_COMPONENT_NAME;
+import static org.openkilda.grpc.speaker.config.KafkaGroupConfig.GRPC_COMPONENT_NAME;
 
 import org.openkilda.bluegreen.kafka.interceptors.VersioningConsumerInterceptor;
 import org.openkilda.messaging.command.CommandMessage;
@@ -72,12 +72,6 @@ public class MessageConsumerConfig {
     private long zookeeperReconnectDelayMs;
 
     /**
-     * Kafka group id.
-     */
-    @Value("#{kafkaGroupConfig.getGroupId()}")
-    private String groupId;
-
-    /**
      * Kilda blue green-mode.
      */
     @Value("${BLUE_GREEN_MODE:blue}")
@@ -101,12 +95,12 @@ public class MessageConsumerConfig {
      * @return kafka properties
      */
     @Bean
-    public Map<String, Object> consumerConfigs() {
+    public Map<String, Object> consumerConfigs(KafkaGroupConfig kafkaGroupConfig) {
         return ImmutableMap.<String, Object>builder()
                 .put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaHosts)
                 .put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
                 .put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class)
-                .put(ConsumerConfig.GROUP_ID_CONFIG, buildGroupId())
+                .put(ConsumerConfig.GROUP_ID_CONFIG, buildGroupId(kafkaGroupConfig.getGroupId()))
                 .put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
                 .put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, kafkaSessionTimeout)
                 .put(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName())
@@ -126,10 +120,10 @@ public class MessageConsumerConfig {
      * @return kafka consumer factory
      */
     @Bean
-    public ConsumerFactory<String, CommandMessage> consumerFactory() {
-        return new DefaultKafkaConsumerFactory<>(consumerConfigs(),
-                new StringDeserializer(), new ErrorHandlingDeserializer<>(
-                        new JsonDeserializer<>(CommandMessage.class)));
+    public ConsumerFactory<String, CommandMessage> consumerFactory(KafkaGroupConfig kafkaGroupConfig) {
+        return new DefaultKafkaConsumerFactory<>(consumerConfigs(kafkaGroupConfig),
+                new StringDeserializer(),
+                new ErrorHandlingDeserializer<>(new JsonDeserializer<>(CommandMessage.class)));
     }
 
     /**
@@ -140,16 +134,17 @@ public class MessageConsumerConfig {
      * @return kafka listener container factory
      */
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, CommandMessage> kafkaListenerContainerFactory() {
+    public ConcurrentKafkaListenerContainerFactory<String, CommandMessage> kafkaListenerContainerFactory(
+            KafkaGroupConfig kafkaGroupConfig) {
         ConcurrentKafkaListenerContainerFactory<String, CommandMessage> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(consumerFactory());
+        factory.setConsumerFactory(consumerFactory(kafkaGroupConfig));
         factory.getContainerProperties().setPollTimeout(pollTimeout);
         factory.setConcurrency(kafkaListeners);
         return factory;
     }
 
-    private String buildGroupId() {
+    private String buildGroupId(String groupId) {
         return String.format("%s-%s", groupId, blueGreenMode);
     }
 }

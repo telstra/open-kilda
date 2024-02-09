@@ -37,7 +37,8 @@ import org.openkilda.model.EffectiveBfdProperties;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
 import org.openkilda.northbound.MessageExchanger;
-import org.openkilda.northbound.config.KafkaConfig;
+import org.openkilda.northbound.config.KafkaNorthboundGroupConfig;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.converter.LinkPropsMapper;
@@ -438,7 +439,7 @@ public class LinkServiceTest {
     }
 
     @TestConfiguration
-    @Import(KafkaConfig.class)
+    @Import({KafkaTopicsNorthboundConfig.class, KafkaNorthboundGroupConfig.class})
     @ComponentScan({
             "org.openkilda.northbound.converter",
             "org.openkilda.northbound.utils"})
@@ -467,9 +468,10 @@ public class LinkServiceTest {
         @Bean
         public LinkService linkService(MessagingChannel messagingChannel, Clock clock, TaskScheduler taskScheduler,
                                        CorrelationIdFactory idFactory, LinkMapper linkMapper, FlowMapper flowMapper,
-                                       LinkPropsMapper linkPropsMapper) {
+                                       LinkPropsMapper linkPropsMapper,
+                                       KafkaTopicsNorthboundConfig kafkaTopicsNorthboundConfig) {
             return new LinkServiceImpl(messagingChannel, clock, taskScheduler, idFactory, linkMapper, flowMapper,
-                    linkPropsMapper);
+                    linkPropsMapper, kafkaTopicsNorthboundConfig);
         }
 
         @Bean

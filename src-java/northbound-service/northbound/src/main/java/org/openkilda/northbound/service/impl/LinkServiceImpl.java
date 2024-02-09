@@ -45,6 +45,7 @@ import org.openkilda.messaging.nbtopology.response.LinkPropsResponse;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
 import org.openkilda.model.LinkProps;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.LinkMapper;
 import org.openkilda.northbound.converter.LinkPropsMapper;
@@ -98,11 +99,7 @@ public class LinkServiceImpl extends BaseService implements LinkService {
 
     private final LinkPropsMapper linkPropsMapper;
 
-    /**
-     * The kafka topic for the nb topology.
-     */
-    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
-    private String nbworkerTopic;
+    private final String nbworkerTopic;
 
     private final MessagingChannel messagingChannel;
 
@@ -112,7 +109,8 @@ public class LinkServiceImpl extends BaseService implements LinkService {
 
     public LinkServiceImpl(MessagingChannel messagingChannel, Clock clock, TaskScheduler taskScheduler,
                            CorrelationIdFactory idFactory, LinkMapper linkMapper,
-                           FlowMapper flowMapper, LinkPropsMapper linkPropsMapper) {
+                           FlowMapper flowMapper, LinkPropsMapper linkPropsMapper,
+                           KafkaTopicsNorthboundConfig kafkaTopicsNorthboundConfig) {
         super(messagingChannel);
         this.messagingChannel = messagingChannel;
         this.clock = clock;
@@ -121,6 +119,7 @@ public class LinkServiceImpl extends BaseService implements LinkService {
         this.linkMapper = linkMapper;
         this.flowMapper = flowMapper;
         this.linkPropsMapper = linkPropsMapper;
+        this.nbworkerTopic = kafkaTopicsNorthboundConfig.getTopoNbTopic();
     }
 
     @Override
