@@ -33,7 +33,7 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
-@KafkaListener(topics = "#{kafkaTopicsConfig.getGrpcSpeakerTopic()}")
+@KafkaListener(topics = "#{kafkaTopicsGrpcConfig.getGrpcSpeakerTopic()}")
 public class KafkaMessageListener {
 
     @Autowired

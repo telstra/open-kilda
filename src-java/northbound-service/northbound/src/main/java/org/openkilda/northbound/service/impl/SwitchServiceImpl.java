@@ -85,6 +85,7 @@ import org.openkilda.messaging.swmanager.request.UpdateLagPortRequest;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
 import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.LagPortMapper;
@@ -120,7 +121,6 @@ import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -150,23 +150,16 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
     private final PortPropertiesMapper portPropertiesMapper;
 
     private final FlowMapper flowMapper;
-
-    @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
-    private String floodlightTopic;
-
-    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
-    private String nbworkerTopic;
-
-    @Value("#{kafkaTopicsConfig.getTopoDiscoTopic()}")
-    private String topoDiscoTopic;
-
-    @Value("#{kafkaTopicsConfig.getTopoSwitchManagerNbTopic()}")
-    private String switchManagerTopic;
+    private final String floodlightTopic;
+    private final String nbworkerTopic;
+    private final String topoDiscoTopic;
+    private final String switchManagerTopic;
 
     @Autowired
-    public SwitchServiceImpl(MessagingChannel messagingChannel, SwitchMapper switchMapper,
-                             LagPortMapper lagPortMapper, ConnectedDeviceMapper connectedDeviceMapper,
-                             PortPropertiesMapper portPropertiesMapper, FlowMapper flowMapper) {
+    public SwitchServiceImpl(KafkaTopicsNorthboundConfig kafkaTopicsNorthboundConfig,
+                             MessagingChannel messagingChannel, SwitchMapper switchMapper, LagPortMapper lagPortMapper,
+                             ConnectedDeviceMapper connectedDeviceMapper, PortPropertiesMapper portPropertiesMapper,
+                             FlowMapper flowMapper) {
         super(messagingChannel);
         this.messagingChannel = messagingChannel;
         this.switchMapper = switchMapper;
@@ -174,6 +167,11 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         this.connectedDeviceMapper = connectedDeviceMapper;
         this.portPropertiesMapper = portPropertiesMapper;
         this.flowMapper = flowMapper;
+
+        this.floodlightTopic = kafkaTopicsNorthboundConfig.getSpeakerTopic();
+        this.nbworkerTopic = kafkaTopicsNorthboundConfig.getTopoNbTopic();
+        this.topoDiscoTopic = kafkaTopicsNorthboundConfig.getTopoDiscoTopic();
+        this.switchManagerTopic = kafkaTopicsNorthboundConfig.getTopoSwitchManagerNbTopic();
     }
 
     /**

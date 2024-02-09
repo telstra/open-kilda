@@ -56,7 +56,6 @@ dependencies {
 
     implementation 'com.google.guava:guava'
     implementation 'org.apache.commons:commons-collections4'
-    implementation 'com.sabre.oss.conf4j:conf4j-spring-boot:1.0'
 
     implementation 'jakarta.validation:jakarta.validation-api:2.0.2'
 

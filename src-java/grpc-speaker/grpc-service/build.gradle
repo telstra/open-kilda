@@ -14,7 +14,6 @@ dependencies {
     implementation(platform('org.springframework.boot:spring-boot-dependencies:3.1.0'))
 
     implementation project(':grpc-api')
-    implementation project(':kilda-configuration')
     implementation project(':blue-green')
 
     implementation('org.springframework.boot:spring-boot-starter')
@@ -34,7 +33,6 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-api'
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.commons:commons-lang3'
-    implementation 'com.sabre.oss.conf4j:conf4j-spring-boot'
 
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
     implementation 'io.swagger.core.v3:swagger-core-jakarta:2.2.20'

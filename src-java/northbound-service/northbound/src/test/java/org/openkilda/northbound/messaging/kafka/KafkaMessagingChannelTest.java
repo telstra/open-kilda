@@ -25,7 +25,8 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.SwitchId;
-import org.openkilda.northbound.config.KafkaConfig;
+import org.openkilda.northbound.config.KafkaNorthboundGroupConfig;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.MessagingChannel;
 
@@ -246,7 +247,7 @@ public class KafkaMessagingChannelTest {
     }
 
     @TestConfiguration
-    @Import(KafkaConfig.class)
+    @Import({KafkaTopicsNorthboundConfig.class, KafkaNorthboundGroupConfig.class})
     @PropertySource({"classpath:northbound.properties"})
     static class Config {
         @Bean

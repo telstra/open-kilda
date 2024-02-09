@@ -56,7 +56,10 @@ import java.util.Map;
 @Configuration
 @EnableRetry
 @PropertySource("file:${kilda.config.file:kilda.properties}")
-@ComponentScan(basePackages = {"org.openkilda.testing.service", "org.openkilda.testing.tools"})
+@ComponentScan(basePackages = {
+        "org.openkilda.testing.service",
+        "org.openkilda.testing.tools",
+        "org.openkilda.testing.config"})
 public class DefaultServiceConfig {
 
     public DefaultServiceConfig() {
