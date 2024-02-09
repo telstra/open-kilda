@@ -2,128 +2,123 @@ package org.openkilda.functionaltests.spec.flows.haflows
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.helpers.HaFlowHelper
-import org.openkilda.functionaltests.helpers.YFlowHelper
-import org.openkilda.northbound.dto.v2.haflows.HaFlow
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.model.HaFlowExtended
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
 
 import com.shazam.shazamcrest.matcher.CustomisableMatcher
 import groovy.util.logging.Slf4j
-import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
-import spock.lang.Shared
 
 @Slf4j
-@Narrative("Verify operations with protected paths on HA-flows.")
+@Narrative("Verify operations with protected paths on Ha-Flows.")
+@Tags([HA_FLOW])
 class HaFlowProtectedSpec extends HealthCheckSpecification {
-    @Autowired
-    @Shared
-    HaFlowHelper haFlowHelper
-    @Autowired
-    @Shared
-    YFlowHelper yFlowHelper
 
-    def "Able to enable protected path on an HA-flow"() {
-        given: "A simple HA-flow"
+    def "Able to enable protected path on an HA-Flow"() {
+        given: "A simple HA-Flow"
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
-        def haFlowRequest = haFlowHelper.randomHaFlow(swT)
-        HaFlow haFlow = haFlowHelper.addHaFlow(haFlowRequest)
-        def haFlowPaths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
-        assert !haFlowPaths.sharedPath.protectedPath
-        def switchesBeforeUpdate = haFlowHelper.getInvolvedSwitches(haFlowPaths)
+        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        assert !haFlow.allocateProtectedPath
+
+        def haFlowPaths = haFlow.retrievedAllEntityPaths()
+        assert haFlowPaths.subFlowPaths.protectedPath.forward.isEmpty()
+        def switchesBeforeUpdate = haFlowPaths.getInvolvedSwitches(true)
 
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
-        def update = haFlowHelper.convertToUpdate(haFlow.tap { it.allocateProtectedPath = true })
-        def updateResponse = haFlowHelper.updateHaFlow(haFlow.haFlowId, update)
+        def updateRequest = haFlow.convertToUpdateRequest().tap { allocateProtectedPath = true}
+        def updateResponse = haFlow.update(updateRequest)
 
         then: "Update response contains enabled protected path"
         updateResponse.allocateProtectedPath
 
         and: "Protected path is really enabled on the HA-Flow"
-        northboundV2.getHaFlow(haFlow.haFlowId).allocateProtectedPath
+        haFlow.retrieveDetails().allocateProtectedPath
 
         and: "Protected path is really created"
-        def paths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
-        paths.subFlowPaths.each {
-            assert it.protectedPath
-            assert it.forward != it.protectedPath.forward
+        def pathsAfterEnablingProtected = haFlow.retrievedAllEntityPaths()
+        pathsAfterEnablingProtected.subFlowPaths.each {subFlowPath ->
+            assert subFlowPath.protectedPath
+            assert subFlowPath.getCommonIslsWithProtected().isEmpty()
         }
-        def switchesAfterUpdate = haFlowHelper.getInvolvedSwitches(paths)
 
-        // not implemented yet https://github.com/telstra/open-kilda/issues/5152
-        // and: "HA-Flow and related sub-flows are valid"
-        // northboundV2.validateHaFlow(haFlow.haFlowId).asExpected
+        and: "HA-Flow pass validation"
+        def haFlowValidation = haFlow.validate()
+        haFlowValidation.asExpected
+        haFlowValidation.getSubFlowValidationResults().each { assert it.getDiscrepancies().isEmpty() }
+        //for both path and protected path in both forward and reverse directions
+        haFlowValidation.getSubFlowValidationResults().size() == 4
 
-        and: "All involved switches pass switch validation"
+        and: "All involved switches passes switch validation"
+        def switchesAfterUpdate = pathsAfterEnablingProtected.getInvolvedSwitches(true)
         switchHelper.synchronizeAndCollectFixedDiscrepancies(switchesBeforeUpdate + switchesAfterUpdate).isEmpty()
 
-        and: "HA-flow passes validation"
-        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
-
         cleanup:
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+        haFlow && haFlow.delete()
     }
 
-    def "Able to disable protected path on an HA-flow via partial update"() {
-        given: "An HA-flow with protected path"
+    def "Able to disable protected path on an HA-Flow via partial update"() {
+        given: "An HA-Flow with protected path"
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
-        def haFlowRequest = haFlowHelper.randomHaFlow(swT)
-        haFlowRequest.allocateProtectedPath = true
-        HaFlow haFlow = haFlowHelper.addHaFlow(haFlowRequest)
-        def haFlowPaths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
-        assert haFlowPaths.sharedPath.protectedPath
-        def switchesBeforeUpdate = haFlowHelper.getInvolvedSwitches(haFlowPaths)
+        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).withProtectedPath(true).create()
+
+        def haFlowPaths = haFlow.retrievedAllEntityPaths()
+        assert !haFlowPaths.subFlowPaths.protectedPath.forward.isEmpty()
+        def switchesBeforeUpdate = haFlowPaths.getInvolvedSwitches(true)
 
         when: "Patch flow: disable protected path(allocateProtectedPath=false)"
-        def patch = HaFlowPatchPayload.builder().allocateProtectedPath(false).build()
-        def patchResponse = haFlowHelper.partialUpdateHaFlow(haFlow.haFlowId, patch)
+        def updateResponse = haFlow.partialUpdate(HaFlowPatchPayload.builder().allocateProtectedPath(false).build())
 
         then: "Patch response contains disabled protected path"
-        !patchResponse.allocateProtectedPath
+        !updateResponse.allocateProtectedPath
 
         and: "Protected path is really disabled on the HA-Flow"
-        !northboundV2.getHaFlow(haFlow.haFlowId).allocateProtectedPath
+        !haFlow.retrieveDetails().allocateProtectedPath
 
         and: "Protected path is really removed"
-        def paths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
-        paths.subFlowPaths.each {
-            assert !it.protectedPath
-        }
-        def switchesAfterUpdate = haFlowHelper.getInvolvedSwitches(paths)
+        def pathsAfterUpdate = haFlow.retrievedAllEntityPaths()
+        pathsAfterUpdate.subFlowPaths.protectedPath.forward.isEmpty()
+        and: "HA-Flow pass validation"
+        def haFlowValidation = haFlow.validate()
+        haFlowValidation.asExpected
+        haFlowValidation.getSubFlowValidationResults().each { assert it.getDiscrepancies().isEmpty() }
+        //only for path in both forward and reverse directions
+        haFlowValidation.getSubFlowValidationResults().size() == 2
 
-        // not implemented yet https://github.com/telstra/open-kilda/issues/5152
-        // and: "HA-Flow and related sub-flows are valid"
-        // northboundV2.validateHaFlow(haFlow.haFlowId).asExpected
-
-        and: "All involved switches pass switch validation"
+        and: "All involved switches passes switch validation"
+        def switchesAfterUpdate = pathsAfterUpdate.getInvolvedSwitches(true)
         switchHelper.synchronizeAndCollectFixedDiscrepancies(switchesBeforeUpdate + switchesAfterUpdate).isEmpty()
 
-        and: "HA-flow pass validation"
-        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
 
         cleanup:
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+        haFlow && haFlow.delete()
     }
 
-    def "User can update #data.descr of a ha-flow with protected path"() {
-        given: "An HA-flow with protected path"
+    def "User can update #data.descr of a HA-Flow with protected path"() {
+        given: "An HA-Flow with protected path"
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
-        def haFlowRequest = haFlowHelper.randomHaFlow(swT)
-        haFlowRequest.allocateProtectedPath = true
-        HaFlow haFlow = haFlowHelper.addHaFlow(haFlowRequest)
-        def haFlowPaths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
-        assert haFlowPaths.sharedPath.protectedPath
-        haFlow.tap(data.updateClosure)
-        def update = haFlowHelper.convertToUpdate(haFlow)
 
-        when: "Update the ha-flow"
-        def updateResponse = haFlowHelper.updateHaFlow(haFlow.haFlowId, update)
+        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).withProtectedPath(true).create()
+        def haFlowPaths = haFlow.retrievedAllEntityPaths()
+        assert !haFlowPaths.subFlowPaths.protectedPath.forward.isEmpty()
+
+        def haFlowDetails = haFlow.waitForBeingInState(FlowState.UP)
+        assert haFlowDetails.allocateProtectedPath
+
+        haFlow.tap(data.updateClosure)
+
+        def update = haFlow.convertToUpdateRequest()
+
+        when: "Update the ha-Flow"
+        def updateResponse = northboundV2.updateHaFlow(haFlow.haFlowId, update)
         def ignores = ["subFlows.timeUpdate",
                        "subFlows.status",
                        "subFlows.forwardLatency",
@@ -133,22 +128,25 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
                        "status"]
 
         then: "Requested updates are reflected in the response and in 'get' API"
-        expect updateResponse, sameBeanAs(haFlow, ignores)
-        expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlow, ignores)
+        haFlowDetails.tap(data.updateClosure)
+        expect updateResponse, sameBeanAs(haFlowDetails, ignores)
+
+        def haFlowDetailsAfterUpdating = haFlow.waitForBeingInState(FlowState.UP)
+        expect haFlowDetailsAfterUpdating, sameBeanAs(updateResponse, ignores)
 
         and: "And involved switches pass validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlowHelper.getInvolvedSwitches(haFlow.haFlowId)).isEmpty()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies( haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)).isEmpty()
 
-        and: "HA-flow pass validation"
-        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
+        and: "HA-Flow pass validation"
+        haFlow.validate().asExpected
 
         cleanup:
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+        haFlow && haFlow.delete()
 
         where: data << [
                 [
                         descr: "shared port and subflow ports",
-                        updateClosure: { HaFlow payload ->
+                        updateClosure: { def payload ->
                             def allowedSharedPorts = topology.getAllowedPortsForSwitch(topology.find(
                                     payload.sharedEndpoint.switchId)) - payload.sharedEndpoint.portNumber
                             payload.sharedEndpoint.portNumber = allowedSharedPorts[0]
@@ -161,7 +159,7 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
                 ],
                 [
                         descr: "shared switch and subflow switches",
-                        updateClosure: { HaFlow payload ->
+                        updateClosure: { def payload ->
                             def newSwT = topologyHelper.getSwitchTriplets(true).find {
                                 it.shared.dpId != payload.sharedEndpoint.switchId &&
                                         it.ep1.dpId != payload.subFlows[0].endpoint.switchId &&
