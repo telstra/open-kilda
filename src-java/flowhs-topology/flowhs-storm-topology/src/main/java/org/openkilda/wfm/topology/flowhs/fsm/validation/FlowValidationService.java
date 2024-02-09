@@ -118,6 +118,9 @@ public class FlowValidationService {
 
         List<SpeakerData> actualSpeakerData = flowDumpResponses.stream()
                 .flatMap(e -> e.getFlowSpeakerData().stream()).collect(Collectors.toList());
+        List<SpeakerData> speakerDataWithFlowDumpOnly = new ArrayList<>(actualSpeakerData);
+        final int rulesCountFromFlowDumpResponsesOnly = speakerDataWithFlowDumpOnly.size();
+
         actualSpeakerData.addAll(metersDumpResponses.stream()
                 .flatMap(e -> e.getMeterSpeakerData().stream()).toList());
         long metersCountLong = metersDumpResponses.stream()
@@ -146,13 +149,12 @@ public class FlowValidationService {
         boolean filterOutUsedSharedRules = false;
         List<SpeakerData> expectedForwardRules = ruleManager.buildRulesForFlowPath(flow.getForwardPath(),
                 filterOutUsedSharedRules, dataAdapter);
-        int rulesCount = actualSpeakerData.size();
         flowValidationResponse.add(compareAndGetDiscrepancies(
                 actualSimpleSwitchRulesBySwitchId,
                 simpleSwitchRuleConverter.convertSpeakerDataToSimpleSwitchRulesAndGroupBySwitchId(expectedForwardRules)
                         .values().stream().flatMap(Collection::stream).collect(Collectors.toList()),
                 flowId,
-                rulesCount,
+                rulesCountFromFlowDumpResponsesOnly,
                 metersCount,
                 FORWARD));
 
@@ -163,7 +165,7 @@ public class FlowValidationService {
                 simpleSwitchRuleConverter.convertSpeakerDataToSimpleSwitchRulesAndGroupBySwitchId(expectedReversRules)
                         .values().stream().flatMap(Collection::stream).collect(Collectors.toList()),
                 flowId,
-                rulesCount,
+                rulesCountFromFlowDumpResponsesOnly,
                 metersCount,
                 REVERSE));
 
@@ -179,7 +181,7 @@ public class FlowValidationService {
                                     expectProtectedForwardRules)
                             .values().stream().flatMap(Collection::stream).collect(Collectors.toList()),
                     flowId,
-                    rulesCount,
+                    rulesCountFromFlowDumpResponsesOnly,
                     metersCount,
                     PROTECTED_FORWARD));
         }
@@ -194,7 +196,7 @@ public class FlowValidationService {
                                     expectProtectedReversRules)
                             .values().stream().flatMap(Collection::stream).collect(Collectors.toList()),
                     flowId,
-                    rulesCount,
+                    rulesCountFromFlowDumpResponsesOnly,
                     metersCount,
                     PROTECTED_REVERSE));
         }
