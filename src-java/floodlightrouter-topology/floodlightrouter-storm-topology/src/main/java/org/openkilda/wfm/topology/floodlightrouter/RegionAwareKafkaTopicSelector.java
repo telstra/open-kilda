@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.topology.floodlightrouter;
 
-import joptsimple.internal.Strings;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.storm.kafka.bolt.selector.KafkaTopicSelector;
 import org.apache.storm.tuple.Tuple;
 
@@ -49,7 +49,7 @@ public class RegionAwareKafkaTopicSelector implements KafkaTopicSelector {
      * Create region specific kafka-topic name or generic topic name if region is null.
      */
     public static String formatTopicName(String topic, String region) {
-        if (Strings.isNullOrEmpty(region)) {
+        if (StringUtils.isEmpty(region)) {
             return topic;
         }
         return String.format("%s_%s", topic, region);

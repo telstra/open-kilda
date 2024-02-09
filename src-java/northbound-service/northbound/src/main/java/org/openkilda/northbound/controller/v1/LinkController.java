@@ -145,7 +145,7 @@ public class LinkController extends BaseLinkController {
      */
     @Operation(summary = "Get all flows for a particular link, based on arguments.")
     @GetMapping(path = "/links/flows",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+            produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<FlowResponsePayload>> getFlowsForLink(@RequestParam(value = "src_switch")
                                                                         SwitchId srcSwitch,
@@ -165,7 +165,7 @@ public class LinkController extends BaseLinkController {
      */
     @Operation(summary = "Reroute all flows for a particular link, based on arguments.")
     @PatchMapping(path = "/links/flows/reroute",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+            produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<String>> rerouteFlowsForLink(@RequestParam(value = "src_switch") SwitchId srcSwitch,
                                                                @RequestParam(value = "src_port") Integer srcPort,
@@ -181,7 +181,7 @@ public class LinkController extends BaseLinkController {
      */
     @Operation(summary = "Update \"Under maintenance\" flag for the link.")
     @PatchMapping(path = "/links/under-maintenance",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+            produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<LinkDto>> updateLinkUnderMaintenance(@RequestBody LinkUnderMaintenanceDto link) {
         return linkService.updateLinkUnderMaintenance(link);
@@ -205,7 +205,7 @@ public class LinkController extends BaseLinkController {
      */
     @Operation(summary = "Update \"enable bfd\" flag for the link.")
     @PatchMapping(path = "/links/enable-bfd",
-            produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+            produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<LinkDto>> updateLinkEnableBfd(@RequestBody LinkEnableBfdDto link) {
         NetworkEndpoint source = makeSourceEndpoint(new SwitchId(link.getSrcSwitch()), link.getSrcPort());

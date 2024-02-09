@@ -35,6 +35,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.time.Clock;
 import java.util.List;
+import java.util.concurrent.Executors;
 
 /**
  * The Web Application configuration.
@@ -100,6 +101,6 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Bean
     public TaskScheduler taskScheduler() {
-        return new ConcurrentTaskScheduler();
+        return new ConcurrentTaskScheduler(Executors.newSingleThreadScheduledExecutor());
     }
 }

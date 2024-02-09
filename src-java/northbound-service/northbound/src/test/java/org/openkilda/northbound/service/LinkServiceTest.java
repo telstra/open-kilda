@@ -79,8 +79,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -342,7 +342,7 @@ public class LinkServiceTest {
         Assertions.assertFalse(future.isDone());
 
         ArgumentCaptor<Runnable> monitorTaskCaptor = ArgumentCaptor.forClass(Runnable.class);
-        verify(taskScheduler).schedule(monitorTaskCaptor.capture(), any(Date.class));
+        verify(taskScheduler).schedule(monitorTaskCaptor.capture(), any(Instant.class));
 
         messageExchanger.mockChunkedResponse(
                 makeBfdMonitorCorrelationId(correlationId, 0),
@@ -393,7 +393,7 @@ public class LinkServiceTest {
         Assertions.assertFalse(future.isDone());
 
         ArgumentCaptor<Runnable> monitorTaskCaptor = ArgumentCaptor.forClass(Runnable.class);
-        verify(taskScheduler).schedule(monitorTaskCaptor.capture(), any(Date.class));
+        verify(taskScheduler).schedule(monitorTaskCaptor.capture(), any(Instant.class));
         Mockito.reset(taskScheduler);
 
         clock.adjust(Duration.ofSeconds(1));
@@ -407,7 +407,7 @@ public class LinkServiceTest {
 
         // make read request and schedule one more read
         monitorTaskCaptor.getValue().run();
-        verify(taskScheduler).schedule(monitorTaskCaptor.capture(), any(Date.class));
+        verify(taskScheduler).schedule(monitorTaskCaptor.capture(), any(Instant.class));
         Assertions.assertFalse(future.isDone());
 
         clock.adjust(Duration.ofSeconds(bfdPropertiesApplyPeriod));

@@ -23,7 +23,7 @@ dependencies {
     implementation 'org.springframework.security:spring-security-web'
     implementation ('org.springframework.kafka:spring-kafka:3.1.1')
     implementation('org.apache.kafka:kafka-clients:3.6.1')
-    implementation('org.apache.kafka:kafka_2.11')
+    implementation('org.apache.kafka:kafka_2.11:2.3.1')
 
     implementation 'org.slf4j:slf4j-api'
     implementation 'io.grpc:grpc-protobuf'
@@ -71,10 +71,4 @@ bootJar.dependsOn generateVersionTxt
 
 test {
     useJUnitPlatform()
-}
-
-configurations.configureEach {
-    resolutionStrategy {
-        force('org.apache.kafka:kafka-clients:3.6.1')
-    }
 }

@@ -1,35 +1,34 @@
 plugins {
-    id 'java-library'
+    id "java-library"
 }
 
-description = 'Base Topology Messaging'
+description = "Base Topology Messaging"
 dependencies {
-    api project(':kilda-model')
-    implementation project(':blue-green')
+    api project(":kilda-model")
+    implementation project(":blue-green")
 
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations'
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    implementation("com.fasterxml.jackson.core:jackson-core")
+    implementation("com.fasterxml.jackson.core:jackson-annotations")
+    implementation("com.fasterxml.jackson.core:jackson-databind")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+    implementation("com.google.guava:guava")
+    implementation("org.apache.commons:commons-lang3")
+    implementation("org.slf4j:slf4j-api")
+    implementation("jakarta.validation:jakarta.validation-api:3.0.2")
 
-    implementation 'com.google.guava:guava'
-    implementation 'org.apache.commons:commons-lang3'
-    implementation 'org.slf4j:slf4j-api'
-    implementation 'jakarta.validation:jakarta.validation-api:2.0.2'
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api'
-
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
 }
 
 configurations {
     testArtifacts
 }
 
-task testJar(type: Jar) {
+tasks.register("testJar", Jar) {
     dependsOn compileTestJava
-    classifier 'test'
+    archiveClassifier = "test"
     from sourceSets.test.output
 }
 

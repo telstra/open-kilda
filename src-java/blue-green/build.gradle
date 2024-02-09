@@ -15,13 +15,14 @@ dependencies {
     implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'
 
-    api('org.apache.kafka:kafka-clients') {
+    api('org.apache.kafka:kafka-clients:3.6.1') {
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'
         exclude group: 'log4j', module: 'log4j'
     }
 
+    // TODO seems like the comment is no longer true
     // Conflicts with storm local run over IDE.
-    api ('org.apache.zookeeper:zookeeper:3.8.1') {
+    api ('org.apache.zookeeper:zookeeper:3.9.1') {
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'
         exclude group: 'log4j', module: 'log4j'
     }
