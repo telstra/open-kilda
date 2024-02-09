@@ -27,6 +27,8 @@ class CommandContextTest {
     @Test
     void serializationTest() {
         Kryo kryo = new Kryo();
+        kryo.register(CommandContext.class);
+
         Serializer<CommandContext> serializer = kryo.getSerializer(CommandContext.class);
 
         try (Output output = new Output(100)) {

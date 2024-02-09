@@ -28,7 +28,7 @@ dependencies {
     testImplementation project(path: ":kilda-persistence-tinkerpop", configuration: "testArtifacts")
     testImplementation project(":kilda-utils:stubs")
 
-    api("org.apache.storm:storm-kafka-client")
+    api "org.apache.storm:storm-kafka-client:2.6.1"
 
     /**
      * This dependency must be compileOnly to prevent storm to be packed via transitive dependencies into the shadowJar,
@@ -36,11 +36,11 @@ dependencies {
      * provided in the storm cluster. ShadowJar supports excludes, but it only excludes dependencies from the current
      * project.
      */
-    compileOnly("org.apache.storm:storm-core:2.5.0") {
+    compileOnly("org.apache.storm:storm-core:2.6.1") {
         exclude(group: "org.yaml", module: "snakeyaml")
     }
     implementation("org.yaml:snakeyaml:2.2")
-    testImplementation("org.apache.storm:storm-core:2.5.0") {
+    testImplementation("org.apache.storm:storm-core:2.6.1") {
         exclude group: "org.slf4j", module: "log4j-over-slf4j"
     }
 
@@ -74,7 +74,7 @@ dependencies {
         exclude group: "org.slf4j", module: "slf4j-log4j12"
         exclude group: "log4j", module: "log4j"
     }
-    api("org.apache.kafka:kafka_2.13:3.6.1") {
+    api("org.apache.kafka:kafka_2.12:3.6.1") {
         exclude group: "org.slf4j", module: "slf4j-log4j12"
         exclude group: "log4j", module: "log4j"
     }

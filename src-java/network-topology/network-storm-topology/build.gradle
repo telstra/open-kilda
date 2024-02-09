@@ -30,11 +30,11 @@ dependencies {
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
     testImplementation project(':kilda-utils:stubs')
 
-    compileOnly('org.apache.storm:storm-core:2.5.0') {
+    compileOnly('org.apache.storm:storm-core:2.6.1') {
         exclude(group: 'org.yaml', module: 'snakeyaml')
     }
     implementation('org.yaml:snakeyaml:2.2')
-    testImplementation('org.apache.storm:storm-core:2.5.0')
+    testImplementation('org.apache.storm:storm-core:2.6.1')
 
     implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'
