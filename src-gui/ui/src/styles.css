@@ -1703,7 +1703,6 @@ input, textarea, select  {
 
 table.dataTable thead .sorting, table.dataTable thead .sorting_asc, table.dataTable thead .sorting_desc, table.dataTable thead .sorting_asc_disabled, table.dataTable thead .sorting_desc_disabled {
   cursor: pointer;
-  *cursor: hand;
   background-repeat: no-repeat;
   background-position: center right;
 }
@@ -2423,7 +2422,7 @@ width:100%;
   display: inline-block;
   width: 100%;
   cursor: pointer;
-  z-index:1;
+  z-index: 1;
 }
 
 .sidebar-toggle:hover .icon-group .fa {
