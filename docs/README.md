@@ -1,9 +1,14 @@
 
 # How to contribute to OpenKilda project
-The folder contains OpenKilda contributor licenses agreements and tips for contributors.
+The [contribution folder](contrib) contains OpenKilda contributor license agreements
+and contribution [workflow](contrib/workflow.md).
+
 
 # OpenKilda design documents
-The folder contains the main use case diagrams and their descriptions.
+The [design folder](design) contains the main use case diagrams and their descriptions.
 
 # Guidelines
-The folder contains OpenKilda guidelines and conventions for contributors.
+OpenKilda guidelines and conventions:
+* [API guidelines](guidelines/api-guidelines.md)
+* [Logging conventions](guidelines/logging-conventions.md)
+* [Project structure conventions](guidelines/project-structure-conventions.md)
