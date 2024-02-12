@@ -17,7 +17,7 @@ package org.openkilda.messaging.nbtopology.request;
 
 import org.openkilda.model.SwitchId;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
@@ -27,7 +27,7 @@ import java.util.Collection;
 
 @Value
 @EqualsAndHashCode(callSuper = false)
-@JsonNaming(value = PropertyNamingStrategy.SnakeCaseStrategy.class)
+@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class GetFlowsPerPortForSwitchRequest extends SwitchesBaseRequest {
     SwitchId switchId;
     Collection<Integer> ports;

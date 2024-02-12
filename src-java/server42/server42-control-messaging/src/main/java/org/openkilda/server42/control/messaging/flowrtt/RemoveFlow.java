@@ -17,7 +17,7 @@ package org.openkilda.server42.control.messaging.flowrtt;
 
 import org.openkilda.server42.messaging.FlowDirection;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
