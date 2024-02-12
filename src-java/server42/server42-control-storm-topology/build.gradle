@@ -53,11 +53,11 @@ jar {
         attributes 'Main-Class': 'org.openkilda.server42.control.topology.ControlTopology'
     }
 
-    classifier = 'original'
+    archiveClassifier = 'original'
 }
 
 shadowJar {
-    classifier = ''
+    archiveClassifier = ''
     mergeServiceFiles()
     zip64 true
 }

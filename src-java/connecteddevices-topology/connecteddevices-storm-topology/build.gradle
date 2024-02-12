@@ -41,11 +41,11 @@ jar {
         attributes 'Main-Class': 'org.openkilda.wfm.topology.connecteddevices.ConnectedDevicesTopology'
     }
 
-    classifier = 'original'
+    archiveClassifier = 'original'
 }
 
 shadowJar {
-    classifier = ''
+    archiveClassifier = ''
     mergeServiceFiles()
     zip64 true
 }

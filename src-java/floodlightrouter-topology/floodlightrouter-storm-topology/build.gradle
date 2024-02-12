@@ -50,11 +50,11 @@ jar {
         attributes 'Main-Class': 'org.openkilda.wfm.topology.floodlightrouter.FloodlightRouterTopology'
     }
 
-    classifier = 'original'
+    archiveClassifier = 'original'
 }
 
 shadowJar {
-    classifier = ''
+    archiveClassifier = ''
     mergeServiceFiles()
     zip64 true
 }

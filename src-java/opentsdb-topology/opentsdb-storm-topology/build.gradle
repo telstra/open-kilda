@@ -68,11 +68,11 @@ jar {
     manifest {
         attributes 'Main-Class': 'org.openkilda.wfm.topology.opentsdb.OpenTsdbTopology'
     }
-    classifier = 'original'
+    archiveClassifier = 'original'
 }
 
 shadowJar {
-    classifier = ''
+    archiveClassifier = ''
     mergeServiceFiles()
 }
 

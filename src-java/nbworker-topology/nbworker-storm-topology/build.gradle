@@ -58,11 +58,11 @@ jar {
         attributes 'Main-Class': 'org.openkilda.wfm.topology.nbworker.NbWorkerTopology'
     }
 
-    classifier = 'original'
+    archiveClassifier = 'original'
 }
 
 shadowJar {
-    classifier = ''
+    archiveClassifier = ''
     mergeServiceFiles()
     zip64 true
 }
