@@ -60,11 +60,11 @@ jar {
         attributes 'Main-Class': 'org.openkilda.wfm.topology.network.NetworkTopology'
     }
 
-    classifier = 'original'
+    archiveClassifier = 'original'
 }
 
 shadowJar {
-    classifier = ''
+    archiveClassifier  = ''
     mergeServiceFiles()
     zip64 true
 }

@@ -30,11 +30,11 @@ jar {
         attributes 'Main-Class': 'org.openkilda.wfm.topology.history.HistoryTopology'
     }
 
-    classifier = 'original'
+    archiveClassifier = 'original'
 }
 
 shadowJar {
-    classifier = ''
+    archiveClassifier = ''
     mergeServiceFiles()
     zip64 true
 }

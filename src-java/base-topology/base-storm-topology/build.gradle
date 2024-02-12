@@ -30,7 +30,13 @@ dependencies {
 
     api("org.apache.storm:storm-kafka-client")
 
-    implementation("org.apache.storm:storm-core:2.5.0") {
+    /**
+     * This dependency must be compileOnly to prevent storm to be packed via transitive dependencies into the shadowJar,
+     * which is deployed to Storm later. This will cause a duplicate configuration error, because storm jar is already
+     * provided in the storm cluster. ShadowJar supports excludes, but it only excludes dependencies from the current
+     * project.
+     */
+    compileOnly("org.apache.storm:storm-core:2.5.0") {
         exclude(group: "org.yaml", module: "snakeyaml")
     }
     implementation("org.yaml:snakeyaml:2.2")
