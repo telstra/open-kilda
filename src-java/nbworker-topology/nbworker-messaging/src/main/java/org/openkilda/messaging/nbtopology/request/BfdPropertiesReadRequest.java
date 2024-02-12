@@ -18,7 +18,7 @@ package org.openkilda.messaging.nbtopology.request;
 import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.messaging.nbtopology.annotations.ReadRequest;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

@@ -23,7 +23,7 @@ import org.openkilda.messaging.info.InfoData;
 import org.openkilda.model.SwitchId;
 import org.openkilda.rulemanager.FlowSpeakerData;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
