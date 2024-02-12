@@ -18,7 +18,7 @@ package org.openkilda.messaging.command.haflow;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.flow.FlowValidationResponse;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -27,7 +27,7 @@ import java.util.List;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
-@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class HaFlowValidationResponse extends InfoData {
     private static final long serialVersionUID = 1L;
 

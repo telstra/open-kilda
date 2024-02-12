@@ -21,7 +21,7 @@ import org.openkilda.messaging.model.NetworkEndpoint;
 import org.openkilda.model.BfdProperties;
 import org.openkilda.model.EffectiveBfdProperties;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.EqualsAndHashCode;
 import lombok.Value;

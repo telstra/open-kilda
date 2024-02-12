@@ -18,7 +18,7 @@ package org.openkilda.server42.control.messaging.islrtt;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.model.SwitchId;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;

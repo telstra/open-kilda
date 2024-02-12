@@ -17,7 +17,7 @@ package org.openkilda.messaging.info.switches.v2;
 
 import org.openkilda.messaging.info.switches.LogicalPortType;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;

@@ -15,14 +15,14 @@
 
 package org.openkilda.messaging.info.stats;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Value;
 
 import java.io.Serializable;
 
 @Value
-@JsonNaming(PropertyNamingStrategy.SnakeCaseStrategy.class)
+@JsonNaming(SnakeCaseStrategy.class)
 public class GroupStatsEntry implements Serializable {
     private static final long serialVersionUID = 1L;
 
