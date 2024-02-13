@@ -40,6 +40,7 @@ import org.apache.http.HttpResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpMethod;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.util.UriUtils;
@@ -48,7 +49,6 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
-import javax.validation.constraints.NotNull;
 
 /**
  * The Class FlowsIntegrationService.
@@ -111,9 +111,6 @@ public class FlowsIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while retriving flow status with id: " + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.warn("Error occurred while retriving flow status with id:" + flowId, e);
-            throw new IntegrationException(e);
         }
     }
 
@@ -206,7 +203,7 @@ public class FlowsIntegrationService {
      * @param yFlowId y-flow id
      * @return YFlowRerouteResult
      */
-    public YFlowRerouteResult rerouteYFlow(@NotNull String yFlowId) {
+    public YFlowRerouteResult rerouteYFlow(@NonNull String yFlowId) {
         try {
             HttpResponse response = restClientManager.invoke(
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_Y_FLOW_REROUTE
@@ -267,9 +264,6 @@ public class FlowsIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while getting flow by id:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.warn("Error occurred while getting flow by id:" + flowId, e);
-            throw new IntegrationException(e);
         }
         return null;
     }
@@ -318,7 +312,7 @@ public class FlowsIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while updating flow:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (JsonProcessingException | UnsupportedEncodingException e) {
+        } catch (JsonProcessingException e) {
             LOGGER.warn("Error occurred while updating flow:" + flowId, e);
             throw new IntegrationException(e.getMessage(), e);
         }
@@ -344,9 +338,6 @@ public class FlowsIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while deleting flow:" + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.warn("Error occurred while deleting flow:" + flowId, e);
-            throw new IntegrationException(e);
         }
     }
 
@@ -426,11 +417,7 @@ public class FlowsIntegrationService {
         } catch (InvalidResponseException e) {
             LOGGER.error("Error occurred while retriving flow history with id: " + flowId, e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
-        } catch (UnsupportedEncodingException e) {
-            LOGGER.error("Error occurred while retriving flow history with id: " + flowId, e);
-            e.printStackTrace();
         }
-        return null;
     }
 
     /**

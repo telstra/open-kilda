@@ -1,7 +1,7 @@
 /logs/
 tmp/
 .deps/
-
+.angular/
 
 # Gradle specific	
 
@@ -29,6 +29,8 @@ src/main/webapp/ui/assets/*
 src/main/webapp/ui/*.js
 src/main/webapp/ui/*.js.map
 src/main/webapp/ui/*.js.LICENSE.txt
+derby.log
+styles.css
 ui/node_modules
 ui/package-lock.json
 src/main/webapp/ui/index.html

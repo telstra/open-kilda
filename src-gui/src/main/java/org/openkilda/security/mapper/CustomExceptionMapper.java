@@ -36,9 +36,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import java.util.Collections;
-import javax.validation.ConstraintViolation;
-import javax.validation.ConstraintViolationException;
+//import java.util.Collections;
+//import javax.validation.ConstraintViolation;
+//import javax.validation.ConstraintViolationException;
 
 /**
  * The Class CustomExceptionMapper.
@@ -79,14 +79,14 @@ public class CustomExceptionMapper extends GlobalExceptionMapper {
      * @param request the request
      * @return the response entity
      */
-    @ExceptionHandler(value = {ConstraintViolationException.class})
-    protected ResponseEntity<Object> constraintViolationExceptionHandler(final ConstraintViolationException ex,
-                                                                         final WebRequest request) {
-        String message = ex.getConstraintViolations().stream().map(ConstraintViolation::getMessage)
-                .sorted(Collections.reverseOrder()).collect(joining(", "));
-        return response(HttpError.BAD_REQUEST.getHttpStatus(), HttpError.BAD_REQUEST.getCode(),
-                HttpError.BAD_REQUEST.getAuxilaryMessage(), message);
-    }
+//    @ExceptionHandler(value = {ConstraintViolationException.class})
+//    protected ResponseEntity<Object> constraintViolationExceptionHandler(final ConstraintViolationException ex,
+//                                                                         final WebRequest request) {
+//        String message = ex.getConstraintViolations().stream().map(ConstraintViolation::getMessage)
+//                .sorted(Collections.reverseOrder()).collect(joining(", "));
+//        return response(HttpError.BAD_REQUEST.getHttpStatus(), HttpError.BAD_REQUEST.getCode(),
+//                HttpError.BAD_REQUEST.getAuxilaryMessage(), message);
+//    }
 
     /**
      * Integration exception handler.

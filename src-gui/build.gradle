@@ -1,81 +1,82 @@
 plugins {
     id 'java'
     id 'jacoco'
-    id 'org.springframework.boot' version '2.2.1.RELEASE'
+    id 'org.springframework.boot' version '2.7.18'
     id 'checkstyle'
     id 'war'
 }
 
 repositories {
     mavenCentral()
-    maven {
-        url 'https://repo.spring.io/milestone'
-    }
+    maven { url "https://repo.spring.io/milestone" }
+    maven { url "https://repo.spring.io/snapshot" }
 }
 
-def springBootVersion = '1.4.3.RELEASE'
+def springBootVersion = '2.7.18'
 
 dependencies {
-    implementation 'javax.servlet:jstl:1.2'
-    implementation 'org.springframework.ldap:spring-ldap-core:2.3.2.RELEASE'
-    implementation 'org.springframework.security:spring-security-ldap:4.1.4.RELEASE'
-    implementation 'org.apache.httpcomponents:httpclient:4.5.13'
-    implementation 'javax.ws.rs:javax.ws.rs-api:2.0'
-    implementation('com.googlecode.json-simple:json-simple:1.1.1') {
-        exclude group: 'junit'
-    }
-    implementation 'org.codehaus.jettison:jettison:1.4.1'
-    implementation 'commons-lang:commons-lang:2.6'
-    implementation 'org.apache.commons:commons-lang3:3.12.0'
+//    constraints {
+//        implementation "org.opensaml:opensaml-core:4.1.1"
+//        implementation "org.opensaml:opensaml-saml-api:4.1.1"
+//        implementation "org.opensaml:opensaml-saml-impl:4.1.1"
+//    }
     implementation "org.springframework.boot:spring-boot:${springBootVersion}"
-    implementation "org.springframework.boot:spring-boot-autoconfigure:${springBootVersion}"
     implementation "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
     implementation "org.springframework.boot:spring-boot-starter-data-jpa:${springBootVersion}"
     implementation "org.springframework.boot:spring-boot-starter-security:${springBootVersion}"
-    implementation 'org.springframework.security.extensions:spring-security-saml-dsl:1.0.0.M3'
+    implementation 'org.springframework.security:spring-security-saml2-service-provider:5.7.1'
+//    implementation 'org.springframework.security.extensions:spring-security-saml-dsl:1.0.0.M3'
+//    implementation 'org.springframework.security.extensions:spring-security-saml2-core:2.0.0.M31'
     implementation "org.springframework.boot:spring-boot-devtools:${springBootVersion}"
-    implementation 'javax.mail:mail:1.5.0-b01'
     implementation "org.springframework.boot:spring-boot-starter-mail:${springBootVersion}"
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.13.1'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.1'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.13.1'
-    implementation 'org.webjars:bootstrap:4.1.2'
-    implementation 'net.logstash.logback:logstash-logback-encoder:4.7'
-    implementation 'javax.xml.bind:jaxb-api:2.1'
-    implementation 'org.apache.derby:derby:10.12.1.1'
-    implementation group: 'mysql', name: 'mysql-connector-java', version: '8.0.27'
-    implementation 'org.apache.velocity:velocity:1.7'
+    implementation "org.springframework.boot:spring-boot-starter-tomcat:${springBootVersion}"
+    implementation 'org.springframework.security:spring-security-ldap:5.7.1'
+    implementation 'javax.servlet:jstl:1.2'
+    implementation 'javax.mail:mail:1.4.7'
+    implementation 'javax.ws.rs:javax.ws.rs-api:2.0'
+    implementation 'javax.xml.bind:jaxb-api:2.3.1'
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.16.1'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.16.1'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.16.1'
+    implementation 'org.codehaus.jettison:jettison:1.5.4'
+    implementation 'org.apache.httpcomponents:httpclient:4.5.14'
+    implementation('com.googlecode.json-simple:json-simple:1.1.1') {
+        exclude group: 'junit'
+    }
+    implementation 'commons-lang:commons-lang:2.6'
+    implementation 'org.apache.commons:commons-lang3:3.14.0'
     implementation 'org.apache.commons:commons-io:1.3.2'
     implementation 'org.apache.commons:commons-collections4:4.4'
+    implementation 'org.apache.velocity:velocity:1.7'
+    implementation 'net.logstash.logback:logstash-logback-encoder:4.7'
+    implementation 'org.webjars:bootstrap:4.1.2'
+    implementation 'org.apache.derby:derby:10.12.1.1'
+    implementation group: 'mysql', name: 'mysql-connector-java', version: '8.0.27'
     implementation 'com.ibatis:ibatis2-common:2.1.7.597'
-    implementation 'com.google.collections:google-collections:1.0-rc2'
 
-    implementation "org.springframework.boot:spring-boot-starter-tomcat:${springBootVersion}"
-    implementation 'org.apache.tomcat.embed:tomcat-embed-jasper:8.5.9'
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.10.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.10.1'
 
-    testImplementation "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
-    testImplementation 'org.mockito:mockito-junit-jupiter:4.2.0'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
-
-    compileOnly 'org.projectlombok:lombok:1.18.26'
-    testCompileOnly 'org.projectlombok:lombok:1.18.26'
-    annotationProcessor 'org.projectlombok:lombok:1.18.26'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.26'
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    testCompileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
 
     implementation group: 'org.eclipse.jdt.core.compiler', name: 'ecj', version: '4.6.1'
 }
 
 group = 'org.openkilda'
 description = 'OpenKilda-GUI'
-sourceCompatibility = '1.8'
 
-tasks.withType(JavaCompile) {
+tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
 jacoco {
-    toolVersion = '0.8.7'
+    toolVersion = '0.8.11'
 }
 
 jacocoTestReport {

@@ -67,11 +67,6 @@ public class DatabaseConfigurator {
         this.dataSource = dataSource;
         this.resourceLoader = resourceLoader;
         this.entityManager = em;
-        init();
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
-    public void init() {
         loadInitialData();
     }
 
@@ -96,7 +91,7 @@ public class DatabaseConfigurator {
                     list.add(versionEntity);
                     newVersionList.add(versionEntity.getVersionNumber());
                 }
-                versionEntityRepository.save(list);
+                versionEntityRepository.saveAll(list);
                 versionNumberList = newVersionList;
             } catch (Exception e) {
                 LOGGER.warn("Failed to load version list", e);
