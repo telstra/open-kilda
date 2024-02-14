@@ -1,5 +1,23 @@
 # Changelog
-## v1.154.0 (06/02/2024)
+
+## v1.155.0 (12/02/2024)
+
+### Features:
+-  [#5000](https://github.com/telstra/open-kilda/pull/5000) Added design for long mirror with join traffic [**docs**]
+-  [#4919](https://github.com/telstra/open-kilda/pull/4919) Design of traffic mix in feature (Issue: [#4924](https://github.com/telstra/open-kilda/issues/4924)) [**docs**]
+
+
+### Improvements:
+-  [#5572](https://github.com/telstra/open-kilda/pull/5572) 5530 Fix css style warning
+-  [#5578](https://github.com/telstra/open-kilda/pull/5578) 5575: [TEST]: Fix retry mechanism in tests (Issue: [#5575](https://github.com/telstra/open-kilda/issues/5575)) [**tests**]
+-  [#5561](https://github.com/telstra/open-kilda/pull/5561) [TEST]: HA-Flow: Refactoring [**tests**]
+-  [#5114](https://github.com/telstra/open-kilda/pull/5114) Added OpenKilda contribution workflow description [**docs**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.154.0...v1.155.0).
+
+---
+
+## v1.154.0 (08/02/2024)
 
 ### Bug Fixes:
 -  [#5552](https://github.com/telstra/open-kilda/pull/5552) 3566 Add validation for remotelog server ip (Issue: [#3566](https://github.com/telstra/open-kilda/issues/3566))
