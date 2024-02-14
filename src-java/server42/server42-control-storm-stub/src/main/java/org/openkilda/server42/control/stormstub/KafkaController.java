@@ -31,6 +31,7 @@ import org.openkilda.server42.control.stormstub.api.AddIslPayload;
 import org.openkilda.server42.control.stormstub.api.PushSettingsPayload;
 import org.openkilda.server42.messaging.FlowDirection;
 
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
 import org.mapstruct.factory.Mappers;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,7 +40,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
-import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -52,6 +52,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.DeferredResult;
 
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -78,12 +79,14 @@ public class KafkaController {
         this.template = template;
     }
 
+    @Operation(summary = "Create Flow")
     @PostMapping(value = "/flow")
     private void createFlow(@RequestParam String switchId, @RequestBody AddFlowPayload flow)
             throws InterruptedException, ExecutionException, TimeoutException {
         send(switchId, mapper.map(flow));
     }
 
+    @Operation(summary = "Get Flow list")
     @GetMapping(value = "/flow/")
     @ResponseBody
     private DeferredResult<ResponseEntity<?>> getFlowList(@RequestParam String switchId)
@@ -118,6 +121,7 @@ public class KafkaController {
         return deferredResult;
     }
 
+    @Operation(summary = "Delete Flow")
     @DeleteMapping(value = "/flow/{id}")
     private void deleteFlow(@RequestParam String switchId, @RequestParam(value = "id") String flowId,
                             @RequestParam FlowDirection direction)
@@ -125,12 +129,14 @@ public class KafkaController {
         send(switchId, RemoveFlow.builder().headers(buildHeader()).flowId(flowId).direction(direction).build());
     }
 
+    @Operation(summary = "Clear Flows")
     @DeleteMapping(value = "/flow/")
     private void clearFlows(@RequestParam String switchId)
             throws InterruptedException, ExecutionException, TimeoutException {
         send(switchId, ClearFlows.builder().headers(buildHeader()).build());
     }
 
+    @Operation(summary = "Push settings")
     @PostMapping(value = "/settings/")
     private void pushSettings(@RequestParam String switchId, @RequestBody PushSettingsPayload settingsPayload)
             throws InterruptedException, ExecutionException, TimeoutException {
@@ -163,12 +169,14 @@ public class KafkaController {
         }
     }
 
+    @Operation(summary = "Create Isl")
     @PostMapping(value = "/isl")
     private void createIsl(@RequestBody AddIslPayload isl)
             throws InterruptedException, ExecutionException, TimeoutException {
         send(isl.getSwitchId().toString(), mapper.map(isl));
     }
 
+    @Operation(summary = "Get Isl list")
     @GetMapping(value = "/isl")
     @ResponseBody
     private DeferredResult<ResponseEntity<?>> getIslList(@RequestParam String switchId)
@@ -204,6 +212,7 @@ public class KafkaController {
         return deferredResult;
     }
 
+    @Operation(summary = "Delete Isl")
     @DeleteMapping(value = "/isl/{switchId}/{port}")
     private void deleteIsl(@PathVariable String switchId, @PathVariable Integer port)
             throws InterruptedException, ExecutionException, TimeoutException {
@@ -211,6 +220,7 @@ public class KafkaController {
                 .switchId(new SwitchId(switchId)).port(port).build());
     }
 
+    @Operation(summary = "Clear Isls")
     @DeleteMapping(value = "/isl")
     private void clearIsls(@RequestParam String switchId)
             throws InterruptedException, ExecutionException, TimeoutException {
@@ -220,7 +230,7 @@ public class KafkaController {
 
     private void send(String switchId, Object payload)
             throws InterruptedException, ExecutionException, TimeoutException {
-        ListenableFuture<SendResult<String, Object>> future = template.send(fromStorm, switchId, payload);
+        CompletableFuture<SendResult<String, Object>> future = template.send(fromStorm, switchId, payload);
         future.get(30, TimeUnit.SECONDS);
     }
 

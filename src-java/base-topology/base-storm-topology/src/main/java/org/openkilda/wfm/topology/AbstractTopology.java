@@ -38,7 +38,6 @@ import org.openkilda.wfm.config.provider.MultiPrefixConfigurationProvider;
 import org.openkilda.wfm.error.ConfigurationException;
 import org.openkilda.wfm.error.NameCollisionException;
 import org.openkilda.wfm.kafka.AbstractMessageDeserializer;
-import org.openkilda.wfm.kafka.CustomNamedSubscription;
 import org.openkilda.wfm.kafka.MessageDeserializer;
 import org.openkilda.wfm.kafka.MessageSerializer;
 import org.openkilda.wfm.kafka.ObjectSerializer;
@@ -46,6 +45,7 @@ import org.openkilda.wfm.topology.utils.AbstractMessageTranslator;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -63,6 +63,7 @@ import org.apache.storm.flux.parser.FluxParser;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
+import org.apache.storm.kafka.spout.FirstPollOffsetStrategy;
 import org.apache.storm.kafka.spout.KafkaSpout;
 import org.apache.storm.kafka.spout.KafkaSpoutConfig;
 import org.apache.storm.thrift.TException;
@@ -280,7 +281,7 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     protected <V> SpoutDeclarer declareKafkaSpout(
             TopologyBuilder builder, KafkaSpoutConfig<String, V> config, String spoutId) {
         logger.info("Setup kafka spout: id={}, group={}, subscriptions={}",
-                spoutId, config.getConsumerGroupId(), config.getSubscription().getTopicsString());
+                spoutId, config.getConsumerGroupId(), config.getTopicFilter().getTopicsString());
         return declareSpout(builder, new KafkaSpout<>(config), spoutId);
     }
 
@@ -398,11 +399,11 @@ public abstract class AbstractTopology<T extends AbstractTopologyConfig> impleme
     protected <V> KafkaSpoutConfig.Builder<String, V> makeKafkaSpoutConfig(
             List<String> topics, String spoutId, Class<? extends Deserializer<V>> valueDecoder) {
         KafkaSpoutConfig.Builder<String, V> config = new KafkaSpoutConfig.Builder<>(
-                kafkaConfig.getHosts(), new CustomNamedSubscription(topics));
-
+                kafkaConfig.getHosts(), Sets.newHashSet(topics));
+        // we already used no guarantee by default, since ENABLE_AUTO_COMMIT_CONFIG is not supported
+        config.setProcessingGuarantee(KafkaSpoutConfig.ProcessingGuarantee.NO_GUARANTEE);
         config.setProp(ConsumerConfig.GROUP_ID_CONFIG, makeKafkaGroupName(spoutId))
-                .setFirstPollOffsetStrategy(KafkaSpoutConfig.FirstPollOffsetStrategy.LATEST)
-                .setProp(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true)
+                .setFirstPollOffsetStrategy(FirstPollOffsetStrategy.LATEST)
                 .setProp(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class)
                 .setProp(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDecoder)
                 .setProp(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, VersioningConsumerInterceptor.class.getName())
