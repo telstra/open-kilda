@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.helpers.model
 
 import org.openkilda.messaging.payload.flow.PathNodePayload
 
+import groovy.transform.Canonical
 import groovy.transform.EqualsAndHashCode
 import groovy.transform.ToString
 import groovy.transform.builder.Builder
@@ -15,6 +16,7 @@ import org.openkilda.testing.service.northbound.payloads.ProtectedPathPayload
 (presented as lists of nodes), received from different endpoints in the same manner.
 This class has to replace *PathHelper in future
  */
+@Canonical
 @EqualsAndHashCode(excludes = "topologyDefinition")
 @Builder
 @ToString(includeNames = true, excludes = 'topologyDefinition', includePackage = false)
