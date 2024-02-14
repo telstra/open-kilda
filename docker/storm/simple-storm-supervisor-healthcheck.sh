@@ -8,8 +8,8 @@ set -o pipefail
 /usr/bin/jps | grep Supervisor || exit 1
 
 
-CONFIG=${1:-/opt/apache-storm-2.5.0/conf/storm.yaml}
-LOG_FILE=${2:-/opt/apache-storm-2.5.0/logs/supervisor.log}
+CONFIG=${1:-/opt/apache-storm-2.6.1/conf/storm.yaml}
+LOG_FILE=${2:-/opt/apache-storm-2.6.1/logs/supervisor.log}
 
 PORTS_NUBER_IN_CONFIG=$(cat ${CONFIG}  | sed -n '/supervisor.slots.ports/,/^$/p' | grep -v supervisor.slots.ports | grep -v '^$' | awk -F '-' '{ print $2}' | wc -l )
 PORTS_NUMBER_IN_LOGS=$(head  -1000 ${LOG_FILE} | grep 'Starting in state' | wc -l )
