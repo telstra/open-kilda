@@ -509,7 +509,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     @Tags(HARDWARE) //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
     def "Flow rtt stats are still available after updating a #data.flowDescription flow"() {
         given: "Two active switches, connected to the server42"
-        def switchPair = data.switchPair
+        def switchPair = data.switchPair()
         assumeTrue(switchPair != null, "Was not able to find a switchPair with a server42 connection")
 
         and: "server42FlowRtt toggle is set to true"
