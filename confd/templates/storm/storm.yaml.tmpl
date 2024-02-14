@@ -68,13 +68,26 @@ supervisor.slots.ports:
 #     argument:
 #       - endpoint: "metrics-collector.mycompany.org"
 
-nimbus.childopts: "-Xmx128m"
-ui.childopts: "-Xmx128m"
-supervisor.childopts: "-Xmx128m"
-worker.childopts: "-Xmx280m"
+nimbus.task.timeout.secs: 240
+nimbus.thrift.max_buffer_size: 20480000
+nimbus.childopts: "-Xmx2048m -Djava.net.preferIPv4Stack=true"
 
+worker.childopts: "-Xmx2048m -XX:+UseG1GC -Djava.net.preferIPv4Stack=true"
+
+supervisor.childopts: "-Xmx2048m -Djava.net.preferIPv4Stack=true"
+
+ui.childopts: "-Xmx512m"
+
+#Topologies settings
 topology.testing.always.try.serialize: true
-
 topology.skip.missing.kryo.registrations: true
 topology.fall.back.on.java.serialization: true
 
+
+topology.max.spout.pending: 200
+topology.message.timeout.secs: 300
+
+topology.spout.wait.strategy: org.apache.storm.policy.WaitStrategy
+topology.backpressure.wait.strategy: org.apache.storm.policy.WaitStrategy
+topology.bolt.wait.strategy: org.apache.storm.policy.WaitStrategy
+topology.stats.sample.rate: 0.00001

@@ -28,11 +28,11 @@ dependencies {
     testImplementation project(path: ':kilda-persistence-api', configuration: 'testArtifacts')
     testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
 
-    compileOnly('org.apache.storm:storm-core:2.5.0'){
+    compileOnly('org.apache.storm:storm-core'){
         exclude(group: 'org.yaml', module: 'snakeyaml')
     }
     implementation('org.yaml:snakeyaml:2.2')
-    testImplementation('org.apache.storm:storm-core:2.5.0')
+    testImplementation('org.apache.storm:storm-core')
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
     testImplementation 'org.junit.jupiter:junit-jupiter-engine'
