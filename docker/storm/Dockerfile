@@ -16,15 +16,15 @@
 ARG base_image=kilda/base-ubuntu
 FROM ${base_image}
 
-ENV PACKAGE apache-storm-2.5.0
+ENV PACKAGE apache-storm-2.6.1
 
 WORKDIR /tmp/
 
 RUN    \
     apt -y update \
     && apt -y install net-tools jq \
-    && wget -q https://archive.apache.org/dist/storm/apache-storm-2.5.0/$PACKAGE.tar.gz \
-    && wget -q https://archive.apache.org/dist/storm/apache-storm-2.5.0/$PACKAGE.tar.gz.sha512 \
+    && wget -q https://archive.apache.org/dist/storm/apache-storm-2.6.1/$PACKAGE.tar.gz \
+    && wget -q https://archive.apache.org/dist/storm/apache-storm-2.6.1/$PACKAGE.tar.gz.sha512 \
     && sha512sum -c $PACKAGE.tar.gz.sha512 \
     && tar -xzf $PACKAGE.tar.gz --directory /opt/ \
     && ln -s /opt/$PACKAGE /opt/storm \
@@ -37,6 +37,5 @@ WORKDIR /opt/storm/
 
 COPY storm.yaml /opt/storm/conf/storm.yaml
 COPY log4j2 /opt/storm/log4j2
-# COPY lib/*.jar /opt/storm/lib/
 COPY simple-storm-supervisor-healthcheck.sh /simple-storm-supervisor-healthcheck.sh
 COPY simple-storm-ui-healthcheck.sh /simple-storm-ui-healthcheck.sh

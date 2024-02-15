@@ -36,11 +36,11 @@ dependencies {
      * provided in the storm cluster. ShadowJar supports excludes, but it only excludes dependencies from the current
      * project.
      */
-    compileOnly("org.apache.storm:storm-core:2.6.1") {
+    compileOnly("org.apache.storm:storm-core") {
         exclude(group: "org.yaml", module: "snakeyaml")
     }
     implementation("org.yaml:snakeyaml:2.2")
-    testImplementation("org.apache.storm:storm-core:2.6.1") {
+    testImplementation("org.apache.storm:storm-core") {
         exclude group: "org.slf4j", module: "log4j-over-slf4j"
     }
 
