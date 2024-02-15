@@ -45,6 +45,7 @@ dependencies {
 
 test {
     include '**/unit/spec/**/*Spec.*'
+    failFast = true
 }
 
 task functionalTest(type: Test, dependsOn: 'compileGroovy') {
