@@ -67,7 +67,7 @@ Some other commands will run in  openkilda-gui directory :
 ----
 ### MySQL Support
 By default, application is running with Apache Derby Database. In order to run the application with MySQL database, you'll have to update following properties in [main.yaml](/confd/vars/main.yaml) file.
->kilda_gui_db_dialect: org.hibernate.dialect.MySQL5Dialect
+>kilda_gui_db_dialect: org.hibernate.dialect.MySQLDialect
 
 >kilda_gui_db_url:
 

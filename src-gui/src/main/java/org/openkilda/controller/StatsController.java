@@ -33,7 +33,7 @@ import org.openkilda.model.victoria.VictoriaStatsRes;
 import org.openkilda.service.StatsService;
 
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;

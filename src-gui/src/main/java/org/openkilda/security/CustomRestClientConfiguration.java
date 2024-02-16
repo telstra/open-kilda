@@ -15,11 +15,13 @@
 
 package org.openkilda.security;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.ssl.SSLContextBuilder;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactoryBuilder;
+import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -59,9 +61,13 @@ public class CustomRestClientConfiguration {
                     .loadTrustMaterial(victoriaTrustStore.getURL(),
                             StringUtils.isBlank(trustStorePassword) ? null : trustStorePassword.toCharArray()).build();
             LOGGER.debug("sslContext has been initialized");
-            SSLConnectionSocketFactory sslConFactory = new SSLConnectionSocketFactory(sslContext);
+            PoolingHttpClientConnectionManager connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
+                    .setSSLSocketFactory(SSLConnectionSocketFactoryBuilder.create()
+                            .setSslContext(sslContext)
+                            .build())
+                    .build();
             LOGGER.debug("sslConFactory has been initialized");
-            CloseableHttpClient httpClient = HttpClients.custom().setSSLSocketFactory(sslConFactory).build();
+            CloseableHttpClient httpClient = HttpClients.custom().setConnectionManager(connectionManager).build();
             LOGGER.debug("httpClient has been initialized");
             ClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
             LOGGER.debug("requestFactory has been initialized");

@@ -18,7 +18,7 @@ package org.openkilda.constants;
 import lombok.AccessLevel;
 import lombok.Getter;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;

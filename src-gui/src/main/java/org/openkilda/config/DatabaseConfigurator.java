@@ -19,14 +19,14 @@ import org.openkilda.dao.entity.VersionEntity;
 import org.openkilda.dao.repository.VersionRepository;
 
 import com.ibatis.common.jdbc.ScriptRunner;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,9 +38,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 import javax.sql.DataSource;
 
 @Repository("databaseConfigurator")
@@ -67,11 +64,6 @@ public class DatabaseConfigurator {
         this.dataSource = dataSource;
         this.resourceLoader = resourceLoader;
         this.entityManager = em;
-        init();
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
-    public void init() {
         loadInitialData();
     }
 
@@ -96,7 +88,7 @@ public class DatabaseConfigurator {
                     list.add(versionEntity);
                     newVersionList.add(versionEntity.getVersionNumber());
                 }
-                versionEntityRepository.save(list);
+                versionEntityRepository.saveAll(list);
                 versionNumberList = newVersionList;
             } catch (Exception e) {
                 LOGGER.warn("Failed to load version list", e);
@@ -109,7 +101,7 @@ public class DatabaseConfigurator {
             Resource[] resources = resolver.getResources("classpath:" + SCRIPT_LOCATION + "/*");
             List<String> dbScripts = Arrays.stream(resources)
                     .map(Resource::getFilename)
-                    .collect(Collectors.toList());
+                    .toList();
             ArrayList<Long> sortedList = new ArrayList<Long>();
             for (String scriptFile : dbScripts) {
                 String scriptFileName = scriptFile.replaceFirst("[.][^.]+$", "");

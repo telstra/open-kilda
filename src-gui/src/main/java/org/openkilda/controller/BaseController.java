@@ -19,14 +19,17 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.constants.Status;
 import org.openkilda.saml.service.SamlService;
 
-import org.opensaml.saml2.core.NameID;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import org.opensaml.saml.saml2.core.NameID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.saml.SAMLCredential;
+
+import org.springframework.security.saml2.core.Saml2X509Credential;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,8 +40,6 @@ import org.usermanagement.model.UserInfo;
 import org.usermanagement.util.MessageUtils;
 
 import java.nio.file.AccessDeniedException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
 
 public abstract class BaseController {
 
@@ -136,7 +137,7 @@ public abstract class BaseController {
                     && !(authentication instanceof AnonymousAuthenticationToken));
             if (isValid) {
                 UserEntity userEntity = null;
-                if (authentication.getCredentials() instanceof SAMLCredential) {
+                if (authentication.getCredentials() instanceof Saml2X509Credential) {
                     NameID nameId = (NameID) authentication.getPrincipal();
                     userEntity = userRepository.findByUsernameIgnoreCase(nameId.getValue());
                 } else {
