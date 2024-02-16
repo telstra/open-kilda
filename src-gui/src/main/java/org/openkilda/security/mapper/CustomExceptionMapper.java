@@ -24,6 +24,8 @@ import org.openkilda.integration.exception.IntegrationException;
 import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.exception.StoreIntegrationException;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -37,8 +39,6 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.Collections;
-import javax.validation.ConstraintViolation;
-import javax.validation.ConstraintViolationException;
 
 /**
  * The Class CustomExceptionMapper.
