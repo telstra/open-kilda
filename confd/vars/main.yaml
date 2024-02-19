@@ -18,8 +18,6 @@ kilda_zookeeper_state_root: "kilda"
 kilda_zookeeper_reconnect_delay_ms: 100
 kilda_zookeeper_reconnect_delay_ms_server42: 10000
 kilda_zookeeper_reconnect_delay_ms_speaker: 1000
-kilda_opentsdb_hosts: "opentsdb.pendev"
-kilda_opentsdb_port: "4242"
 kilda_victoriametrics_host: "victoriametrics.pendev"
 kilda_victoriametrics_write_port: "4242"
 kilda_victoriametrics_read_port: "8428"

@@ -8,9 +8,11 @@ build/libs/${APP}.war: .deps/node .deps/resources
 	./gradlew build
 
 .deps/node: | .deps
-	docker run --rm -e LOCAL_UID=`id -u $(USER)` -e LOCAL_GID=`id -g $(USER)` -v $(CURDIR)/src:/app/src -v $(CURDIR)/ui:/app/ui node:18.18.2-alpine \
-		sh -c 'cd /app/ui && npm install && /app/ui/node_modules/.bin/ng build --configuration production && chown -R $$LOCAL_UID:$$LOCAL_GID /app'
+	docker run --rm -e LOCAL_UID=`id -u $(USER)` -e LOCAL_GID=`id -g $(USER)` -v $(CURDIR)/src:/app/src -v $(CURDIR)/ui:/app/ui arm64v8/node:18.19-alpine \
+		sh -c 'apk --no-cache add --virtual .builds-deps build-base python3 && cd /app/ui && npm install && /app/ui/node_modules/.bin/ng build --configuration production && chown -R $$LOCAL_UID:$$LOCAL_GID /app'
 
+# wget dependency in macOS
+# install java8 zulu, install jenv and configure java8 for the kilda directory
 .deps/resources: .deps
 	mkdir -p src/main/webapp/lib/css/
 	mkdir -p src/main/webapp/lib/javascript/

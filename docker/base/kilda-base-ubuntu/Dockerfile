@@ -23,7 +23,7 @@ ENV DEBIAN_FRONTEND noninteractive
 ###############################################
 
 ENV JAVA_VER 8
-ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
+ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-arm64
 ENV JAVA_MEM_CONFIG "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap"
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -50,5 +50,5 @@ RUN chmod 777 /app/* \
         rsync \
     && pip3 install --upgrade pip \
     && python3 -m pip install setuptools \
-    && echo "export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> ~/.bashrc \
+    && echo "export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-arm64" >> ~/.bashrc \
     && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
