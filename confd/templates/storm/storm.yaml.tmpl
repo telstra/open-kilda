@@ -68,26 +68,49 @@ supervisor.slots.ports:
 #     argument:
 #       - endpoint: "metrics-collector.mycompany.org"
 
+## Enabling Storm monitoring via JMX
+# These options enable remote JMX. Use a client (such as VisualVM or JConsole) to connect and gather JVM data.
+# Since Storm is executed inside a docker container, the ports specified here must be forwarded and appropriate rules created for the host's firewall.
+# Don't forget to comment out default settings.
+#nimbus.childopts: "-Xmx4g -Djava.net.preferIPv4Stack=true -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9446 -Djava.rmi.server.hostname=172.19.114.89 -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false"
+#worker.childopts: "-Xmx512m -XX:+UseG1GC -Djava.net.preferIPv4Stack=true -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9447 -Djava.rmi.server.hostname=172.19.114.89 -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false"
+#supervisor.childopts: "-Xmx4g -Djava.net.preferIPv4Stack=true -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9448 -Djava.rmi.server.hostname=172.19.114.89 -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false"
+
+## Memory settings
+nimbus.childopts: "-Xmx4g -Djava.net.preferIPv4Stack=true"
+worker.childopts: "-Xmx512m -XX:+UseG1GC -Djava.net.preferIPv4Stack=true"
+supervisor.childopts: "-Xmx4g -Djava.net.preferIPv4Stack=true"
+ui.childopts: "-Xmx512m"
+
 nimbus.task.timeout.secs: 240
 nimbus.thrift.max_buffer_size: 20480000
-nimbus.childopts: "-Xmx2048m -Djava.net.preferIPv4Stack=true"
 
-worker.childopts: "-Xmx2048m -XX:+UseG1GC -Djava.net.preferIPv4Stack=true"
-
-supervisor.childopts: "-Xmx2048m -Djava.net.preferIPv4Stack=true"
-
-ui.childopts: "-Xmx512m"
 
 #Topologies settings
 topology.testing.always.try.serialize: true
 topology.skip.missing.kryo.registrations: true
 topology.fall.back.on.java.serialization: true
 
-
-topology.max.spout.pending: 200
+topology.max.spout.pending: 1
 topology.message.timeout.secs: 300
 
-topology.spout.wait.strategy: org.apache.storm.policy.WaitStrategy
-topology.backpressure.wait.strategy: org.apache.storm.policy.WaitStrategy
-topology.bolt.wait.strategy: org.apache.storm.policy.WaitStrategy
-topology.stats.sample.rate: 0.00001
+topology.executor.receive.buffer.size: 2
+topology.transfer.buffer.size: 2
+
+topology.spout.wait.strategy: org.apache.storm.policy.WaitStrategyProgressive
+topology.backpressure.wait.strategy: org.apache.storm.policy.WaitStrategyProgressive
+topology.bolt.wait.strategy: org.apache.storm.policy.WaitStrategyProgressive
+
+topology.spout.wait.progressive.level1.count: 1
+topology.spout.wait.progressive.level2.count: 1
+topology.spout.wait.progressive.level3.sleep.millis: 5
+
+topology.bolt.wait.progressive.level1.count: 1
+topology.bolt.wait.progressive.level2.count: 1
+topology.bolt.wait.progressive.level3.sleep.millis: 5
+
+topology.backpressure.wait.progressive.level1.count: 1
+topology.backpressure.wait.progressive.level2.count: 1
+topology.backpressure.wait.progressive.level3.sleep.millis: 5
+
+topology.stats.sample.rate: 0.0001
