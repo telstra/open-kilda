@@ -39,3 +39,6 @@ COPY storm.yaml /opt/storm/conf/storm.yaml
 COPY log4j2 /opt/storm/log4j2
 COPY simple-storm-supervisor-healthcheck.sh /simple-storm-supervisor-healthcheck.sh
 COPY simple-storm-ui-healthcheck.sh /simple-storm-ui-healthcheck.sh
+
+# Expose ports for JMX when it is enabled in storm.yaml
+#EXPOSE 9446 9447 9448
