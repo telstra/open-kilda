@@ -143,18 +143,27 @@ class PathCheckSpec extends HealthCheckSpecification {
                 .tap {it.diverseFlowId = flow1.flowId})
 
         and: "Paths for both flows have been collected"
-        def flow1Path = northbound.getFlowPath(flow1.flowId)
-        def flow2Path = northbound.getFlowPath(flow2.flowId)
+        def flow1Path = pathHelper.getPathNodes(northbound.getFlowPath(flow1.flowId).forwardPath)
+        def flow2Path = flow2.source.switchId == flow1.destination.switchId ?
+                pathHelper.getPathNodes(northbound.getFlowPath(flow2.flowId).forwardPath) :
+                pathHelper.getPathNodes(northbound.getFlowPath(flow2.flowId).reversePath)
 
-        when: "Check potential path that has intersection ONLY with one flow from diverse group"
+        when: "Check potential path that has NO intersection with both flows from diverse group"
         LinkedList<PathNode> pathToCheck = switchPairs.all().neighbouring().excludePairs([firstSwitchPair, secondSwitchPair])
-              .includeSwitch(firstSwitchPair.src).random().paths.first()
+                .includeSwitch(firstSwitchPair.src).random().paths.first()
 
         if(pathToCheck.last().switchId != firstSwitchPair.src.dpId) {
             pathToCheck = pathToCheck.reverse()
         }
-        pathToCheck.addAll(pathHelper.getPathNodes(flow1Path.forwardPath))
 
+        then: "Path check reports has No validation error about intersection"
+        verifyAll {
+            pathHelper.getPathCheckResult(pathToCheck, flow1.flowId).getValidationMessages().isEmpty()
+            pathHelper.getPathCheckResult(pathToCheck, flow2.flowId).getValidationMessages().isEmpty()
+        }
+
+        when: "Check potential path that has intersection ONLY with one flow from diverse group"
+        pathToCheck.addAll(flow1Path)
         def checkErrors = pathHelper.getPathCheckResult(pathToCheck, flow1.flowId)
 
         then: "Path check reports has ONLY one intersecting segment"
@@ -164,8 +173,7 @@ class PathCheckSpec extends HealthCheckSpecification {
         }
 
         when: "Check potential path that has intersection with both flows from diverse group"
-        flow2.source.switchId == flow1.destination.switchId ? pathToCheck.addAll(pathHelper.getPathNodes(flow2Path.forwardPath))
-                : pathToCheck.addAll(pathHelper.getPathNodes(flow2Path.reversePath))
+        pathToCheck.addAll(flow2Path)
         checkErrors = pathHelper.getPathCheckResult(pathToCheck, flow1.flowId)
 
         then: "Path check reports has intersecting segments with both flows from diverse group"
