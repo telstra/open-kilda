@@ -70,7 +70,8 @@ import java.util.stream.Collectors;
 @Slf4j
 @KafkaListener(id = "server42-control",
         topics = "${openkilda.server42.control.kafka.topic.from_storm}",
-        idIsGroup = false
+        idIsGroup = false,
+        errorHandler = "kafkaListenerErrorHandler"
 )
 public class Gate implements ConsumerSeekAware {
 

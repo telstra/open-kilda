@@ -163,7 +163,6 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
                     it.switchId in topo.switches.dpId && it.state == SwitchChangeType.ACTIVATED
                 }.size() == topo.activeSwitches.size()
             }
-
             //add 'vxlan' encapsuation as supported in case switch supports it
             topo.getActiveSwitches().each { sw ->
                 def supportedEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
