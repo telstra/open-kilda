@@ -296,6 +296,9 @@ services:
     container_name: storm-nimbus
     hostname: nimbus.pendev
     image: kilda/storm:latest
+    ports:
+      - "9446:9446"
+      - "9447:9447"
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm nimbus
     depends_on:
       zookeeper:
@@ -347,6 +350,8 @@ services:
   storm-supervisor:
     container_name: storm-supervisor
     hostname: storm-supervisor.pendev
+    ports:
+      - "9448:9448"
     image: kilda/storm:latest
     command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- /opt/storm/bin/storm supervisor
     depends_on:
@@ -471,6 +476,7 @@ services:
       dockerfile: northbound/Dockerfile
     ports:
       - "8080:8080"
+      - "9445:9445"
     environment:
       REST_USERNAME: 'kilda'
       REST_PASSWORD: 'kilda'
