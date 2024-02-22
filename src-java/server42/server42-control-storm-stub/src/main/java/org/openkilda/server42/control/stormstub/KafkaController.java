@@ -94,7 +94,7 @@ public class KafkaController {
 
         Headers headers = buildHeader();
         String correlationId = headers.getCorrelationId();
-        send(switchId, new ListFlowsRequest(headers));
+        send(switchId, ListFlowsRequest.builder().headers(headers).build());
 
         DeferredResult<ResponseEntity<?>> deferredResult = new DeferredResult<>(500L);
 
@@ -236,6 +236,6 @@ public class KafkaController {
 
     private Headers buildHeader() {
         String correlationId = UUID.randomUUID().toString();
-        return new Headers(correlationId);
+        return Headers.builder().correlationId(correlationId).build();
     }
 }

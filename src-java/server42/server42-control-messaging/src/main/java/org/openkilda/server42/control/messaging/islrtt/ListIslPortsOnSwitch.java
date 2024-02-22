@@ -19,7 +19,9 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.server42.control.messaging.flowrtt.Headers;
 import org.openkilda.server42.control.messaging.flowrtt.Message;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -29,10 +31,14 @@ import java.util.Set;
 
 @Value
 @Builder
-@JsonNaming(value = SnakeCaseStrategy.class)
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = true)
+@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
+@JsonDeserialize(builder = ListIslPortsOnSwitch.ListIslPortsOnSwitchBuilder.class)
 public class ListIslPortsOnSwitch extends Message {
+    @JsonProperty("headers")
     Headers headers;
+    @JsonProperty("switch_id")
     SwitchId switchId;
+    @JsonProperty("isl_ports")
     Set<Integer> islPorts;
 }

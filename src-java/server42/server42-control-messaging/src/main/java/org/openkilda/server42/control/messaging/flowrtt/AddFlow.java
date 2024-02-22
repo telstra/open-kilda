@@ -17,23 +17,30 @@ package org.openkilda.server42.control.messaging.flowrtt;
 
 import org.openkilda.server42.messaging.FlowDirection;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 @Value
 @Builder
-@AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
 @JsonNaming(value = SnakeCaseStrategy.class)
-@EqualsAndHashCode(callSuper = false)
+@JsonDeserialize(builder = AddFlow.AddFlowBuilder.class)
 public class AddFlow extends Message {
+    @JsonProperty("headers")
     Headers headers;
+    @JsonProperty("flow_id")
     String flowId;
+    @JsonProperty("tunnel_id")
     Long tunnelId;
+    @JsonProperty("inner_tunnel_id")
     Long innerTunnelId;
+    @JsonProperty("direction")
     FlowDirection direction;
+    @JsonProperty("port")
     Integer port;
 }

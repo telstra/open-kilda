@@ -15,7 +15,10 @@
 
 package org.openkilda.server42.control.messaging.flowrtt;
 
-import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
@@ -23,8 +26,10 @@ import lombok.Value;
 
 @Value
 @Builder
-@AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
+@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
+@JsonDeserialize(builder = ListFlowsRequest.ListFlowsRequestBuilder.class)
 public class ListFlowsRequest extends Message {
-    private Headers headers;
+    @JsonProperty("headers")
+    Headers headers;
 }
