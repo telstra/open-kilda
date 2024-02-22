@@ -106,11 +106,7 @@ configurations {
  * declared in Storm topology modules are duplicates and needs to be excluded. If required add them as compileOnly.
  */
 configurations.configureEach {
-//    exclude group: "org.slf4j", module: "org.slf4j:slf4j-api"
-//    exclude group: "org.slf4j", module: "slf4j-api"
-//    exclude group: "org.slf4j", module: "log4j-over-slf4j"
     exclude group: "org.slf4j", module: "slf4j-log4j12"
-//    exclude group: "log4j", module: "log4j"
 }
 
 tasks.register("testJar", Jar) {
