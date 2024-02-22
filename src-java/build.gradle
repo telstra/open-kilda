@@ -221,27 +221,15 @@ subprojects {
 
     tasks.withType(ShadowJar).tap {
         configureEach {
-            // The step detects a conflict in dependency jars' content and fails the build if found.
-            doFirst {
-                Map<String, String> classes = new HashMap<>()
-                getIncludedDependencies().each { jar ->
-                    if (jar.isFile()) {
-                        JarFile jf = new JarFile(jar)
-                        jf.entries().each { file ->
-                            // TODO: it's good to reuse shadowJar plugin's patterns
-                            if (file.name.endsWith('.class') && !file.name.endsWith('module-info.class')) {
-                                if (classes.containsKey(file.name)) {
-                                    // TODO this prevents tasks to complete, however dependency resolution seems working out the conflicts fine
-                                    // TODO investigate whether it could be replaced with resolutionStrategy.failOnVersionConflict()
-                                    // TODO or some other better technology
-//                                throw new GradleException("shadowJar failure: ${file.name} conflicts in jars:${classes.get(file.name)} and ${jar}")
-                                }
-                                classes.put(file.name, jar)
-                            }
-                        }
-                        jf.close()
-                    }
-                }
+            /**
+             * Topology Jars that are uploaded into a Storm cluster shouldn't have duplicate classes that are already
+             * provided in the cluster (via Storm-....jar).
+             */
+            dependencies {
+                exclude(dependency('org.slf4j:slf4j-api'))
+                exclude(dependency('org.slf4j:slf4j-api'))
+                exclude(dependency('ch.qos.logback:logback-classic'))
+                exclude(dependency('org.apache.logging.log4j:log4j-slf4j-impl'))
             }
         }
     }
