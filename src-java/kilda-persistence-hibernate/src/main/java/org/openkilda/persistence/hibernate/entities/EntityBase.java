@@ -30,7 +30,7 @@ import java.time.Instant;
 public class EntityBase {
     @Getter
     @CreationTimestamp
-    @Column(name = "time_create")
+    @Column(name = "time_create", nullable = false, updatable = false)
     protected Instant timeCreated;
 
     @Getter

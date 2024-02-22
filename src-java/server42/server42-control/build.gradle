@@ -5,6 +5,9 @@ plugins {
 configurations {
     // This conflicts with spring-boot-starter-log4j2
     implementation.exclude module: 'spring-boot-starter-logging'
+    //LoggerFactory is not a Logback LoggerContext but Logback is on the classpath. Either remove Logback or the competing implementation
+    implementation.exclude group: 'ch.qos.logback', module: 'logback-classic'
+    implementation.exclude group: 'ch.qos.logback', module: 'logback-core'
 }
 
 description = 'server42-control'
