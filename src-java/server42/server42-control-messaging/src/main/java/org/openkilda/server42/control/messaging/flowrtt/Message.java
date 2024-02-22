@@ -21,6 +21,6 @@ import java.io.Serializable;
 
 // remove that base class after moving to kafka headers
 // TODO: move to org.openkilda.server42.control.messaging package as it's shared with islrtt.
-@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, visible = true)
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
 public class Message implements Serializable {
 }
