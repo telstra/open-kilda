@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.links
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -75,6 +76,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     def "ISL is not considered unstable after deactivating/activating switch"() {
         //Switches with roundtrip isl latency will not have ISLs failed given that round trip rules remain installed
         given: "A switch that does not support round trip isl latency"

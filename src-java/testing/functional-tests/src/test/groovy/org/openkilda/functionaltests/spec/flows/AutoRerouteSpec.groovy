@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 
 import org.openkilda.functionaltests.error.flow.FlowNotReroutedExpectedError
 import org.openkilda.functionaltests.helpers.model.SwitchPairs
@@ -186,7 +187,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tags(ISL_RECOVER_ON_FAIL)
+    @Tags([ISL_RECOVER_ON_FAIL, SWITCH_RECOVER_ON_FAIL])
     def "Single switch flow changes status on switch up/down events"() {
         given: "Single switch flow"
         def sw = topology.getActiveSwitches()[0]
@@ -546,7 +547,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tags(ISL_RECOVER_ON_FAIL)
+    @Tags([ISL_RECOVER_ON_FAIL, SWITCH_RECOVER_ON_FAIL])
     def "Flow is not rerouted when switchUp event appear for a switch which is not related to the flow"() {
         given: "Given a flow in DOWN status on neighboring switches"
         def switchPair = switchPairs.all()

@@ -1,17 +1,21 @@
 package org.openkilda.functionaltests.listeners
 
-import org.openkilda.functionaltests.helpers.SwitchHelper
-
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
 
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PortAntiflapHelper
+import org.openkilda.functionaltests.helpers.SwitchHelper
+import org.openkilda.model.SwitchStatus
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
+import org.openkilda.testing.service.floodlight.FloodlightsHelper
+import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress
 import org.openkilda.testing.service.northbound.NorthboundService
 
 import groovy.util.logging.Slf4j
@@ -37,6 +41,9 @@ class DoCleanupListener extends AbstractSpringListener {
     @Autowired
     SwitchHelper switchHelper
 
+    @Autowired
+    FloodlightsHelper flHelper
+
 
     @Override
     void error(ErrorInfo error) {
@@ -45,6 +52,33 @@ class DoCleanupListener extends AbstractSpringListener {
         if (thrown instanceof AssertionError) {
             if (thrown.getMessage() && thrown.getMessage().contains("SwitchValidationExtendedResult(")) {
                 switchHelper.synchronizeAndCollectFixedDiscrepancies(topology.activeSwitches*.dpId)
+            }
+        }
+        if (error.method.name && SWITCH_RECOVER_ON_FAIL in error.method.getAnnotation(Tags)?.value()) {
+            log.info("Verifying all switches are registered in FloodLight due to the failure in " + error.method.parent.name)
+            def registeredFlSwitches = flHelper.fls.findAll { !it.region.contains("stats") }
+                    .collect { fl -> fl.floodlightService.switches.switchId }.flatten().unique()
+            List<Switch> switchesToRegisterInFl = topology.getSwitches()
+                    .collect { sw ->
+                        if (!registeredFlSwitches.contains(sw.dpId)) {
+                            return sw
+                        }
+                    }.findAll()
+
+            log.info("The following switches should be registered in FloodLight: " + switchesToRegisterInFl.dpId)
+            switchesToRegisterInFl.each { sw ->
+                def switchDetails = database.getSwitch(sw.dpId)
+                switchDetails.status == SwitchStatus.ACTIVE && database.setSwitchStatus(sw.dpId, SwitchStatus.INACTIVE)
+                List<FloodlightResourceAddress> addresses = []
+                sw.regions.each { swRegion ->
+                    //virtual env: use only flRegion for adding new controller(sw)
+                    //hardware env: random port is assigned by floodlight (unlock switch)
+                    !swRegion.contains("stats") && addresses.add(new FloodlightResourceAddress(swRegion, flHelper.getFlByRegion(swRegion).getContainer(),
+                            switchDetails.socketAddress.address, switchDetails.socketAddress.port))
+                }
+                switchHelper.reviveSwitch(sw, addresses)
+                log.info("The switch " + sw.dpId + " has been successfully registered in FloodLight")
+                switchHelper.synchronize(sw.dpId)
             }
         }
         if (error.method.name && ISL_PROPS_DB_RESET in error.method.getAnnotation(Tags)?.value()) {

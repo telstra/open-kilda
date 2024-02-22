@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 
 import org.openkilda.functionaltests.error.flowloop.FlowLoopNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
@@ -641,7 +642,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         !testIsCompleted && switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
     }
 
-    @Tags(LOW_PRIORITY)
+    @Tags([LOW_PRIORITY, SWITCH_RECOVER_ON_FAIL])
     def "Unable to create flowLoop when a switch is deactivated"() {
         given: "An active flow"
         def switchPair = switchPairs.all().neighbouring().random()

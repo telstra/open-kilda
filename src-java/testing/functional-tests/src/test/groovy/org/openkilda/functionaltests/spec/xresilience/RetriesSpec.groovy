@@ -1,8 +1,10 @@
 package org.openkilda.functionaltests.spec.xresilience
 
-
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PATH_SWAP_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
@@ -34,6 +36,7 @@ import java.util.concurrent.TimeUnit
 @Slf4j
 class RetriesSpec extends HealthCheckSpecification {
 
+    @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET, SWITCH_RECOVER_ON_FAIL])
     def "System retries the reroute (global retry) if it fails to install rules on one of the current target path's switches"() {
         given: "Switch pair with at least 3 available paths, one path should have a transit switch that we will break \
 and at least 1 path must remain safe"
@@ -126,7 +129,7 @@ and at least 1 path must remain safe"
         database.resetCosts(topology.isls)
     }
 
-    @Tags([SMOKE_SWITCHES, LOCKKEEPER])
+    @Tags([SMOKE_SWITCHES, LOCKKEEPER, ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET, SWITCH_RECOVER_ON_FAIL])
     def "System tries to retry rule installation during #data.description if previous one is failed"(){
         given: "Two active neighboring switches with two diverse paths at least"
         def swPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
@@ -255,6 +258,7 @@ and at least 1 path must remain safe"
         ]
     }
 
+    @Tags([SWITCH_RECOVER_ON_FAIL])
     def "Flow is successfully deleted from the system even if some rule delete commands fail (no rollback for delete)"() {
         given: "A flow"
         def swPair = switchPairs.all().first()
@@ -282,6 +286,7 @@ and at least 1 path must remain safe"
         switchHelper.reviveSwitch(swPair.src, blockData, true)
     }
 
+    @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET, SWITCH_RECOVER_ON_FAIL])
     def "System retries the intentional rerouteV1 if it fails to install rules on a switch"() {
         given: "Two active neighboring switches with two diverse paths at least(main and backup paths)"
         def swPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
@@ -383,6 +388,7 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
     @Shared int globalTimeout = 30 //global timeout for h&s operation
 
     //isolation: requires no 'up' events in the system while flow is Down
+    @Tags([ISL_RECOVER_ON_FAIL])
     def "System does not retry after global timeout for reroute operation"() {
         given: "A flow with ability to reroute"
         def swPair = switchPairs.all().withAtLeastNPaths(2).random()

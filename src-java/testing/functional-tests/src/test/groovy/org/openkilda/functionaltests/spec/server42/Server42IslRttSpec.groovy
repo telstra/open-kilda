@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
@@ -467,7 +468,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         revertToOrigin(islRttFeatureStartState, initialSwitchRtt)
     }
 
-    @Tags([HARDWARE])
+    @Tags([HARDWARE, SWITCH_RECOVER_ON_FAIL])
     def "ISL Rtt stats are available in case link is RTL and a switch is disconnected"() {
         given: "An active RTL ISL with both switches having server42"
         def server42switchIds = topology.getActiveServer42Switches()*.dpId

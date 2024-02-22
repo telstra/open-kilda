@@ -4,6 +4,7 @@ package org.openkilda.functionaltests.spec.switches
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.messaging.info.event.SwitchChangeType.ACTIVATED
 import static org.openkilda.messaging.info.event.SwitchChangeType.DEACTIVATED
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
@@ -41,7 +42,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
 
-    @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])
+    @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER, SWITCH_RECOVER_ON_FAIL])
     def "Missing flow rules/meters are installed on a new switch before connecting to the controller"() {
         given: "A switch with missing flow rules/meters and not connected to the controller"
         def switchPair = switchPairs.all().neighbouring().random()
@@ -90,7 +91,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
 
     }
 
-    @Tags([SMOKE_SWITCHES])
+    @Tags([SMOKE_SWITCHES, SWITCH_RECOVER_ON_FAIL])
     def "Excess transitVlanRules/meters are synced from a new switch before connecting to the controller"() {
         given: "A switch with excess rules/meters and not connected to the controller"
         def sw = topology.getActiveSwitches().first()
@@ -161,7 +162,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         blockData && !isSwitchSynchronized && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
-    @Tags([SMOKE_SWITCHES])
+    @Tags([SMOKE_SWITCHES, SWITCH_RECOVER_ON_FAIL])
     def "Excess vxlanRules/meters are synced from a new switch before connecting to the controller"() {
         given: "A switch with excess rules/meters and not connected to the controller"
         def sw = topology.getActiveSwitches().find { switchHelper.isVxlanEnabled(it.dpId) }
@@ -232,7 +233,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         blockData && !isSwitchSynchronized && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
-    @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])
+    @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER, SWITCH_RECOVER_ON_FAIL])
     def "New connected switch is properly discovered with related ISLs in a reasonable time"() {
         setup: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
         def sw = topology.activeSwitches.first()

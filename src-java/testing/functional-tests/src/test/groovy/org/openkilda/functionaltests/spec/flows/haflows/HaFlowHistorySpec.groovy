@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows.haflows
 
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
@@ -140,7 +141,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         haFlow && haFlow.delete()
     }
 
-    @Tags(LOW_PRIORITY)
+    @Tags([LOW_PRIORITY, SWITCH_RECOVER_ON_FAIL])
     def "History records are created during link unsuccessful rerouting with root cause details and can be retrieved with or without timeline"() {
         given: "HA-Flow has been created"
         def swT = topologyHelper.switchTriplets[0]
