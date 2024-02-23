@@ -228,7 +228,6 @@ subprojects {
              */
             dependencies {
                 exclude(dependency('org.slf4j:slf4j-api'))
-                exclude(dependency('org.slf4j:slf4j-api'))
                 exclude(dependency('ch.qos.logback:logback-classic'))
                 exclude(dependency('org.apache.logging.log4j:log4j-slf4j-impl'))
             }
