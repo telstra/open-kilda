@@ -1,6 +1,0 @@
-#!/bin/bash
-echo "checking tables in hbase"
-python3 /app/create_tables.py
-
-echo "starting opentsdb"
-/usr/share/opentsdb/bin/tsdb tsd --port=4242 --staticroot=/usr/share/opentsdb/static --cachedir=/tmp --auto-metric
