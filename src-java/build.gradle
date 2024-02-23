@@ -29,6 +29,9 @@ subprojects {
 
     tasks.withType(JavaCompile).configureEach {
         options.encoding = 'UTF-8'
+
+        //Use the following parameter to report usages of deprecated code
+        //options.compilerArgs += "-Xlint:deprecation"
     }
 
     repositories {

@@ -88,7 +88,7 @@ public class KafkaMessagingChannelTest {
 
         InfoData result = response.get(1, TimeUnit.SECONDS);
         Assertions.assertEquals(data, result);
-        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingRequestsEmpty());
     }
 
     @Test
@@ -104,7 +104,7 @@ public class KafkaMessagingChannelTest {
 
         InfoData result = response.get(1, TimeUnit.SECONDS);
         Assertions.assertNull(result);
-        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingRequestsEmpty());
     }
 
     @Test
@@ -122,7 +122,7 @@ public class KafkaMessagingChannelTest {
         List<InfoData> result = future.get(10, TimeUnit.SECONDS);
         Assertions.assertEquals(messagesAmount, result.size());
 
-        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingRequestsEmpty());
     }
 
     @Test
@@ -139,7 +139,7 @@ public class KafkaMessagingChannelTest {
         List<InfoData> result = future.get(10, TimeUnit.SECONDS);
 
         Assertions.assertEquals(responses, result.size());
-        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingRequestsEmpty());
     }
 
     @Test
@@ -156,7 +156,7 @@ public class KafkaMessagingChannelTest {
         List<InfoData> result = future.get(1, TimeUnit.SECONDS);
 
         Assertions.assertTrue(result.isEmpty());
-        Assertions.assertTrue(messagingChannel.getPendingChunkedRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingChunkedRequestsEmpty());
     }
 
     @Test
@@ -176,7 +176,7 @@ public class KafkaMessagingChannelTest {
             response.get(10, TimeUnit.SECONDS);
         });
         Assertions.assertTrue(response.isCompletedExceptionally());
-        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingRequestsEmpty());
     }
 
     @Test
@@ -196,7 +196,7 @@ public class KafkaMessagingChannelTest {
             response.get(1, TimeUnit.SECONDS);
         });
         Assertions.assertTrue(response.isCompletedExceptionally());
-        Assertions.assertTrue(messagingChannel.getPendingChunkedRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingChunkedRequestsEmpty());
 
     }
 
@@ -213,7 +213,7 @@ public class KafkaMessagingChannelTest {
             response.get(1, TimeUnit.SECONDS);
         });
         Assertions.assertTrue(response.isCompletedExceptionally());
-        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingRequestsEmpty());
 
     }
 
@@ -230,7 +230,7 @@ public class KafkaMessagingChannelTest {
             response.get(1, TimeUnit.SECONDS);
         });
         Assertions.assertTrue(response.isCompletedExceptionally());
-        Assertions.assertTrue(messagingChannel.getPendingChunkedRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingChunkedRequestsEmpty());
 
     }
 

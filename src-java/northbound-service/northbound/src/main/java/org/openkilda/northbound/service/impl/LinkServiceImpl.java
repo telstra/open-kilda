@@ -66,7 +66,6 @@ import org.openkilda.northbound.service.impl.link.BfdPropertiesMonitor;
 import org.openkilda.northbound.utils.CorrelationIdFactory;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
-import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -79,6 +78,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
@@ -214,8 +214,7 @@ public class LinkServiceImpl extends BaseService implements LinkService {
         org.openkilda.messaging.model.LinkPropsDto linkProps = org.openkilda.messaging.model.LinkPropsDto.builder()
                 .source(new NetworkEndpoint(srcSwitch, srcPort))
                 .dest(new NetworkEndpoint(dstSwitch, dstPort))
-                .props(ImmutableMap.of(LinkProps.MAX_BANDWIDTH_PROP_NAME,
-                        input.getMaxBandwidth().toString()))
+                .props(Map.of(LinkProps.MAX_BANDWIDTH_PROP_NAME, input.getMaxBandwidth().toString()))
                 .build();
         LinkPropsPut request = new LinkPropsPut(linkProps);
         String correlationId = RequestCorrelationId.getId();
