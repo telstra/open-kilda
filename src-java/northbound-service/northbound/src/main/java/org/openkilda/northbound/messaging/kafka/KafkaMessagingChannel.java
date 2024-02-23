@@ -26,7 +26,6 @@ import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.messaging.exception.MessageNotSentException;
 
-import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.PostConstruct;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.lang3.StringUtils;
@@ -38,7 +37,6 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -253,13 +251,11 @@ public class KafkaMessagingChannel implements MessagingChannel {
         return message instanceof ChunkedInfoMessage && pendingChunkedRequests.containsKey(message.getCorrelationId());
     }
 
-    @VisibleForTesting
-    Map<String, CompletableFuture<InfoData>> getPendingRequests() {
-        return new HashMap<>(pendingRequests);
+    public boolean isPendingRequestsEmpty() {
+        return pendingRequests.isEmpty();
     }
 
-    @VisibleForTesting
-    Map<String, CompletableFuture<List<InfoData>>> getPendingChunkedRequests() {
-        return new HashMap<>(pendingChunkedRequests);
+    public boolean isPendingChunkedRequestsEmpty() {
+        return pendingChunkedRequests.isEmpty();
     }
 }

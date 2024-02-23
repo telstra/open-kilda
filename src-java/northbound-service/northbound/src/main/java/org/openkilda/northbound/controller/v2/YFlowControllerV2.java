@@ -16,6 +16,8 @@
 package org.openkilda.northbound.controller.v2;
 
 import org.openkilda.northbound.controller.BaseController;
+import org.openkilda.northbound.controller.v2.validator.YFlowCreatePayloadValidator;
+import org.openkilda.northbound.controller.v2.validator.YFlowUpdatePayloadValidator;
 import org.openkilda.northbound.dto.v2.yflows.SubFlowsDump;
 import org.openkilda.northbound.dto.v2.yflows.YFlow;
 import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;
@@ -29,8 +31,6 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult;
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult;
 import org.openkilda.northbound.service.YFlowService;
-import org.openkilda.northbound.validator.YFlowCreatePayloadValidator;
-import org.openkilda.northbound.validator.YFlowUpdatePayloadValidator;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
