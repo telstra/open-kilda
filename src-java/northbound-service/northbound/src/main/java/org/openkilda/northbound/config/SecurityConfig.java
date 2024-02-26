@@ -87,7 +87,7 @@ public class SecurityConfig {
         if (password == null || password.isEmpty()) {
             password = defaultPassword;
         }
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(16);
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(4);
 
         UserDetails user = User
                 .withUsername(username)

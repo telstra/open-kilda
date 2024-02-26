@@ -19,7 +19,6 @@ import static org.openkilda.messaging.Utils.CORRELATION_ID;
 
 import org.openkilda.northbound.utils.RequestCorrelationId.RequestCorrelationClosable;
 
-import com.google.common.collect.ImmutableList;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,7 +46,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(RequestCorrelationFilter.class);
 
-    private static final List<String> EXCLUDE_PATTERNS = ImmutableList.of(
+    private static final List<String> EXCLUDE_PATTERNS = List.of(
             "/v1/health-check",
             // swagger related patterns
             "/swagger*/**",

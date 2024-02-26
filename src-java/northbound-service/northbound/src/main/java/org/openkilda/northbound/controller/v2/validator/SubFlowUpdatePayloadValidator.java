@@ -13,9 +13,9 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.validator;
+package org.openkilda.northbound.controller.v2.validator;
 
-import static org.openkilda.northbound.validator.FlowEndpointV2Validator.validateFlowEndpointV2;
+import static org.openkilda.northbound.controller.v2.validator.FlowEndpointV2Validator.validateFlowEndpointV2;
 
 import org.openkilda.northbound.dto.v2.yflows.SubFlowUpdatePayload;
 

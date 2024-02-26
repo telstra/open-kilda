@@ -23,7 +23,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
@@ -35,6 +37,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.time.Clock;
 import java.util.List;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 /**
@@ -42,6 +45,7 @@ import java.util.concurrent.Executors;
  */
 @Configuration
 @EnableWebMvc
+@EnableAsync
 @PropertySource({"classpath:northbound.properties"})
 public class WebConfig implements WebMvcConfigurer {
 
@@ -57,6 +61,11 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void configureAsyncSupport(AsyncSupportConfigurer configurer) {
         configurer.setDefaultTimeout(asyncTimeout);
+    }
+
+    @Bean
+    public Executor getExecutor() {
+        return new SimpleAsyncTaskExecutor("async-");
     }
 
     @Override

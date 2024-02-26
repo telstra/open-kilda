@@ -17,7 +17,6 @@ package org.openkilda.northbound.utils;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 
-import com.google.common.collect.ImmutableList;
 import jakarta.annotation.Priority;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -41,7 +40,7 @@ import java.util.List;
 @Component
 public class RequestCorrelationInspectorFilter extends OncePerRequestFilter {
 
-    private static final List<String> EXCLUDE_PATTERNS = ImmutableList.of(
+    private static final List<String> EXCLUDE_PATTERNS = List.of(
             "/v1/**",
             // swagger related patterns
             "/swagger*/**",

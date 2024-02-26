@@ -18,6 +18,7 @@ package org.openkilda.northbound.controller.v2;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
 import org.openkilda.northbound.controller.BaseController;
+import org.openkilda.northbound.controller.v2.validator.FlowRequestV2Validator;
 import org.openkilda.northbound.dto.v2.flows.FlowHistoryStatusesResponse;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload;
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse;
@@ -32,7 +33,6 @@ import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload;
 import org.openkilda.northbound.service.FlowService;
 import org.openkilda.northbound.utils.flowhistory.FlowHistoryHelper;
 import org.openkilda.northbound.utils.flowhistory.FlowHistoryRangeConstraints;
-import org.openkilda.northbound.validator.FlowRequestV2Validator;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

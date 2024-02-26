@@ -15,7 +15,6 @@
 
 package org.openkilda.northbound.service.impl;
 
-import static com.google.common.collect.Sets.newHashSet;
 import static java.lang.String.format;
 import static org.openkilda.messaging.model.ValidationFilter.FLOW_INFO;
 import static org.openkilda.messaging.model.ValidationFilter.GROUPS;
@@ -117,7 +116,6 @@ import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
-import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -135,9 +133,8 @@ import java.util.stream.Collectors;
 @Service
 public class SwitchServiceImpl extends BaseService implements SwitchService {
     public static final String SWITCH_VALIDATION_FILTERS_SPLITTER = "\\|";
-    public static final Set<ValidationFilter> VALID_INCLUDE_FILTERS = Sets.newHashSet(
-            RULES, METERS, GROUPS, LOGICAL_PORTS);
-    public static final Set<ValidationFilter> VALID_EXCLUDE_FILTERS = Sets.newHashSet(FLOW_INFO);
+    public static final Set<ValidationFilter> VALID_INCLUDE_FILTERS = Set.of(RULES, METERS, GROUPS, LOGICAL_PORTS);
+    public static final Set<ValidationFilter> VALID_EXCLUDE_FILTERS = Set.of(FLOW_INFO);
 
     private final MessagingChannel messagingChannel;
 
@@ -278,7 +275,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
         return performValidateV2(
                 SwitchValidateRequest.builder()
-                        .validationFilters(newHashSet(RULES))
+                        .validationFilters(Set.of(RULES))
                         .switchId(switchId).build())
                 .thenApply(switchMapper::toRulesValidationResult);
     }
@@ -338,7 +335,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         return performSync(
                 SwitchValidateRequest.builder()
                         .switchId(switchId)
-                        .validationFilters(Sets.newHashSet(RULES))
+                        .validationFilters(Set.of(RULES))
                         .performSync(true)
                         .build())
                 .thenApply(switchMapper::toRulesSyncResult);
