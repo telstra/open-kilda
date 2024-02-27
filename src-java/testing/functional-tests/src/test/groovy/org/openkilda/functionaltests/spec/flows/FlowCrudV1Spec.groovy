@@ -57,7 +57,7 @@ import spock.lang.Shared
 import spock.lang.Unroll
 
 import java.time.Instant
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @Slf4j
 @See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/usecase/flow-crud-create-full.png",

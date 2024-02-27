@@ -123,7 +123,6 @@ subprojects {
             testImplementation 'org.mockito:mockito-junit-jupiter:4.2.0'
             testImplementation 'org.apache.curator:curator-test:2.8.0'
             testImplementation 'io.netty:netty-all:4.1.91.Final'
-            testRuntimeOnly 'javax.servlet:javax.servlet-api:3.1.0'
 
             implementation 'jakarta.validation:jakarta.validation-api:2.0.2'
 

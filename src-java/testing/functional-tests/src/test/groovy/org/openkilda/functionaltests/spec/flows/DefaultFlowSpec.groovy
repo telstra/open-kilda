@@ -19,7 +19,7 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @Narrative("""System allows to create default port(vlan=0) and simple flow(vlan=<any number>) on the same port.
 Default flow has lower priority than simple flow.

@@ -11,7 +11,7 @@ import org.openkilda.testing.service.traffexam.model.Host
 import org.openkilda.testing.service.traffexam.model.TimeLimit
 import org.openkilda.testing.service.traffexam.model.Vlan
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
 import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult
