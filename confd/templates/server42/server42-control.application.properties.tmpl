@@ -29,7 +29,7 @@ spring.devtools.add-properties=false
 management.endpoint.metrics.enabled=true
 management.endpoints.web.exposure.include=*
 management.endpoint.prometheus.enabled=true
-management.metrics.export.prometheus.enabled=true
+management.prometheus.metrics.export.enabled=true
 # Kafka
 spring.kafka.consumer.group-id={{ getv "/kilda_server42_control_kafka_group_id" }}
 spring.kafka.consumer.auto-offset-reset=latest
