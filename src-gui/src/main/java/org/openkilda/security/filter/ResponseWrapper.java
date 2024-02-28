@@ -15,13 +15,14 @@
 
 package org.openkilda.security.filter;
 
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponseWrapper;
+
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.UUID;
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpServletResponseWrapper;
 
 /**
  * ResponseWrapper class is a wrapper of {@link HttpServletResponseWrapper} class. This will update
@@ -45,7 +46,7 @@ public class ResponseWrapper extends HttpServletResponseWrapper {
     /*
      * (non-Javadoc)
      *
-     * @see javax.servlet.ServletResponseWrapper#getOutputStream()
+     * @see jakarta.servlet.ServletResponseWrapper#getOutputStream()
      */
     @Override
     public ServletOutputStream getOutputStream() throws IOException {
@@ -63,7 +64,7 @@ public class ResponseWrapper extends HttpServletResponseWrapper {
     /*
      * (non-Javadoc)
      *
-     * @see javax.servlet.ServletResponseWrapper#getWriter()
+     * @see jakarta.servlet.ServletResponseWrapper#getWriter()
      */
     @Override
     public PrintWriter getWriter() throws IOException {
@@ -84,7 +85,7 @@ public class ResponseWrapper extends HttpServletResponseWrapper {
     /*
      * (non-Javadoc)
      *
-     * @see javax.servlet.ServletResponseWrapper#flushBuffer()
+     * @see jakarta.servlet.ServletResponseWrapper#flushBuffer()
      */
     @Override
     public void flushBuffer() throws IOException {

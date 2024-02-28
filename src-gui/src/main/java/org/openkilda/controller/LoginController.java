@@ -22,6 +22,8 @@ import org.openkilda.exception.TwoFaKeyNotSetException;
 import org.openkilda.security.CustomWebAuthenticationDetails;
 import org.openkilda.security.TwoFactorUtility;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,9 +44,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
 
 /**
  * The Class LoginController : entertain requests of login module.

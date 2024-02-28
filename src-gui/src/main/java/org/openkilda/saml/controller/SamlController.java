@@ -20,14 +20,15 @@ import org.openkilda.constants.Status;
 import org.openkilda.controller.BaseController;
 import org.openkilda.saml.model.SamlConfig;
 
-import org.opensaml.saml2.core.NameID;
+import jakarta.servlet.http.HttpServletRequest;
+import org.opensaml.saml.saml2.core.NameID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.saml.SAMLCredential;
+import org.springframework.security.saml2.provider.service.authentication.Saml2Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.ModelAndView;
@@ -39,7 +40,6 @@ import org.usermanagement.service.UserService;
 import org.usermanagement.util.MessageUtils;
 
 import java.util.Set;
-import javax.servlet.http.HttpServletRequest;
 
 @Controller
 @RequestMapping(value = "/saml")
@@ -72,8 +72,8 @@ public class SamlController extends BaseController {
             boolean isValid = (authentication.isAuthenticated()
                     && !(authentication instanceof AnonymousAuthenticationToken));
             if (isValid) {
-                SAMLCredential saml = (SAMLCredential) authentication.getCredentials();
-                SamlConfig samlConfig = samlService.getConfigByEntityId(saml.getRemoteEntityID());
+                Saml2Authentication saml = (Saml2Authentication) authentication.getCredentials();
+                SamlConfig samlConfig = samlService.getConfigByEntityId(saml.getName());
                 NameID nameId = (NameID) authentication.getPrincipal();
                 String username = nameId.getValue();
                 UserInfo userInfo = userService.getUserInfoByUsername(username);
