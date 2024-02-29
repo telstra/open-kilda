@@ -15,10 +15,10 @@
 
 package org.openkilda.security;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedInputStream;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -32,14 +32,9 @@ import javax.crypto.Cipher;
 /**
  * The Class RsaEncryptionDescription.
  */
-
+@Slf4j
 public final class RsaEncryptionDescription {
-
-    /**
-     * The Constant _log.
-     */
-    private static final Logger _log = LoggerFactory.getLogger(RsaEncryptionDescription.class);
-
+    
     private RsaEncryptionDescription() {
 
     }
@@ -53,7 +48,7 @@ public final class RsaEncryptionDescription {
      */
     // Return the saved key
     public static Key readKeyFromFile(final String keyFileName) throws IOException {
-        _log.info("ReadKeyFromFile called with keyFileName : " + keyFileName);
+        log.info("ReadKeyFromFile called with keyFileName : " + keyFileName);
         InputStream in = null;
         ObjectInputStream oin = null;
         try {
@@ -72,7 +67,7 @@ public final class RsaEncryptionDescription {
                 return null;
             }
         } catch (Exception e) {
-            _log.error("Exception in readKeyFromFile : " + e.getMessage());
+            log.error("Exception in readKeyFromFile : " + e.getMessage());
             throw new RuntimeException("Spurious serialisation error", e);
         } finally {
             if (oin != null) {

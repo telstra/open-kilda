@@ -49,8 +49,7 @@ import org.openkilda.store.model.Customer;
 import org.openkilda.store.service.StoreService;
 import org.openkilda.utility.StringUtil;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -69,10 +68,9 @@ import java.util.List;
  *
  * @author Gaurav Chugh
  */
+@Slf4j
 @Service
 public class SwitchService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchService.class);
 
     @Autowired
     private SwitchIntegrationService switchIntegrationService;
@@ -115,7 +113,7 @@ public class SwitchService {
                     }
                 }
             } catch (Exception ex) {
-                LOGGER.error("Error occurred while retrieving switches from store", ex);
+                log.error("Error occurred while retrieving switches from store", ex);
             }
         }
         return switchInfo;
@@ -132,7 +130,7 @@ public class SwitchService {
         try {
             switchInfo = switchIntegrationService.getSwitchesById(switchId);
         } catch (InvalidResponseException ex) {
-            LOGGER.error("Error occurred while retrieving switches from controller", ex);
+            log.error("Error occurred while retrieving switches from controller", ex);
         }
         if (!controller) {
             try {
@@ -156,7 +154,7 @@ public class SwitchService {
                     }
                 }
             } catch (Exception ex) {
-                LOGGER.error("Error occurred while retrieving switches from store", ex);
+                log.error("Error occurred while retrieving switches from store", ex);
                 throw new StoreIntegrationException("Error occurred while retrieving switches from store");
             }
         }
@@ -419,7 +417,7 @@ public class SwitchService {
                     try {
                         customers = switchStoreService.getPortFlows(switchId, port);
                     } catch (Exception ex) {
-                        LOGGER.warn("Error occured while retreiving port flows.", ex);
+                        log.warn("Error occured while retreiving port flows.", ex);
                         throw new StoreIntegrationException("Error occured while retreiving port flows.", ex);
                     }
                 }

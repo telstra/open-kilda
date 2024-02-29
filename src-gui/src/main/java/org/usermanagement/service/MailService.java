@@ -19,9 +19,8 @@ import org.openkilda.utility.StringUtil;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -34,14 +33,9 @@ import java.util.Map;
 /**
  * Service Layer of sending emails.
  */
-
+@Slf4j
 @Service
 public class MailService {
-
-    /**
-     * The Constant _log.
-     */
-    private static final Logger LOGGER = LoggerFactory.getLogger(MailService.class);
 
     @Autowired
     private TemplateService templateService;
@@ -73,9 +67,9 @@ public class MailService {
                 msg.setText(templateService.mergeTemplateToString(template, context), true);
 
                 javaMailSender.send(mimeMessage);
-                LOGGER.info("Mail sent successfully. Subject: " + subject);
+                log.info("Mail sent successfully. Subject: " + subject);
             } catch (MessagingException e) {
-                LOGGER.error("Failed to send mail ", e);
+                log.error("Failed to send mail ", e);
             }
         }
     }
@@ -101,9 +95,9 @@ public class MailService {
                 msg.setText(templateService.mergeTemplateToString(template, context), true);
 
                 javaMailSender.send(mimeMessage);
-                LOGGER.info("Mail sent successfully. Subject: " + subject);
+                log.info("Mail sent successfully. Subject: " + subject);
             } catch (MessagingException e) {
-                LOGGER.error("Failed to send mail", e);
+                log.error("Failed to send mail", e);
             }
         }
     }

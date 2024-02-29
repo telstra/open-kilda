@@ -18,10 +18,9 @@ package org.openkilda.test;
 import org.openkilda.util.IConstantsTest;
 import org.openkilda.utility.IoUtil;
 
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -39,16 +38,15 @@ import java.util.List;
  *
  * @author Gaurav Chugh
  */
+@Slf4j
 public class BaseTest {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(BaseTest.class);
 
     /**
      * Execute kilda files.
      */
     @Test
     public void executeKildaFiles() {
-        LOGGER.info("Inside method executeKildaFiles");
+        log.info("Inside method executeKildaFiles");
         File f = new File(IConstantsTest.FILE_PATH);
         List<String> urlList = new ArrayList<String>();
         String readLine = "";
@@ -58,7 +56,7 @@ public class BaseTest {
                 urlList.add(readLine);
             }
         } catch (Exception e) {
-            LOGGER.error("exception occurred Inside method executeKildaFiles", e);
+            log.error("exception occurred Inside method executeKildaFiles", e);
         }
 
         for (String url : urlList) {
@@ -82,11 +80,11 @@ public class BaseTest {
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.CSS_PATH + "roboto.css");
                 }
             } catch (Exception e) {
-                LOGGER.error("exception occurred Inside method executeKildaFiles.", e);
+                log.error("exception occurred Inside method executeKildaFiles.", e);
                 Assertions.fail();
             }
         }
-        LOGGER.info("executeKildaFiles has been successfully executed");
+        log.info("executeKildaFiles has been successfully executed");
 
     }
 
@@ -121,7 +119,7 @@ public class BaseTest {
             return;
         }
 
-        LOGGER.info("Downloading file " + file);
+        log.info("Downloading file " + file);
         URL url = null;
         FileOutputStream fileOutputStream = null;
         BufferedInputStream bufferedInputStream = null;
@@ -138,13 +136,13 @@ public class BaseTest {
             }
 
         } catch (MalformedURLException malformedUrlException) {
-            LOGGER.error("Error occurred during accessing file url" + urlStr + " : exception : "
+            log.error("Error occurred during accessing file url" + urlStr + " : exception : "
                     + malformedUrlException.getMessage());
         } catch (IOException ioException) {
-            LOGGER.error(
+            log.error(
                     "Error occurred during downloading file " + file + " : exception : " + ioException.getMessage());
         } catch (Exception exception) {
-            LOGGER.error(
+            log.error(
                     "Error occurred during downloading file " + file + " : exception : " + exception.getMessage());
         } finally {
             IoUtil.close(fileOutputStream);

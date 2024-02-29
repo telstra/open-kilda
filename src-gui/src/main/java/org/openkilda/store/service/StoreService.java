@@ -33,8 +33,7 @@ import org.openkilda.store.switchstore.dao.entity.SwitchStoreRequestUrlsEntity;
 import org.openkilda.store.switchstore.dao.repository.SwitchStoreRequestUrlsRepository;
 import org.openkilda.utility.CollectionUtil;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -49,10 +48,9 @@ import java.util.Map.Entry;
 /**
  * The Class StoreService.
  */
+@Slf4j
 @Service
 public class StoreService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(StoreService.class);
 
     @Autowired
     private LinkStoreRequestUrlsRepository linkStoreRequestUrlsRepository;
@@ -73,7 +71,7 @@ public class StoreService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public List<StoreTypeDto> getStoreTypes() {
-        LOGGER.info("Get store types");
+        log.info("Get store types");
         List<StoreTypeDto> list = new ArrayList<StoreTypeDto>();
         StoreType[] storeTypes = StoreType.values();
         for (StoreType storeType : storeTypes) {
@@ -90,7 +88,7 @@ public class StoreService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public LinkStoreConfigDto saveOrUpdateLinkStoreConfig(final LinkStoreConfigDto linkStoreConfigDto) {
-        LOGGER.info("Save or update link store configuration");
+        log.info("Save or update link store configuration");
         saveOrUpdateStoreTypeEntity(StoreType.LINK_STORE.getCode());
         List<LinkStoreRequestUrlsEntity> linkStoreRequestUrlsEntitiesList = new ArrayList<>();
         List<LinkStoreRequestUrlsEntity> linkStoreRequestUrlsEntities = linkStoreRequestUrlsRepository.findAll();
@@ -128,7 +126,7 @@ public class StoreService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public LinkStoreConfigDto getLinkStoreConfig() {
-        LOGGER.info("Get link store configuration");
+        log.info("Get link store configuration");
         LinkStoreConfigDto linkStoreConfigDto = new LinkStoreConfigDto();
         List<LinkStoreRequestUrlsEntity> linkStoreRequestUrlsEntitiesList = linkStoreRequestUrlsRepository.findAll();
 
@@ -150,7 +148,7 @@ public class StoreService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public UrlDto getUrl(final StoreType storeType, final Url url) {
-        LOGGER.info("Get urls for store type");
+        log.info("Get urls for store type");
         UrlDto urlDto = null;
 
         if (storeType == StoreType.LINK_STORE) {
@@ -174,7 +172,7 @@ public class StoreService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public boolean deleteLinkStoreConfig() {
-        LOGGER.info("delete link store configuration");
+        log.info("delete link store configuration");
         linkStoreRequestUrlsRepository.deleteAll();
         List<LinkStoreRequestUrlsEntity> linkStoreRequestUrlsEntitiesList = linkStoreRequestUrlsRepository.findAll();
         return CollectionUtil.isEmpty(linkStoreRequestUrlsEntitiesList);
@@ -188,7 +186,7 @@ public class StoreService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public SwitchStoreConfigDto saveOrUpdateSwitchStoreConfig(final SwitchStoreConfigDto switchStoreConfigDto) {
-        LOGGER.info("Save or update switch store configuration");
+        log.info("Save or update switch store configuration");
         saveOrUpdateStoreTypeEntity(StoreType.SWITCH_STORE.getCode());
         List<SwitchStoreRequestUrlsEntity> switchStoreRequestUrlsEntitiesList =
                 new ArrayList<SwitchStoreRequestUrlsEntity>();
@@ -228,7 +226,7 @@ public class StoreService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public boolean deleteSwitchStoreConfig() {
-        LOGGER.info("Delete switch store configuration");
+        log.info("Delete switch store configuration");
         switchStoreRequestUrlsRepository.deleteAll();
         List<SwitchStoreRequestUrlsEntity> switchStoreRequestUrlsEntitiesList = switchStoreRequestUrlsRepository
                 .findAll();
@@ -242,7 +240,7 @@ public class StoreService {
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
     public SwitchStoreConfigDto getSwitchStoreConfig() {
-        LOGGER.info("Get switch store configuration");
+        log.info("Get switch store configuration");
         SwitchStoreConfigDto switchStoreConfigDto = new SwitchStoreConfigDto();
         List<SwitchStoreRequestUrlsEntity> switchStoreRequestUrlsEntitiesList = switchStoreRequestUrlsRepository
                 .findAll();
@@ -262,7 +260,7 @@ public class StoreService {
      * @param storeType the storeType
      */
     private void saveOrUpdateStoreTypeEntity(String storeType) {
-        LOGGER.info("Save or update store types.");
+        log.info("Save or update store types.");
         List<OauthConfigEntity> oauthConfigEntityList = oauthConfigRepository
                 .findByAuthType_authTypeId(AuthType.OAUTH_TWO.getAuthTypeEntity().getAuthTypeId());
 

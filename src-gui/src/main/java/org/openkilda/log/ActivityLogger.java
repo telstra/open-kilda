@@ -21,8 +21,7 @@ import org.openkilda.log.constants.ActivityType;
 import org.openkilda.log.model.LogInfo;
 import org.openkilda.log.service.UserActivityService;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -30,9 +29,9 @@ import java.util.Calendar;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+@Slf4j
 @Component
 public class ActivityLogger {
-    private static final Logger LOGGER = LoggerFactory.getLogger(ActivityLogger.class);
 
     private static final BlockingQueue<LogInfo> logs = new LinkedBlockingQueue<>();
     private static Boolean isThreadStarted = false;
@@ -73,7 +72,7 @@ public class ActivityLogger {
             try {
                 logs.put(logInfo);
             } catch (InterruptedException e) {
-                LOGGER.error("Error occurred while adding logs for logging user activity", e);
+                log.error("Error occurred while adding logs for logging user activity", e);
             }
         }
     }
@@ -100,7 +99,7 @@ public class ActivityLogger {
                     LogInfo logInfo = logs.take();
                     userActivityService.logUserActivity(logInfo);
                 } catch (Exception e) {
-                    LOGGER.error("Error occurred while logging user activity", e);
+                    log.error("Error occurred while logging user activity", e);
                 }
             }
         }

@@ -27,8 +27,7 @@ import org.openkilda.store.model.UrlDto;
 import org.openkilda.store.service.AuthService;
 import org.openkilda.store.service.StoreService;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -40,11 +39,9 @@ import java.util.Map;
  * The Class FlowStoreService.
  *
  */
-
+@Slf4j
 @Service
 public class FlowStoreService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(FlowStoreService.class);
 
     @Autowired
     private StoreService storeService;
@@ -64,7 +61,7 @@ public class FlowStoreService {
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponseList(urlDto, authDto, String.class);
         } catch (Exception e) {
-            LOGGER.error("Error occurred while retriving status list", e);
+            log.error("Error occurred while retriving status list", e);
             throw new StoreIntegrationException(e);
         }
     }
@@ -88,7 +85,7 @@ public class FlowStoreService {
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponse(urlDto, authDto, InventoryFlow.class);
         } catch (Exception e) {
-            LOGGER.error("Error occurred while retriving flow by id: " + flowId, e);
+            log.error("Error occurred while retriving flow by id: " + flowId, e);
             throw new StoreIntegrationException(e);
         }
     }
@@ -112,7 +109,7 @@ public class FlowStoreService {
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponseList(urlDto, authDto, InventoryFlow.class);
         } catch (Exception e) {
-            LOGGER.error("Error occurred while retriving flows with status: " + status, e);
+            log.error("Error occurred while retriving flows with status: " + status, e);
             throw new StoreIntegrationException(e);
         }
     }
@@ -137,7 +134,7 @@ public class FlowStoreService {
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponseList(urlDto, authDto, Contract.class);
         } catch (Exception e) {
-            LOGGER.error("Error occurred while retriving contracts by link id: " + linkId, e);
+            log.error("Error occurred while retriving contracts by link id: " + linkId, e);
             throw new StoreIntegrationException(e);
         }
     }
@@ -164,7 +161,7 @@ public class FlowStoreService {
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             authService.getResponse(urlDto, authDto, null);
         } catch (Exception e) {
-            LOGGER.error("Error occurred while deleting contract: " + contractId, e);
+            log.error("Error occurred while deleting contract: " + contractId, e);
             throw new StoreIntegrationException(e);
         }
     }

@@ -21,9 +21,8 @@ import org.openkilda.saml.service.SamlService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import lombok.extern.slf4j.Slf4j;
 import org.opensaml.saml.saml2.core.NameID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -41,9 +40,8 @@ import org.usermanagement.util.MessageUtils;
 
 import java.nio.file.AccessDeniedException;
 
+@Slf4j
 public abstract class BaseController {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(BaseController.class);
 
     @Autowired
     private UserRepository userRepository;
@@ -71,12 +69,12 @@ public abstract class BaseController {
         ModelAndView modelAndView;
         if (isUserLoggedIn()) {
             UserInfo userInfo = getLoggedInUser(request);
-            LOGGER.info("Logged in user. view name: " + viewName + ", User name: "
+            log.info("Logged in user. view name: " + viewName + ", User name: "
                     + userInfo.getName());
 
             modelAndView = new ModelAndView(IConstants.View.REDIRECT_HOME);
         } else {
-            LOGGER.warn("User is not logged in, redirected to login page. Requested view name: "
+            log.warn("User is not logged in, redirected to login page. Requested view name: "
                     + viewName);
             modelAndView = new ModelAndView("login");
             modelAndView.addObject("idps", samlService.getAllActiveIdp());
@@ -113,7 +111,7 @@ public abstract class BaseController {
         try {
             userInfo = (UserInfo) session.getAttribute(IConstants.SESSION_OBJECT);
         } catch (IllegalStateException ex) {
-            LOGGER.warn("Exception while retrieving user information from session. Exception: "
+            log.warn("Exception while retrieving user information from session. Exception: "
                     + ex.getLocalizedMessage(), ex);
         } finally {
             if (userInfo == null) {

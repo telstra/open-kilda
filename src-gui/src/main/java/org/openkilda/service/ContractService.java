@@ -19,8 +19,7 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.integration.source.store.FlowStoreService;
 import org.openkilda.integration.source.store.dto.Contract;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.usermanagement.model.UserInfo;
@@ -29,6 +28,7 @@ import org.usermanagement.service.UserService;
 import java.nio.file.AccessDeniedException;
 import java.util.List;
 
+@Slf4j
 @Service
 public class ContractService {
 
@@ -38,8 +38,6 @@ public class ContractService {
     @Autowired
     private UserService userService;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ContractService.class);
-
     /**
      * get contracts.
      *
@@ -48,7 +46,7 @@ public class ContractService {
      * @throws AccessDeniedException the access denied exception
      */
     public List<Contract> getContracts(String linkId) throws AccessDeniedException {
-        LOGGER.info("Inside ContractService method getContracts");
+        log.info("Inside ContractService method getContracts");
         UserInfo userInfo = userService.getLoggedInUserInfo();
         if (userInfo.getPermissions().contains(IConstants.Permission.FW_FLOW_INVENTORY)) {
             if (userInfo.getPermissions().contains(IConstants.Permission.FW_FLOW_CONTRACT)) {
@@ -67,7 +65,7 @@ public class ContractService {
      * @return true, if successful
      */
     public boolean deleteContract(String linkId, String contractid) {
-        LOGGER.info("Inside ContractService method deleteContract");
+        log.info("Inside ContractService method deleteContract");
         flowStoreService.deleteContract(linkId, contractid);
         return true;
     }

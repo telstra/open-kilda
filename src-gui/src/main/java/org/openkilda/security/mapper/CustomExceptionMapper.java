@@ -26,11 +26,10 @@ import org.openkilda.integration.exception.StoreIntegrationException;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -43,20 +42,15 @@ import java.util.Collections;
 /**
  * The Class CustomExceptionMapper.
  */
-
+@Slf4j
 @ControllerAdvice
 public class CustomExceptionMapper extends GlobalExceptionMapper {
-
-    /**
-     * The Constant _log.
-     */
-    private static final Logger _log = LoggerFactory.getLogger(CustomExceptionMapper.class);
 
     /**
      * Instantiates a new custom exception mapper.
      */
     public CustomExceptionMapper() {
-        _log.info("Custom exception mapper. Initializing {}...", CustomExceptionMapper.class.getName());
+        log.info("Custom exception mapper. Initializing {}...", CustomExceptionMapper.class.getName());
     }
 
     /**

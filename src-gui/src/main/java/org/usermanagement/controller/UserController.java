@@ -22,8 +22,7 @@ import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -46,11 +45,10 @@ import java.util.List;
  * The Class UserController.
  */
 
+@Slf4j
 @RestController
 @RequestMapping(path = "/api/user", produces = MediaType.APPLICATION_JSON_VALUE)
 public class UserController {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(UserController.class);
 
     @Autowired
     private UserService userService;
@@ -208,7 +206,7 @@ public class UserController {
     @RequestMapping(value = "/reset2fa/{user_id}", method = RequestMethod.PUT)
     @Permissions(values = {IConstants.Permission.UM_USER_RESET2FA})
     public Message resetTwofa(@PathVariable("user_id") final Long userId) {
-        LOGGER.info("Reset two fa. (userId: " + userId + ")");
+        log.info("Reset two fa. (userId: " + userId + ")");
         userService.reset2fa(userId);
         return new Message("2FA has been reset for the user.");
     }
@@ -221,7 +219,7 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/settings", method = RequestMethod.GET)
     public String getUserSettings() {
-        LOGGER.info("Get user settings. (userId: " + serverContext.getRequestContext().getUserId() + ")");
+        log.info("Get user settings. (userId: " + serverContext.getRequestContext().getUserId() + ")");
         return userService.getUserSettings(serverContext.getRequestContext().getUserId());
     }
 
@@ -237,7 +235,7 @@ public class UserController {
         UserInfo userInfo = new UserInfo();
         userInfo.setData(data);
         userInfo.setUserId(serverContext.getRequestContext().getUserId());
-        LOGGER.info("Save or update user settings. (userId: " + userInfo.getUserId() + ")");
+        log.info("Save or update user settings. (userId: " + userInfo.getUserId() + ")");
         userService.saveOrUpdateSettings(userInfo);
         return data;
     }
@@ -252,7 +250,7 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/validateotp", method = RequestMethod.POST)
     public boolean validateOtp(@RequestBody final UserInfo userInfo, final HttpServletRequest request) {
-        LOGGER.info("Validate OTP. (userId: " + serverContext.getRequestContext().getUserId() + ")");
+        log.info("Validate OTP. (userId: " + serverContext.getRequestContext().getUserId() + ")");
         return userService.validateOtp(serverContext.getRequestContext().getUserId(), userInfo.getCode());
     }
 
@@ -279,7 +277,7 @@ public class UserController {
     @Permissions(values = {IConstants.Permission.UM_USER_ACCOUNT_UNLOCK})
     public Message unlockUserAccount(@PathVariable("user_id") final Long userId) {
         activityLogger.log(ActivityType.UNLOCK_USER_ACCOUNT, String.valueOf(userId));
-        LOGGER.info("Reset user account. (userId: " + userId + ")");
+        log.info("Reset user account. (userId: " + userId + ")");
         userService.unlockUserAccount(userId);
         return new Message("User account activated successfully");
     }

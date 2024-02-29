@@ -19,8 +19,7 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.saml.dao.entity.SamlConfigEntity;
 import org.openkilda.saml.model.SamlConfig;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.multipart.MultipartFile;
 import org.usermanagement.dao.entity.RoleEntity;
 import org.usermanagement.exception.RequestValidationException;
@@ -36,11 +35,9 @@ import java.util.UUID;
 import javax.sql.rowset.serial.SerialBlob;
 import javax.sql.rowset.serial.SerialException;
 
-
+@Slf4j
 public final class SamlConversionUtil {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SamlConversionUtil.class);
-    
     private SamlConversionUtil() {
 
     }
@@ -95,9 +92,9 @@ public final class SamlConversionUtil {
                 try {
                     blob = new SerialBlob(bytes);
                 } catch (SerialException e) {
-                    LOGGER.error("Error occurred while saving saml provider" + e);
+                    log.error("Error occurred while saving saml provider" + e);
                 } catch (SQLException e) {
-                    LOGGER.error("Error occurred while saving saml provider" + e);
+                    log.error("Error occurred while saving saml provider" + e);
                 }
                 samlConfigEntity.setType(IConstants.ProviderType.FILE);
             } else if (url != null) {
@@ -116,9 +113,9 @@ public final class SamlConversionUtil {
             samlConfigEntity.setUuid(UUID.randomUUID().toString());
             return samlConfigEntity;
         } catch (FileNotFoundException e) {
-            LOGGER.error("Error occurred while saving saml provider" + e);
+            log.error("Error occurred while saving saml provider" + e);
         } catch (IOException e) {
-            LOGGER.error("Error occurred while saving saml provider" + e);
+            log.error("Error occurred while saving saml provider" + e);
         }
         return samlConfigEntity;
     }
@@ -148,9 +145,9 @@ public final class SamlConversionUtil {
                 try {
                     blob = new SerialBlob(bytes);
                 } catch (SerialException e) {
-                    LOGGER.error("Error occurred while updating saml provider" + e);
+                    log.error("Error occurred while updating saml provider" + e);
                 } catch (SQLException e) {
-                    LOGGER.error("Error occurred while updating saml provider" + e);
+                    log.error("Error occurred while updating saml provider" + e);
                 }
                 samlConfigEntity.setMetadata(blob);
                 samlConfigEntity.setType(IConstants.ProviderType.FILE);
@@ -179,9 +176,9 @@ public final class SamlConversionUtil {
         } catch (RequestValidationException e) {
             throw new RequestValidationException(e.getMessage());
         } catch (FileNotFoundException e) {
-            LOGGER.error("Error occurred while updating saml provider" + e);
+            log.error("Error occurred while updating saml provider" + e);
         } catch (IOException e) {
-            LOGGER.error("Error occurred while updating saml provider" + e);
+            log.error("Error occurred while updating saml provider" + e);
         } 
         return requireManagerUpdate;
     }

@@ -18,15 +18,13 @@ package org.openkilda.service;
 import org.openkilda.integration.service.FlowsIntegrationService;
 import org.openkilda.model.YFlowRerouteResult;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class YFlowService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(YFlowService.class);
 
     @Autowired
     private FlowsIntegrationService flowsIntegrationService;
@@ -38,7 +36,7 @@ public class YFlowService {
      * @return flow path
      */
     public YFlowRerouteResult rerouteFlow(String yFlowId) {
-        LOGGER.info(String.format("The re-routing request for y-flow is in progress, y-flow ID: %s", yFlowId));
+        log.info(String.format("The re-routing request for y-flow is in progress, y-flow ID: %s", yFlowId));
         return flowsIntegrationService.rerouteYFlow(yFlowId);
     }
 

@@ -21,9 +21,8 @@ import org.openkilda.controller.BaseController;
 import org.openkilda.saml.model.SamlConfig;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.opensaml.saml.saml2.core.NameID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -41,11 +40,10 @@ import org.usermanagement.util.MessageUtils;
 
 import java.util.Set;
 
+@Slf4j
 @Controller
 @RequestMapping(value = "/saml")
 public class SamlController extends BaseController {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SamlController.class);
 
     @Autowired
     private UserService userService;
@@ -97,14 +95,14 @@ public class SamlController extends BaseController {
                     modelAndView = new ModelAndView(IConstants.View.REDIRECT_HOME);
                 } else {
                     error = messageUtil.getAttributeUserDoesNotExist();
-                    LOGGER.warn("User is not logged in, redirected to login page. Requested view name: ");
+                    log.warn("User is not logged in, redirected to login page. Requested view name: ");
                     request.getSession(false);
                     modelAndView = new ModelAndView(IConstants.View.REDIRECT_LOGIN);
                 }
             }
         } else {
             error = messageUtil.getAttributeAuthenticationFailure();
-            LOGGER.warn("User is not logged in, redirected to login page. Requested view name: ");
+            log.warn("User is not logged in, redirected to login page. Requested view name: ");
             modelAndView = new ModelAndView(IConstants.View.LOGIN);
         }
         if (error != null) {
