@@ -18,8 +18,7 @@ package org.openkilda.store.controller;
 import org.openkilda.store.model.RequestParamDto;
 import org.openkilda.store.service.UrlService;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -34,12 +33,10 @@ import java.util.List;
 /**
  * The Class UrlController.
  */
-
+@Slf4j
 @Controller
 @RequestMapping(value = "/api/url")
 public class UrlController {
-    
-    private static final Logger LOGGER = LoggerFactory.getLogger(UrlController.class);
 
     @Autowired
     private UrlService urlService;
@@ -53,7 +50,7 @@ public class UrlController {
     @RequestMapping(value = "/auth/{type}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody List<String> getAuthUrls(@PathVariable("type") String type) {
-        LOGGER.info("Get auth Urls. auth type: " + type);
+        log.info("Get auth Urls. auth type: " + type);
         return urlService.getAuthUrls(type);
     }
 
@@ -66,7 +63,7 @@ public class UrlController {
     @RequestMapping(value = "/store/{type}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody List<String> getStoreUrls(@PathVariable("type") String type) {
-        LOGGER.info("Get store Urls. store type: " + type);
+        log.info("Get store Urls. store type: " + type);
         return urlService.getStoreUrls(type);
     }
 
@@ -79,7 +76,7 @@ public class UrlController {
     @RequestMapping(value = "/params/{urlName}", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody List<RequestParamDto> getParams(@PathVariable("urlName") String urlName) {
-        LOGGER.info("Get params for url type. name: " + urlName);
+        log.info("Get params for url type. name: " + urlName);
         return urlService.getRequestUrlParams(urlName);
     }
 }

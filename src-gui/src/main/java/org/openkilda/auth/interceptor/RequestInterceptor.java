@@ -26,8 +26,7 @@ import org.openkilda.service.ApplicationSettingService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
@@ -48,10 +47,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Component
 public class RequestInterceptor implements AsyncHandlerInterceptor {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RequestInterceptor.class);
     private static final String CORRELATION_ID = "correlation_id";
 
     private final ServerContext serverContext;
@@ -135,7 +134,7 @@ public class RequestInterceptor implements AsyncHandlerInterceptor {
             throws AccessDeniedException {
         if (!permissions.checkObjectAccessPermissions()) {
             if (!hasPermissions(userInfo, permissions.values())) {
-                LOGGER.warn("Access Denied. User(id: " + userInfo.getUserId()
+                log.warn("Access Denied. User(id: " + userInfo.getUserId()
                         + ") not have the permission to perform this operation. Permissions required "
                         + permissions.values());
                 throw new AccessDeniedException(messageUtils.getUnauthorizedMessage());

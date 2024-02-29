@@ -24,8 +24,7 @@ import org.openkilda.security.TwoFactorUtility;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -50,11 +49,9 @@ import org.usermanagement.service.UserService;
  *
  * @author Gaurav Chugh
  */
-
+@Slf4j
 @Controller
 public class LoginController extends BaseController {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(LoginController.class);
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -120,11 +117,11 @@ public class LoginController extends BaseController {
                 userService.updateLoginDetail(username);
             } else {
                 error = "Login failed; Invalid email or password.";
-                LOGGER.warn("Authentication failure for user: '" + username + "'");
+                log.warn("Authentication failure for user: '" + username + "'");
                 modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
             }
         } catch (TwoFaKeyNotSetException e) {
-            LOGGER.warn("2 FA Key not set for user: '" + username + "'");
+            log.warn("2 FA Key not set for user: '" + username + "'");
             modelAndView.addObject("username", username);
             modelAndView.addObject("password", password);
 
@@ -134,13 +131,13 @@ public class LoginController extends BaseController {
             modelAndView.addObject("applicationName", applicationName);
             modelAndView.setViewName(IConstants.View.TWO_FA_GENERATOR);
         } catch (OtpRequiredException e) {
-            LOGGER.warn("OTP required for user: '" + username + "'");
+            log.warn("OTP required for user: '" + username + "'");
             modelAndView.addObject("username", username);
             modelAndView.addObject("password", password);
             modelAndView.addObject("applicationName", applicationName);
             modelAndView.setViewName(IConstants.View.OTP);
         } catch (InvalidOtpException e) {
-            LOGGER.warn("Authentication code is invalid for user: '" + username + "'");
+            log.warn("Authentication code is invalid for user: '" + username + "'");
             error = "Authentication code is invalid";
             modelAndView.addObject("username", username);
             modelAndView.addObject("password", password);
@@ -153,14 +150,14 @@ public class LoginController extends BaseController {
                 modelAndView.setViewName(IConstants.View.OTP);
             }
         } catch (BadCredentialsException e) {
-            LOGGER.warn("Authentication failure", e);
+            log.warn("Authentication failure", e);
             error = e.getMessage();
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         } catch (LockedException e) {
             error = e.getMessage();
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         } catch (Exception e) {
-            LOGGER.warn("Authentication failure", e);
+            log.warn("Authentication failure", e);
             error = "Login Failed. Error: " + e.getMessage() + ".";
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         }

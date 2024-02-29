@@ -15,9 +15,7 @@
 
 package org.openkilda.utility;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Properties;
@@ -25,10 +23,9 @@ import java.util.Properties;
 /**
  * The Class MessageUtil.
  */
+@Slf4j
 @Component
 public final class MessageUtil {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(MessageUtil.class);
 
     public static final String CODE = ".code";
     public static final String MESSAGE = ".message";
@@ -55,7 +52,7 @@ public final class MessageUtil {
             localProperties.load(MessageUtil.class.getClassLoader().getResourceAsStream(
                     fileName));
         } catch (Exception e) {
-            LOGGER.warn("Load properties file. Exception : ", e);
+            log.warn("Load properties file. Exception : ", e);
         }
         return localProperties;
     }

@@ -25,9 +25,8 @@ import org.openkilda.model.NetworkPathInfo;
 import org.openkilda.model.Path;
 import org.openkilda.service.ApplicationService;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
@@ -39,11 +38,9 @@ import java.util.List;
  *
  * @author Swati Sharma
  */
-
+@Slf4j
 @Service
 public class NetworkIntegrationService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(NetworkIntegrationService.class);
 
     @Autowired
     private RestClientManager restClientManager;
@@ -92,7 +89,7 @@ public class NetworkIntegrationService {
                 return restClientManager.getResponse(response, NetworkPathInfo.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while getting network path", e);
+            log.error("Error occurred while getting network path", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
         return null;

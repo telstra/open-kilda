@@ -21,8 +21,7 @@ import org.openkilda.dao.repository.VersionRepository;
 import com.ibatis.common.jdbc.ScriptRunner;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
@@ -40,13 +39,12 @@ import java.util.Collections;
 import java.util.List;
 import javax.sql.DataSource;
 
+@Slf4j
 @Repository("databaseConfigurator")
 public class DatabaseConfigurator {
 
     @PersistenceContext
     private EntityManager entityManager;
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseConfigurator.class);
 
     private static final String SCRIPT_FILE_PREFIX = "import-script_";
     private static final String SCRIPT_FILE_SUFFIX = ".sql";
@@ -91,7 +89,7 @@ public class DatabaseConfigurator {
                 versionEntityRepository.saveAll(list);
                 versionNumberList = newVersionList;
             } catch (Exception e) {
-                LOGGER.warn("Failed to load version list", e);
+                log.warn("Failed to load version list", e);
             }
         }
         InputStream inputStream = null;
@@ -124,7 +122,7 @@ public class DatabaseConfigurator {
                 }
             }
         } catch (IOException ex) {
-            LOGGER.error("Failed to load db scripts", ex);
+            log.error("Failed to load db scripts", ex);
         }
     }
 
@@ -133,7 +131,7 @@ public class DatabaseConfigurator {
             ScriptRunner sr = new ScriptRunner(con, false, false);
             sr.runScript(new InputStreamReader(inputStream));
         } catch (Exception e) {
-            LOGGER.error("Error occurred while executing script", e);
+            log.error("Error occurred while executing script", e);
         }
     }
 }
