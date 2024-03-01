@@ -1,24 +1,31 @@
 package org.openkilda.functionaltests.spec.network
 
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
+import org.junit.jupiter.api.parallel.ResourceLock
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.ResourceLockConstants
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Shared
 
-import org.junit.jupiter.api.parallel.ResourceLock
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @ResourceLock(ResourceLockConstants.DEFAULT_PATH_COMPUTATION)
+
 class PathComputationSpec extends HealthCheckSpecification {
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     def "Default path computation strategy is used when flow does not specify it"() {
         given: "Default path computation strategy is COST"
         def initConfig = northbound.getKildaConfiguration()
+        cleanupManager.addAction(OTHER, {northbound.updateKildaConfiguration(initConfig)})
         northbound.updateKildaConfiguration(
                 new KildaConfigurationDto(pathComputationStrategy: PathComputationStrategy.COST))
 
@@ -69,9 +76,7 @@ class PathComputationSpec extends HealthCheckSpecification {
         pathHelper.convert(northbound.getFlowPath(flow2.flowId)) == latencyEffectivePath
 
         cleanup: "Restore kilda config and remove flows, restore costs and latencies"
-        initConfig && northbound.updateKildaConfiguration(initConfig)
         originalLatencies && originalLatencies.each { isl, latency -> database.updateIslLatency(isl, latency) }
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     def "Flow path computation strategy can be updated from LATENCY to COST"() {
@@ -103,7 +108,6 @@ class PathComputationSpec extends HealthCheckSpecification {
 
         cleanup: "Remove the flow, reset latencies and costs"
         originalLatencies && originalLatencies.each { isl, latency -> database.updateIslLatency(isl, latency) }
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     def "Target flow path computation strategy is not applied immediately in case flow was updated partially"() {

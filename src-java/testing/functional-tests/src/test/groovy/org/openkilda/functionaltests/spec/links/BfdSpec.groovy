@@ -1,24 +1,15 @@
 package org.openkilda.functionaltests.spec.links
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-
-import org.openkilda.functionaltests.error.link.LinkBfdNotSetExpectedError
-
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.ResourceLockConstants.BFD_TOGGLE
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.link.LinkBfdNotSetExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.links.BfdProperties
-
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.ResourceLock
@@ -26,6 +17,15 @@ import spock.lang.See
 import spock.lang.Shared
 
 import java.util.concurrent.TimeUnit
+
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.ResourceLockConstants.BFD_TOGGLE
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery")
 @Narrative("""BFD stands for Bidirectional Forwarding Detection. For now tested only on Noviflow switches. 
@@ -35,6 +35,8 @@ controller-involved discovery mechanism""")
 class BfdSpec extends HealthCheckSpecification {
     @Shared
     BfdProperties defaultBfdProps = new BfdProperties(350, (short)3)
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "Able to create a valid BFD session between two Noviflow switches"() {
@@ -48,7 +50,7 @@ class BfdSpec extends HealthCheckSpecification {
 "The test requires at least one a-switch BFD and RTL ISL between Noviflow switches")
 
         when: "Create a BFD session on the ISL without props"
-        def setBfdResponse = northboundV2.setLinkBfd(isl)
+        def setBfdResponse = islHelper.setLinkBfd(isl)
 
         then: "Response reflects the requested bfd session with default prop values"
         setBfdResponse.properties == defaultBfdProps
@@ -142,7 +144,6 @@ class BfdSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore broken ISL"
-        setBfdResponse && !bfdRemoved && northboundV2.deleteLinkBfd(isl)
         lockKeeper.addFlows([isl.aswitch])
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
@@ -156,7 +157,7 @@ class BfdSpec extends HealthCheckSpecification {
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow &&
                 it.aswitch?.inPort && it.aswitch?.outPort }
         assumeTrue(isl as boolean, "Require at least one a-switch BFD ISL between Noviflow switches")
-        northboundV2.setLinkBfd(isl)
+        islHelper.setLinkBfd(isl)
         Wrappers.wait(WAIT_OFFSET / 2) {
             verifyAll(northboundV2.getLinkBfd(isl)) {
                 properties == defaultBfdProps
@@ -166,6 +167,8 @@ class BfdSpec extends HealthCheckSpecification {
         }
 
         when: "Set BFD toggle to 'off' state"
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {northbound.toggleFeature(FeatureTogglesDto.builder().useBfdForIslIntegrityCheck(true).build())})
         def toggleOff = northbound.toggleFeature(FeatureTogglesDto.builder().useBfdForIslIntegrityCheck(false).build())
 
         and: "Interrupt ISL connection by breaking rule on a-switch"
@@ -201,9 +204,7 @@ class BfdSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore ISL and remove BFD session"
-        toggleOff && !toggleOn && northbound.toggleFeature(FeatureTogglesDto.builder().useBfdForIslIntegrityCheck(true).build())
         lockKeeper.addFlows([isl.aswitch])
-        northboundV2.deleteLinkBfd(isl)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
             assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
@@ -218,7 +219,7 @@ class BfdSpec extends HealthCheckSpecification {
         assumeTrue(isl as boolean, "Require at least one a-switch BFD ISL between Noviflow switches")
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
-        northboundV2.setLinkBfd(isl)
+        islHelper.setLinkBfd(isl)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.getLink(isl).actualState == IslChangeType.FAILED
         }
@@ -254,12 +255,6 @@ class BfdSpec extends HealthCheckSpecification {
 
         cleanup:
         isl && lockKeeper.addFlows([isl.aswitch])
-        !isLinkUp && antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
-            assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
-        }
-        !isBfdDisabled && northboundV2.deleteLinkBfd(isl)
     }
 
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
@@ -269,8 +264,7 @@ class BfdSpec extends HealthCheckSpecification {
                 it.aswitch?.inPort && it.aswitch?.outPort
         }
         assumeTrue(isl as boolean, "The test requires at least one a-switch BFD ISL")
-        northboundV2.setLinkBfd(isl)
-        def isBfdEnabled = true
+        islHelper.setLinkBfd(isl)
         lockKeeper.removeFlows([isl.aswitch])
         def isAswitchRuleDeleted = true
         Wrappers.wait(WAIT_OFFSET / 2) {
@@ -280,7 +274,6 @@ class BfdSpec extends HealthCheckSpecification {
 
         when: "Remove existing BFD session"
         northboundV2.deleteLinkBfd(isl)
-        isBfdEnabled = false
 
         and: "Restore connection"
         lockKeeper.addFlows([isl.aswitch])
@@ -293,7 +286,6 @@ class BfdSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        isBfdEnabled && northboundV2.deleteLinkBfd(isl)
         if(isAswitchRuleDeleted) {
             lockKeeper.addFlows([isl.aswitch])
             Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -303,6 +295,7 @@ class BfdSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tags([HARDWARE])
     def "Able to create/update BFD session with custom properties"() {
         given: "An ISL between two Noviflow switches"
         def isl = topology.islsForActiveSwitches.find { it.srcSwitch.noviflow && it.dstSwitch.noviflow }
@@ -310,7 +303,7 @@ class BfdSpec extends HealthCheckSpecification {
 
         when: "Create bfd session with custom properties"
         def bfdProps = new BfdProperties(100, (short)1)
-        northboundV2.setLinkBfd(isl, bfdProps)
+        islHelper.setLinkBfd(isl, bfdProps)
 
         then: "'get ISL' and 'get BFD' api reflect the changes"
         Wrappers.wait(WAIT_OFFSET / 2) {
@@ -345,9 +338,6 @@ class BfdSpec extends HealthCheckSpecification {
                 }
             }
         }
-
-        cleanup: "Disable bfd"
-        bfdProps && northboundV2.deleteLinkBfd(isl)
     }
 
     def "Unable to create bfd with #data.descr"() {
@@ -356,13 +346,11 @@ class BfdSpec extends HealthCheckSpecification {
         assumeTrue(isl as boolean, "The test requires at least one BFD ISL")
 
         when: "Try enabling bfd with forbidden properties"
-        northboundV2.setLinkBfd(isl, data.props)
+        islHelper.setLinkBfd(isl, data.props)
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
         new LinkBfdNotSetExpectedError(data.expectedDescription).matches(e)
-        cleanup:
-        !e && northboundV2.deleteLinkBfd(isl)
 
         where:
         data << [
@@ -385,7 +373,7 @@ class BfdSpec extends HealthCheckSpecification {
         assumeTrue(isl as boolean, "The test requires at least one BFD ISL")
 
         when: "Create a BFD session using v1 API"
-        def setBfdResponse = northbound.setLinkBfd(islUtils.toLinkEnableBfd(isl, true))
+        def setBfdResponse = islHelper.setLinkBfdFromApiV1(isl, true)
 
         then: "Response reports successful installation of the session"
 //        setBfdResponse.size() == 2
@@ -439,8 +427,5 @@ class BfdSpec extends HealthCheckSpecification {
                 effectiveDestination.properties == BfdProperties.DISABLED
             }
         }
-
-        cleanup: "Disable bfd"
-        setBfdResponse && !disableBfdResponse && northboundV2.deleteLinkBfd(isl)
     }
 }

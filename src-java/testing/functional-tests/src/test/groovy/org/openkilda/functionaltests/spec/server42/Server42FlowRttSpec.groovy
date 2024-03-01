@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.server42
 
+import groovy.time.TimeCategory
 import static java.util.concurrent.TimeUnit.SECONDS
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
@@ -27,6 +28,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchPairs
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.model.system.FeatureTogglesDto
@@ -38,6 +40,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Autowired
@@ -49,6 +52,30 @@ import spock.lang.ResourceLock
 import spock.lang.Shared
 import spock.util.mop.Use
 
+import static java.util.concurrent.TimeUnit.SECONDS
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_SWITCH_PROPERTIES
+import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
+import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
+import static org.openkilda.functionaltests.model.stats.Origin.FLOW_MONITORING
+import static org.openkilda.functionaltests.model.stats.Origin.SERVER_42
+import static org.openkilda.functionaltests.model.switches.Manufacturer.WB5164
+import static org.openkilda.model.FlowEncapsulationType.VXLAN
+import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
+import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.SERVER42_STATS_LAG
+import static org.openkilda.testing.Constants.STATS_FROM_SERVER42_LOGGING_TIMEOUT
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 @Use(TimeCategory)
 @Narrative("Verify that statistic is collected from server42 Rtt")
 /* On local environment these tests will use stubs without sending real rtt packets across the network.
@@ -58,14 +85,17 @@ switch timestamps, thus we may see no stats in otsdb if time on switch is incorr
  */
 @ResourceLock(S42_TOGGLE)
 @Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
+
 class Server42FlowRttSpec extends HealthCheckSpecification {
     @Shared
     @Autowired
     FlowStats flowStats
-
     @Shared
     @Value('${flow.sla.check.interval.seconds}')
     Integer flowSlaCheckIntervalSeconds
+
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     @Autowired
     @Shared
@@ -79,12 +109,14 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         when: "Set server42FlowRtt toggle to true"
         def flowRttToggleInitialState = northbound.featureToggles.server42FlowRtt
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())})
         !flowRttToggleInitialState && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(true).build())
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on src and dst switches"
         def server42Switch = switchPair.src
-        def initialSwitchProps = [server42Switch, switchPair.dst].collectEntries { [it, switchHelper.setServer42FlowRttForSwitch(it, true)] }
+        [server42Switch, switchPair.dst].each { switchHelper.setServer42FlowRttForSwitch(it, true) }
 
         and: "Create a flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -95,12 +127,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
         }
-
-        cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId) && switchHelper.verifyAbsenceOfServer42FlowRttRules(initialSwitchProps.keySet())
-        flowRttToggleInitialState != null && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())
-        initialSwitchProps && switchHelper.revertToOriginSwitchSetup(initialSwitchProps, flowRttToggleInitialState)
-
 
         where:
         flowDescription           | switchPairFilter                   | flowTap
@@ -135,12 +161,14 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "server42FlowRtt feature toggle is set to true"
         def flowRttToggleInitialState = northbound.featureToggles.server42FlowRtt
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())})
         !flowRttToggleInitialState && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(true).build())
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on src and dst switches"
         def server42Switch = switchPair.src
-        def initialSwitchProps = [server42Switch, switchPair.dst].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
+        [server42Switch, switchPair.dst].each { switchHelper.setServer42FlowRttForSwitch(it, true) }
 
         when: "Create a flow for forward metric"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -175,12 +203,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
             assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
             assert flowStats.of(reversedFlow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
         }
-
-        cleanup: "Revert system to original state"
-        [flow, reversedFlow].findAll().each { flowHelperV2.deleteFlow(it.flowId) }
-        switchHelper.verifyAbsenceOfServer42FlowRttRules(initialSwitchProps.keySet())
-        flowRttToggleInitialState != null && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())
-        initialSwitchProps && switchHelper.revertToOriginSwitchSetup(initialSwitchProps, flowRttToggleInitialState)
     }
 
     def "Flow rtt stats are available only if both global and switch toggles are 'on' on both endpoints"() {
@@ -190,11 +212,13 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "server42FlowRtt toggle is turned off"
         def flowRttToggleInitialState = northbound.featureToggles.server42FlowRtt
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())})
         flowRttToggleInitialState && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(false).build())
         switchHelper.waitForS42SwRulesSetup(false)
 
         and: "server42FlowRtt is turned off on src and dst"
-        def initialSwitchProps = [switchPair.src, switchPair.dst].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, false, false)] }
+        [switchPair.src, switchPair.dst].each{ sw -> switchHelper.setServer42FlowRttForSwitch(sw, false, false) }
 
         and: "Flow for forward metric is created"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -268,12 +292,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "Expect no flow rtt stats for reversed flow"
         !flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-
-        cleanup: "Revert system to original state"
-        [flow, reversedFlow].findAll().each { flowHelperV2.deleteFlow(it.flowId) }
-        switchHelper.verifyAbsenceOfServer42FlowRttRules(initialSwitchProps.keySet())
-        flowRttToggleInitialState != null && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())
-        initialSwitchProps && switchHelper.revertToOriginSwitchSetup(initialSwitchProps, flowRttToggleInitialState)
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
@@ -283,10 +301,12 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "server42FlowRtt feature enabled globally and on src/dst switch"
         def flowRttToggleInitialState = northbound.featureToggles.server42FlowRtt
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())})
         !flowRttToggleInitialState && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(true).build())
         switchHelper.waitForS42SwRulesSetup()
 
-        def initialSwitchProps = [switchPair.src, switchPair.dst].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
+        [switchPair.src, switchPair.dst].each { sw -> switchHelper.setServer42FlowRttForSwitch(sw, true) }
 
         when: "Create a flow"
         def checkpointTime = new Date()
@@ -319,11 +339,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "Stats are not available in reverse direction"
         !flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-
-        cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId) && switchHelper.verifyAbsenceOfServer42FlowRttRules(initialSwitchProps.keySet())
-        flowRttToggleInitialState != null && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())
-        initialSwitchProps && switchHelper.revertToOriginSwitchSetup(initialSwitchProps, flowRttToggleInitialState)
     }
 
     @Tags(HARDWARE) //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
@@ -332,11 +347,13 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().withBothSwitchesConnectedToServer42().random()
         //enable server42 in featureToggle and on the switches
         def flowRttToggleInitialState = northbound.featureToggles.server42FlowRtt
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())})
         !flowRttToggleInitialState && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(true).build())
         switchHelper.waitForS42SwRulesSetup()
 
         def server42Switch = switchPair.src
-        def initialSwitchProps = [server42Switch, switchPair.dst].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
+        [server42Switch, switchPair.dst].collectEntries { sw -> switchHelper.setServer42FlowRttForSwitch(sw, true) }
 
         and: "A flow on the given switch pair"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -394,11 +411,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET, 1) {
             flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsReinstalled)
         }
-
-        cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId) && switchHelper.verifyAbsenceOfServer42FlowRttRules(initialSwitchProps.keySet())
-        flowRttToggleInitialState != null && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())
-        initialSwitchProps && switchHelper.revertToOriginSwitchSetup(initialSwitchProps, flowRttToggleInitialState)
     }
 
     @Tags(LOW_PRIORITY)
@@ -414,6 +426,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "server42 is enabled on the src sw of the first switch pair"
         def flowRttToggleInitialState = northbound.featureToggles.server42FlowRtt
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())})
         !flowRttToggleInitialState && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(true).build())
         switchHelper.waitForS42SwRulesSetup()
 
@@ -476,11 +490,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         //give one second extra after swap
         !flowStats.of(flow1.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42)
                 .hasNonZeroValuesAfter(timeWhenEndpointWereSwapped + 1000)
-
-        cleanup:
-        [flow1, flow2].findAll().each { flowHelperV2.deleteFlow(it.flowId) }
-        flowRttToggleInitialState != null && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())
-        fl1SwPair && switchHelper.setServer42FlowRttForSwitch(fl1SwPair.src, true, flowRttToggleInitialState)
     }
 
     def "Rtt statistic is available for a flow in case switch is not connected to server42"() {
@@ -489,11 +498,13 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         when: "Set server42FlowRtt toggle to true"
         def flowRttToggleInitialState = northbound.featureToggles.server42FlowRtt
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())})
         !flowRttToggleInitialState && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(true).build())
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on src switch"
-        def initialSrcSwS42Props = switchHelper.getCachedSwProps(switchPair.src.dpId).server42FlowRtt
+        switchHelper.getCachedSwProps(switchPair.src.dpId).server42FlowRtt
         switchHelper.setServer42FlowRttForSwitch(switchPair.src, true)
 
         and: "Create a flow"
@@ -519,11 +530,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         Wrappers.wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET * 2, 1) {
             assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
-
-        cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        flowRttToggleInitialState != null && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())
-        initialSrcSwS42Props && switchHelper.setServer42FlowRttForSwitch(switchPair.src, initialSrcSwS42Props, flowRttToggleInitialState)
     }
 
     @Tags(HARDWARE) //not supported on a local env (the 'stub' service doesn't send real traffic through a switch)
@@ -534,12 +540,14 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "server42FlowRtt toggle is set to true"
         def flowRttToggleInitialState = northbound.featureToggles.server42FlowRtt
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())})
         !flowRttToggleInitialState && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(true).build())
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on src and dst switches"
         def server42Switch = switchPair.src
-        def initialSwitchProps = [server42Switch, switchPair.dst].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
+        [server42Switch, switchPair.dst].each { sw -> switchHelper.setServer42FlowRttForSwitch(sw, true) }
 
         and: "A flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -574,11 +582,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         and: "The src switch is valid"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId()).isEmpty()
 
-        cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId) && switchHelper.verifyAbsenceOfServer42FlowRttRules(initialSwitchProps.keySet())
-        flowRttToggleInitialState != null && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())
-        initialSwitchProps && switchHelper.revertToOriginSwitchSetup(initialSwitchProps, flowRttToggleInitialState)
-
         where:
         data << [
                  [
@@ -610,10 +613,12 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().withOnlySourceSwitchConnectedToServer42().random()
 
         def flowRttToggleInitialState = northbound.featureToggles.server42FlowRtt
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())})
         !flowRttToggleInitialState && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(true).build())
         switchHelper.waitForS42SwRulesSetup()
 
-        def initialSwitchProps = [switchPair.src].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(switchPair.src, true)] }
+        switchHelper.setServer42FlowRttForSwitch(switchPair.src, true)
 
         when: "Update the server42 in switch properties on ths src switch(incorrect port)"
         def newS42Port = topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
@@ -651,7 +656,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         when: "Set correct config for the server42 on the src switch"
         northbound.updateSwitchProperties(switchPair.src.dpId, originalSrcSwPros)
-        swPropIsWrong = false
 
         then: "server42 related rules are updated according to the new config"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -676,12 +680,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
             assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
             assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValues()
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId) && switchHelper.verifyAbsenceOfServer42FlowRttRules(initialSwitchProps.keySet())
-        flowRttToggleInitialState != null && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())
-        initialSwitchProps && switchHelper.revertToOriginSwitchSetup(initialSwitchProps, flowRttToggleInitialState)
-        swPropIsWrong && northbound.updateSwitchProperties(switchPair.src.dpId, originalSrcSwPros)
     }
 
     @Tags(HARDWARE)
@@ -691,16 +689,17 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
 
         and: "server42FlowRtt toggle is set to true"
         def flowRttToggleInitialState = northbound.featureToggles.server42FlowRtt
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())})
         !flowRttToggleInitialState && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(true).build())
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on src/dst switches"
-        def initialSwitchProps = [switchPair.src, switchPair.dst].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
+        [switchPair.src, switchPair.dst].each { sw -> switchHelper.setServer42FlowRttForSwitch(sw, true) }
 
         when: "Create a LAG port on the src switch"
         def portsForLag = topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1]
-        def payload = new LagPortRequest(portNumbers: portsForLag)
-        def lagPort = northboundV2.createLagLogicalPort(switchPair.src.dpId, payload).logicalPortNumber
+        def lagPort = switchHelper.createLagLogicalPort(switchPair.src.dpId, portsForLag as Set).logicalPortNumber
 
         and: "Create a flow"
         def flow = flowHelperV2.randomFlow(switchPair).tap {
@@ -713,11 +712,5 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
             assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
             assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValues()
         }
-
-        cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId) && switchHelper.verifyAbsenceOfServer42FlowRttRules(initialSwitchProps.keySet())
-        lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
-        flowRttToggleInitialState != null && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())
-        initialSwitchProps && switchHelper.revertToOriginSwitchSetup(initialSwitchProps, flowRttToggleInitialState)
     }
 }

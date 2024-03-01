@@ -34,6 +34,18 @@ import spock.lang.Shared
 
 import javax.inject.Provider
 
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS_Y
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
+import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 @Slf4j
 @Narrative("Verify reroute operations on y-flows.")
 class YFlowRerouteSpec extends HealthCheckSpecification {
@@ -129,7 +141,6 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
 
         cleanup:
         yFlow && yFlow.delete()
-        islHelper.restoreIsl(islToFail)
         database.resetCosts(topology.isls)
     }
 

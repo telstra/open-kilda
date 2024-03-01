@@ -1,5 +1,21 @@
 package org.openkilda.functionaltests.spec.links
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.messaging.command.switches.InstallRulesAction
+import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.model.SwitchFeature
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.See
+import spock.lang.Shared
+
+import java.util.concurrent.TimeUnit
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -13,27 +29,15 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.messaging.command.switches.InstallRulesAction
-import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.model.SwitchFeature
-import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
-import spock.lang.See
-
-import java.util.concurrent.TimeUnit
-
-@Tags(HARDWARE) // virtual env doesn't support round trip latency
+@Tags([HARDWARE]) // virtual env doesn't support round trip latency
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery")
 class RoundTripIslSpec extends HealthCheckSpecification {
 
     /*we need this variable because it takes more time to DEACTIVATE a switch
     via the 'knockoutSwitch' method on the stage env*/
     Integer customWaitOffset = WAIT_OFFSET * 4
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Isl with round-trip properly changes status after port events(#descr)"() {
@@ -43,7 +47,7 @@ class RoundTripIslSpec extends HealthCheckSpecification {
                 [it.srcSwitch, it.dstSwitch].every { it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
         }
         assumeTrue(isl != null, "Wasn't able to find round-trip ISL with a-switch")
-        bfd && northboundV2.setLinkBfd(isl)
+        islHelper.setLinkBfd(isl)
 
         when: "Port down event happens"
         islHelper.breakIsl(isl)
@@ -73,7 +77,6 @@ class RoundTripIslSpec extends HealthCheckSpecification {
 
         cleanup:
         cleanupActions.each { it() }
-        bfd && isl && northboundV2.deleteLinkBfd(isl)
         isl && Wrappers.wait(WAIT_OFFSET) {
             def allLinks = northbound.getAllLinks()
             assert islUtils.getIslInfo(allLinks, isl).get().state == DISCOVERED
@@ -81,7 +84,6 @@ class RoundTripIslSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(allLinks, isl).get().roundTripStatus == DISCOVERED
             assert islUtils.getIslInfo(allLinks, isl.reversed).get().roundTripStatus == DISCOVERED
         }
-        database.resetCosts(topology.isls)
 
         where:
         bfd << [false, true]
@@ -106,11 +108,7 @@ class RoundTripIslSpec extends HealthCheckSpecification {
         } ?: assumeTrue(false, "Wasn't able to find a switch with suitable links")
 
         when: "Simulate connection lose between the switch and FL, the switch becomes DEACTIVATED and remains operable"
-        def isSwDeactivated = true
-        def mgmtBlockData = lockKeeper.knockoutSwitch(swToDeactivate, RW)
-        Wrappers.wait(customWaitOffset) {
-            assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED
-        }
+        def mgmtBlockData = switchHelper.knockoutSwitch(swToDeactivate, RW)
 
         and: "Wait discoveryTimeout"
         sleep(discoveryTimeout * 1000)
@@ -127,18 +125,6 @@ for ISL alive confirmation)"
         withPool {
             roundTripIsls.eachParallel { assert northbound.getLink(it).state == DISCOVERED }
         }
-
-        cleanup:
-        if (isSwDeactivated) {
-            lockKeeper.reviveSwitch(swToDeactivate, mgmtBlockData)
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
-                assert northbound.getAllLinks().findAll {
-                    it.state == DISCOVERED
-                }.size() == topology.islsForActiveSwitches.size() * 2
-            }
-        }
-        database.resetCosts(topology.isls)
     }
 
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
@@ -156,34 +142,14 @@ for ISL alive confirmation)"
         def dstSwToDeactivate = roundTripIsl.dstSwitch
 
         when: "Switches lose connection to FL, switches become DEACTIVATED but keep processing packets"
-        def mgmtBlockDataSrcSw = lockKeeper.knockoutSwitch(srcSwToDeactivate, RW)
-        def mgmtBlockDataDstSw = lockKeeper.knockoutSwitch(dstSwToDeactivate, RW)
-        def areSwitchesDeactivated = true
-        Wrappers.wait(customWaitOffset) {
-            assert northbound.getSwitch(srcSwToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED
-            assert northbound.getSwitch(dstSwToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED
-        }
+        def mgmtBlockDataSrcSw = switchHelper.knockoutSwitch(srcSwToDeactivate, RW)
+        def mgmtBlockDataDstSw = switchHelper.knockoutSwitch(dstSwToDeactivate, RW)
 
         then: "The round trip latency ISL is FAILED (because round_trip_status is not available in DB for current ISL \
 on both switches)"
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET / 2) {
             assert northbound.getLink(roundTripIsl).state == FAILED
         }
-
-        cleanup:
-        if (areSwitchesDeactivated) {
-            lockKeeper.reviveSwitch(srcSwToDeactivate, mgmtBlockDataSrcSw)
-            lockKeeper.reviveSwitch(dstSwToDeactivate, mgmtBlockDataDstSw)
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET * 1.5) { //* 1.5 due to instability on jenkins
-                assert northbound.getSwitch(srcSwToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
-                assert northbound.getSwitch(dstSwToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
-                def allLinks = northbound.getAllLinks()
-                assert allLinks.findAll { it.state == DISCOVERED }.size() == topology.islsForActiveSwitches.size() * 2
-                assert islUtils.getIslInfo(allLinks, roundTripIsl).get().roundTripStatus == DISCOVERED
-                assert islUtils.getIslInfo(allLinks, roundTripIsl.reversed).get().roundTripStatus == DISCOVERED
-            }
-        }
-        database.resetCosts(topology.isls)
     }
 
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
@@ -207,11 +173,7 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Simulate connection lose between the src switch and FL, switches become DEACTIVATED and remain operable"
-        def mgmtBlockData = lockKeeper.knockoutSwitch(srcSwToDeactivate, RW)
-        def isSrcSwDeactivated = true
-        Wrappers.wait(customWaitOffset) {
-            assert northbound.getSwitch(srcSwToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED
-        }
+        def mgmtBlockData = switchHelper.knockoutSwitch(srcSwToDeactivate, RW)
 
         then: "Round trip status for forward direction is not available and ACTIVE in reverse direction"
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET / 2) {
@@ -220,7 +182,7 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Delete ROUND_TRIP_LATENCY_RULE_COOKIE on the dst switch"
-        northbound.deleteSwitchRules(dstSw.dpId, DeleteRulesAction.REMOVE_ROUND_TRIP_LATENCY)
+        switchHelper.deleteSwitchRules(dstSw.dpId, DeleteRulesAction.REMOVE_ROUND_TRIP_LATENCY)
         def isRoundTripRuleDeleted = true
         Wrappers.wait(RULES_DELETION_TIME) {
             assert switchHelper.validateAndCollectFoundDiscrepancies(dstSw.dpId).get().rules.missing.size() == 1
@@ -239,14 +201,13 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Restore connection between the src switch and FL"
-        lockKeeper.reviveSwitch(srcSwToDeactivate, mgmtBlockData)
+        switchHelper.reviveSwitch(srcSwToDeactivate, mgmtBlockData)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getSwitch(srcSwToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
             assert northbound.getAllLinks().findAll {
                 it.state == DISCOVERED
             }.size() == topology.islsForActiveSwitches.size() * 2
         }
-        isSrcSwDeactivated = false
 
         then: "Round trip isl is DISCOVERED"
         northbound.getLink(roundTripIsl).state == DISCOVERED
@@ -271,19 +232,7 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         cleanup:
-        isSrcSwDeactivated && lockKeeper.reviveSwitch(srcSwToDeactivate, mgmtBlockData)
         isRoundTripRuleDeleted && northbound.installSwitchRules(dstSw.dpId, InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY)
-        if (isSrcSwDeactivated || isRoundTripRuleDeleted) {
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                assert northbound.getSwitch(srcSwToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
-                def allLinks = northbound.getAllLinks()
-                assert allLinks.findAll { it.state == DISCOVERED }.size() == topology.islsForActiveSwitches.size() * 2
-                assert islUtils.getIslInfo(allLinks, roundTripIsl).get().roundTripStatus == DISCOVERED
-                assert islUtils.getIslInfo(allLinks, roundTripIsl.reversed).get().roundTripStatus == DISCOVERED
-                assert !switchHelper.validateAndCollectFoundDiscrepancies(dstSw.dpId).isPresent()
-            }
-        }
-        database.resetCosts(topology.isls)
     }
 
     @Tags([SMOKE_SWITCHES])
@@ -413,6 +362,5 @@ round trip latency rule is removed on the dst switch"() {
             !portDiscoveryIsEnabledOnDstPort && northboundV2.updatePortProperties(roundTripIsl.dstSwitch.dpId,
                     roundTripIsl.dstPort, new PortPropertiesDto(discoveryEnabled: true))
         }
-        islHelper.restoreIsl(roundTripIsl)
     }
 }

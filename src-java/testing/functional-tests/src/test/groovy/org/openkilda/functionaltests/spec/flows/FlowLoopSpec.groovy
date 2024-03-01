@@ -1,33 +1,15 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-
-import org.openkilda.functionaltests.error.flowloop.FlowLoopNotCreatedExpectedError
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
-
-import static groovyx.gpars.GParsPool.withPool
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_SUCCESS
-import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
-import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
-import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flowloop.FlowLoopNotCreatedExpectedError
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
@@ -35,7 +17,6 @@ import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -44,15 +25,35 @@ import spock.lang.Shared
 
 import javax.inject.Provider
 
+import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_SUCCESS
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.SYNCHRONIZE_SWITCH
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
+import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-loop")
 @Narrative("""Flow loop feature designed for flow path testing. Loop provides additional flow rules on one of the 
 terminating switch so any flow traffic is returned to switch-port where it was received. Such flow has 'looped=true'
 flag and supports all flow operations. When the loop removed system should restore the original flow rules.
 Enabling flowLoop in flow history is registered as the 'update' operation.""")
+
 class FlowLoopSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     @IterationTags([
             @IterationTag(tags = [SMOKE_SWITCHES, TOPOLOGY_DEPENDENT], iterationNameRegex = /protected/),
@@ -327,13 +328,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
             }
         }
         getFlowLoopRules(switchPair.src.dpId)*.packetCount.every { it > 0 }
-
-        cleanup: "Revive the ISL back (bring switch port up) and delete the flow"
-        islHelper.restoreIsl(islToFail)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
-        database.resetCosts(topology.isls)
     }
 
     def "System is able to detect and sync missing flowLoop rules"() {
@@ -350,7 +344,8 @@ class FlowLoopSpec extends HealthCheckSpecification {
         }
 
         when: "Delete flowLoop rules"
-        flowLoopRules.each { northbound.deleteSwitchRules(sourceSwitchId, it) }
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH,{switchHelper.synchronize(switchPair.src.dpId)})
+        flowLoopRules.each { switchHelper.deleteSwitchRules(sourceSwitchId, it) }
 
         then: "System detects missing flowLoop rules"
         Wrappers.wait(RULES_DELETION_TIME) {
@@ -368,10 +363,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
             assert getFlowLoopRules(switchPair.src.dpId).size() == 2
         }
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.src.dpId).isPresent()
-        def testIsCompleted = true
-
-        cleanup:
-        !testIsCompleted && switchHelper.synchronize(switchPair.src.dpId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -480,10 +471,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "Counter on the flowLoop rules are increased"
         getFlowLoopRules(switchPair.src.dpId)*.packetCount.every { it > 0 }
-
-        cleanup: "Revert system to original state"
-        islHelper.restoreIsl(islToBreak)
-        database.resetCosts(topology.isls)
     }
 
     @Tags(LOW_PRIORITY)
@@ -608,10 +595,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_DELETION_TIME) {
             assert getFlowLoopRules(switchPair.src.dpId).empty
         }
-        def testIsCompleted = true
-
-        cleanup:
-        !testIsCompleted && switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
     }
 
     @Tags([LOW_PRIORITY, SWITCH_RECOVER_ON_FAIL])
@@ -645,9 +628,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "FlowLoop rules are not created on the dst switch"
         getFlowLoopRules(switchPair.dst.dpId).empty
-
-        cleanup:
-        switchHelper.reviveSwitch(switchPair.src, blockData, true)
     }
 
     @Tags(LOW_PRIORITY)
@@ -697,6 +677,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         new FlowNotFoundExpectedError(NON_EXISTENT_FLOW_ID).matches(exc)
+
         and: "FlowLoop rules are not created on the switch"
         getFlowLoopRules(sw.dpId).empty
 
@@ -717,6 +698,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError(~/Loop switch is not terminating in flow path/).matches(exc)
+
         and: "FlowLoop rules are not created for the flow"
         !northboundV2.getFlow(flow.flowId).loopSwitchId
     }

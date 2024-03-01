@@ -1,5 +1,21 @@
 package org.openkilda.functionaltests.spec.flows
 
+import groovy.util.logging.Slf4j
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.payload.flow.FlowPathPayload
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
+import spock.lang.Narrative
+
+import java.util.concurrent.TimeUnit
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -10,23 +26,6 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.payload.flow.FlowPathPayload
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
-import groovy.util.logging.Slf4j
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
-import spock.lang.Narrative
-
-import java.util.concurrent.TimeUnit
-
 @Narrative("""
 This test verifies that we do not perform a reroute as soon as we receive a reroute request (we talk only about
 automatic reroutes here; manual reroutes are still performed instantly). Instead, system waits for 'reroute.delay'
@@ -36,7 +35,7 @@ System should stop refreshing the timer if 'reroute.hardtimeout' is reached and 
 for each flowId).
 """)
 @Slf4j
-@Tags(VIRTUAL) //may be unstable on hardware. not tested
+@Tags([VIRTUAL]) //may be unstable on hardware. not tested
 class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
     @Value('${reroute.hardtimeout}')
@@ -91,14 +90,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
                         (northbound.getFlowPath(flowPath.id) != flowPath &&
                                 northboundV2.getFlowStatus(flowPath.id).status == FlowState.UP)
             }
-        }
-
-        cleanup:
-        brokenIsls.each {
-            antiflap.portUp(it.srcSwitch.dpId, it.srcPort)
-        }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
     }
 
@@ -200,14 +191,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
             switchHelper.validateAndCollectFoundDiscrepancies(
                     pathHelper.getInvolvedSwitches(PathHelper.convert(path))*.getDpId()).isEmpty()
         }
-
-        cleanup:
-        brokenIsl && antiflap.portUp(brokenIsl.srcSwitch.dpId, brokenIsl.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(brokenIsl).state == IslChangeType.DISCOVERED }
-    }
-
-    def cleanup() {
-        database.resetCosts(topology.isls)
     }
 
     /**

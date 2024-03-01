@@ -25,6 +25,7 @@ import spock.lang.Shared
 import spock.lang.Unroll
 
 @Narrative("Verifies feature to retrieve list of flows passing the switch grouped by port number. Details: #5015")
+
 class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     @Shared
     YFlowExtended yFlow

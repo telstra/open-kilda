@@ -1,13 +1,35 @@
 package org.openkilda.functionaltests.spec.switches
 
+import com.google.common.collect.Sets
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.MeterId
+import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.rulemanager.FlowSpeakerData
+import org.openkilda.rulemanager.Instructions
+import org.openkilda.rulemanager.MeterFlag
+import org.openkilda.rulemanager.MeterSpeakerData
+import org.openkilda.rulemanager.OfVersion
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
+import spock.lang.See
+import spock.lang.Shared
 
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.SYNCHRONIZE_SWITCH
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.model.cookie.Cookie.VERIFICATION_BROADCAST_RULE_COOKIE
@@ -17,27 +39,6 @@ import static org.openkilda.rulemanager.OfTable.TRANSIT
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.tools.KafkaUtils.buildMessage
-
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.MeterId
-import org.openkilda.model.SwitchId
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.rulemanager.FlowSpeakerData
-import org.openkilda.rulemanager.Instructions
-import org.openkilda.rulemanager.MeterFlag
-import org.openkilda.rulemanager.MeterSpeakerData
-import org.openkilda.rulemanager.OfVersion
-
-import com.google.common.collect.Sets
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.See
 
 @See(["https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-sync",
         "https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/switch-FSM.png"])
@@ -50,6 +51,8 @@ class SwitchSyncSpec extends HealthCheckSpecification {
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     def "Able to synchronize switch without any rule and meter discrepancies (removeExcess=#removeExcess)"() {
         given: "An active switch"
@@ -97,7 +100,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         }
 
         involvedSwitches.each { sw ->
-            northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
+            switchHelper.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
             northbound.getAllMeters(sw.dpId).meterEntries.each { northbound.deleteMeter(sw.dpId, it.meterId) }
         }
         Wrappers.wait(RULES_DELETION_TIME) {
@@ -147,9 +150,6 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitchIds).isEmpty()
         }
-
-        cleanup: "Delete the flow"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds)
     }
 
     def "Able to synchronize #switchKind switch (delete excess rules and meters)"() {
@@ -162,6 +162,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         assert !switchHelper.synchronizeAndCollectFixedDiscrepancies(switchId).isPresent()
 
         and: "Force install excess rules and meters on switch"
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronize(switchId)})
         def producer = new KafkaProducer(producerProps)
         def excessRuleCookie = 1234567890L
         def excessMeterId = ((MIN_FLOW_METER_ID..100)
@@ -203,9 +204,6 @@ class SwitchSyncSpec extends HealthCheckSpecification {
             switchHelper.validate(switchId).isAsExpected()
         }
 
-        cleanup: "Delete the flow"
-        switchHelper.synchronize(switchId)
-
         where:
         switchKind | getSwitch | table
         "source"   | { FlowRequestV2 flowRequestV2 -> flowRequestV2.getSource().getSwitchId()} | INPUT
@@ -242,7 +240,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
             }*.meterId]
         }
 
-        involvedSwitches.each { northbound.deleteSwitchRules(it.dpId, DeleteRulesAction.IGNORE_DEFAULTS) }
+        involvedSwitches.each { switchHelper.deleteSwitchRules(it.dpId, DeleteRulesAction.IGNORE_DEFAULTS) }
         [switchPair.src, switchPair.dst].each { northbound.deleteMeter(it.dpId, metersMap[it.dpId][0]) }
         Wrappers.wait(RULES_DELETION_TIME) {
             def validationResultsMap = switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitchIds)
@@ -329,6 +327,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         def newBurstSize = meterToManipulate.burstSize + 100
         def newRate = meterToManipulate.rate + 100
 
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronize(sw.dpId)})
         lockKeeper.updateBurstSizeAndRate(sw, meterToManipulate.meterId, newBurstSize, newRate)
         Wrappers.wait(RULES_DELETION_TIME) {
             def validateInfo = switchHelper.validate(sw.dpId)
@@ -352,9 +351,6 @@ class SwitchSyncSpec extends HealthCheckSpecification {
                 it.meters.proper.find { it.meterId == broadcastCookieMeterId }.rate == meterToManipulate.rate
             }
         }
-
-        cleanup:
-        sw && switchHelper.synchronize(sw.dpId)
     }
 
     @Tags([VIRTUAL, SMOKE])

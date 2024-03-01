@@ -1,22 +1,12 @@
 package org.openkilda.functionaltests.spec.switches
 
-
-import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-import static org.openkilda.messaging.info.event.SwitchChangeType.ACTIVATED
-import static org.openkilda.messaging.info.event.SwitchChangeType.DEACTIVATED
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
-import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-import static org.openkilda.testing.tools.KafkaUtils.buildCookie
-import static org.openkilda.testing.tools.KafkaUtils.buildMessage
-
+import com.google.common.collect.Sets
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.MeterId
@@ -27,13 +17,25 @@ import org.openkilda.rulemanager.MeterFlag
 import org.openkilda.rulemanager.MeterSpeakerData
 import org.openkilda.rulemanager.OfTable
 import org.openkilda.rulemanager.OfVersion
-
-import com.google.common.collect.Sets
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Shared
+
+import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_SWITCH_PROPERTIES
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.SYNCHRONIZE_SWITCH
+import static org.openkilda.messaging.info.event.SwitchChangeType.ACTIVATED
+import static org.openkilda.messaging.info.event.SwitchChangeType.DEACTIVATED
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+import static org.openkilda.testing.tools.KafkaUtils.buildCookie
+import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
 class SwitchActivationSpec extends HealthCheckSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerSwitchManagerTopic()}")
@@ -41,6 +43,8 @@ class SwitchActivationSpec extends HealthCheckSpecification {
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER, SWITCH_RECOVER_ON_FAIL])
     def "Missing flow rules/meters are installed on a new switch before connecting to the controller"() {
@@ -59,12 +63,11 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         def amountOfServer42SharedRules = srcSwProps.server42FlowRtt
                 && flow.source.vlanId ? 1 : 0
         def amountOfFlowRules = 3 + amountOfServer42IngressRules + amountOfServer42SharedRules
-        def createdHexCookies = createdCookies.collect { Long.toHexString(it) }
         assert createdCookies.size() == amountOfFlowRules
 
         def nonDefaultMeterIds = originalMeterIds.findAll({it > MAX_SYSTEM_RULE_METER_ID})
         northbound.deleteMeter(switchPair.src.dpId, nonDefaultMeterIds[0])
-        northbound.deleteSwitchRules(switchPair.src.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
+        switchHelper.deleteSwitchRules(switchPair.src.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
         Wrappers.wait(WAIT_OFFSET) {
             with(switchHelper.validateAndCollectFoundDiscrepancies(switchPair.src.dpId).get()) {
                 it.rules.missing*.cookie.containsAll(createdCookies)
@@ -83,11 +86,6 @@ class SwitchActivationSpec extends HealthCheckSpecification {
 
         then: "Missing flow rules/meters were synced during switch activation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.src.dpId).isPresent()
-        def switchIsSynchronized = true
-
-        cleanup: "Delete the flow and activate switch if required"
-        blockData && !switchIsSynchronized && switchHelper.reviveSwitch(switchPair.src, blockData, true)
-
     }
 
     @Tags([SMOKE_SWITCHES, SWITCH_RECOVER_ON_FAIL])
@@ -99,6 +97,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         //pick a meter id which is not yet used on src switch
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
                                                                   .meterEntries*.meterId).first()
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId)})
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 FlowSpeakerData.builder()
                         .switchId(sw.dpId)
@@ -155,10 +154,6 @@ class SwitchActivationSpec extends HealthCheckSpecification {
 
         then: "Excess meters/rules were synced during switch activation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
-        def isSwitchSynchronized = true
-
-        cleanup:
-        blockData && !isSwitchSynchronized && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
     @Tags([SMOKE_SWITCHES, SWITCH_RECOVER_ON_FAIL])
@@ -170,6 +165,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         //pick a meter id which is not yet used on src switch
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
                 .meterEntries*.meterId).first()
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId)})
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 FlowSpeakerData.builder()
                         .switchId(sw.dpId)
@@ -226,10 +222,6 @@ class SwitchActivationSpec extends HealthCheckSpecification {
 
         then: "Excess meters/rules were synced during switch activation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
-        def isSwitchSynchronized = true
-
-        cleanup:
-        blockData && !isSwitchSynchronized && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
     @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER, SWITCH_RECOVER_ON_FAIL])
@@ -249,6 +241,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             isls.each { assert islUtils.getIslInfo(allIsls, it).get().actualState == IslChangeType.FAILED }
         }
         isls.each { northbound.deleteLink(islUtils.toLinkParameters(it), true) }
+        cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {switchHelper.updateSwitchProperties(sw, initSwProps)})
         Wrappers.retry(2) { northbound.deleteSwitch(sw.dpId, false) }
 
         when: "New switch connects"
@@ -269,9 +262,5 @@ class SwitchActivationSpec extends HealthCheckSpecification {
                 assert islUtils.getIslInfo(allIsls, it.reversed).get().actualState == IslChangeType.DISCOVERED
             }
         }
-
-        cleanup:
-        blockData && !(switchStatus && switchStatus == ACTIVATED) && switchHelper.reviveSwitch(sw, blockData, true)
-        initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
     }
 }

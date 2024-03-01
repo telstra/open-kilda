@@ -1,6 +1,8 @@
 package org.openkilda.functionaltests.spec.stats
 
-
+import groovy.time.TimeCategory
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.Destination
@@ -12,10 +14,6 @@ import org.openkilda.messaging.info.stats.FlowStatsEntry
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
-import groovy.time.TimeCategory
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
@@ -43,6 +41,7 @@ In this spec we'll try to simulate certain stats entries by pushing them directl
 they are correctly processed and saved to tsdb.
 """)
 @Use(TimeCategory)
+
 class SimulateStatsSpec extends HealthCheckSpecification {
 
     //This is Noviflow specific. Per spec, noviflow packet counter will roll over after 2^31

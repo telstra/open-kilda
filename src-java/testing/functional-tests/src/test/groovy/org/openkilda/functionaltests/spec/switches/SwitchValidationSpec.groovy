@@ -1,25 +1,16 @@
 package org.openkilda.functionaltests.spec.switches
 
-import org.openkilda.messaging.model.FlowDirectionType
-
-import static groovyx.gpars.GParsPool.withPool
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
-import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.tools.KafkaUtils.buildMessage
-
+import com.google.common.collect.Sets
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.messaging.model.FlowDirectionType
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.MeterId
@@ -34,15 +25,24 @@ import org.openkilda.rulemanager.MeterSpeakerData
 import org.openkilda.rulemanager.OfTable
 import org.openkilda.rulemanager.OfVersion
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
-import com.google.common.collect.Sets
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 import spock.lang.See
+import spock.lang.Shared
+
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.SYNCHRONIZE_SWITCH
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
 @See(["https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-validate",
         "https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-sync"])
@@ -64,6 +64,8 @@ class SwitchValidationSpec extends HealthCheckSpecification {
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     def setupSpec() {
         deleteAnyFlowsLeftoversIssue5480()
@@ -131,10 +133,6 @@ class SwitchValidationSpec extends HealthCheckSpecification {
             srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
         }
-        def testIsCompleted = true
-
-        cleanup:
-        flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
     def "Able to validate and sync a transit switch with proper rules and no meters"() {
@@ -169,10 +167,6 @@ class SwitchValidationSpec extends HealthCheckSpecification {
                 switchValidateInfo.verifyMeterSectionsAreEmpty()
             }
         }
-        def testIsCompleted = true
-
-        cleanup:
-        involvedSwitches && !testIsCompleted && switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches*.getDpId())
     }
 
     def "Able to validate switch with 'misconfigured' meters"() {
@@ -187,6 +181,8 @@ misconfigured"
         def newBandwidth = flow.maximumBandwidth + 100
         /** at this point meter is set for given flow. Now update flow bandwidth directly via DB,
          it is done just for moving meter from the 'proper' section into the 'misconfigured'*/
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronize(srcSwitch.dpId)})
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronize(dstSwitch.dpId)})
         database.updateFlowBandwidth(flow.flowId, newBandwidth)
         //at this point existing meters do not correspond with the flow
 
@@ -305,11 +301,6 @@ misconfigured"
             srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
         }
-
-        def testIsCompleted = true
-
-        cleanup:
-        flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
     def "Able to validate and sync a switch with missing ingress rule + meter"() {
@@ -327,6 +318,7 @@ misconfigured"
         }?.cookie
         def untouchedCookiesOnSrcSw = (reverseCookies + sharedCookieOnSrcSw).sort()
         def cookiesOnDstSw = northbound.getSwitchRules(dstSwitch.dpId).flowEntries*.cookie
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronize(srcSwitch.dpId)})
         northbound.deleteMeter(srcSwitch.dpId, srcSwitchCreatedMeterIds[0])
 
         then: "Meters info/rules are moved into the 'missing' section on the srcSwitch"
@@ -391,10 +383,6 @@ misconfigured"
             srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
         }
-        def testIsCompleted = true
-
-        cleanup:
-        flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
     def "Able to validate and sync a switch with missing ingress rule (unmetered)"() {
@@ -408,7 +396,7 @@ misconfigured"
         and: "Remove ingress rule on the srcSwitch"
         def ingressCookie = database.getFlow(flow.flowId).forwardPath.cookie.value
         def egressCookie = database.getFlow(flow.flowId).reversePath.cookie.value
-        northbound.deleteSwitchRules(srcSwitch.dpId, ingressCookie)
+        switchHelper.deleteSwitchRules(srcSwitch.dpId, ingressCookie)
 
         then: "Ingress rule is moved into the 'missing' section on the srcSwitch"
         def sharedCookieOnSrcSw = northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
@@ -447,10 +435,6 @@ misconfigured"
             srcSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             dstSwitchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
         }
-        def testIsCompleted = true
-
-        cleanup:
-        flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(srcSwitch, dstSwitch)
     }
 
     def "Able to validate and sync a switch with missing transit rule"() {
@@ -464,7 +448,7 @@ misconfigured"
         when: "Delete created rules on the transit"
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
         def transitSw = involvedSwitches[1]
-        northbound.deleteSwitchRules(transitSw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
+        switchHelper.deleteSwitchRules(transitSw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
 
         then: "Rule info is moved into the 'missing' section"
         verifyAll(switchHelper.validateV1(transitSw.dpId)) {
@@ -499,10 +483,6 @@ misconfigured"
                 }
             }
         }
-        def testIsCompleted = true
-
-        cleanup:
-        involvedSwitches && !testIsCompleted && switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches*.getDpId())
     }
 
     def "Able to validate and sync a switch with missing egress rule"() {
@@ -517,7 +497,7 @@ misconfigured"
 
         when: "Delete created rules on the srcSwitch"
         def egressCookie = database.getFlow(flow.flowId).reversePath.cookie.value
-        northbound.deleteSwitchRules(switchPair.src.dpId, egressCookie)
+        switchHelper.deleteSwitchRules(switchPair.src.dpId, egressCookie)
 
         then: "Rule info is moved into the 'missing' section on the srcSwitch"
         verifyAll(switchHelper.validateV1(switchPair.src.dpId)) {
@@ -561,15 +541,6 @@ misconfigured"
                 switchValidateInfo.verifyMeterSectionsAreEmpty()
             }
         }
-        def testIsCompleted = true
-
-        cleanup:
-        if (involvedSwitchIds && !testIsCompleted) {
-            switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds)
-            withPool {
-                switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitchIds).isEmpty()
-            }
-        }
     }
 
     def "Able to validate and sync an excess ingress/egress/transit rule + meter"() {
@@ -590,6 +561,8 @@ misconfigured"
         //pick a meter id which is not yet used on src switch
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(switchPair.src.dpId)
                 .meterEntries*.meterId).first()
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronize(switchPair.src.dpId)})
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronize(switchPair.dst.dpId)})
         producer.send(new ProducerRecord(speakerTopic, switchPair.dst.dpId.toString(), buildMessage(
                 FlowSpeakerData.builder()
                         .switchId(switchPair.dst.dpId)
@@ -691,11 +664,9 @@ misconfigured"
                 switchValidateInfo.verifyMeterSectionsAreEmpty()
             }
         }
-        def testIsCompleted = true
 
         cleanup:
         producer && producer.close()
-        flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(switchPair.src, switchPair.dst)
     }
 
     @Tags(TOPOLOGY_DEPENDENT)
@@ -722,7 +693,7 @@ misconfigured"
         }
 
         expect: "Switch validation shows missing rules and meters on every related switch"
-        involvedSwitches.each { northbound.deleteSwitchRules(it.dpId, DeleteRulesAction.IGNORE_DEFAULTS) }
+        involvedSwitches.each { switchHelper.deleteSwitchRules(it.dpId, DeleteRulesAction.IGNORE_DEFAULTS) }
         [switchPair.src, switchPair.dst].each { northbound.deleteMeter(it.dpId, metersMap[it.dpId][0]) }
         Wrappers.wait(RULES_DELETION_TIME) {
             def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, switchHelper.validateV1(it.dpId)] }
@@ -804,11 +775,6 @@ misconfigured"
                 }.match.tunnelId
             }
         }
-
-        def testIsCompleted = true
-
-        cleanup:
-        flow && !testIsCompleted && switchHelper.synchronizeAndValidateRulesInstallation(switchPair.src, switchPair.dst)
     }
 
     def "Able to validate and sync a missing 'protected path' egress rule"() {
@@ -840,7 +806,7 @@ misconfigured"
             it.instructions?.applyActions?.flowOutput == protectedPath[0].inputPort.toString() &&
                     it.match.inPort == protectedPath[0].outputPort.toString()
         }.cookie
-        northbound.deleteSwitchRules(swPair.src.dpId, ruleToDelete)
+        switchHelper.deleteSwitchRules(swPair.src.dpId, ruleToDelete)
 
         then: "Deleted rule is moved to the 'missing' section on the srcSwitch"
         verifyAll(switchHelper.validateV1(swPair.src.dpId)) {
@@ -886,7 +852,7 @@ misconfigured"
         }
 
         when: "Remove the connected device rule"
-        northbound.deleteSwitchRules(flow.destination.datapath, deviceCookie)
+        switchHelper.deleteSwitchRules(flow.destination.datapath, deviceCookie)
 
         then: "Switch validation puts connected device rule into 'missing' section"
         verifyAll(switchHelper.validateV1(flow.destination.datapath)) {
@@ -918,11 +884,6 @@ misconfigured"
         verifyAll(switchHelper.validateV1(flow.destination.datapath)) {
             it.verifyRuleSectionsAreEmpty()
             it.verifyMeterSectionsAreEmpty()
-        }
-
-        cleanup:
-        initialProps.each {
-            switchHelper.updateSwitchProperties(it.key, it.value)
         }
 
         where:
