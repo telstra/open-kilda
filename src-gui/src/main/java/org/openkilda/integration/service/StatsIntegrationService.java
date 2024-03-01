@@ -24,7 +24,7 @@ import org.openkilda.model.victoria.RangeQueryParams;
 import org.openkilda.model.victoria.Status;
 import org.openkilda.model.victoria.dbdto.VictoriaDbRes;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;

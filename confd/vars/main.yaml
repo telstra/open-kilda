@@ -34,7 +34,7 @@ kilda_hibernate_user: kilda
 kilda_hibernate_password: kilda
 
 kilda_gui_port: 1010
-kilda_gui_db_dialect: org.hibernate.dialect.DerbyTenSevenDialect
+kilda_gui_db_dialect: org.hibernate.dialect.DerbyDialect
 kilda_gui_db_url: jdbc:derby:/app/data/database;create=true
 kilda_gui_db_username: ''
 kilda_gui_db_password: ''

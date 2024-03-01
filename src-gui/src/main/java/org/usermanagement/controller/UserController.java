@@ -21,6 +21,7 @@ import org.openkilda.constants.IConstants;
 import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +41,6 @@ import org.usermanagement.service.UserService;
 
 import java.nio.file.AccessDeniedException;
 import java.util.List;
-import javax.servlet.http.HttpServletRequest;
 
 /**
  * The Class UserController.
