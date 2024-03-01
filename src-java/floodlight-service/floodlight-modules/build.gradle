@@ -1,78 +1,71 @@
 plugins {
-    id 'io.freefair.aspectj.post-compile-weaving'
+    id "io.freefair.aspectj.post-compile-weaving"
 }
 
-compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
-compileJava.ajc.options.compilerArgs += '-verbose'
-compileJava.options.compilerArgs += '-Amapstruct.unmappedTargetPolicy=ERROR'
+compileJava.ajc.options.compilerArgs += "-showWeaveInfo"
+compileJava.ajc.options.compilerArgs += "-verbose"
+compileJava.options.compilerArgs += "-Amapstruct.unmappedTargetPolicy=ERROR"
 
-description = 'Floodlight Service Modules'
+description = "Floodlight Service Modules"
 dependencies {
-    implementation project(':floodlight-api')
-    implementation project(':kilda-configuration')
-    implementation project(':kilda-model')
-    implementation project(':kilda-reporting')
-    implementation project(':blue-green')
-    implementation project(':rule-manager-api')
-    testImplementation project(':kilda-utils:stubs')
-
-    implementation('org.projectfloodlight:openflowj')
-    compileOnly('org.projectfloodlight:floodlight')
-    testImplementation('org.projectfloodlight:floodlight')
-    testImplementation 'org.mockito:mockito-junit-jupiter'
-
-    implementation('org.apache.kafka:kafka_2.12:3.6.1') {
-        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
-        exclude group: 'log4j', module: 'log4j'
+    implementation(project(":floodlight-api"))
+    implementation(project(":kilda-configuration"))
+    implementation(project(":kilda-model"))
+    implementation(project(":kilda-reporting"))
+    implementation(project(":blue-green"))
+    implementation(project(":rule-manager-api"))
+    implementation("org.projectfloodlight:openflowj")
+    implementation("commons-codec:commons-codec")
+    implementation("org.apache.commons:commons-collections4")
+    implementation("com.auth0:java-jwt:3.2.0")
+    implementation("org.bouncycastle:bcprov-jdk15on:1.70")
+    implementation("org.apache.maven:maven-artifact:3.8.1")
+    implementation("com.fasterxml.jackson.core:jackson-core")
+    implementation("com.fasterxml.jackson.core:jackson-databind")
+    implementation("org.aspectj:aspectjrt")
+    implementation("org.mapstruct:mapstruct")
+    implementation("org.mapstruct:mapstruct-processor")
+    implementation("net.jodah:failsafe")
+    implementation("org.hibernate.validator:hibernate-validator")
+    implementation("org.glassfish:jakarta.el")
+    implementation("com.google.guava:guava")
+    implementation("org.restlet.jse:org.restlet:2.3.2")
+    implementation("args4j:args4j")
+    implementation("org.slf4j:slf4j-api")
+    implementation("net.logstash.logback:logstash-logback-encoder:4.11") {
+        exclude group: "ch.qos.logback"
     }
-    implementation 'commons-codec:commons-codec'
-    implementation 'org.apache.commons:commons-collections4'
-    implementation 'com.auth0:java-jwt:3.2.0'
-    implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
-    implementation 'org.apache.maven:maven-artifact:3.8.1'
-
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-
-    implementation 'org.aspectj:aspectjrt'
-    implementation 'org.mapstruct:mapstruct'
-    implementation 'org.mapstruct:mapstruct-processor'
-    implementation 'net.jodah:failsafe'
-    annotationProcessor 'org.mapstruct:mapstruct-processor'
-    testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
-
-    implementation 'org.hibernate.validator:hibernate-validator'
-    implementation 'org.glassfish:javax.el'
-    implementation 'com.google.guava:guava'
-    implementation 'org.restlet.jse:org.restlet:2.3.2'
-
-    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
-    implementation 'args4j:args4j'
-
-    implementation('org.slf4j:slf4j-api')
-    implementation('net.logstash.logback:logstash-logback-encoder:4.11') {
-        exclude group: 'ch.qos.logback'
+    implementation("org.apache.kafka:kafka_2.12:3.6.1") {
+        exclude group: "org.slf4j", module: "slf4j-log4j12"
+        exclude group: "log4j", module: "log4j"
     }
-    // The version is enforced by Project Floodlight dependencies.
-    testRuntimeOnly 'ch.qos.logback:logback-classic:1.2.3'
-    testRuntimeOnly 'ch.qos.logback:logback-core:1.2.3'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine")
     testImplementation("org.easymock:easymock:5.2.0")
-    testImplementation 'org.hamcrest:hamcrest-library'
-    testImplementation 'io.netty:netty-all'
-    testRuntimeOnly 'org.python:jython-standalone:2.7.2'
+    testImplementation("org.hamcrest:hamcrest-library")
+    testImplementation("io.netty:netty-all")
+    testImplementation("org.projectfloodlight:floodlight")
+    testImplementation("org.mockito:mockito-junit-jupiter")
+    testImplementation project(":kilda-utils:stubs")
 
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    testCompileOnly 'org.projectlombok:lombok'
-    testAnnotationProcessor 'org.projectlombok:lombok'
+    testRuntimeOnly("org.python:jython-standalone:2.7.2")
+    testRuntimeOnly("ch.qos.logback:logback-classic:1.2.3") because("The version is enforced by Project Floodlight dependencies")
+    testRuntimeOnly("ch.qos.logback:logback-core:1.2.3") because("The version is enforced by Project Floodlight dependencies")
+
+    compileOnly("org.projectfloodlight:floodlight")
+    compileOnly("com.google.code.findbugs:jsr305:3.0.2")
+    annotationProcessor("org.mapstruct:mapstruct-processor")
+    testAnnotationProcessor("org.mapstruct:mapstruct-processor")
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    testCompileOnly("org.projectlombok:lombok")
+    testAnnotationProcessor("org.projectlombok:lombok")
 }
 
 repositories {
     maven {
-        url 'https://maven.restlet.talend.com'
+        url "https://maven.restlet.talend.com"
     }
 }
 

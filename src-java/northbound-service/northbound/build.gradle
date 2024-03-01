@@ -21,9 +21,6 @@ dependencies {
     implementation(platform("org.springframework:spring-framework-bom:6.0.6"))
     implementation(platform("org.springframework.boot:spring-boot-dependencies:3.2.2"))
 
-    runtimeOnly(project(":kilda-persistence-orientdb"))
-    runtimeOnly(project(":kilda-persistence-hibernate"))
-
     implementation(project(":northbound-api")) { transitive(false) }
     implementation(project(":kilda-model")) { transitive(false) }
     implementation(project(":base-messaging")) { transitive(false) }
@@ -55,7 +52,10 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
-    implementation("jakarta.validation:jakarta.validation-api:2.0.2")
+    implementation("jakarta.validation:jakarta.validation-api")
+
+    runtimeOnly(project(":kilda-persistence-orientdb"))
+    runtimeOnly(project(":kilda-persistence-hibernate"))
 
     implementation("org.mapstruct:mapstruct")
     implementation("org.mapstruct:mapstruct-processor")
@@ -74,6 +74,7 @@ dependencies {
 }
 
 bootJar {
+    setDuplicatesStrategy(DuplicatesStrategy.EXCLUDE)
     mainClass = "org.openkilda.northbound.Application"
     archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
 }

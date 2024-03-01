@@ -32,11 +32,11 @@ import org.openkilda.config.mapping.Mapping;
 
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
+import jakarta.validation.constraints.Min;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 
 import java.util.Properties;
-import javax.validation.constraints.Min;
 
 public interface KafkaChannelConfig extends KafkaConsumerGroupConfig {
     @Key("kafka-groupid")

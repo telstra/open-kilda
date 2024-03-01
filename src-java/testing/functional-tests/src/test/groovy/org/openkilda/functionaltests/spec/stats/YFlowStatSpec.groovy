@@ -16,7 +16,7 @@ import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 import static groovyx.gpars.GParsPool.withPool
 import static groovyx.gpars.GParsPoolUtil.callAsync
