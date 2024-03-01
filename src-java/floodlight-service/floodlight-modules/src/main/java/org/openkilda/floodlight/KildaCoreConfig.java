@@ -21,9 +21,8 @@ import org.openkilda.floodlight.model.FloodlightRole;
 import com.sabre.oss.conf4j.annotation.Converter;
 import com.sabre.oss.conf4j.annotation.Default;
 import com.sabre.oss.conf4j.annotation.Key;
-
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 
 public interface KildaCoreConfig {
     @Key("command-processor-workers-count")

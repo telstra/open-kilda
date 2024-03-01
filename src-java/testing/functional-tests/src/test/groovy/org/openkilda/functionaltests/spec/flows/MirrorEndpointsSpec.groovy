@@ -56,7 +56,7 @@ import spock.lang.Shared
 import spock.lang.Unroll
 
 import java.util.regex.Pattern
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-traffic-mirroring")

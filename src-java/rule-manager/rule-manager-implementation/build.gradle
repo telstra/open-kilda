@@ -1,32 +1,30 @@
-description = 'Kilda Rule Manager Library'
+description = "Kilda Rule Manager Library"
 dependencies {
-    implementation project(':rule-manager-api')
+    implementation(project(":rule-manager-api"))
+    implementation(project(":kilda-configuration"))
+    implementation(project(":kilda-model"))
+    implementation(project(":kilda-persistence-api"))
+    implementation("com.google.guava:guava")
+    implementation("org.apache.commons:commons-lang3")
+    implementation("org.apache.commons:commons-collections4")
+    implementation("org.glassfish:jakarta.el")
+    implementation("org.hibernate.validator:hibernate-validator")
+    implementation("org.slf4j:slf4j-api")
 
-    implementation project(':kilda-configuration')
-    implementation project(':kilda-model')
-    implementation project(':kilda-persistence-api')
-    testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
+    testImplementation(project(path: ":kilda-persistence-tinkerpop", configuration: "testArtifacts"))
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine")
+    testImplementation("org.hamcrest:hamcrest-library")
+    testImplementation("org.mockito:mockito-junit-jupiter")
 
-    implementation 'com.google.guava:guava'
-    implementation 'org.apache.commons:commons-lang3'
-    implementation 'org.apache.commons:commons-collections4'
-    implementation 'org.glassfish:javax.el'
-    implementation 'org.hibernate.validator:hibernate-validator'
+    testRuntimeOnly("org.slf4j:slf4j-simple")
 
-    implementation 'org.slf4j:slf4j-api'
-    testRuntimeOnly 'org.slf4j:slf4j-simple'
-
-    testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
-    testImplementation 'org.hamcrest:hamcrest-library'
-    testImplementation 'org.mockito:mockito-junit-jupiter'
-
-    compileOnly 'org.projectlombok:lombok'
-    testCompileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    testAnnotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
-    testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    compileOnly("org.projectlombok:lombok")
+    testCompileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    testAnnotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding")
+    testAnnotationProcessor("org.projectlombok:lombok-mapstruct-binding")
 }
 
 test {

@@ -43,7 +43,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 class SwapEndpointSpec extends HealthCheckSpecification {
 

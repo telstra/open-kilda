@@ -28,7 +28,7 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/fl-statistics")
 @Narrative("""Now we have two FL instances: Management and Statistics.

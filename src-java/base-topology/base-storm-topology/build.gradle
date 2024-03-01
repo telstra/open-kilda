@@ -15,38 +15,12 @@ compileJava.options.compilerArgs += "-Amapstruct.unmappedTargetPolicy=ERROR"
 
 description = "Base Storm Topology"
 dependencies {
-    api project(":base-messaging")
-    api project(":kilda-configuration")
-    api project(":kilda-persistence-api")
-    aspect project(":kilda-persistence-api")
-    api project(":blue-green")
-    implementation project(":kilda-pce")
-    implementation project(":kilda-reporting")
-    implementation project(":floodlight-api")
-    implementation project(":grpc-api")
-    testImplementation project(path: ":kilda-persistence-api", configuration: "testArtifacts")
-    testImplementation project(path: ":kilda-persistence-tinkerpop", configuration: "testArtifacts")
-    testImplementation project(":kilda-utils:stubs")
-
-    api "org.apache.storm:storm-kafka-client:2.6.1"
-
-    /**
-     * This dependency must be compileOnly to prevent storm to be packed via transitive dependencies into the shadowJar,
-     * which is deployed to Storm later. This will cause a duplicate configuration error, because storm jar is already
-     * provided in the storm cluster. ShadowJar supports excludes, but it only excludes dependencies from the current
-     * project.
-     */
-    compileOnly("org.apache.storm:storm-core") {
-        exclude(group: "org.yaml", module: "snakeyaml")
-    }
-    implementation("org.yaml:snakeyaml:2.2")
-    testImplementation("org.apache.storm:storm-core")
-
-    implementation("org.rocksdb:rocksdbjni:8.10.0") { because("required for Storm integration tests") }
-    implementation("org.apache.storm:flux-core:2.6.1")
-
+    api(project(":base-messaging"))
+    api(project(":kilda-configuration"))
+    api(project(":kilda-persistence-api"))
+    api(project(":blue-green"))
     api("org.squirrelframework:squirrel-foundation")
-
+    api("org.apache.storm:storm-kafka-client:2.6.1")
     api("com.google.guava:guava")
     api("org.apache.commons:commons-lang3")
     api("org.apache.commons:commons-collections4")
@@ -57,27 +31,50 @@ dependencies {
     api("com.fasterxml.uuid:java-uuid-generator")
     api("net.jodah:failsafe")
     api("org.hibernate.validator:hibernate-validator")
-    runtimeOnly "org.glassfish:javax.el"
-
+    api("org.apache.kafka:kafka-clients:3.6.1")
+    api("org.apache.kafka:kafka_2.12:3.6.1")
+    api("io.micrometer:micrometer-core:1.10.5")
     api("org.aspectj:aspectjrt")
+
+    implementation(project(":kilda-pce"))
+    implementation(project(":kilda-reporting"))
+    implementation(project(":floodlight-api"))
+    implementation(project(":grpc-api"))
+    implementation("org.yaml:snakeyaml:2.2")
+    implementation("org.rocksdb:rocksdbjni:8.10.0") { because("Storm integration tests require it") }
+    implementation("org.apache.storm:flux-core:2.6.1")
+
+    /**
+     * This dependency must be compileOnly to prevent storm to be packed via transitive dependencies into the shadowJar,
+     * which is deployed to Storm later. This will cause a duplicate configuration error, because storm jar is already
+     * provided in the storm cluster. ShadowJar supports excludes, but it only excludes dependencies from the current
+     * project.
+     */
+    compileOnly("org.apache.storm:storm-core") {
+        exclude(group: "org.yaml", module: "snakeyaml")
+    }
+
+    runtimeOnly("org.glassfish:jakarta.el")
+    aspect(project(":kilda-persistence-api"))
+
     implementation("org.mapstruct:mapstruct")
     implementation("org.mapstruct:mapstruct-processor")
     annotationProcessor("org.mapstruct:mapstruct-processor")
     testAnnotationProcessor("org.mapstruct:mapstruct-processor")
 
-    api("org.apache.kafka:kafka-clients:3.6.1")
-    api("org.apache.kafka:kafka_2.12:3.6.1")
-
-    api("io.micrometer:micrometer-core:1.10.5")
-
+    testImplementation(project(path: ":kilda-persistence-api", configuration: "testArtifacts"))
+    testImplementation(project(path: ":kilda-persistence-tinkerpop", configuration: "testArtifacts"))
+    testImplementation(project(":kilda-utils:stubs"))
+    testImplementation("org.apache.storm:storm-core")
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testImplementation("org.junit.jupiter:junit-jupiter-engine")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
     testImplementation("org.mockito:mockito-junit-jupiter")
     testImplementation("org.hamcrest:hamcrest-library")
     testImplementation("org.apache.curator:curator-test")
+
     testRuntimeOnly("org.hibernate.validator:hibernate-validator")
-    testRuntimeOnly("org.glassfish:javax.el")
+    testRuntimeOnly("org.glassfish:jakarta.el")
     testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j-impl")
 
     compileOnly("org.projectlombok:lombok")
@@ -110,20 +107,20 @@ configurations.configureEach {
 }
 
 tasks.register("testJar", Jar) {
-    dependsOn compileTestJava
-    classifier "test"
-    from sourceSets.test.output
+    dependsOn(compileTestJava)
+    archiveClassifier = "test"
+    from(sourceSets.test.output)
 }
 
 tasks.register("releaseJar", Jar) {
-    dependsOn processResources
-    classifier "release"
-    from sourceSets.releaseResources.output
+    dependsOn(processResources)
+    archiveClassifier = "release"
+    from(sourceSets.releaseResources.output)
 }
 
 artifacts {
-    testArtifacts testJar
-    releaseArtifacts releaseJar
+    testArtifacts(testJar)
+    releaseArtifacts(releaseJar)
 }
 
 buildAndCopyArtifacts {

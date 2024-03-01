@@ -55,7 +55,7 @@ import spock.lang.See
 import spock.lang.Shared
 
 import java.time.Instant
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @Slf4j
 @Narrative("""

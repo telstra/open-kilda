@@ -14,7 +14,7 @@ dependencies {
     implementation("com.google.guava:guava")
     implementation("org.apache.commons:commons-lang3")
     implementation("org.slf4j:slf4j-api")
-    implementation("jakarta.validation:jakarta.validation-api:3.0.2")
+    implementation("jakarta.validation:jakarta.validation-api")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api")
 

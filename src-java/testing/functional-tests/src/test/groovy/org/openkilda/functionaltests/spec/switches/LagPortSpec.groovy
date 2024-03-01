@@ -40,7 +40,7 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @See("https://github.com/telstra/open-kilda/blob/develop/docs/design/LAG-for-ports/README.md")
 @Narrative("Verify that flow can be created on a LAG port.")

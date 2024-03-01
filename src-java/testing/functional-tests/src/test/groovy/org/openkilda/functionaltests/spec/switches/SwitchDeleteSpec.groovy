@@ -24,7 +24,7 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Shared
 
 import java.util.concurrent.TimeUnit
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 class SwitchDeleteSpec extends HealthCheckSpecification {
 
