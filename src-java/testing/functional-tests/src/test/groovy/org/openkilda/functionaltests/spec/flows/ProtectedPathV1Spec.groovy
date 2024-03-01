@@ -1,5 +1,23 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.tools.FlowTrafficExamBuilder
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
+import spock.lang.See
+import spock.lang.Shared
+
+import javax.inject.Provider
+import java.time.Instant
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
@@ -12,27 +30,6 @@ import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_S
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Narrative
-import spock.lang.See
-import spock.lang.Shared
-
-import java.time.Instant
-import javax.inject.Provider
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/protected-paths")
 @Narrative("""Protected path - it is pre-calculated, reserved, and deployed (except ingress rule),
@@ -222,7 +219,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 " Couldn't find non overlapping protected path"
 
         cleanup:
-        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
 
         where:
@@ -495,7 +491,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
-        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
     }
 

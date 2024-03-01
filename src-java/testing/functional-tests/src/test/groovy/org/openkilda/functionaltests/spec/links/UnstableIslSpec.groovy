@@ -1,5 +1,14 @@
 package org.openkilda.functionaltests.spec.links
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.model.SwitchFeature
+import org.springframework.beans.factory.annotation.Value
+
+import java.time.Instant
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
@@ -7,17 +16,6 @@ import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.model.SwitchFeature
-
-import org.springframework.beans.factory.annotation.Value
-
-import java.time.Instant
 
 class UnstableIslSpec extends HealthCheckSpecification {
 
@@ -167,7 +165,6 @@ class UnstableIslSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology, delete the flow and reset costs"
-        islHelper.restoreIsls(altPathsIsls + islToBreak)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
     }

@@ -1,5 +1,18 @@
 package org.openkilda.functionaltests.spec.links
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.messaging.command.switches.InstallRulesAction
+import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.model.SwitchFeature
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import spock.lang.See
+
+import java.util.concurrent.TimeUnit
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -12,20 +25,6 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.messaging.command.switches.InstallRulesAction
-import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.model.SwitchFeature
-import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
-import spock.lang.See
-
-import java.util.concurrent.TimeUnit
 
 @Tags(HARDWARE) // virtual env doesn't support round trip latency
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery")
@@ -413,6 +412,5 @@ round trip latency rule is removed on the dst switch"() {
             !portDiscoveryIsEnabledOnDstPort && northboundV2.updatePortProperties(roundTripIsl.dstSwitch.dpId,
                     roundTripIsl.dstPort, new PortPropertiesDto(discoveryEnabled: true))
         }
-        islHelper.restoreIsl(roundTripIsl)
     }
 }

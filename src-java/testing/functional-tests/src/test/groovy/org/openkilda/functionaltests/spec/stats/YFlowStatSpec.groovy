@@ -20,10 +20,11 @@ import javax.inject.Provider
 
 import static groovyx.gpars.GParsPool.withPool
 import static groovyx.gpars.GParsPoolUtil.callAsync
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_EGRESS_BYTES
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.CLASS
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_EGRESS_BITS
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_EGRESS_BYTES
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_EGRESS_PACKETS
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_INGRESS_BITS
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_INGRESS_BYTES
@@ -60,7 +61,7 @@ class YFlowStatSpec extends HealthCheckSpecification {
             it.ep1 != it.ep2 && it.ep1 != it.shared && it.ep2 != it.shared &&
                     [it.shared, it.ep1, it.ep2].every { it.traffGens }
         } ?: assumeTrue(false, "No suiting switches found")
-        yFlow = yFlowHelper.addYFlow(yFlowHelper.randomYFlow(switchTriplet).tap {maximumBandwidth = 10})
+        yFlow = yFlowHelper.addYFlow(yFlowHelper.randomYFlow(switchTriplet).tap {maximumBandwidth = 10}, CLASS)
         def traffExam = traffExamProvider.get()
         def exam = new FlowTrafficExamBuilder(topology, traffExam)
                 .buildYFlowExam(yFlow, yFlow.maximumBandwidth * 10, traffgenRunDuration)
@@ -112,10 +113,6 @@ class YFlowStatSpec extends HealthCheckSpecification {
                                FLOW_INGRESS_BITS,
                                FLOW_EGRESS_BITS],
                               [Direction.FORWARD, Direction.REVERSE]].combinations()
-    }
-
-    def cleanupSpec() {
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
     def "workaround failure on first connect to kafka"() {

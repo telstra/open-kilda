@@ -92,14 +92,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
                                 northboundV2.getFlowStatus(flowPath.id).status == FlowState.UP)
             }
         }
-
-        cleanup:
-        brokenIsls.each {
-            antiflap.portUp(it.srcSwitch.dpId, it.srcPort)
-        }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
     }
 
     @Ignore("Unstable")
@@ -200,10 +192,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
             switchHelper.validateAndCollectFoundDiscrepancies(
                     pathHelper.getInvolvedSwitches(PathHelper.convert(path))*.getDpId()).isEmpty()
         }
-
-        cleanup:
-        brokenIsl && antiflap.portUp(brokenIsl.srcSwitch.dpId, brokenIsl.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(brokenIsl).state == IslChangeType.DISCOVERED }
     }
 
     def cleanup() {

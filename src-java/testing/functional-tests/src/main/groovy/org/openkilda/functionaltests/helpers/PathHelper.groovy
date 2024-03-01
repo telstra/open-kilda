@@ -1,14 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
-import org.openkilda.northbound.dto.v2.flows.PathValidateResponse
-
-import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN
-import static org.openkilda.model.FlowEncapsulationType.VXLAN
-import static org.openkilda.model.PathComputationStrategy.COST
-import static org.openkilda.model.PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH
-import static org.openkilda.model.PathComputationStrategy.LATENCY
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
-
+import groovy.util.logging.Slf4j
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath
@@ -18,6 +11,7 @@ import org.openkilda.messaging.payload.network.PathValidationPayload
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2.PathNodeV2
+import org.openkilda.northbound.dto.v2.flows.PathValidateResponse
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
@@ -26,8 +20,6 @@ import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.IslUtils
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Scope
@@ -35,6 +27,14 @@ import org.springframework.stereotype.Component
 
 import java.util.AbstractMap.SimpleEntry
 import java.util.stream.Collectors
+
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
+import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN
+import static org.openkilda.model.FlowEncapsulationType.VXLAN
+import static org.openkilda.model.PathComputationStrategy.COST
+import static org.openkilda.model.PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH
+import static org.openkilda.model.PathComputationStrategy.LATENCY
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 /**
  * Holds utility methods for working with flow paths.
@@ -57,6 +57,8 @@ class PathHelper {
     IslUtils islUtils
     @Autowired
     Database database
+    @Autowired
+    CleanupManager cleanupManager
 
     /**
      * All ISLs of the given path will have their cost set to a very high value.
@@ -71,6 +73,7 @@ class PathHelper {
      * All ISLs will have their cost set to the specified value.
      */
     void updateIslsCost(List<Isl> isls, Integer newCost) {
+        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,{northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
         northbound.updateLinkProps(isls.collectMany { isl ->
             [islUtils.toLinkProps(isl, ["cost": (newCost).toString()])]
         })
@@ -114,7 +117,7 @@ class PathHelper {
                 throw new Exception("Unable to make some path more preferable because both paths use same ISLs")
             }
             log.debug "ISL to avoid: $islToAvoid"
-
+            cleanupManager.addAction(DELETE_ISLS_PROPERTIES, {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
             northbound.updateLinkProps([islUtils.toLinkProps(islToAvoid,
                     ["cost": (islCosts.get(islToAvoid) + difference + 1).toString()])])
         }

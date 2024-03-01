@@ -1,9 +1,55 @@
 package org.openkilda.functionaltests.helpers
 
+import groovy.transform.Memoized
+import org.openkilda.functionaltests.model.cleanup.CleanupAfter
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.MeterId
+import org.openkilda.model.SwitchFeature
+import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.model.cookie.CookieBase.CookieType
+import org.openkilda.model.cookie.PortColourCookie
+import org.openkilda.model.cookie.ServiceCookie
+import org.openkilda.model.cookie.ServiceCookie.ServiceCookieTag
+import org.openkilda.northbound.dto.v1.switches.MeterInfoDto
+import org.openkilda.northbound.dto.v1.switches.SwitchDto
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
+import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult
+import org.openkilda.northbound.dto.v2.switches.MeterInfoDtoV2
+import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2
+import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
+import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.model.topology.TopologyDefinition.SwitchProperties
+import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen
+import org.openkilda.testing.service.database.Database
+import org.openkilda.testing.service.floodlight.model.Floodlight
+import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode
+import org.openkilda.testing.service.lockkeeper.LockKeeperService
+import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress
+import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.service.northbound.NorthboundServiceV2
+import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtendedResult
+import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult
+import org.openkilda.testing.tools.IslUtils
+import org.openkilda.testing.tools.SoftAssertions
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Scope
+import org.springframework.stereotype.Component
+
+import java.math.RoundingMode
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.hamcrest.MatcherAssert.assertThat
 import static org.hamcrest.Matchers.hasItem
 import static org.hamcrest.Matchers.notNullValue
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.REVIVE_SWITCH
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN
 import static org.openkilda.model.cookie.Cookie.ARP_INGRESS_COOKIE
@@ -40,50 +86,6 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.MeterId
-import org.openkilda.model.SwitchFeature
-import org.openkilda.model.SwitchId
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.model.cookie.CookieBase.CookieType
-import org.openkilda.model.cookie.PortColourCookie
-import org.openkilda.model.cookie.ServiceCookie
-import org.openkilda.model.cookie.ServiceCookie.ServiceCookieTag
-import org.openkilda.northbound.dto.v1.switches.MeterInfoDto
-import org.openkilda.northbound.dto.v1.switches.SwitchDto
-import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
-import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult
-import org.openkilda.northbound.dto.v2.switches.MeterInfoDtoV2
-import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2
-import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
-import org.openkilda.testing.Constants
-import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.model.topology.TopologyDefinition.SwitchProperties
-import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen
-import org.openkilda.testing.service.database.Database
-import org.openkilda.testing.service.floodlight.model.Floodlight
-import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode
-import org.openkilda.testing.service.lockkeeper.LockKeeperService
-import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress
-import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.service.northbound.NorthboundServiceV2
-import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtendedResult
-import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult
-import org.openkilda.testing.tools.IslUtils
-import org.openkilda.testing.tools.SoftAssertions
-
-import groovy.transform.Memoized
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.annotation.Scope
-import org.springframework.stereotype.Component
-
-import java.math.RoundingMode
-
 /**
  * Provides helper operations for some Switch-related content.
  * This helper is also injected as a Groovy Extension Module, so methods can be called in two ways:
@@ -107,21 +109,18 @@ class SwitchHelper {
     static NOVIFLOW_BURST_COEFFICIENT = 1.005 // Driven by the Noviflow specification
     static CENTEC_MIN_BURST = 1024 // Driven by the Centec specification
     static CENTEC_MAX_BURST = 32000 // Driven by the Centec specification
-
     @Value('${burst.coefficient}')
     double burstCoefficient
-
     @Value('${discovery.generic.interval}')
     int discoveryInterval
-
     @Value('${discovery.timeout}')
     int discoveryTimeout
-
     @Autowired
     IslUtils islUtils
-
     @Autowired
     LockKeeperService lockKeeper
+    @Autowired
+    CleanupManager cleanupManager
 
     @Autowired
     SwitchHelper(@Qualifier("northboundServiceImpl") NorthboundService northbound,
@@ -355,9 +354,10 @@ class SwitchHelper {
      * The same as direct northbound call, but additionally waits that default rules and default meters are indeed
      * reinstalled according to config
      */
-    static SwitchPropertiesDto updateSwitchProperties(Switch sw, SwitchPropertiesDto switchProperties) {
+    SwitchPropertiesDto updateSwitchProperties(Switch sw, SwitchPropertiesDto switchProperties) {
+        cleanupManager.addAction(OTHER, {northbound.get().updateSwitchProperties(sw.dpId, getCachedSwProps(sw.dpId))})
         def response = northbound.get().updateSwitchProperties(sw.dpId, switchProperties)
-        Wrappers.wait(Constants.RULES_INSTALLATION_TIME) {
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
             def actualHexCookie = []
             for (long cookie : northbound.get().getSwitchRules(sw.dpId).flowEntries*.cookie) {
                 actualHexCookie.add(new Cookie(cookie).toString())
@@ -589,6 +589,7 @@ class SwitchHelper {
      */
     List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode, boolean waitForRelatedLinks) {
         def blockData = lockKeeper.knockoutSwitch(sw, mode)
+        cleanupManager.addAction(REVIVE_SWITCH, {reviveSwitch(sw, blockData, true)}, CleanupAfter.TEST)
         Wrappers.wait(WAIT_OFFSET) {
             assert northbound.get().getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
         }

@@ -71,9 +71,6 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         and: "Switch passes validation"
         switchHelper.validate(swIdToManipulate).isAsExpected()
 
-        cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
-
         where:
         data << [
                 [
@@ -135,9 +132,6 @@ class YFlowValidationSpec extends HealthCheckSpecification {
 
         and: "Switches pass validation"
         switchHelper.validate(swIdToManipulate).isAsExpected()
-
-        cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
 
         where:
         data << [

@@ -4,7 +4,7 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithMissingPathExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.PathComputationStrategy
@@ -18,7 +18,6 @@ import spock.lang.Shared
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.payload.flow.FlowState.DEGRADED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -64,7 +63,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         islsToBreak = switchPair.paths.findAll { !paths.contains(it) }
                 .collect { pathHelper.getInvolvedIsls(it).find { !isls.contains(it) && !isls.contains(it.reversed) } }
                 .unique { [it, it.reversed].sort() }
-        islHelper.breakIsls(islsToBreak)
+        islHelper.breakIsls(islsToBreak, CleanupAfter.CLASS)
     }
 
     def "Able to create protected flow with max_latency strategy if both paths satisfy SLA"() {
@@ -212,7 +211,6 @@ class MaxLatencySpec extends HealthCheckSpecification {
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == alternativePath
 
         cleanup:
-        islHelper.restoreIsl(islToBreak)
         database.resetCosts(topology.isls)
     }
 
@@ -302,7 +300,6 @@ but satisfies max_latency_tier2"
         assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
 
         cleanup:
-        islHelper.restoreIsl(islToBreak)
         database.resetCosts(topology.isls)
     }
 
@@ -321,7 +318,6 @@ but satisfies max_latency_tier2"
     }
 
     def cleanupSpec() {
-        islHelper.restoreIsls(islsToBreak)
         getDatabase().resetCosts(topology.isls)
     }
 }

@@ -1,5 +1,19 @@
 package org.openkilda.functionaltests.spec.links
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.info.event.IslInfoData
+import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.links.LinkParametersDto
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.See
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
@@ -14,24 +28,6 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.IslInfoData
-import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v1.links.LinkParametersDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.See
-
-import java.util.concurrent.TimeUnit
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery")
 class LinkSpec extends HealthCheckSpecification {
@@ -213,7 +209,6 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete all created flows and reset costs"
-        islHelper.restoreIsls(allSourceSwithIsls)
         database.resetCosts(topology.isls)
     }
 
@@ -373,7 +368,6 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        islHelper.restoreIsl(isl)
         database.resetCosts(topology.isls)
 
         where:
@@ -712,7 +706,6 @@ class LinkSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.contains("This ISL is busy by flow paths.")
 
         cleanup:
-        islHelper.restoreIsl(isl)
         database.resetCosts(topology.isls)
     }
 

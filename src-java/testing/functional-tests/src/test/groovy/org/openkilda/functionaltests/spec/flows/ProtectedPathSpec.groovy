@@ -360,7 +360,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         flows.each { assert pathHelper.convert(northbound.getFlowPath(it.flowId)) == currentProtectedPath }
 
         cleanup: "Revert system to original state"
-        islHelper.restoreIsl(islToBreak)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
 
@@ -428,7 +427,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup:
-        islHelper.restoreIsl(mainIsl)
         otherIsls && otherIsls.collectMany{[it, it.reversed]}.each { database.resetIslBandwidth(it) }
         database.resetCosts(topology.isls)
     }
@@ -492,7 +490,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup:
-        islHelper.restoreIsls(otherIsls + mainIsl)
         database.resetCosts(topology.isls)
     }
 
@@ -603,7 +600,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentProtectedPath
 
         cleanup: "Revert system to original state"
-        islHelper.restoreIsl(islToBreak)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
 
@@ -777,7 +773,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         pathHelper.convert(northbound.getFlowPath(flow.flowId).protectedPath) == newProtectedPath
 
         cleanup: "Revert system to original state"
-        islHelper.restoreIsl(islToBreakProtectedPath)
         database.resetCosts(topology.isls)
     }
 
@@ -812,7 +807,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
-        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
 
         where:
@@ -868,7 +862,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup: "Restore topology, delete flow and reset costs"
-        islHelper.restoreIsls(islsToBreak)
         database.resetCosts(topology.isls)
 
         where:
@@ -915,7 +908,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup:
-        islHelper.restoreIsls([mainPathIsl, protectedPathIsl])
         database.resetCosts(topology.isls)
 
     }
@@ -1081,7 +1073,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
 
         cleanup:
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        islHelper.restoreIsls(broughtDownIsls)
         withPool {
             (involvedSwP1 + involvedSwP2 + involvedSwProtected).unique().eachParallel { swId ->
                 northboundV2.partialSwitchUpdate(swId, new SwitchPatchDto().tap { it.pop = "" })
@@ -1243,7 +1234,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
-        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
     }
 
@@ -1309,7 +1299,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
                 " Couldn't find non overlapping protected path"
 
         cleanup: "Restore topology, delete flows and reset costs"
-        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
 
         where:
@@ -1365,7 +1354,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         pathHelper.convert(newFlowPathInfo.protectedPath) == alternativePath
 
         cleanup: "Restore topology, delete flow and reset costs"
-        islHelper.restoreIsls(broughtDownIsls + protectedIslToBreak)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
     }

@@ -1,5 +1,15 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.messaging.payload.flow.FlowPathPayload
+import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
+import org.springframework.beans.factory.annotation.Value
+import spock.lang.Narrative
+import spock.lang.See
+
 import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -7,21 +17,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_ACTION
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.flow.FlowPathPayload
-import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
-
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.Narrative
-import spock.lang.See
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/pce-diverse-flows")
 @Narrative("""
@@ -223,7 +218,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         flow2Path == flow1Path
 
         cleanup: "Restore topology, delete flows and reset costs"
-        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
     }
 

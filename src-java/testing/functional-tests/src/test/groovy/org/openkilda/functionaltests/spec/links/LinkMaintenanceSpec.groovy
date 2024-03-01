@@ -1,19 +1,16 @@
 package org.openkilda.functionaltests.spec.links
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.payload.flow.FlowState
+
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.flow.FlowState
 
 class LinkMaintenanceSpec extends HealthCheckSpecification {
 
@@ -139,7 +136,6 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         cleanup: "Restore topology, delete flows, unset maintenance mode and reset costs"
         islUnderMaintenance && northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(
                 islUnderMaintenance, false, false))
-        islHelper.restoreIsls(altIsls + flow1ActualIsl)
         database.resetCosts(topology.isls)
     }
 }

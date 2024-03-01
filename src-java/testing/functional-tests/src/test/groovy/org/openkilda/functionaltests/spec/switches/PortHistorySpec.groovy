@@ -1,5 +1,20 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.PortHistoryEvent
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.model.system.FeatureTogglesDto
+import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse
+import org.openkilda.testing.tools.SoftAssertions
+import spock.lang.Isolated
+import spock.lang.Narrative
+import spock.lang.See
+import spock.lang.Shared
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -13,22 +28,6 @@ import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.PORT_
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.PortHistoryEvent
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.model.system.FeatureTogglesDto
-import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse
-import org.openkilda.testing.tools.SoftAssertions
-
-import spock.lang.Isolated
-import spock.lang.Narrative
-import spock.lang.See
-import spock.lang.Shared
 
 @See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/port-FSM.png",
         "https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/AF-FSM.png"])
@@ -98,9 +97,6 @@ class PortHistorySpec extends HealthCheckSpecification {
         and: "Port history on the src switch is also available using default timeline"
         northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort).size() >= 4
 
-        cleanup:
-        islHelper.restoreIsl(isl)
-
         where:
         [islDescription, historySizeOnDstSw, isl] << [
                 ["direct", 4, getTopology().islsForActiveSwitches.find { !it.aswitch }],
@@ -129,9 +125,6 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         then: "Port history is NOT returned"
         portH.isEmpty()
-
-        cleanup:
-        islHelper.restoreIsl(isl)
     }
 
     def "Port history should not be returned in case port/switch have never existed"() {
@@ -162,7 +155,6 @@ class PortHistorySpec extends HealthCheckSpecification {
         northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 4
 
         cleanup: "Revive the src switch"
-        islHelper.restoreIsl(isl)
         switchToDisconnect && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 
@@ -204,9 +196,6 @@ class PortHistorySpec extends HealthCheckSpecification {
                 antiflapStat.upCount == 1
             }
         }
-
-        cleanup: "revert system to original state"
-        islHelper.restoreIsl(isl)
     }
 
     def cleanup() {
@@ -286,7 +275,6 @@ class PortHistoryIsolatedSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-       islHelper.restoreIsl(isl)
         updateToogles && northbound.toggleFeature(FeatureTogglesDto.builder()
                 .floodlightRoutePeriodicSync(true)
                 .build())

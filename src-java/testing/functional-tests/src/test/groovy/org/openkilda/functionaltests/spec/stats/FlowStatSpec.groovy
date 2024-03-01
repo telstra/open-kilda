@@ -1,33 +1,27 @@
 package org.openkilda.functionaltests.spec.stats
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-
-import org.openkilda.functionaltests.model.stats.FlowStats
-
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
-import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
 
 import javax.inject.Provider
+
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
+import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Tags(LOW_PRIORITY)
 @Narrative("Verify that statistic is collected for different type of flow")
@@ -269,7 +263,6 @@ class FlowStatSpec extends HealthCheckSpecification {
         !newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValuesAfter(timeAfterSwap)
 
         cleanup:
-        islHelper.restoreIsl(islToBreak)
         database.resetCosts(topology.isls)
     }
 
@@ -328,7 +321,6 @@ class FlowStatSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
-        islHelper.restoreIsls(altIsls + protectedIsls.first())
         database.resetCosts(topology.isls)
     }
 

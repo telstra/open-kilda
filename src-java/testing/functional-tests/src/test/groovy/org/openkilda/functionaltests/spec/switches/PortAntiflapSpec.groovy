@@ -1,14 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_DEACTIVATED
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -17,8 +9,6 @@ import org.openkilda.messaging.info.event.PortChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchFeature
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
@@ -27,6 +17,15 @@ import spock.lang.Issue
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
+
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_DEACTIVATED
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Slf4j
 @Narrative("""
@@ -125,9 +124,6 @@ timeout"() {
         Wrappers.wait(antiflapMin + 2) {
             islUtils.getIslInfo(isl).get().state == FAILED
         }
-
-        cleanup: "Bring port up"
-        islHelper.restoreIsl(isl)
     }
 
     /**
@@ -235,9 +231,6 @@ timeout"() {
             assert rv.state == DISCOVERED
             assert rv.actualState == DISCOVERED
         }
-
-        cleanup:
-        islHelper.restoreIsl(isl)
     }
 
     def cleanup() {

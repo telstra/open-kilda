@@ -1,5 +1,21 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.IterationTags
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.service.traffexam.model.ArpData
+import org.openkilda.testing.service.traffexam.model.LldpData
+import org.openkilda.testing.tools.ConnectedDevice
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Shared
+
+import javax.inject.Provider
+import java.util.concurrent.TimeUnit
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -7,24 +23,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.functionaltests.extension.tags.IterationTags
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.service.traffexam.model.ArpData
-import org.openkilda.testing.service.traffexam.model.LldpData
-import org.openkilda.testing.tools.ConnectedDevice
-
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Shared
-
-import java.util.concurrent.TimeUnit
-import javax.inject.Provider
 
 class SwitchDeleteSpec extends HealthCheckSpecification {
 
@@ -95,7 +93,6 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         cleanup: "Activate the switch back and reset costs"
         switchHelper.reviveSwitch(sw, blockData, false)
-        islHelper.restoreIsls(swIsls)
         database.resetCosts(topology.isls)
     }
 
@@ -150,7 +147,6 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         cleanup: "Activate the switch back, restore ISLs and reset costs"
         switchHelper.reviveSwitch(sw, blockData)
         initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
-        islHelper.restoreIsls(swIsls)
         database.resetCosts(topology.isls)
     }
 
@@ -205,7 +201,6 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         cleanup: "Activate the switch back, restore ISLs, delete connected devices and reset costs"
         switchHelper.reviveSwitch(sw, blockData)
-        islHelper.restoreIsls(swIsls)
         initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
         database.resetCosts(topology.isls)
         lldpData && database.removeConnectedDevices(sw.dpId)
@@ -245,7 +240,6 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         // restore ISLs
         swIsls.each { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
         TimeUnit.SECONDS.sleep(antiflapMin)
-        islHelper.restoreIsls(swIsls)
         initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
         database.resetCosts(topology.isls)
     }

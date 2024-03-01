@@ -1,5 +1,32 @@
 package org.openkilda.functionaltests.spec.flows
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flow.FlowEndpointsNotSwappedExpectedError
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.payload.flow.FlowCreatePayload
+import org.openkilda.messaging.payload.flow.FlowEndpointPayload
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.SwitchId
+import org.openkilda.model.SwitchStatus
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload
+import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.tools.FlowTrafficExamBuilder
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpServerErrorException
+
+import javax.inject.Provider
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
@@ -14,36 +41,6 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.error.flow.FlowEndpointsNotSwappedExpectedError
-import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.flow.FlowCreatePayload
-import org.openkilda.messaging.payload.flow.FlowEndpointPayload
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.SwitchId
-import org.openkilda.model.SwitchStatus
-import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
-import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload
-import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
-import com.fasterxml.jackson.databind.ObjectMapper
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.client.HttpClientErrorException
-import org.springframework.web.client.HttpServerErrorException
-
-import javax.inject.Provider
 
 class SwapEndpointSpec extends HealthCheckSpecification {
 
@@ -798,7 +795,6 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Restore topology and delete flows"
-        islHelper.restoreIsls(broughtDownIsls)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         if (!isSwitchValid) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
@@ -868,7 +864,6 @@ switches"() {
         Boolean isTestCompleted = true
 
         cleanup: "Restore topology and delete flows"
-        islHelper.restoreIsls(broughtDownIsls)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         if (!isTestCompleted) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
@@ -942,7 +937,6 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Restore topology and delete flows"
-        islHelper.restoreIsls(broughtDownIsls)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         if (!isSwitchValid) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
@@ -1000,7 +994,6 @@ switches"() {
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwIds)
 
         cleanup: "Restore topology and delete flows"
-        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
     }
 

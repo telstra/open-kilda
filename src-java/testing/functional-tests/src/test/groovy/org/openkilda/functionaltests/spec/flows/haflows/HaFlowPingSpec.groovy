@@ -1,5 +1,19 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.model.HaFlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
+import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.functionaltests.model.stats.Direction
+import org.openkilda.functionaltests.model.stats.FlowStats
+import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+import spock.lang.Narrative
+import spock.lang.Shared
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
@@ -12,25 +26,8 @@ import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.LATENCY
 import static org.openkilda.functionaltests.model.stats.Status.ERROR
 import static org.openkilda.functionaltests.model.stats.Status.SUCCESS
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.model.HaFlowExtended
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
-import org.openkilda.functionaltests.helpers.model.SwitchTriplet
-import org.openkilda.functionaltests.model.stats.Direction
-import org.openkilda.functionaltests.model.stats.FlowStats
-import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
-
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.Narrative
-import spock.lang.Shared
 
 @Narrative("""This spec tests 'periodic ping' functionality.""")
 @Tags([HA_FLOW])
@@ -122,7 +119,6 @@ class HaFlowPingSpec extends HealthCheckSpecification {
 
         cleanup:
         haFlow && haFlow.delete()
-        islHelper.restoreIsl(islToFail)
         database.resetCosts(topology.isls)
     }
 

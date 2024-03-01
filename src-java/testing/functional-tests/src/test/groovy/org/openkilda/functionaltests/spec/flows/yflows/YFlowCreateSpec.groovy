@@ -55,16 +55,9 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         when: "Create a y-flow of certain configuration"
         def allLinksBefore = northbound.getAllLinks()
-        def yFlow = northboundV2.addYFlow(yFlowRequest)
+        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
 
-        then: "Y-flow is created and has UP status"
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-            yFlow = northboundV2.getYFlow(yFlow.YFlowId)
-            assert yFlow && yFlow.status == FlowState.UP.toString()
-        }
-        northboundV2.getYFlow(yFlow.YFlowId).YPoint
-
-        and: "2 sub-flows are created, visible via regular 'dump flows' API"
+        then: "2 sub-flows are created, visible via regular 'dump flows' API"
         def regularFlowIds = northboundV2.getAllFlows()*.flowId
         yFlow.subFlows.first().flowId in regularFlowIds
         yFlow.subFlows.last().flowId in regularFlowIds
@@ -168,7 +161,6 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         then: "The y-flow is no longer visible via 'get' API"
         Wrappers.wait(WAIT_OFFSET) { assert !northboundV2.getYFlow(yFlow.YFlowId) }
-        def flowRemoved = true
 
         and: "Related sub-flows are removed"
         Wrappers.wait(WAIT_OFFSET) {
@@ -190,9 +182,6 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         // https://github.com/telstra/open-kilda/issues/3411
         switchHelper.synchronize(yFlow.sharedEndpoint.switchId)
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
-
-        cleanup:
-        yFlow && !flowRemoved && yFlowHelper.deleteYFlow(yFlow.YFlowId)
 
         where:
         //Not all cases may be covered. Uncovered cases will be shown as a 'skipped' test
@@ -222,9 +211,6 @@ class YFlowCreateSpec extends HealthCheckSpecification {
                 assert it.YFlowId != yFlowResponse.YFlowId
             }
         }
-
-        cleanup:
-        yFlowResponse && !exc && yFlowHelper.deleteYFlow(yFlowResponse.YFlowId)
 
         where: "Use different types of conflicts"
         data << [
@@ -395,7 +381,6 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
         }
 
         cleanup:
-        yFlowResponse && !exc && yFlowHelper.deleteYFlow(yFlowResponse.YFlowId)
         Wrappers.wait(WAIT_OFFSET) {
             /*Sometimes test is too fast, so one of subflows stays in 'In Progress' at this stage.
             Let's wait for it to be removed */
@@ -435,7 +420,6 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
         }
 
         cleanup:
-        yFlowResponse && !exc && yFlowHelper.deleteYFlow(yFlowResponse.YFlowId)
         lagPort && northboundV2.deleteLagLogicalPort(swT.shared.dpId, lagPort)
     }
 
@@ -465,8 +449,6 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
         then: "y-flow is created and UP"
         def yFlow = yFlowHelper.addYFlow(yFlowRequest)
 
-        cleanup:
-        Wrappers.silent { yFlowHelper.deleteYFlow(yFlow.getYFlowId()) }
     }
 
     /**

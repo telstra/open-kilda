@@ -70,7 +70,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
             ![switchPair.getSrc(), switchPair.getDst()].contains(it)
         }
 
-        def yFlow = yFlowHelper.addYFlow(yFlowHelper.randomYFlow(switchTriplet))
+        def yFlow = yFlowHelper.addYFlow(yFlowHelper.randomYFlow(switchTriplet), CLASS)
         yFlowId = yFlow.getYFlowId()
         yFlowSubFlow1Id = yFlow.getSubFlows().get(0).getFlowId()
         yFlowSubFlow2Id = yFlow.getSubFlows().get(1).getFlowId()
@@ -171,14 +171,5 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         then: "Ports used by subflows on the switch are in response"
         flows.flowsByPort.collectMany { it.value }*.flowId
                 .containsAll(yFlow.subFlows*.flowId)
-
-        cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.getYFlowId())
-    }
-
-    def cleanupSpec() {
-        Wrappers.silent {
-            yFlowHelper.deleteYFlow(yFlowId)
-        }
     }
 }

@@ -1,12 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.testing.Constants.DEFAULT_COST
-import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -15,6 +8,13 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
+
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.testing.Constants.DEFAULT_COST
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 class SwitchMaintenanceSpec extends HealthCheckSpecification {
 
@@ -149,7 +149,6 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        islHelper.restoreIsl(isl)
         setSwMaintenance && northbound.setSwitchMaintenance(isl.srcSwitch.dpId, false, false)
         database.resetCosts(topology.isls)
     }

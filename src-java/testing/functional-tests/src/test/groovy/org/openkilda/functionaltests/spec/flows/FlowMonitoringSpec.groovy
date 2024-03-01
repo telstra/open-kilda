@@ -1,9 +1,21 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.stats.FlowStats
+import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.model.system.FeatureTogglesDto
+import org.openkilda.model.PathComputationStrategy
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+import spock.lang.Isolated
+import spock.lang.ResourceLock
+import spock.lang.See
+import spock.lang.Shared
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.FLOW_MON_TOGGLE
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -13,24 +25,9 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
-import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
 import static org.openkilda.functionaltests.model.stats.Origin.FLOW_MONITORING
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.model.system.FeatureTogglesDto
-import org.openkilda.model.PathComputationStrategy
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.Isolated
-import spock.lang.ResourceLock
-import spock.lang.See
-import spock.lang.Shared
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-monitoring")
 @Tags([VIRTUAL, LOW_PRIORITY])
@@ -69,7 +66,7 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         islsToBreak = switchPair.paths.findAll { !paths.contains(it) }
                 .collect { pathHelper.getInvolvedIsls(it).find { !isls.contains(it) && !isls.contains(it.reversed) } }
                 .unique { [it, it.reversed].sort() }
-        islHelper.breakIsls(islsToBreak)
+        islHelper.breakIsls(islsToBreak, CleanupAfter.CLASS)
     }
 
     @ResourceLock(S42_TOGGLE)
@@ -207,7 +204,6 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
     }
 
     def cleanupSpec() {
-        islHelper.restoreIsls(islsToBreak)
         getDatabase().resetCosts(getTopology().isls)
     }
 }

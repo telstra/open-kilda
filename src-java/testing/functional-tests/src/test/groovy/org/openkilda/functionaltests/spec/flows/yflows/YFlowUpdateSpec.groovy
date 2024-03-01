@@ -59,9 +59,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         and: "All related switches have no discrepancies"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches*.getDpId()).isEmpty()
 
-        cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
-
         where: data << [
                 [
                         descr: "shared port and subflow ports",
@@ -132,9 +129,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
         and: "All related switches have no discrepancies"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches*.getDpId()).isEmpty()
-
-        cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
     def "User can partially update fields of one-switch y-flow"() {
@@ -179,9 +173,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
         and: "All related switches have no discrepancies"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(switchId).isPresent()
-
-        cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
     def "User can partially update #data.descr of a y-flow"() {
@@ -209,9 +200,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
         and: "All related switches have no discrepancies"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches*.getDpId()).isEmpty()
-
-        cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
 
         //buildPatchRequest in addition to providing a patch payload should also updated the yFlow object
         //in order to reflect the expect result after update
@@ -312,8 +300,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
         data.expectedError.matches(exc)
-        cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
 
         where: data << [
                 [
@@ -374,8 +360,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
         new YFlowNotUpdatedExpectedError(data.errorMessage, data.errorDescrPattern).matches(exc)
-        cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
 
         where: data << [
                 [

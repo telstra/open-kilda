@@ -1,12 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
-import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithMissingPathExpectedError
-
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithMissingPathExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -15,6 +10,10 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
+
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Narrative("Verify that ISL's bandwidth behaves consistently and does not allow any oversubscribtions etc.")
 class BandwidthSpec extends HealthCheckSpecification {
@@ -279,11 +278,6 @@ class BandwidthSpec extends HealthCheckSpecification {
         then: "The flow is not created because flow path should not be found"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-    }
-
-    def cleanup() {
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        database.resetCosts(topology.isls)
     }
 
     private def checkBandwidth(List<PathNode> flowPath, List<IslInfoData> linksBefore, List<IslInfoData> linksAfter,

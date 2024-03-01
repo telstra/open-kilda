@@ -1,15 +1,23 @@
 package org.openkilda.functionaltests.spec.toggles
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowForbiddenToCreateExpectedError
 import org.openkilda.functionaltests.error.flow.FlowForbiddenToDeleteExpectedError
 import org.openkilda.functionaltests.error.flow.FlowForbiddenToUpdateExpectedError
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.model.system.FeatureTogglesDto
+import org.openkilda.messaging.model.system.KildaConfigurationDto
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.FlowEncapsulationType
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Isolated
+import spock.lang.Narrative
+import spock.lang.ResourceLock
 
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.DEFAULT_FLOW_ENCAP
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
@@ -17,21 +25,6 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.model.system.FeatureTogglesDto
-import org.openkilda.messaging.model.system.KildaConfigurationDto
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.FlowEncapsulationType
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
-import spock.lang.Isolated
-import spock.lang.Narrative
-import spock.lang.ResourceLock
 
 @Narrative("""
 Feature Toggles is a special lever that allows to turn on/off certain Kilda features. For example, we can disable
@@ -188,7 +181,6 @@ feature toggle"() {
         initFeatureToggle && northbound.toggleFeature(FeatureTogglesDto.builder()
                 .flowsRerouteUsingDefaultEncapType(initFeatureToggle.flowsRerouteUsingDefaultEncapType).build())
         flow && flowHelperV2.deleteFlow(flow.flowId)
-        islHelper.restoreIsls([islToBreak, newIslToBreak])
         database.resetCosts(topology.isls)
     }
 
@@ -267,7 +259,6 @@ feature toggle"() {
         initGlobalConfig && initGlobalConfig.flowEncapsulationType != vxlanEncapsulationType.toString().toLowerCase() &&
                 northbound.updateKildaConfiguration(initGlobalConfig)
         initSrcSwProps && northbound.updateSwitchProperties(swPair.src.dpId, initSrcSwProps)
-        islHelper.restoreIsl(islToBreak)
         database.resetCosts(topology.isls)
     }
 
@@ -323,7 +314,6 @@ feature toggle"() {
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
 
         cleanup: "Restore topology to the original state, remove the flow, reset toggles"
-        islHelper.restoreIsls(altIsls + islToBreak)
         featureToogleIsUpdated && northbound.toggleFeature(FeatureTogglesDto.builder()
                 .flowsRerouteOnIslDiscoveryEnabled(true)
                 .build())

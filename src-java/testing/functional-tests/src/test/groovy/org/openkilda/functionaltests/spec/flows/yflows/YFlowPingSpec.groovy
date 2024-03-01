@@ -54,9 +54,6 @@ class YFlowPingSpec extends HealthCheckSpecification {
             sharedPacketCountNow > sharedSwitchPacketCount && ep1PacketCountNow > ep1SwitchPacketCount &&
                     ep2PacketCountNow > ep2SwitchPacketCount
         }
-
-        cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
     @Tags([LOW_PRIORITY])
@@ -92,9 +89,6 @@ class YFlowPingSpec extends HealthCheckSpecification {
 
         then: "y-flow ping is not successful, but one of subflows ping is successful"
         response == expectedResponse
-
-        cleanup:
-        Wrappers.silent{yFlowHelper.deleteYFlow(yFlow.getYFlowId())}
     }
 
     def getPacketCountOfVlanPingRule(SwitchId switchId) {

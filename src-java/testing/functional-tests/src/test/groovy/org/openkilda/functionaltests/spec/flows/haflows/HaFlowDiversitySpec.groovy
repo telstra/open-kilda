@@ -198,6 +198,5 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
 
         cleanup:
         [haFlow1, haFlow2].each { haFlow -> haFlow && haFlow.delete() }
-        yFlow && yFlowHelper.deleteYFlow(yFlow.getYFlowId())
     }
 }

@@ -71,9 +71,6 @@ class SubFlowSpec extends HealthCheckSpecification {
             reverse.pingSuccess
         }
 
-        cleanup:
-        yFlowHelper.deleteYFlow(yFlow.YFlowId)
-
         where:
         data << [
                 [

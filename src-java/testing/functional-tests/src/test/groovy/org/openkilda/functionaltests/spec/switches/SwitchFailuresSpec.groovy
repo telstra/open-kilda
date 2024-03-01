@@ -1,6 +1,18 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotValidatedExpectedError
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
+import spock.lang.Narrative
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
@@ -12,20 +24,6 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
-
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
-import spock.lang.Narrative
 
 @Narrative("""
 This spec verifies different situations when Kilda switches suddenly disconnect from the controller.
@@ -120,7 +118,6 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
         cleanup:
         lockKeeper.cleanupTrafficShaperRules(swPair.dst.regions)
-        islHelper.restoreIsl(islToBreak)
         database.resetCosts(topology.isls)
     }
 

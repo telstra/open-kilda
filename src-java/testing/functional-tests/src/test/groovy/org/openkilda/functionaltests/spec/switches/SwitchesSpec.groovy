@@ -1,31 +1,27 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.messaging.command.switches.InstallRulesAction
+import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
+import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Shared
 
-import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.messaging.command.switches.InstallRulesAction
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
-import org.springframework.web.client.HttpClientErrorException
 
 class SwitchesSpec extends HealthCheckSpecification {
     @Shared
@@ -165,7 +161,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         getSwitchFlowsResponse6*.id.sort() == [protectedFlow.flowId, singleFlow.flowId, defaultFlow.flowId].sort()
 
         cleanup: "Delete the flows"
-        islHelper.restoreIsls(switchIsls)
         database.resetCosts(topology.isls)
     }
 

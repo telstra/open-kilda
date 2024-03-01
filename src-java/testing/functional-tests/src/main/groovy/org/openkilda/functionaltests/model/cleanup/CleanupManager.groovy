@@ -6,7 +6,20 @@ import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
 import javax.annotation.PostConstruct
+import java.util.concurrent.ConcurrentHashMap
 
+import static groovyx.gpars.GParsExecutorsPool.withPool
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_FLOW
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_HAFLOW
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_YFLOW
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.PORT_UP
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISL_AVAILABLE_BANDWIDTH
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_ISL
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.REVIVE_SWITCH
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
 
 /**
@@ -17,13 +30,16 @@ import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
 @Scope("specThread")
 class CleanupManager {
     @Value("#{T(java.util.Collections).emptyMap()}")
-    private HashMap<CleanupAfter, List<Closure>> cleanupActions
+    private ConcurrentHashMap<CleanupActionType, List<Closure>> postTestActions
     @Value("#{T(java.util.Collections).emptyMap()}")
+    private ConcurrentHashMap<CleanupActionType, List<Closure>> postClassActions
 
     @PostConstruct
     void init() {
-        cleanupActions[CleanupAfter.TEST] = []
-        cleanupActions[CleanupAfter.CLASS] = []
+        CleanupActionType.values().each {
+            postTestActions[it] = Collections.synchronizedList(new ArrayList())
+            postClassActions[it] = Collections.synchronizedList(new ArrayList())
+        }
     }
 
     /**
@@ -36,8 +52,12 @@ class CleanupManager {
      * @param cleanupAfter when to delete the flow: after test or after test class
      * @return nothing
      */
-    void addAction(Closure action, cleanupAfter = TEST) {
-        cleanupActions[cleanupAfter].add(action)
+    void addAction(CleanupActionType actionType, Closure action, cleanupAfter = TEST) {
+        if (cleanupAfter == TEST) {
+            postTestActions[actionType].add(action)
+        } else {
+            postClassActions[actionType].add(action)
+        }
     }
 
     /**
@@ -47,17 +67,65 @@ class CleanupManager {
      * @return nothing
      */
     void run(cleanupAfter = TEST) {
-        def failedActions = cleanupActions[cleanupAfter].reverse().collect {
+        def failedActions
+        if (cleanupAfter == TEST) {
+            failedActions = runActionsByType(postTestActions)
+        } else {
+            failedActions = runActionsByType(postClassActions)
+        }
+        if (failedActions) {
+            throw new RuntimeException(failedActions.toString())
+        }
+    }
+
+    private static List<Exception> runActionsByType(ConcurrentHashMap<CleanupActionType, List<Closure>> actions) {
+        def exceptions = []
+        exceptions += runActionsSynchronously(actions[DELETE_FLOW])
+        exceptions += runActionsSynchronously(actions[DELETE_YFLOW])
+        exceptions += runActionsSynchronously(actions[DELETE_HAFLOW])
+        exceptions += runActionsAsynchronously(actions[REVIVE_SWITCH])
+        exceptions += runActionsSynchronously(actions[RESTORE_FEATURE_TOGGLE])
+        exceptions += runActionsAsynchronously(actions[RESTORE_ISL])
+        exceptions += runActionsAsynchronously(actions[PORT_UP])
+        if (actions[RESET_ISLS_COST]) {
+            exceptions += runActionsSynchronously([actions[RESET_ISLS_COST].first()])
+        }
+        if (actions[DELETE_ISLS_PROPERTIES]) {
+            exceptions += runActionsSynchronously([actions[DELETE_ISLS_PROPERTIES].first()])
+        }
+        exceptions += runActionsAsynchronously(actions[RESET_ISL_AVAILABLE_BANDWIDTH])
+        exceptions += runActionsSynchronously(actions[OTHER])
+        clearActionsList(actions)
+        return exceptions
+    }
+
+    private static List<Exception> runActionsSynchronously(List<Closure> actions) {
+        return actions.collect{
             try {
                 it()
                 return null
-            } catch (Exception e) {
-                return e.getMessage()
+            } catch (Exception exception) {
+                return exception
             }
-        }.findAll()
-        cleanupActions[cleanupAfter].clear()
-        if (failedActions) {
-            throw new RuntimeException(failedActions.toString())
+        }.findAll {}
+    }
+
+    private static List<Exception> runActionsAsynchronously(List<Closure> actions) {
+        return  withPool {
+            actions.collectParallel {
+                try {
+                    it()
+                    return null
+                } catch (Exception exception) {
+                    return exception
+                }
+            }
+        }.findAll {}
+    }
+
+    private static def clearActionsList(ConcurrentHashMap<CleanupActionType, List<Closure>> actions) {
+        CleanupActionType.values().each {
+            actions[it].clear()
         }
     }
 }

@@ -1,5 +1,32 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.messaging.command.switches.InstallRulesAction
+import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.info.rule.FlowEntry
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.model.cookie.CookieBase.CookieType
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.tools.FlowTrafficExamBuilder
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
+import spock.lang.Shared
+import spock.lang.Unroll
+
+import javax.inject.Provider
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -16,35 +43,6 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static spock.util.matcher.HamcrestSupport.expect
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.messaging.command.switches.InstallRulesAction
-import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.info.rule.FlowEntry
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.model.cookie.CookieBase.CookieType
-import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Narrative
-import spock.lang.Shared
-import spock.lang.Unroll
-
-import javax.inject.Provider
 
 @Narrative("""Verify how Kilda behaves with switch rules (either flow rules or default rules) under different 
 circumstances: e.g. persisting rules on newly connected switch, installing default rules on new switch etc.""")
@@ -675,7 +673,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
          }
 
         cleanup: "Revive the ISL back (bring switch port up), delete the flow and reset costs"
-        islHelper.restoreIsl(islToFail)
         database.resetCosts(topology.isls)
     }
 

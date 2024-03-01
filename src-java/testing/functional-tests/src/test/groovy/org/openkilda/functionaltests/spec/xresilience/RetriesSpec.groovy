@@ -1,7 +1,23 @@
 package org.openkilda.functionaltests.spec.xresilience
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import groovy.util.logging.Slf4j
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchStatus
+import org.openkilda.northbound.dto.v1.flows.PingInput
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
+import spock.lang.Isolated
+import spock.lang.Shared
+
+import java.util.concurrent.TimeUnit
+
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
@@ -14,24 +30,6 @@ import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchStatus
-import org.openkilda.northbound.dto.v1.flows.PingInput
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
-
-import groovy.util.logging.Slf4j
-import spock.lang.Isolated
-import spock.lang.Shared
-
-import java.util.concurrent.TimeUnit
 
 @Slf4j
 class RetriesSpec extends HealthCheckSpecification {
@@ -115,7 +113,6 @@ and at least 1 path must remain safe"
             database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(switchToBreak, blockData)
         }
-        islHelper.restoreIsl(islToBreak)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
     }
@@ -207,7 +204,6 @@ and at least 1 path must remain safe"
             switchHelper.reviveSwitch(swToManipulate, blockData)
             switchHelper.synchronize(swToManipulate.dpId)
         }
-        islHelper.restoreIsls(altIsls)
         database.resetCosts(topology.isls)
 
         where:
@@ -333,7 +329,6 @@ and at least 1 path must remain safe"
             switchHelper.reviveSwitch(swToManipulate, blockData)
             switchHelper.synchronize(swToManipulate.dpId)
         }
-        islHelper.restoreIsls(altIsls)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
     }
@@ -385,7 +380,6 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
 
         cleanup:
         lockKeeper.cleanupTrafficShaperRules(swPair.src.regions)
-        islHelper.restoreIsl(islToBreak)
         database.resetCosts(topology.isls)
     }
 }

@@ -1,17 +1,17 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.openkilda.functionaltests.extension.tags.Tag.*
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.tools.SoftAssertions
 
 import java.util.concurrent.TimeUnit
+
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 class MultiRerouteSpec extends HealthCheckSpecification {
 
@@ -89,7 +89,6 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         northbound.getAllLinks().each { assert it.availableBandwidth >= 0 }
 
         cleanup: "revert system to original state"
-        islHelper.restoreIsl(islToBreak)
         [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)

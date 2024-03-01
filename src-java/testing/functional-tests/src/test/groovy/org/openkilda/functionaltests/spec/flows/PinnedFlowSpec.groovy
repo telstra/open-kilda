@@ -1,15 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-
-import org.openkilda.functionaltests.error.PinnedFlowNotReroutedExpectedError
-
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.PinnedFlowNotReroutedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.error.MessageError
@@ -23,6 +15,11 @@ import spock.lang.Narrative
 
 import java.time.Instant
 import java.util.concurrent.TimeUnit
+
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Narrative("""A new flag of flow that indicates that flow shouldn't be rerouted in case of auto-reroute.
 - In case of isl down such flow should be marked as DOWN.
@@ -153,7 +150,6 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        islHelper.restoreIsls(islsToBreak)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
     }

@@ -1,22 +1,9 @@
 package org.openkilda.functionaltests.helpers
 
-import org.openkilda.functionaltests.model.cleanup.CleanupAfter
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
-
-import static org.openkilda.functionaltests.helpers.FlowHelper.KILDA_ALLOWED_VLANS
-import static FlowHistoryConstants.UPDATE_SUCCESS
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_MIRROR_SUCCESS
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ONLY_IN_DB
-import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
-import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
-import static org.openkilda.messaging.payload.flow.FlowState.UP
-import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
-
+import com.github.javafaker.Faker
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
@@ -34,15 +21,26 @@ import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
-
-import com.github.javafaker.Faker
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
 import java.text.SimpleDateFormat
+
+import static FlowHistoryConstants.UPDATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHelper.KILDA_ALLOWED_VLANS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_MIRROR_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ONLY_IN_DB
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_FLOW
+import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
+import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
+import static org.openkilda.messaging.payload.flow.FlowState.UP
+import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 /**
  * Holds utility methods for manipulating flows supporting version 2 of API.
@@ -166,7 +164,7 @@ class FlowHelperV2 {
     FlowResponseV2 addFlow(FlowRequestV2 flow, FlowState expectedFlowState = UP, cleanupAfter = TEST) {
         log.debug("Adding flow '${flow.flowId}'")
         def flowId = flow.getFlowId()
-        cleanupManager.addAction({safeDeleteFlow(flowId)}, cleanupAfter)
+        cleanupManager.addAction(DELETE_FLOW, {safeDeleteFlow(flowId)}, cleanupAfter)
         def response = northboundV2.addFlow(flow)
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             assert northboundV2.getFlowStatus(flowId).status == expectedFlowState
@@ -189,7 +187,7 @@ class FlowHelperV2 {
      */
     FlowResponseV2 attemptToAddFlow(FlowRequestV2 flow) {
         def flowId = flow.getFlowId()
-        cleanupManager.addAction({safeDeleteFlow(flowId)}, TEST)
+        cleanupManager.addAction(DELETE_FLOW, {safeDeleteFlow(flowId)}, TEST)
         return northboundV2.addFlow(flow)
     }
 

@@ -1,22 +1,16 @@
 package org.openkilda.functionaltests.spec.links
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-
-import org.openkilda.functionaltests.error.link.LinkPropertiesNotUpdatedExpectedError
-
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.link.LinkPropertiesNotUpdatedExpectedError
 import org.openkilda.functionaltests.extension.fixture.TestFixture
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.links.LinkPropsDto
 import org.openkilda.testing.Constants
 import org.openkilda.testing.service.northbound.NorthboundService
-
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.web.client.HttpClientErrorException
@@ -24,10 +18,16 @@ import spock.lang.Shared
 
 import java.util.concurrent.TimeUnit
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 class LinkPropertiesSpec extends HealthCheckSpecification {
     @Autowired @Shared @Qualifier("northboundServiceImpl")
     NorthboundService northboundGlobal
-
+    @Autowired
+    CleanupManager cleanupManager
     @Shared
     def propsDataForSearch = [
             new LinkPropsDto("0f:00:00:00:00:00:00:01", 1, "0f:00:00:00:00:00:00:02", 1, [:]),
@@ -44,6 +44,8 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         when: "Send link property request with invalid character"
         def linkPropsCreate = [new LinkPropsDto("0f:00:00:00:00:00:00:01", 1,
                 "0f:00:00:00:00:00:00:02", 1, ["`cost": "700"])]
+        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
+                {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
         def response = northbound.updateLinkProps(linkPropsCreate)
 
         then: "Response states that operation succeeded"
@@ -53,14 +55,13 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         def linkProps = northboundGlobal.getLinkProps(null, 1, null, 1).findAll { it.srcSwitch.startsWith("0f") }
         linkProps.size() == 2
         linkProps.each { assert it.props.isEmpty() }
-
-        cleanup: "Delete created link props"
-        northbound.deleteLinkProps(linkPropsCreate)
     }
 
     def "Unable to create link property with invalid switchId format"() {
         when: "Try creating link property with invalid switchId format"
         def linkProp = new LinkPropsDto("I'm invalid", 1, "0f:00:00:00:00:00:00:02", 1, [:])
+        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
+                {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
         def response = northbound.updateLinkProps([linkProp])
 
         then: "Response with error is received"
@@ -73,11 +74,14 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         def nonNumericValue = "1000L"
         def linkProp = new LinkPropsDto("0f:00:00:00:00:00:00:01", 1, "0f:00:00:00:00:00:00:02", 1,
                 [(key): nonNumericValue])
+        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
+                {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
         northbound.updateLinkProps([linkProp])
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         new LinkPropertiesNotUpdatedExpectedError(~/Bad ${key.replace("_"," ")} value \'$nonNumericValue\'/).matches(exc)
+
         where:
         key << ["cost", "max_bandwidth"]
     }
@@ -159,6 +163,8 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
                 "max_bandwidth": maxBandwidthValue,
                 "description": descriptionValue
         ])]
+        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
+                {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
         northbound.updateLinkProps(linkProps)
         assert northbound.getLinkProps(topology.isls).size() == 2
 
@@ -177,6 +183,8 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
 
         when: "Update link props on the forward direction of ISL to update cost one more time"
         def newCostValue = "345"
+        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
+                {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
         northbound.updateLinkProps([islUtils.toLinkProps(isl, ["cost": newCostValue])])
 
         then: "Forward and reverse directions of the link props are really updated"
@@ -204,9 +212,6 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         and: "Description on forward and reverse ISLs are removed"
         islUtils.getIslInfo(links, isl).get().description == null
         islUtils.getIslInfo(links, isl.reversed).get().description == null
-
-        cleanup:
-        !linkPropsAreDeleted && northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
@@ -231,6 +236,8 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         def costValue = "12345"
         def maxBandwidthValue = "54321"
         def linkProps = [islUtils.toLinkProps(isl, ["cost": costValue, "max_bandwidth": maxBandwidthValue])]
+        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
+                {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
         northbound.updateLinkProps(linkProps)
 
         when: "Bring port up on the source switch to discover the deleted link"
@@ -248,18 +255,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         def links = northbound.getAllLinks()
         islUtils.getIslInfo(links, isl).get().maxBandwidth == maxBandwidthValue.toInteger()
         islUtils.getIslInfo(links, isl.reversed).get().maxBandwidth == maxBandwidthValue.toInteger()
-
-        cleanup: "Delete link props"
-        if (!islIsUp) {
-            antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
-            }
-        }
-        //DELETE /link/props deletes props for both directions, even if only one direction specified
-        linkProps && northbound.deleteLinkProps(linkProps)
     }
-
     def prepareLinkPropsForSearch() {
         northbound.updateLinkProps(propsDataForSearch)
     }

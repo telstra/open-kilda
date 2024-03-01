@@ -77,16 +77,11 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
         when: "Delete y-flows"
         [yFlow1, yFlow2, yFlow3].each { it && yFlowHelper.deleteYFlow(it.YFlowId) }
-        def yFlowsAreDeleted = true
-
         then: "YFlows' histories contain 'diverseGroupId' information in 'delete' operation"
         verifyAll(flowHelper.getEarliestHistoryEntryByAction(yFlow1.subFlows[0].flowId, DELETE_ACTION).dumps) {
             it.find { it.type == "stateBefore" }?.diverseGroupId
             !it.find { it.type == "stateAfter" }?.diverseGroupId
         }
-
-        cleanup:
-        !yFlowsAreDeleted && [yFlow1, yFlow2, yFlow3].each { it && yFlowHelper.deleteYFlow(it.YFlowId) }
     }
 
     def "Able to update y-flow to became diverse with simple multiSwitch flow"() {
@@ -157,9 +152,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
         and: "Simple multi switch flow doesn't have the 'diverse_with' field"
         northboundV2.getFlow(flow.flowId).diverseWithYFlows.empty
-
-        cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
     def "Able to create y-flow with one switch sub flow and diverse with simple multiSwitch flow"() {
@@ -192,9 +184,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
         and: "Simple flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
     def "Able to get y-flow paths with correct overlapping segments stats"() {
@@ -252,12 +241,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow1Paths, [yFlow2, yFlow3])
         "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow2Paths, [yFlow1, yFlow3])
         "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow3Paths, [yFlow2, yFlow1])
-
-        cleanup:
-        withPool {
-            [yFlow1, yFlow2, yFlow3].eachParallel { it && yFlowHelper.deleteYFlow(it.YFlowId) }
-        }
-
     }
 
     @Tags([LOW_PRIORITY])
@@ -301,11 +284,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow1Paths, [yFlow2, yFlow3])
         "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow2Paths, [yFlow1, yFlow3])
         "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow3Paths, [yFlow2, yFlow1])
-
-        cleanup:
-        withPool {
-            [yFlow1, yFlow2, yFlow3].eachParallel { it && yFlowHelper.deleteYFlow(it.YFlowId) }
-        }
     }
 
     def "Able to get Y-Flow paths with with diversity part when flows become diverse after partial update"() {
@@ -342,99 +320,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         then: "Path request contain all the subflows in diverse group"
         "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow1Paths, [yFlow2])
         "assert that sub-flows paths have all expected flow ids in 'other flows' section"(yFlow2Paths, [yFlow1])
-
-
-        cleanup:
-        withPool {
-            [yFlow1, yFlow2].eachParallel{
-                it && yFlowHelper.deleteYFlow(it.getYFlowId())
-            }
-        }
-    }
-
-    void verifySegmentsStats(YFlowPaths yFlowPaths, Map expectedValuesMap) {
-        yFlowPaths.subFlowPaths.each { flow ->
-            flow.diverseGroup && with(flow.diverseGroup) { diverseGroup ->
-                verifyAll(diverseGroup.overlappingSegments) {
-                    it == expectedValuesMap["diverseGroup"][flow.flowId]
-                }
-                with(diverseGroup.otherFlows) { otherFlows ->
-                    otherFlows.each { otherFlow ->
-                        verifyAll(otherFlow.segmentsStats) {
-                            it == expectedValuesMap["otherFlows"][flow.flowId][otherFlow.id]
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    void verifySegmentsStats(List<FlowPathPayload> flowPaths, Map expectedValuesMap) {
-        flowPaths.each { flow ->
-            with(flow.diverseGroupPayload) { diverseGroup ->
-                verifyAll(diverseGroup.overlappingSegments) {
-                    it == expectedValuesMap["diverseGroup"][flow.id]
-                }
-                with(diverseGroup.otherFlows) { otherFlows ->
-                    otherFlows.each { otherFlow ->
-                        verifyAll(otherFlow.segmentsStats) {
-                            it == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-        def expectedThreeYFlowsPathIntersectionValuesMap(YFlowPaths yFlowUnderTest,
-                                                     YFlowPaths yFlow2Paths,
-                                                     YFlowPaths yFlow3Paths) {
-        return [
-                diverseGroup: [
-                        (yFlowUnderTest.subFlowPaths[0].flowId): pathHelper.getOverlappingSegmentStats(
-                                yFlowUnderTest.subFlowPaths[0].forward,
-                                [yFlow2Paths.subFlowPaths[0].forward,
-                                 yFlow2Paths.subFlowPaths[1].forward,
-                                 yFlow3Paths.subFlowPaths[0].forward,
-                                 yFlow3Paths.subFlowPaths[1].forward]),
-                        (yFlowUnderTest.subFlowPaths[1].flowId): pathHelper.getOverlappingSegmentStats(
-                                yFlowUnderTest.subFlowPaths[1].forward,
-                                [yFlow2Paths.subFlowPaths[0].forward,
-                                 yFlow2Paths.subFlowPaths[1].forward,
-                                 yFlow3Paths.subFlowPaths[0].forward,
-                                 yFlow3Paths.subFlowPaths[1].forward])
-                ],
-                otherFlows  : [
-                        (yFlowUnderTest.subFlowPaths[0].flowId): [
-                                (yFlow2Paths.subFlowPaths[0].flowId)   : pathHelper.getOverlappingSegmentStats(
-                                        yFlowUnderTest.subFlowPaths[0].forward,
-                                        [yFlow2Paths.subFlowPaths[0].forward]),
-                                (yFlow2Paths.subFlowPaths[1].flowId)   : pathHelper.getOverlappingSegmentStats(
-                                        yFlowUnderTest.subFlowPaths[0].forward,
-                                        [yFlow2Paths.subFlowPaths[1].forward]),
-                                (yFlow3Paths.subFlowPaths[0].flowId)   : pathHelper.getOverlappingSegmentStats(
-                                        yFlowUnderTest.subFlowPaths[0].forward,
-                                        [yFlow3Paths.subFlowPaths[0].forward]),
-                                (yFlow3Paths.subFlowPaths[1].flowId)   : pathHelper.getOverlappingSegmentStats(
-                                        yFlowUnderTest.subFlowPaths[0].forward,
-                                        [yFlow3Paths.subFlowPaths[1].forward])
-                        ],
-                        (yFlowUnderTest.subFlowPaths[1].flowId): [
-                                (yFlow2Paths.subFlowPaths[0].flowId)   : pathHelper.getOverlappingSegmentStats(
-                                        yFlowUnderTest.subFlowPaths[1].forward,
-                                        [yFlow2Paths.subFlowPaths[0].forward]),
-                                (yFlow2Paths.subFlowPaths[1].flowId)   : pathHelper.getOverlappingSegmentStats(
-                                        yFlowUnderTest.subFlowPaths[1].forward,
-                                        [yFlow2Paths.subFlowPaths[1].forward]),
-                                (yFlow3Paths.subFlowPaths[0].flowId)   : pathHelper.getOverlappingSegmentStats(
-                                        yFlowUnderTest.subFlowPaths[1].forward,
-                                        [yFlow3Paths.subFlowPaths[0].forward]),
-                                (yFlow3Paths.subFlowPaths[1].flowId)   : pathHelper.getOverlappingSegmentStats(
-                                        yFlowUnderTest.subFlowPaths[1].forward,
-                                        [yFlow3Paths.subFlowPaths[1].forward])
-                        ]
-                ]
-        ]
     }
 
     def "assert that sub-flows paths have all expected flow ids in 'other flows' section"(YFlowPaths yFlowPaths,

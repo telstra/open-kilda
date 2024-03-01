@@ -1,15 +1,10 @@
 package org.openkilda.functionaltests.helpers
 
-import static org.openkilda.functionaltests.helpers.FlowHelper.KILDA_ALLOWED_VLANS
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS_Y
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS_Y
-import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
-
+import com.github.javafaker.Faker
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
-import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.PathComputationStrategy
@@ -26,14 +21,19 @@ import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
-
-import com.github.javafaker.Faker
-import groovy.transform.Memoized
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
+
+import static org.openkilda.functionaltests.helpers.FlowHelper.KILDA_ALLOWED_VLANS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS_Y
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS_Y
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_YFLOW
+import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
+import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 /**
  * Holds utility methods for manipulating y-flows.
@@ -50,6 +50,8 @@ class YFlowHelper {
     NorthboundService northbound
     @Autowired
     FlowHelperV2 flowHelperV2
+    @Autowired
+    CleanupManager cleanupManager
 
     def random = new Random()
     def faker = new Faker()
@@ -150,16 +152,18 @@ class YFlowHelper {
     /**
      * Adds y-flow and waits for it to become UP.
      */
-    YFlow addYFlow(YFlowCreatePayload flow) {
+    YFlow addYFlow(YFlowCreatePayload flow, cleanupAfter = TEST) {
         log.debug("Adding y-flow")
+        def yFlowId = flow.getYFlowId()
+        cleanupManager.addAction(DELETE_YFLOW, {safeDeleteYFlow(yFlowId)}, cleanupAfter)
         def response = northboundV2.addYFlow(flow)
         assert response.YFlowId
         YFlow yFlow
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-            yFlow = northboundV2.getYFlow(response.YFlowId)
+            yFlow = northboundV2.getYFlow(yFlowId)
             assert yFlow
             assert yFlow.status == FlowState.UP.toString()
-            assert northbound.getFlowHistory(response.YFlowId).last().payload.last().action == CREATE_SUCCESS_Y
+            assert northbound.getFlowHistory(yFlowId).last().payload.last().action == CREATE_SUCCESS_Y
         }
         return yFlow
     }
@@ -180,6 +184,15 @@ class YFlowHelper {
         // https://github.com/telstra/open-kilda/issues/3411
         northbound.synchronizeSwitch(response.sharedEndpoint.switchId, true)
         return response
+    }
+
+    /**
+     * Deletes y-flow if it exists and waits when the flow disappears from the flow list.
+     */
+    def safeDeleteYFlow(String yFlowId) {
+        if (northboundV2.getAllYFlows().any {it.getYFlowId().equals(yFlowId)}) {
+            deleteYFlow(yFlowId)
+        }
     }
 
     /**
