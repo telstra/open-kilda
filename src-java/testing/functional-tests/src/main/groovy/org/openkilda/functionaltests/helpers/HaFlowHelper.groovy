@@ -11,7 +11,7 @@ import org.openkilda.testing.service.traffexam.model.Host
 import org.openkilda.testing.service.traffexam.model.TimeLimit
 import org.openkilda.testing.service.traffexam.model.Vlan
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
 import org.openkilda.northbound.dto.v2.haflows.HaFlowValidationResult
@@ -24,7 +24,6 @@ import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.FlowStatus
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.BaseFlowEndpointV2
@@ -37,7 +36,6 @@ import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths
 import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaFlowUpdatePayload
-import org.openkilda.northbound.dto.v2.haflows.HaSubFlow
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch

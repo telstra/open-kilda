@@ -25,10 +25,9 @@ import org.openkilda.wfm.topology.stats.model.KildaEntryDescriptor;
 import org.openkilda.wfm.topology.stats.model.SwitchGroupStats;
 import org.openkilda.wfm.topology.stats.service.GroupStatsHandler;
 
+import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.tuple.Tuple;
-
-import javax.annotation.Nullable;
 
 @Slf4j
 public class GroupStatsMetricGenBolt extends MetricGenBolt {

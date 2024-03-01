@@ -41,7 +41,7 @@ import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
 import spock.lang.Ignore
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 class SwapEndpointSpec extends HealthCheckSpecification {
 

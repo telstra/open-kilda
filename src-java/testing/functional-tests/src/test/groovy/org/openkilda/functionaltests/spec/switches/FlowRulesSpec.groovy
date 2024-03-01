@@ -42,7 +42,7 @@ import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @Narrative("""Verify how Kilda behaves with switch rules (either flow rules or default rules) under different 
 circumstances: e.g. persisting rules on newly connected switch, installing default rules on new switch etc.""")

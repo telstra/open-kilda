@@ -22,10 +22,10 @@ import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Key;
 import com.sabre.oss.conf4j.factory.jdkproxy.JdkProxyStaticConfigurationFactory;
 import com.sabre.oss.conf4j.source.PropertiesConfigurationSource;
+import jakarta.validation.constraints.Min;
 import org.junit.jupiter.api.Test;
 
 import java.util.Properties;
-import javax.validation.constraints.Min;
 
 public class ValidatingConfigurationProviderTest {
     static final String TEST_KEY = "test_key";

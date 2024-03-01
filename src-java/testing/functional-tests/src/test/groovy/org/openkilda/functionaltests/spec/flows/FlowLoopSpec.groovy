@@ -40,7 +40,7 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-loop")
 @Narrative("""Flow loop feature designed for flow path testing. Loop provides additional flow rules on one of the 
