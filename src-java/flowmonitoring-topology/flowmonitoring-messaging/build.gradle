@@ -1,18 +1,17 @@
 plugins {
-    id 'java-library'
+    id "java-library"
 }
 
-description = 'Flow monitoring Topology Messaging'
+description = "Flow monitoring Topology Messaging"
 dependencies {
-    api project(':base-messaging')
-    testImplementation project(path: ':base-messaging', configuration: 'testArtifacts')
+    api(project(":base-messaging"))
+    implementation("com.fasterxml.jackson.core:jackson-core")
+    implementation("com.fasterxml.jackson.core:jackson-annotations")
+    implementation("com.fasterxml.jackson.core:jackson-databind")
+    implementation("com.google.guava:guava")
 
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations'
-    implementation('com.fasterxml.jackson.core:jackson-databind')
+    testImplementation(project(path: ":base-messaging", configuration: "testArtifacts"))
 
-    implementation 'com.google.guava:guava'
-
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
 }

@@ -1,18 +1,15 @@
 plugins {
-    id 'java-library'
+    id "java-library"
 }
 
 dependencies {
-    implementation 'com.google.protobuf:protobuf-java:3.22.3'
+    api(project(":base-messaging"))
+    implementation(project(":server42-messaging"))
+    implementation("com.google.protobuf:protobuf-java:3.22.3")
+    implementation("com.fasterxml.jackson.core:jackson-annotations")
+    implementation("com.fasterxml.jackson.core:jackson-core")
+    implementation("com.fasterxml.jackson.core:jackson-databind")
 
-    implementation 'com.fasterxml.jackson.core:jackson-annotations'
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-
-    api project(':base-messaging')
-
-    implementation project(':server42-messaging')
-
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
 }

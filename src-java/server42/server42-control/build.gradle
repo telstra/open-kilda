@@ -1,58 +1,57 @@
 plugins {
-    id 'org.springframework.boot' version '2.2.13.RELEASE'
+    id "org.springframework.boot" version "3.2.0"
 }
 
 configurations {
     // This conflicts with spring-boot-starter-log4j2
-    implementation.exclude module: 'spring-boot-starter-logging'
+    implementation.exclude module: "spring-boot-starter-logging"
     //LoggerFactory is not a Logback LoggerContext but Logback is on the classpath. Either remove Logback or the competing implementation
-    implementation.exclude group: 'ch.qos.logback', module: 'logback-classic'
-    implementation.exclude group: 'ch.qos.logback', module: 'logback-core'
+    implementation.exclude group: "ch.qos.logback", module: "logback-classic"
+    implementation.exclude group: "ch.qos.logback", module: "logback-core"
 }
 
-description = 'server42-control'
+description = "server42-control"
 dependencies {
-    implementation(platform('org.springframework:spring-framework-bom:6.0.6'))
-    implementation(platform('org.springframework.boot:spring-boot-dependencies:3.1.0'))
+    implementation(platform("org.springframework:spring-framework-bom:6.0.6"))
+    implementation(platform("org.springframework.boot:spring-boot-dependencies:3.1.0"))
 
-    implementation project(':kilda-model')
-    implementation project(':blue-green')
+    implementation(project(":kilda-model"))
+    implementation(project(":blue-green"))
 
-    implementation project(':server42-control-messaging')
-    implementation project(':server42-messaging')
+    implementation(project(":server42-control-messaging"))
+    implementation(project(":server42-messaging"))
+    implementation("com.google.protobuf:protobuf-java:3.22.3")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0")
+    implementation("io.swagger.core.v3:swagger-core:2.2.19")
+    implementation("joda-time:joda-time:2.10.13")
+    implementation("io.micrometer:micrometer-core:1.10.6")
+    implementation("io.micrometer:micrometer-registry-prometheus:1.10.6")
+    implementation("org.zeromq:jeromq:0.4.3")
+    implementation("com.fasterxml.jackson.core:jackson-core")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-joda")
 
-    implementation 'com.google.protobuf:protobuf-java:3.22.3'
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
-    implementation 'io.swagger.core.v3:swagger-core:2.2.19'
-    implementation 'joda-time:joda-time:2.10.13'
-    implementation 'io.micrometer:micrometer-core:1.10.6'
-    implementation 'io.micrometer:micrometer-registry-prometheus:1.10.6'
-    implementation 'org.zeromq:jeromq:0.4.3'
+    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter")
+    implementation("org.springframework.boot:spring-boot-starter-log4j2")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
 
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-joda'
-
-    implementation('org.springframework.boot:spring-boot-starter-web')
-    implementation('org.springframework.boot:spring-boot-starter')
-    implementation 'org.springframework.boot:spring-boot-starter-log4j2'
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-
-    implementation('org.springframework.kafka:spring-kafka:3.1.0')
-    testImplementation('org.springframework.kafka:spring-kafka-test:3.1.0')
-    implementation 'org.apache.kafka:kafka-clients'
-    implementation('org.apache.kafka:kafka_2.12:3.6.1') {
-        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
-        exclude group: 'log4j', module: 'log4j'
+    implementation("org.springframework.kafka:spring-kafka:3.1.0")
+    implementation("org.apache.kafka:kafka-clients")
+    implementation("org.apache.kafka:kafka_2.12:3.6.1") {
+        exclude group: "org.slf4j", module: "slf4j-log4j12"
+        exclude group: "log4j", module: "log4j"
     }
 
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.kafka:spring-kafka-test:3.1.0")
+
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding")
 }
 
 bootJar {
-    mainClassName = 'org.openkilda.server42.control.ControlApplication'
+    mainClass = "org.openkilda.server42.control.ControlApplication"
     archiveFileName = "${archivesBaseName}.${archiveExtension.get()}"
 }
 
