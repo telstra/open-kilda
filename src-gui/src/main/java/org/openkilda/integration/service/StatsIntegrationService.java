@@ -24,9 +24,8 @@ import org.openkilda.model.victoria.RangeQueryParams;
 import org.openkilda.model.victoria.Status;
 import org.openkilda.model.victoria.dbdto.VictoriaDbRes;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -37,10 +36,9 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+@Slf4j
 @Service
 public class StatsIntegrationService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(StatsIntegrationService.class);
 
     private final ApplicationProperties appProps;
     private final ServerContext serverContext;
@@ -62,7 +60,7 @@ public class StatsIntegrationService {
      * @return A VictoriaResponse object containing the response from the Victoria Metrics server.
      */
     public VictoriaDbRes getVictoriaStats(RangeQueryParams rangeQueryParamsRequest) {
-        LOGGER.info("Getting victoria stats for the following requestParams: {}", rangeQueryParamsRequest);
+        log.info("Getting victoria stats for the following requestParams: {}", rangeQueryParamsRequest);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -73,16 +71,16 @@ public class StatsIntegrationService {
                 = getMultiValueMapHttpEntity(rangeQueryParamsRequest, headers);
         String url = appProps.getVictoriaBaseUrl() + IConstants.VictoriaMetricsUrl.VICTORIA_RANGE_QUERY;
         try {
-            LOGGER.info("Request to Victoria DB with the following url: {}", url);
+            log.info("Request to Victoria DB with the following url: {}", url);
             ResponseEntity<VictoriaDbRes> responseEntity
                     = restTemplate.postForEntity(url, requestEntity, VictoriaDbRes.class);
-            LOGGER.info("Received response from victoriaDb with the following http code: {}, status: {}, error: {}",
+            log.info("Received response from victoriaDb with the following http code: {}, status: {}, error: {}",
                     responseEntity.getStatusCodeValue(),
                     responseEntity.getBody().getStatus(),
                     responseEntity.getBody().getError());
             return responseEntity.getBody();
         } catch (ResourceAccessException e) {
-            LOGGER.error("Error while accessing VictoriaDB with the following URL: {}", url, e);
+            log.error("Error while accessing VictoriaDB with the following URL: {}", url, e);
             return VictoriaDbRes.builder().status(Status.ERROR).errorType("500")
                     .error("Can not access stats at the moment, something wrong with the Victoria DB").build();
         }

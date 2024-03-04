@@ -21,9 +21,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,14 +35,9 @@ import java.io.IOException;
  * The Class MyAccessDeniedHandler.
  */
 // handle 403 page
+@Slf4j
 @Component
 public class MyAccessDeniedHandler implements AccessDeniedHandler {
-
-    /**
-     * The logger.
-     */
-    private static Logger logger = LoggerFactory.getLogger(MyAccessDeniedHandler.class);
-
     /*
      * (non-Javadoc)
      *
@@ -60,7 +53,7 @@ public class MyAccessDeniedHandler implements AccessDeniedHandler {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
         if (auth != null) {
-            logger.warn("User '" + auth.getName() + "' attempted to access the protected URL: "
+            log.warn("User '" + auth.getName() + "' attempted to access the protected URL: "
                     + httpServletRequest.getRequestURI());
         }
 

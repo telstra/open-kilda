@@ -44,8 +44,7 @@ import org.openkilda.store.service.StoreService;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.StringUtil;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.usermanagement.exception.RequestValidationException;
@@ -67,11 +66,9 @@ import java.util.stream.Collectors;
  *
  * @author Gaurav Chugh
  */
-
+@Slf4j
 @Service
 public class FlowService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(FlowService.class);
 
     @Autowired
     private FlowsIntegrationService flowsIntegrationService;
@@ -125,7 +122,7 @@ public class FlowService {
                         processInventoryFlow(flows, inventoryFlows);
                     }
                 } catch (Exception ex) {
-                    LOGGER.error("Error occurred while retrieving flows from store", ex);
+                    log.error("Error occurred while retrieving flows from store", ex);
                 }
             }
         }
@@ -221,7 +218,7 @@ public class FlowService {
         try {
             flow = flowsIntegrationService.getFlowById(flowId);
         } catch (InvalidResponseException ex) {
-            LOGGER.error("Error occurred while retrieving flows from controller", ex);
+            log.error("Error occurred while retrieving flows from controller", ex);
             if (controller) {
                 throw new InvalidResponseException(ex.getCode(), ex.getResponse());
             }
@@ -290,7 +287,7 @@ public class FlowService {
                 throw new RequestValidationException("Can not get flow: Flow " + flowId + " not found");
             }
         } catch (Exception ex) {
-            LOGGER.error("Error occurred while retrieving flows from store", ex);
+            log.error("Error occurred while retrieving flows from store", ex);
             throw new RequestValidationException(ex.getMessage());
         }
         return flowInfo;
@@ -468,7 +465,7 @@ public class FlowService {
                 status.setStatuses(new HashSet<String>(flowStoreService.getAllStatus()));
             }
         } else {
-            LOGGER.info("Link store is not configured. ");
+            log.info("Link store is not configured. ");
         }
         return status.getStatuses() != null ? status.getStatuses() : new HashSet<String>();
     }

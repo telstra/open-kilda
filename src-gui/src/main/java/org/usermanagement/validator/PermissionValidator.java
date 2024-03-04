@@ -15,9 +15,7 @@
 
 package org.usermanagement.validator;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -31,11 +29,9 @@ import org.usermanagement.util.ValidatorUtil;
 /**
  * The Class PermissionValidator.
  */
-
+@Slf4j
 @Component
 public class PermissionValidator {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(PermissionValidator.class);
 
     @Autowired
     private PermissionRepository permissionRepository;
@@ -51,7 +47,7 @@ public class PermissionValidator {
     public void validatePermission(final Permission permission) {
 
         if (ValidatorUtil.isNull(permission.getName())) {
-            LOGGER.warn("Validation fail for permission(name: " + permission.getName() + "). Error: "
+            log.warn("Validation fail for permission(name: " + permission.getName() + "). Error: "
                     + messageUtil.getAttributeNotNull("name"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("name"));
         } else if (permission.getName().length() > 255) {
@@ -64,7 +60,7 @@ public class PermissionValidator {
 
         PermissionEntity permissionEntity = permissionRepository.findByName(permission.getName());
         if (permissionEntity != null) {
-            LOGGER.warn("Validation fail for permission(name: " + permission.getName() + "). Error: "
+            log.warn("Validation fail for permission(name: " + permission.getName() + "). Error: "
                     + messageUtil.getAttributeUnique("name"));
             throw new RequestValidationException(messageUtil.getAttributeUnique("name"));
         }
@@ -79,12 +75,12 @@ public class PermissionValidator {
     public void validateUpdatePermission(final Permission permission, final Long permissionId) {
 
         if (ValidatorUtil.isNull(permissionId)) {
-            LOGGER.warn("Validation fail for permission(permission_id: " + permissionId + "). Error: "
+            log.warn("Validation fail for permission(permission_id: " + permissionId + "). Error: "
                     + messageUtil.getAttributeNotNull("permission_id"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("permission_id"));
         } else if (ValidatorUtil.isNull(permission.getName()) && ValidatorUtil.isNull(permission.getStatus())
                 && ValidatorUtil.isNull(permission.getDescription())) {
-            LOGGER.warn("Validation fail for role(name,description and status: " + permission.getName() + ","
+            log.warn("Validation fail for role(name,description and status: " + permission.getName() + ","
                     + permission.getDescription() + "," + permission.getStatus() + "). Error: "
                     + messageUtil.getAttributeNotNull("name,description and status"));
             throw new RequestValidationException(messageUtil.getAttributeNotNull("name,description and status"));
@@ -92,7 +88,7 @@ public class PermissionValidator {
         if (!ValidatorUtil.isNull(permission.getName())) {
             PermissionEntity permissionEntity = permissionRepository.findByName(permission.getName());
             if (permissionEntity != null && !permissionEntity.getPermissionId().equals(permissionId)) {
-                LOGGER.warn("Validation fail for permission(name: " + permission.getName() + "). Error: "
+                log.warn("Validation fail for permission(name: " + permission.getName() + "). Error: "
                         + messageUtil.getAttributeUnique("name"));
                 throw new RequestValidationException(messageUtil.getAttributeUnique("name"));
             }

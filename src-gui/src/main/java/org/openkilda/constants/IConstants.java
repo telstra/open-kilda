@@ -16,18 +16,15 @@
 package org.openkilda.constants;
 
 import lombok.Getter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * The Interface IConstants.
  *
  * @author Gaurav Chugh
  */
-
+@Slf4j
 public abstract class IConstants {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(IConstants.class);
 
     public static final String SESSION_OBJECT = "sessionObject";
 

@@ -46,10 +46,9 @@ import org.openkilda.store.service.StoreService;
 import org.openkilda.utility.CollectionUtil;
 import org.openkilda.utility.IoUtil;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -65,10 +64,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class StatsService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(StatsService.class);
 
     private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH:mm:ss");
 
@@ -146,7 +144,7 @@ public class StatsService {
             }
         }
 
-        LOGGER.info("Received the following metrics responses: {}", victoriaDataList);
+        log.info("Received the following metrics responses: {}", victoriaDataList);
         return victoriaDataList;
     }
 
@@ -191,7 +189,7 @@ public class StatsService {
             victoriaDataList.addAll(buildVictoriaDataList(statsIntegrationService.getVictoriaStats(rangeQueryParams),
                     metricName));
         }
-        LOGGER.debug("Received the following metrics responses: {}", victoriaDataList);
+        log.debug("Received the following metrics responses: {}", victoriaDataList);
         return victoriaDataList;
     }
 
@@ -212,7 +210,7 @@ public class StatsService {
                         .getSwitchPort(IoUtil.switchCodeToSwitchId(switchId));
                 processInventoryPorts(portStats, inventoryPorts);
             } catch (Exception ex) {
-                LOGGER.error("Error occurred while retriving switch ports stats for inventory", ex);
+                log.error("Error occurred while retriving switch ports stats for inventory", ex);
             }
 
         }

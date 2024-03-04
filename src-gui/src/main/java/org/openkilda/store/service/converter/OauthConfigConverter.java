@@ -21,13 +21,11 @@ import org.openkilda.store.common.constants.Url;
 import org.openkilda.store.model.OauthTwoConfigDto;
 import org.openkilda.utility.GeneratePassword;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public final class OauthConfigConverter {
-    
-    private static final Logger LOGGER = LoggerFactory.getLogger(OauthConfigConverter.class);
-    
+
     private OauthConfigConverter() {}
 
     /**
@@ -43,7 +41,7 @@ public final class OauthConfigConverter {
         try {
             oauthConfigEntity.setPassword(GeneratePassword.encrypt(oauthTwoConfigDto.getPassword()));
         } catch (Exception e) {
-            LOGGER.error("Password encryption failed for user: " + oauthTwoConfigDto.getUsername(), e);
+            log.error("Password encryption failed for user: " + oauthTwoConfigDto.getUsername(), e);
         }
         oauthConfigEntity.setGenerateToken(UrlConverter.toUrlEntity(Url.OAUTH_GENERATE_TOKEN.getName(),
                 oauthTwoConfigDto.getOauthGenerateTokenUrl(), oauthConfigEntity.getGenerateToken()));
@@ -65,7 +63,7 @@ public final class OauthConfigConverter {
         try {
             oauthTwoConfigDto.setPassword(GeneratePassword.decrypt(oauthConfigEntity.getPassword()));
         } catch (Exception e) {
-            LOGGER.error("Password decryption failed for user: " + oauthConfigEntity.getUsername(), e);
+            log.error("Password decryption failed for user: " + oauthConfigEntity.getUsername(), e);
         }
         oauthTwoConfigDto.setOauthGenerateTokenUrl(UrlConverter.toUrlDto(oauthConfigEntity.getGenerateToken()));
         oauthTwoConfigDto.setOauthRefreshTokenUrl(UrlConverter.toUrlDto(oauthConfigEntity.getRefreshToken()));
