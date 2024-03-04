@@ -1,28 +1,28 @@
 plugins {
-    id 'io.freefair.aspectj.post-compile-weaving'
-    id 'com.github.johnrengelman.shadow'
+    id "io.freefair.aspectj.post-compile-weaving"
+    id "com.github.johnrengelman.shadow"
 }
 
-compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
-compileJava.ajc.options.compilerArgs += '-verbose'
+compileJava.ajc.options.compilerArgs += "-showWeaveInfo"
+compileJava.ajc.options.compilerArgs += "-verbose"
 
-description = 'History Storm Topology'
+description = "History Storm Topology"
 dependencies {
-    implementation project(':base-storm-topology')
-    implementation project(':blue-green')
-    // runtimeClasspath because 'releaseArtifacts' shouldn't go for tests.
-    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
-    runtimeOnly project(':kilda-persistence-orientdb')
-    runtimeOnly project(':kilda-persistence-hibernate')
+    implementation(project(":base-storm-topology"))
+    implementation(project(":blue-green"))
+    implementation("org.yaml:snakeyaml:2.2")
 
-    compileOnly('org.apache.storm:storm-core'){
-        exclude(group: 'org.yaml', module: 'snakeyaml')
+    // runtimeClasspath because "releaseArtifacts" shouldn"t go for tests.
+    runtimeClasspath(project(path: ":base-storm-topology", configuration: "releaseArtifacts"))
+    runtimeOnly(project(":kilda-persistence-orientdb"))
+    runtimeOnly(project(":kilda-persistence-hibernate"))
+    compileOnly("org.apache.storm:storm-core"){
+        exclude(group: "org.yaml", module: "snakeyaml")
     }
-    implementation('org.yaml:snakeyaml:2.2')
 
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding")
 }
 
 jar {
@@ -30,11 +30,11 @@ jar {
         attributes 'Main-Class': 'org.openkilda.wfm.topology.history.HistoryTopology'
     }
 
-    archiveClassifier = 'original'
+    archiveClassifier = "original"
 }
 
 shadowJar {
-    archiveClassifier = ''
+    archiveClassifier = ""
     mergeServiceFiles()
     zip64 true
 }

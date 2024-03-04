@@ -1,25 +1,23 @@
 plugins {
-    id 'java-library'
+    id "java-library"
 }
 
-description = 'Ping Topology Messaging'
+description = "Ping Topology Messaging"
 dependencies {
-    api project(':base-messaging')
-    implementation project(':blue-green')
+    api(project(":base-messaging"))
+    implementation(project(":blue-green"))
+    implementation("com.fasterxml.jackson.core:jackson-core")
+    implementation("com.fasterxml.jackson.core:jackson-annotations")
+    implementation("com.fasterxml.jackson.core:jackson-databind")
+    implementation("com.google.guava:guava")
 
-    testImplementation project(path: ':base-messaging', configuration: 'testArtifacts')
+    testImplementation(project(path: ":base-messaging", configuration: "testArtifacts"))
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine")
 
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations'
-    implementation('com.fasterxml.jackson.core:jackson-databind')
-
-    implementation 'com.google.guava:guava'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
-
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding")
 }
 
 test {

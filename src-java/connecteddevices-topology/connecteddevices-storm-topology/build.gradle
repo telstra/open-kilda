@@ -1,39 +1,40 @@
 plugins {
-    id 'io.freefair.aspectj.post-compile-weaving'
-    id 'com.github.johnrengelman.shadow'
+    id "io.freefair.aspectj.post-compile-weaving"
+    id "com.github.johnrengelman.shadow"
 }
 
-compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
-compileJava.ajc.options.compilerArgs += '-verbose'
+compileJava.ajc.options.compilerArgs += "-showWeaveInfo"
+compileJava.ajc.options.compilerArgs += "-verbose"
 
-description = 'Connected Devices Storm Topology'
+description = "Connected Devices Storm Topology"
 dependencies {
-    implementation project(':base-storm-topology')
-    implementation project(':blue-green')
-    // runtimeClasspath because 'releaseArtifacts' shouldn't go for tests.
-    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
-    testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
-    runtimeOnly project(':kilda-persistence-orientdb')
-    runtimeOnly project(':kilda-persistence-hibernate')
-    testImplementation project(path: ':kilda-persistence-api', configuration: 'testArtifacts')
-    testImplementation project(path: ':kilda-persistence-tinkerpop', configuration: 'testArtifacts')
+    implementation(project(":base-storm-topology"))
+    implementation(project(":blue-green"))
+    implementation("org.yaml:snakeyaml:2.2")
 
-    compileOnly('org.apache.storm:storm-core'){
-        exclude(group: 'org.yaml', module: 'snakeyaml')
+    // runtimeClasspath because "releaseArtifacts" shouldn"t go for tests.
+    runtimeClasspath(project(path: ":base-storm-topology", configuration: "releaseArtifacts"))
+    runtimeOnly(project(":kilda-persistence-orientdb"))
+    runtimeOnly(project(":kilda-persistence-hibernate"))
+
+    compileOnly("org.apache.storm:storm-core"){
+        exclude(group: "org.yaml", module: "snakeyaml")
     }
-    implementation('org.yaml:snakeyaml:2.2')
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
-    testImplementation 'org.junit.jupiter:junit-jupiter-params'
-    testImplementation 'org.mockito:mockito-junit-jupiter'
+    testImplementation(project(path: ":base-storm-topology", configuration: "testArtifacts"))
+    testImplementation(project(path: ":kilda-persistence-api", configuration: "testArtifacts"))
+    testImplementation(project(path: ":kilda-persistence-tinkerpop", configuration: "testArtifacts"))
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine")
+    testImplementation("org.junit.jupiter:junit-jupiter-params")
+    testImplementation("org.mockito:mockito-junit-jupiter")
 
-    compileOnly 'org.projectlombok:lombok'
-    testCompileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    testAnnotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
-    testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    compileOnly("org.projectlombok:lombok")
+    testCompileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    testAnnotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding")
+    testAnnotationProcessor("org.projectlombok:lombok-mapstruct-binding")
 }
 
 jar {
@@ -41,11 +42,11 @@ jar {
         attributes 'Main-Class': 'org.openkilda.wfm.topology.connecteddevices.ConnectedDevicesTopology'
     }
 
-    archiveClassifier = 'original'
+    archiveClassifier = "original"
 }
 
 shadowJar {
-    archiveClassifier = ''
+    archiveClassifier = ""
     mergeServiceFiles()
     zip64 true
 }

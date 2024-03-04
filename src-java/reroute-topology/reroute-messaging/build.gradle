@@ -1,18 +1,18 @@
 plugins {
-    id 'java-library'
+    id "java-library"
 }
 
-description = 'Reroute Topology Messaging'
+description = "Reroute Topology Messaging"
 dependencies {
-    api project(':base-messaging')
+    api project(":base-messaging")
 
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations'
-    implementation('com.fasterxml.jackson.core:jackson-databind')
+    implementation("com.fasterxml.jackson.core:jackson-core")
+    implementation("com.fasterxml.jackson.core:jackson-annotations")
+    implementation("com.fasterxml.jackson.core:jackson-databind")
 
-    implementation 'com.google.guava:guava'
+    implementation("com.google.guava:guava")
 
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding")
 }
