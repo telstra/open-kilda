@@ -167,7 +167,7 @@ class HaFlowBuilder {
      * Adds ha-flow and waits for it to become UP.
      */
     HaFlowExtended create() {
-        log.debug("Adding ha-flow")
+        log.debug("Adding ha-flow with verification of successful creation")
         def response = northboundV2.addHaFlow(haFlowRequest)
         assert response.haFlowId
         HaFlow haFlow
@@ -183,7 +183,7 @@ class HaFlowBuilder {
      * Adds ha-flow without waiting for successful creation
      */
     HaFlow add() {
-        log.debug("Send request to create ha-flow")
+        log.debug("Send request to add ha-flow")
         northboundV2.addHaFlow(haFlowRequest)
     }
 
