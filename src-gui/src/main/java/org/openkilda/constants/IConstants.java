@@ -171,15 +171,6 @@ public abstract class IConstants {
                 + "/switches/{switch_id}/lags/{logical_port_number}";
     }
 
-    public static final class OpenTsDbUrl {
-
-        private OpenTsDbUrl() {
-
-        }
-
-        public static final String OPEN_TSDB_QUERY = "/api/query/";
-    }
-
 
     public static final class VictoriaMetricsUrl {
 
