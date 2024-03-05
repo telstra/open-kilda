@@ -17,7 +17,7 @@ dependencies {
     testImplementation("org.hamcrest:hamcrest-library")
     testImplementation("org.mockito:mockito-junit-jupiter")
 
-    testRuntimeOnly("org.slf4j:slf4j-simple")
+    testRuntimeOnly("org.slf4j:slf4j-simple:2.0.12")
 
     compileOnly("org.projectlombok:lombok")
     testCompileOnly("org.projectlombok:lombok")

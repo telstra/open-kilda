@@ -17,9 +17,6 @@ dependencies {
     implementation("org.mapstruct:mapstruct-processor")
     annotationProcessor("org.mapstruct:mapstruct-processor")
 
-    implementation("org.slf4j:slf4j-api")
-    testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j-impl")
-    
     compileOnly("org.projectlombok:lombok")
     testCompileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")

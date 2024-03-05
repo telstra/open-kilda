@@ -17,7 +17,6 @@ package org.openkilda.testing.service.traffexam.model;
 
 import lombok.Getter;
 import lombok.ToString;
-import org.apache.logging.log4j.util.Strings;
 
 @Getter
 @ToString
@@ -38,7 +37,7 @@ public class EndpointReport {
     }
 
     public EndpointReport(ReportResponse report) {
-        if (Strings.isEmpty(report.getError())) {
+        if (report.getError() == null || report.getError().isEmpty()) {
             this.error = report.getReport().error;
         } else {
             this.error = report.getError();

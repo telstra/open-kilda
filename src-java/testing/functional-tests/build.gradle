@@ -21,9 +21,6 @@ dependencies {
     implementation("org.codehaus.gpars:gpars:1.2.1")
     implementation("com.spotify:docker-client:8.16.0")
     implementation("org.apache.commons:commons-compress:1.21")
-    implementation("org.apache.logging.log4j:log4j-slf4j-impl")
-    implementation("org.apache.logging.log4j:log4j-api")
-    implementation("org.apache.logging.log4j:log4j-core")
     implementation("org.apache.httpcomponents.client5:httpclient5:5.2.3")
     implementation("org.hibernate.validator:hibernate-validator")
     implementation("org.glassfish:jakarta.el")
@@ -38,7 +35,8 @@ dependencies {
     }
 
     testImplementation("org.assertj:assertj-core:3.24.2")
-    testImplementation("org.slf4j:slf4j-simple:2.0.11")
+    testImplementation("org.apache.logging.log4j:log4j-api:2.23.0")
+    testRuntimeOnly("org.slf4j:slf4j-simple:2.0.12")
 }
 
 test {
