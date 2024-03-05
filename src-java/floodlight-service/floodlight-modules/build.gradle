@@ -31,7 +31,7 @@ dependencies {
     implementation("com.google.guava:guava")
     implementation("org.restlet.jse:org.restlet:2.3.2")
     implementation("args4j:args4j")
-    implementation("org.slf4j:slf4j-api")
+    implementation("org.slf4j:slf4j-api:2.0.12")
     implementation("net.logstash.logback:logstash-logback-encoder:4.11") {
         exclude group: "ch.qos.logback"
     }

@@ -25,13 +25,10 @@ dependencies {
     implementation("org.apache.kafka:kafka-clients:3.6.1")
     implementation("org.apache.kafka:kafka_2.12:3.6.1")
 
-    implementation("org.slf4j:slf4j-api")
-    implementation("io.grpc:grpc-protobuf")
-    implementation("io.grpc:grpc-stub")
-    implementation("io.grpc:grpc-alts")
-    implementation("com.google.protobuf:protobuf-java-util")
-    implementation("org.apache.logging.log4j:log4j-api")
-    implementation("org.apache.logging.log4j:log4j-core")
+    implementation("io.grpc:grpc-protobuf:1.62.2")
+    implementation("io.grpc:grpc-stub:1.62.2")
+    implementation("io.grpc:grpc-alts:1.62.2")
+    implementation("com.google.protobuf:protobuf-java-util:3.25.3")
     implementation("org.apache.commons:commons-lang3")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0")
     implementation("io.swagger.core.v3:swagger-core-jakarta:2.2.20")
@@ -44,7 +41,7 @@ dependencies {
     }
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testImplementation("org.junit.jupiter:junit-jupiter-engine")
-    testImplementation("io.grpc:grpc-testing")
+    testImplementation("io.grpc:grpc-testing:1.62.2")
 
     implementation("org.mapstruct:mapstruct")
     implementation("org.mapstruct:mapstruct-processor")
@@ -59,7 +56,7 @@ compileJava {
             "-Amapstruct.defaultComponentModel=spring",
             "-Amapstruct.unmappedTargetPolicy=ERROR"
     ]
-}
+ }
 
 bootJar {
     mainClass = "org.openkilda.grpc.speaker.GrpcSpeaker"
