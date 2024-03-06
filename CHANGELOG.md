@@ -1,6 +1,20 @@
 # Changelog
 
-## v1.155.0 (12/02/2024)
+## v1.156.0 (26/02/2024)
+
+
+
+### Improvements:
+-  [#5584](https://github.com/telstra/open-kilda/pull/5584) Remove "draft" tag from HA-flow API in swagger. (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
+-  [#5586](https://github.com/telstra/open-kilda/pull/5586) [TEST]: Flaky tests: Connected devices [**tests**]
+-  [#5581](https://github.com/telstra/open-kilda/pull/5581) [TEST]: Improvement: Fixing occurred discrepancies after refactoring [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.155.0...v1.156.0).
+
+---
+
+## v1.155.0 (14/02/2024)
 
 ### Features:
 -  [#5000](https://github.com/telstra/open-kilda/pull/5000) Added design for long mirror with join traffic [**docs**]
