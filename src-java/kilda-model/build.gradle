@@ -1,28 +1,25 @@
-description = 'Kilda Data Model'
+description = "Kilda Data Model"
 
 dependencies {
-    implementation 'com.google.guava:guava'
-    compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
-    implementation 'org.apache.commons:commons-collections4'
-    implementation 'org.apache.commons:commons-lang3'
-    // TODO this no longer true. However, storm might still have some requirements on this.
-    // current storm version is 1.2.1.
-    // kryo package with version >= 5.0 is not compatible with old storm serialization
-    implementation 'com.esotericsoftware:kryo:5.6.0'
+    implementation("com.google.guava:guava")
+    implementation("org.apache.commons:commons-collections4")
+    implementation("org.apache.commons:commons-lang3")
+    implementation("com.esotericsoftware:kryo:5.6.0")
 
-    implementation 'org.mapstruct:mapstruct'
-    implementation 'org.mapstruct:mapstruct-processor'
-    annotationProcessor 'org.mapstruct:mapstruct-processor'
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine")
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
+    implementation("org.mapstruct:mapstruct")
+    implementation("org.mapstruct:mapstruct-processor")
+    annotationProcessor("org.mapstruct:mapstruct-processor")
 
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    compileOnly("com.fasterxml.jackson.core:jackson-annotations")
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding")
 }
 
-compileJava.options.compilerArgs += '-Amapstruct.unmappedTargetPolicy=ERROR'
+compileJava.options.compilerArgs += "-Amapstruct.unmappedTargetPolicy=ERROR"
 
 test {
     useJUnitPlatform()

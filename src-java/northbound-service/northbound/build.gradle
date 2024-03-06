@@ -34,7 +34,7 @@ dependencies {
 
     implementation("org.springframework:spring-context:6.1.4")
     implementation("org.springframework.boot:spring-boot-starter-log4j2")
-    implementation("org.springframework.security:spring-security-config")
+    implementation("org.springframework.security:spring-security-config:6.2.1")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.security:spring-security-web")
     implementation("org.springframework.kafka:spring-kafka:3.1.1")

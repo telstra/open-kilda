@@ -1,35 +1,35 @@
 plugins {
-    id 'io.freefair.aspectj.post-compile-weaving'
-    id 'com.github.johnrengelman.shadow'
+    id "io.freefair.aspectj.post-compile-weaving"
+    id "com.github.johnrengelman.shadow"
 }
 
-compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
-compileJava.ajc.options.compilerArgs += '-verbose'
+compileJava.ajc.options.compilerArgs += "-showWeaveInfo"
+compileJava.ajc.options.compilerArgs += "-verbose"
 
-description = 'Port State Storm Topology'
+description = "Port State Storm Topology"
 dependencies {
-    implementation project(':base-storm-topology')
-    // runtimeClasspath because 'releaseArtifacts' shouldn't go for tests.
-    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
-    implementation project(':kilda-reporting')
-    implementation project(':network-messaging')
-    implementation project(':nbworker-messaging')
-    implementation project(':floodlight-api')
-    implementation project(':blue-green')
-    runtimeOnly project(':kilda-persistence-orientdb')
-    runtimeOnly project(':kilda-persistence-hibernate')
+    implementation(project(":base-storm-topology"))
+    implementation(project(":kilda-reporting"))
+    implementation(project(":network-messaging"))
+    implementation(project(":nbworker-messaging"))
+    implementation(project(":floodlight-api"))
+    implementation(project(":blue-green"))
+    implementation("org.yaml:snakeyaml:2.2")
 
-    compileOnly('org.apache.storm:storm-core'){
-        exclude(group: 'org.yaml', module: 'snakeyaml')
+    // runtimeClasspath because "releaseArtifacts" shouldn"t go for tests.
+    runtimeClasspath(project(path: ":base-storm-topology", configuration: "releaseArtifacts"))
+    runtimeOnly(project(":kilda-persistence-orientdb"))
+    runtimeOnly(project(":kilda-persistence-hibernate"))
+    compileOnly("org.apache.storm:storm-core"){
+        exclude(group: "org.yaml", module: "snakeyaml")
     }
-    implementation('org.yaml:snakeyaml:2.2')
 
-    compileOnly 'org.projectlombok:lombok'
-    testCompileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    testAnnotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
-    testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    compileOnly("org.projectlombok:lombok")
+    testCompileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    testAnnotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding")
+    testAnnotationProcessor("org.projectlombok:lombok-mapstruct-binding")
 }
 
 jar {
@@ -37,11 +37,11 @@ jar {
         attributes 'Main-Class': 'org.openkilda.wfm.topology.portstate.PortStateTopology'
     }
 
-    archiveClassifier = 'original'
+    archiveClassifier = "original"
 }
 
 shadowJar {
-    archiveClassifier = ''
+    archiveClassifier = ""
     mergeServiceFiles()
     zip64 true
 }
