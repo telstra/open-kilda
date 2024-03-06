@@ -188,6 +188,7 @@ public class LinkController extends BaseLinkController {
     }
 
     @Operation(summary = "Update maximum bandwidth on the link")
+    @PatchMapping(path = "/links/bandwidth")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<LinkMaxBandwidthDto> updateLinkParams(
             @RequestParam(value = "src_switch") SwitchId srcSwitch,
