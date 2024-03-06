@@ -21,6 +21,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -50,16 +51,18 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 
 import com.google.common.collect.Lists;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+@ExtendWith(MockitoExtension.class)
 public class DiversityPathFinderTest {
     public static final SwitchId SWITCH_ID_1 = new SwitchId(1);
     public static final SwitchId SWITCH_ID_2 = new SwitchId(2);
@@ -91,17 +94,16 @@ public class DiversityPathFinderTest {
 
     @BeforeEach
     public void setup() {
-        MockitoAnnotations.initMocks(this);
+        // These lenient mock are used in a parametrized test in different combinations.
+        lenient().when(config.getDiversitySwitchLatency()).thenReturn(10000L);
+        lenient().when(config.getDiversityIslLatency()).thenReturn(10000L);
+        lenient().when(config.getDiversityIslCost()).thenReturn(10000);
+        lenient().when(config.getDiversitySwitchCost()).thenReturn(10000);
+        lenient().when(config.getDiversityPopIslCost()).thenReturn(10000);
 
-        when(config.getDiversitySwitchLatency()).thenReturn(10000L);
-        when(config.getDiversityIslLatency()).thenReturn(10000L);
-        when(config.getDiversityIslCost()).thenReturn(10000);
-        when(config.getDiversitySwitchCost()).thenReturn(10000);
-        when(config.getDiversityPopIslCost()).thenReturn(10000);
-
-        when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
-        when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
-        when(repositoryFactory.createHaFlowPathRepository()).thenReturn(haFlowPathRepository);
+        lenient().when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
+        lenient().when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
+        lenient().when(repositoryFactory.createHaFlowPathRepository()).thenReturn(haFlowPathRepository);
 
         availableNetworkFactory = new AvailableNetworkFactory(config, repositoryFactory);
     }

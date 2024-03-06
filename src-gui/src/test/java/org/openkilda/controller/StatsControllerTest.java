@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.openkilda.model.VictoriaStatsReq;
 import org.openkilda.service.StatsService;
-import org.openkilda.test.MockitoExtension;
+import org.openkilda.test.CustomMockitoExtension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +30,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -38,7 +37,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.Collections;
 
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith(CustomMockitoExtension.class)
 public class StatsControllerTest {
 
     private MockMvc mockMvc;
@@ -51,8 +50,6 @@ public class StatsControllerTest {
 
     @BeforeEach
     public void init() {
-        MockitoAnnotations.initMocks(this);
-
         mockMvc = MockMvcBuilders.standaloneSetup(statsController).build();
     }
 
