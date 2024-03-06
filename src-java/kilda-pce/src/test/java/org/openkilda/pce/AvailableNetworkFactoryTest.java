@@ -402,6 +402,7 @@ public class AvailableNetworkFactoryTest {
 
     private static IslImmutableView getIslView(Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort) {
         IslImmutableView isl = mock(IslImmutableView.class);
+        // These lenient mocks are required for tests
         lenient().when(isl.getSrcSwitchId()).thenReturn(srcSwitch.getSwitchId());
         lenient().when(isl.getSrcPort()).thenReturn(srcPort);
         lenient().when(isl.getDestSwitchId()).thenReturn(dstSwitch.getSwitchId());
