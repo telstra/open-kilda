@@ -15,8 +15,6 @@
 
 package org.openkilda.northbound.controller.v2;
 
-import static org.openkilda.northbound.config.SwaggerConfig.DRAFT_API_TAG;
-
 import org.openkilda.messaging.payload.history.HaFlowHistoryEntry;
 import org.openkilda.northbound.controller.BaseController;
 import org.openkilda.northbound.dto.v2.haflows.HaFlow;
@@ -34,7 +32,6 @@ import org.openkilda.northbound.service.HaFlowService;
 import org.openkilda.northbound.utils.flowhistory.FlowHistoryHelper;
 import org.openkilda.northbound.utils.flowhistory.FlowHistoryRangeConstraints;
 
-import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,7 +54,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import javax.validation.Valid;
 
-@Api(tags = {DRAFT_API_TAG})
 @RestController
 @RequestMapping("/v2/ha-flows")
 public class HaFlowControllerV2 extends BaseController {

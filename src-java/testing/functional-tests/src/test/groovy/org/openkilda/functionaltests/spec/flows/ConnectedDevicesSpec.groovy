@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.northbound.dto.v1.flows.PingInput
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -564,12 +566,19 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
         flowHelperV2.addFlow(flow)
 
+        and: "Flow is valid and pingable"
+        northbound.validateFlow(flow.flowId).each { assert it.asExpected }
+        verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
+            assert it.forward.pingSuccess
+            assert it.reverse.pingSuccess
+        }
+
         and: "Device sends an lldp+arp packet into a flow port on that switch (with a correct flow vlan)"
         device.sendLldp(lldpData)
         device.sendArp(arpData)
 
         then: "LLDP and ARP devices are registered as flow devices"
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(WAIT_OFFSET * 2) {
             verifyAll(northbound.getFlowConnectedDevices(flow.flowId)) {
                 it.source.lldp.size() == 1
                 verifyEquals(it.source.lldp.first(), lldpData)

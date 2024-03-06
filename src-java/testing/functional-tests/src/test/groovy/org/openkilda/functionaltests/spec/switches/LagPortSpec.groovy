@@ -449,7 +449,7 @@ occupied by other LAG group\(s\)./).matches(exc)
         switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId)
 
         then: "LAG port is reinstalled"
-        switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get().logicalPorts.missing.empty
+        !switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).isPresent()
 
         cleanup:
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
