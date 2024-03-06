@@ -17,6 +17,7 @@ package org.openkilda.testing.service.traffexam.model;
 
 import lombok.Getter;
 import lombok.ToString;
+import org.apache.commons.lang3.StringUtils;
 
 @Getter
 @ToString
@@ -37,7 +38,7 @@ public class EndpointReport {
     }
 
     public EndpointReport(ReportResponse report) {
-        if (report.getError() == null || report.getError().isEmpty()) {
+        if (StringUtils.isEmpty(report.getError())) {
             this.error = report.getReport().error;
         } else {
             this.error = report.getError();
