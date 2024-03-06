@@ -94,7 +94,7 @@ public class DiversityPathFinderTest {
 
     @BeforeEach
     public void setup() {
-        // These lenient mock are used in a parametrized test in different combinations.
+        // These lenient mocks are used in a parametrized test in different combinations.
         lenient().when(config.getDiversitySwitchLatency()).thenReturn(10000L);
         lenient().when(config.getDiversityIslLatency()).thenReturn(10000L);
         lenient().when(config.getDiversityIslCost()).thenReturn(10000);
