@@ -33,7 +33,7 @@ import org.openkilda.model.LinkUnderMaintenanceDto;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.model.SwitchProperty;
 import org.openkilda.service.SwitchService;
-import org.openkilda.test.MockitoExtension;
+import org.openkilda.test.CustomMockitoExtension;
 import org.openkilda.util.TestFlowMock;
 import org.openkilda.util.TestIslMock;
 import org.openkilda.util.TestSwitchMock;
@@ -45,8 +45,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -58,13 +56,10 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.ArrayList;
 import java.util.List;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith(CustomMockitoExtension.class)
 public class SwitchControllerTest {
 
     private MockMvc mockMvc;
-
-    @Mock
-    private ApplicationContext context;
 
     @Mock
     private SwitchService serviceSwitch;
@@ -83,7 +78,6 @@ public class SwitchControllerTest {
 
     @BeforeEach
     public void init() {
-        MockitoAnnotations.initMocks(this);
         mockMvc = MockMvcBuilders.standaloneSetup(switchController).build();
         RequestContext requestContext = new RequestContext();
         requestContext.setUserId(TestIslMock.USER_ID);

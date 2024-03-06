@@ -25,7 +25,7 @@ import org.openkilda.integration.model.response.FlowPayload;
 import org.openkilda.model.FlowHistory;
 import org.openkilda.model.FlowInfo;
 import org.openkilda.service.FlowService;
-import org.openkilda.test.MockitoExtension;
+import org.openkilda.test.CustomMockitoExtension;
 import org.openkilda.util.TestFlowMock;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +34,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -42,7 +41,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.ArrayList;
 import java.util.List;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith(CustomMockitoExtension.class)
 public class FlowControllerTest {
 
     @SuppressWarnings("unused")
@@ -56,7 +55,6 @@ public class FlowControllerTest {
 
     @BeforeEach
     public void init() {
-        MockitoAnnotations.initMocks(this);
         mockMvc = MockMvcBuilders.standaloneSetup(flowController).build();
     }
 
