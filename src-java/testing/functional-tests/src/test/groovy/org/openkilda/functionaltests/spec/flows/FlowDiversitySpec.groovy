@@ -210,17 +210,9 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.flowId))
 
         and: "Make all alternative paths unavailable (bring ports down on the source switch)"
-        List<PathNode> broughtDownPorts = []
-        switchPair.paths.findAll { it != flow1Path }.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.getSrc())
+                .findAll {it.srcPort != flow1Path.first().portNo}
+        islHelper.breakIsls(broughtDownIsls)
 
         when: "Create the second flow with diversity enabled"
         def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.flowId }
@@ -231,10 +223,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         flow2Path == flow1Path
 
         cleanup: "Restore topology, delete flows and reset costs"
-        broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
     }
 

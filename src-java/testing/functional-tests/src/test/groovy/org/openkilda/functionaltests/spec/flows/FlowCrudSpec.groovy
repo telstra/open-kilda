@@ -450,16 +450,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
         given: "A switch that has no connection to other switches"
         def isolatedSwitch = switchPairs.all().nonNeighbouring().random().src
         def flow = data.getFlow(isolatedSwitch)
-        topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
-            antiflap.portDown(isolatedSwitch.dpId, port)
-        }
-        //wait until ISLs are actually got failed
-        wait(WAIT_OFFSET) {
-            def islData = northbound.getAllLinks()
-            topology.getRelatedIsls(isolatedSwitch).each {
-                assert islUtils.getIslInfo(islData, it).get().state == FAILED
-            }
-        }
+        def connectedIsls = topology.getRelatedIsls(isolatedSwitch)
+        islHelper.breakIsls(connectedIsls)
 
         when: "Try building a flow using the isolated switch"
         flowHelperV2.addFlow(flow)
@@ -470,12 +462,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 ~/Switch ${isolatedSwitch.getDpId()} doesn\'t have links with enough bandwidth/).matches(error)
 
         cleanup: "Restore connection to the isolated switch and reset costs"
-        topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
-            antiflap.portUp(isolatedSwitch.dpId, port)
-        }
-        wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state == DISCOVERED }
-        }
+        islHelper.restoreIsls(connectedIsls)
         database.resetCosts(topology.isls)
 
         where:
@@ -671,8 +658,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
         assumeTrue(isl as boolean, "Unable to find required isl")
-        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        islUtils.waitForIslStatus([isl, isl.reversed], FAILED)
+        islHelper.breakIsl(isl)
 
         when: "Try to create a flow using ISL src port"
         def flow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch)
@@ -685,8 +671,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
                 getPortViolationErrorDescriptionPattern("source", isl.srcPort, isl.srcSwitch.dpId)).matches(exc)
 
         cleanup: "Restore state of the ISL"
-        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+        islHelper.restoreIsl(isl)
         database.resetCosts(topology.isls)
     }
 

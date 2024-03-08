@@ -55,8 +55,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def islToFail = initialPaths.subFlowPaths.first().getInvolvedIsls(true).first()
 
         when: "Fail an HA-flow ISL (bring switch port down)"
-        antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        wait(WAIT_OFFSET) { assert northbound.getLink(islToFail).state == FAILED }
+        islHelper.breakIsl(islToFail)
 
         then: "The HA-flow was rerouted after reroute delay"
         def newPaths = null
@@ -114,8 +113,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
 
         cleanup:
         haFlow && haFlow.delete()
-        islToFail && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        wait(WAIT_OFFSET) { assert northbound.getLink(islToFail).state == DISCOVERED }
+        islHelper.restoreIsl(islToFail)
         database.resetCosts(topology.isls)
     }
 
@@ -135,33 +133,24 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def alternativePaths = (swT.pathsEp1 + swT.pathsEp2).unique { it.first() }
                 .findAll { !initialPathNodesView.contains(it.first()) }
         def alternativeIsls = alternativePaths.collect { pathHelper.getInvolvedIsls(it).first() }
-        withPool {
-            alternativeIsls.each {isl ->
-                antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
-            }
-        }
-        waitForIslsFail(alternativeIsls)
+        islHelper.breakIsls(alternativeIsls)
         assert haFlow.retrieveDetails().status == FlowState.UP
 
         //to avoid automatic rerouting an actual flow port is the last one to switch off.
-        antiflap.portDown(subFlowsFirstIsls.first().srcSwitch.dpId, subFlowsFirstIsls.first().srcPort)
+        islHelper.breakIsls(subFlowsFirstIsls)
 
         then: "The HA-flow goes to 'Down' status"
         haFlow.waitForBeingInState(FlowState.DOWN, rerouteDelay + WAIT_OFFSET)
 
         when: "Bring all ports up on the shared switch that are involved in the alternative paths"
-        withPool {
-            alternativeIsls.each {isl ->
-                antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-            }
-        }
-        def broughtDownPortsUp = true
+        alternativeIsls.each {islHelper.restoreIsl(it)} //fails on jenkins if do it asynchronously
 
         then: "The HA-flow goes to 'Up' state and the HA-flow was rerouted"
         def newPaths = null
         wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
             def haFlowDetails = haFlow.retrieveDetails()
-            assert haFlowDetails.status == FlowState.UP && haFlowDetails.subFlows.every { it.status == FlowState.UP.toString() }
+            assert haFlowDetails.status == FlowState.UP &&
+                    haFlowDetails.subFlows.every { it.status == FlowState.UP.toString() }
             newPaths = haFlow.retrievedAllEntityPaths()
             assert newPaths != initialPaths
         }
@@ -179,11 +168,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
 
         cleanup: "Bring port involved in the original path up and delete the HA-flow"
         haFlow && haFlow.delete()
-        !broughtDownPortsUp && alternativeIsls.each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
-        subFlowsFirstIsls && antiflap.portUp(subFlowsFirstIsls.first().srcSwitch.dpId, subFlowsFirstIsls.first().srcPort)
-        wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsls(alternativeIsls + subFlowsFirstIsls)
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
@@ -202,17 +187,11 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def alternativePaths = (swT.pathsEp1 + swT.pathsEp2).unique { it.first() }
                 .findAll { !initialPathNodesView.contains(it.first()) }
         def alternativeIsls = alternativePaths.collect { pathHelper.getInvolvedIsls(it).first() }
-        withPool {
-            alternativeIsls.each {isl ->
-                antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
-            }
-        }
-        waitForIslsFail(alternativeIsls)
+        islHelper.breakIsls(alternativeIsls)
         assert haFlow.retrieveDetails().status == FlowState.UP
 
         when: "Bring port down of ISL which is involved in the current HA-flow paths"
-        antiflap.portDown(subFlowsFirstIsls.first().srcSwitch.dpId, subFlowsFirstIsls.first().srcPort)
-        waitForIslsFail(subFlowsFirstIsls)
+        islHelper.breakIsl(subFlowsFirstIsls.first())
 
         then: "The HA-flow goes to 'Down' status"
         haFlow.waitForBeingInState(FlowState.DOWN, rerouteDelay + WAIT_OFFSET)
@@ -228,17 +207,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
 
         cleanup: "Bring port involved in the original path up and delete the HA-flow"
         haFlow && haFlow.delete()
-        if (alternativeIsls) {
-            withPool {
-                alternativeIsls.each { isl ->
-                    antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-                }
-            }
-        }
-        subFlowsFirstIsls && antiflap.portUp(subFlowsFirstIsls.first().srcSwitch.dpId, subFlowsFirstIsls.first().srcPort)
-        wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsls(alternativeIsls + subFlowsFirstIsls.first())
     }
 
     private boolean waitForIslsFail(List<Isl> islsToFail) {

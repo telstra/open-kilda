@@ -759,18 +759,9 @@ switches"() {
         Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow1.id).status == FlowState.UP }
 
         and: "Break all alternative paths for the first flow"
-        def altPaths = flow1SwitchPair.paths.findAll { it != flow1Path }
-        List<PathNode> broughtDownPorts = []
-        altPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src) - flow1Isl
+        islHelper.breakIsls(broughtDownIsls)
+
 
         and: "Update max bandwidth for the second flow's link so that it is equal to max bandwidth of the first flow"
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
@@ -779,17 +770,9 @@ switches"() {
                 flow2Isl.dstPort, flow1IslMaxBw)
 
         and: "Break all alternative paths for the second flow"
-        altPaths = flow2SwitchPair.paths.findAll { it != flow2Path && it[1].switchId != flow1SwitchPair.src.dpId }
-        altPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src) - flow2Isl - broughtDownIsls
+        islHelper.breakIsls(flow2BroughtDownIsls)
+        broughtDownIsls += flow2BroughtDownIsls
 
         when: "Try to swap endpoints for two flows"
         def flow1Src = flow2.source
@@ -815,11 +798,8 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Restore topology and delete flows"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
+        islHelper.restoreIsls(broughtDownIsls)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
         if (!isSwitchValid) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
                                                                   flow1SwitchPair.dst.dpId,
@@ -854,18 +834,8 @@ switches"() {
         Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow1.id).status == FlowState.UP }
 
         and: "Break all alternative paths for the first flow"
-        def altPaths = flow1SwitchPair.paths.findAll { it != flow1Path }
-        List<PathNode> broughtDownPorts = []
-        altPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src) - flow1Isl
+        islHelper.breakIsls(broughtDownIsls)
 
         and: "Update max bandwidth for the second flow's link so that it is not enough bandwidth for the first flow"
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
@@ -874,17 +844,9 @@ switches"() {
                 flow2Isl.dstPort, flow1IslMaxBw - 1)
 
         and: "Break all alternative paths for the second flow"
-        altPaths = flow2SwitchPair.paths.findAll { it != flow2Path && it[1].switchId != flow1SwitchPair.src.dpId }
-        altPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src) - flow2Isl - broughtDownIsls
+        islHelper.breakIsls(flow2BroughtDownIsls)
+        broughtDownIsls += flow2BroughtDownIsls
 
         when: "Try to swap endpoints for two flows"
         def flow1Src = flow2.source
@@ -906,11 +868,8 @@ switches"() {
         Boolean isTestCompleted = true
 
         cleanup: "Restore topology and delete flows"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
+        islHelper.restoreIsls(broughtDownIsls)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
         if (!isTestCompleted) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
                                                                   flow1SwitchPair.dst.dpId,
@@ -945,18 +904,8 @@ switches"() {
         Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow1.id).status == FlowState.UP }
 
         and: "Break all alternative paths for the first flow"
-        def altPaths = flow1SwitchPair.paths.findAll { it != flow1Path }
-        List<PathNode> broughtDownPorts = []
-        altPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src) - flow1Isl
+        islHelper.breakIsls(broughtDownIsls)
 
         and: "Update max bandwidth for the second flow's link so that it is not enough bandwidth for the first flow"
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
@@ -965,17 +914,9 @@ switches"() {
                 flow2Isl.dstPort, flow1IslMaxBw - 1)
 
         and: "Break all alternative paths for the second flow"
-        altPaths = flow2SwitchPair.paths.findAll { it != flow2Path && it[1].switchId != flow1SwitchPair.src.dpId }
-        altPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src) - flow2Isl - broughtDownIsls
+        islHelper.breakIsls(flow2BroughtDownIsls)
+        broughtDownIsls += flow2BroughtDownIsls
 
         when: "Try to swap endpoints for two flows"
         def flow1Src = flow2.source
@@ -1001,11 +942,8 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Restore topology and delete flows"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
+        islHelper.restoreIsls(broughtDownIsls)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
         if (!isSwitchValid) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
                                                                   flow1SwitchPair.dst.dpId,
@@ -1038,21 +976,9 @@ switches"() {
         ).unique()
 
         and: "Break all paths for the first flow"
-        List<PathNode> broughtDownPorts = []
-        flow1SwitchPair.paths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-            assert northbound.getFlowStatus(flow1.id).status == FlowState.DOWN
-            assert flowHelper.getHistoryEntriesByAction(flow1.id, REROUTE_ACTION).find {
-                it.taskId =~ (/.+ : retry #1 ignore_bw true/)
-            }?.payload?.last()?.action == REROUTE_FAIL
-        }
+        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src)
+        islHelper.breakIsls(broughtDownIsls)
+
 
         when: "Try to swap endpoints for two flows"
         northbound.swapFlowEndpoint(
@@ -1074,10 +1000,7 @@ switches"() {
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwIds)
 
         cleanup: "Restore topology and delete flows"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
     }
 

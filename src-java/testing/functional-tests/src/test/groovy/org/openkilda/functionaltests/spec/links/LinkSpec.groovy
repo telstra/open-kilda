@@ -176,10 +176,8 @@ class LinkSpec extends HealthCheckSpecification {
         [flow3, flow4].each { assert !(it.flowId in linkFlows*.id) }
 
         when: "Bring all ports down on source switch that are involved in current and alternative paths"
-        topology.getBusyPortsForSwitch(switchPair.src).each { port ->
-            antiflap.portDown(switchPair.src.dpId, port)
-        }
-        def portsAreDown = true
+        def allSourceSwithIsls = topology.getRelatedIsls(switchPair.src)
+        islHelper.breakIsls(allSourceSwithIsls)
 
         then: "All flows go to 'Down' status"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
@@ -207,13 +205,7 @@ class LinkSpec extends HealthCheckSpecification {
         [flow3, flow4].each { assert !(it.flowId in linkFlows*.id) }
 
         when: "Bring ports up"
-        topology.getBusyPortsForSwitch(switchPair.src).each { port ->
-            antiflap.portUp(switchPair.src.dpId, port)
-        }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().every { it.state == DISCOVERED }
-        }
-        portsAreDown = false
+        islHelper.restoreIsls(allSourceSwithIsls)
 
         then: "All flows go to 'Up' status"
         Wrappers.wait(rerouteDelay + PATH_INSTALLATION_TIME) {
@@ -221,14 +213,7 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete all created flows and reset costs"
-        if (portsAreDown) {
-            topology.getBusyPortsForSwitch(switchPair.src).each { port ->
-                antiflap.portUp(switchPair.src.dpId, port)
-            }
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                northbound.getAllLinks().every { it.state == DISCOVERED }
-            }
-        }
+        islHelper.restoreIsls(allSourceSwithIsls)
         database.resetCosts(topology.isls)
     }
 
@@ -367,12 +352,7 @@ class LinkSpec extends HealthCheckSpecification {
     def "Able to delete an inactive #islDescription link and re-discover it back afterwards"() {
         given: "An inactive link"
         assumeTrue(isl as boolean, "Unable to locate $islDescription ISL for this test")
-        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        def portIsDown = true
-        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getLink(isl).actualState == FAILED
-        }
+        islHelper.breakIsl(isl)
 
         when: "Try to delete the link"
         def response = northbound.deleteLink(islUtils.toLinkParameters(isl))
@@ -384,7 +364,6 @@ class LinkSpec extends HealthCheckSpecification {
 
         when: "Removed link becomes active again (port brought UP)"
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        portIsDown = false
 
         then: "The link is rediscovered in both directions"
         Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
@@ -394,14 +373,7 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        if (portIsDown) {
-            antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-            Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
-                def links = northbound.getAllLinks()
-                assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
-                assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
-            }
-        }
+        islHelper.restoreIsl(isl)
         database.resetCosts(topology.isls)
 
         where:
@@ -728,11 +700,7 @@ class LinkSpec extends HealthCheckSpecification {
         def flowPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
 
         def isl = pathHelper.getInvolvedIsls(flowPath)[0]
-        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getLink(isl).actualState == FAILED
-        }
+        islHelper.breakIsl(isl)
 
         when: "Try to delete the link"
         northbound.deleteLink(islUtils.toLinkParameters(isl))
@@ -744,10 +712,7 @@ class LinkSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.contains("This ISL is busy by flow paths.")
 
         cleanup:
-        !linkIsActive && antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsl(isl)
         database.resetCosts(topology.isls)
     }
 
