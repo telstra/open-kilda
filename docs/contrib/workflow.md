@@ -73,6 +73,14 @@ Bad branch names:
 * `my_mega_fix`
 * `doc/how_to_contribute_in_kilda_if_you_cant_come_up_with_a_short_name_for_a_git_branch`
 
+To add branch name verification during the commit, please configure git hook for commit (see .hooks directory)
+
+make hook file executable: 
+chmod 0555 .hooks/pre-commit
+
+add hooks to git configuration (execute from project root):
+git config --local core.hooksPath .hooks/
+
 ### Commits
 
 The best practice is to have one commit per one branch. If you need to change
