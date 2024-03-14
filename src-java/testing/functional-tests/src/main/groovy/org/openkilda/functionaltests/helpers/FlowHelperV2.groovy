@@ -267,6 +267,10 @@ class FlowHelperV2 {
         return (KILDA_ALLOWED_VLANS - exclusions).shuffled().first()
     }
 
+    static List<Integer> availableVlanList(List<Integer> exclusions) {
+        return (KILDA_ALLOWED_VLANS - exclusions).shuffled()
+    }
+
     /**
      * Check whether given potential flow is conflicting with any of flows in the given list.
      * Usually used to ensure that some new flow is by accident is not conflicting with any of existing flows.
