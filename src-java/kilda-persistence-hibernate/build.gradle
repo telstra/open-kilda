@@ -10,7 +10,7 @@ dependencies {
     implementation(project(":kilda-configuration"))
 
     implementation("com.google.guava:guava")
-    implementation("net.jodah:failsafe")
+    implementation("dev.failsafe:failsafe")
     implementation("commons-codec:commons-codec")
     implementation("jakarta.validation:jakarta.validation-api")
     implementation("org.hibernate:hibernate-core:6.4.0.Final")

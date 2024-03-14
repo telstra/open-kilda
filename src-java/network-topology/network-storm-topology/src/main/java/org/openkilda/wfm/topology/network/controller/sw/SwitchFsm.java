@@ -57,12 +57,12 @@ import org.openkilda.wfm.topology.network.model.OnlineStatus;
 import org.openkilda.wfm.topology.network.model.facts.HistoryFacts;
 import org.openkilda.wfm.topology.network.service.ISwitchCarrier;
 
+import dev.failsafe.RetryPolicy;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.RetryPolicy;
 import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
@@ -116,7 +116,8 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
         this.transactionManager = persistenceManager.getTransactionManager();
         this.transactionRetryPolicy = transactionManager.getDefaultRetryPolicy()
                 .handle(ConstraintViolationException.class)
-                .withMaxDuration(Duration.ofSeconds(options.getDbRepeatMaxDurationSeconds()));
+                .withMaxDuration(Duration.ofSeconds(options.getDbRepeatMaxDurationSeconds()))
+                .build();
 
         final RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
         this.switchRepository = repositoryFactory.createSwitchRepository();
@@ -540,7 +541,7 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
     }
 
     private void persistSwitchConnections(SwitchAvailabilityData availabilityData) {
-        RetryPolicy<?> retryPolicy = new RetryPolicy<>()
+        RetryPolicy<?> retryPolicy = RetryPolicy.builder()
                 .handle(RecoverablePersistenceException.class, ConstraintViolationException.class)
                 .withMaxRetries(-1)  // removing default(==2) retries limit
                 .withMaxDuration(Duration.ofSeconds(options.getDbRepeatMaxDurationSeconds()))
@@ -549,11 +550,12 @@ public final class SwitchFsm extends AbstractBaseFsm<SwitchFsm, SwitchFsmState, 
                 .onRetry(
                         e -> log.warn(
                                 "Failure updating switch connection's set {} - {}. Retrying #{}...",
-                                switchId, e.getLastFailure().getMessage(), e.getAttemptCount()))
+                                switchId, e.getLastException().getMessage(), e.getAttemptCount()))
                 .onRetriesExceeded(
                         e -> log.error(
                                 "Failed to update switch {} connection's set, DB data is not actual now",
-                                switchId, e.getFailure()));
+                                switchId, e.getException()))
+                .build();
 
         transactionManager.doInTransaction(
                 retryPolicy, () -> persistSwitchConnections(lookupSwitchCreateIfMissing(), availabilityData));

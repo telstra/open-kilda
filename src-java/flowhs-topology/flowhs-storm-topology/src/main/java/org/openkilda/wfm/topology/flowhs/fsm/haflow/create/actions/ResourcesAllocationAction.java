@@ -58,11 +58,12 @@ import org.openkilda.wfm.topology.flowhs.service.FlowPathBuilder;
 import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
 import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
+import dev.failsafe.Failsafe;
+import dev.failsafe.FailsafeException;
+import dev.failsafe.RetryPolicy;
+import dev.failsafe.RetryPolicyBuilder;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.FailsafeException;
-import net.jodah.failsafe.RetryPolicy;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -179,21 +180,22 @@ public class ResourcesAllocationAction extends
     @SneakyThrows
     private void createPaths(HaFlowCreateFsm stateMachine) throws UnroutableFlowException,
             RecoverableException, ResourceAllocationException, FlowNotFoundException, FlowAlreadyExistException {
-        RetryPolicy<Void> pathAllocationRetryPolicy = new RetryPolicy<Void>()
+        RetryPolicyBuilder<Void> pathAllocationRetryPolicy = RetryPolicy.<Void>builder()
                 .handle(RecoverableException.class)
                 .handle(ResourceAllocationException.class)
                 .handle(UnroutableFlowException.class)
                 .handle(PersistenceException.class)
                 .onRetry(e -> log.warn("Failure in resource allocation. Retrying #{}...", e.getAttemptCount(),
-                        e.getLastFailure()))
-                .onRetriesExceeded(e -> log.warn("Failure in resource allocation. No more retries", e.getFailure()))
+                        e.getLastException()))
+                .onRetriesExceeded(e -> log.warn("Failure in resource allocation. No more retries", e.getException()))
                 .withMaxRetries(pathAllocationRetriesLimit);
         if (pathAllocationRetryDelay > 0) {
             pathAllocationRetryPolicy.withDelay(Duration.ofMillis(pathAllocationRetryDelay));
         }
         try {
-            Failsafe.with(pathAllocationRetryPolicy).run(() -> allocateMainPath(stateMachine));
-            Failsafe.with(pathAllocationRetryPolicy).run(() -> allocateProtectedPath(stateMachine));
+            RetryPolicy<Void> retryPolicy = pathAllocationRetryPolicy.build();
+            Failsafe.with(retryPolicy).run(() -> allocateMainPath(stateMachine));
+            Failsafe.with(retryPolicy).run(() -> allocateProtectedPath(stateMachine));
         } catch (FailsafeException ex) {
             throw ex.getCause();
         }
