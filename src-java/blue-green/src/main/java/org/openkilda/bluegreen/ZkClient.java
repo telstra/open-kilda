@@ -18,11 +18,11 @@ package org.openkilda.bluegreen;
 import static java.lang.String.format;
 
 import com.google.common.annotations.VisibleForTesting;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Watcher;
@@ -79,20 +79,20 @@ public abstract class ZkClient implements Watcher {
     public synchronized void initAndWaitConnection() {
         init();
 
-        RetryPolicy<Void> retryPolicy = new RetryPolicy<Void>()
+        RetryPolicy<Void> retryPolicy = RetryPolicy.<Void>builder()
                 .handle(IllegalStateException.class)
                 .withMaxRetries(-1)
                 .withDelay(Duration.ofMillis(reconnectDelayMs))
                 .onRetry(e -> {
                     String message = format("Failed to init zk client, retrying... Attempt: %d", e.getAttemptCount());
                     if (e.getAttemptCount() <= 10) {
-                        log.info(message, e.getLastFailure());
+                        log.info(message, e.getLastException());
                     } else if (e.getAttemptCount() <= 20) {
-                        log.warn(message, e.getLastFailure());
+                        log.warn(message, e.getLastException());
                     } else {
-                        log.error(message, e.getLastFailure());
+                        log.error(message, e.getLastException());
                     }
-                });
+                }).build();
 
         Failsafe.with(retryPolicy)
                 .run(this::reconnect);

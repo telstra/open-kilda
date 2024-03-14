@@ -71,11 +71,11 @@ import org.openkilda.wfm.topology.network.model.IslDataHolder;
 import org.openkilda.wfm.topology.network.model.NetworkOptions;
 import org.openkilda.wfm.topology.network.model.RoundTripStatus;
 
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -162,7 +162,7 @@ public class NetworkIslServiceTest {
         lenient().when(featureTogglesRepository.getOrDefault()).thenReturn(featureToggles);
 
         lenient().when(transactionManager.getDefaultRetryPolicy())
-                .thenReturn(new RetryPolicy<>().withMaxRetries(2));
+                .thenReturn(RetryPolicy.builder().withMaxRetries(2));
         lenient().doAnswer(invocation -> {
             TransactionCallbackWithoutResult<?> tr = invocation.getArgument(0);
             tr.doInTransaction();

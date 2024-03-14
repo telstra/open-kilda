@@ -11,7 +11,7 @@ dependencies {
     api(project(":kilda-model"))
     implementation(project(":kilda-configuration"))
 
-    implementation("net.jodah:failsafe")
+    implementation("dev.failsafe:failsafe")
     implementation("org.aspectj:aspectjrt")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api")
