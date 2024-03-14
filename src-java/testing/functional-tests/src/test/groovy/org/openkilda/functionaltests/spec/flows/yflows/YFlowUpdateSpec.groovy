@@ -1,24 +1,21 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.yflow.YFlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.error.yflow.YFlowNotUpdatedWithConflictExpectedError
-import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
+import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.functionaltests.helpers.model.YFlowExtended
+import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.PathComputationStrategy
-
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static spock.util.matcher.HamcrestSupport.expect
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.helpers.YFlowHelper
+import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.yflows.SubFlowPatchPayload
-import org.openkilda.northbound.dto.v2.yflows.YFlow
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchSharedEndpoint
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchSharedEndpointEncapsulation
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
-import com.shazam.shazamcrest.matcher.CustomisableMatcher
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -29,43 +26,44 @@ import spock.lang.Shared
 @Slf4j
 @Narrative("Verify update and partial update operations on y-flows.")
 class YFlowUpdateSpec extends HealthCheckSpecification {
-    @Autowired @Shared
-    YFlowHelper yFlowHelper
 
-    def "User can update #data.descr of a y-flow"() {
-        given: "Existing y-flow"
-        def swT = topologyHelper.switchTriplets[0]
-        def yFlowRequest = yFlowHelper.randomYFlow(swT, false)
-        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
+    @Autowired
+    @Shared
+    YFlowFactory yFlowFactory
+
+    def "User can update #data.descr of a Y-Flow"() {
+        given: "Existing Y-Flow"
+        def swT = topologyHelper.switchTriplets.find(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT)
+
+        def yFlow = yFlowFactory.getRandom(swT, false)
         def oldSharedSwitch = yFlow.sharedEndpoint.switchId
+        List<SwitchId> involvedSwitches = yFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+
         yFlow.tap(data.updateClosure)
-        List<Switch> involvedSwitches = pathHelper.getInvolvedYSwitches(yFlow.YFlowId)
-        def update = yFlowHelper.convertToUpdate(yFlow)
+        def update = yFlow.convertToUpdate()
 
         when: "Update the y-flow"
-        def updateResponse = yFlowHelper.updateYFlow(yFlow.YFlowId, update)
+        def updateResponse = yFlow.sendUpdateRequest(update)
+        def updatedYFlow = yFlow.waitForBeingInState(FlowState.UP)
         //update involved switches after update
-        involvedSwitches.addAll(pathHelper.getInvolvedYSwitches(yFlow.YFlowId))
-        involvedSwitches.unique { it.dpId }
-        def ignores = ["subFlows.timeUpdate", "subFlows.status", "timeUpdate", "status"]
-        ignores.addAll(data.additionalIgnores)
+        involvedSwitches.addAll(yFlow.retrieveAllEntityPaths().getInvolvedSwitches())
         // https://github.com/telstra/open-kilda/issues/3411
         switchHelper.synchronize(oldSharedSwitch, true)
 
         then: "Requested updates are reflected in the response and in 'get' API"
-        expect updateResponse, sameBeanAs(yFlow, ignores)
-        expect northboundV2.getYFlow(yFlow.YFlowId), sameBeanAs(yFlow, ignores)
+        updateResponse.hasTheSamePropertiesAs(yFlow, data.isYPointVerificationIncluded)
+        updatedYFlow.hasTheSamePropertiesAs(yFlow, data.isYPointVerificationIncluded)
 
         and: "All related switches have no discrepancies"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches*.getDpId()).isEmpty()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches.unique()).isEmpty()
 
         cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlow.delete()
 
         where: data << [
                 [
                         descr: "shared port and subflow ports",
-                        updateClosure: { YFlow payload ->
+                        updateClosure: { YFlowExtended payload ->
                             def allowedSharedPorts = topology.getAllowedPortsForSwitch(topology.find(
                                     payload.sharedEndpoint.switchId)) - payload.sharedEndpoint.portNumber
                             payload.sharedEndpoint.portNumber = allowedSharedPorts[0]
@@ -75,11 +73,11 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                                 it.endpoint.portNumber = allowedPorts[0]
                             }
                         },
-                        additionalIgnores: []
+                        isYPointVerificationIncluded: true
                 ],
                 [
                         descr: "shared switch and subflow switches",
-                        updateClosure: { YFlow payload ->
+                        updateClosure: { YFlowExtended payload ->
                             def newSwT = topologyHelper.getSwitchTriplets(true).find {
                                 it.shared.dpId != payload.sharedEndpoint.switchId &&
                                         it.ep1.dpId != payload.subFlows[0].endpoint.switchId &&
@@ -96,12 +94,12 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                             payload.subFlows[1].endpoint.portNumber = topology
                                     .getAllowedPortsForSwitch(topology.find(newSwT.ep2.dpId))[-1]
                         },
-                        additionalIgnores: ["yPoint"]
+                        isYPointVerificationIncluded: false
                 ],
                 [
                         descr: "[without any changes in update request]",
                         updateClosure: { },
-                        additionalIgnores: []
+                        isYPointVerificationIncluded: true
                 ]
         ]
     }
@@ -109,57 +107,55 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
     def "User can update y-flow where one of subflows has both ends on shared switch"() {
         given: "Existing y-flow where one of subflows has both ends on shared switch"
         def switchTriplet = topologyHelper.getSwitchTriplets(true, true)
-                .find{it.ep1 == it.shared && it.ep2 != it.shared}
-        def yFlowRequest = yFlowHelper.randomYFlow(switchTriplet, false)
-        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
-        def oldSharedSwitch = yFlow.sharedEndpoint.switchId
+                .find { it.ep1 == it.shared && it.ep2 != it.shared }
+
+        def yFlow = yFlowFactory.getRandom(switchTriplet, false)
         yFlow.setDescription("new description")
         def endPoint = yFlow.getSubFlows().get(0).getEndpoint()
         endPoint.setPortNumber(topology.getAllowedPortsForSwitch(topology.find(endPoint.getSwitchId())).first())
-        List<Switch> involvedSwitches = pathHelper.getInvolvedYSwitches(yFlow.YFlowId)
-        def update = yFlowHelper.convertToUpdate(yFlow)
+
+        List<SwitchId> involvedSwitches = yFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+        def update = yFlow.convertToUpdate()
 
         when: "Update the y-flow"
-        def updateResponse = yFlowHelper.updateYFlow(yFlow.YFlowId, update)
+        def updateResponse = yFlow.sendUpdateRequest(update)
+        def updatedYFlow = yFlow.waitForBeingInState(FlowState.UP)
         //update involved switches after update
-        involvedSwitches.addAll(pathHelper.getInvolvedYSwitches(yFlow.YFlowId))
-        involvedSwitches.unique { it.dpId }
-        def ignores = ["subFlows.timeUpdate", "subFlows.status", "timeUpdate", "status"]
+        involvedSwitches.addAll(yFlow.retrieveAllEntityPaths().getInvolvedSwitches())
 
         then: "Requested updates are reflected in the response and in 'get' API"
-        expect updateResponse, sameBeanAs(yFlow, ignores)
-        expect northboundV2.getYFlow(yFlow.YFlowId), sameBeanAs(yFlow, ignores)
+        updateResponse.hasTheSamePropertiesAs(yFlow)
+        updatedYFlow.hasTheSamePropertiesAs(yFlow)
 
         and: "All related switches have no discrepancies"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches*.getDpId()).isEmpty()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches.unique()).isEmpty()
 
         cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlow.delete()
     }
 
     def "User can partially update fields of one-switch y-flow"() {
         given: "Existing one-switch y-flow"
-        def singleSwitch = topologyHelper.getRandomSwitch()
-        def switchId = singleSwitch.dpId
-        def yFlowRequest = yFlowHelper.singleSwitchYFlow(singleSwitch, false)
-        yFlowRequest.setMaxLatency(50)
-        yFlowRequest.setMaxLatencyTier2(100)
-        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
+        def swT = topologyHelper.getSwitchTriplets(false, true).find(SwitchTriplet.ONE_SWITCH_FLOW)
+        def yFlow = yFlowFactory.getBuilder(swT, false)
+                .withMaxLatency(50).withMaxLatencyTier2(100).build().waitForBeingInState(FlowState.UP)
+
         def patch = YFlowPatchPayload.builder()
                 .maximumBandwidth(yFlow.maximumBandwidth * 2)
-        .pathComputationStrategy(PathComputationStrategy.MAX_LATENCY.toString().toLowerCase())
-        .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase())
-        .maxLatency(yFlow.maxLatency * 2)
-        .maxLatencyTier2(yFlow.maxLatencyTier2 * 2)
-        .ignoreBandwidth(true)
-        .pinned(true)
-        .priority(10)
-        .strictBandwidth(false)
-        .description("updated description")
-        .build()
+                .pathComputationStrategy(PathComputationStrategy.MAX_LATENCY.toString().toLowerCase())
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN.toString().toLowerCase())
+                .maxLatency(yFlow.maxLatency * 2)
+                .maxLatencyTier2(yFlow.maxLatencyTier2 * 2)
+                .ignoreBandwidth(true)
+                .pinned(true)
+                .priority(10)
+                .strictBandwidth(false)
+                .description("updated description")
+                .build()
+
         yFlow.setMaximumBandwidth(patch.getMaximumBandwidth())
         yFlow.setPathComputationStrategy(patch.getPathComputationStrategy())
-        yFlow.setEncapsulationType(patch.getEncapsulationType())
+        yFlow.setEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
         yFlow.setMaxLatency(patch.getMaxLatency())
         yFlow.setMaxLatencyTier2(patch.getMaxLatencyTier2())
         yFlow.setIgnoreBandwidth(patch.getIgnoreBandwidth())
@@ -170,55 +166,53 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
 
         when: "Partial update the y-flow"
-        def updateResponse = yFlowHelper.partialUpdateYFlow(yFlow.YFlowId, patch)
-        def ignores = ["subFlows", "timeUpdate", "status"]
+        def updateResponse = yFlow.sendPartialUpdateRequest(patch)
+        def updatedYFlow = yFlow.waitForBeingInState(FlowState.UP)
 
         then: "Requested updates are reflected in the response and in 'get' API"
-        expect updateResponse, sameBeanAs(yFlow, ignores)
-        expect northboundV2.getYFlow(yFlow.YFlowId), sameBeanAs(yFlow, ignores)
+        updateResponse.hasTheSamePropertiesAs(yFlow)
+        updatedYFlow.hasTheSamePropertiesAs(yFlow)
 
         and: "All related switches have no discrepancies"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(switchId).isPresent()
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(swT.shared.dpId).isPresent()
 
         cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlow.delete()
     }
 
     def "User can partially update #data.descr of a y-flow"() {
         given: "Existing y-flow"
         def swT = topologyHelper.switchTriplets.find { it.ep1 != it.ep2 }
-        def yFlowRequest = yFlowHelper.randomYFlow(swT, false)
-        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
-        List<Switch> involvedSwitches = pathHelper.getInvolvedYSwitches(yFlow.YFlowId)
+        def yFlow = yFlowFactory.getRandom(swT, false)
+
+        List<SwitchId> involvedSwitches = yFlow.retrieveAllEntityPaths().getInvolvedSwitches()
         def oldSharedSwitch = yFlow.sharedEndpoint.switchId
         def patch = data.buildPatchRequest(yFlow)
 
         when: "Partial update the y-flow"
-        def updateResponse = yFlowHelper.partialUpdateYFlow(yFlow.YFlowId, patch)
+        def updateResponse = yFlow.sendPartialUpdateRequest(patch)
+        def updatedYFlow = yFlow.waitForBeingInState(FlowState.UP)
         //update involved switches after update
-        involvedSwitches.addAll(pathHelper.getInvolvedYSwitches(yFlow.YFlowId))
-        involvedSwitches.unique { it.dpId }
-        def ignores = ["subFlows.timeUpdate", "subFlows.status", "timeUpdate", "status"]
-        ignores.addAll(data.additionalIgnores)
+        involvedSwitches.addAll(yFlow.retrieveAllEntityPaths().getInvolvedSwitches())
         // https://github.com/telstra/open-kilda/issues/3411
         switchHelper.synchronize(oldSharedSwitch, true)
 
         then: "Requested updates are reflected in the response and in 'get' API"
-        expect updateResponse, sameBeanAs(yFlow, ignores)
-        expect northboundV2.getYFlow(yFlow.YFlowId), sameBeanAs(yFlow, ignores)
+        updateResponse.hasTheSamePropertiesAs(yFlow, data.isYPointVerificationIncluded)
+        updatedYFlow.hasTheSamePropertiesAs(yFlow, data.isYPointVerificationIncluded)
 
         and: "All related switches have no discrepancies"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches*.getDpId()).isEmpty()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches.unique()).isEmpty()
 
         cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlow.delete()
 
         //buildPatchRequest in addition to providing a patch payload should also updated the yFlow object
         //in order to reflect the expect result after update
         where: data << [
                 [
                         descr: "shared port and subflow ports",
-                        buildPatchRequest: { YFlow payload ->
+                        buildPatchRequest: { YFlowExtended payload ->
                             def allowedSharedPorts = topology.getAllowedPortsForSwitch(topology.find(
                                     payload.sharedEndpoint.switchId)) - payload.sharedEndpoint.portNumber
                             def patchBuilder = YFlowPatchPayload.builder()
@@ -241,11 +235,11 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                             patchBuilder.subFlows(subFlows)
                             return patchBuilder.build()
                         },
-                        additionalIgnores: []
+                        isYPointVerificationIncluded: true
                 ],
                 [
                         descr: "shared switch and subflow switches",
-                        buildPatchRequest: { YFlow payload ->
+                        buildPatchRequest: { YFlowExtended payload ->
                             def newSwT = topologyHelper.getSwitchTriplets(true).find {
                                 it.shared.dpId != payload.sharedEndpoint.switchId &&
                                         it.ep1.dpId != payload.subFlows[0].endpoint.switchId &&
@@ -286,14 +280,14 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                                                        .build()])
                                     .build()
                         },
-                        additionalIgnores: ["yPoint"]
+                        isYPointVerificationIncluded: false
                 ],
                 [
                         descr: "[without any changes in update request]",
                         buildPatchRequest: {
                             YFlowPatchPayload.builder().build()
                         },
-                        additionalIgnores: []
+                        isYPointVerificationIncluded: true
                 ]
         ]
     }
@@ -301,24 +295,23 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
     def "User cannot update a y-flow with #data.descr"() {
         given: "Existing y-flow"
         def swT = topologyHelper.switchTriplets[0]
-        def yFlowRequest = yFlowHelper.randomYFlow(swT, false)
-        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
+        def yFlow = yFlowFactory.getRandom(swT, false)
         yFlow.tap(data.updateClosure)
-        def update = yFlowHelper.convertToUpdate(yFlow)
+        def update = yFlow.convertToUpdate()
 
         when: "Try to update the y-flow with invalid payload"
-        northboundV2.updateYFlow(yFlow.YFlowId, update)
+        northboundV2.updateYFlow(yFlow.yFlowId, update)
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
         data.expectedError.matches(exc)
         cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlow.delete()
 
         where: data << [
                 [
                         descr        : "non-existent subflowId",
-                        updateClosure: { YFlow payload ->
+                        updateClosure: { YFlowExtended payload ->
                             payload.subFlows[0].flowId += "non-existent"
                             def allowedPorts = topology.getAllowedPortsForSwitch(topology.find(
                                     payload.subFlows[0].endpoint.switchId)) - payload.subFlows[0].endpoint.portNumber -
@@ -330,7 +323,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                 ],
                 [
                         descr: "subflowId not specified",
-                        updateClosure: { YFlow payload ->
+                        updateClosure: { YFlowExtended payload ->
                             payload.subFlows[1].flowId = null
                         },
                         expectedError: new YFlowNotUpdatedWithConflictExpectedError(
@@ -338,14 +331,14 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                 ],
                 [
                         descr: "only 1 subflow in payload",
-                        updateClosure: { YFlow payload ->
+                        updateClosure: { YFlowExtended payload ->
                             payload.subFlows.removeLast()
                         },
                         expectedError: new YFlowNotUpdatedExpectedError(~/The y-flow.* must have at least 2 sub flows/)
                 ],
                 [
                         descr: "conflict after update",
-                        updateClosure: { YFlow payload ->
+                        updateClosure: { YFlowExtended payload ->
                             payload.subFlows[0].sharedEndpoint.vlanId = payload.subFlows[1].sharedEndpoint.vlanId
                         },
                         expectedError: new YFlowNotUpdatedExpectedError(
@@ -353,7 +346,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                 ],
                 [
                         descr: "empty shared endpoint",
-                        updateClosure: { YFlow payload ->
+                        updateClosure: { YFlowExtended payload ->
                             payload.sharedEndpoint = null
                         },
                         expectedError: new YFlowNotUpdatedExpectedError(~/Errors: SharedEndpoint is required/)
@@ -364,23 +357,22 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
     def "User cannot partial update a y-flow with #data.descr"() {
         given: "Existing y-flow"
         def swT = topologyHelper.switchTriplets[0]
-        def yFlowRequest = yFlowHelper.randomYFlow(swT, false)
-        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
+        def yFlow = yFlowFactory.getRandom(swT, false)
         def patch = data.buildPatchRequest(yFlow)
 
         when: "Try to partial update the y-flow with invalid payload"
-        northboundV2.partialUpdateYFlow(yFlow.YFlowId, patch)
+        yFlow.sendPartialUpdateRequest(patch)
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
         new YFlowNotUpdatedExpectedError(data.errorMessage, data.errorDescrPattern).matches(exc)
         cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlow.delete()
 
         where: data << [
                 [
                         descr: "non-existent subflowId",
-                        buildPatchRequest: { YFlow payload ->
+                        buildPatchRequest: { YFlowExtended payload ->
                             return YFlowPatchPayload.builder()
                                     .subFlows([SubFlowPatchPayload.builder()
                                                        .endpoint(FlowPatchEndpoint.builder()
@@ -399,7 +391,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                 ],
                 [
                         descr: "only 1 subflow specified",
-                        buildPatchRequest: { YFlow payload ->
+                        buildPatchRequest: { YFlowExtended payload ->
                             return YFlowPatchPayload.builder()
                                     .subFlows([SubFlowPatchPayload.builder()
                                                        .endpoint(FlowPatchEndpoint.builder()
@@ -415,7 +407,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                 ],
                 [
                         descr: "switch conflict after update",
-                        buildPatchRequest: { YFlow payload ->
+                        buildPatchRequest: { YFlowExtended payload ->
                             payload.subFlows[0].sharedEndpoint.vlanId = payload.subFlows[1].sharedEndpoint.vlanId
                             return YFlowPatchPayload.builder()
                                     .subFlows([SubFlowPatchPayload.builder()
@@ -437,12 +429,5 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                         errorDescrPattern: ~/The sub-flows .* and .* have shared endpoint conflict: .*/
                 ]
         ]
-    }
-
-
-    static <T> CustomisableMatcher<T> sameBeanAs(final T expected, List<String> ignores) {
-        def matcher = sameBeanAs(expected)
-        ignores.each { matcher.ignoring(it) }
-        return matcher
     }
 }

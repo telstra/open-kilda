@@ -26,6 +26,11 @@ class SwitchTriplet {
         return !(shared.getTraffGens().isEmpty() || ep1.getTraffGens().isEmpty() || ep2.getTraffGens().isEmpty())
     }
 
+    @JsonIgnore
+    Boolean isSingleSwitch() {
+        return shared == ep1 && ep1 == ep2
+    }
+
     @Override
     String toString() {
         return "[$shared.name]-<$ep1.name>-<$ep2.name>"
@@ -41,6 +46,10 @@ class SwitchTriplet {
 
     static Closure ONE_SUB_FLOW_IS_ONE_SWITCH_FLOW = {
         SwitchTriplet swT -> swT.shared == swT.ep1 && swT.shared != swT.ep2
+    }
+
+    static Closure ONE_SWITCH_FLOW = {
+        SwitchTriplet swT -> swT.shared == swT.ep1 && swT.shared == swT.ep2
     }
 
     static Closure TRAFFGEN_CAPABLE = { SwitchTriplet swT ->
