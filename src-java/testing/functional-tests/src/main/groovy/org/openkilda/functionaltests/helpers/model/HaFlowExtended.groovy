@@ -111,9 +111,9 @@ class HaFlowExtended {
         this.topologyDefinition = topologyDefinition
     }
 
-    HaFlowAllEntityPaths retrievedAllEntityPaths() {
+    FlowWithSubFlowsEntityPath retrievedAllEntityPaths() {
         HaFlowPaths haFlowPaths = northboundV2.getHaFlowPaths(haFlowId)
-        new HaFlowAllEntityPaths(haFlowPaths, topologyDefinition)
+        new FlowWithSubFlowsEntityPath(haFlowPaths, topologyDefinition)
     }
 
     static HaFlowBuilder build(SwitchTriplet swT, NorthboundServiceV2 northboundV2, TopologyDefinition topologyDefinition,
