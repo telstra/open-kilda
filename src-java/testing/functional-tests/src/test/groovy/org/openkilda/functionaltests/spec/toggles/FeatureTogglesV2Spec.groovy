@@ -66,11 +66,10 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
         flowHelperV2.updateFlow(flow.flowId, flowRequest.tap { it.description = it.description + "updated" })
 
         and: "Delete of previously existing flow is still possible"
-        def deletedFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         cleanup: "set create_flow toggle back to true and delete resources if required"
         disableFlowCreation && northbound.toggleFeature(FeatureTogglesDto.builder().createFlowEnabled(true).build())
-        flow && !deletedFlow && flowHelper.deleteFlow(flow.flowId)
     }
 
     def "System forbids updating flows when 'update_flow' toggle is set to false"() {
@@ -89,11 +88,9 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
         new FlowForbiddenToUpdateExpectedError(~/Flow update feature is disabled/).matches(e)
 
         and: "Creating new flow is still possible"
-        def newFlow = flowHelperV2.addFlow(flowHelperV2.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
+        flowHelperV2.addFlow(flowHelperV2.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
 
         cleanup: "set update_flow toggle back to true and delete created link"
-        flow && flowHelper.deleteFlow(flow.flowId)
-        newFlow && flowHelper.deleteFlow(newFlow.flowId)
         disableFlowUpdating && northbound.toggleFeature(FeatureTogglesDto.builder().updateFlowEnabled(true).build())
     }
 
@@ -121,13 +118,11 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
         def enableFlowDeletion = northbound.toggleFeature(FeatureTogglesDto.builder().deleteFlowEnabled(true).build())
 
         then: "Able to delete flows"
-        def deletedFlow = flowHelper.deleteFlow(flow.flowId)
-        def deletedNewFlow = flowHelper.deleteFlow(newFlow.flowId)
+        flowHelper.deleteFlow(flow.flowId)
+        flowHelper.deleteFlow(newFlow.flowId)
 
         cleanup:
         disableFlowDeletion && !enableFlowDeletion && northbound.toggleFeature(FeatureTogglesDto.builder().deleteFlowEnabled(true).build())
-        flow && !deletedFlow && flowHelper.deleteFlow(flow.id)
-        newFlow && !deletedNewFlow && flowHelper.deleteFlow(newFlow.id)
     }
 
     @Tags([HARDWARE, ISL_RECOVER_ON_FAIL])
@@ -287,7 +282,6 @@ feature toggle"() {
         northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         islToBreak && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         initFeatureToggle && northbound.toggleFeature(FeatureTogglesDto.builder()
                 .flowsRerouteUsingDefaultEncapType(initFeatureToggle.flowsRerouteUsingDefaultEncapType).build())
@@ -366,7 +360,6 @@ feature toggle"() {
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
 
         cleanup: "Restore topology to the original state, remove the flow, reset toggles"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         altPortsAreDown && broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
         mainPortIsDown && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         featureToogleIsUpdated && northbound.toggleFeature(FeatureTogglesDto.builder()

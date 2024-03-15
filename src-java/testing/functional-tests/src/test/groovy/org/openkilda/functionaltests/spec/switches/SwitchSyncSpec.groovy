@@ -149,7 +149,6 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds)
     }
 
@@ -205,7 +204,6 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         switchHelper.synchronize(switchId)
 
         where:
@@ -319,9 +317,6 @@ class SwitchSyncSpec extends HealthCheckSpecification {
                 }.match.tunnelId
             }
         }
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([VIRTUAL, LOW_PRIORITY])
@@ -415,8 +410,5 @@ class SwitchSyncSpec extends HealthCheckSpecification {
 
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 }

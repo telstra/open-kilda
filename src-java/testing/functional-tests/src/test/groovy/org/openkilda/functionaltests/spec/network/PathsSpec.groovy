@@ -55,9 +55,6 @@ class PathsSpec extends HealthCheckSpecification {
         def limited_paths = switchPair.getPathsFromApi([(MAX_PATH_COUNT): expectedPathsCount])
         assert limited_paths.size() == expectedPathsCount
         assert paths.size() > limited_paths.size()
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -81,9 +78,6 @@ class PathsSpec extends HealthCheckSpecification {
             }
             b.getBandwidth() <=> a.getBandwidth()
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)

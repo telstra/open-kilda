@@ -83,15 +83,12 @@ class MetersSpec extends HealthCheckSpecification {
         !northbound.getAllMeters(sw.dpId).meterEntries.find { it.meterId == meterToDelete }
 
         when: "Delete the flow"
-        def flowDelete = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "No excessive meters are installed on the switch"
         Wrappers.wait(WAIT_OFFSET) {
             assert defaultMeters.meterEntries.sort() == northbound.getAllMeters(sw.dpId).meterEntries.sort()
         }
-
-        cleanup:
-        !flowDelete && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         switchType         | switches
@@ -235,7 +232,7 @@ on a #switchType switch"() {
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "New meters should disappear from the switch"
         Wrappers.wait(WAIT_OFFSET) {
@@ -243,9 +240,6 @@ on a #switchType switch"() {
             newestMeters.meterEntries.containsAll(defaultMeters.meterEntries)
             newestMeters.meterEntries.size() == defaultMeters.meterEntries.size()
         }
-
-        cleanup:
-        !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         switchType         | switches              | ignoreBandwidth
@@ -281,9 +275,6 @@ on a #switchType switch"() {
         def newMeters = northbound.getAllMeters(sw.dpId)
         def newMeterEntries = newMeters.meterEntries.findAll { !defaultMeters.meterEntries.contains(it) }
         newMeterEntries.empty
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         switchType         | switches
@@ -352,9 +343,6 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
             flowRules.each { assert !it.instructions.goToMeter }
         }
 
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-
         where:
         srcSwitch | dstSwitch
         CENTEC   | CENTEC
@@ -398,9 +386,6 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
 
         and: "Flow validation shows no discrepancies in meters"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         [flowRate, data] << [
@@ -451,9 +436,6 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
 
         and: "Flow validation shows no discrepancies in meters"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         flowRate << [
@@ -506,9 +488,6 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
 
         and: "Flow validation shows no discrepancies in meters"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         flowRate << [150, 1000, 1024, 5120, 10240, 2480, 960000]
@@ -584,9 +563,6 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
                     .ignoring("flowEntries.packetCount"))
         }
 
-        cleanup: "Delete flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-
         where:
         data << [
                 [
@@ -631,9 +607,6 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorMessage == "Can't update meter: Flow '$flow.flowId' is unmetered"
-
-        cleanup: "Delete the created flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Memoized

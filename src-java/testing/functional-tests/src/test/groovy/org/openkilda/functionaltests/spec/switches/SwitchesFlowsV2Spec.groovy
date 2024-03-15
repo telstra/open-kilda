@@ -18,6 +18,9 @@ import spock.lang.Unroll
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.CLASS
+import static org.openkilda.messaging.payload.flow.FlowState.UP
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 
 @Narrative("Verifies feature to retrieve list of flows passing the switch grouped by port number. Details: #5015")
 class SwitchesFlowsV2Spec extends HealthCheckSpecification {
@@ -59,7 +62,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
                 .includeSwitch(switchTriplet.getShared())
                 .includeSwitch(switchTriplet.getEp1()).random()
         def flowDefinition = flowHelperV2.randomFlow(switchPair, false).tap { allocateProtectedPath = true }
-        flowId = flowHelperV2.addFlow(flowDefinition).getFlowId()
+        flowId = flowHelperV2.addFlow(flowDefinition, UP, CLASS).getFlowId()
         switchFlowGoesThrough = pathHelper.getInvolvedSwitches(flowId).find {
             ![switchPair.getSrc(), switchPair.getDst()].contains(it)
         }
@@ -137,11 +140,11 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
                 .build()
         northboundV2.createMirrorPoint(flowId, mirrorEndpoint)
 
-        then: "Mirror sink endpoint port is listed in the ports list"
+        then: "Mirror sink endpoint port is not listed in the ports list"
         switchHelper.getFlowsV2(switchUnderTest, [freePort]).getFlowsByPort().isEmpty()
 
         cleanup:
-        Wrappers.silent {northboundV2.deleteMirrorPoint(flowId, mirrorEndpoint.getMirrorPointId())}
+        Wrappers.wait(RULES_INSTALLATION_TIME) {northboundV2.deleteMirrorPoint(flowId, mirrorEndpoint.getMirrorPointId())}
     }
 
     @Tags([LOW_PRIORITY])
@@ -175,7 +178,6 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
 
     def cleanupSpec() {
         Wrappers.silent {
-            flowHelperV2.deleteFlow(flowId)
             yFlowHelper.deleteYFlow(yFlowId)
         }
     }

@@ -86,7 +86,6 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         def switchIsSynchronized = true
 
         cleanup: "Delete the flow and activate switch if required"
-        flowHelperV2.deleteFlow(flow.flowId)
         blockData && !switchIsSynchronized && switchHelper.reviveSwitch(switchPair.src, blockData, true)
 
     }

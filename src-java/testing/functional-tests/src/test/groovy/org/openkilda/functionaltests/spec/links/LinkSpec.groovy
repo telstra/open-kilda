@@ -221,7 +221,6 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete all created flows and reset costs"
-        [flow1, flow2, flow3, flow4].each { it && flowHelperV2.deleteFlow(it.flowId) }
         if (portsAreDown) {
             topology.getBusyPortsForSwitch(switchPair.src).each { port ->
                 antiflap.portUp(switchPair.src.dpId, port)
@@ -452,7 +451,6 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete flows and delete link props"
-        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
@@ -680,8 +678,6 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-
         boolean isIslInInitialState = [isl, isl.reversed].every {
             islUtils.getIslInfo(links, it).get().maxBandwidth == initialMaxBandwidth
         }
@@ -748,7 +744,6 @@ class LinkSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.contains("This ISL is busy by flow paths.")
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         !linkIsActive && antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
@@ -799,7 +794,6 @@ class LinkSpec extends HealthCheckSpecification {
         switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId()).isEmpty()
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (linkIsDeleted) {
             antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
             antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)

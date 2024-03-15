@@ -213,10 +213,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Src switch pass validation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
-        def testDone = true
 
         cleanup:
-        !testDone && flow && flowHelperV2.deleteFlow(flow.flowId)
         mirrorPortStats && mirrorPortStats.close()
 
         where:
@@ -274,7 +272,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         mirrorPortStats && mirrorPortStats.close()
 
         where:
@@ -319,7 +316,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         cleanup:
         mirrorPortStats && mirrorPortStats.close()
-        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         [swPair, mirrorDirection] << [getUniqueVxlanSwitchPairs(true),
@@ -355,9 +351,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         then: "Related switches and flow pass validation"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(pathHelper.getInvolvedSwitches(flow.flowId)*.getDpId()).isEmpty()
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         [data, mirrorDirection] << [
@@ -403,9 +396,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
-        cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
-
         where:
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
     }
@@ -439,10 +429,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         and: "Related switch pass validation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.dst.dpId).isPresent()
-        def testComplete = true
-
-        cleanup:
-        !testComplete && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         [swPair, mirrorDirection, encapType] <<
@@ -530,9 +516,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def rvGroupId = findMirrorRule(getFlowRules(swPair.dst.dpId), FlowPathDirection.REVERSE).instructions.applyActions.group
         def rvMirrorGroup = fl.getGroupsStats(swPair.dst.dpId).group.find { it.groupNumber == rvGroupId }
         rvMirrorGroup.bucketCounters.size() == 2
-
-        cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System also updates mirror rule after flow partial update"() {
@@ -576,9 +559,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
             it.groupNumber == mirrorRule.instructions.applyActions.group
         }
         group.buckets.find { it.actions == "output=$newFlowPort" }
-
-        cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY])
@@ -616,7 +596,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         cleanup:
         mirrorPortStats && mirrorPortStats.close()
-        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
@@ -659,7 +638,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         mirrorPortStats && mirrorPortStats.close()
 
         where:
@@ -695,7 +673,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         new FlowMirrorPointNotCreatedExpectedError(~/${data.errorDesc(involvedSwitches)}/).matches(error)
 
         cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         where:
@@ -740,9 +717,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         then: "Error is returned, cannot create mirror point with given params"
         def error = thrown(HttpClientErrorException)
         testData.expectedError.matches(error)
-
-        cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         testData << [
@@ -827,9 +801,6 @@ with these parameters./)
         new FlowMirrorPointNotCreatedWithConflictExpectedError(
                 getEndpointConflictError(mirrorPoint, otherFlow, "source")).matches(error)
 
-        cleanup:
-        [flow, otherFlow].each { flowHelperV2.deleteFlow(it.flowId) }
-
         where:
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
     }
@@ -868,10 +839,6 @@ with these parameters./)
         new FlowNotCreatedWithConflictExpectedError(
                 getEndpointConflictError(otherFlow.destination, mirrorPoint)).matches(error)
 
-        cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
-        !error && flowHelperV2.deleteFlow(otherFlow.flowId)
-
         where:
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
     }
@@ -903,9 +870,6 @@ with these parameters./)
         new FlowMirrorPointNotCreatedExpectedError(~/Connected devices feature is active on the flow $flow.flowId \
 for endpoint switchId=\"$flow.source.switchId\" port=$flow.source.portNumber vlanId=$flow.source.vlanId, \
 flow mirror point cannot be created this flow/).matches(error)
-
-        cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
@@ -940,9 +904,6 @@ flow mirror point cannot be created this flow/).matches(error)
         def error = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError(
                 ~/Flow mirror point is created for the flow $flow.flowId, LLDP or ARP can not be set to true./).matches(error)
-
-        cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
@@ -979,7 +940,6 @@ flow mirror point cannot be created this flow/).matches(error)
                 "switchLldp or switchArp can not be set to true.").matches(error)
 
         cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
         !error && originalProps && restoreSwitchProperties(swPair.src.dpId, originalProps)
     }
 
@@ -1014,7 +974,6 @@ flow mirror point cannot be created this flow/).matches(error)
 , flow mirror point cannot be created on this switch./).matches(error)
 
         cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
         restoreSwitchProperties(swPair.src.dpId, originalProps)
     }
 
@@ -1056,9 +1015,6 @@ flow mirror point cannot be created this flow/).matches(error)
         def error = thrown(HttpClientErrorException)
         new FlowMirrorPointNotCreatedWithConflictExpectedError(
                 getEndpointConflictError(mirrorPoint2.sinkEndpoint, mirrorPoint)).matches(error)
-
-        cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]

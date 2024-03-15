@@ -184,7 +184,6 @@ class LagPortSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
     }
 
@@ -221,7 +220,6 @@ class LagPortSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         lagPort && northboundV2.deleteLagLogicalPort(swPair.src.dpId, lagPort)
     }
 
@@ -271,8 +269,8 @@ class LagPortSpec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         new LagNotDeletedExpectedError(~/Couldn\'t delete LAG port \'$lagPort\' from switch $switchPair.src.dpId \
 because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
+
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
     }
 
@@ -289,8 +287,8 @@ because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
         def exc = thrown(HttpClientErrorException)
         new LagNotCreatedExpectedError(~/Physical port $flow.source.portNumber already used by following flows:\
  \[$flow.flowId\]. You must remove these flows to be able to use the port in LAG./).matches(exc)
+
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         !exc && deleteAllLagPorts(sw.dpId)
     }
 
@@ -312,8 +310,8 @@ because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError("Could not create flow", ~/Port $flow.source.portNumber \
 on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
+
         cleanup:
-        !exc && flow && flowHelperV2.deleteFlow(flow.flowId)
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
 
     }
@@ -344,7 +342,6 @@ on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
  \'${flow.getFlowId()}\'\: \[${mirrorEndpoint.getMirrorPointId()}\]/).matches(exc)
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         !exc && swP && deleteAllLagPorts(swP.src.dpId)
     }
 
@@ -950,7 +947,6 @@ occupied by other LAG group\(s\)./).matches(exc)
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
     }
 

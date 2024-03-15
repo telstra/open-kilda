@@ -83,9 +83,6 @@ class FlowPingSpec extends HealthCheckSpecification {
 
         }
 
-        cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
         swPair = new SwitchPair(src: srcSwitch, dst: dstSwitch, paths: [])
@@ -123,12 +120,7 @@ class FlowPingSpec extends HealthCheckSpecification {
             assert northbound.getSwitchRules(switchPair.src.dpId).flowEntries.find {
                 it.cookie == VERIFICATION_UNICAST_VXLAN_RULE_COOKIE.cookie
             }.byteCount > unicastCounterBefore
-
         }
-
-        cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-
     }
 
     @Unroll("Able to ping a flow with no vlan between switches #swPair.toString()")
@@ -151,9 +143,6 @@ class FlowPingSpec extends HealthCheckSpecification {
         !response.error
         !response.forward.error
         !response.reverse.error
-
-        cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
@@ -197,7 +186,6 @@ class FlowPingSpec extends HealthCheckSpecification {
                 .ignoring("forward.latency").ignoring("reverse.latency")
 
         cleanup: "Restore rules, costs and remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         rulesToRemove && lockKeeper.addFlows(rulesToRemove)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -266,9 +254,6 @@ class FlowPingSpec extends HealthCheckSpecification {
         !response.forward
         !response.reverse
         response.error == "Flow ${flow.flowId} should not be one-switch flow"
-
-        cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Verify error if try to ping with wrong flowId"() {
@@ -314,9 +299,6 @@ class FlowPingSpec extends HealthCheckSpecification {
         then: "Ping shows that path is broken"
         !response.forward.pingSuccess
         !response.reverse.pingSuccess
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to turn on periodic pings on a flow"() {
@@ -337,9 +319,6 @@ class FlowPingSpec extends HealthCheckSpecification {
 
             srcPacketCountNow > srcSwitchPacketCount && dstPacketCountNow > dstSwitchPacketCount
         }
-
-        cleanup: "Remove flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY])
@@ -353,8 +332,6 @@ class FlowPingSpec extends HealthCheckSpecification {
         then: "Error is returned in response"
         def e = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(~/Couldn\'t turn on periodic pings for one-switch flow/).matches(e)
-        cleanup:
-        !e && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def getPacketCountOfVlanPingRule(SwitchId switchId) {

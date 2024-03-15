@@ -114,7 +114,6 @@ and at least 1 path must remain safe"
         switchHelper.validateAndCollectFoundDiscrepancies(switchesToVerify*.getDpId()).isEmpty()
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if(blockData) {
             database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(switchToBreak, blockData)
@@ -223,7 +222,6 @@ and at least 1 path must remain safe"
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (!isSwitchActivated && blockData) {
             database.setSwitchStatus(swToManipulate.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(swToManipulate, blockData)
@@ -366,7 +364,6 @@ and at least 1 path must remain safe"
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (!isSwitchActivated && blockData) {
             database.setSwitchStatus(swToManipulate.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(swToManipulate, blockData)
@@ -427,7 +424,6 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
 
         cleanup:
         lockKeeper.cleanupTrafficShaperRules(swPair.src.regions)
-        flowHelperV2.deleteFlow(flow.flowId)
         northbound.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         wait(WAIT_OFFSET) { northbound.activeLinks.size() == topology.islsForActiveSwitches.size() * 2 }
         database.resetCosts(topology.isls)

@@ -183,9 +183,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
             }
         }
 
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-
         where:
         data << [[
                          flowDescription: "pinned",
@@ -263,7 +260,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
-        def flowIsDeleted = true
 
         then: "FlowLoop rules are deleted from the dst switch"
         Wrappers.wait(RULES_DELETION_TIME) {
@@ -272,9 +268,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "Both switches are valid"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId()).isEmpty()
-
-        cleanup: "Delete the flow"
-        flow && !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -336,7 +329,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(switchPair.src.dpId)*.packetCount.every { it > 0 }
 
         cleanup: "Revive the ISL back (bring switch port up) and delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         islToFail && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
@@ -379,7 +371,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         def testIsCompleted = true
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         !testIsCompleted && switchHelper.synchronize(switchPair.src.dpId)
     }
 
@@ -424,9 +415,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         flowLoopDstSw.size() == 1
         flowLoopDstSw[0].flowId == flow3.flowId
         flowLoopDstSw[0].switchId == switchPair.dst.dpId
-
-        cleanup: "Delete the flows"
-        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -495,7 +483,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(switchPair.src.dpId)*.packetCount.every { it > 0 }
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (portIsDown) {
             antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
             Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
@@ -556,9 +543,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "The switch is valid"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.getDpId()).isPresent()
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -591,16 +575,12 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         when: "Delete the flow with created flowLoop"
         flowHelperV2.deleteFlow(flow.flowId)
-        def flowIsDeleted = true
 
         then: "FlowLoop rules are deleted from the switch"
         getFlowLoopRules(sw.dpId).empty
 
         and: "The switch is valid"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.getDpId()).isPresent()
-
-        cleanup: "Delete the flow"
-        !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -629,7 +609,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         when: "Delete the flow with created flowLoop"
         flowHelperV2.deleteFlow(flow.flowId)
-        def flowIsDeleted = true
 
         then: "FlowLoop rules are deleted"
         Wrappers.wait(RULES_DELETION_TIME) {
@@ -638,7 +617,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         def testIsCompleted = true
 
         cleanup:
-        !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
         !testIsCompleted && switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
     }
 
@@ -675,7 +653,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(switchPair.dst.dpId).empty
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         switchHelper.reviveSwitch(switchPair.src, blockData, true)
     }
 
@@ -694,9 +671,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         new FlowLoopNotCreatedExpectedError(flow.getFlowId(),
                 ~/Flow is already looped on switch \'$switchPair.src.dpId\'/).matches(exc)
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -718,9 +692,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "FlowLoop rules are not created on the transit switch"
         getFlowLoopRules(transitSwId).empty
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -754,9 +725,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         new FlowNotUpdatedExpectedError(~/Loop switch is not terminating in flow path/).matches(exc)
         and: "FlowLoop rules are not created for the flow"
         !northboundV2.getFlow(flow.flowId).loopSwitchId
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def getFlowLoopRules(SwitchId switchId) {

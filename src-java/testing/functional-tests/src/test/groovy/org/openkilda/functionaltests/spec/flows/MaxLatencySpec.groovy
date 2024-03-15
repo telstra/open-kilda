@@ -15,7 +15,6 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
@@ -85,9 +84,6 @@ class MaxLatencySpec extends HealthCheckSpecification {
         def path = northbound.getFlowPath(flow.flowId)
         pathHelper.convert(path) == alternativePath
         pathHelper.convert(path.protectedPath) == mainPath
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY])
@@ -106,8 +102,6 @@ class MaxLatencySpec extends HealthCheckSpecification {
         then: "Flow is not created, error returned describing that no paths found"
         def e = thrown(HttpClientErrorException)
         new FlowNotCreatedWithMissingPathExpectedError(~/Not enough bandwidth or no path found. Can't find a path/).matches(e)
-        cleanup:
-        !e && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         testMaxLatency | condition
@@ -133,9 +127,6 @@ class MaxLatencySpec extends HealthCheckSpecification {
         def path = northbound.getFlowPath(flow.flowId)
         pathHelper.convert(path) == mainPath
         pathHelper.convert(path.protectedPath) == alternativePath
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY])
@@ -154,9 +145,6 @@ class MaxLatencySpec extends HealthCheckSpecification {
 
         then: "Flow is created, flow path is the 15 latency path"
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == alternativePath
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY])
@@ -190,9 +178,6 @@ class MaxLatencySpec extends HealthCheckSpecification {
             assert northboundV2.getFlowHistoryStatuses(flow.flowId).historyStatuses*.statusBecome[0..1] == ["UP", "DEGRADED"]
         }
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == alternativePath
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to reroute a MAX_LATENCY flow if maxLatencyTier2 > pathLatency > maxLatency"() {
@@ -227,7 +212,6 @@ class MaxLatencySpec extends HealthCheckSpecification {
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == alternativePath
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (islToBreak) {
             antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
             wait(discoveryInterval + WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == DISCOVERED }
@@ -252,9 +236,6 @@ class MaxLatencySpec extends HealthCheckSpecification {
 but satisfies max_latency_tier2"
         def path = northbound.getFlowPath(flow.flowId)
         pathHelper.convert(path) == mainPath
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY])
@@ -274,9 +255,6 @@ but satisfies max_latency_tier2"
         then: "Flow is created in UP"
         def path = northbound.getFlowPath(flow.flowId)
         pathHelper.convert(path) == mainPath
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY])
@@ -296,8 +274,6 @@ but satisfies max_latency_tier2"
         then: "Flow is not created, human readable error is returned"
         def e = thrown(HttpClientErrorException)
         new FlowNotCreatedWithMissingPathExpectedError(~/Not enough bandwidth or no path found. Can't find a path/).matches(e)
-        cleanup:
-        !e && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY])
@@ -329,7 +305,6 @@ but satisfies max_latency_tier2"
         assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (islToBreak) {
             antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
             wait(WAIT_OFFSET) { assert northbound.getLink(islToBreak).state == IslChangeType.FAILED }

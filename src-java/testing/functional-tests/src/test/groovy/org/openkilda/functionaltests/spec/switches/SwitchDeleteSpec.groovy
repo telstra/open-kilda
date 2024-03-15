@@ -125,7 +125,6 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.matches(".*Switch '${flow.source.switchId}' has 1 assigned flows: \\[${flow.flowId}\\].*")
 
         cleanup: "Activate the switch back and remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
         switchHelper.reviveSwitch(swToDeactivate, blockData)
 
         where:

@@ -160,7 +160,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to create y-flow with one switch sub flow and diverse with simple multiSwitch flow"() {
@@ -196,7 +195,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to get y-flow paths with correct overlapping segments stats"() {

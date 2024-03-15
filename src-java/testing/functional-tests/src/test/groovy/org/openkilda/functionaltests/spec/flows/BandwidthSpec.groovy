@@ -58,14 +58,11 @@ class BandwidthSpec extends HealthCheckSpecification {
                 maximumBandwidth - maximumBandwidthUpdated)
 
         when: "Delete the flow"
-        def deleteResponse = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Available bandwidth on ISLs is changed to the initial value before flow creation"
         def linksAfterFlowDelete = northbound.getAllLinks()
         checkBandwidth(flowPathAfterUpdate, linksBeforeFlowCreate, linksAfterFlowDelete)
-
-        cleanup:
-        !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Longer path is chosen in case of not enough available bandwidth on a shorter path"() {
@@ -100,11 +97,6 @@ class BandwidthSpec extends HealthCheckSpecification {
         then: "The flow is built through longer path where available bandwidth is enough"
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.flowId))
         pathHelper.getCost(flow2Path) > pathHelper.getCost(flow1Path)
-
-        cleanup: "Delete created flows"
-        [flow1?.flowId, flow2?.flowId].each {
-            it && flowHelperV2.deleteFlow(it)
-        }
     }
 
     def "Unable to exceed bandwidth limit on ISL when creating a flow"() {
@@ -126,9 +118,6 @@ class BandwidthSpec extends HealthCheckSpecification {
         then: "The flow is not created because flow path should not be found"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-
-        cleanup:
-        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Unable to exceed bandwidth limit on ISL when updating a flow"() {
@@ -157,9 +146,6 @@ class BandwidthSpec extends HealthCheckSpecification {
         then: "The flow is not updated because flow path should not be found"
         def e = thrown(HttpClientErrorException)
         e.rawStatusCode == 404
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to exceed bandwidth limit on ISL when creating/updating a flow with ignore_bandwidth=true"() {
@@ -197,9 +183,6 @@ class BandwidthSpec extends HealthCheckSpecification {
 
         flowPathAfterUpdate == flowPath
         checkBandwidth(flowPathAfterUpdate, linksBeforeFlowCreate, linksAfterFlowUpdate)
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to update bandwidth to maximum link speed without using alternate links"() {
@@ -238,9 +221,6 @@ class BandwidthSpec extends HealthCheckSpecification {
 
         and: "The same path is used by updated flow"
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System doesn't allow to exceed bandwidth limit on ISL while updating a flow with ignore_bandwidth=false"() {
@@ -278,9 +258,6 @@ class BandwidthSpec extends HealthCheckSpecification {
         def flowPathAfterUpdate = PathHelper.convert(northbound.getFlowPath(flow.flowId))
         flowPathAfterUpdate == flowPath
         checkBandwidth(flowPathAfterUpdate, linksBeforeFlowCreate, linksAfterFlowUpdate)
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY])
@@ -302,9 +279,6 @@ class BandwidthSpec extends HealthCheckSpecification {
         then: "The flow is not created because flow path should not be found"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 404
-
-        cleanup:
-        !exc && flowHelper.deleteFlow(flow.id)
     }
 
     def cleanup() {

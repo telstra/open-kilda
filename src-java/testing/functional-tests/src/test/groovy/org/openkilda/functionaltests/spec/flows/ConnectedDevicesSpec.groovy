@@ -128,7 +128,6 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
-        def flowIsDeleted = true
 
         then: "Delete action removed all rules and meters"
         Wrappers.wait(WAIT_OFFSET) {
@@ -137,7 +136,6 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore initial switch properties"
-        !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
         srcLldpData && [data.switchPair.src, data.switchPair.dst].each { database.removeConnectedDevices(it.dpId) }
 
         where:
@@ -238,7 +236,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         srcLldpData && [flow.source.switchId, flow.destination.switchId].each { database.removeConnectedDevices(it) }
 
         where:
@@ -287,7 +284,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         when: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
-        def flowIsDeleted = true
 
         and: "Try to get connected devices for removed flow"
         northbound.getFlowConnectedDevices(flow.flowId)
@@ -295,8 +291,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
         new FlowNotFoundExpectedError(flow.getFlowId(), ~/Could not get connected devices for non existent flow/).matches(e)
+
         cleanup: "Restore initial switch properties"
-        flow && !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
         lldpData && database.removeConnectedDevices(sw.dpId)
     }
 
@@ -348,7 +344,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Delete the flow and restore initial switch properties"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         [flow.source.switchId, flow.destination.switchId].each { database.removeConnectedDevices(it) }
 
         where:
@@ -393,7 +388,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Disconnect the device and remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         device && device.close()
         lldpData && database.removeConnectedDevices(flow.source.switchId)
     }
@@ -433,7 +427,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Disconnect the device and remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         device && device.close()
         arpData && database.removeConnectedDevices(flow.source.switchId)
     }
@@ -481,7 +474,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         filteredDevices.first() == lastDevice
 
         cleanup: "Disconnect the device and remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         device && device.close()
         lldpData1 && database.removeConnectedDevices(flow.destination.switchId)
     }
@@ -530,7 +522,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         filteredDevices.first() == lastDevice
 
         cleanup: "Disconnect the device and remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         device && device.close()
         arpData1 && database.removeConnectedDevices(flow.destination.switchId)
     }
@@ -600,7 +591,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Remove created flow and device"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         device && device.close()
         lldpData && database.removeConnectedDevices(sw.dpId)
     }
@@ -654,7 +644,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Remove created flow and registered devices, revert switch props"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         lldpData && database.removeConnectedDevices(sw.dpId)
         initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
     }
@@ -841,8 +830,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Turn off devices prop, remove connected devices, remove flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        defaultFlow && flowHelperV2.deleteFlow(defaultFlow.flowId)
         lldpData && database.removeConnectedDevices(sw.dpId)
         initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
 
@@ -926,7 +913,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         srcLldpData && [flow.source.switchId, flow.destination.switchId].each { database.removeConnectedDevices(it) }
 
         where:
@@ -1009,7 +995,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
-        def flowIsDeleted = true
 
         and: "Delete action removed all rules and meters"
         Wrappers.wait(WAIT_OFFSET) {
@@ -1017,7 +1002,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Restore initial switch properties"
-        !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
         srcLldpData && database.removeConnectedDevices(swP.src.dpId)
 
         where:
@@ -1070,9 +1054,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         and: "Devices are not registered on the src/dst switches"
         northboundV2.getConnectedDevices(flow.source.switchId).ports.empty
         northboundV2.getConnectedDevices(flow.destination.switchId).ports.empty
-
-        cleanup: "Delete the flow and restore initial switch properties"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([SMOKE_SWITCHES])
@@ -1126,7 +1107,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Restore initial switch properties"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         lldpData && database.removeConnectedDevices(sw.dpId)
 
         where:
@@ -1204,8 +1184,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Restore initial switch properties"
-        flow1 && flowHelperV2.deleteFlow(flow1.flowId)
-        flow2 && flowHelperV2.deleteFlow(flow2.flowId)
         lldpData && database.removeConnectedDevices(sw.dpId)
 
         where:
@@ -1245,7 +1223,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
 
         cleanup: "Remove created flow and registered devices, revert switch props"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         sw && database.removeConnectedDevices(sw.dpId)
         initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
     }
@@ -1305,7 +1282,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Delete the flow and restore initial switch properties"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         initialPropsSource && restoreSwitchProperties(sw.dpId, initialPropsSource)
         database.removeConnectedDevices(sw.dpId)
     }
@@ -1360,7 +1336,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Delete the flow and restore initial switch properties"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         initialPropsSource && restoreSwitchProperties(sw.dpId, initialPropsSource)
         database.removeConnectedDevices(sw.dpId)
     }

@@ -59,7 +59,6 @@ class ConfigurationSpec extends HealthCheckSpecification {
         cleanup: "Restore default configuration and delete the flow"
         newFlowEncapsulationType && northbound.updateKildaConfiguration(
                 new KildaConfigurationDto(flowEncapsulationType: defaultEncapsulationType))
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.flowId) }
     }
 
     @Tags(LOW_PRIORITY)

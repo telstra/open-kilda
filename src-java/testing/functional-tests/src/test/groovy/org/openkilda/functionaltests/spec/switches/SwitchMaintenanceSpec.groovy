@@ -115,7 +115,6 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         !(sw in pathHelper.getInvolvedSwitches(flow2PathUpdated))
 
         cleanup: "Delete flows and unset maintenance mode"
-        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         northbound.setSwitchMaintenance(sw.dpId, false, false)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
