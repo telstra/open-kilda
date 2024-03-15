@@ -7,6 +7,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FA
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
@@ -81,7 +82,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         dstSwDefaultRules = northbound.getSwitchRules(dstSwitch.dpId).flowEntries
     }
 
-    @Tags([VIRTUAL, SMOKE])
+    @Tags([VIRTUAL, SMOKE, SWITCH_RECOVER_ON_FAIL])
     def "Pre-installed flow rules are not deleted from a new switch connected to the controller"() {
         given: "A switch with proper flow rules installed (including default) and not connected to the controller"
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)

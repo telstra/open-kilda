@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.error.InvalidRequestParametersExpectedError
 
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ACTION
@@ -347,7 +349,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
         ~/'timeFrom' must be less than or equal to 'timeTo'/).matches(exc)
     }
 
-    @Tags([LOW_PRIORITY])
+    @Tags([LOW_PRIORITY, SWITCH_RECOVER_ON_FAIL])
     def "Root cause is registered in flow history while rerouting"() {
         given: "An active flow"
         Switch srcSwitch

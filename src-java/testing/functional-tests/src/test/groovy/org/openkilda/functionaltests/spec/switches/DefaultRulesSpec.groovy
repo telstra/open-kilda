@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_TURNING_COOKIE
@@ -48,7 +49,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         sw << getTopology().getActiveSwitches().unique { sw -> sw.description }
     }
 
-    @Tags([SMOKE])
+    @Tags([SMOKE, SWITCH_RECOVER_ON_FAIL])
     def "Default rules are installed when a new switch is connected"() {
         given: "A switch with no rules installed and not connected to the controller"
         def sw = topology.activeSwitches.first()

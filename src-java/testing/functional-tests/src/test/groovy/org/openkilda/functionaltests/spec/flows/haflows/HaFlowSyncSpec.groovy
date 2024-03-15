@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -91,6 +92,7 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         ]
     }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     def "Able to synchronize an HA-Flow if Ha-flow switch is inactive protectedPath=#data.protectedPath"() {
         given: "An HA-Flow with down shared endpoint"
         def swT = data.protectedPath

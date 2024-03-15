@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.error.LagNotCreatedExpectedError
 import org.openkilda.functionaltests.error.LagNotDeletedExpectedError
 import org.openkilda.functionaltests.error.LagNotDeletedWithNotFoundExpectedError
@@ -223,6 +225,7 @@ class LagPortSpec extends HealthCheckSpecification {
         lagPort && northboundV2.deleteLagLogicalPort(swPair.src.dpId, lagPort)
     }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     def "LAG port is not deleted after switch reconnecting"() {
         given: "A switch with a LAG port"
         def sw = topology.getActiveSwitches().first()

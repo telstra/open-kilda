@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 
 import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
 import spock.lang.Shared
@@ -190,6 +191,7 @@ class SwitchesSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         new SwitchNotFoundExpectedError(NON_EXISTENT_SWITCH_ID).matches(exc)    }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     def "Systems allows to get all flows that goes through a DEACTIVATED switch"() {
         given: "Two active not neighboring switches"
         def switchPair = switchPairs.all().nonNeighbouring().random()

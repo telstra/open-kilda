@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
@@ -53,6 +54,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.contains("Switch '$switchId' is in 'Active' state")
     }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     def "Unable to delete an inactive switch with active ISLs"() {
         given: "An inactive switch with ISLs"
         def sw = topology.getActiveSwitches()[0]
@@ -72,6 +74,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         switchHelper.reviveSwitch(sw, blockData, true)
     }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     def "Unable to delete an inactive switch with inactive ISLs (ISL ports are down)"() {
         given: "An inactive switch with ISLs"
         def sw = topology.getActiveSwitches()[0]
@@ -103,6 +106,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     @IterationTags([@IterationTag(tags = [LOW_PRIORITY], take = 1)])
     def "Unable to delete an inactive switch with a #flowType flow assigned"() {
         given: "A flow going through a switch"
@@ -130,6 +134,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         "casual"        | getFlowHelperV2().randomFlow(*getTopology().getActiveSwitches()[0..1])
     }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     def "Able to delete an inactive switch without any ISLs"() {
         given: "An inactive switch without any ISLs"
         def sw = topology.getActiveSwitches()[0]
@@ -165,6 +170,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     def "Able to delete an inactive switch with connected devices"() {
         given: "An inactive switch without any ISLs but with connected devices"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")

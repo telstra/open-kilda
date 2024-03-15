@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows
 
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
@@ -788,7 +789,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         "an unmetered"  | 0
     }
 
-    @Tags(VIRTUAL)
+    @Tags([VIRTUAL, SWITCH_RECOVER_ON_FAIL])
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
         given: "A deactivated switch"
         def sw = topology.getActiveSwitches().first()

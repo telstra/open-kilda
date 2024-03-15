@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -113,7 +115,7 @@ class MultiFloodlightsSpec extends HealthCheckSpecification {
         wait(WAIT_OFFSET) { northbound.getAllSwitches().each { assert it.state == ACTIVATED } }
     }
 
-    @Tags([LOCKKEEPER])
+    @Tags([LOCKKEEPER, SWITCH_RECOVER_ON_FAIL])
     def "System supports case when switch uses different networks to connect to FLs, i.e. has diff ips"() {
         given: "A switch with at least 2 regions available"
         def sw = topology.activeSwitches.find { it.regions.size() >= 2 }
