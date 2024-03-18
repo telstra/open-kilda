@@ -152,10 +152,9 @@ public class Server42IngressRuleGeneratorTest {
     public void buildTransformActionsVlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES);
+        List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES, PATH);
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
-                SetFieldAction.builder().field(Field.ETH_DST).value(SWITCH_ID_2.toMacAddressAsLong()).build(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build());
         Assertions.assertEquals(expectedActions, transformActions);
     }
@@ -164,10 +163,9 @@ public class Server42IngressRuleGeneratorTest {
     public void buildTransformActionsVlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
         Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
+        List<Action> transformActions = generator.buildTransformActions(0, FEATURES, PATH);
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
-                SetFieldAction.builder().field(Field.ETH_DST).value(SWITCH_ID_2.toMacAddressAsLong()).build(),
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build());
         Assertions.assertEquals(expectedActions, transformActions);
@@ -177,10 +175,9 @@ public class Server42IngressRuleGeneratorTest {
     public void buildTransformActionsVlanEncapsulationFullPortTest() {
         Flow flow = buildFlow(PATH, 0, 0);
         Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
+        List<Action> transformActions = generator.buildTransformActions(0, FEATURES, PATH);
         List<Action> expectedActions = newArrayList(
                 SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
-                SetFieldAction.builder().field(Field.ETH_DST).value(SWITCH_ID_2.toMacAddressAsLong()).build(),
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build());
         Assertions.assertEquals(expectedActions, transformActions);
@@ -190,10 +187,9 @@ public class Server42IngressRuleGeneratorTest {
     public void buildTransformActionsVlanEncapsulationInnerVlanEqualTransitVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, TRANSIT_VLAN_ID);
         Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VLAN_ENCAPSULATION);
-        List<Action> transformActions = generator.buildTransformActions(TRANSIT_VLAN_ID, FEATURES);
+        List<Action> transformActions = generator.buildTransformActions(TRANSIT_VLAN_ID, FEATURES, PATH);
         List<Action> expectedActions = newArrayList(
-                SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
-                SetFieldAction.builder().field(Field.ETH_DST).value(SWITCH_ID_2.toMacAddressAsLong()).build());
+                SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build());
         Assertions.assertEquals(expectedActions, transformActions);
     }
 
@@ -201,7 +197,7 @@ public class Server42IngressRuleGeneratorTest {
     public void buildTransformActionsVxlanEncapsulationDoubleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, INNER_VLAN_ID_1);
         Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
-        List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES);
+        List<Action> transformActions = generator.buildTransformActions(INNER_VLAN_ID_1, FEATURES, PATH);
         List<Action> expectedActions = newArrayList(new PopVlanAction(), buildPushVxlan());
         Assertions.assertEquals(expectedActions, transformActions);
     }
@@ -210,7 +206,7 @@ public class Server42IngressRuleGeneratorTest {
     public void buildTransformActionsVxlanEncapsulationSingleVlanTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_ID_1, 0);
         Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
-        List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
+        List<Action> transformActions = generator.buildTransformActions(0, FEATURES, PATH);
         List<Action> expectedActions = newArrayList(buildPushVxlan());
         Assertions.assertEquals(expectedActions, transformActions);
     }
@@ -219,7 +215,7 @@ public class Server42IngressRuleGeneratorTest {
     public void buildTransformActionsVxlanEncapsulationFullPortTest() {
         Flow flow = buildFlow(PATH, 0, 0);
         Server42IngressRuleGenerator generator = buildGenerator(PATH, flow, VXLAN_ENCAPSULATION);
-        List<Action> transformActions = generator.buildTransformActions(0, FEATURES);
+        List<Action> transformActions = generator.buildTransformActions(0, FEATURES, PATH);
         List<Action> expectedActions = newArrayList(buildPushVxlan());
         Assertions.assertEquals(expectedActions, transformActions);
     }
@@ -274,7 +270,6 @@ public class Server42IngressRuleGeneratorTest {
                         .value(ingressMetadata.getValue()).mask(ingressMetadata.getMask()).build());
         List<Action> expectedIngressActions = newArrayList(
                 SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
-                SetFieldAction.builder().field(Field.ETH_DST).value(SWITCH_ID_2.toMacAddressAsLong()).build(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_2))
         );
@@ -328,7 +323,6 @@ public class Server42IngressRuleGeneratorTest {
                         .value(ingressMetadata.getValue()).mask(ingressMetadata.getMask()).build());
         List<Action> expectedIngressActions = newArrayList(
                 SetFieldAction.builder().field(Field.ETH_SRC).value(SWITCH_ID_1.toMacAddressAsLong()).build(),
-                SetFieldAction.builder().field(Field.ETH_DST).value(SWITCH_ID_2.toMacAddressAsLong()).build(),
                 new PushVlanAction(),
                 SetFieldAction.builder().field(Field.VLAN_VID).value(TRANSIT_VLAN_ID).build(),
                 new PortOutAction(new PortNumber(PORT_NUMBER_2)));

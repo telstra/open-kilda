@@ -28,6 +28,7 @@ import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
+import org.openkilda.server42.control.messaging.flowrtt.ActivateFlowMonitoringInfoData;
 import org.openkilda.wfm.topology.flowhs.model.DetectConnectedDevices;
 import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 
@@ -297,5 +298,37 @@ public class RequestedFlowMapperTest {
         assertEquals(DST_PORT, requestedFlow.getDestPort());
         assertEquals(DST_VLAN, requestedFlow.getDestVlan());
         assertEquals(DST_INNER_VLAN, requestedFlow.getDestInnerVlan());
+    }
+
+    @Test
+    public void requestedFlowToActivateFlowMonitoringInfoData() {
+        RequestedFlow requestedFlow = RequestedFlow.builder()
+                .flowId(FLOW_ID)
+                .srcSwitch(SRC_SWITCH_ID)
+                .srcPort(SRC_PORT)
+                .srcVlan(SRC_VLAN)
+                .srcInnerVlan(SRC_INNER_VLAN)
+                .destSwitch(DST_SWITCH_ID)
+                .destPort(DST_PORT)
+                .destVlan(DST_VLAN)
+                .destInnerVlan(DST_INNER_VLAN)
+                .haFlowId("ha_flow_id")
+                .build();
+
+        ActivateFlowMonitoringInfoData infoData = RequestedFlowMapper.INSTANCE
+                .toActivateFlowMonitoringInfoData(requestedFlow);
+
+        assertEquals(FLOW_ID, infoData.getId());
+        assertEquals(SRC_SWITCH_ID, infoData.getSource().getDatapath());
+        assertEquals(SRC_PORT, (int) infoData.getSource().getPortNumber());
+        assertEquals(SRC_VLAN, (int) infoData.getSource().getVlanId());
+        assertEquals(SRC_INNER_VLAN, (int) infoData.getSource().getInnerVlanId());
+
+        assertEquals(DST_SWITCH_ID, infoData.getDestination().getDatapath());
+        assertEquals(DST_PORT, (int) infoData.getDestination().getPortNumber());
+        assertEquals(DST_VLAN, (int) infoData.getDestination().getVlanId());
+        assertEquals(DST_INNER_VLAN, (int) infoData.getDestination().getInnerVlanId());
+
+        assertEquals("ha_flow_id", infoData.getHaFlowId());
     }
 }

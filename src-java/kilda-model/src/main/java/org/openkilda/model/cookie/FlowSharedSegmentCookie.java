@@ -29,11 +29,13 @@ public class FlowSharedSegmentCookie extends CookieBase {
     static final BitField SHARED_TYPE_FIELD = new BitField(0x000F_0000_0000_0000L);
     static final BitField PORT_NUMBER_FIELD = new BitField(0x0000_0000_0000_FFFFL);
     static final BitField VLAN_ID_FIELD     = new BitField(0x0000_0000_0FFF_0000L);
+    static final BitField SUB_TYPE_FIELD    = new BitField(0x0000_000F_0000_0000L);
+
 
     // used by unit tests to check fields intersections
     static final BitField[] ALL_FIELDS = ArrayUtils.addAll(
             CookieBase.ALL_FIELDS,
-            SHARED_TYPE_FIELD, PORT_NUMBER_FIELD, VLAN_ID_FIELD);
+            SHARED_TYPE_FIELD, PORT_NUMBER_FIELD, VLAN_ID_FIELD, SUB_TYPE_FIELD);
 
     private static final CookieType VALID_TYPE = CookieType.SHARED_OF_FLOW;
 
@@ -43,8 +45,9 @@ public class FlowSharedSegmentCookie extends CookieBase {
     }
 
     @Builder
-    protected FlowSharedSegmentCookie(CookieType type, SharedSegmentType segmentType, int portNumber, int vlanId) {
-        super(makeValue(type, segmentType, portNumber, vlanId), type);
+    protected FlowSharedSegmentCookie(CookieType type, SharedSegmentType segmentType, int portNumber, int vlanId,
+                                      FlowSubType subType) {
+        super(makeValue(type, segmentType, portNumber, vlanId, subType), type);
     }
 
     /**
@@ -71,6 +74,11 @@ public class FlowSharedSegmentCookie extends CookieBase {
         return (int) getField(VLAN_ID_FIELD);
     }
 
+    public FlowSubType getFlowSubType() {
+        long longValue = getField(SUB_TYPE_FIELD);
+        return resolveEnum(FlowSubType.values(), longValue).orElse(FlowSubType.INVALID);
+    }
+
     /**
      * Make builder.
      */
@@ -80,14 +88,19 @@ public class FlowSharedSegmentCookie extends CookieBase {
                 .segmentType(segmentType);
     }
 
-    private static long makeValue(CookieType type, SharedSegmentType segmentType, int portNumber, int vlanId) {
+    private static long makeValue(CookieType type, SharedSegmentType segmentType, int portNumber, int vlanId,
+                                  FlowSubType subType) {
         if (type != VALID_TYPE) {
             throw new IllegalArgumentException(formatIllegalTypeError(type, VALID_TYPE));
         }
 
-        long value = setField(0, SHARED_TYPE_FIELD, segmentType.getValue());
-        value = setField(value, PORT_NUMBER_FIELD, portNumber);
-        return setField(value, VLAN_ID_FIELD, vlanId);
+        long result = setField(0, SHARED_TYPE_FIELD, segmentType.getValue());
+        result = setField(result, PORT_NUMBER_FIELD, portNumber);
+        result = setField(result, VLAN_ID_FIELD, vlanId);
+        if (subType != null) {
+            result = setField(result, SUB_TYPE_FIELD, subType.getValue());
+        }
+        return result;
     }
 
     public enum SharedSegmentType implements NumericEnumField {

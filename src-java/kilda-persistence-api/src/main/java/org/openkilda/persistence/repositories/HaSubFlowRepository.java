@@ -16,6 +16,7 @@
 package org.openkilda.persistence.repositories;
 
 import org.openkilda.model.HaSubFlow;
+import org.openkilda.model.SwitchId;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -26,4 +27,6 @@ public interface HaSubFlowRepository extends Repository<HaSubFlow> {
     boolean exists(String haSubFlowId);
 
     Optional<HaSubFlow> findById(String haSubFlowId);
+
+    Collection<HaSubFlow> findByEndpointSwitchId(SwitchId switchId);
 }

@@ -27,6 +27,7 @@ import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.share.zk.ZooKeeperSpout;
 import org.openkilda.wfm.topology.AbstractTopology;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.KafkaBolt;
 import org.apache.storm.topology.TopologyBuilder;
@@ -39,6 +40,12 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
         super(env, "control-topology", ControlTopologyConfig.class);
 
         persistenceManager = new PersistenceManager(configurationProvider);
+    }
+
+    @VisibleForTesting
+    ControlTopology(LaunchEnvironment env, PersistenceManager persistenceManager) {
+        super(env, "control-topology", ControlTopologyConfig.class);
+        this.persistenceManager = persistenceManager;
     }
 
     /**
@@ -139,7 +146,8 @@ public class ControlTopology extends AbstractTopology<ControlTopologyConfig> {
     }
 
     private void outputSpeaker(TopologyBuilder topology) {
-        KafkaBolt output = buildKafkaBoltWithRawObject(topologyConfig.getKafkaTopics().getServer42StormCommandsTopic());
+        KafkaBolt<String, Object> output =
+                buildKafkaBoltWithRawObject(topologyConfig.getKafkaTopics().getServer42StormCommandsTopic());
         declareBolt(topology, output, ComponentId.OUTPUT_SERVER42_CONTROL.toString())
                 .shuffleGrouping(FlowHandler.BOLT_ID, FlowHandler.STREAM_CONTROL_COMMANDS_ID)
                 .shuffleGrouping(IslHandler.BOLT_ID, IslHandler.STREAM_CONTROL_COMMANDS_ID);

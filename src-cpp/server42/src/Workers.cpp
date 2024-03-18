@@ -48,7 +48,7 @@ namespace org::openkilda {
                               org::openkilda::isl_pool_t& m_isl_pool,
                               std::mutex& m_pool_guard) {
 
-        BOOST_LOG_TRIVIAL(info) << "tick isl_pool_size: " << m_isl_pool.table.size();
+        BOOST_LOG_TRIVIAL(debug) << "tick isl_pool_size: " << m_isl_pool.table.size();
 
         std::lock_guard<std::mutex> guard(m_pool_guard);
         pcpp::MBufRawPacket **start = m_isl_pool.table.data();
@@ -104,7 +104,7 @@ namespace org::openkilda {
 
         while (alive.load()) {
             try {
-                BOOST_LOG_TRIVIAL(info) << "tick flow_pool_size: " << m_flow_pool.table.size();
+                BOOST_LOG_TRIVIAL(debug) << "tick flow_pool_size: " << m_flow_pool.table.size();
 
                 uint64_t start_tsc = rte_get_timer_cycles();
                 {
@@ -392,13 +392,13 @@ namespace org::openkilda {
         auto cmp = [](mbuf_container_t& left, mbuf_container_t& right) { return std::get<0>(left) > std::get<0>(right); };
         std::priority_queue<mbuf_container_t, std::vector<mbuf_container_t>, decltype(cmp) > queue(cmp);
 
-        const uint64_t cycles_in_one_second = rte_get_hpet_hz();
+        const uint64_t cycles_in_one_second = rte_get_timer_hz();
         const uint64_t cycles_in_1_ms = cycles_in_one_second / 1000;
 
         while (alive.load()) {
             uint16_t num_of_packets = device->receivePackets(rx_mbuf, Config::chunk_size, 0);
 
-            uint64_t start_tsc = rte_get_hpet_cycles();
+            uint64_t start_tsc = rte_get_timer_cycles();
 
             for (uint16_t i = 0; i < num_of_packets; ++i) {
 

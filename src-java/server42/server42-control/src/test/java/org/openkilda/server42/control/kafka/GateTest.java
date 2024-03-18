@@ -105,6 +105,7 @@ public class GateTest {
                 .innerTunnelId(1002L)
                 .direction(FlowDirection.REVERSE)
                 .port(42)
+                .dstMac("1b:45:18:d6:71:ff")
                 .build();
 
         String switchId = "00:00:1b:45:18:d6:71:5a";
@@ -125,6 +126,7 @@ public class GateTest {
         assertThat(flow.getFlowId()).isEqualTo(addFlow.getFlowId());
         assertThat(flow.getTunnelId()).isEqualTo(addFlow.getTunnelId());
         assertThat(flow.getInnerTunnelId()).isEqualTo(addFlow.getInnerTunnelId());
+        assertThat(flow.getDstMac()).isEqualTo(addFlow.getDstMac());
         assertThat(flow.getDirection()).isEqualTo(FlowDirection.toBoolean(addFlow.getDirection()));
         assertThat(flow.getUdpSrcPort()).isEqualTo(flowRttUdpSrcPortOffset + addFlow.getPort());
 
@@ -135,8 +137,6 @@ public class GateTest {
                 assertThat(flow.getTransitTunnelId()).isEqualTo(vlan);
             }
         });
-
-        assertThat(flow.getDstMac()).isSubstringOf(switchId).isNotEqualTo(switchId);
     }
 
     @Test

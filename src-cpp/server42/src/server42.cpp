@@ -93,10 +93,13 @@ int init_dpdk(int argc, char *argv[], Config::cref_ptr config) {
         return 1;
     }
 
-    ret = rte_eal_hpet_init(true);
-    if (ret < 0) {
-        BOOST_LOG_TRIVIAL(fatal) << "failed to init HPET";
-        return 1;
+    // Initialize HPET
+    if (config->is_hpet()) {
+        ret = rte_eal_hpet_init(true);
+        if (ret < 0) {
+            BOOST_LOG_TRIVIAL(fatal) << "failed to init HPET";
+            return 1;
+        }
     }
 
     pcpp::DpdkDeviceList::externalInitializationDpdk(config->get_core_mask(),

@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.actions;
 
+import org.openkilda.model.HaSubFlow;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.HistoryRecordingAction;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.delete.HaFlowDeleteContext;
@@ -36,7 +37,7 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowDeleteFsm, St
 
     @Override
     public void perform(State from, State to, Event event, HaFlowDeleteContext context, HaFlowDeleteFsm stateMachine) {
-        //TODO deactivate flow monitoring
+        sendDeactivateFlowMonitoring(stateMachine);
         stateMachine.getCarrier().sendPeriodicPingNotification(stateMachine.getHaFlowId(), false);
         dashboardLogger.onSuccessfulHaFlowDelete(stateMachine.getHaFlowId());
         FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
@@ -44,4 +45,14 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowDeleteFsm, St
                 .withAction("HA-flow has been deleted successfully")
                 .withHaFlowId(stateMachine.getHaFlowId()));
     }
+
+    private void sendDeactivateFlowMonitoring(HaFlowDeleteFsm stateMachine) {
+        for (HaSubFlow haSubFlow : stateMachine.getTargetHaFlow().getHaSubFlows()) {
+            stateMachine.getCarrier().sendDeactivateFlowMonitoring(
+                    haSubFlow.getHaSubFlowId(),
+                    stateMachine.getTargetHaFlow().getSharedSwitchId(),
+                    haSubFlow.getEndpointSwitchId());
+        }
+    }
+
 }

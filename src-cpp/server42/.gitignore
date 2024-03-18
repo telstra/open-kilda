@@ -1,2 +1,6 @@
 cmake-build-*
 src/*.pb.*
+.vscode
+cmake
+pipework
+tools

@@ -16,6 +16,7 @@
 package org.openkilda.model.cookie;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.openkilda.model.FlowPathDirection;
 import org.openkilda.model.cookie.CookieBase.CookieType;
@@ -53,4 +54,27 @@ public class FlowSegmentCookieTest extends GenericCookieTest {
                 .build();
         assertEquals(CookieType.SERVER_42_FLOW_RTT_INGRESS, server42Cookie.getType());
     }
+
+    @Test
+    public void changingOfFlowSegmentCookieServer42Test() {
+
+        FlowSegmentCookie flowCookie = FlowSegmentCookie.builder()
+                .direction(FlowPathDirection.FORWARD)
+                .flowEffectiveId(10)
+                .subType(FlowSubType.HA_SUB_FLOW_1)
+                .build();
+
+        assertEquals(CookieType.SERVICE_OR_FLOW_SEGMENT, flowCookie.getType());
+        assertEquals(FlowSubType.HA_SUB_FLOW_1, flowCookie.getFlowSubType());
+
+        FlowSegmentCookie server42Cookie = flowCookie.toBuilder()
+                .haSubFlowServer42(true)
+                .build();
+
+        assertTrue(server42Cookie.isHaSubFlowServer42());
+        assertEquals(FlowSubType.HA_SUB_FLOW_1, server42Cookie.getFlowSubType());
+
+
+    }
 }
+

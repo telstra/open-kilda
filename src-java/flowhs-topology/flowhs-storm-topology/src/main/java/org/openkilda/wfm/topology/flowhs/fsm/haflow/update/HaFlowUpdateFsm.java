@@ -20,6 +20,7 @@ import org.openkilda.model.FlowStatus;
 import org.openkilda.pce.PathComputer;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
+import org.openkilda.rulemanager.SpeakerData;
 import org.openkilda.wfm.CommandContext;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.share.history.model.HaFlowEventData;
@@ -77,7 +78,9 @@ import org.squirrelframework.foundation.fsm.StateMachineBuilder;
 import org.squirrelframework.foundation.fsm.StateMachineBuilderFactory;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Getter
@@ -87,6 +90,7 @@ public final class HaFlowUpdateFsm extends HaFlowPathSwappingFsm<HaFlowUpdateFsm
         HaFlowGenericCarrier, FlowProcessingEventListener> {
     private HaFlowRequest targetHaFlow;
     private FlowStatus newFlowStatus;
+    private List<SpeakerData> targetSpeakerDataCommands = new ArrayList<>();
 
     public HaFlowUpdateFsm(@NonNull CommandContext commandContext, @NonNull HaFlowGenericCarrier carrier,
                            @NonNull String flowId,

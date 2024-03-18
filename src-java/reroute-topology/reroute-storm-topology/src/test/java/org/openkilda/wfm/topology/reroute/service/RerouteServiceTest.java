@@ -59,7 +59,7 @@ import org.openkilda.model.YFlow;
 import org.openkilda.model.YFlow.SharedEndpoint;
 import org.openkilda.model.YSubFlow;
 import org.openkilda.model.cookie.FlowSegmentCookie;
-import org.openkilda.model.cookie.FlowSegmentCookie.FlowSubType;
+import org.openkilda.model.cookie.FlowSubType;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.exceptions.EntityNotFoundException;
 import org.openkilda.persistence.repositories.FlowPathRepository;

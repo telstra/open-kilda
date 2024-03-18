@@ -70,7 +70,8 @@ public class HaFlowRequest extends CommandData {
                 return subFlow;
             }
         }
-        throw new IllegalArgumentException(String.format("HA-sub flow %s not found. Valida ha-sub flows are: %s",
+        throw new IllegalArgumentException(String.format("HA-sub flow %s not found. Valid ha-sub flows are: %s",
                 haSubFlowId, subFlows.stream().map(HaSubFlowDto::getFlowId).collect(Collectors.toList())));
     }
+
 }

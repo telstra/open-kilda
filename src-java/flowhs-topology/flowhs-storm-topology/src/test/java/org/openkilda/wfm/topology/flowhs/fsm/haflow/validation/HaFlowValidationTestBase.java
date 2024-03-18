@@ -41,6 +41,7 @@ import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.model.cookie.FlowSubType;
 import org.openkilda.rulemanager.Field;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.GroupSpeakerData;
@@ -86,19 +87,19 @@ public class HaFlowValidationTestBase {
 
     public static final FlowSegmentCookie FORWARD_COOKIE = FlowSegmentCookie.builder()
             .direction(FlowPathDirection.FORWARD).flowEffectiveId(1)
-            .subType(FlowSegmentCookie.FlowSubType.SHARED).build();
+            .subType(FlowSubType.SHARED).build();
     public static final FlowSegmentCookie REVERSE_COOKIE = FlowSegmentCookie.builder()
             .direction(FlowPathDirection.REVERSE).flowEffectiveId(1)
-            .subType(FlowSegmentCookie.FlowSubType.SHARED).build();
+            .subType(FlowSubType.SHARED).build();
 
     public static final FlowSegmentCookie FORWARD_SUB_COOKIE_1 = FORWARD_COOKIE.toBuilder()
-            .subType(FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1).build();
+            .subType(FlowSubType.HA_SUB_FLOW_1).build();
     public static final FlowSegmentCookie REVERSE_SUB_COOKIE_1 = REVERSE_COOKIE.toBuilder()
-            .subType(FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1).build();
+            .subType(FlowSubType.HA_SUB_FLOW_1).build();
     public static final FlowSegmentCookie FORWARD_SUB_COOKIE_2 = FORWARD_COOKIE.toBuilder()
-            .subType(FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2).build();
+            .subType(FlowSubType.HA_SUB_FLOW_2).build();
     public static final FlowSegmentCookie REVERSE_SUB_COOKIE_2 = REVERSE_COOKIE.toBuilder()
-            .subType(FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2).build();
+            .subType(FlowSubType.HA_SUB_FLOW_2).build();
 
 
     protected static Switch buildSwitch(SwitchId switchId) {

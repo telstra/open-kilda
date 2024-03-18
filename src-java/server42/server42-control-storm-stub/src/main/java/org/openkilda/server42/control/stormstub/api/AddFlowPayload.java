@@ -41,4 +41,7 @@ public class AddFlowPayload {
 
     @JsonProperty("port")
     Integer port;
+
+    @JsonProperty("dst_mac")
+    String dstMac;
 }

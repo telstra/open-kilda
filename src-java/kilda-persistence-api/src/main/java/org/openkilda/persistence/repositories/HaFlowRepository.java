@@ -33,6 +33,8 @@ public interface HaFlowRepository extends Repository<HaFlow> {
 
     Collection<HaFlow> findByEndpoint(SwitchId switchId, int port, int vlan, int innerVLan);
 
+    Collection<HaFlow> findBySharedEndpointSwitchId(SwitchId switchId);
+
     Collection<HaFlow> findWithPeriodicPingsEnabled();
 
     Collection<HaFlow> findInactive();

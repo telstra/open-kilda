@@ -30,7 +30,7 @@ import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.PathId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
-import org.openkilda.model.cookie.FlowSegmentCookie.FlowSubType;
+import org.openkilda.model.cookie.FlowSubType;
 import org.openkilda.pce.GetHaPathsResult;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.PathComputer;

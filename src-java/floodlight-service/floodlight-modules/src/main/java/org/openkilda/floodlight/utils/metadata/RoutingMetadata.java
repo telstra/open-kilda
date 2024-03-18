@@ -28,7 +28,7 @@ import java.util.Set;
 
 public class RoutingMetadata extends MetadataBase {
     // update ALL_FIELDS if modify fields list
-    //                                                  used by parent -> 0x0000_0000_F000_0000L
+    //                                                  used by parent -> 0x0000_0000_E000_0000L
     private static final BitField LLDP_MARKER_FLAG         = new BitField(0x0000_0000_0000_0001L);
     private static final BitField ONE_SWITCH_FLOW_FLAG     = new BitField(0x0000_0000_0000_0002L);
     private static final BitField ARP_MARKER_FLAG          = new BitField(0x0000_0000_0000_0004L);

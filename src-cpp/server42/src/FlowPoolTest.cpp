@@ -132,7 +132,7 @@ namespace test {
             std::shared_ptr<ok::FlowMetadata>,
             bmi::indexed_by<
                     bmi::ordered_unique<bmi::const_mem_fun<ok::FlowMetadata, const ok::flow_endpoint_t &, &ok::FlowMetadata::get_flow_endpoint>>,
-                    bmi::ordered_non_unique<bmi::const_mem_fun<ok::FlowMetadata, const std::string &, &ok::FlowMetadata::get_dst_mac>>
+                    bmi::ordered_non_unique<bmi::const_mem_fun<ok::FlowMetadata, const std::string &, &ok::FlowMetadata::get_switch_id>>
             >
     >
             metadata_set_t;
@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE(flow_metadata_play) {
 
     test::metadata_set_t::nth_index<1>::type::iterator it2s, it2e;
 
-    std::tie(it2s, it2e) = dst_mac_index.equal_range(f1->get_dst_mac());
+    std::tie(it2s, it2e) = dst_mac_index.equal_range(f1->get_switch_id());
 
     BOOST_TEST(std::distance(it2s, it2e) == 2);
 
@@ -179,7 +179,7 @@ BOOST_AUTO_TEST_CASE(flow_metadata_play) {
 
     BOOST_TEST(set.size() == 2);
 
-    std::tie(it2s, it2e) = dst_mac_index.equal_range(f1->get_dst_mac());
+    std::tie(it2s, it2e) = dst_mac_index.equal_range(f1->get_switch_id());
 
     dst_mac_index.erase(it2s, it2e);
 

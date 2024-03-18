@@ -6,4 +6,5 @@
 <suppressions>
     <suppress files="src/main/.*Fsm\.java$" checks="JavadocMethod" />
     <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="VariableDeclarationUsageDistance" />
+    <suppress files="[/\\]src[/\\].*[Tt]est[/\\](java)[/\\]" checks="JavadocMethod" />
 </suppressions>

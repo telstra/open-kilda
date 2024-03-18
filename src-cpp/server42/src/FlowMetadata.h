@@ -24,12 +24,12 @@ namespace org::openkilda {
     class FlowMetadata {
 
         flow_endpoint_t flow_endpoint;
-        std::string dst_mac;
+        std::string switch_id;
         int32_t hash;
 
     public:
-        FlowMetadata(std::string flow_id, bool direction, std::string dst_mac, int32_t hash)
-                : dst_mac(std::move(dst_mac)), hash(hash) {
+        FlowMetadata(std::string flow_id, bool direction, std::string switch_id, int32_t hash)
+                : switch_id(std::move(switch_id)), hash(hash) {
 
             flow_endpoint = org::openkilda::make_flow_endpoint(flow_id, direction);
         }
@@ -47,8 +47,8 @@ namespace org::openkilda {
             return std::get<int(flow_endpoint_members::direction)>(flow_endpoint);
         };
 
-        const std::string &get_dst_mac() const {
-            return dst_mac;
+        const std::string &get_switch_id() const {
+            return switch_id;
         };
 
         int32_t get_hash() const {
@@ -62,7 +62,7 @@ namespace org::openkilda {
             std::shared_ptr<FlowMetadata>,
             bmi::indexed_by<
                     bmi::ordered_unique<bmi::const_mem_fun<FlowMetadata, const flow_endpoint_t &, &FlowMetadata::get_flow_endpoint> >,
-                    bmi::ordered_non_unique<bmi::const_mem_fun<FlowMetadata, const std::string &, &FlowMetadata::get_dst_mac>>
+                    bmi::ordered_non_unique<bmi::const_mem_fun<FlowMetadata, const std::string &, &FlowMetadata::get_switch_id>>
             >
     > flow_metadata_set_t;
 
@@ -96,13 +96,12 @@ namespace org::openkilda {
             }
         }
 
-        virtual std::list<flow_endpoint_t> get_endpoint_from_switch(const std::string &dst_mac) const {
-            const flow_metadata_set_t::nth_index<1>::type &dst_mac_index = metadata_set.get<1>();
+        virtual std::list<flow_endpoint_t> get_endpoint_from_switch(const std::string &switch_id) const {
+            const flow_metadata_set_t::nth_index<1>::type &switch_id_index = metadata_set.get<1>();
             flow_metadata_set_t::nth_index<1>::type::iterator its, ite;
-            std::tie(its, ite) = dst_mac_index.equal_range(dst_mac);
+            std::tie(its, ite) = switch_id_index.equal_range(switch_id);
 
             std::list<flow_endpoint_t> result;
-
             for (auto i = its; i != ite; ++i) {
                 result.emplace_back(i->get()->get_flow_endpoint());
             }

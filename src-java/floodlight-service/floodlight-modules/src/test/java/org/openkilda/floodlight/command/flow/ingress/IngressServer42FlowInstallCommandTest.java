@@ -60,7 +60,6 @@ import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxm;
-import org.projectfloodlight.openflow.protocol.oxm.OFOxmEthDst;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmEthSrc;
 import org.projectfloodlight.openflow.protocol.oxm.OFOxmVlanVid;
 import org.projectfloodlight.openflow.protocol.ver13.OFFactoryVer13;
@@ -111,11 +110,10 @@ public class IngressServer42FlowInstallCommandTest {
         assertMetadata(mod, VLAN_1, CUSTOMER_PORT);
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
-        assertEquals(4, applyActions.size());
+        assertEquals(3, applyActions.size());
         assertSetField(applyActions.get(0), OFOxmEthSrc.class, MacAddress.of(INGRESS_SWITCH_ID.toMacAddress()));
-        assertSetField(applyActions.get(1), OFOxmEthDst.class, MacAddress.of(EGRESS_SWITCH_ID.toMacAddress()));
-        assertSetField(applyActions.get(2), OFOxmVlanVid.class, OFVlanVidMatch.ofVlan(VLAN_ENCAPSULATION.getId()));
-        assertOutputAction(applyActions.get(3));
+        assertSetField(applyActions.get(1), OFOxmVlanVid.class, OFVlanVidMatch.ofVlan(VLAN_ENCAPSULATION.getId()));
+        assertOutputAction(applyActions.get(2));
     }
 
     @Test
@@ -129,12 +127,11 @@ public class IngressServer42FlowInstallCommandTest {
         assertMetadata(mod, VLAN_1, CUSTOMER_PORT);
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
-        assertEquals(5, applyActions.size());
+        assertEquals(4, applyActions.size());
         assertSetField(applyActions.get(0), OFOxmEthSrc.class, MacAddress.of(INGRESS_SWITCH_ID.toMacAddress()));
-        assertSetField(applyActions.get(1), OFOxmEthDst.class, MacAddress.of(EGRESS_SWITCH_ID.toMacAddress()));
-        assertPushVlanAction(applyActions.get(2));
-        assertSetField(applyActions.get(3), OFOxmVlanVid.class, OFVlanVidMatch.ofVlan(VLAN_ENCAPSULATION.getId()));
-        assertOutputAction(applyActions.get(4));
+        assertPushVlanAction(applyActions.get(1));
+        assertSetField(applyActions.get(2), OFOxmVlanVid.class, OFVlanVidMatch.ofVlan(VLAN_ENCAPSULATION.getId()));
+        assertOutputAction(applyActions.get(3));
     }
 
     @Test
@@ -148,12 +145,11 @@ public class IngressServer42FlowInstallCommandTest {
         assertMetadata(mod, 0, CUSTOMER_PORT);
 
         List<OFAction> applyActions = ((OFInstructionApplyActions) mod.getInstructions().get(0)).getActions();
-        assertEquals(5, applyActions.size());
+        assertEquals(4, applyActions.size());
         assertSetField(applyActions.get(0), OFOxmEthSrc.class, MacAddress.of(INGRESS_SWITCH_ID.toMacAddress()));
-        assertSetField(applyActions.get(1), OFOxmEthDst.class, MacAddress.of(EGRESS_SWITCH_ID.toMacAddress()));
-        assertPushVlanAction(applyActions.get(2));
-        assertSetField(applyActions.get(3), OFOxmVlanVid.class, OFVlanVidMatch.ofVlan(VLAN_ENCAPSULATION.getId()));
-        assertOutputAction(applyActions.get(4));
+        assertPushVlanAction(applyActions.get(1));
+        assertSetField(applyActions.get(2), OFOxmVlanVid.class, OFVlanVidMatch.ofVlan(VLAN_ENCAPSULATION.getId()));
+        assertOutputAction(applyActions.get(3));
     }
 
     @Test

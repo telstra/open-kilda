@@ -35,6 +35,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.CookieBase.CookieType;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.model.cookie.FlowSubType;
 import org.openkilda.persistence.inmemory.InMemoryGraphPersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
@@ -137,16 +138,16 @@ public class StatsTopologyBaseTest extends AbstractStormTest {
     protected static final FlowSegmentCookie COOKIE_FORWARD = FlowSegmentCookie.builder().flowEffectiveId(1)
             .direction(FlowPathDirection.FORWARD).build();
     protected static final FlowSegmentCookie COOKIE_FORWARD_SUBFLOW_1 = COOKIE_FORWARD.toBuilder()
-            .subType(FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1).build();
+            .subType(FlowSubType.HA_SUB_FLOW_1).build();
     protected static final FlowSegmentCookie COOKIE_FORWARD_SUBFLOW_2 = COOKIE_FORWARD.toBuilder()
-            .subType(FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2).build();
+            .subType(FlowSubType.HA_SUB_FLOW_2).build();
     protected static final FlowSegmentCookie COOKIE_REVERSE = FlowSegmentCookie.builder().flowEffectiveId(2)
             .direction(FlowPathDirection.REVERSE).build();
 
     protected static final FlowSegmentCookie COOKIE_REVERSE_SUBFLOW_1 = COOKIE_REVERSE.toBuilder()
-            .subType(FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1).build();
+            .subType(FlowSubType.HA_SUB_FLOW_1).build();
     protected static final FlowSegmentCookie COOKIE_REVERSE_SUBFLOW_2 = COOKIE_REVERSE.toBuilder()
-            .subType(FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2).build();
+            .subType(FlowSubType.HA_SUB_FLOW_2).build();
     protected static final long MAIN_COOKIE = 15;
     protected static final long PROTECTED_COOKIE = 17;
     protected static final FlowSegmentCookie MAIN_FORWARD_COOKIE = new FlowSegmentCookie(FORWARD, MAIN_COOKIE);

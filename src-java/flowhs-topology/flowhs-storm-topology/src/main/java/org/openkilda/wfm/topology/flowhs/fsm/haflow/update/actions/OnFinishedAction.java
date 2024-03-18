@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.haflow.update.actions;
 import static java.lang.String.format;
 
 import org.openkilda.messaging.command.haflow.HaFlowRequest;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.HaSubFlow;
@@ -28,12 +29,11 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.update.HaFlowUpdateFsm.State;
 import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
 import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.stream.Collectors;
 
 @Slf4j
 public class OnFinishedAction extends HistoryRecordingAction<HaFlowUpdateFsm, State, Event, HaFlowUpdateContext> {
@@ -77,49 +77,27 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowUpdateFsm, St
 
     private void updateFlowMonitoring(HaFlowUpdateFsm stateMachine) {
         HaFlow original = stateMachine.getOriginalHaFlow();
-        HaFlow target = mapToTargetHaFlow(stateMachine.getTargetHaFlow());
+        HaFlowRequest target = stateMachine.getTargetHaFlow();
 
-        for (HaSubFlow originalSubFlow : original.getHaSubFlows()) {
-            HaSubFlow targetSubFlow = target.getHaSubFlowOrThrowException(originalSubFlow.getHaSubFlowId());
-            boolean originalNotSingle = !originalSubFlow.isOneSwitch();
-            boolean targetNotSingle = !targetSubFlow.isOneSwitch(target.getSharedSwitchId());
-            boolean srcUpdated = isSrcUpdated(original, target);
-            boolean dstUpdated = isDstUpdated(originalSubFlow, targetSubFlow);
+        for (RequestedFlow targetSubFlow : HaFlowMapper.INSTANCE.toRequestedFlows(target)) {
+            HaSubFlow originalHaSubFlow = original.getHaSubFlow(targetSubFlow.getFlowId()).orElseThrow(
+                    () -> new IllegalArgumentException(format("target ha-subflow %s not found "
+                                    + "in the original ha-flow %s",
+                            targetSubFlow.getFlowId(), original.getHaFlowId())));
+            if (isEndpointUpdated(originalHaSubFlow.getEndpoint(), targetSubFlow.getDstEndpoint())) {
+                if (!originalHaSubFlow.isOneSwitch()) {
+                    stateMachine.getCarrier().sendDeactivateFlowMonitoring(originalHaSubFlow.getHaSubFlowId(),
+                            original.getSharedSwitchId(), originalHaSubFlow.getEndpointSwitchId());
+                }
 
-            // clean up old if it is not single
-            //TODO: Review logic during https://github.com/telstra/open-kilda/issues/5208
-            if (originalNotSingle && (srcUpdated || dstUpdated)) {
-                stateMachine.getCarrier().sendDeactivateFlowMonitoring(stateMachine.getFlowId(),
-                        original.getSharedSwitchId(), originalSubFlow.getEndpointSwitchId());
-
-            }
-            // setup new if it is not single
-            //TODO: Review logic during https://github.com/telstra/open-kilda/issues/5208
-            if (targetNotSingle && (srcUpdated || dstUpdated)) {
-                //stateMachine.getCarrier().sendActivateFlowMonitoring(null);
+                if (!targetSubFlow.isOneSwitchFlow()) {
+                    stateMachine.getCarrier().sendActivateFlowMonitoring(targetSubFlow);
+                }
             }
         }
     }
 
-    private boolean isSrcUpdated(HaFlow original, HaFlow target) {
-        return !(original.getSharedSwitchId().equals(target.getSharedSwitchId())
-                && original.getSharedPort() == target.getSharedPort()
-                && original.getSharedOuterVlan() == target.getSharedOuterVlan()
-                && original.getSharedInnerVlan() == target.getSharedInnerVlan());
-    }
-
-    private boolean isDstUpdated(HaSubFlow originalSubFlow, HaSubFlow targetSubFlow) {
-        return !(originalSubFlow.getEndpointSwitchId().equals(targetSubFlow.getEndpointSwitchId())
-                && originalSubFlow.getEndpointPort() == targetSubFlow.getEndpointPort()
-                && originalSubFlow.getEndpointVlan() == targetSubFlow.getEndpointVlan()
-                && originalSubFlow.getEndpointInnerVlan() == targetSubFlow.getEndpointInnerVlan());
-    }
-
-    private HaFlow mapToTargetHaFlow(HaFlowRequest targetHaFlowRequest) {
-        HaFlow target = HaFlowMapper.INSTANCE.toHaFlow(targetHaFlowRequest);
-        target.setHaSubFlows(targetHaFlowRequest.getSubFlows().stream()
-                .map(HaFlowMapper.INSTANCE::toSubFlow)
-                .collect(Collectors.toSet()));
-        return target;
+    private boolean isEndpointUpdated(FlowEndpoint originalEndpoint, FlowEndpoint targetEndpoint) {
+        return !originalEndpoint.equals(targetEndpoint);
     }
 }

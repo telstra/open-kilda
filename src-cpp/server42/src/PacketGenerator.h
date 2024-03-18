@@ -37,11 +37,12 @@ namespace org::openkilda {
     struct FlowCreateArgument{
         flow_pool_t& flow_pool;
         pcpp::DpdkDevice* device;
+        const std::string& switch_id;
         const std::string& dst_mac;
         boost::int64_t tunnel_id;
         boost::int64_t inner_tunnel_id;
         boost::int64_t transit_tunnel_id;
-        boost::uint16_t udp_src_port;
+        boost::uint32_t udp_src_port;
         const std::string& flow_id;
         bool direction;
         boost::int32_t hash;
@@ -62,9 +63,9 @@ namespace org::openkilda {
         pcpp::DpdkDevice* device;
         const std::string& dst_mac;
         boost::int64_t transit_tunnel_id;
-        boost::uint16_t udp_src_port;
+        boost::uint32_t udp_src_port;
         const std::string& switch_id;
-        boost::uint16_t port;
+        boost::uint32_t port;
         boost::int32_t hash;
     };
 

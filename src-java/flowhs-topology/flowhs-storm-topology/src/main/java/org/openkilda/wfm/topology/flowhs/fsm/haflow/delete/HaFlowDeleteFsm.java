@@ -17,6 +17,7 @@ package org.openkilda.wfm.topology.flowhs.fsm.haflow.delete;
 
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.model.FlowStatus;
+import org.openkilda.model.HaFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.rulemanager.RuleManager;
 import org.openkilda.wfm.CommandContext;
@@ -67,6 +68,7 @@ import java.util.concurrent.TimeUnit;
 public final class HaFlowDeleteFsm extends HaFlowProcessingFsm<HaFlowDeleteFsm, State, Event,
         HaFlowDeleteContext, HaFlowGenericCarrier, FlowProcessingEventListener> {
     private FlowStatus originalFlowStatus;
+    private HaFlow targetHaFlow;
 
     private final List<HaFlowResources> haFlowResources = new ArrayList<>();
 

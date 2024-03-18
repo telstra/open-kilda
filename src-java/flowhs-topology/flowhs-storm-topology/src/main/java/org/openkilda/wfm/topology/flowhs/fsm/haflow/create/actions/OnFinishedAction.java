@@ -22,6 +22,8 @@ import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.Event;
 import org.openkilda.wfm.topology.flowhs.fsm.haflow.create.HaFlowCreateFsm.State;
+import org.openkilda.wfm.topology.flowhs.mapper.HaFlowMapper;
+import org.openkilda.wfm.topology.flowhs.model.RequestedFlow;
 import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
 import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
@@ -37,8 +39,8 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowCreateFsm, St
 
     @Override
     public void perform(State from, State to, Event event, HaFlowCreateContext context, HaFlowCreateFsm stateMachine) {
-        //TODO activate server42 monitoring
         sendPeriodicPingNotification(stateMachine);
+        sendActivateFlowMonitoring(stateMachine);
         dashboardLogger.onSuccessfulHaFlowCreate(stateMachine.getHaFlowId());
 
         FlowHistoryService.using(stateMachine.getCarrier()).save(HaFlowHistory
@@ -51,5 +53,12 @@ public class OnFinishedAction extends HistoryRecordingAction<HaFlowCreateFsm, St
         HaFlowRequest requestedFlow = stateMachine.getTargetFlow();
         stateMachine.getCarrier().sendPeriodicPingNotification(
                 requestedFlow.getHaFlowId(), requestedFlow.isPeriodicPings());
+    }
+
+    private void sendActivateFlowMonitoring(HaFlowCreateFsm stateMachine) {
+        HaFlowRequest haFlowRequest = stateMachine.getTargetFlow();
+        for (RequestedFlow requestedFlow : HaFlowMapper.INSTANCE.toRequestedFlows(haFlowRequest)) {
+            stateMachine.getCarrier().sendActivateFlowMonitoring(requestedFlow);
+        }
     }
 }

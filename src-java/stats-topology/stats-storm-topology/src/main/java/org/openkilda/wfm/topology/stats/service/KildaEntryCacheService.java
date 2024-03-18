@@ -47,6 +47,7 @@ import org.openkilda.model.MeterId;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.YFlow;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.model.cookie.FlowSubType;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.HaFlowRepository;
@@ -458,7 +459,7 @@ public class KildaEntryCacheService {
             SwitchId sw = path.get(i).getSwitchId();
 
             FlowSegmentCookie modifiedCookie = isShared
-                    ? cookie.toBuilder().subType(FlowSegmentCookie.FlowSubType.SHARED).build() : cookie;
+                    ? cookie.toBuilder().subType(FlowSubType.SHARED).build() : cookie;
             //ingress
             if (i == 0) {
                 cacheHandler.handle(newHaFlowDescriptor(sw, INGRESS, haFlowId, modifiedCookie,

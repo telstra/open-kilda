@@ -780,7 +780,7 @@ services:
       context: docker
       dockerfile: server42/Dockerfile
     image: kilda/server42
-    command: java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -jar server42-control-storm-stub.jar
+    command: /app/wait-for-it.sh -t 120 -h zookeeper.pendev -p 2181 -- java -XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -jar server42-control-storm-stub.jar
     ports:
       - "9001:9001"
     depends_on:
@@ -801,6 +801,8 @@ services:
 {{if not (exists "/no_server42_server")}}
 networks:
   server42_to_lab:
+    driver_opts:
+        com.docker.network.bridge.name: server42_to_lab
 {{end}}
 
 volumes:
