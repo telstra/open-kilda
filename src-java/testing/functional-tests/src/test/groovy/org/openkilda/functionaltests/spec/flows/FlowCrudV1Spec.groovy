@@ -478,16 +478,8 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         given: "A switch that has no connection to other switches"
         def isolatedSwitch = switchPairs.all().nonNeighbouring().random().src
         def flow = data.getFlow(isolatedSwitch)
-        topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
-            antiflap.portDown(isolatedSwitch.dpId, port)
-        }
-        //wait until ISLs are actually got failed
-        Wrappers.wait(WAIT_OFFSET) {
-            def islData = northbound.getAllLinks()
-            topology.getRelatedIsls(isolatedSwitch).each {
-                assert islUtils.getIslInfo(islData, it).get().state == IslChangeType.FAILED
-            }
-        }
+        def connectedIsls = topology.getRelatedIsls(isolatedSwitch)
+        islHelper.breakIsls(connectedIsls)
 
         when: "Try building a flow using the isolated switch"
         flowHelper.addFlow(flow)
@@ -499,12 +491,7 @@ ${isolatedSwitch.dpId.toString()} doesn\'t have links with enough bandwidth, \
 Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(error)
 
         cleanup:
-        topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
-            antiflap.portUp(isolatedSwitch.dpId, port)
-        }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state == DISCOVERED }
-        }
+        islHelper.restoreIsls(connectedIsls)
         database.resetCosts(topology.isls)
 
         where:
@@ -646,8 +633,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
         assumeTrue(isl as boolean, "Unable to find required isl")
-        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        islUtils.waitForIslStatus([isl, isl.reversed], FAILED)
+        islHelper.breakIsl(isl)
 
         when: "Try to create a flow using ISL src port"
         def flow = flowHelper.randomFlow(isl.srcSwitch, isl.dstSwitch)
@@ -659,8 +645,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         new FlowNotCreatedExpectedError(getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)).matches(exc)
 
         cleanup:
-        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+        islHelper.restoreIsl(isl)
         database.resetCosts(topology.isls)
     }
 
@@ -838,10 +823,7 @@ are not connected to the controller/).matches(exc)
         def islsToBreak = altPaths.collectMany { pathHelper.getInvolvedIsls(it) }
                 .collectMany { [it, it.reversed] }.unique()
                 .findAll { !untouchableIsls.contains(it) }.unique { [it, it.reversed].sort() }
-       withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort) } }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll { it.state == FAILED }.size() == islsToBreak.size() * 2
-        }
+        islHelper.breakIsls(islsToBreak)
 
         and: "Update reverse path to have not enough bandwidth to handle the flow"
         //Forward path is still have enough bandwidth
@@ -863,12 +845,7 @@ are not connected to the controller/).matches(exc)
         new FlowNotCreatedWithMissingPathExpectedError(~/Not enough bandwidth or no path found./).matches(e)
 
         cleanup: "Restore topology, delete the flow and reset costs"
-        if (islsToBreak) {
-            withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort) } }
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-            }
-        }
+        islHelper.restoreIsls(islsToBreak)
         database.resetCosts(topology.isls)
         islsToModify.each {
             database.resetIslBandwidth(it)

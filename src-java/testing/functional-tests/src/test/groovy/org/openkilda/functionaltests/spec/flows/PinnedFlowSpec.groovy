@@ -107,7 +107,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
             }*.meterId]
         }
 
-        antiflap.portDown(islsToBreak[0].srcSwitch.dpId, islsToBreak[0].srcPort)
+        islHelper.breakIsl(islsToBreak[0])
 
         then: "Flow is not rerouted and marked as DOWN when the first ISL is broken"
         Wrappers.wait(WAIT_OFFSET) {
@@ -117,9 +117,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
                 assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
             }
         }
-        islsToBreak[1..-1].each { islToBreak ->
-            antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        }
+        islHelper.breakIsls(islsToBreak[1..-1])
 
         and: "Rules and meters are not changed"
         def cookiesMapAfterReroute = involvedSwitches.collectEntries { sw ->
@@ -137,9 +135,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         metersMap.sort() == metersMapAfterReroute.sort()
 
         when: "The broken ISLs are restored one by one"
-        islsToBreak[0..-2].each { islToBreak ->
-            antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        }
+        islHelper.restoreIsls(islsToBreak[0..-2])
         TimeUnit.SECONDS.sleep(rerouteDelay)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             islsToBreak[0..-2].each { assert islUtils.getIslInfo(it).get().state == IslChangeType.DISCOVERED }
@@ -147,22 +143,17 @@ class PinnedFlowSpec extends HealthCheckSpecification {
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
         }
 
+        and: "Restore the last ISL"
+        islHelper.restoreIsl(islsToBreak[-1])
+
         then: "Flow is marked as UP when the last ISL is restored"
-        antiflap.portUp(islsToBreak[-1].srcSwitch.dpId, islsToBreak[-1].srcPort)
         Wrappers.wait(WAIT_OFFSET * 2) {
-            assert islUtils.getIslInfo(islsToBreak[-1]).get().state == IslChangeType.DISCOVERED
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
         }
-        def islsAreUp = true
 
         cleanup:
-        if (islsToBreak && !islsAreUp) {
-            islsToBreak.each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
-            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-                assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-            }
-        }
+        islHelper.restoreIsls(islsToBreak)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
     }

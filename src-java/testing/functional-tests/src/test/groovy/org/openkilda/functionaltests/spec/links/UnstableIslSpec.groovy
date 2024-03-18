@@ -112,30 +112,18 @@ class UnstableIslSpec extends HealthCheckSpecification {
         and: "Two possible paths for further manipulation with them"
         def firstPath = switchPair.paths.min { it.size() }
         def secondPath = switchPair.paths.findAll { it != firstPath }.min { it.size() }
-        def altPaths = switchPair.paths.findAll { it != firstPath && it != secondPath }
 
         and: "All alternative paths are unavailable (bring ports down on the srcSwitch)"
-        List<PathNode> broughtDownPorts = []
-        altPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(antiflapMin + WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def altPathsIsls = topology.getRelatedIsls(switchPair.src) - pathHelper.getInvolvedIsls(firstPath).first() -
+                pathHelper.getInvolvedIsls(secondPath).first()
+        islHelper.breakIsls(altPathsIsls)
 
         and: "First path is unstable (due to bringing port down/up)"
         // after bringing port down/up, the isl will be marked as unstable by updating the 'time_unstable' field in DB
         def islToBreak = pathHelper.getInvolvedIsls(firstPath).first()
-        [islToBreak, islToBreak.reversed].each { assert database.getIslTimeUnstable(it) == null }
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == FAILED }
+        islHelper.breakIsl(islToBreak)
         [islToBreak, islToBreak.reversed].each { assert database.getIslTimeUnstable(it) != null }
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == DISCOVERED }
+        islHelper.restoreIsl(islToBreak)
 
         and: "Cost of stable path is more preferable than the cost of unstable path (before penalties)"
         def involvedIslsInUnstablePath = pathHelper.getInvolvedIsls(firstPath)
@@ -179,15 +167,8 @@ class UnstableIslSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology, delete the flow and reset costs"
-        broughtDownPorts.each { it && antiflap.portUp(it.switchId, it.portNo) }
+        islHelper.restoreIsls(altPathsIsls + islToBreak)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each {
-                assert it.state != FAILED
-                assert it.actualState != FAILED
-
-            }
-        }
         database.resetCosts(topology.isls)
     }
 }

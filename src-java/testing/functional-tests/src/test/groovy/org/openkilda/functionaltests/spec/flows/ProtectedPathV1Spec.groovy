@@ -203,20 +203,8 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
     def "Unable to create #flowDescription flow with protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches without alt paths"
         def switchPair = switchPairs.all().neighbouring().random()
-        List<PathNode> broughtDownPorts = []
-
-        switchPair.paths.sort { it.size() }[1..-1].unique {
-            it.first()
-        }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.src)[1..-1]
+        islHelper.breakIsls(broughtDownIsls)
 
         when: "Try to create a new flow with protected path"
         def flow = flowHelper.randomFlow(switchPair)
@@ -234,10 +222,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 " Couldn't find non overlapping protected path"
 
         cleanup:
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
 
         where:
@@ -434,22 +419,9 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         flowHelper.addFlow(flow)
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
-        List<PathNode> broughtDownPorts = []
-        switchPair.paths.findAll {
-            it != pathHelper.convert(northbound.getFlowPath(flow.id)) &&
-                    it != pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
-        }.unique {
-            it.first()
-        }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def flowPathIsl = pathHelper.getInvolvedIsls(pathHelper.convert(northbound.getFlowPath(flow.id).forwardPath))
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.src) - flowPathIsl
+        islHelper.breakIsls(broughtDownIsls)
 
         when: "Break ISL on a protected path (bring port down) for changing the flow state to DEGRADED"
         def flowPathInfo = northbound.getFlowPath(flow.id)
@@ -457,7 +429,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
         def protectedIsls = pathHelper.getInvolvedIsls(currentProtectedPath)
         def currentIsls = pathHelper.getInvolvedIsls(currentPath)
-        antiflap.portDown(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
+        islHelper.breakIsl(protectedIsls[0])
 
         then: "Flow state is changed to DEGRADED"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED }
@@ -467,8 +439,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         }
 
         when: "Break ISL on the main path (bring port down) for changing the flow state to DOWN"
-        antiflap.portDown(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(currentIsls[0]).state == IslChangeType.FAILED }
+        islHelper.breakIsl(currentIsls[0])
 
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
@@ -492,8 +463,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 "Could not swap paths: Protected flow path $flow.id is not in ACTIVE state"
 
         when: "Restore ISL for the main path only"
-        antiflap.portUp(currentIsls[0].srcSwitch.dpId, currentIsls[0].srcPort)
-        antiflap.portUp(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
+        islHelper.restoreIsl(currentIsls[0])
 
         then: "Flow state is still DEGRADED"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -516,8 +486,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 "Could not swap paths: Protected flow path $flow.id is not in ACTIVE state"
 
         when: "Restore ISL for the protected path"
-        antiflap.portUp(protectedIsls[0].srcSwitch.dpId, protectedIsls[0].srcPort)
-        antiflap.portUp(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
+        islHelper.restoreIsl(protectedIsls[0])
 
         then: "Flow state is changed to UP"
         //it often fails in scope of the whole spec on the hardware env, that's why '* 1.5' is added
@@ -526,10 +495,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
     }
 

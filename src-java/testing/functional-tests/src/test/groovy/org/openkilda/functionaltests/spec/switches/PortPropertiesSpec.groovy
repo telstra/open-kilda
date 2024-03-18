@@ -127,11 +127,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
                 .any { it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
 
         // Bring port down on the src switch
-        def portDown = antiflap.portDown(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
-        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getLink(islToManipulate).actualState == IslChangeType.FAILED
-        }
+        islHelper.breakIsl(islToManipulate)
 
         // delete link
         northbound.deleteLink(islUtils.toLinkParameters(islToManipulate))
@@ -196,7 +192,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(islToManipulate.reversed).get().state == IslChangeType.DISCOVERED
         }
         cleanup:
-        portDown && !portUp && antiflap.portUp(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
+        antiflap.portUp(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
         srcPortDiscoveryOff && !srcPortDiscoveryOn && enableDiscoveryOnPort(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
         dstPortDiscoveryOff && !dstPortDiscoveryOn && enableDiscoveryOnPort(islToManipulate.dstSwitch.dpId, islToManipulate.dstPort)
         switchStatus && switchStatus == SwitchChangeType.DEACTIVATED && switchHelper.reviveSwitch(sw, blockData, true)

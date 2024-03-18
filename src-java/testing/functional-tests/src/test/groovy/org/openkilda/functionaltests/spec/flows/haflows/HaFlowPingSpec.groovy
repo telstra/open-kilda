@@ -98,8 +98,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         String subFlowWithActiveIsl = paths.subFlowPaths.flowId.find { it != subFlowWithBrokenIsl }
 
         when: "Fail one of the HA-subflows ISL (bring switch port down)"
-        antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        wait(WAIT_OFFSET) { assert northbound.getLink(islToFail).state == FAILED }
+        islHelper.breakIsl(islToFail)
         def afterFailTime = new Date().getTime()
 
         then: "Periodic pings are still enabled"
@@ -123,8 +122,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
 
         cleanup:
         haFlow && haFlow.delete()
-        islToFail && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        wait(WAIT_OFFSET) { assert northbound.getLink(islToFail).state == DISCOVERED }
+        islHelper.restoreIsl(islToFail)
         database.resetCosts(topology.isls)
     }
 

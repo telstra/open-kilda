@@ -69,7 +69,7 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         islsToBreak = switchPair.paths.findAll { !paths.contains(it) }
                 .collect { pathHelper.getInvolvedIsls(it).find { !isls.contains(it) && !isls.contains(it.reversed) } }
                 .unique { [it, it.reversed].sort() }
-        islsToBreak.each { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
+        islHelper.breakIsls(islsToBreak)
     }
 
     @ResourceLock(S42_TOGGLE)
@@ -207,10 +207,7 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
     }
 
     def cleanupSpec() {
-        islsToBreak.each { getAntiflap().portUp(it.srcSwitch.dpId, it.srcPort) }
-        wait(getDiscoveryInterval() + WAIT_OFFSET) {
-            assert getNorthbound().getActiveLinks().size() == getTopology().islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsls(islsToBreak)
         getDatabase().resetCosts(getTopology().isls)
     }
 }

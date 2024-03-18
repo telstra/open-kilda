@@ -293,7 +293,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         when: "Fail a flow ISL (bring switch port down)"
         def islToFail = pathHelper.getInvolvedIsls(flowPath).last()
-        antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        islHelper.breakIsl(islToFail)
 
         then: "The flow was rerouted"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
@@ -329,7 +329,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(switchPair.src.dpId)*.packetCount.every { it > 0 }
 
         cleanup: "Revive the ISL back (bring switch port up) and delete the flow"
-        islToFail && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        islHelper.restoreIsl(islToFail)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
@@ -443,8 +443,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         def currentPath = pathHelper.convert(flowPathInfo)
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        def portIsDown = true
+        islHelper.breakIsl(islToBreak)
 
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -483,12 +482,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(switchPair.src.dpId)*.packetCount.every { it > 0 }
 
         cleanup: "Revert system to original state"
-        if (portIsDown) {
-            antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-                assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
-            }
-        }
+        islHelper.restoreIsl(islToBreak)
         database.resetCosts(topology.isls)
     }
 

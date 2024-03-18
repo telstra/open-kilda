@@ -120,7 +120,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
         cleanup:
         lockKeeper.cleanupTrafficShaperRules(swPair.dst.regions)
-        islToBreak && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        islHelper.restoreIsl(islToBreak)
         database.resetCosts(topology.isls)
     }
 

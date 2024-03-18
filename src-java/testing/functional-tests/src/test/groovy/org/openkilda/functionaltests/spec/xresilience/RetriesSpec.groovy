@@ -82,10 +82,7 @@ and at least 1 path must remain safe"
         database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.ACTIVE)
 
         when: "Main path of the flow breaks initiating a reroute"
-        def portDown = antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        wait(WAIT_OFFSET) {
-            assert northbound.getLink(islToBreak).state == IslChangeType.FAILED
-        }
+        islHelper.breakIsl(islToBreak)
 
         then: "System fails to install rules on desired path and tries to retry reroute and find new path (global retry)"
         wait(WAIT_OFFSET * 3, 0.1) {
@@ -94,7 +91,7 @@ and at least 1 path must remain safe"
             }
         }
 
-        when: "Switch is officially marked as offline"
+        when: "Switch is marked as offline"
         database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.INACTIVE)
 
         then: "System finds another working path and successfully reroutes the flow (one of the retries succeeds)"
@@ -118,12 +115,7 @@ and at least 1 path must remain safe"
             database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(switchToBreak, blockData)
         }
-        if(portDown) {
-            antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        }
-        wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsl(islToBreak)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
     }
@@ -138,21 +130,9 @@ and at least 1 path must remain safe"
         List<PathNode> protectedPath = allPaths.findAll { it != mainPath && it.size() != 2 }.min { it.size() }
 
         and: "All alternative paths unavailable (bring ports down)"
-        def broughtDownIsls = []
-        def otherIsls = []
-        def involvedIsls = (pathHelper.getInvolvedIsls(mainPath) + pathHelper.getInvolvedIsls(protectedPath)).unique()
-        allPaths.findAll { it != mainPath && it != protectedPath }.each {
-            pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) }.each {
-                otherIsls.add(it)
-            }
-        }
-        broughtDownIsls = otherIsls.unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
-        broughtDownIsls.every { northbound.portDown(it.srcSwitch.dpId, it.srcPort) }
-        wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownIsls.size() * 2
-        }
+        def altIsls = topology.getRelatedIsls(swPair.src) - pathHelper.getInvolvedIsls(mainPath).first() -
+                pathHelper.getInvolvedIsls(protectedPath).first()
+        islHelper.breakIsls(altIsls)
 
         and: "A protected flow"
         /** At this point we have the following topology:
@@ -227,10 +207,7 @@ and at least 1 path must remain safe"
             switchHelper.reviveSwitch(swToManipulate, blockData)
             switchHelper.synchronize(swToManipulate.dpId)
         }
-        broughtDownIsls.every { northbound.portUp(it.srcSwitch.dpId, it.srcPort) }
-        wait(discoveryInterval + WAIT_OFFSET + antiflapCooldown) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsls(altIsls)
         database.resetCosts(topology.isls)
 
         where:
@@ -294,21 +271,8 @@ and at least 1 path must remain safe"
         List<PathNode> backupPath = swPair.paths.findAll { it != mainPath && it.size() != 2 }.min { it.size() }
 
         and: "All alternative paths unavailable (bring ports down)"
-        def broughtDownIsls = []
-        def otherIsls = []
-        def involvedIsls = (pathHelper.getInvolvedIsls(mainPath) + pathHelper.getInvolvedIsls(backupPath)).unique()
-        swPair.paths.findAll { it != mainPath && it != backupPath }.each {
-            pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) }.each {
-                otherIsls.add(it)
-            }
-        }
-        broughtDownIsls = otherIsls.unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
-        broughtDownIsls.every { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
-        wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == otherIsls.size() * 2
-        }
+        def altIsls = topology.getRelatedIsls(swPair.src) - pathHelper.getInvolvedIsls(mainPath).first() -
+                pathHelper.getInvolvedIsls(backupPath).first()
 
         and: "A flow on the main path"
         def flow = flowHelperV2.randomFlow(swPair)
@@ -369,10 +333,7 @@ and at least 1 path must remain safe"
             switchHelper.reviveSwitch(swToManipulate, blockData)
             switchHelper.synchronize(swToManipulate.dpId)
         }
-        broughtDownIsls.every { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
-        wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsls(altIsls)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
     }
@@ -424,8 +385,7 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
 
         cleanup:
         lockKeeper.cleanupTrafficShaperRules(swPair.src.regions)
-        northbound.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        wait(WAIT_OFFSET) { northbound.activeLinks.size() == topology.islsForActiveSwitches.size() * 2 }
+        islHelper.restoreIsl(islToBreak)
         database.resetCosts(topology.isls)
     }
 }

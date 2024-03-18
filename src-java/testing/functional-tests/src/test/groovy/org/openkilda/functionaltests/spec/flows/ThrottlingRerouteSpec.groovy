@@ -228,6 +228,5 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
             assert northbound.getLink(brokenIsl).state == IslChangeType.FAILED
         }
         return brokenIsl
-
     }
 }

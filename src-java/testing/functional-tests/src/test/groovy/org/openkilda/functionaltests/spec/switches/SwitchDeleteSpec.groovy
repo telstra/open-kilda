@@ -80,10 +80,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         def sw = topology.getActiveSwitches()[0]
         def swIsls = topology.getRelatedIsls(sw)
         // deactivate all active ISLs on switch
-        swIsls.each { antiflap.portDown(sw.dpId, it.srcPort) }
-        Wrappers.wait(WAIT_OFFSET) {
-            swIsls.each { assert islUtils.getIslInfo(it).get().state == IslChangeType.FAILED }
-        }
+        islHelper.breakIsls(swIsls)
         // deactivate switch
         def blockData = switchHelper.knockoutSwitch(sw, RW, false)
 
@@ -98,11 +95,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         cleanup: "Activate the switch back and reset costs"
         switchHelper.reviveSwitch(sw, blockData, false)
-        swIsls.each { antiflap.portUp(sw.dpId, it.srcPort) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
-        }
+        islHelper.restoreIsls(swIsls)
         database.resetCosts(topology.isls)
     }
 
@@ -141,11 +134,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         def initSwProps = switchHelper.getCachedSwProps(sw.dpId)
         def swIsls = topology.getRelatedIsls(sw)
         // port down on all active ISLs on switch
-        swIsls.each { antiflap.portDown(sw.dpId, it.srcPort) }
-        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
-        Wrappers.wait(WAIT_OFFSET) {
-            swIsls.each { assert islUtils.getIslInfo(it).get().state == IslChangeType.FAILED }
-        }
+        islHelper.breakIsls(swIsls)
         // delete all ISLs on switch
         swIsls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
         // deactivate switch
@@ -160,12 +149,8 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         cleanup: "Activate the switch back, restore ISLs and reset costs"
         switchHelper.reviveSwitch(sw, blockData)
-        swIsls.each { antiflap.portUp(sw.dpId, it.srcPort) }
         initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
-        }
+        islHelper.restoreIsls(swIsls)
         database.resetCosts(topology.isls)
     }
 
@@ -205,11 +190,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         }
 
         // port down on all active ISLs on switch
-        swIsls.each { antiflap.portDown(sw.dpId, it.srcPort) }
-        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
-        Wrappers.wait(WAIT_OFFSET) {
-            swIsls.each { assert islUtils.getIslInfo(it).get().state == IslChangeType.FAILED }
-        }
+        islHelper.breakIsls(swIsls)
         // delete all ISLs on switch
         swIsls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
         // deactivate switch
@@ -224,12 +205,8 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         cleanup: "Activate the switch back, restore ISLs, delete connected devices and reset costs"
         switchHelper.reviveSwitch(sw, blockData)
-        swIsls.each { antiflap.portUp(sw.dpId, it.srcPort) }
+        islHelper.restoreIsls(swIsls)
         initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            swIsls.each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
-        }
         database.resetCosts(topology.isls)
         lldpData && database.removeConnectedDevices(sw.dpId)
     }
@@ -268,12 +245,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         // restore ISLs
         swIsls.each { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
         TimeUnit.SECONDS.sleep(antiflapMin)
-        swIsls.each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            swIsls.collectMany { [it, it.reversed] }
-                    .each { assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED }
-        }
+        islHelper.restoreIsls(swIsls)
         initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
         database.resetCosts(topology.isls)
     }

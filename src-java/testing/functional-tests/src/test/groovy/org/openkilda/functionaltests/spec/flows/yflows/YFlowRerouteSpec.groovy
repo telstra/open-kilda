@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.helpers.Wrappers
+
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 
@@ -81,8 +83,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         def islToFail = pathHelper.getInvolvedIsls(PathHelper.convert(paths.subFlowPaths[0].forward)).first()
 
         when: "Fail a flow ISL (bring switch port down)"
-        antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        wait(WAIT_OFFSET) { northbound.getLink(islToFail).state == FAILED }
+        islHelper.breakIsl(islToFail)
 
         then: "The flow was rerouted after reroute delay"
         and: "History has relevant entries about y-flow reroute"
@@ -141,8 +142,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
-        islToFail && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        wait(WAIT_OFFSET) { northbound.getLink(islToFail).state == DISCOVERED }
+        islHelper.restoreIsl(islToFail)
         database.resetCosts(topology.isls)
     }
 
@@ -298,12 +298,10 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         def notIntersectedIsls = islsSubFlow1.size() > islsSubFlow2.size() ?
                 islsSubFlow1.findAll { !(it in islsSubFlow2) } : islsSubFlow2.findAll { !(it in islsSubFlow1) }
 
-        and: "Switch off all ports on the terminal switch of not intersected ISLs"
+        and: "Switch off all ISLs on the terminal switch"
         Switch terminalSwitch = notIntersectedIsls.last().dstSwitch
-        List<PortDto> portsDown = []
-        topology.getRelatedIsls(terminalSwitch).each {
-            portsDown.add(antiflap.portDown(terminalSwitch.dpId, it.srcSwitch == terminalSwitch ? it.srcPort : it.dstPort))
-        }
+        def broughtDownIsls = topology.getRelatedIsls(terminalSwitch)
+        islHelper.breakIsls(broughtDownIsls)
         wait(FLOW_CRUD_TIMEOUT) {
             northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.DEGRADED.getState()
         }
@@ -323,7 +321,10 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        portsDown && portsDown.each { antiflap.portUp(terminalSwitch.dpId, it.portNumber)}
+        islHelper.restoreIsls(broughtDownIsls)
+        wait(WAIT_OFFSET) {
+            northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.UP.toString()
+        }
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 }

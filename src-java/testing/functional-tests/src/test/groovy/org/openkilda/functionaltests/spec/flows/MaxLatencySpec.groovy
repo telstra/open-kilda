@@ -64,7 +64,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         islsToBreak = switchPair.paths.findAll { !paths.contains(it) }
                 .collect { pathHelper.getInvolvedIsls(it).find { !isls.contains(it) && !isls.contains(it.reversed) } }
                 .unique { [it, it.reversed].sort() }
-        islsToBreak.each { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
+        islHelper.breakIsls(islsToBreak)
     }
 
     def "Able to create protected flow with max_latency strategy if both paths satisfy SLA"() {
@@ -197,7 +197,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         and: "Init auto reroute (bring port down on the src switch)"
         setLatencyForPaths(10, 15)
         def islToBreak = pathHelper.getInvolvedIsls(mainPath).first()
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        islHelper.breakIsl(islToBreak)
 
         then: "Flow is rerouted and goes to the DEGRADED state"
         wait(rerouteDelay + WAIT_OFFSET) {
@@ -212,10 +212,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == alternativePath
 
         cleanup:
-        if (islToBreak) {
-            antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-            wait(discoveryInterval + WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == DISCOVERED }
-        }
+        islHelper.restoreIsl(islToBreak)
         database.resetCosts(topology.isls)
     }
 
@@ -293,7 +290,7 @@ but satisfies max_latency_tier2"
 
         when: "Break the flow path to init autoReroute"
         def islToBreak = pathHelper.getInvolvedIsls(mainPath).first()
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        islHelper.breakIsl(islToBreak)
 
         then: "Flow is not rerouted and moved to the DOWN state"
         wait(WAIT_OFFSET) {
@@ -305,10 +302,7 @@ but satisfies max_latency_tier2"
         assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
 
         cleanup:
-        if (islToBreak) {
-            antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-            wait(WAIT_OFFSET) { assert northbound.getLink(islToBreak).state == IslChangeType.FAILED }
-        }
+        islHelper.restoreIsl(islToBreak)
         database.resetCosts(topology.isls)
     }
 
@@ -327,10 +321,7 @@ but satisfies max_latency_tier2"
     }
 
     def cleanupSpec() {
-        islsToBreak.each { getAntiflap().portUp(it.srcSwitch.dpId, it.srcPort) }
-        wait(getDiscoveryInterval() + WAIT_OFFSET) {
-            assert getNorthbound().getActiveLinks().size() == getTopology().islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsls(islsToBreak)
         getDatabase().resetCosts(topology.isls)
     }
 }
