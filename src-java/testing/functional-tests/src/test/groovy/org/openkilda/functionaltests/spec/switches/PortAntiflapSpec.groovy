@@ -54,6 +54,9 @@ class PortAntiflapSpec extends HealthCheckSpecification {
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
 
+    // When the blinker is executed with the interval equals to 1, lab switches disconnects
+    int blinkingInterval = 10
+
     def setupSpec() {
         northbound.toggleFeature(FeatureTogglesDto.builder().floodlightRoutePeriodicSync(false).build())
     }
@@ -145,7 +148,7 @@ timeout"() {
 
         when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in UP state"
         def isl = topology.islsForActiveSwitches[0]
-        def blinker = new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, 1)
+        def blinker = new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, blinkingInterval)
         blinker.start()
         TimeUnit.SECONDS.sleep(antiflapWarmup + 1)
         blinker.stop(true)
@@ -181,7 +184,7 @@ timeout"() {
 
         when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in DOWN state"
         def isl = topology.islsForActiveSwitches[0]
-        def blinker = new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, 1)
+        def blinker = new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, blinkingInterval)
         blinker.kafkaChangePort(PortChangeType.DOWN)
         blinker.start()
         TimeUnit.SECONDS.sleep(antiflapWarmup + 1)
