@@ -54,7 +54,7 @@ class PortAntiflapSpec extends HealthCheckSpecification {
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
 
-    // When the blinker is executed with the interval equals to 1, lab switches disconnects
+    // When the blinker is executed with the interval equals to 1, lab switches get disconnected from the controller
     int blinkingInterval = 10
 
     def setupSpec() {
