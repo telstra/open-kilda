@@ -234,9 +234,7 @@ public class FlowControllerV2 extends BaseController {
                     + "Otherwise default value of `maxCount` will be equal to 100. In This case response will contain "
                     + "header 'Content-Range'.")
             @RequestParam(value = "max_count", required = false)
-            @Min(1)
-            @Max(Integer.MAX_VALUE)
-            Optional<Integer> optionalMaxCount) {
+            Optional<@Min(1) @Max(Integer.MAX_VALUE) Integer> optionalMaxCount) {
         FlowHistoryRangeConstraints constraints =
                 new FlowHistoryRangeConstraints(optionalTimeFrom, optionalTimeTo, optionalMaxCount);
 
