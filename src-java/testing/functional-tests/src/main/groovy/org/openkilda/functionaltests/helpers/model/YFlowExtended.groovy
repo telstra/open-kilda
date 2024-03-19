@@ -30,6 +30,7 @@ import org.openkilda.testing.service.traffexam.model.Host
 import org.openkilda.testing.service.traffexam.model.TimeLimit
 import org.openkilda.testing.service.traffexam.model.Vlan
 import org.openkilda.testing.service.traffexam.model.YFlowBidirectionalExam
+import org.openkilda.testing.tools.SoftAssertions
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -153,10 +154,22 @@ class YFlowExtended {
         flowDetails
     }
 
+    YFlowExtended sendPartialUpdateRequest(YFlowPatchPayload updateRequest) {
+        log.debug("Send update request Y-Flow '${yFlowId}'(partial update)")
+        def yFlow = northboundV2.partialUpdateYFlow(yFlowId, updateRequest)
+        new YFlowExtended(yFlow, northbound, northboundV2, topologyDefinition)
+    }
+
     YFlowExtended partialUpdate(YFlowPatchPayload updateRequest, FlowState flowState = FlowState.UP) {
         log.debug("Update Y-Flow '${yFlowId}'(partial update)")
         northboundV2.partialUpdateYFlow(yFlowId, updateRequest)
         waitForBeingInState(flowState)
+    }
+
+    YFlowExtended sendUpdateRequest(YFlowUpdatePayload updateRequest) {
+        log.debug("Send update request Y-Flow '${yFlowId}'")
+        def yFlow = northboundV2.updateYFlow(yFlowId, updateRequest)
+        new YFlowExtended(yFlow, northbound, northboundV2, topologyDefinition)
     }
 
     YFlowExtended update(YFlowUpdatePayload updateRequest, FlowState flowState = FlowState.UP) {
@@ -327,5 +340,52 @@ class YFlowExtended {
                 .build()
 
         return new YFlowBidirectionalExam(forward1, reverse1, forward2, reverse2)
+    }
+
+    /**
+     * This check allows us to perform main Y-Flow properties comparison after updating operations
+     * Note, some fields such as subFlows.timeUpdate, subFlows.status, timeUpdate, and status are excluded for verification.
+     * @param expectedYFlowExtended
+     * @param isYPointVerificationIncluded
+     */
+    void hasTheSamePropertiesAs(YFlowExtended expectedYFlowExtended, boolean isYPointVerificationIncluded = true) {
+        SoftAssertions assertions = new SoftAssertions()
+        assertions.checkSucceeds { assert this.yFlowId == expectedYFlowExtended.yFlowId }
+        assertions.checkSucceeds { assert this.maximumBandwidth == expectedYFlowExtended.maximumBandwidth }
+        assertions.checkSucceeds { assert this.pathComputationStrategy == expectedYFlowExtended.pathComputationStrategy }
+        assertions.checkSucceeds { assert this.encapsulationType == expectedYFlowExtended.encapsulationType }
+        assertions.checkSucceeds { assert this.maxLatency == expectedYFlowExtended.maxLatency }
+        assertions.checkSucceeds { assert this.maxLatencyTier2 == expectedYFlowExtended.maxLatencyTier2 }
+        assertions.checkSucceeds { assert this.ignoreBandwidth == expectedYFlowExtended.ignoreBandwidth }
+        assertions.checkSucceeds { assert this.periodicPings == expectedYFlowExtended.periodicPings }
+        assertions.checkSucceeds { assert this.pinned == expectedYFlowExtended.pinned }
+        assertions.checkSucceeds { assert this.priority == expectedYFlowExtended.priority }
+        assertions.checkSucceeds { assert this.strictBandwidth == expectedYFlowExtended.strictBandwidth }
+        assertions.checkSucceeds { assert this.description == expectedYFlowExtended.description }
+        assertions.checkSucceeds { assert this.allocateProtectedPath == expectedYFlowExtended.allocateProtectedPath }
+        assertions.checkSucceeds { assert this.protectedPathYPoint == expectedYFlowExtended.protectedPathYPoint }
+        assertions.checkSucceeds { assert this.diverseWithYFlows.sort() == expectedYFlowExtended.diverseWithYFlows.sort() }
+        assertions.checkSucceeds { assert this.diverseWithYFlows.sort() == expectedYFlowExtended.diverseWithYFlows.sort() }
+        assertions.checkSucceeds { assert this.diverseWithHaFlows.sort() == expectedYFlowExtended.diverseWithHaFlows.sort() }
+
+        assertions.checkSucceeds { assert this.sharedEndpoint.switchId == expectedYFlowExtended.sharedEndpoint.switchId }
+        assertions.checkSucceeds { assert this.sharedEndpoint.portNumber == expectedYFlowExtended.sharedEndpoint.portNumber }
+
+        this.subFlows.each { actualSubFlow ->
+            def expectedSubFlow = expectedYFlowExtended.subFlows.find { it.flowId == actualSubFlow.flowId }
+            assertions.checkSucceeds { assert actualSubFlow.flowId == expectedSubFlow.flowId }
+            assertions.checkSucceeds { assert actualSubFlow.sharedEndpoint == expectedSubFlow.sharedEndpoint }
+            assertions.checkSucceeds { assert actualSubFlow.endpoint.switchId == expectedSubFlow.endpoint.switchId }
+            assertions.checkSucceeds { assert actualSubFlow.endpoint.portNumber == expectedSubFlow.endpoint.portNumber }
+            assertions.checkSucceeds { assert actualSubFlow.endpoint.vlanId == expectedSubFlow.endpoint.vlanId }
+            assertions.checkSucceeds { assert actualSubFlow.endpoint.innerVlanId == expectedSubFlow.endpoint.innerVlanId }
+            assertions.checkSucceeds { assert actualSubFlow.timeCreate == expectedSubFlow.timeCreate }
+            assertions.checkSucceeds { assert actualSubFlow.description == expectedSubFlow.description }
+        }
+        if (isYPointVerificationIncluded) {
+            assertions.checkSucceeds { assert this.yPoint == expectedYFlowExtended.yPoint }
+        }
+
+        assertions.verify()
     }
 }
