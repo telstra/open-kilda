@@ -19,15 +19,15 @@ FROM ${base_image}
 WORKDIR /tmp/
 
 COPY app /app
+RUN chmod 777 /app/*
 
-RUN    wget -q https://github.com/OpenTSDB/opentsdb/releases/download/v2.3.0/opentsdb-2.3.0_all.deb \
-    && apt-get update -q \
-    && apt-get install -yq --no-install-recommends \
-        gnuplot \
-        gcc \
-    && python3 -m pip install happybase==1.2.0 \
-    && dpkg -i opentsdb-2.3.0_all.deb \
-    && chmod 777 /app/* \
-    && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN apt-get update -q \
+    && apt-get install -yq --no-install-recommends gnuplot gcc
 
+RUN python3 -m pip install happybase==1.2.0
+
+RUN wget -q https://github.com/OpenTSDB/opentsdb/releases/download/v2.3.0/opentsdb-2.3.0_all.deb
+RUN dpkg -i opentsdb-2.3.0_all.deb
 COPY conf/opentsdb.conf /etc/opentsdb/opentsdb.conf
+
+RUN rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
