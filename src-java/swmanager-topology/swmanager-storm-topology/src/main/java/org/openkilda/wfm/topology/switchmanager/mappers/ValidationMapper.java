@@ -159,7 +159,8 @@ public abstract class ValidationMapper {
                 .map(RuleInfoEntryV2::getCookie)
                 .collect(Collectors.toSet());
         Set<Long> misconfigured = report.getMisconfiguredRules().stream()
-                .map(m -> m.getDiscrepancies().getCookie())
+                .map(m -> Optional.ofNullable(m.getDiscrepancies().getCookie())
+                        .orElse(m.getExpected().getCookie()))
                 .collect(Collectors.toSet());
 
         return new ValidateRulesResult(missing, proper, excess, misconfigured);

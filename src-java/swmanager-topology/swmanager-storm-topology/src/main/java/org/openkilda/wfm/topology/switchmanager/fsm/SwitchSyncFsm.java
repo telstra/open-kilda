@@ -290,7 +290,8 @@ public class SwitchSyncFsm extends AbstractBaseFsm<SwitchSyncFsm, SwitchSyncStat
                                              SwitchSyncEvent event, Object context) {
         reinstalledRulesCookies = new ArrayList<>(validationResult.getValidateRulesResult().getMisconfiguredRules());
         if (!reinstalledRulesCookies.isEmpty()) {
-            log.info("Compute reinstall rules (switch={}, key={})", switchId, key);
+            log.info("Compute reinstall rules (switch={}, key={}), reinstalledRulesCookies={}", switchId, key,
+                    reinstalledRulesCookies);
             try {
                 List<FlowSpeakerData> misconfiguredRulesToRemove = reinstalledRulesCookies.stream()
                         .flatMap(this::findActualFlowsByCookie)
