@@ -364,7 +364,7 @@ class YFlowExtended {
         assertions.checkSucceeds { assert this.description == expectedYFlowExtended.description }
         assertions.checkSucceeds { assert this.allocateProtectedPath == expectedYFlowExtended.allocateProtectedPath }
         assertions.checkSucceeds { assert this.protectedPathYPoint == expectedYFlowExtended.protectedPathYPoint }
-        assertions.checkSucceeds { assert this.diverseWithYFlows.sort() == expectedYFlowExtended.diverseWithYFlows.sort() }
+        assertions.checkSucceeds { assert this.diverseWithFlows.sort() == expectedYFlowExtended.diverseWithFlows.sort() }
         assertions.checkSucceeds { assert this.diverseWithYFlows.sort() == expectedYFlowExtended.diverseWithYFlows.sort() }
         assertions.checkSucceeds { assert this.diverseWithHaFlows.sort() == expectedYFlowExtended.diverseWithHaFlows.sort() }
 
