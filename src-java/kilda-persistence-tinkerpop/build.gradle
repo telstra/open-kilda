@@ -10,7 +10,7 @@ description = "Kilda Persistence TinkerPop Implemention"
 dependencies {
     api(project(":kilda-model"))
     api(project(":kilda-persistence-api"))
-    api("net.jodah:failsafe")
+    api("dev.failsafe:failsafe")
     api("com.syncleus.ferma:ferma:3.3.0") {
         exclude group: "org.codehaus.groovy"
     }

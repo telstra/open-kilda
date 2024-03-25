@@ -56,7 +56,7 @@ subprojects {
             implementation("org.squirrelframework:squirrel-foundation:0.3.10")
 
             implementation("com.google.guava:guava:33.0.0-jre")
-            implementation("net.jodah:failsafe:2.4.0")
+            implementation("dev.failsafe:failsafe:3.3.0")
             implementation("org.apache.commons:commons-collections4:4.4")
             implementation("org.apache.commons:commons-lang3:3.12.0")
             implementation("commons-io:commons-io:2.15.0")

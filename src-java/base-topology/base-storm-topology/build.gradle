@@ -29,7 +29,7 @@ dependencies {
     api("com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider")
     api("args4j:args4j")
     api("com.fasterxml.uuid:java-uuid-generator")
-    api("net.jodah:failsafe")
+    api("dev.failsafe:failsafe")
     api("org.hibernate.validator:hibernate-validator")
     api("org.apache.kafka:kafka-clients:3.6.1")
     api("org.apache.kafka:kafka_2.12:3.6.1")

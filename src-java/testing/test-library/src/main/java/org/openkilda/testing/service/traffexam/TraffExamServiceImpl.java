@@ -45,9 +45,10 @@ import org.openkilda.testing.service.traffexam.networkpool.Inet4Network;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4NetworkPool;
 import org.openkilda.testing.service.traffexam.networkpool.Inet4ValueException;
 
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
+import dev.failsafe.RetryPolicyBuilder;
 import jakarta.annotation.PostConstruct;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -103,7 +104,7 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
     private ConcurrentHashMap<UUID, HostResource> suppliedEndpoints = new ConcurrentHashMap<>();
     private List<HostResource> failedToRelease = new LinkedList<>();
 
-    private final RetryPolicy<ExamReport> retryPolicy = new RetryPolicy<ExamReport>()
+    private final RetryPolicyBuilder<ExamReport> retryPolicy = RetryPolicy.<ExamReport>builder()
             .withDelay(Duration.ofSeconds(1))
             .withMaxRetries(30);
 
@@ -254,7 +255,7 @@ public class TraffExamServiceImpl implements TraffExamService, DisposableBean {
         ExamReport result;
         try {
             result = Failsafe.with(retryPolicy
-                            .handleIf((t, u) -> u instanceof ExamNotFinishedException))
+                            .handleIf((t, u) -> u instanceof ExamNotFinishedException).build())
                     .get(() -> fetchReport(exam));
         } finally {
             if (cleanup) {

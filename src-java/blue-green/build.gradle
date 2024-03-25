@@ -10,7 +10,7 @@ dependencies {
     // current storm version is 1.2.1.
     // kryo package with version >= 5.0 is not compatible with old storm serialization
     implementation 'com.esotericsoftware:kryo:5.6.0'
-    implementation 'net.jodah:failsafe'
+    implementation 'dev.failsafe:failsafe'
 
     implementation 'org.mapstruct:mapstruct'
     implementation 'org.mapstruct:mapstruct-processor'
