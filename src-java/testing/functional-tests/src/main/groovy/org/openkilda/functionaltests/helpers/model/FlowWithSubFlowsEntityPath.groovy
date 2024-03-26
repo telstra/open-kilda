@@ -1,7 +1,6 @@
 package org.openkilda.functionaltests.helpers.model
 
 import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
@@ -14,25 +13,25 @@ import groovy.transform.builder.Builder
 @EqualsAndHashCode(excludes = "topologyDefinition")
 @Builder
 @ToString(includeNames = true, excludes = 'topologyDefinition', includePackage = false)
-class HaFlowAllEntityPaths {
+class FlowWithSubFlowsEntityPath {
 
     FlowPathModel sharedPath
     List<FlowPathModel> subFlowPaths
 
     TopologyDefinition topologyDefinition
 
-    HaFlowAllEntityPaths(HaFlowPaths haFlowPaths, TopologyDefinition topologyDefinition) {
+    FlowWithSubFlowsEntityPath(def flowWithSubFlowsPaths, TopologyDefinition topologyDefinition) {
         this.sharedPath = new FlowPathModel(
                 path: new PathModel(
-                        forward: new Path(haFlowPaths.sharedPath.forward, topologyDefinition),
-                        reverse: new Path(haFlowPaths.sharedPath.reverse, topologyDefinition)
+                        forward: new Path(flowWithSubFlowsPaths.sharedPath.forward, topologyDefinition),
+                        reverse: new Path(flowWithSubFlowsPaths.sharedPath.reverse, topologyDefinition)
                 ),
                 protectedPath: !sharedPath?.protectedPath ? null : new PathModel(
-                        forward: new Path(haFlowPaths.sharedPath.protectedPath.forward, topologyDefinition),
-                        reverse: new Path(haFlowPaths.sharedPath.protectedPath.reverse, topologyDefinition)
+                        forward: new Path(flowWithSubFlowsPaths.sharedPath.protectedPath.forward, topologyDefinition),
+                        reverse: new Path(flowWithSubFlowsPaths.sharedPath.protectedPath.reverse, topologyDefinition)
                 ))
 
-        this.subFlowPaths = haFlowPaths.subFlowPaths.collect { subFlow ->
+        this.subFlowPaths = flowWithSubFlowsPaths.subFlowPaths.collect { subFlow ->
             new FlowPathModel(
                     flowId: subFlow.flowId,
                     path: new PathModel(
