@@ -1,13 +1,9 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
-import org.openkilda.functionaltests.error.flow.FlowNotModifiedExpectedError
-
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS_Y
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.YFlowHelper
+import org.openkilda.functionaltests.error.flow.FlowNotModifiedExpectedError
+import org.openkilda.functionaltests.helpers.model.YFlowActionType
+import org.openkilda.functionaltests.helpers.model.YFlowFactory
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowPathDirection
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -26,16 +22,15 @@ import spock.lang.Shared
 class SubFlowSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
-    YFlowHelper yFlowHelper
+    YFlowFactory yFlowFactory
 
     def "Unable to #data.action a sub-flow"() {
-        given: "Existing y-flow"
+        given: "Existing Y-Flow"
         def swT = topologyHelper.switchTriplets[0]
-        def yFlowRequest = yFlowHelper.randomYFlow(swT)
-        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
+        def yFlow = yFlowFactory.getRandom(swT)
 
         when: "Invoke a certain action for a sub-flow"
-        def subFlow = yFlow.subFlows.first()
+        SubFlow subFlow = yFlow.subFlows.first()
         data.method(subFlow)
 
         then: "Human readable error is returned"
@@ -43,27 +38,25 @@ class SubFlowSpec extends HealthCheckSpecification {
         new FlowNotModifiedExpectedError(subFlow.flowId).matches(e)
 
         and: "All involved switches pass switch validation"
-        def involvedSwitches = pathHelper.getInvolvedYSwitches(yFlow.YFlowId)*.getDpId()
+        def involvedSwitches = yFlow.retrieveAllEntityPaths().getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
-        and: "Y-Flow is UP"
-        and: "Sub flows are UP"
-        Wrappers.wait(WAIT_OFFSET) {
-            with(northboundV2.getYFlow(yFlow.YFlowId)) {
-                it.status == FlowState.UP.toString()
-                it.subFlows.each { it.status == FlowState.UP.toString() }
-            }
-        }
+        and: "Y-Flow and each sublows are in UP state"
+        yFlow.waitForBeingInState(FlowState.UP)
 
-        and: "Y-flow passes flow validation"
-        northboundV2.validateYFlow(yFlow.YFlowId).asExpected
+        and: "Y-Flow passes flow validation"
+        yFlow.validate().asExpected
 
         and: "SubFlow passes flow validation"
         northbound.validateFlow(subFlow.flowId).each { direction -> assert direction.asExpected }
 
         and: "Flow history doesn't contain info about illegal action"
         //create action only
-        flowHelper.getLatestHistoryEntry(yFlow.YFlowId).payload.last().action == CREATE_SUCCESS_Y
+        def historyEvents = yFlow.retrieveFlowHistory().entries
+        verifyAll {
+            historyEvents.size() == 1
+            historyEvents.last().payload.last().action == YFlowActionType.CREATE.payloadLastAction
+        }
 
         and: "Sub flow is pingable"
         verifyAll(northbound.pingFlow(subFlow.flowId, new PingInput())) {
@@ -72,7 +65,7 @@ class SubFlowSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlow.delete()
 
         where:
         data << [

@@ -1,21 +1,24 @@
 package org.openkilda.functionaltests.helpers.model
 
+import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats
 import org.openkilda.messaging.payload.flow.PathNodePayload
+import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.flows.FlowPathV2
+import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.service.northbound.payloads.PathDto
+import org.openkilda.testing.service.northbound.payloads.ProtectedPathPayload
 
 import groovy.transform.Canonical
 import groovy.transform.EqualsAndHashCode
 import groovy.transform.ToString
 import groovy.transform.builder.Builder
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.northbound.dto.v2.flows.FlowPathV2
-import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.service.northbound.payloads.PathDto
-import org.openkilda.testing.service.northbound.payloads.ProtectedPathPayload
 
 /* This class represent any kind of flow path and is intended to help compare/manipulate paths
 (presented as lists of nodes), received from different endpoints in the same manner.
 This class has to replace *PathHelper in future
  */
+
 @Canonical
 @EqualsAndHashCode(excludes = "topologyDefinition")
 @Builder
@@ -78,5 +81,22 @@ class Path {
 
     boolean hasProtectedPathWithLatencyAbove(Long latencyMs) {
         return protectedPath && protectedPath.getLatencyMs() > latencyMs
+    }
+
+    List<SwitchId> getInvolvedSwitches() {
+        nodes.nodes.switchId
+    }
+
+    OverlappingSegmentsStats overlappingSegmentStats(List<Path> comparedPath) {
+        def basePathSwitches = getInvolvedSwitches() as Set
+        def comparedPathsSwitches = comparedPath.collect { it.getInvolvedSwitches() }.flatten() as Set
+        def basePathIsls = getInvolvedIsls()
+        def comparedPathsIsls = comparedPath.collect { it.getInvolvedIsls() }.flatten() as Set
+        def intersectingSwitchSize = basePathSwitches.intersect(comparedPathsSwitches).size()
+        def intersectingIslSize = basePathIsls.intersect(comparedPathsIsls).size()
+        return new OverlappingSegmentsStats(intersectingIslSize,
+                intersectingSwitchSize,
+                intersectingIslSize ? intersectingIslSize / basePathIsls.size() * 100 as int : 0,
+                intersectingSwitchSize / basePathSwitches.size() * 100 as int,)
     }
 }

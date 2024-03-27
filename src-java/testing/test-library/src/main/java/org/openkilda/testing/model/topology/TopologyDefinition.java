@@ -511,6 +511,17 @@ public class TopologyDefinition {
     }
 
     /**
+     * Get traffgen for certain switch and port.
+     */
+    @JsonIgnore
+    public TraffGen getTraffGen(SwitchId swId, Integer portNumber) {
+        return traffGens.stream()
+                .filter(traffGen -> traffGen.getSwitchConnected().getDpId().equals(swId)
+                        && traffGen.switchPort == portNumber)
+                .findFirst().orElseThrow(() -> new RuntimeException("Switch has no traffgen"));
+    }
+
+    /**
      * Get active traffgen for certain switch.
      */
     @JsonIgnore

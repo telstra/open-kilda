@@ -1,40 +1,30 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
-import org.openkilda.functionaltests.helpers.Wrappers
-
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-
-import org.openkilda.functionaltests.error.yflow.YFlowRerouteExpectedError
-import org.openkilda.functionaltests.helpers.model.Path
-import org.openkilda.functionaltests.helpers.model.SwitchTriplet
-
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS_Y
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.yflow.YFlowRerouteExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.YFlowHelper
+import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.functionaltests.helpers.model.YFlowActionType
+import org.openkilda.functionaltests.helpers.model.YFlowFactory
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.northbound.dto.v1.switches.PortDto
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.ExamReport
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
@@ -49,7 +39,7 @@ import javax.inject.Provider
 class YFlowRerouteSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
-    YFlowHelper yFlowHelper
+    YFlowFactory yFlowFactory
     @Autowired
     @Shared
     Provider<TraffExamService> traffExamProvider
@@ -67,40 +57,38 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
                     !it.shared.wb5164 && !it.ep1.wb5164 && !it.ep2.wb5164
         }
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
-        def yFlowRequest = yFlowHelper.randomYFlow(swT).tap {
-            it.subFlows[0].sharedEndpoint.vlanId = 123
-            it.subFlows[1].sharedEndpoint.vlanId = 124
-            it.subFlows[0].sharedEndpoint.innerVlanId = 111
-            it.subFlows[1].sharedEndpoint.innerVlanId = 111
-            it.subFlows[0].endpoint.vlanId = 222
-            it.subFlows[1].endpoint.vlanId = 222
-            it.subFlows[0].endpoint.innerVlanId = 333
-            it.subFlows[1].endpoint.innerVlanId = 444
-        }
-        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
 
-        def paths = northboundV2.getYFlowPaths(yFlow.YFlowId)
-        def islToFail = pathHelper.getInvolvedIsls(PathHelper.convert(paths.subFlowPaths[0].forward)).first()
+        def yFlow = yFlowFactory.getBuilder(swT).withEp1QnQ().withEp2QnQ().withSharedEpQnQ().build()
+        yFlow = yFlow.waitForBeingInState(FlowState.UP)
+
+        def paths = yFlow.retrieveAllEntityPaths()
+        def islToFail = paths.subFlowPaths.first().getInvolvedIsls().first()
 
         when: "Fail a flow ISL (bring switch port down)"
         islHelper.breakIsl(islToFail)
 
         then: "The flow was rerouted after reroute delay"
+        yFlow.waitForBeingInState(FlowState.IN_PROGRESS)
+
         and: "History has relevant entries about y-flow reroute"
         wait(FLOW_CRUD_TIMEOUT) {
-            assert flowHelper.getLatestHistoryEntry(yFlow.getYFlowId()).payload.last().action == REROUTE_SUCCESS_Y
+            assert yFlow.retrieveFlowHistory().getEntriesByType(YFlowActionType.REROUTE).last()
+                    .payload.find { it.action == YFlowActionType.REROUTE.payloadLastAction }
         }
+
         yFlow.subFlows.each { sf ->
-            assert flowHelper.getLatestHistoryEntry(sf.flowId).payload.last().action == REROUTE_SUCCESS
+            assert yFlow.retrieveSubFlowHistory(sf.flowId).getEntriesByType(FlowActionType.REROUTE).last()
+                    .payload.find { it.action == FlowActionType.REROUTE.payloadLastAction }
         }
+        def newPath = null
         wait(rerouteDelay + WAIT_OFFSET) {
-            yFlow = northboundV2.getYFlow(yFlow.YFlowId)
-            assert yFlow.status == FlowState.UP.toString()
-            assert northboundV2.getYFlowPaths(yFlow.YFlowId) != paths
+            assert yFlow.retrieveDetails().status == FlowState.UP
+            newPath = yFlow.retrieveAllEntityPaths()
+            assert newPath != paths
         }
 
         and: "Y-flow passes flow validation"
-        northboundV2.validateYFlow(yFlow.YFlowId).asExpected
+        yFlow.validate().asExpected
 
         and: "Both sub-flows pass flow validation"
         yFlow.subFlows.each {
@@ -108,11 +96,11 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches pass switch validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(pathHelper.getInvolvedYSwitches(paths)*.getDpId()).isEmpty()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(newPath.getInvolvedSwitches()).isEmpty()
 
         when: "Traffic starts to flow on both sub-flows with maximum bandwidth (if applicable)"
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildYFlowExam(yFlow, yFlow.maximumBandwidth, 10)
+        def exam = yFlow.traffExam(traffExam, yFlow.maximumBandwidth, 10)
         List<ExamReport> examReports = withPool {
             [exam.forward1, exam.forward2, exam.reverse1, exam.reverse2].collectParallel { Exam direction ->
                 def resources = traffExam.startExam(direction)
@@ -127,7 +115,6 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
             assert report.hasTraffic(), report.exam
         }
 
-
         and: "Subflows stats are available (flow.raw.bytes)"
         def subflow = yFlow.getSubFlows().shuffled().first()
         def subflowId = subflow.getFlowId()
@@ -141,7 +128,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlow.delete()
         islHelper.restoreIsl(islToFail)
         database.resetCosts(topology.isls)
     }
@@ -150,54 +137,48 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     def "Y-Flow reroute has not been executed when both sub-flows are on the best path"() {
         given: "Y-Flow has been created successfully"
         def swT = topologyHelper.switchTriplets.findAll { SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it) }.first()
-        def yFlowRequest = yFlowHelper.randomYFlow(swT, false)
-        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
-        def yFlowPathBeforeReroute = northboundV2.getYFlowPaths(yFlow.YFlowId)
+        def yFlow = yFlowFactory.getRandom(swT, false)
+        def yFlowPathBeforeReroute = yFlow.retrieveAllEntityPaths()
 
         when: "Y-Flow reroute has been called"
-        northboundV2.rerouteYFlow(yFlow.YFlowId)
+        yFlow.reroute()
 
         then: "The appropriate error has been returned"
         def actualException = thrown(HttpClientErrorException)
         new YFlowRerouteExpectedError(~/Reroute is unsuccessful. Couldn't find new path\(s\)/).matches(actualException)
 
         and: "Y-Flow path has not been changed"
-        def yFlowPathAfterReroute = northboundV2.getYFlowPaths(yFlow.YFlowId)
+        def yFlowPathAfterReroute = yFlow.retrieveAllEntityPaths()
         verifyAll {
-            northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.UP.toString()
+            yFlow.retrieveDetails().status == FlowState.UP
             yFlowPathAfterReroute == yFlowPathBeforeReroute
         }
 
         cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlow.delete()
     }
 
     @Tags([LOW_PRIORITY])
     def "Y-Flow reroute has been executed when more preferable path is available for both sub-flows (shared path cost was changed)" () {
         given: "The appropriate switches have been collected"
         //y-flow with shared path is created when shared_ep+ep1->neighbour && ep1+ep2->neighbour && shared_ep+ep2->not neighbour
-        def pairSharedEpAndEp1 = switchPairs.all().neighbouring().first()
-        def sharedEpNeighbouringSwitches = switchPairs.all().neighbouring().includeSwitch(pairSharedEpAndEp1.src).collectSwitches()
-        def pairEp1AndEp2 = switchPairs.all().neighbouring().excludePairs([pairSharedEpAndEp1])
-                .includeSwitch(pairSharedEpAndEp1.dst).excludeSwitches(sharedEpNeighbouringSwitches).first()
-        def swT = new SwitchTriplet(shared: pairSharedEpAndEp1.src, ep1: pairEp1AndEp2.src, ep2: pairEp1AndEp2.dst)
+        def swT = topologyHelper.findSwitchTripletWithSharedEpEp1Ep2InChain()
 
         and: "The ISLs cost between switches has been changed to make preferable path"
-        List<Isl> directSwTripletIsls = (pairSharedEpAndEp1.paths + pairEp1AndEp2.paths).findAll { it.size() == 2 }
-                .collectMany { pathHelper.getInvolvedIsls(it) }
-
+        List<Isl> directSwTripletIsls = (swT.pathsEp2).findAll { it.size() == 4  && swT.ep1.dpId in it.switchId }
+                .collectMany { pathHelper.getInvolvedIsls(it) }.unique()
         pathHelper.updateIslsCost(directSwTripletIsls, 0)
 
         and: "Y-Flow with shared path has been created successfully"
-        def yFlow = yFlowHelper.addYFlow(yFlowHelper.randomYFlow(swT, false))
-        def yFlowPathBeforeReroute = northboundV2.getYFlowPaths(yFlow.YFlowId)
+        def yFlow = yFlowFactory.getRandom(swT, false)
+        def yFlowPathBeforeReroute = yFlow.retrieveAllEntityPaths()
 
         and: "Shared ISLs cost has been changed to provide on-demand Y-Flow reroute"
-        def sharedPathIslBeforeReroute = new Path(yFlowPathBeforeReroute.sharedPath.forward + yFlowPathBeforeReroute.sharedPath.reverse, topology).getInvolvedIsls()
+        def sharedPathIslBeforeReroute = yFlowPathBeforeReroute.sharedPath.getInvolvedIsls()
         pathHelper.updateIslsCost(sharedPathIslBeforeReroute, 80000)
 
         when: "Y-Flow reroute has been called"
-        YFlowRerouteResult rerouteDetails = northboundV2.rerouteYFlow(yFlow.YFlowId)
+        YFlowRerouteResult rerouteDetails = yFlow.reroute()
 
         then: "Y-Flow reroute has been executed successfully"
         verifyAll {
@@ -206,45 +187,46 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "Both sub-flows paths have been changed"
-        wait(FLOW_CRUD_TIMEOUT) {
-            assert northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.UP.toString()
-        }
+        yFlow.waitForBeingInState(FlowState.UP, FLOW_CRUD_TIMEOUT)
 
-        def yFlowPathAfterReroute = northboundV2.getYFlowPaths(yFlow.YFlowId)
+        def yFlowPathAfterReroute = yFlow.retrieveAllEntityPaths()
+        def sharedPathIslAfterReroute = yFlowPathAfterReroute.sharedPath.getInvolvedIsls()
         verifyAll {
-            yFlowPathAfterReroute.subFlowPaths.first().forward != yFlowPathBeforeReroute.subFlowPaths.first().forward
-            yFlowPathAfterReroute.subFlowPaths.first().reverse != yFlowPathBeforeReroute.subFlowPaths.first().reverse
-            yFlowPathAfterReroute.subFlowPaths.last().forward != yFlowPathBeforeReroute.subFlowPaths.last().forward
-            yFlowPathAfterReroute.subFlowPaths.last().reverse != yFlowPathBeforeReroute.subFlowPaths.last().reverse
+            sharedPathIslAfterReroute.sort() != sharedPathIslBeforeReroute.sort()
+            yFlowPathAfterReroute.subFlowPaths.first().path.forward != yFlowPathBeforeReroute.subFlowPaths.first().path.forward
+            yFlowPathAfterReroute.subFlowPaths.first().path.reverse != yFlowPathBeforeReroute.subFlowPaths.first().path.reverse
+            yFlowPathAfterReroute.subFlowPaths.last().path.forward != yFlowPathBeforeReroute.subFlowPaths.last().path.forward
+            yFlowPathAfterReroute.subFlowPaths.last().path.reverse != yFlowPathBeforeReroute.subFlowPaths.last().path.reverse
         }
 
         cleanup:
         northbound.deleteLinkProps(northbound.getLinkProps(sharedPathIslBeforeReroute + directSwTripletIsls))
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlow.delete()
     }
 
     @Tags([LOW_PRIORITY])
     def "Y-Flow reroute has been executed when more preferable path is available for one of the sub-flows" () {
         given: "The appropriate switches have been collected"
         //y-flow with shared path is created when shared_ep+ep1->neighbour && ep1+ep2->neighbour && shared_ep+ep2->not neighbour
-        def pairSharedEpAndEp1 = switchPairs.all().neighbouring().first()
-        def sharedEpNeighbouringSwitches = switchPairs.all().neighbouring().includeSwitch(pairSharedEpAndEp1.src).collectSwitches()
-        def pairEp1AndEp2 = switchPairs.all().neighbouring().excludePairs([pairSharedEpAndEp1])
-                .includeSwitch(pairSharedEpAndEp1.dst).excludeSwitches(sharedEpNeighbouringSwitches).first()
-        def swT = new SwitchTriplet(shared: pairSharedEpAndEp1.src, ep1: pairEp1AndEp2.src, ep2: pairEp1AndEp2.dst)
+        def swT = topologyHelper.findSwitchTripletWithSharedEpEp1Ep2InChain()
 
         and: "The ISLs cost between switches has been changed to make preferable path"
-        List<Isl> directSwTripletIsls = (pairSharedEpAndEp1.paths + pairEp1AndEp2.paths).findAll { it.size() == 2 }
-                .collectMany { pathHelper.getInvolvedIsls(it) }
+        List<Isl> directSwTripletIsls = (swT.pathsEp2).findAll { it.size() == 4  && swT.ep1.dpId in it.switchId }
+                .collectMany { pathHelper.getInvolvedIsls(it) }.unique()
         pathHelper.updateIslsCost(directSwTripletIsls, 0)
 
         and: "Y-Flow with shared path has been created successfully"
-        def yFlow = yFlowHelper.addYFlow(yFlowHelper.randomYFlow(swT, false))
-        def yFlowPathBeforeReroute = northboundV2.getYFlowPaths(yFlow.YFlowId)
+        def yFlow = yFlowFactory.getRandom(swT, false)
+        def yFlowPathBeforeReroute = yFlow.retrieveAllEntityPaths()
+        assert !yFlowPathBeforeReroute.sharedPath.path.isPathAbsent()
 
         and: "The required ISLs cost has been updated to make manual reroute available"
-        def islsSubFlow1 = new Path(yFlowPathBeforeReroute.subFlowPaths.first().forward + yFlowPathBeforeReroute.subFlowPaths.first().reverse, topology).getInvolvedIsls()
-        def islsSubFlow2 = new Path(yFlowPathBeforeReroute.subFlowPaths.last().forward + yFlowPathBeforeReroute.subFlowPaths.last().reverse, topology).getInvolvedIsls()
+        def islsSubFlow1 = (yFlowPathBeforeReroute.subFlowPaths.first().getInvolvedIsls(true)
+                + yFlowPathBeforeReroute.subFlowPaths.first().getInvolvedIsls(false)).unique()
+
+        def islsSubFlow2 = (yFlowPathBeforeReroute.subFlowPaths.last().getInvolvedIsls(true)
+                + yFlowPathBeforeReroute.subFlowPaths.last().getInvolvedIsls(false)).unique()
+
         assert islsSubFlow1 != islsSubFlow2, "Y-Flow path doesn't allow us to the check this case as subFlows have the same ISLs"
 
         def islsToModify
@@ -259,7 +241,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         pathHelper.updateIslsCost(islsToModify, 80000)
 
         when: "Y-Flow reroute has been called"
-        YFlowRerouteResult rerouteDetails = northboundV2.rerouteYFlow(yFlow.YFlowId)
+        YFlowRerouteResult rerouteDetails = yFlow.reroute()
 
         then: "Y-Flow has been rerouted successfully"
         verifyAll {
@@ -268,33 +250,32 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "The appropriate flow has been rerouted"
-        wait(FLOW_CRUD_TIMEOUT) {
-            assert northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.UP.toString()
-        }
-        def yFlowPathAfterReroute = northboundV2.getYFlowPaths(yFlow.YFlowId)
+        yFlow.waitForBeingInState(FlowState.UP, FLOW_CRUD_TIMEOUT)
+
+        def yFlowPathAfterReroute = yFlow.retrieveAllEntityPaths()
         verifyAll {
-            yFlowPathAfterReroute.subFlowPaths.find { it.flowId == subFlowId }.forward != yFlowPathBeforeReroute.subFlowPaths.find { it.flowId == subFlowId }.forward
-            yFlowPathAfterReroute.subFlowPaths.find { it.flowId == subFlowId }.reverse != yFlowPathBeforeReroute.subFlowPaths.find { it.flowId == subFlowId }.reverse
-            yFlowPathAfterReroute.subFlowPaths.find { it.flowId != subFlowId }.forward == yFlowPathBeforeReroute.subFlowPaths.find { it.flowId != subFlowId }.forward
-            yFlowPathAfterReroute.subFlowPaths.find { it.flowId != subFlowId }.reverse == yFlowPathBeforeReroute.subFlowPaths.find { it.flowId != subFlowId }.reverse
+            yFlowPathAfterReroute.subFlowPaths.find { it.flowId == subFlowId }.path.forward != yFlowPathBeforeReroute.subFlowPaths.find { it.flowId == subFlowId }.path.forward
+            yFlowPathAfterReroute.subFlowPaths.find { it.flowId == subFlowId }.path.reverse != yFlowPathBeforeReroute.subFlowPaths.find { it.flowId == subFlowId }.path.reverse
+            yFlowPathAfterReroute.subFlowPaths.find { it.flowId != subFlowId }.path.forward == yFlowPathBeforeReroute.subFlowPaths.find { it.flowId != subFlowId }.path.forward
+            yFlowPathAfterReroute.subFlowPaths.find { it.flowId != subFlowId }.path.reverse == yFlowPathBeforeReroute.subFlowPaths.find { it.flowId != subFlowId }.path.reverse
         }
 
         cleanup:
         northbound.deleteLinkProps(northbound.getLinkProps(islsToModify + directSwTripletIsls))
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlow.delete()
     }
 
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
     def "Y-Flow reroute has not been executed when one sub-flow is on the best path and there is no alternative path for another sub-flow due to the down ISLs" () {
         given: "Y-Flow has been created successfully"
         def swT = topologyHelper.switchTriplets.findAll{ SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it)}.first()
-        def yFlowRequest = yFlowHelper.randomYFlow(swT, false)
-        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
-        def yFlowPathBeforeReroute = northboundV2.getYFlowPaths(yFlow.YFlowId)
+        def yFlow = yFlowFactory.getRandom(swT, false)
+        def yFlowPathBeforeReroute = yFlow.retrieveAllEntityPaths()
 
         and: "Sub-flows not intersected ISLs have been collected"
-        def islsSubFlow1 = new Path(yFlowPathBeforeReroute.subFlowPaths.first().forward, topology).getInvolvedIsls()
-        def islsSubFlow2 = new Path(yFlowPathBeforeReroute.subFlowPaths.last().forward, topology).getInvolvedIsls()
+        def islsSubFlow1 = yFlowPathBeforeReroute.subFlowPaths.first().getInvolvedIsls()
+        def islsSubFlow2 = yFlowPathBeforeReroute.subFlowPaths.last().getInvolvedIsls()
+
         def notIntersectedIsls = islsSubFlow1.size() > islsSubFlow2.size() ?
                 islsSubFlow1.findAll { !(it in islsSubFlow2) } : islsSubFlow2.findAll { !(it in islsSubFlow1) }
 
@@ -302,29 +283,25 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         Switch terminalSwitch = notIntersectedIsls.last().dstSwitch
         def broughtDownIsls = topology.getRelatedIsls(terminalSwitch)
         islHelper.breakIsls(broughtDownIsls)
-        wait(FLOW_CRUD_TIMEOUT) {
-            northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.DEGRADED.getState()
-        }
+        yFlow.waitForBeingInState(FlowState.DEGRADED, FLOW_CRUD_TIMEOUT)
 
         when: "Y-Flow reroute has been called"
-        northboundV2.rerouteYFlow(yFlow.YFlowId)
+        yFlow.reroute()
 
         then: "The appropriate error has been returned"
         def actualException = thrown(HttpClientErrorException)
         new YFlowRerouteExpectedError(~/Not enough bandwidth or no path found. Switch ${terminalSwitch.dpId} doesn't have links with enough bandwidth/).matches(actualException)
 
         and: "Y-Flow path has not been changed"
-        def yFlowPathAfterReroute = northboundV2.getYFlowPaths(yFlow.YFlowId)
+        def yFlowPathAfterReroute = yFlow.retrieveAllEntityPaths()
         verifyAll {
-            northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.DEGRADED.toString()
+            yFlow.retrieveDetails().status == FlowState.DEGRADED
             yFlowPathAfterReroute == yFlowPathBeforeReroute
         }
 
         cleanup:
         islHelper.restoreIsls(broughtDownIsls)
-        wait(WAIT_OFFSET) {
-            northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.UP.toString()
-        }
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow.waitForBeingInState(FlowState.UP)
+        yFlow && yFlow.delete()
     }
 }
