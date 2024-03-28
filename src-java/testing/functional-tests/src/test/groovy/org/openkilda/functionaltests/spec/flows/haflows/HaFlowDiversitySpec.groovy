@@ -6,8 +6,9 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
+import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.messaging.payload.flow.FlowState
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
@@ -20,7 +21,7 @@ import spock.lang.Shared
 class HaFlowDiversitySpec extends HealthCheckSpecification {
     @Autowired
     @Shared
-    YFlowHelper yFlowHelper
+    YFlowFactory yFlowFactory
 
     def "Able to create diverse Ha-Flows"() {
         given: "Switches with three not overlapping paths at least"
@@ -152,13 +153,12 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         def haFlow1 = HaFlowExtended.build(swT, northboundV2, topology).create()
 
         and: "Create a Y-Flow diverse with previously created HA-Flow"
-        def yFlowRequest1 = yFlowHelper.randomYFlow(swT, false)
-                .tap { it.diverseFlowId = haFlow1.haFlowId }
-        def yFlow = yFlowHelper.addYFlow(yFlowRequest1)
+        def yFlow = yFlowFactory.getBuilder(swT, false).withDiverseFlow(haFlow1.haFlowId).build()
+        yFlow = yFlow.waitForBeingInState(FlowState.UP)
 
         and: "Create an additional HA-Flow diverse with Y-Flow that has another HA-Flow in diverse group"
         def haFlow2 = HaFlowExtended.build(swT, northboundV2, topology, false, haFlow1.occupiedEndpoints())
-                .withDiverseFlow(yFlow.getYFlowId()).create()
+                .withDiverseFlow(yFlow.yFlowId).create()
 
         then: "The last HA-Flow create response contains info about diverse haFlow"
         !haFlow1.diverseWithHaFlows
@@ -169,20 +169,20 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         !yFlow.diverseWithYFlows
         haFlow2.diverseWithHaFlows == [haFlow1.haFlowId] as Set
         !haFlow2.diverseWithFlows
-        haFlow2.diverseWithYFlows == [yFlow.getYFlowId()] as Set
+        haFlow2.diverseWithYFlows == [yFlow.yFlowId] as Set
 
         when: "Get Y-flow and Ha-Flows details"
         def haFlow1Details = haFlow1.retrieveDetails()
         def haFlow2Details = haFlow2.retrieveDetails()
-        def yFlowDetails = northboundV2.getYFlow(yFlow.getYFlowId())
+        def yFlowDetails = northboundV2.getYFlow(yFlow.yFlowId)
 
         then: "All get flow responses have correct diverse flow IDs"
         haFlow1Details.diverseWithHaFlows == [haFlow2.haFlowId] as Set
         !haFlow1Details.diverseWithFlows
-        haFlow1Details.diverseWithYFlows == [yFlow.getYFlowId()] as Set
+        haFlow1Details.diverseWithYFlows == [yFlow.yFlowId] as Set
         haFlow2Details.diverseWithHaFlows == [haFlow1.haFlowId] as Set
         !haFlow2Details.diverseWithFlows
-        haFlow2Details.diverseWithYFlows == [yFlow.getYFlowId()] as Set
+        haFlow2Details.diverseWithYFlows == [yFlow.yFlowId] as Set
         yFlowDetails.diverseWithHaFlows.sort() == [haFlow1.haFlowId, haFlow2.haFlowId].sort()
         !yFlowDetails.diverseWithFlows
         !yFlowDetails.diverseWithYFlows
@@ -198,6 +198,6 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
 
         cleanup:
         [haFlow1, haFlow2].each { haFlow -> haFlow && haFlow.delete() }
-        yFlow && yFlowHelper.deleteYFlow(yFlow.getYFlowId())
+        yFlow && yFlow.delete()
     }
 }

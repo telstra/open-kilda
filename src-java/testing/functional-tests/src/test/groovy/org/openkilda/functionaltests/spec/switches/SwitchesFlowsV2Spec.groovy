@@ -1,20 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.YFlowHelper
-import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.functionaltests.helpers.model.SwitchTriplet
-import org.openkilda.model.FlowPathDirection
-import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
-import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload
-import org.openkilda.testing.model.topology.TopologyDefinition
-import org.springframework.beans.factory.annotation.Autowired
-import spock.lang.Narrative
-import spock.lang.Shared
-import spock.lang.Unroll
-
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -22,10 +7,27 @@ import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.CLASS
 import static org.openkilda.messaging.payload.flow.FlowState.UP
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.functionaltests.helpers.model.YFlowExtended
+import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.model.FlowPathDirection
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Narrative
+import spock.lang.Shared
+import spock.lang.Unroll
+
 @Narrative("Verifies feature to retrieve list of flows passing the switch grouped by port number. Details: #5015")
 class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     @Shared
-    String yFlowId
+    YFlowExtended yFlow
     @Shared
     String yFlowSubFlow1Id
     @Shared
@@ -38,11 +40,11 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     SwitchPair switchPair
     @Shared
     @Autowired
-    YFlowHelper yFlowHelper
+    YFlowFactory yFlowFactory
     @Shared
-    TopologyDefinition.Switch switchFlowGoesThrough
+    Switch switchFlowGoesThrough
     @Shared
-    TopologyDefinition.Switch switchProtectedPathGoesThrough
+    Switch switchProtectedPathGoesThrough
 
     def setupSpec() {
         /* Topology used to test features in this spec looks like this:
@@ -70,15 +72,14 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
             ![switchPair.getSrc(), switchPair.getDst()].contains(it)
         }
 
-        def yFlow = yFlowHelper.addYFlow(yFlowHelper.randomYFlow(switchTriplet))
-        yFlowId = yFlow.getYFlowId()
-        yFlowSubFlow1Id = yFlow.getSubFlows().get(0).getFlowId()
-        yFlowSubFlow2Id = yFlow.getSubFlows().get(1).getFlowId()
+        yFlow = yFlowFactory.getRandom(switchTriplet)
+        yFlowSubFlow1Id = yFlow.subFlows.first().flowId
+        yFlowSubFlow2Id = yFlow.subFlows.last().flowId
     }
 
     @Tags([SMOKE])
     def "System allows to get flows on particular ports on switch"() {
-        given: "YFlow subflow which starts on switch"
+        given: "Y-Flow subflow which starts on switch"
         and: "List of the ports that subflow uses on switch, received from flow path"
         def usedPortsList = flowHelper."get ports that flow uses on switch from path"(yFlowSubFlow2Id,
                 switchTriplet.getShared().getDpId())
@@ -161,10 +162,11 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     }
 
     @Tags([LOW_PRIORITY])
-    def "One-switch YFlow subflows are listed in flows list"() {
-        given: "One switch YFlow"
-
-        def yFlow = yFlowHelper.addYFlow(yFlowHelper.singleSwitchYFlow(switchProtectedPathGoesThrough, false))
+    def "One-switch Y-Flow subflows are listed in flows list"() {
+        given: "One switch Y-Flow"
+        def swT = topologyHelper.getSwitchTriplet(switchProtectedPathGoesThrough.dpId,
+                switchProtectedPathGoesThrough.dpId, switchProtectedPathGoesThrough.dpId)
+        def yFlow = yFlowFactory.getRandom(swT, false)
         when: "Request flows on switch"
         def flows = switchHelper.getFlowsV2(switchProtectedPathGoesThrough, [])
 
@@ -173,12 +175,10 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
                 .containsAll(yFlow.subFlows*.flowId)
 
         cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.getYFlowId())
+        yFlow && yFlow.delete()
     }
 
     def cleanupSpec() {
-        Wrappers.silent {
-            yFlowHelper.deleteYFlow(yFlowId)
-        }
+       yFlow.delete()
     }
 }

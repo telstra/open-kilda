@@ -1,18 +1,17 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
-import org.openkilda.functionaltests.error.yflow.YFlowNotFoundExpectedError
-
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.yflow.YFlowNotFoundExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.YFlowHelper
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.payload.flow.FlowState
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -25,33 +24,31 @@ And make sure that the yFlow rule can be installed by syncSw/syncYFlow endpoints
 class YFlowValidationSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
-    YFlowHelper yFlowHelper
+    YFlowFactory yFlowFactory
 
-    def "Y-Flow validation should fail in case of missing y-flow shared rule (#data.description)"() {
-        given: "Existing y-flow"
-        def swT = topologyHelper.switchTriplets[0]
-        def yFlowRequest = data.yFlow(swT)
-        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
+    def "Y-Flow validation should fail in case of missing Y-Flow shared rule (#data.description)"() {
+        given: "Existing Y-Flow"
+        assumeTrue(data.swT != null, "These cases cannot be covered on given topology.")
 
-        when: "Delete shared y-flow rule"
-        def swIdToManipulate = swT.shared.dpId
-        def sharedMeterId = northbound.getAllMeters(swIdToManipulate).meterEntries.findAll {
-            it.meterId > MAX_SYSTEM_RULE_METER_ID
-        }.max { it.meterId }.meterId
+        def yFlow = yFlowFactory.getRandom(data.swT)
+
+        when: "Delete shared Y-Flow rule"
+        def swIdToManipulate = data.swT.shared.dpId
+        def sharedMeter = database.getYFlow(yFlow.yFlowId).sharedEndpointMeterId
         def sharedRules = northbound.getSwitchRules(swIdToManipulate).flowEntries.findAll {
-            it.instructions.goToMeter == sharedMeterId
+            it.instructions.goToMeter == sharedMeter.value
         }
         sharedRules.each { northbound.deleteSwitchRules(swIdToManipulate, it.cookie) }
 
         then: "Y-Flow validate detects discrepancies"
-        Wrappers.wait(RULES_DELETION_TIME) { assert !northboundV2.validateYFlow(yFlow.YFlowId).asExpected }
+        Wrappers.wait(RULES_DELETION_TIME) { assert !yFlow.validate().asExpected }
 
         and: "Simple flow validation detects discrepancies"
         yFlow.subFlows.each {
             northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
         }
 
-        and: "Switch validation detects missing y-flow rule"
+        and: "Switch validation detects missing Y-Flow rule"
         with(switchHelper.validate(swIdToManipulate).rules) {
             it.misconfigured.empty
             it.excess.empty
@@ -63,7 +60,7 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         switchHelper.synchronize(swIdToManipulate, false)
 
         then: "Y-Flow/subFlow passes flow validation"
-        northboundV2.validateYFlow(yFlow.YFlowId).asExpected
+        yFlow.validate().asExpected
         yFlow.subFlows.each {
             northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
         }
@@ -72,45 +69,65 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         switchHelper.validate(swIdToManipulate).isAsExpected()
 
         cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlow.delete()
 
         where:
         data << [
                 [
-                        description: "multiSwtich y-flow",
-                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.randomYFlow(swTriplet) }
+                        description: "multiSwitch Y-Flow",
+                        swT: topologyHelper.getSwitchTriplets().find(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT)
                 ],
                 [
-                        description: "one-switch y-flow",
-                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.singleSwitchYFlow(swTriplet.shared) }
+                        description: "one-switch Y-Flow",
+                        swT: topologyHelper.getSwitchTriplets(false, true)
+                                    .find(SwitchTriplet.ONE_SWITCH_FLOW)
+
                 ]
         ]
     }
 
     @Tags(LOW_PRIORITY)
-    def "Y-Flow/flow validation should fail in case of missing subFlow rule (#data.description)"() {
-        given: "Existing y-flow"
-        def swT = topologyHelper.switchTriplets[0]
-        def yFlowRequest = data.yFlow(swT)
-        def yFlow = yFlowHelper.addYFlow(yFlowRequest)
+    def "Y-Flow/subFlow validation should fail in case of missing subFlow rule (#data.description)"() {
+        given: "Existing Y-Flow"
+        def yFlow = yFlowFactory.getRandom(data.swT)
 
         when: "Delete reverse rule of subFlow_1"
         def subFl_1 = yFlow.subFlows[0]
         def subFl_2 = yFlow.subFlows[1]
-        def swIdToManipulate = swT.ep2.dpId
+        def swIdToManipulate = data.swT.ep1.dpId
         def cookieToDelete = database.getFlow(subFl_1.flowId).reversePath.cookie.value
         northbound.deleteSwitchRules(swIdToManipulate, cookieToDelete)
 
-        then: "Y-Flow validate detects discrepancies"
-        def validateYflowInfo = northboundV2.validateYFlow(yFlow.YFlowId)
-        !validateYflowInfo.asExpected
-        !validateYflowInfo.subFlowValidationResults.findAll { it.flowId == subFl_1.flowId }
-                .findAll { !it.discrepancies.empty }.empty
-        validateYflowInfo.subFlowValidationResults.findAll { it.flowId == subFl_2.flowId }
-                .findAll { !it.discrepancies.empty }.empty
+        then: "Y-Flow is not valid"
+        def validateYFlowInfo = yFlow.validate()
+        !validateYFlowInfo.asExpected
 
-        and: "Simple flow validation detects discrepancies for the subFlow_1 only"
-        !northbound.validateFlow(subFl_1.flowId).findAll { !it.discrepancies.empty }.empty
+        and: "Discrepancies has been detected for broken sub-flow REVERSE direction"
+        def reverseBrokenSubFlow = validateYFlowInfo.subFlowValidationResults
+                .find { it.flowId == subFl_1.flowId && it.direction == Direction.REVERSE.name() }
+        assert !reverseBrokenSubFlow.asExpected && reverseBrokenSubFlow.discrepancies
+
+        and: "No discrepancies has been detected for broken sub-flow FORWARD direction"
+        def forwardBrokenSubFlow =  validateYFlowInfo.subFlowValidationResults
+                .find { it.flowId == subFl_1.flowId && it.direction == Direction.FORWARD.name() }
+        assert forwardBrokenSubFlow.asExpected && forwardBrokenSubFlow.discrepancies.empty
+
+
+        and: "No discrepancies has been detected for another sub-flow"
+        validateYFlowInfo.subFlowValidationResults
+                .findAll { it.flowId != subFl_1.flowId }.each {
+            assert it.asExpected && it.discrepancies.empty
+        }
+
+        and: "Simple flow validation detects discrepancies for the subFlow_1 REVERSE direction only"
+        verifyAll(northbound.validateFlow(subFl_1.flowId)) { subFlow1 ->
+            subFlow1.find { it.direction == Direction.FORWARD.value }.discrepancies.empty
+            subFlow1.find { it.direction == Direction.FORWARD.value }.asExpected
+
+            subFlow1.find { it.direction == Direction.REVERSE.value }.discrepancies
+            !subFlow1.find { it.direction == Direction.REVERSE.value }.asExpected
+        }
+
         northbound.validateFlow(subFl_2.flowId).each { direction -> assert direction.asExpected }
 
         and: "Switch validation detects missing reverse rule only for the subFlow_1"
@@ -121,14 +138,12 @@ class YFlowValidationSpec extends HealthCheckSpecification {
             it.missing[0].getCookie() == cookieToDelete
         }
 
-        when: "Sync y-flow"
-        northboundV2.synchronizeYFlow(yFlow.YFlowId)
+        when: "Sync Y-Flow"
+        yFlow.sync()
+        yFlow.waitForBeingInState(FlowState.UP)
 
         then: "Y-Flow/subFlow passes flow validation"
-        Wrappers.wait(WAIT_OFFSET) {
-            northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.UP.toString()
-        }
-        northboundV2.validateYFlow(yFlow.YFlowId).asExpected
+        yFlow.validate().asExpected
         yFlow.subFlows.each {
             northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
         }
@@ -137,23 +152,26 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         switchHelper.validate(swIdToManipulate).isAsExpected()
 
         cleanup:
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlow.delete()
 
         where:
         data << [
                 [
-                        description: "multiSwtich y-flow",
-                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.randomYFlow(swTriplet) }
+                        description: "multiSwitch Y-Flow",
+                        swT: topologyHelper.getSwitchTriplets().find(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT)
+
                 ],
                 [
-                        description: "one-switch y-flow",
-                        yFlow: { SwitchTriplet swTriplet -> yFlowHelper.singleSwitchYFlow(swTriplet.ep2) }
+                        description: "one-switch Y-Flow",
+                        swT: topologyHelper.getSwitchTriplets(false, true)
+                                .find(SwitchTriplet.ONE_SWITCH_FLOW)
+
                 ]
         ]
     }
 
-    def "Unable to #data.action a non-existent y-flow"() {
-        when: "Invoke a certain action for a non-existent y-flow"
+    def "Unable to #data.action a non-existent Y-Flow"() {
+        when: "Invoke a certain action for a non-existent Y-Flow"
         data.method()
 
         then: "Human readable error is returned"

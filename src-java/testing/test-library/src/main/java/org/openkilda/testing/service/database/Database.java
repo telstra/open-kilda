@@ -25,6 +25,7 @@ import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
+import org.openkilda.model.YFlow;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.history.FlowEvent;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
@@ -42,7 +43,11 @@ public interface Database {
 
     boolean updateIslMaxBandwidth(Isl isl, long value);
 
+    boolean updateIslsMaxBandwidth(List<Isl> isl, long value);
+
     boolean updateIslAvailableBandwidth(Isl isl, long value);
+
+    boolean updateIslsAvailableBandwidth(List<Isl> isls, long value);
 
     boolean resetIslBandwidth(Isl isl);
 
@@ -101,6 +106,10 @@ public interface Database {
     Set<Cookie> getHaSubFlowsCookies(List<HaSubFlow> subFlows);
 
     Set<FlowMeter> getHaFlowMeters(List<HaSubFlow> subFlows, String haFlowId);
+
+    //Y-Flows
+
+    YFlow getYFlow(String yFlowId);
 
     //history
     void addFlowEvent(FlowEvent event);

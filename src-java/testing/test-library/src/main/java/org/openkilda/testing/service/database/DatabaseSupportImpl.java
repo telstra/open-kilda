@@ -34,6 +34,7 @@ import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
+import org.openkilda.model.YFlow;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.history.FlowEvent;
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
@@ -55,6 +56,7 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import org.openkilda.persistence.repositories.SwitchConnectedDeviceRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
 import org.openkilda.persistence.repositories.TransitVlanRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
 import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
@@ -98,6 +100,7 @@ public class DatabaseSupportImpl implements Database {
     private final FlowEventRepository flowEventRepository;
     private final HaFlowPathRepository haFlowPathRepository;
     private final HaFlowRepository haFlowRepository;
+    private final YFlowRepository yFlowRepository;
 
     public DatabaseSupportImpl(PersistenceManager persistenceManager) {
         this.orientPersistenceImplementation = persistenceManager.getImplementation(
@@ -115,6 +118,7 @@ public class DatabaseSupportImpl implements Database {
         flowMirrorPointsRepository = repositoryFactory.createFlowMirrorPointsRepository();
         haFlowPathRepository = repositoryFactory.createHaFlowPathRepository();
         haFlowRepository = repositoryFactory.createHaFlowRepository();
+        yFlowRepository = repositoryFactory.createYFlowRepository();
 
         this.transactionManager = persistenceManager.getTransactionManager();
         historyTransactionManager = persistenceManager.getTransactionManager(flowEventRepository);
@@ -142,6 +146,24 @@ public class DatabaseSupportImpl implements Database {
     }
 
     /**
+     * Updates max_bandwidth property on specified ISLs.
+     *
+     * @param islsToUpdate ISLs to be changed
+     * @param value max bandwidth to set
+     * @return true if at least 1 ISL was affected.
+     */
+    @Override
+    public boolean updateIslsMaxBandwidth(List<Isl> islsToUpdate, long value) {
+        return transactionManager.doInTransaction(() -> {
+            Collection<org.openkilda.model.Isl> dbIsls = getIsls(islsToUpdate);
+            dbIsls.forEach(link ->
+                    link.setMaxBandwidth(value)
+            );
+            return dbIsls.size() > 0;
+        });
+    }
+
+    /**
      * Updates available_bandwidth property on a certain ISL.
      *
      * @param islToUpdate ISL to be changed
@@ -159,6 +181,24 @@ public class DatabaseSupportImpl implements Database {
             });
 
             return isl.isPresent();
+        });
+    }
+
+    /**
+     * Updates available_bandwidth property on specified ISLs.
+     *
+     * @param islsToUpdate ISLs to be changed
+     * @param value available bandwidth to set
+     * @return true if at least 1 ISL was affected.
+     */
+    @Override
+    public boolean updateIslsAvailableBandwidth(List<Isl> islsToUpdate, long value) {
+        return transactionManager.doInTransaction(() -> {
+            Collection<org.openkilda.model.Isl> dbIsls = getIsls(islsToUpdate);
+            dbIsls.forEach(link ->
+                    link.setAvailableBandwidth(value)
+            );
+            return dbIsls.size() > 0;
         });
     }
 
@@ -540,6 +580,18 @@ public class DatabaseSupportImpl implements Database {
         return haFlowRepository.findById(haFlowId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         String.format("HA-Flow %s non found", haFlowId)));
+    }
+
+    /**
+     * Get y-flow.
+     *
+     * @param yFlowId flow ID
+     * @return YFlow
+     */
+    public YFlow getYFlow(String yFlowId) {
+        return yFlowRepository.findById(yFlowId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        String.format("Y-Flow %s non found", yFlowId)));
     }
 
     @Override

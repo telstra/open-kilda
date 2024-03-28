@@ -1,34 +1,36 @@
 package org.openkilda.functionaltests.spec.stats
 
+import static groovyx.gpars.GParsPool.withPool
+import static groovyx.gpars.GParsPoolUtil.callAsync
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_EGRESS_BITS
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_EGRESS_BYTES
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_EGRESS_PACKETS
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_INGRESS_BITS
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_INGRESS_BYTES
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_INGRESS_PACKETS
+import static org.openkilda.functionaltests.model.stats.YFlowStatsMetric.Y_FLOW_SHARED_BITS
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.YFlowHelper
+import org.openkilda.functionaltests.helpers.model.YFlowExtended
+import org.openkilda.functionaltests.helpers.model.YFlowFactory
 import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.functionaltests.model.stats.YFlowStats
 import org.openkilda.functionaltests.model.stats.YFlowStatsMetric
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
+
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
 
 import javax.inject.Provider
-
-import static groovyx.gpars.GParsPool.withPool
-import static groovyx.gpars.GParsPoolUtil.callAsync
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_EGRESS_BYTES
-import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_EGRESS_BITS
-import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_EGRESS_PACKETS
-import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_INGRESS_BITS
-import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_INGRESS_BYTES
-import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_INGRESS_PACKETS
-import static org.openkilda.functionaltests.model.stats.YFlowStatsMetric.Y_FLOW_SHARED_BITS
 
 @Tags(LOW_PRIORITY)
 @Narrative("Verify that statistic is collected for different type of Y-flow")
@@ -39,7 +41,7 @@ class YFlowStatSpec extends HealthCheckSpecification {
 
     @Autowired
     @Shared
-    YFlowHelper yFlowHelper
+    YFlowFactory yFlowFactory
     @Shared
     int traffgenRunDuration = 5 //seconds
     @Shared
@@ -49,7 +51,7 @@ class YFlowStatSpec extends HealthCheckSpecification {
     @Shared
     FlowStats subflow2Stats
     @Shared
-    def yFlow
+    YFlowExtended yFlow
     @Autowired @Shared
     YFlowStats yFlowStats
     @Autowired @Shared
@@ -60,10 +62,10 @@ class YFlowStatSpec extends HealthCheckSpecification {
             it.ep1 != it.ep2 && it.ep1 != it.shared && it.ep2 != it.shared &&
                     [it.shared, it.ep1, it.ep2].every { it.traffGens }
         } ?: assumeTrue(false, "No suiting switches found")
-        yFlow = yFlowHelper.addYFlow(yFlowHelper.randomYFlow(switchTriplet).tap {maximumBandwidth = 10})
+        yFlow = yFlowFactory.getBuilder(switchTriplet).withBandwidth(10).build()
+        yFlow = yFlow.waitForBeingInState(FlowState.UP)
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildYFlowExam(yFlow, yFlow.maximumBandwidth * 10, traffgenRunDuration)
+        def exam = yFlow.traffExam(traffExam, yFlow.maximumBandwidth * 10, traffgenRunDuration)
         Wrappers.wait(statsRouterRequestInterval * 4) {
             withPool {
                 [exam.forward1, exam.forward2, exam.reverse1, exam.reverse2].collectParallel { Exam direction ->
@@ -73,9 +75,9 @@ class YFlowStatSpec extends HealthCheckSpecification {
                 }
             }
             statsHelper."force kilda to collect stats"()
-            assert yFlowStats.of(yFlow.getYFlowId()).get(Y_FLOW_SHARED_BITS).getDataPoints().size() > 2
+            assert yFlowStats.of(yFlow.yFlowId).get(Y_FLOW_SHARED_BITS).getDataPoints().size() > 2
         }
-        stats = yFlowStats.of(yFlow.getYFlowId())
+        stats = yFlowStats.of(yFlow.yFlowId)
         subflow1Stats = flowStats.of(yFlow.getSubFlows().get(0).getFlowId())
         subflow2Stats = flowStats.of(yFlow.getSubFlows().get(1).getFlowId())
     }
@@ -115,7 +117,7 @@ class YFlowStatSpec extends HealthCheckSpecification {
     }
 
     def cleanupSpec() {
-        yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
+        yFlow && yFlow.delete()
     }
 
     def "workaround failure on first connect to kafka"() {
