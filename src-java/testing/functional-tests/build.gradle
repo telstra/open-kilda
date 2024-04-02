@@ -46,6 +46,7 @@ test {
 tasks.register("functionalTest", Test) {
     dependsOn "compileGroovy"
     description = "Runs functional tests."
+    jvmArgs '--add-opens', 'java.base/java.time=ALL-UNNAMED'
     include "**/functionaltests/spec/**/*Spec.*"
     if (System.getProperty("excludeTests")) {
         def excludes = System.getProperty("excludeTests").split(",")
