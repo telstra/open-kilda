@@ -31,7 +31,6 @@ import org.openkilda.model.TransitVlan;
 import org.openkilda.model.YFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.KildaFeatureTogglesRepository;
@@ -60,7 +59,6 @@ import java.util.stream.Collectors;
  */
 public class PersistenceDataAdapter implements DataAdapter {
 
-    private final FlowRepository flowRepository;
     private final FlowPathRepository flowPathRepository;
     private final HaFlowPathRepository haFlowPathRepository;
     private final SwitchRepository switchRepository;
@@ -99,7 +97,6 @@ public class PersistenceDataAdapter implements DataAdapter {
             PersistenceManager persistenceManager, Set<PathId> pathIds, Set<SwitchId> switchIds,
             Map<PathId, HaFlow> additionalHaFlows) {
         RepositoryFactory repositoryFactory = persistenceManager.getRepositoryFactory();
-        flowRepository = repositoryFactory.createFlowRepository();
         flowPathRepository = repositoryFactory.createFlowPathRepository();
         haFlowPathRepository = repositoryFactory.createHaFlowPathRepository();
         switchRepository = repositoryFactory.createSwitchRepository();

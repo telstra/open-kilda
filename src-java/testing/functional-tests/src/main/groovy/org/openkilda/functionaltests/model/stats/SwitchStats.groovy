@@ -1,49 +1,38 @@
 package org.openkilda.functionaltests.model.stats
 
-import org.openkilda.functionaltests.helpers.StatsHelper
+
 import org.openkilda.model.SwitchId
+import org.openkilda.testing.service.tsdb.TsdbQueryService
 import org.openkilda.testing.service.tsdb.model.StatsResult
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
 @Component
-class SwitchStats {
-    private static StatsHelper statsHelper
-    private List<StatsResult> stats
-    private String metricPrefix
+class SwitchStats extends AbstractStats {
 
     @Autowired
-    SwitchStats(StatsHelper statsHelper) {
-        SwitchStats.statsHelper = statsHelper
+    SwitchStats(TsdbQueryService tsdbQueryService) {
+        AbstractStats.tsdbQueryService = tsdbQueryService
     }
 
-    static SwitchStats of(SwitchId switchId, List<SwitchStatsMetric> metricsToQuery,  int minutes = 5) {
-        return new SwitchStats(switchId, minutes, metricsToQuery)
+    static SwitchStats of(SwitchId switchId, int minutes = 5) {
+        return new SwitchStats(switchId, minutes)
     }
 
-    SwitchStats(SwitchId switchId, int minutes, List<SwitchStatsMetric> metricsToQuery) {
-        this.metricPrefix = statsHelper.getMetricPrefix()
-        this.stats = statsHelper.getTsdb().queryDataPointsForLastMinutes(metricsToQuery,
-                "switchid",
-                switchId.toOtsdFormat(),
-                minutes)
+    SwitchStats(SwitchId switchId, int minutes = 5) {
+        stats = tsdbQueryService.queryDataPointsForLastMinutes(
+                /__name__=~"%sswitch.*", switchid="${switchId.toOtsdFormat()}"/, minutes)
     }
 
     StatsResult get(SwitchStatsMetric metric, String ruleCookieIdInHex) {
-        return stats.find {
-            it.metric.equals(metricPrefix + metric.getValue())
-                    && it.tags.get("cookieHex").equals(ruleCookieIdInHex)
-        }
+        return getStats(metric, { it.tags.get("cookieHex").equals(ruleCookieIdInHex) })
     }
 
     StatsResult get(SwitchStatsMetric metric) {
-        return stats.find { it.metric.equals(metricPrefix + metric.getValue()) }
+        return getStats(metric)
     }
 
     StatsResult get(SwitchStatsMetric metric, int port) {
-        return stats.find {
-            it.metric.equals(metricPrefix + metric.getValue())
-                    && it.tags.get("port").equals(port.toString())
-        }
+        return getStats(metric, { it.tags.get("port").equals(port.toString()) })
     }
 }

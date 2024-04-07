@@ -1,10 +1,9 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.model.stats.HaFlowStats
-
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
@@ -18,62 +17,60 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowHelper
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.functionaltests.helpers.model.HaFlowExtended
+import org.openkilda.functionaltests.model.stats.HaFlowStats
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
 import org.openkilda.model.history.DumpType
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.northbound.model.HaFlowActionType
+import org.openkilda.testing.service.traffexam.TraffExamService
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
 
+import javax.inject.Provider
+
 @Slf4j
 @Narrative("Verify reroute operations on HA-flows.")
+@Tags([HA_FLOW])
 class HaFlowRerouteSpec extends HealthCheckSpecification {
-    @Autowired
-    @Shared
-    HaFlowHelper haFlowHelper
     @Autowired
     @Shared
     HaFlowStats haFlowStats
 
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Shared
+    @Autowired
+    Provider<TraffExamService> traffExamProvider
+
+    @Tags([TOPOLOGY_DEPENDENT, ISL_RECOVER_ON_FAIL])
     def "Valid HA-flow can be rerouted"() {
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         given: "An HA-flow"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
-        def haFlowRequest = haFlowHelper.randomHaFlow(swT)
-        def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
+        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
 
-        def oldPaths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
-        def islToFail = pathHelper.getInvolvedIsls(PathHelper.convert(oldPaths.subFlowPaths[0].forward)).first()
+        def initialPaths = haFlow.retrievedAllEntityPaths()
+        def islToFail = initialPaths.subFlowPaths.first().getInvolvedIsls(true).first()
 
         when: "Fail an HA-flow ISL (bring switch port down)"
-        antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        wait(WAIT_OFFSET) { northbound.getLink(islToFail).state == FAILED }
+        islHelper.breakIsl(islToFail)
 
         then: "The HA-flow was rerouted after reroute delay"
         def newPaths = null
         wait(rerouteDelay + WAIT_OFFSET) {
-            haFlowHelper.assertHaFlowAndSubFlowStatuses(haFlow.haFlowId, FlowState.UP)
-            newPaths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
-            newPaths != oldPaths
+            def haFlowDetails = haFlow.retrieveDetails()
+            assert haFlowDetails.status == FlowState.UP && haFlowDetails.subFlows.every { it.status == FlowState.UP.toString() }
+            newPaths = haFlow.retrievedAllEntityPaths()
+            assert newPaths != initialPaths
         }
         newPaths != null
         def timeAfterRerouting = new Date().getTime()
 
         and: "History has relevant entries about HA-flow reroute"
-        wait(WAIT_OFFSET) {
-            assert haFlowHelper.getHistory(haFlow.haFlowId).getEntriesByType(HaFlowActionType.REROUTE)[0].payloads.action
-                    .find {it == HaFlowActionType.REROUTE.getPayloadLastAction()}
-        }
-        def historyRecord = haFlowHelper.getHistory(haFlow.haFlowId).getEntriesByType(HaFlowActionType.REROUTE)
+        haFlow.waitForHistoryEvent(HaFlowActionType.REROUTE)
+        def historyRecord = haFlow.getHistory().getEntriesByType(HaFlowActionType.REROUTE)
 
         verifyAll {
             historyRecord.size() == 1
@@ -90,163 +87,127 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "HA-flow passes validation"
-        northboundV2.validateHaFlow(haFlow.haFlowId).asExpected
+        haFlow.validate().asExpected
 
         and: "All involved switches pass switch validation"
-        def allInvolvedSwitchIds = haFlowHelper.getInvolvedSwitches(oldPaths) + haFlowHelper.getInvolvedSwitches(newPaths)
-        withPool {
-            allInvolvedSwitchIds.eachParallel { SwitchId switchId ->
-                northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
-        
+        def allInvolvedSwitchIds = initialPaths.getInvolvedSwitches(true) + newPaths.getInvolvedSwitches(true)
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
+
         and: "Traffic passes through HA-Flow"
         if (swT.isHaTraffExamAvailable()) {
-            assert haFlowHelper.getTraffExam(haFlow).run().hasTraffic()
+            assert haFlow.traffExam(traffExamProvider).run().hasTraffic()
             statsHelper."force kilda to collect stats"()
         }
 
         then: "Stats are collected"
         if (swT.isHaTraffExamAvailable()) {
             wait(STATS_LOGGING_TIMEOUT) {
-                assert haFlowStats.of(haFlow.getHaFlowId()).get(HA_FLOW_RAW_BITS,
+                assert haFlowStats.of(haFlow.haFlowId).get(HA_FLOW_RAW_BITS,
                         REVERSE,
                         haFlow.getSubFlows().shuffled().first().getEndpoint()).hasNonZeroValuesAfter(timeAfterRerouting)
-                assert haFlowStats.of(haFlow.getHaFlowId()).get(HA_FLOW_RAW_BITS,
+                assert haFlowStats.of(haFlow.haFlowId).get(HA_FLOW_RAW_BITS,
                         FORWARD,
                         haFlow.getSharedEndpoint()).hasNonZeroValuesAfter(timeAfterRerouting)
             }
         }
 
         cleanup:
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
-        islToFail && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        wait(WAIT_OFFSET) { northbound.getLink(islToFail).state == DISCOVERED }
+        haFlow && haFlow.delete()
+        islHelper.restoreIsl(islToFail)
         database.resetCosts(topology.isls)
     }
 
-    @Tags(SMOKE)
+    @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "HA-flow in 'Down' status is rerouted when discovering a new ISL"() {
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         given: "An HA-flow"
         def swT = topologyHelper.findSwitchTripletWithAlternativeFirstPortPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
-        def haFlowRequest = haFlowHelper.randomHaFlow(swT)
-        def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
-        def allPotentialPaths = swT.pathsEp1 + swT.pathsEp2
-        def oldPaths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
-        def firstIslPorts = oldPaths.subFlowPaths*.forward*.first().outputPort as Set
-        def firstIslSwitch = oldPaths.subFlowPaths*.forward*.first().switchId as Set
+        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+
+        def initialPaths = haFlow.retrievedAllEntityPaths()
+        def subFlowsFirstIsls = initialPaths.subFlowPaths.collect{ it.getInvolvedIsls(true).first()} as Set
+        assert subFlowsFirstIsls.size() == 1, "Selected ISL is not common for both sub-flows (not shared switch)"
 
         when: "Bring all ports down on the shared switch that are involved in the current and alternative paths"
-        List<PathNode> broughtDownPorts = []
-        allPotentialPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            if(src.switchId != firstIslSwitch.first() &&  src.portNo != firstIslPorts.first()) {
-                antiflap.portDown(src.switchId, src.portNo)
-            }
-        }
-        //to avoid automatic rerouting an actual flow port is the last one to swicth off.
-        antiflap.portDown(firstIslSwitch.first(), firstIslPorts.first())
+        def initialPathNodesView = initialPaths.subFlowPaths.collect { it.path.forward.nodes.toPathNode().first() } as Set
+        def alternativePaths = (swT.pathsEp1 + swT.pathsEp2).unique { it.first() }
+                .findAll { !initialPathNodesView.contains(it.first()) }
+        def alternativeIsls = alternativePaths.collect { pathHelper.getInvolvedIsls(it).first() }
+        islHelper.breakIsls(alternativeIsls)
+        assert haFlow.retrieveDetails().status == FlowState.UP
+
+        //to avoid automatic rerouting an actual flow port is the last one to switch off.
+        islHelper.breakIsls(subFlowsFirstIsls)
 
         then: "The HA-flow goes to 'Down' status"
-        wait(rerouteDelay + WAIT_OFFSET) {
-            haFlowHelper.assertHaFlowAndSubFlowStatuses(haFlow.haFlowId, FlowState.DOWN)
-        }
+        haFlow.waitForBeingInState(FlowState.DOWN, rerouteDelay + WAIT_OFFSET)
 
         when: "Bring all ports up on the shared switch that are involved in the alternative paths"
-        broughtDownPorts.findAll {
-            !firstIslPorts.contains(it.portNo)
-        }.each {
-            antiflap.portUp(it.switchId, it.portNo)
-        }
-        def broughtDownPortsUp = true
+        alternativeIsls.each {islHelper.restoreIsl(it)} //fails on jenkins if do it asynchronously
 
         then: "The HA-flow goes to 'Up' state and the HA-flow was rerouted"
         def newPaths = null
         wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
-            haFlowHelper.assertHaFlowAndSubFlowStatuses(haFlow.haFlowId, FlowState.UP)
-            newPaths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
-            newPaths != oldPaths
+            def haFlowDetails = haFlow.retrieveDetails()
+            assert haFlowDetails.status == FlowState.UP &&
+                    haFlowDetails.subFlows.every { it.status == FlowState.UP.toString() }
+            newPaths = haFlow.retrievedAllEntityPaths()
+            assert newPaths != initialPaths
         }
+
+        and: "The first (shared) subFlow's ISl  has been chnaged due to the ha-Flow reroute"
+        def newPathSubFlowsFirstIsls = newPaths.subFlowPaths.collect{ it.getInvolvedIsls(true).first()} as Set
+        newPathSubFlowsFirstIsls != subFlowsFirstIsls
 
         and: "HA-flow passes validation"
-        northboundV2.validateHaFlow(haFlow.haFlowId).asExpected
+        haFlow.validate().asExpected
 
         and: "All involved switches pass switch validation"
-        def allInvolvedSwitchIds = haFlowHelper.getInvolvedSwitches(oldPaths) + haFlowHelper.getInvolvedSwitches(newPaths)
-        withPool {
-            allInvolvedSwitchIds.eachParallel { SwitchId switchId ->
-                northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        def allInvolvedSwitchIds = initialPaths.getInvolvedSwitches(true)+ newPaths.getInvolvedSwitches(true)
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
 
         cleanup: "Bring port involved in the original path up and delete the HA-flow"
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
-        !broughtDownPortsUp && broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
-        oldPaths && broughtDownPortsUp && firstIslPorts.each { antiflap.portUp(haFlow.sharedEndpoint.switchId, it) }
-        wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
+        haFlow && haFlow.delete()
+        islHelper.restoreIsls(alternativeIsls + subFlowsFirstIsls)
     }
 
-    @Tags(SMOKE)
+    @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "HA-flow goes to 'Down' status when ISl of the HA-flow fails and there is no alt path to reroute"() {
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         given: "An HA-flow without alternative paths"
         def swT = topologyHelper.findSwitchTripletWithDifferentEndpoints()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
-        def haFlow = haFlowHelper.addHaFlow(haFlowHelper.randomHaFlow(swT))
-        def oldPaths = northboundV2.getHaFlowPaths(haFlow.haFlowId)
-        def currentPathNodes = oldPaths.subFlowPaths*.forward*.first()
-                .collect {new PathNode(it.switchId, it.outputPort, 0) } as Set
-        def currentIslsToFail = oldPaths.subFlowPaths*.forward
-                .collect { pathHelper.getInvolvedIsls(PathHelper.convert(it)).first() }.unique()
-        def allPotentialPaths = swT.pathsEp1 + swT.pathsEp2
+        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
 
-        and: "All ISL ports on the shared switch that are involved in the current HA-flow paths are down"
-        def alternativePaths = allPotentialPaths.unique { it.first() }
-                .findAll { !currentPathNodes.contains(it.first()) }
+        def initialPaths = haFlow.retrievedAllEntityPaths()
+        def subFlowsFirstIsls = initialPaths.subFlowPaths.collect{ it.getInvolvedIsls(true).first()}.unique()
+        assert subFlowsFirstIsls.size() == 1, "Selected ISL is not common for both sub-flows (not shared switch)"
 
-        withPool {
-            alternativePaths*.first().each {
-                antiflap.portDown(it.switchId, it.portNo)
-            }
-        }
+        and: "All ISL ports on the shared switch that are involved in the alternative HA-flow paths are down"
+        def initialPathNodesView = initialPaths.subFlowPaths.collect { it.path.forward.nodes.toPathNode().first() } as Set
+        def alternativePaths = (swT.pathsEp1 + swT.pathsEp2).unique { it.first() }
+                .findAll { !initialPathNodesView.contains(it.first()) }
         def alternativeIsls = alternativePaths.collect { pathHelper.getInvolvedIsls(it).first() }
-        waitForIslsFail(alternativeIsls)
+        islHelper.breakIsls(alternativeIsls)
+        assert haFlow.retrieveDetails().status == FlowState.UP
 
         when: "Bring port down of ISL which is involved in the current HA-flow paths"
-        withPool {
-            currentPathNodes.each {
-                antiflap.portDown(it.switchId, it.portNo)
-            }
-        }
-        waitForIslsFail(currentIslsToFail)
+        islHelper.breakIsl(subFlowsFirstIsls.first())
 
         then: "The HA-flow goes to 'Down' status"
+        haFlow.waitForBeingInState(FlowState.DOWN, rerouteDelay + WAIT_OFFSET)
+        haFlow.waitForHistoryEvent(HaFlowActionType.REROUTE_FAIL, rerouteDelay + WAIT_OFFSET)
         wait(rerouteDelay + WAIT_OFFSET) {
-            haFlowHelper.assertHaFlowAndSubFlowStatuses(haFlow.haFlowId, FlowState.DOWN)
-            haFlowHelper.getHistory(haFlow.haFlowId).getEntriesByType(HaFlowActionType.REROUTE_FAIL)[0].payloads.find {
-                it.action == HaFlowActionType.REROUTE_FAIL.payloadLastAction
-            }
+           assert haFlow.getHistory().getEntriesByType(HaFlowActionType.REROUTE_FAIL).find {
+                it.details =~ /Reason: ISL .* become INACTIVE/ && it.taskId.contains("retry #1 ignore_bw true")
+            }?.payloads?.find { it.action == HaFlowActionType.REROUTE_FAIL.payloadLastAction}
         }
 
         and: "All involved switches pass switch validation"
-        withPool {
-            haFlowHelper.getInvolvedSwitches(oldPaths).eachParallel { SwitchId switchId ->
-                northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(initialPaths.getInvolvedSwitches(true)).isEmpty()
 
         cleanup: "Bring port involved in the original path up and delete the HA-flow"
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
-        alternativePaths && alternativePaths*.first().each {antiflap.portUp(it.switchId, it.portNo) }
-        currentPathNodes && currentPathNodes.each {antiflap.portUp(it.switchId, it.portNo) }
-        wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
+        haFlow && haFlow.delete()
+        islHelper.restoreIsls(alternativeIsls + subFlowsFirstIsls.first())
     }
 
     private boolean waitForIslsFail(List<Isl> islsToFail) {

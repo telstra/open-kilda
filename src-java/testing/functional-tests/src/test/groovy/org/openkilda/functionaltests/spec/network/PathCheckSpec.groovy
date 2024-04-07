@@ -22,7 +22,7 @@ class PathCheckSpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "No path validation errors for valid path without limitations"() {
         given: "Path for non-neighbouring switches"
-        def path = topologyHelper.getAllSwitchPairs().nonNeighbouring().random()
+        def path = switchPairs.all().nonNeighbouring().random()
                 .getPaths().sort { it.size() }.first()
 
         when: "Check the path without limitations"
@@ -39,7 +39,7 @@ class PathCheckSpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Path check errors returned for each segment and each type of problem"() {
         given: "Path of at least three switches"
-        def switchPair = topologyHelper.getAllSwitchPairs().nonNeighbouring().random()
+        def switchPair = switchPairs.all().nonNeighbouring().random()
         def path = switchPair.getPaths()
                 .sort { it.size() }
                 .first()
@@ -69,7 +69,7 @@ class PathCheckSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Latency check errors are returned for the whole existing flow"() {
         given: "Path of at least three switches"
-        def switchPair = topologyHelper.getAllSwitchPairs().nonNeighbouring().random()
+        def switchPair = switchPairs.all().nonNeighbouring().random()
         def path = switchPair.getPaths()
                 .sort { it.size() }
                 .first()
@@ -94,13 +94,12 @@ class PathCheckSpec extends HealthCheckSpecification {
 
         cleanup:
         pathHelper."remove ISL properties artifacts after manipulating paths weights"()
-        Wrappers.silent { flowHelperV2.deleteFlow(flow.getFlowId()) }
     }
 
     @Tags(LOW_PRIORITY)
     def "Path intersection check errors are returned for each segment of existing flow"() {
         given: "Flow has been created successfully"
-        def switchPair = topologyHelper.getAllSwitchPairs().nonNeighbouring().first()
+        def switchPair = switchPairs.all().nonNeighbouring().first()
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair, false))
         def flowPathDetails = northbound.getFlowPath(flow.flowId)
 
@@ -127,14 +126,13 @@ class PathCheckSpec extends HealthCheckSpecification {
 
         cleanup:
         pathHelper."remove ISL properties artifacts after manipulating paths weights"()
-        Wrappers.silent { flowHelperV2.deleteFlow(flow.getFlowId()) }
     }
 
     @Tags(LOW_PRIORITY)
     def "Path intersection check errors are returned for each segment of each flow in diverse group"() {
         given: "List of required neighbouring switches has been collected"
-        def firstSwitchPair = topologyHelper.getAllSwitchPairs().neighbouring().random()
-        def secondSwitchPair = topologyHelper.getAllSwitchPairs().neighbouring().excludePairs([firstSwitchPair])
+        def firstSwitchPair = switchPairs.all().neighbouring().random()
+        def secondSwitchPair = switchPairs.all().neighbouring().excludePairs([firstSwitchPair])
                 .includeSwitch(firstSwitchPair.dst).random()
 
         and:"Two flows in one diverse group have been created"
@@ -143,18 +141,27 @@ class PathCheckSpec extends HealthCheckSpecification {
                 .tap {it.diverseFlowId = flow1.flowId})
 
         and: "Paths for both flows have been collected"
-        def flow1Path = northbound.getFlowPath(flow1.flowId)
-        def flow2Path = northbound.getFlowPath(flow2.flowId)
+        def flow1Path = pathHelper.getPathNodes(northbound.getFlowPath(flow1.flowId).forwardPath)
+        def flow2Path = flow2.source.switchId == flow1.destination.switchId ?
+                pathHelper.getPathNodes(northbound.getFlowPath(flow2.flowId).forwardPath) :
+                pathHelper.getPathNodes(northbound.getFlowPath(flow2.flowId).reversePath)
 
-        when: "Check potential path that has intersection ONLY with one flow from diverse group"
-        LinkedList<PathNode> pathToCheck = topologyHelper.getAllSwitchPairs().neighbouring().excludePairs([firstSwitchPair, secondSwitchPair])
-              .includeSwitch(firstSwitchPair.src).random().paths.first()
+        when: "Check potential path that has NO intersection with both flows from diverse group"
+        LinkedList<PathNode> pathToCheck = switchPairs.all().neighbouring().excludePairs([firstSwitchPair, secondSwitchPair])
+                .includeSwitch(firstSwitchPair.src).random().paths.first()
 
         if(pathToCheck.last().switchId != firstSwitchPair.src.dpId) {
             pathToCheck = pathToCheck.reverse()
         }
-        pathToCheck.addAll(pathHelper.getPathNodes(flow1Path.forwardPath))
 
+        then: "Path check reports has No validation error about intersection"
+        verifyAll {
+            pathHelper.getPathCheckResult(pathToCheck, flow1.flowId).getValidationMessages().isEmpty()
+            pathHelper.getPathCheckResult(pathToCheck, flow2.flowId).getValidationMessages().isEmpty()
+        }
+
+        when: "Check potential path that has intersection ONLY with one flow from diverse group"
+        pathToCheck.addAll(flow1Path)
         def checkErrors = pathHelper.getPathCheckResult(pathToCheck, flow1.flowId)
 
         then: "Path check reports has ONLY one intersecting segment"
@@ -164,8 +171,7 @@ class PathCheckSpec extends HealthCheckSpecification {
         }
 
         when: "Check potential path that has intersection with both flows from diverse group"
-        flow2.source.switchId == flow1.destination.switchId ? pathToCheck.addAll(pathHelper.getPathNodes(flow2Path.forwardPath))
-                : pathToCheck.addAll(pathHelper.getPathNodes(flow2Path.reversePath))
+        pathToCheck.addAll(flow2Path)
         checkErrors = pathHelper.getPathCheckResult(pathToCheck, flow1.flowId)
 
         then: "Path check reports has intersecting segments with both flows from diverse group"
@@ -173,11 +179,6 @@ class PathCheckSpec extends HealthCheckSpecification {
             checkErrors.getValidationMessages().size() == 2
             checkErrors.getValidationMessages().find { it.contains"The following segment intersects with the flow ${flow1.flowId}" }
             checkErrors.getValidationMessages().find { it.contains"The following segment intersects with the flow ${flow2.flowId}" }
-        }
-
-        cleanup:
-        [flow1, flow2]. each { flow ->
-            flow &&  Wrappers.silent{flowHelperV2.deleteFlow(flow.getFlowId())}
         }
     }
 }

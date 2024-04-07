@@ -21,9 +21,6 @@ import org.openkilda.model.Flow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.share.flow.resources.FlowResources;
 import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
-import org.openkilda.wfm.share.history.model.DumpType;
-import org.openkilda.wfm.share.history.model.FlowDumpData;
-import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.BaseFlowPathRemovalAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
@@ -55,13 +52,13 @@ public class RevertResourceAllocationAction extends
                 .forEach(resources -> {
                     transactionManager.doInTransaction(() ->
                             resourcesManager.deallocatePathResources(resources));
-                    saveHistory(stateMachine, flow, resources);
+                    saveHistory(stateMachine, resources);
                 });
 
         stateMachine.getRejectedResources().forEach(flowResources -> {
             transactionManager.doInTransaction(() ->
                     resourcesManager.deallocatePathResources(flowResources));
-            saveHistory(stateMachine, flow, flowResources);
+            saveHistory(stateMachine, flowResources);
         });
 
         Stream.of(stateMachine.getNewPrimaryForwardPath(), stateMachine.getNewPrimaryReversePath(),
@@ -89,10 +86,9 @@ public class RevertResourceAllocationAction extends
         stateMachine.setNewProtectedReversePath(null);
     }
 
-    private void saveHistory(FlowUpdateFsm stateMachine, Flow flow, FlowResources resources) {
-        FlowDumpData flowDumpData = HistoryMapper.INSTANCE.map(flow, resources, DumpType.STATE_BEFORE);
-        stateMachine.saveActionWithDumpToHistory("Flow resources were deallocated",
+    private void saveHistory(FlowUpdateFsm stateMachine, FlowResources resources) {
+        stateMachine.saveActionToHistory("Flow resources were deallocated",
                 format("The flow resources for %s / %s were deallocated",
-                        resources.getForward().getPathId(), resources.getReverse().getPathId()), flowDumpData);
+                        resources.getForward().getPathId(), resources.getReverse().getPathId()));
     }
 }

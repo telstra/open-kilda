@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.helpers
 
+import java.util.regex.Pattern
+
+import static org.openkilda.functionaltests.helpers.model.ContainerName.STORM
 import static org.openkilda.functionaltests.helpers.model.ContainerName.WFM
 
 import com.spotify.docker.client.DockerClient
@@ -39,14 +42,27 @@ class WfmManipulator {
         }
     }
 
+    String getStormActualNetworkTopology() {
+        String stormUIContainerId = dockerHelper."get container by name"(STORM).id()
+        String[] topologiesList = ["sh", "-c", "PATH=\${PATH}:/opt/storm/bin; storm list | grep network"]
+        String commandOutput = dockerHelper.execute(stormUIContainerId, topologiesList)
+        Pattern pattern = ~/network\w*/
+        assert pattern.matcher(commandOutput).find(), "Something went wrong, network topology name has not been retrieved: \n $commandOutput"
+        //in the blue/green mode, all topologies have a name format: topologyName_mode (mode: blue/green, ex.: network_blue)
+        // to deploy/kill topology use the format topologyName-mode (ex. network-blue)
+        return pattern.matcher(commandOutput).findAll().first().toString().replace("_", "-")
+    }
+
     def killTopology(String topologyName) {
         log.warn "Killing wfm $topologyName topology"
         manipulateTopology("kill", topologyName)
+        log.info "WFM $topologyName topology has been deleted"
     }
 
     def deployTopology(String topologyName) {
         log.warn "Deploying wfm $topologyName topology"
         manipulateTopology("deploy", topologyName)
+        log.info("WFM $topologyName topology has been deployed")
     }
 
     private def manipulateTopology(String action, String topologyName) {

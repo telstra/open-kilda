@@ -15,14 +15,13 @@
 
 package org.openkilda.testing.service.tsdb;
 
-import org.openkilda.testing.service.tsdb.model.StatsMetric;
 import org.openkilda.testing.service.tsdb.model.StatsResult;
 
 import java.util.List;
 
 public interface TsdbQueryService {
 
-    List<StatsResult> queryDataPointsForLastFiveMinutes(List<StatsMetric> metrics, String idTag, String id);
+    List<StatsResult> queryDataPointsForLastMinutes(String query, int minutes);
 
-    List<StatsResult> queryDataPointsForLastMinutes(List<StatsMetric> metrics, String idTag, String id, int minutes);
+    List<StatsResult> queryDataPointsForLastFiveMinutes(String query);
 }

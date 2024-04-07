@@ -3,7 +3,6 @@ package org.openkilda.functionaltests.spec.flows
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeFalse
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -21,7 +20,6 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -44,19 +42,16 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
-    def setupSpec() {
-        assumeTrue(useMultitable)
-    }
-
     @Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
     def "System allows to manipulate with QinQ flow\
 [srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.hwSwString()]#trafficDisclaimer"() {
         when: "Create a QinQ flow"
-        def qinqFlow = flowHelperV2.randomFlow(swPair)
-        qinqFlow.source.vlanId = srcVlanId
-        qinqFlow.source.innerVlanId = srcInnerVlanId
-        qinqFlow.destination.vlanId = dstVlanId
-        qinqFlow.destination.innerVlanId = dstInnerVlanId
+        def qinqFlow = flowHelperV2.randomFlow(swPair).tap {
+            source.vlanId = srcVlanId
+            source.innerVlanId = srcInnerVlanId
+            destination.vlanId = dstVlanId
+            destination.innerVlanId = dstInnerVlanId
+        }
         def response = flowHelperV2.addFlow(qinqFlow)
 
         then: "Response contains correct info about vlanIds"
@@ -101,13 +96,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def involvedSwitchesFlow1 = pathHelper.getInvolvedSwitches(
                 pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId))
         )
-        involvedSwitchesFlow1.each {sw ->
-            with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesFlow1*.getDpId()).isEmpty()
 
         when: "Create a vlan flow on the same port as QinQ flow"
         def vlanFlow = flowHelper.randomFlow(swPair).tap {
@@ -126,12 +115,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         and: "Involved switches pass switch validation"
         def involvedSwitchesFlow2 = pathHelper.getInvolvedSwitches(pathHelper.convert(northbound.getFlowPath(vlanFlow.id)))
         def involvedSwitchesforBothFlows = (involvedSwitchesFlow1 + involvedSwitchesFlow2).unique { it.dpId }
-        involvedSwitchesforBothFlows.each { sw ->
-            with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesforBothFlows*.getDpId()).isEmpty()
 
         and: "Both flows are pingable"
         [qinqFlow.flowId, vlanFlow.id].each {
@@ -208,7 +192,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Delete the flows"
         [qinqFlow.flowId, vlanFlow.id].each { it && flowHelperV2.deleteFlow(it) }
-        def flowsAreDeleted = true
 
         then: "Flows rules are deleted"
         involvedSwitchesforBothFlows.each { sw ->
@@ -224,10 +207,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
                 new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
             }.empty
         }
-
-        cleanup:
-        qinqFlow && !flowsAreDeleted && flowHelperV2.deleteFlow(qinqFlow.flowId)
-        vlanFlow && !flowsAreDeleted && flowHelper.deleteFlow(vlanFlow.id)
 
         where:
         [srcVlanId, srcInnerVlanId, dstVlanId, dstInnerVlanId, swPair] << [
@@ -275,9 +254,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Involved switches pass switch validation"
-        def validationInfo = northbound.validateSwitch(swPair.src.dpId)
-        validationInfo.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        validationInfo.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
 
         and: "Traffic examination is successful (if possible)"
         if(!trafficDisclaimer) {
@@ -295,7 +272,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(qinqFlow.flowId)
-        def qinqFlowIsDeleted = true
 
         then: "Flow rules are deleted"
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
@@ -306,14 +282,11 @@ class QinQFlowSpec extends HealthCheckSpecification {
             new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
         }.empty
 
-        cleanup:
-        qinqFlow && !qinqFlowIsDeleted && flowHelperV2.deleteFlow(qinqFlow.flowId)
-
         where:
         [srcVlanId, srcInnerVlanId, dstVlanId, dstInnerVlanId, swPair] << [
                 [[10, 20, 30, 40],
                  [10, 20, 0, 0]],
-                getUniqueSwitchPairs(topologyHelper.getAllSingleSwitchPairs())
+                getUniqueSwitchPairs(switchPairs.singleSwitch().getSwitchPairs())
         ].combinations().collect { it.flatten() }
         trafficDisclaimer = swPair.src.traffGens.size > 1 ? "" : " !WARN: No traffic check!"
     }
@@ -321,7 +294,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
     def "System doesn't allow to create a QinQ flow with incorrect innerVlanIds\
 (src:#srcInnerVlanId, dst:#dstInnerVlanId)"() {
         given: "A switch pair with enabled multi table mode"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs()[0]
+        def swP = switchPairs.all().neighbouring().random()
 
         when: "Try to create a QinQ flow with incorrect innerVlanId"
         def flow = flowHelperV2.randomFlow(swP)
@@ -332,8 +305,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(expectedErrorDescription).matches(exc)
-        cleanup:
-        !exc && flowHelper.deleteFlow(flow.flowId)
 
         where:
         srcInnerVlanId | dstInnerVlanId | expectedErrorDescription
@@ -348,7 +319,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
      */
     def "Flow with innerVlan and vlanId=0 is transformed into a regular vlan flow without innerVlan"() {
         when: "Create a flow with vlanId=0 and innerVlanId!=0"
-        def swP = topologyHelper.switchPairs[0]
+        def swP = switchPairs.all().random()
         def flow = flowHelper.randomFlow(swP)
         flow.source.vlanId = 0
         flow.source.innerVlanId = 123
@@ -362,16 +333,11 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "Flow is valid"
         northbound.validateFlow(flow.id).each { assert it.asExpected }
-
-        cleanup:
-        flowHelperV2.deleteFlow(flow.id)
     }
 
     def "System allow to create/update/delete a protected QinQ flow via APIv1"() {
         given: "Two switches with enabled multi table mode"
-        def swP = topologyHelper.getSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "Not able to find enough switches with 2 diverse paths")
+        def swP = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create a QinQ flow"
         def flow = flowHelper.randomFlow(swP)
@@ -416,7 +382,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
             assert !northbound.getFlowStatus(flow.id)
             assert northbound.getFlowHistory(flow.id).find { it.payload.last().action == DELETE_SUCCESS }
         }
-        def flowIsDeleted = true
 
         then: "Flows rules are deleted"
         [swP.src, swP.dst].each { sw ->
@@ -432,16 +397,11 @@ class QinQFlowSpec extends HealthCheckSpecification {
                 new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
             }.empty
         }
-
-        cleanup:
-        !flowIsDeleted && flowHelperV2.deleteFlow(flow.id)
     }
 
     def "System allows to create QinQ flow and vlan flow with the same vlan on the same port"() {
         given: "Two switches with enabled multi table mode"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.src.traffGens && it.dst.traffGens
-        } ?: assumeTrue(false, "Not able to find enough switches with traffgens")
+        def swP = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
 
         when: "Create a QinQ flow"
         def flowWithQinQ = flowHelperV2.randomFlow(swP)
@@ -469,15 +429,11 @@ class QinQFlowSpec extends HealthCheckSpecification {
                 assert traffExam.waitExam(direction).hasTraffic()
             }
         }
-
-        cleanup:
-        flowWithQinQ && flowHelperV2.deleteFlow(flowWithQinQ.flowId)
-        flowWithoutQinQ && flowHelperV2.deleteFlow(flowWithoutQinQ.flowId)
     }
 
     def "System detects conflict QinQ flows(oVlan: #conflictVlan, iVlan: #conflictInnerVlanId)"() {
         given: "Two switches with enabled multi table mode"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs()[0]
+        def swP = switchPairs.all().neighbouring().random()
 
         when: "Create a first flow"
         def flow = flowHelperV2.randomFlow(swP)
@@ -496,9 +452,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedWithConflictExpectedError(~/Requested flow \'${conflictFlow.getFlowId()}\' conflicts with\
  existing flow \'${flow.getFlowId()}\'./).matches(exc)
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        !exc && northboundV2.deleteFlow(conflictFlow.flowId)
 
         where:
         vlan | innerVlan | conflictVlan | conflictInnerVlanId
@@ -508,9 +461,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
     def "System allows to create more than one QinQ flow on the same port and with the same vlan"() {
         given: "Two switches connected to traffgen and enabled multiTable mode"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.src.traffGens && it.dst.traffGens
-        } ?: assumeTrue(false, "Not able to find enough switches with traffgens")
+        def swP = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
 
         when: "Create a first QinQ flow"
         def flow1 = flowHelperV2.randomFlow(swP)
@@ -552,7 +503,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Delete the second flow"
         flowHelperV2.deleteFlow(flow2.flowId)
-        def flow2IsDeleted = true
 
         then: "The first flow is still valid and pingable"
         northbound.validateFlow(flow1.flowId).each { assert it.asExpected }
@@ -569,10 +519,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
                 assert traffExam.waitExam(direction).hasTraffic()
             }
         }
-
-        cleanup:
-        flow1 && flowHelperV2.deleteFlow(flow1.flowId)
-        !flow2IsDeleted && flowHelperV2.deleteFlow(flow2.flowId)
     }
 
     def "System allows to create a single-switch-port QinQ flow\
@@ -608,24 +554,18 @@ class QinQFlowSpec extends HealthCheckSpecification {
         northbound.validateFlow(qinqFlow.flowId).each { assert it.asExpected }
 
         and: "Involved switches pass switch validation"
-        pathHelper.getInvolvedSwitches(pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId))).each {
-            def validationInfo = northbound.validateSwitch(it.dpId)
-            validationInfo.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validationInfo.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(
+                pathHelper.getInvolvedSwitches(
+                        pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId)))*.getDpId()).isEmpty()
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(qinqFlow.flowId)
-        def flowIsDeleted = true
 
         then: "Flow rules are deleted"
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
             assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
                     .containsExactlyInAnyOrder(*sw.defaultCookies)
         }
-
-        cleanup:
-        qinqFlow && !flowIsDeleted && flowHelperV2.deleteFlow(qinqFlow.flowId)
 
         where:
         srcVlanId | srcInnerVlanId | dstVlanId | dstInnerVlanId
@@ -696,12 +636,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def involvedSwitchesFlow1 = pathHelper.getInvolvedSwitches(
                 pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId))
         )
-        involvedSwitchesFlow1.each {sw ->
-            with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesFlow1*.getDpId()).isEmpty()
 
         when: "Create a vlan flow on the same port as QinQ flow"
         def vlanFlow = flowHelper.randomFlow(swPair).tap {
@@ -720,12 +655,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         and: "Involved switches pass switch validation"
         def involvedSwitchesFlow2 = pathHelper.getInvolvedSwitches(pathHelper.convert(northbound.getFlowPath(vlanFlow.id)))
         def involvedSwitchesforBothFlows = (involvedSwitchesFlow1 + involvedSwitchesFlow2).unique { it.dpId }
-        involvedSwitchesforBothFlows.each { sw ->
-            with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesforBothFlows*.getDpId()).isEmpty()
 
         and: "Both flows are pingable"
         [qinqFlow.flowId, vlanFlow.id].each {
@@ -787,7 +717,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         when: "Delete the flows"
         [qinqFlow.flowId, vlanFlow.id].each { flowHelperV2.deleteFlow(it) }
-        def flowsAreDeleted = true
 
         then: "Flows rules are deleted"
         involvedSwitchesforBothFlows.each { sw ->
@@ -804,29 +733,21 @@ class QinQFlowSpec extends HealthCheckSpecification {
             }.empty
         }
 
-        cleanup:
-        qinqFlow && !flowsAreDeleted && flowHelperV2.deleteFlow(qinqFlow.flowId)
-        vlanFlow && !flowsAreDeleted && flowHelper.deleteFlow(vlanFlow.id)
-
         where:
         [srcVlanId, srcInnerVlanId, dstVlanId, dstInnerVlanId, swPair] << [
                 [[10, 20, 30, 40],
                  [10, 20, 0, 0]],
-                getUniqueSwitchPairs(topologyHelper.getSwitchPairs().findAll { SwitchPair swP ->
-                    def allTraffGenSwitchIds = getTopology().getActiveTraffGens()*.switchConnected*.dpId
-                    [swP.src, swP.dst].every { it.dpId in allTraffGenSwitchIds } &&
-                            swP.paths.find {
-                        pathHelper.getInvolvedSwitches(it).every { switchHelper.isVxlanEnabled(it.dpId) }
-                    }})
+                getUniqueSwitchPairs(switchPairs.all()
+                        .withTraffgensOnBothEnds()
+                        .withBothSwitchesVxLanEnabled()
+                        .getSwitchPairs())
         ].combinations().collect { it.flatten() }
         trafficDisclaimer = swPair.src.traffGens && swPair.dst.traffGens ? "" : " !WARN: No traffic check!"
     }
 
     def "System is able to synchronize switch(flow rules)"() {
         given: "Two switches connected to traffgen and enabled multiTable mode"
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.src.traffGens && it.dst.traffGens
-        } ?: assumeTrue(false, "Not able to find enough switches with traffgens")
+        def swP = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
 
         and: "A QinQ flow on the given switches"
         def flow = flowHelperV2.randomFlow(swP)
@@ -840,20 +761,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "System detects missing rules on the src switch"
         def amountOfServer42Rules = switchHelper.getCachedSwProps(swP.src.dpId).server42FlowRtt ? 2 : 0
-        with(northbound.validateSwitch(swP.src.dpId).rules) {
+        with(switchHelper.synchronizeAndCollectFixedDiscrepancies(swP.src.dpId).get().rules) {
             it.excess.empty
-            it.excessHex.empty
             it.missing.size() == 3 + amountOfServer42Rules //ingress, egress, shared, server42
-            it.missingHex.size() == 3 + amountOfServer42Rules
         }
-
-        when: "Synchronize the src switch"
-        northbound.synchronizeSwitch(swP.src.dpId, false)
-
-        then: "Missing rules are reinstalled"
-        def validateSwResponse = northbound.validateSwitch(swP.src.dpId)
-        validateSwResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        validateSwResponse.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
 
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
@@ -869,16 +780,14 @@ class QinQFlowSpec extends HealthCheckSpecification {
                 assert traffExam.waitExam(direction).hasTraffic()
             }
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System doesn't rebuild flow path to more preferable path while updating innerVlanId"() {
         given: "Two active switches connected to traffgens with two possible paths at least"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.src.traffGens && it.dst.traffGens && it.paths.size() > 2
-        } ?: assumeTrue(false, "Not able to find enough switches with traffgens and diverse paths")
+        def switchPair = switchPairs.all().neighbouring()
+                .withTraffgensOnBothEnds()
+                .withAtLeastNPaths(2)
+                .random()
 
         and: "A flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -926,22 +835,14 @@ class QinQFlowSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "All involved switches pass switch validation"
-        withPool {
-            currentPath*.switchId.eachParallel { SwitchId swId ->
-                with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(currentPath*.switchId).isEmpty()
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Memoized
-    List<SwitchPair> getUniqueSwitchPairs(List<SwitchPair> suitablePairs = topologyHelper.getSwitchPairs(true)) {
+    List<SwitchPair> getUniqueSwitchPairs(List<SwitchPair> suitablePairs = switchPairs.all().getSwitchPairs()) {
         def unpickedUniqueSwitches = topology.activeSwitches.collect { it.hwSwString }.unique(false)
         def unpickedSuitableSwitches = unpickedUniqueSwitches.intersect(
                 suitablePairs.collectMany { [it.src.hwSwString, it.dst.hwSwString] }.unique(false))

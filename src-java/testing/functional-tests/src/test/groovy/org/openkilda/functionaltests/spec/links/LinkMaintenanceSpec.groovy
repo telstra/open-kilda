@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.links
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
@@ -49,8 +50,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
 
     def "Flows can be evacuated (rerouted) from a particular link when setting maintenance mode for it"() {
         given: "Two active not neighboring switches with two possible paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
-                assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNPaths(2).random()
 
         and: "Create a couple of flows going through these switches"
         def flow1 = flowHelperV2.randomFlow(switchPair)
@@ -91,14 +91,13 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         !(isl in pathHelper.getInvolvedIsls(flow2PathUpdated))
 
         cleanup: "Delete flows and unset maintenance mode"
-        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         isl && northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, false, false))
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Flows are rerouted to a path with link under maintenance when there are no other paths available"() {
         given: "Two active not neighboring switches with two possible paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
-                assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNPaths(2).random()
 
         and: "Create a couple of flows going through these switches"
         def flow1 = flowHelperV2.randomFlow(switchPair)
@@ -112,32 +111,16 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         assert flow1Path == flow2Path
 
         and: "Make only one alternative path available for both flows"
-        def altPaths = switchPair.paths.findAll {
-            it != flow1Path && it.first().portNo != flow1Path.first().portNo
-        }.sort { it.size() }
-        def availablePath = altPaths.first()
-
-        List<PathNode> broughtDownPorts = []
-        altPaths[1..-1].unique { it.first() }.findAll {
-            it.first().portNo != availablePath.first().portNo
-        }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(antiflapMin + WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def flow1ActualIsl = pathHelper.getInvolvedIsls(flow1Path).first()
+        def altIsls = topology.getRelatedIsls(switchPair.src) - flow1ActualIsl
+        islHelper.breakIsls(altIsls[1..-1])
 
         and: "Set maintenance mode for the first link involved in alternative path"
-        def islUnderMaintenance = pathHelper.getInvolvedIsls(availablePath).first()
+        def islUnderMaintenance = altIsls.first()
         northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(islUnderMaintenance, true, false))
 
         when: "Force flows to reroute by bringing port down on the source switch"
-        broughtDownPorts.add(flow1Path.first())
-        antiflap.portDown(flow1Path.first().switchId, flow1Path.first().portNo)
+        islHelper.breakIsl(flow1ActualIsl)
 
         then: "Flows are rerouted to alternative path with link under maintenance"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET*2) {
@@ -154,13 +137,9 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology, delete flows, unset maintenance mode and reset costs"
-        broughtDownPorts.each { it && antiflap.portUp(it.switchId, it.portNo) }
-        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         islUnderMaintenance && northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(
                 islUnderMaintenance, false, false))
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(altIsls + flow1ActualIsl)
         database.resetCosts(topology.isls)
     }
 }

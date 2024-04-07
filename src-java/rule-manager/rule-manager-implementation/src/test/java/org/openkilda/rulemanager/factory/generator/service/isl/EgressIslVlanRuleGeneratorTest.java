@@ -18,7 +18,7 @@ package org.openkilda.rulemanager.factory.generator.service.isl;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openkilda.rulemanager.Constants.Priority.ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE;
+import static org.openkilda.rulemanager.Constants.Priority.ISL_EGRESS_VLAN_RULE_PRIORITY;
 import static org.openkilda.rulemanager.Utils.buildSwitch;
 import static org.openkilda.rulemanager.Utils.getCommand;
 import static org.openkilda.rulemanager.Utils.getMatchByField;
@@ -67,7 +67,7 @@ public class EgressIslVlanRuleGeneratorTest {
         assertEquals(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES, ISL_PORT),
                 flowCommandData.getCookie());
         assertEquals(OfTable.INPUT, flowCommandData.getTable());
-        assertEquals(ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE, flowCommandData.getPriority());
+        assertEquals(ISL_EGRESS_VLAN_RULE_PRIORITY, flowCommandData.getPriority());
 
         assertEquals(1, flowCommandData.getMatch().size());
         FieldMatch inPortMatch = getMatchByField(Field.IN_PORT, flowCommandData.getMatch());

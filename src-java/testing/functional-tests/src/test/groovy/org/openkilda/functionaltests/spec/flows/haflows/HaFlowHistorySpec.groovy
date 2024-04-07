@@ -1,6 +1,8 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
@@ -18,7 +20,8 @@ import org.openkilda.testing.service.northbound.model.HaFlowActionType
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
-@Narrative("""Verify that history records are created for the basic actions applied to Ha-Flow.""")
+@Narrative("""Verify that history records are created for the basic actions applied to HA-Flow.""")
+@Tags([HA_FLOW])
 class HaFlowHistorySpec extends HealthCheckSpecification {
 
     def "History records with links details are created during link create operations and can be retrieved with timeline"() {
@@ -98,7 +101,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         Long timeBeforeOperation = System.currentTimeSeconds()
         HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
 
-        when: "Delete Ha-Flow"
+        when: "Delete HA-Flow"
         def deletedFlow = haFlow.delete()
         haFlow.waitForHistoryEvent(HaFlowActionType.DELETE)
 
@@ -138,7 +141,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         haFlow && haFlow.delete()
     }
 
-    @Tags(LOW_PRIORITY)
+    @Tags([LOW_PRIORITY, SWITCH_RECOVER_ON_FAIL])
     def "History records are created during link unsuccessful rerouting with root cause details and can be retrieved with or without timeline"() {
         given: "HA-Flow has been created"
         def swT = topologyHelper.switchTriplets[0]
@@ -155,7 +158,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
             isls.each { assert islUtils.getIslInfo(allIsls, it).get().actualState == IslChangeType.FAILED }
         }
 
-        and: "Ha-Flow goes DOWN"
+        and: "HA-Flow goes DOWN"
         haFlow.waitForBeingInState(FlowState.DOWN)
 
         then: "Correct event appears in HA-Flow history and can be retrieved without specifying timeline"
@@ -205,7 +208,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         Long timeBeforeOperation = System.currentTimeSeconds()
         HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
 
-        and: "Ha-Flow has been updated"
+        and: "HA-Flow has been updated"
         haFlow.partialUpdate(HaFlowPatchPayload.builder().priority(1).build())
 
         and: "All history records have been retrieved"

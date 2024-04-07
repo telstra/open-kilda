@@ -1,22 +1,7 @@
 package org.openkilda.functionaltests.spec.stats
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowHelper
-import org.openkilda.functionaltests.helpers.model.SwitchTriplet
-import org.openkilda.functionaltests.model.stats.FlowStats
-import org.openkilda.functionaltests.model.stats.HaFlowStats
-import org.openkilda.functionaltests.model.stats.HaFlowStatsMetric
-import org.openkilda.northbound.dto.v2.haflows.HaFlow
-import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint
-import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
-import org.openkilda.testing.Constants
-import org.springframework.beans.factory.annotation.Autowired
-import spock.lang.Narrative
-import spock.lang.Shared
-import spock.lang.Unroll
-
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
@@ -28,18 +13,33 @@ import static org.openkilda.functionaltests.model.stats.HaFlowStatsMetric.HA_FLO
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-@Tags(LOW_PRIORITY)
-@Narrative("Verify that statistic is collected for different type of Ha-Flow")
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.model.HaFlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.functionaltests.model.stats.FlowStats
+import org.openkilda.functionaltests.model.stats.HaFlowStats
+import org.openkilda.functionaltests.model.stats.HaFlowStatsMetric
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
+import org.openkilda.testing.service.traffexam.TraffExamService
+
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Narrative
+import spock.lang.Shared
+import spock.lang.Unroll
+
+import javax.inject.Provider
+
+@Tags([LOW_PRIORITY, HA_FLOW])
+@Narrative("Verify that statistic is collected for different type of HA-Flow")
 class HaFlowStatSpec extends HealthCheckSpecification {
-    @Autowired
-    @Shared
-    HaFlowHelper haFlowHelper
     @Shared
     int traffgenRunDuration = 5 //seconds
     @Shared
     HaFlowStats stats
     @Shared
-    HaFlow haFlow
+    HaFlowExtended haFlow
     @Autowired
     @Shared
     HaFlowStats haFlowStats
@@ -48,6 +48,9 @@ class HaFlowStatSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     FlowStats flowStats
+    @Shared
+    @Autowired
+    Provider<TraffExamService> traffExamProvider
 
     def setupSpec() {
         switchTriplet = topologyHelper.getSwitchTriplets(true, false).find {
@@ -56,13 +59,12 @@ class HaFlowStatSpec extends HealthCheckSpecification {
                     && it.ep2.getTraffGens().size() > 1 // needed for update flow test
         } ?: assumeTrue(false, "No suiting switches found")
         // Flow with low maxBandwidth to make meters to drop packets when traffgens can't generate high load
-        haFlow = haFlowHelper.addHaFlow(
-                haFlowHelper.randomHaFlow(switchTriplet).tap {maximumBandwidth = 10})
-        def exam = haFlowHelper.getTraffExam(haFlow, haFlow.getMaximumBandwidth() * 10, traffgenRunDuration)
+        haFlow = HaFlowExtended.build(switchTriplet, northboundV2, topology).withBandwidth(10).create()
+        def exam = haFlow.traffExam(traffExamProvider, haFlow.getMaximumBandwidth() * 10, traffgenRunDuration)
         wait(statsRouterRequestInterval * 3 + WAIT_OFFSET) {
             exam.run()
             statsHelper."force kilda to collect stats"()
-            stats = haFlowStats.of(haFlow.getHaFlowId())
+            stats = haFlowStats.of(haFlow.haFlowId)
             stats.get(HA_FLOW_EGRESS_BITS, REVERSE).getDataPoints().size() > 2
             stats.get(HA_FLOW_INGRESS_BITS, REVERSE).getDataPoints().size() > 2
         }
@@ -92,7 +94,7 @@ class HaFlowStatSpec extends HealthCheckSpecification {
     def "System is able to collect latency stats for subflows"() {
         expect: "#stat stats is available"
         wait(statsRouterRequestInterval) {
-            assert flowStats.rttOf(subFlow).get(FLOW_RTT, direction).hasNonZeroValues()
+            assert flowStats.of(subFlow).get(FLOW_RTT, direction).hasNonZeroValues()
         }
 
         where:
@@ -101,73 +103,72 @@ class HaFlowStatSpec extends HealthCheckSpecification {
     }
 
     def cleanupSpec() {
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.getHaFlowId())
+        haFlow && haFlow.delete()
     }
 }
 
-@Narrative("Verify that statistic is collected after various Ha-Flow updates")
+@Narrative("Verify that statistic is collected after various HA-Flow updates")
+@Tags([HA_FLOW])
 class HaFlowUpdateStatSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
-    HaFlowHelper haFlowHelper
-    @Autowired
-    @Shared
     HaFlowStats haFlowStats
+    @Shared
+    @Autowired
+    Provider<TraffExamService> traffExamProvider
 
     @Tags(LOW_PRIORITY)
-    def "Stats are collected after #data.descr of Ha-Flow are updated"() {
-        given: "Ha-Flow"
+    def "Stats are collected after #data.descr of HA-Flow are updated"() {
+        given: "HA-Flow"
         def swT = topologyHelper.getSwitchTriplets(true, false)
                 .findAll(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT)
                 .findAll(SwitchTriplet.TRAFFGEN_CAPABLE).shuffled().first()
-        def haFlowRequest = haFlowHelper.randomHaFlow(swT, false)
-        def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
+
+        def haFlow = HaFlowExtended.build(swT, northboundV2, topology, false).create()
 
         when: "Update the ha-flow"
         haFlow.tap(data.updateClosure)
-        def update = haFlowHelper.convertToUpdate(haFlow)
-        haFlowHelper.updateHaFlow(haFlow.haFlowId, update)
+        def updateRequest = haFlow.convertToUpdateRequest()
+        haFlow.update(updateRequest)
 
-        then: "Traffic passes through Ha-Flow"
-        def exam = haFlowHelper.getTraffExam(haFlow)
-        exam.run().hasTraffic()
+        then: "Traffic passes through HA-Flow"
+        haFlow.traffExam(traffExamProvider).run().hasTraffic()
         statsHelper."force kilda to collect stats"()
 
         then: "Stats are collected"
         wait(STATS_LOGGING_TIMEOUT) {
-            haFlowStats.of(haFlow.getHaFlowId()).get(HA_FLOW_RAW_BITS, REVERSE,
-                    haFlow.getSubFlows().shuffled().first().getEndpoint())
-                    .hasNonZeroValues()
-            haFlowStats.of(haFlow.getHaFlowId()).get(HA_FLOW_RAW_BITS, FORWARD,
-                    haFlow.getSharedEndpoint())
-                    .hasNonZeroValues()
+            haFlowStats.of(haFlow.haFlowId).get(HA_FLOW_RAW_BITS, REVERSE,
+                    haFlow.subFlows.shuffled().first().endpoint).hasNonZeroValues()
+
+            haFlowStats.of(haFlow.haFlowId).get(HA_FLOW_RAW_BITS, FORWARD,
+                    haFlow.sharedEndpoint).hasNonZeroValues()
         }
         cleanup:
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+        haFlow && haFlow.delete()
 
         where:
         data << [
                 [
                         descr        : "shared port and subflow ports",
-                        updateClosure: { HaFlow payload ->
+                        updateClosure: { HaFlowExtended payload ->
                             payload.sharedEndpoint.portNumber = topologyHelper.getTraffgenPortBySwitchId(
-                                    payload.getSharedEndpoint().getSwitchId())
+                                    payload.sharedEndpoint.switchId)
                             payload.subFlows.each {
                                 it.endpoint.portNumber = topologyHelper.getTraffgenPortBySwitchId(
-                                        it.getEndpoint().getSwitchId())
+                                        it.endpoint.switchId)
                             }
                         }
                 ],
                 [
                         descr        : "shared switch and subflow switches",
-                        updateClosure: { HaFlow payload ->
-                            def newSharedSwitchId = payload.getSubFlows().get(0).getEndpoint().getSwitchId()
-                            def newEp1SwitchId = payload.getSubFlows().get(1).getEndpoint().getSwitchId()
-                            def newEp2SwitchId = payload.getSharedEndpoint().getSwitchId()
-                            payload.subFlows[0].endpoint.switchId = newEp1SwitchId
-                            payload.subFlows[0].endpoint.portNumber = topologyHelper.getTraffgenPortBySwitchId(newEp1SwitchId)
-                            payload.subFlows[1].endpoint.switchId = newEp2SwitchId
-                            payload.subFlows[1].endpoint.portNumber = topologyHelper.getTraffgenPortBySwitchId(newEp2SwitchId)
+                        updateClosure: { HaFlowExtended payload ->
+                            def newSharedSwitchId = payload.subFlows.first().endpoint.switchId
+                            def newEp1SwitchId = payload.subFlows.last().endpoint.switchId
+                            def newEp2SwitchId = payload.sharedEndpoint.switchId
+                            payload.subFlows.first().endpoint.switchId = newEp1SwitchId
+                            payload.subFlows.first().endpoint.portNumber = topologyHelper.getTraffgenPortBySwitchId(newEp1SwitchId)
+                            payload.subFlows.last().endpoint.switchId = newEp2SwitchId
+                            payload.subFlows.last().endpoint.portNumber = topologyHelper.getTraffgenPortBySwitchId(newEp2SwitchId)
                             payload.sharedEndpoint.switchId = newSharedSwitchId
                             payload.sharedEndpoint.portNumber = topologyHelper.getTraffgenPortBySwitchId(newSharedSwitchId)
                         }
@@ -176,38 +177,35 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
     }
 
     @Tags(LOW_PRIORITY)
-    def "Stats are collected after partial update (shared endpoint VLAN id) of Ha-Flow"() {
-        given: "Ha-Flow"
+    def "Stats are collected after partial update (shared endpoint VLAN id) of HA-Flow"() {
+        given: "HA-Flow"
         def swT = topologyHelper.getSwitchTriplets(true, false)
                 .findAll(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT)
                 .findAll(SwitchTriplet.TRAFFGEN_CAPABLE).shuffled().first()
-        def haFlowRequest = haFlowHelper.randomHaFlow(swT, true)
-        def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
+        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
 
-        when: "Partially update Ha-Flow"
-        def newVlanId = haFlow.getSharedEndpoint().getVlanId() - 1
-        haFlowHelper.partialUpdateHaFlow(haFlow.haFlowId, HaFlowPatchPayload.builder()
-                .sharedEndpoint(HaFlowPatchEndpoint.builder().vlanId(newVlanId).build()
-                ).build())
+        when: "Partially update HA-Flow"
+        def newVlanId = haFlow.sharedEndpoint.vlanId - 1
+        haFlow.partialUpdate(HaFlowPatchPayload.builder().sharedEndpoint(HaFlowPatchEndpoint.builder().vlanId(newVlanId).build()).build())
+
         haFlow.sharedEndpoint.tap { vlanId = newVlanId }
         def timeAfterUpdate = new Date().getTime()
 
         then: "traffic passes through flow"
-        def exam = haFlowHelper.getTraffExam(haFlow)
-        exam.run().hasTraffic()
+        haFlow.traffExam(traffExamProvider).run().hasTraffic()
         statsHelper."force kilda to collect stats"()
 
         then: "Stats are collected"
         wait(STATS_LOGGING_TIMEOUT) {
-            haFlowStats.of(haFlow.getHaFlowId()).get(HA_FLOW_RAW_BITS,
+            haFlowStats.of(haFlow.haFlowId).get(HA_FLOW_RAW_BITS,
                     REVERSE,
-                    haFlow.getSubFlows().shuffled().first().getEndpoint()).hasNonZeroValuesAfter(timeAfterUpdate)
-            haFlowStats.of(haFlow.getHaFlowId()).get(HA_FLOW_RAW_BITS,
+                    haFlow.subFlows.shuffled().first().endpoint).hasNonZeroValuesAfter(timeAfterUpdate)
+            haFlowStats.of(haFlow.haFlowId).get(HA_FLOW_RAW_BITS,
                     FORWARD,
-                    haFlow.getSharedEndpoint()).hasNonZeroValuesAfter(timeAfterUpdate)
+                    haFlow.sharedEndpoint).hasNonZeroValuesAfter(timeAfterUpdate)
         }
 
         cleanup:
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+        haFlow && haFlow.delete()
     }
 }

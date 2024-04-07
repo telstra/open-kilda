@@ -539,7 +539,7 @@ public class IngressHaRuleGeneratorTest extends HaRuleGeneratorBaseTest {
         Assertions.assertEquals(expectedSwitch.getOfVersion(), command.getOfVersion().toString());
         Assertions.assertEquals(cookie, command.getCookie());
         Assertions.assertEquals(OfTable.INPUT, command.getTable());
-        Assertions.assertEquals(Priority.INGRESS_CUSTOMER_PORT_RULE_PRIORITY_MULTITABLE, command.getPriority());
+        Assertions.assertEquals(Priority.INGRESS_CUSTOMER_PORT_RULE_PRIORITY, command.getPriority());
         Assertions.assertTrue(command.getDependsOn().isEmpty());
 
         assertEqualsMatch(expectedMatch, command.getMatch());

@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
@@ -41,16 +42,15 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
     @Value('${reroute.hardtimeout}')
     int rerouteHardTimeout
 
-    @Tags(SMOKE)
-    //    unignored. Tests needs supervision next builds
+    @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "Reroute is not performed while new reroutes are being issued"() {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
         /* Here we will pick only short flows that consist of 2 switches, so that we can maximize amount of unique
         flows found*/
-        def switchPairs = topologyHelper.getAllNeighboringSwitchPairs()
+        def swPairs = switchPairs.all(false).neighbouring().getSwitchPairs()
 
-        assumeTrue(switchPairs.size() > 3, "Topology is too small to run this test")
-        def flows = switchPairs.take(5).collect { switchPair ->
+        assumeTrue(swPairs.size() > 3, "Topology is too small to run this test")
+        def flows = swPairs.take(5).collect { switchPair ->
             def flow = flowHelperV2.randomFlow(switchPair)
             flowHelperV2.addFlow(flow)
             flow
@@ -94,7 +94,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flows.each { it && flowHelperV2.deleteFlow(it.flowId) }
         brokenIsls.each {
             antiflap.portUp(it.srcSwitch.dpId, it.srcPort)
         }
@@ -104,11 +103,12 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
     }
 
     @Ignore("Unstable")
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Reroute is performed after hard timeout even though new reroutes are still being issued"() {
         given: "Multiple flows that can be rerouted independently (use short unique paths)"
         /* Here we will pick only short flows that consist of 2 switches, so that we can maximize amount of unique
         flows found*/
-        def switchPairs = topologyHelper.getAllNeighboringSwitchPairs()
+        def switchPairs = switchPairs.all().neighbouring().getSwitchPairs()
 
         /*due to port anti-flap we cannot continuously quickly reroute one single flow until we reach hardTimeout,
         thus we need certain amount of flows to continuously provide reroute triggers for them in a loop.
@@ -170,7 +170,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flows && flows.each { flowHelperV2.deleteFlow(it.flowId) }
         stop = true
         starter.join()
         rerouteTriggers.each { it.join() } //each thread revives ISL after itself
@@ -179,6 +178,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Flow can be safely deleted while it is in the reroute window waiting for reroute"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
@@ -191,19 +191,17 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
         and: "Immediately remove the flow before reroute delay runs out and flow is actually rerouted"
         flowHelperV2.deleteFlow(flow.flowId)
-        def flowIsDeleted = true
 
         then: "The flow is not present in NB"
-        northboundV2.getAllFlows().empty
+        !northboundV2.getAllFlows().find { it.flowId == flow.flowId}
 
-        and: "Related switches have no excess rules"
-        //wait, server42 rules may take some time to disappear after flow removal
-        Wrappers.wait(RULES_DELETION_TIME) { pathHelper.getInvolvedSwitches(PathHelper.convert(path)).each {
-            verifySwitchRules(it.dpId)
-        }}
+        and: "Related switches have no excess rules, though need to wait until server42 rules are deleted"
+        Wrappers.wait(RULES_DELETION_TIME) {
+            switchHelper.validateAndCollectFoundDiscrepancies(
+                    pathHelper.getInvolvedSwitches(PathHelper.convert(path))*.getDpId()).isEmpty()
+        }
 
         cleanup:
-        flow && !flowIsDeleted && northboundV2.deleteFlow(flow.flowId)
         brokenIsl && antiflap.portUp(brokenIsl.srcSwitch.dpId, brokenIsl.srcPort)
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(brokenIsl).state == IslChangeType.DISCOVERED }
     }
@@ -230,6 +228,5 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
             assert northbound.getLink(brokenIsl).state == IslChangeType.FAILED
         }
         return brokenIsl
-
     }
 }

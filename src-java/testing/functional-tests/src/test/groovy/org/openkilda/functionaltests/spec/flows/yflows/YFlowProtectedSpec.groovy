@@ -30,7 +30,7 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
         def swT = topologyHelper.switchTriplets.find {
             def ep1paths = it.pathsEp1.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
             def ep2paths = it.pathsEp2.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            def yPoints = yFlowHelper.findPotentialYPoints(it)
+            def yPoints = topologyHelper.findPotentialYPoints(it)
             //se == yp
             yPoints.size() == 1 && yPoints[0] == it.shared && yPoints[0] != it.ep1 && yPoints[0] != it.ep2 &&
                     it.ep1 != it.ep2 && ep1paths.size() >= 2 && ep2paths.size() >= 2
@@ -68,12 +68,9 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
             assert northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
         }
 
-        and: "All involved switches passes switch validation"
+        and: "All involved switches pass switch validation"
         def involvedSwitches = pathHelper.getInvolvedYSwitches(northboundV2.getYFlowPaths(yFlow.YFlowId))
-        involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches*.getDpId()).isEmpty()
 
         when: "Disable protected path via partial update"
         def patch = YFlowPatchPayload.builder().allocateProtectedPath(false).build()
@@ -98,10 +95,7 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches passes switch validation"
-        involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches*.getDpId()).isEmpty()
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)

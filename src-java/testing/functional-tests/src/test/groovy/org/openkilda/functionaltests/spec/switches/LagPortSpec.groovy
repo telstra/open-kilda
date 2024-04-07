@@ -1,14 +1,14 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.error.LagNotCreatedExpectedError
 import org.openkilda.functionaltests.error.LagNotDeletedExpectedError
 import org.openkilda.functionaltests.error.LagNotDeletedWithNotFoundExpectedError
 import org.openkilda.functionaltests.error.LagNotUpdatedExpectedError
-import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.model.MeterId.LACP_REPLY_METER_ID
 import static org.openkilda.model.cookie.Cookie.DROP_SLOW_PROTOCOLS_LOOP_COOKIE
@@ -96,10 +96,7 @@ class LagPortSpec extends HealthCheckSpecification {
         }
 
         and: "Switch is valid"
-        with(northbound.validateSwitch(sw.dpId)) {
-            it.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty()
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
 
         when: "Update the LAG port"
         def payloadUpdate = new LagPortRequest(portNumbers: portsArrayUpdate)
@@ -127,11 +124,7 @@ class LagPortSpec extends HealthCheckSpecification {
         }
 
         and: "Switch is valid"
-        with(northbound.validateSwitch(sw.dpId)) {
-            it.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty()
-            it.verifyLogicalPortsSectionsAreEmpty()
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
 
         when: "Delete the LAG port"
         def deleteResponse = northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
@@ -161,11 +154,7 @@ class LagPortSpec extends HealthCheckSpecification {
 
     def "Able to create a flow on a LAG port"() {
         given: "A switchPair with a LAG port on the src switch"
-        def allTraffGenSwitchIds = topology.activeTraffGens*.switchConnected*.dpId
-        assumeTrue(allTraffGenSwitchIds.size() > 1, "Unable to find required switches in topology")
-        def switchPair = topologyHelper.getSwitchPairs().find {
-            [it.src, it.dst].every { it.dpId in allTraffGenSwitchIds }
-        }
+        def switchPair = switchPairs.all().withTraffgensOnBothEnds().random()
         def traffgenSrcSwPort = switchPair.src.traffGens.switchPort[0]
         def portsArray = (topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1] << traffgenSrcSwPort).unique()
         def payload = new LagPortRequest(portNumbers: portsArray)
@@ -195,19 +184,14 @@ class LagPortSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
     }
 
     def "Able to create a singleSwitchFlow on a LAG port"() {
         given: "A switch with two traffgens and one LAG port"
         and: "A flow on the LAG port"
-        def allTraffGenSwitchIds = topology.activeTraffGens*.switchConnected*.dpId
-        assumeTrue(allTraffGenSwitchIds.size() > 1, "Unable to find active traffgen")
-        def swPair = topologyHelper.getAllSingleSwitchPairs().find {
-            it.src.dpId in allTraffGenSwitchIds && it.src.traffGens.size() > 1
-        }
-        assumeTrue(swPair.asBoolean(), "Unable to find required switch in topology")
+        def swPair = switchPairs.singleSwitch()
+                .withAtLeastNTraffgensOnSource(2).random()
         def traffgenSrcSwPort = swPair.src.traffGens[0].switchPort
         def traffgenDstSwPort = swPair.src.traffGens[1].switchPort
         def payload = new LagPortRequest(portNumbers: [traffgenSrcSwPort])
@@ -236,10 +220,10 @@ class LagPortSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         lagPort && northboundV2.deleteLagLogicalPort(swPair.src.dpId, lagPort)
     }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     def "LAG port is not deleted after switch reconnecting"() {
         given: "A switch with a LAG port"
         def sw = topology.getActiveSwitches().first()
@@ -261,10 +245,7 @@ class LagPortSpec extends HealthCheckSpecification {
         }
 
         and: "Switch is valid"
-        with(northbound.validateSwitch(sw.dpId)) {
-            it.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty()
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
 
         cleanup:
         blockData && !swIsActivated && switchHelper.reviveSwitch(sw, blockData, true)
@@ -273,7 +254,7 @@ class LagPortSpec extends HealthCheckSpecification {
 
     def "Unable to delete a LAG port in case flow on it"() {
         given: "A flow on a LAG port"
-        def switchPair = topologyHelper.getSwitchPairs().first()
+        def switchPair = switchPairs.all().random()
         def portsArray = topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1]
         def payload = new LagPortRequest(portNumbers: portsArray)
         def lagPort = northboundV2.createLagLogicalPort(switchPair.src.dpId, payload).logicalPortNumber
@@ -288,8 +269,8 @@ class LagPortSpec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         new LagNotDeletedExpectedError(~/Couldn\'t delete LAG port \'$lagPort\' from switch $switchPair.src.dpId \
 because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
+
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
     }
 
@@ -306,8 +287,8 @@ because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
         def exc = thrown(HttpClientErrorException)
         new LagNotCreatedExpectedError(~/Physical port $flow.source.portNumber already used by following flows:\
  \[$flow.flowId\]. You must remove these flows to be able to use the port in LAG./).matches(exc)
+
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         !exc && deleteAllLagPorts(sw.dpId)
     }
 
@@ -329,15 +310,15 @@ because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError("Could not create flow", ~/Port $flow.source.portNumber \
 on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
+
         cleanup:
-        !exc && flow && flowHelperV2.deleteFlow(flow.flowId)
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
 
     }
 
     def "Unable to create a LAG port with port which is used as mirrorPort"() {
         given: "A flow with mirrorPoint"
-        def swP = topologyHelper.getNeighboringSwitchPair()
+        def swP = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.randomFlow(swP, false)
         flowHelperV2.addFlow(flow)
 
@@ -361,7 +342,6 @@ on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
  \'${flow.getFlowId()}\'\: \[${mirrorEndpoint.getMirrorPointId()}\]/).matches(exc)
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         !exc && swP && deleteAllLagPorts(swP.src.dpId)
     }
 
@@ -457,7 +437,7 @@ occupied by other LAG group\(s\)./).matches(exc)
         grpc.deleteSwitchLogicalPort(northbound.getSwitch(sw.dpId).address, lagPort)
 
         then: "System detects that LAG port is missed"
-        def lagPortMissingInfo = northbound.validateSwitch(sw.dpId).logicalPorts.missing
+        def lagPortMissingInfo = switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get().logicalPorts.missing
         lagPortMissingInfo.size() == 1
         with (lagPortMissingInfo[0]) {
             type == LogicalPortType.LAG.toString()
@@ -466,10 +446,10 @@ occupied by other LAG group\(s\)./).matches(exc)
         }
 
         when: "Synchronize the switch"
-        northbound.synchronizeSwitch(sw.dpId, false)
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId)
 
         then: "LAG port is reinstalled"
-        northbound.validateSwitch(sw.dpId).logicalPorts.missing.empty
+        !switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).isPresent()
 
         cleanup:
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
@@ -490,7 +470,7 @@ occupied by other LAG group\(s\)./).matches(exc)
         grpc.createLogicalPort(swAddress, request)
 
         then: "System detects misconfigured LAG port"
-        !northbound.validateSwitch(sw.dpId).logicalPorts.misconfigured.empty
+        !switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get().logicalPorts.misconfigured.empty
 
         cleanup:
         lagPort && northboundV2.deleteLagLogicalPort(sw.dpId, lagPort)
@@ -922,11 +902,7 @@ occupied by other LAG group\(s\)./).matches(exc)
     private void assertSwitchHasCorrectLacpRulesAndMeters(
             Switch sw, mustContainCookies, mustNotContainsCookies, mustContainLacpMeter) {
         // validate switch
-        with(northbound.validateSwitch(sw.dpId)) {
-            it.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty()
-            it.verifyLogicalPortsSectionsAreEmpty()
-        }
+        !switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).isPresent()
 
         // check cookies
         def hexCookies = northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.collect { Cookie.toString(it) }
@@ -944,7 +920,7 @@ occupied by other LAG group\(s\)./).matches(exc)
 
     def "Unable decrease bandwidth on LAG port lower than connected flows bandwidth sum"() {
         given: "Flows on a LAG port with switch ports"
-        def switchPair = topologyHelper.getSwitchPairs().first()
+        def switchPair = switchPairs.all().random()
         def testPorts = topology.getAllowedPortsForSwitch(switchPair.src).takeRight(2).sort()
         assert testPorts.size > 1
         def maximumBandwidth = testPorts.sum { northbound.getPort(switchPair.src.dpId, it).currentSpeed }
@@ -971,7 +947,6 @@ occupied by other LAG group\(s\)./).matches(exc)
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
     }
 

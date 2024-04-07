@@ -1,9 +1,5 @@
 package org.openkilda.functionaltests.spec.server42
 
-import org.openkilda.functionaltests.model.stats.IslStats
-import org.springframework.beans.factory.annotation.Autowired
-import spock.lang.Unroll
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.Assertions.assertThat
@@ -11,6 +7,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
@@ -28,6 +25,7 @@ import static spock.util.matcher.HamcrestSupport.expect
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
+import org.openkilda.functionaltests.model.stats.IslStats
 import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchFeature
@@ -38,10 +36,13 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Isolated
 import spock.lang.ResourceLock
 import spock.lang.Shared
+import spock.lang.Unroll
 
 @Slf4j
 @ResourceLock(S42_TOGGLE)
@@ -192,12 +193,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         timedLoop(3) { checkIslRttRules(isl.dstSwitch.dpId, true) }
 
         and: "Involved switches pass the switch validation"
-        [isl.srcSwitch.dpId, isl.dstSwitch.dpId, newIsl.dstSwitch.dpId].each { swId ->
-            with(northbound.validateSwitch(swId)) { validationResponse ->
-                validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validationResponse.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies([isl.srcSwitch.dpId, isl.dstSwitch.dpId, newIsl.dstSwitch.dpId])
+                .isEmpty()
 
         and: "Expect ISL RTT for new ISL in forward/reverse directions"
         wait(islSyncWaitSeconds, 2) {
@@ -223,12 +220,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         wait(RULES_DELETION_TIME) { checkIslRttRules(newIsl.dstSwitch.dpId, true) }
 
         and: "All involved switches pass switch validation"
-        [isl.srcSwitch.dpId, isl.dstSwitch.dpId, newIsl.dstSwitch.dpId].each { swId ->
-            with(northbound.validateSwitch(swId)) { validationResponse ->
-                validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validationResponse.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies([isl.srcSwitch.dpId, isl.dstSwitch.dpId, newIsl.dstSwitch.dpId])
+                .isEmpty()
 
         cleanup:
         revertToOrigin(islRttFeatureStartState, initialSwitchRtt)
@@ -314,6 +307,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         }
     }
 
+    @Ignore("https://github.com/telstra/open-kilda/issues/5557")
+    @Tags([HARDWARE])
     def "SERVER_42_ISL_RTT rules are updated according to changes in swProps"() {
         def server42switchIds = topology.getActiveServer42Switches()*.dpId
         def sw = topology.getActiveServer42Switches().find { it.wb5164 && it.dpId in server42switchIds }
@@ -473,7 +468,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         revertToOrigin(islRttFeatureStartState, initialSwitchRtt)
     }
 
-    @Tags([HARDWARE])
+    @Tags([HARDWARE, SWITCH_RECOVER_ON_FAIL])
     def "ISL Rtt stats are available in case link is RTL and a switch is disconnected"() {
         given: "An active RTL ISL with both switches having server42"
         def server42switchIds = topology.getActiveServer42Switches()*.dpId
@@ -525,10 +520,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         checkIslRttRules(isl.srcSwitch.dpId, true)
 
         and: "Switch is valid"
-        with(northbound.validateSwitch(isl.srcSwitch.dpId)) {
-            it.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty()
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(isl.srcSwitch.dpId).isPresent()
 
         and: "ISL RTT stats in both directions are available"
         wait(islSyncWaitSeconds, 2) {
@@ -570,9 +562,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         def checkpointTime = new Date()
 
         and: "Switch validation shows deleted rules as missing"
-        def validateInfo = northbound.validateSwitch(isl.srcSwitch.dpId)
-        validateInfo.verifyRuleSectionsAreEmpty(["misconfigured", "excess"])
-        northbound.validateSwitch(isl.srcSwitch.dpId).rules.missing.sort() == rulesToDelete*.cookie.sort()
+        def validateInfo = switchHelper.validateAndCollectFoundDiscrepancies(isl.srcSwitch.dpId).get()
+        validateInfo.rules.missing*.getCookie().sort() == rulesToDelete*.cookie.sort()
 
         and: "No ISL Rtt stats in forward/reverse directions"
         wait(islSyncWaitSeconds, 2) {
@@ -582,7 +573,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         }
 
         when: "Sync the src switch"
-        def syncResponse = northbound.synchronizeSwitch(isl.srcSwitch.dpId, false)
+        def syncResponse = switchHelper.synchronizeAndCollectFixedDiscrepancies(isl.srcSwitch.dpId).get()
         checkpointTime = new Date()
 
         then: "Sync response contains ISL Rtt rules into the installed section"
@@ -666,7 +657,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
             assert stats.hasNonZeroValuesAfter(checkpointTime.getTime())
         } else {
             //give 1 second between stop collecting stats command and actual stopping of stats collection
-            assert stats == null || !stats.hasNonZeroValuesAfter(checkpointTime.getTime() + 1000)
+            assert !stats.hasNonZeroValuesAfter(checkpointTime.getTime() + 1000)
         }
     }
 

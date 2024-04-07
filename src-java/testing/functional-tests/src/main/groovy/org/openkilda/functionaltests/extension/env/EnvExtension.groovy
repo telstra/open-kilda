@@ -1,9 +1,12 @@
 package org.openkilda.functionaltests.extension.env
 
+import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.openkilda.testing.Constants.SWITCHES_ACTIVATION_TIME
 import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.Constants.HEALTH_CHECK_TIME
 
+import org.openkilda.functionaltests.exception.IslNotFoundException
 import org.openkilda.functionaltests.extension.spring.SpringContextListener
 import org.openkilda.functionaltests.extension.spring.SpringContextNotifier
 import org.openkilda.functionaltests.helpers.SwitchHelper
@@ -11,16 +14,18 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
-import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Status
 import org.openkilda.testing.service.floodlight.model.Floodlight
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
+import org.openkilda.testing.tools.IslUtils
+import org.openkilda.testing.tools.SoftAssertions
 import org.openkilda.testing.tools.TopologyPool
 
 import groovy.util.logging.Slf4j
@@ -29,6 +34,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationContext
+import spock.lang.Shared
 
 import java.util.concurrent.TimeUnit
 
@@ -59,19 +65,22 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     LockKeeperService lockKeeper
 
     @Autowired
-    List<Floodlight> floodlights
+    List<Floodlight> commonFloodlights
+
+    @Autowired @Shared
+    IslUtils islUtils
 
     @Value('${spring.profiles.active}')
     String profile
-
-    @Value('${use.multitable}')
-    boolean useMultitable
 
     @Value('${discovery.timeout}')
     int discoveryTimeout
 
     @Value('${rebuild.topology_lab:true}')
     boolean isTopologyRebuildRequired
+
+    @Value('${health_check.verifier:true}')
+    boolean enable
 
     @Override
     void start() {
@@ -82,8 +91,6 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     void notifyContextInitialized(ApplicationContext applicationContext) {
         applicationContext.autowireCapableBeanFactory.autowireBean(this)
         if (profile == "virtual") {
-            log.info("Multi table is enabled by default: $useMultitable")
-            northbound.updateKildaConfiguration(new KildaConfigurationDto(useMultiTable: useMultitable))
             isTopologyRebuildRequired ? buildVirtualEnvironment() : topology.setLabId(labService.getLabs().first().labId)
             log.info("Virtual topology is successfully created")
         } else if (profile == "hardware") {
@@ -93,6 +100,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
             throw new RuntimeException("Provided profile '$profile' is unknown. Select one of the following profiles:" +
                     " hardware, virtual")
         }
+        isHealthCheckRequired(profile, enable, isTopologyRebuildRequired) && verifyTopologyReadiness(topology)
     }
 
     void buildVirtualEnvironment() {
@@ -148,7 +156,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
             def lab = labService.createLab(topo) //can't create in parallel, hangs on Jenkins. why?
             topo.setLabId(lab.labId)
             TimeUnit.SECONDS.sleep(3) //container with topology needs some time to fully start, this is async
-            !unblocked && lockKeeper.removeFloodlightAccessRestrictions(floodlights*.region)
+            !unblocked && lockKeeper.removeFloodlightAccessRestrictions(commonFloodlights*.region)
             unblocked = true
 
             //wait until topology is discovered
@@ -186,6 +194,92 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
                     server42IslRtt = (sw.prop.server42IslRtt == null ? "AUTO" : (sw.prop.server42IslRtt ? "ENABLED" : "DISABLED"))
                 })
             }
+            verifyTopologyReadiness(topo)
         }
+    }
+
+    Closure allSwitchesAreActive = { TopologyDefinition topologyDefinition ->
+        assert northbound.activeSwitches.switchId.containsAll(topologyDefinition.switches.findAll { it.status != Status.Inactive }.dpId)
+    }
+
+    Closure allLinksAreActive = { TopologyDefinition topologyDefinition ->
+        def links = northbound.getAllLinks().findAll { it.source.switchId in topologyDefinition.activeSwitches.dpId }
+        assert links.findAll { it.state != IslChangeType.DISCOVERED }.empty
+
+        def topoLinks = topologyDefinition.islsForActiveSwitches.collectMany { isl ->
+            [islUtils.getIslInfo(links, isl).orElseThrow { new IslNotFoundException(isl.toString()) },
+             islUtils.getIslInfo(links, isl.reversed).orElseThrow {
+                 new IslNotFoundException(isl.reversed.toString())
+             }]
+        }
+        def missingLinks = links.findAll { it.state == IslChangeType.DISCOVERED } - topoLinks
+        assert missingLinks.empty, "These links are missing in topology.yaml"
+    }
+
+
+    Closure noFlowsLeft = { TopologyDefinition topologyDefinition ->
+        assert northboundV2.allFlows.findAll { it.source.switchId in topologyDefinition.activeSwitches.dpId }.empty, "There are flows left from previous tests"
+    }
+
+    Closure noLinkPropertiesLeft = { TopologyDefinition topologyDefinition ->
+        assert northbound.getAllLinkProps().findAll { it.srcSwitch in topologyDefinition.activeSwitches.dpId.collect { it.toString() } }.empty
+    }
+
+    Closure linksBandwidthAndSpeedMatch = { TopologyDefinition topologyDefinition ->
+        def speedBwAssertions = new SoftAssertions()
+        def links = northbound.getAllLinks().findAll { it.source.switchId in topologyDefinition.activeSwitches.dpId }
+        speedBwAssertions.checkSucceeds { assert links.findAll { it.availableBandwidth != it.speed }.empty }
+        speedBwAssertions.verify()
+    }
+
+    Closure noExcessRulesMeters = { TopologyDefinition topologyDefinition ->
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(topologyDefinition.activeSwitches*.getDpId())
+    }
+
+    Closure allSwitchesConnectedToExpectedRegion = { TopologyDefinition topologyDefinition ->
+        def regionVerifications = new SoftAssertions()
+        commonFloodlights.forEach { fl ->
+            def expectedSwitchIds = topologyDefinition.activeSwitches.findAll { fl.region in it.regions }*.dpId
+            if (!expectedSwitchIds.empty) {
+                regionVerifications.checkSucceeds {
+                    assert fl.floodlightService.switches.switchId.containsAll(expectedSwitchIds)
+                }
+            }
+        }
+        regionVerifications.verify()
+    }
+
+    Closure switchesConfigurationIsCorrect = { TopologyDefinition topologyDefinition ->
+        def switchConfigVerification = new SoftAssertions()
+        withPool {
+            topologyDefinition.activeSwitches.eachParallel { sw ->
+                switchConfigVerification.checkSucceeds {
+                    //server42 props can be either on or off
+                    assert northbound.getSwitchProperties(sw.dpId).multiTable
+                }
+            }
+        }
+        switchConfigVerification.verify()
+    }
+
+    boolean isHealthCheckRequired(String profile, Boolean enable, Boolean isTopologyRebuildRequired) {
+        return (profile == "hardware" && enable) || (profile == "virtual" && !isTopologyRebuildRequired && enable)
+    }
+
+    void verifyTopologyReadiness(TopologyDefinition topologyDefinition) {
+            log.info("Starting topology-related HC: lab_id=" + topologyDefinition.labId)
+            Wrappers.wait(HEALTH_CHECK_TIME) {
+                withPool {
+                    [allSwitchesAreActive,
+                     allLinksAreActive,
+                     profile == "hardware" || !isTopologyRebuildRequired ? noFlowsLeft : null,
+                     profile == "hardware" || !isTopologyRebuildRequired ? noLinkPropertiesLeft: null,
+                     linksBandwidthAndSpeedMatch,
+                     noExcessRulesMeters,
+                     allSwitchesConnectedToExpectedRegion,
+                     switchesConfigurationIsCorrect].findAll().eachParallel { it(topologyDefinition) }
+                }
+            }
+            log.info("Topology-related HC passed: lab_id=" + topologyDefinition.labId)
     }
 }

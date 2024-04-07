@@ -25,8 +25,8 @@ class SwitchRules {
         this.switchId = switchId
     }
 
-    List<FlowEntry> forHaFlow(HaFlow haFlow) {
-        def haFlowCookies = (database.getHaFlowCookies(haFlow.getHaFlowId()) + database.getHaSubFlowsCookies(haFlow))
+    List<FlowEntry> forHaFlow(HaFlowExtended haFlow) {
+        def haFlowCookies = (database.getHaFlowCookies(haFlow.haFlowId) + database.getHaSubFlowsCookies(haFlow.subFlows))
                 .collect {it.getValue()}
         def switchRules = northboundService.getSwitchRules(switchId)
         return switchRules.getFlowEntries().findAll {haFlowCookies.contains(it.getCookie())}

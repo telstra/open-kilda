@@ -1,9 +1,10 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.messaging.info.event.SwitchChangeType.ACTIVATED
 import static org.openkilda.messaging.info.event.SwitchChangeType.DEACTIVATED
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
@@ -41,10 +42,10 @@ class SwitchActivationSpec extends HealthCheckSpecification {
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
 
-    @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])
+    @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER, SWITCH_RECOVER_ON_FAIL])
     def "Missing flow rules/meters are installed on a new switch before connecting to the controller"() {
         given: "A switch with missing flow rules/meters and not connected to the controller"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
@@ -54,11 +55,10 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             !new Cookie(it.cookie).serviceFlag
         }*.cookie
         def srcSwProps = switchHelper.getCachedSwProps(switchPair.src.dpId)
-        def amountOfMultiTableRules = srcSwProps.multiTable ? 1 : 0
         def amountOfServer42IngressRules = srcSwProps.server42FlowRtt ? 1 : 0
-        def amountOfServer42SharedRules = srcSwProps.multiTable && srcSwProps.server42FlowRtt
+        def amountOfServer42SharedRules = srcSwProps.server42FlowRtt
                 && flow.source.vlanId ? 1 : 0
-        def amountOfFlowRules = 2 + amountOfMultiTableRules + amountOfServer42IngressRules + amountOfServer42SharedRules
+        def amountOfFlowRules = 3 + amountOfServer42IngressRules + amountOfServer42SharedRules
         def createdHexCookies = createdCookies.collect { Long.toHexString(it) }
         assert createdCookies.size() == amountOfFlowRules
 
@@ -66,13 +66,13 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         northbound.deleteMeter(switchPair.src.dpId, nonDefaultMeterIds[0])
         northbound.deleteSwitchRules(switchPair.src.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northbound.validateSwitch(switchPair.src.dpId)) {
-                it.rules.missing.containsAll(createdCookies)
-                it.rules.missingHex.containsAll(createdHexCookies)
-                it.verifyRuleSectionsAreEmpty(["proper", "excess"])
-                it.verifyHexRuleSectionsAreEmpty(["properHex", "excessHex"])
+            with(switchHelper.validateAndCollectFoundDiscrepancies(switchPair.src.dpId).get()) {
+                it.rules.missing*.cookie.containsAll(createdCookies)
+                it.rules.excess.empty
+                it.rules.misconfigured.empty
                 it.meters.missing.size() == 1
-                it.verifyMeterSectionsAreEmpty(["proper", "misconfigured", "excess"])
+                it.meters.excess.empty
+                it.meters.misconfigured.empty
             }
         }
 
@@ -82,23 +82,15 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         switchHelper.reviveSwitch(switchPair.src, blockData)
 
         then: "Missing flow rules/meters were synced during switch activation"
-        def switchValidationInfo = northbound.validateSwitch(switchPair.src.dpId)
-        verifyAll {
-            switchValidationInfo.rules.proper.containsAll(createdCookies)
-            switchValidationInfo.rules.properHex.containsAll(createdHexCookies)
-            switchValidationInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
-            switchValidationInfo.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex"])
-            switchValidationInfo.meters.proper*.meterId == originalMeterIds.sort()
-            switchValidationInfo.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.src.dpId).isPresent()
+        def switchIsSynchronized = true
 
         cleanup: "Delete the flow and activate switch if required"
-        flowHelperV2.deleteFlow(flow.flowId)
-        blockData && !switchValidationInfo && switchHelper.reviveSwitch(switchPair.src, blockData, true)
+        blockData && !switchIsSynchronized && switchHelper.reviveSwitch(switchPair.src, blockData, true)
 
     }
 
-    @Tags([HARDWARE])
+    @Tags([SMOKE_SWITCHES, SWITCH_RECOVER_ON_FAIL])
     def "Excess transitVlanRules/meters are synced from a new switch before connecting to the controller"() {
         given: "A switch with excess rules/meters and not connected to the controller"
         def sw = topology.getActiveSwitches().first()
@@ -146,13 +138,13 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         producer.flush()
 
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northbound.validateSwitch(sw.dpId)) {
+            verifyAll(switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get()) {
                 it.rules.excess.size() == 3
-                it.rules.excessHex.size() == 3
-                it.verifyRuleSectionsAreEmpty(["proper", "missing"])
-                it.verifyHexRuleSectionsAreEmpty(["properHex", "missingHex"])
+                it.rules.misconfigured.empty
+                it.rules.missing.empty
                 it.meters.excess.size() == 1
-                it.verifyMeterSectionsAreEmpty(["missing", "proper", "misconfigured"])
+                it.meters.misconfigured.empty
+                it.meters.missing.empty
             }
         }
 
@@ -162,17 +154,14 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         switchHelper.reviveSwitch(sw, blockData)
 
         then: "Excess meters/rules were synced during switch activation"
-        def switchValidationInfo = northbound.validateSwitch(sw.dpId)
-        verifyAll {
-            switchValidationInfo.verifyRuleSectionsAreEmpty(["missing", "excess", "proper"])
-            switchValidationInfo.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "properHex"])
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
+        def isSwitchSynchronized = true
 
         cleanup:
-        blockData && !switchValidationInfo && switchHelper.reviveSwitch(sw, blockData, true)
+        blockData && !isSwitchSynchronized && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
-    @Tags([HARDWARE])
+    @Tags([SMOKE_SWITCHES, SWITCH_RECOVER_ON_FAIL])
     def "Excess vxlanRules/meters are synced from a new switch before connecting to the controller"() {
         given: "A switch with excess rules/meters and not connected to the controller"
         def sw = topology.getActiveSwitches().find { switchHelper.isVxlanEnabled(it.dpId) }
@@ -220,13 +209,13 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         producer.flush()
 
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(northbound.validateSwitch(sw.dpId)) {
+            verifyAll(switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get()) {
                 it.rules.excess.size() == 3
-                it.rules.excessHex.size() == 3
-                it.verifyRuleSectionsAreEmpty(["proper", "missing"])
-                it.verifyHexRuleSectionsAreEmpty(["properHex", "missingHex"])
+                it.rules.missing.empty
+                it.rules.misconfigured.empty
                 it.meters.excess.size() == 1
-                it.verifyMeterSectionsAreEmpty(["missing", "proper", "misconfigured"])
+                it.meters.misconfigured.empty
+                it.meters.missing.empty
             }
         }
 
@@ -236,17 +225,14 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         switchHelper.reviveSwitch(sw, blockData)
 
         then: "Excess meters/rules were synced during switch activation"
-        def switchValidationInfo = northbound.validateSwitch(sw.dpId)
-        verifyAll {
-            switchValidationInfo.verifyRuleSectionsAreEmpty(["missing", "excess", "proper"])
-            switchValidationInfo.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "properHex"])
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
+        def isSwitchSynchronized = true
 
         cleanup:
-        blockData && !switchValidationInfo && switchHelper.reviveSwitch(sw, blockData, true)
+        blockData && !isSwitchSynchronized && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
-    @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])
+    @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER, SWITCH_RECOVER_ON_FAIL])
     def "New connected switch is properly discovered with related ISLs in a reasonable time"() {
         setup: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
         def sw = topology.activeSwitches.first()

@@ -1,14 +1,14 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.haflow.HaFlowNotUpdatedExpectedError
-import org.openkilda.functionaltests.helpers.HaFlowHelper
-import org.openkilda.model.SwitchId
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.model.HaFlowExtended
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
@@ -16,48 +16,40 @@ import org.openkilda.northbound.dto.v2.haflows.HaSubFlowPatchPayload
 
 import com.shazam.shazamcrest.matcher.CustomisableMatcher
 import groovy.util.logging.Slf4j
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
-import spock.lang.Shared
 
 @Slf4j
-@Narrative("Verify update and partial update operations on ha-flows.")
+@Narrative("Verify update and partial update operations on HA-Flows.")
+@Tags([HA_FLOW])
 class HaFlowUpdateSpec extends HealthCheckSpecification {
-    @Autowired
-    @Shared
-    HaFlowHelper haFlowHelper
-
-    def "User can update #data.descr of a ha-flow"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
-        given: "Existing ha-flow"
+    def "User can update #data.descr of a HA-Flow"() {
+        given: "Existing HA-Flow"
         def swT = topologyHelper.switchTriplets[0]
-        def haFlowRequest = haFlowHelper.randomHaFlow(swT)
-        def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
-        haFlow.tap(data.updateClosure)
-        def update = haFlowHelper.convertToUpdate(haFlow)
+        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        def haFlowDetails = haFlow.waitForBeingInState(FlowState.UP)
 
-        when: "Update the ha-flow"
-        def updateResponse = haFlowHelper.updateHaFlow(haFlow.haFlowId, update)
+        haFlowDetails.tap(data.updateClosure)
+        def update = new HaFlowExtended(haFlowDetails, northboundV2, topology).convertToUpdateRequest()
+
+        when: "Update the HA-Flow"
+        def updateResponse = northboundV2.updateHaFlow(haFlow.haFlowId, update)
         def ignores = ["subFlows.timeUpdate", "subFlows.status", "subFlows.forwardLatency",
                        "subFlows.reverseLatency", "subFlows.latencyLastModifiedTime", "timeUpdate", "status"]
 
         then: "Requested updates are reflected in the response and in 'get' API"
-        expect updateResponse, sameBeanAs(haFlow, ignores)
-        expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlow, ignores)
+        expect updateResponse, sameBeanAs(haFlowDetails, ignores)
+        expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlowDetails, ignores)
 
         and: "And involved switches pass validation"
-        withPool {
-            haFlowHelper.getInvolvedSwitches(haFlow.haFlowId).eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        haFlow.waitForBeingInState(FlowState.UP)
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)).isEmpty()
 
-        and: "HA-flow pass validation"
-        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
+        and: "HA-Flow pass validation"
+        haFlow.validate().asExpected
 
         cleanup:
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+        haFlow && haFlow.delete()
 
         where: data << [
                 [
@@ -100,70 +92,65 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         ]
     }
 
-    def "User can update ha-flow where one of subflows has both ends on shared switch"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
-        given: "Existing ha-flow where one of subflows has both ends on shared switch"
+    def "User can update HA-Flow where one of subflows has both ends on shared switch"() {
+        given: "Existing HA-Flow where one of subflows has both ends on shared switch"
         def switchTriplet = topologyHelper.getSwitchTriplets(true, true)
                 .find{it.ep1 == it.shared && it.ep2 != it.shared}
-        def haFlowRequest = haFlowHelper.randomHaFlow(switchTriplet)
-        def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
-        haFlow.setDescription("new description")
-        def endPoint = haFlow.getSubFlows().get(0).getEndpoint()
-        endPoint.setPortNumber(topology.getAllowedPortsForSwitch(topology.find(endPoint.getSwitchId())).first())
-        def update = haFlowHelper.convertToUpdate(haFlow)
 
-        when: "Update the ha-flow"
-        def updateResponse = haFlowHelper.updateHaFlow(haFlow.haFlowId, update)
+        def haFlow = HaFlowExtended.build(switchTriplet, northboundV2, topology).create()
+        def haFlowDetails = haFlow.waitForBeingInState(FlowState.UP)
+
+        haFlowDetails.setDescription("new description")
+        def endPoint = haFlowDetails.getSubFlows().get(0).getEndpoint()
+        endPoint.setPortNumber(topology.getAllowedPortsForSwitch(topology.find(endPoint.getSwitchId())).first())
+
+        when: "Update the HA-Flow"
+        def update = new HaFlowExtended(haFlowDetails, northboundV2, topology).convertToUpdateRequest()
+        def updateResponse = northboundV2.updateHaFlow(haFlow.haFlowId, update)
         def ignores = ["subFlows.timeUpdate", "subFlows.status", "subFlows.forwardLatency",
                        "subFlows.reverseLatency", "subFlows.latencyLastModifiedTime", "timeUpdate", "status"]
 
         then: "Requested updates are reflected in the response and in 'get' API"
-        expect updateResponse, sameBeanAs(haFlow, ignores)
-        expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlow, ignores)
+        expect updateResponse, sameBeanAs(haFlowDetails, ignores)
+        expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlowDetails, ignores)
 
         and: "And involved switches pass validation"
-        withPool {
-            haFlowHelper.getInvolvedSwitches(haFlow.haFlowId).eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        haFlow.waitForBeingInState(FlowState.UP)
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)).isEmpty()
 
-        and: "HA-flow pass validation"
-        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
+        and: "HA-Flow pass validation"
+        haFlow.validate().asExpected
 
         cleanup:
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+        haFlow && haFlow.delete()
     }
 
-    def "User can partially update #data.descr of a ha-flow"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
-        given: "Existing ha-flow"
+    def "User can partially update #data.descr of a HA-Flow"() {
+        given: "Existing HA-Flow"
         def swT = topologyHelper.switchTriplets.find { it.ep1 != it.ep2 }
-        def haFlowRequest = haFlowHelper.randomHaFlow(swT)
-        def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
-        def patch = data.buildPatchRequest(haFlow)
+        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        def haFlowDetails = haFlow.waitForBeingInState(FlowState.UP)
 
-        when: "Partial update the ha-flow"
-        def updateResponse = haFlowHelper.partialUpdateHaFlow(haFlow.haFlowId, patch)
+        def patch = data.buildPatchRequest(haFlowDetails)
+
+        when: "Partial update the HA-Flow"
+        def updateResponse = northboundV2.partialUpdateHaFlow(haFlow.haFlowId, patch)
         def ignores = ["subFlows.timeUpdate", "subFlows.status", "subFlows.forwardLatency",
                        "subFlows.reverseLatency", "subFlows.latencyLastModifiedTime", "timeUpdate", "status"]
 
         then: "Requested updates are reflected in the response and in 'get' API"
-        expect updateResponse, sameBeanAs(haFlow, ignores)
-        expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlow, ignores)
+        expect updateResponse, sameBeanAs(haFlowDetails, ignores)
+        expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlowDetails, ignores)
 
         and: "And involved switches pass validation"
-        withPool {
-            haFlowHelper.getInvolvedSwitches(haFlow.haFlowId).eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        haFlow.waitForBeingInState(FlowState.UP)
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)).isEmpty()
 
-        and: "HA-flow pass validation"
-        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
+        and: "HA-Flow pass validation"
+        haFlow.validate().asExpected
 
         cleanup:
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+        haFlow && haFlow.delete()
 
         //buildPatchRequest in addition to providing a patch payload should also updated the haFlow object
         //in order to reflect the expect result after update
@@ -263,17 +250,15 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         ]
     }
 
-    def "User cannot update a ha-flow #data.descr"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
-        given: "Existing ha-flow"
+    def "User cannot update a HA-Flow #data.descr"() {
+        given: "Existing HA-Flow"
         def swT = topologyHelper.switchTriplets[0]
-        def haFlowRequest = haFlowHelper.randomHaFlow(swT)
-        def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
-        haFlow.tap(data.updateClosure)
-        def update = haFlowHelper.convertToUpdate(haFlow)
-        def involvedSwitchIds = haFlowHelper.getInvolvedSwitches(haFlow.haFlowId)
+        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
 
-        when: "Try to update the ha-flow with invalid payload"
+        haFlow.tap(data.updateClosure)
+        def update = haFlow.convertToUpdateRequest()
+
+        when: "Try to update the HA-Flow with invalid payload"
         northboundV2.updateHaFlow(haFlow.haFlowId, update)
 
         then: "Error is received"
@@ -281,22 +266,19 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         new HaFlowNotUpdatedExpectedError(data.errorDescription).matches(exc)
 
         and: "And involved switches pass validation"
-        withPool {
-            involvedSwitchIds.eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
+        def involvedSwitchIds = haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
 
-        and: "HA-flow pass validation"
-        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
+        and: "HA-Flow pass validation"
+        haFlow.validate().asExpected
 
         cleanup:
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+        haFlow && haFlow.delete()
 
         where: data << [
                 [
                         descr: "with non-existent subflowId",
-                        updateClosure: { HaFlow payload ->
+                        updateClosure: { HaFlowExtended payload ->
                             payload.subFlows[0].flowId += "non-existent"
                             def allowedPorts = topology.getAllowedPortsForSwitch(topology.find(
                                     payload.subFlows[0].endpoint.switchId)) - payload.subFlows[0].endpoint.portNumber -
@@ -308,14 +290,14 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                 ],
                 [
                         descr: "with subflowId not specified",
-                        updateClosure: { HaFlow payload ->
+                        updateClosure: { HaFlowExtended payload ->
                             payload.subFlows[1].flowId = null
                         },
                         errorDescription: ~/The sub-flow of .* has no sub-flow id provided/
                 ],
                 [
-                        descr: "to one switch ha-flow",
-                        updateClosure: { HaFlow payload ->
+                        descr: "to one switch HA-Flow",
+                        updateClosure: { HaFlowExtended payload ->
                             payload.subFlows[0].endpoint.switchId = payload.getSharedEndpoint().switchId
                             payload.subFlows[1].endpoint.switchId = payload.getSharedEndpoint().switchId
                         },
@@ -325,43 +307,39 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
         ]
     }
 
-    private void setRandomVlans(HaFlow payload) {
+    private void setRandomVlans(HaFlowExtended payload) {
         payload.sharedEndpoint.vlanId = flowHelperV2.randomVlan([payload.sharedEndpoint.vlanId])
         payload.subFlows.forEach { it.endpoint.vlanId = flowHelperV2.randomVlan([it.endpoint.vlanId]) }
     }
 
-    def "User cannot partial update a ha-flow with #data.descr"() {
-        assumeTrue(useMultitable, "HA-flow operations require multiTable switch mode")
-        given: "Existing ha-flow"
+    def "User cannot partial update a HA-Flow with #data.descr"() {
+        given: "Existing HA-Flow"
         def swT = topologyHelper.switchTriplets[0]
-        def haFlowRequest = haFlowHelper.randomHaFlow(swT)
-        def haFlow = haFlowHelper.addHaFlow(haFlowRequest)
+        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
         def patch = data.buildPatchRequest(haFlow)
-        def involvedSwitchIds = haFlowHelper.getInvolvedSwitches(haFlow.haFlowId)
 
-        when: "Try to partial update the ha-flow with invalid payload"
+
+        when: "Try to partial update the HA-Flow with invalid payload"
         northboundV2.partialUpdateHaFlow(haFlow.haFlowId, patch)
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
         new HaFlowNotUpdatedExpectedError(data.errorDescrPattern).matches(exc)
-        and: "And involved switches pass validation"
-        withPool {
-            involvedSwitchIds.eachParallel { SwitchId switchId ->
-                assert northboundV2.validateSwitch(switchId).isAsExpected()
-            }
-        }
 
-        and: "HA-flow pass validation"
-        northboundV2.validateHaFlow(haFlow.getHaFlowId()).asExpected
+        and: "And involved switches pass validation"
+        def involvedSwitchIds = haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
+
+        and: "HA-Flow pass validation"
+        haFlow.validate().asExpected
 
         cleanup:
-        haFlow && haFlowHelper.deleteHaFlow(haFlow.haFlowId)
+        haFlow && haFlow.delete()
 
         where: data << [
                 [
                         descr: "non-existent subflowId",
-                        buildPatchRequest: { HaFlow payload ->
+                        buildPatchRequest: { HaFlowExtended payload ->
                             return HaFlowPatchPayload.builder()
                                     .subFlows([HaSubFlowPatchPayload.builder()
                                                        .endpoint(HaFlowPatchEndpoint.builder()
@@ -378,7 +356,7 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
                 ],
                 [
                         descr: "switch conflict in request",
-                        buildPatchRequest: { HaFlow payload ->
+                        buildPatchRequest: { HaFlowExtended payload ->
                             def subFlow1 = payload.subFlows[0];
                             def subFlow2 = payload.subFlows[1];
                             def endpoint = HaFlowPatchEndpoint.builder()
@@ -402,7 +380,7 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
                 ],
                 [
                         descr: "switch conflict after update",
-                        buildPatchRequest: { HaFlow payload ->
+                        buildPatchRequest: { HaFlowExtended payload ->
                             def subFlow1 = payload.subFlows[0];
                             def subFlow2 = payload.subFlows[1];
                             return HaFlowPatchPayload.builder()
@@ -422,7 +400,7 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
                 ],
                 [
                         descr: "different inner vlans of sub flows on one switch",
-                        buildPatchRequest: { HaFlow payload ->
+                        buildPatchRequest: { HaFlowExtended payload ->
                             def subFlow1 = payload.subFlows[0];
                             def subFlow2 = payload.subFlows[1];
                             return HaFlowPatchPayload.builder()

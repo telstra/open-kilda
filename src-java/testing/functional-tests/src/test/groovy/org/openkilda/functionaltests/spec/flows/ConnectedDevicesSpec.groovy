@@ -1,11 +1,12 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.northbound.dto.v1.flows.PingInput
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.cookie.Cookie.LLDP_INGRESS_COOKIE
@@ -82,10 +83,6 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         def flow = getFlowWithConnectedDevices(data)
         flow.encapsulationType = data.encapsulation.toString()
 
-        and: "Switches with turned 'on' multiTable property"
-        def initialSrcProps = enableMultiTableIfNeeded(data.srcEnabled, data.switchPair.src.dpId)
-        def initialDstProps = enableMultiTableIfNeeded(data.dstEnabled, data.switchPair.dst.dpId)
-
         when: "Create a flow with connected devices"
         verifyAll(flowHelperV2.addFlow(flow)) {
             source.detectConnectedDevices.lldp == flow.source.detectConnectedDevices.lldp
@@ -131,7 +128,6 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
-        def flowIsDeleted = true
 
         then: "Delete action removed all rules and meters"
         Wrappers.wait(WAIT_OFFSET) {
@@ -140,9 +136,6 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore initial switch properties"
-        !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
-        initialSrcProps && restoreSwitchProperties(data.switchPair.src.dpId, initialSrcProps)
-        initialDstProps && restoreSwitchProperties(data.switchPair.dst.dpId, initialDstProps)
         srcLldpData && [data.switchPair.src, data.switchPair.dst].each { database.removeConnectedDevices(it.dpId) }
 
         where:
@@ -195,10 +188,8 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
 
     def "Able to update flow from srcDevices=#oldSrcEnabled, dstDevices=#oldDstEnabled to \
 srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
-        given: "Switches with turned 'on' multiTable property"
+        given: "Flow with connected devices"
         def flow = getFlowWithConnectedDevices(true, false, oldSrcEnabled, oldDstEnabled)
-        def initialSrcProps = enableMultiTableIfNeeded(oldSrcEnabled || newSrcEnabled, flow.source.switchId)
-        def initialDstProps = enableMultiTableIfNeeded(oldDstEnabled || newDstEnabled, flow.destination.switchId)
 
         and: "Created flow with enabled or disabled connected devices"
         flowHelperV2.addFlow(flow)
@@ -245,9 +236,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        initialSrcProps && restoreSwitchProperties(flow.source.switchId, initialSrcProps)
-        initialDstProps && restoreSwitchProperties(flow.destination.switchId, initialDstProps)
         srcLldpData && [flow.source.switchId, flow.destination.switchId].each { database.removeConnectedDevices(it) }
 
         where:
@@ -269,7 +257,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         given: "A flow between different ports on the same switch"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def sw = topology.activeTraffGens*.switchConnected.first()
-        def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
         def flow = flowHelperV2.singleSwitchFlow(sw)
         flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
@@ -297,7 +284,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         when: "Remove the flow"
         flowHelperV2.deleteFlow(flow.flowId)
-        def flowIsDeleted = true
 
         and: "Try to get connected devices for removed flow"
         northbound.getFlowConnectedDevices(flow.flowId)
@@ -305,17 +291,14 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
         new FlowNotFoundExpectedError(flow.getFlowId(), ~/Could not get connected devices for non existent flow/).matches(e)
+
         cleanup: "Restore initial switch properties"
-        flow && !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
-        initialProps && restoreSwitchProperties(sw.dpId, initialProps)
         lldpData && database.removeConnectedDevices(sw.dpId)
     }
 
     def "Able to swap flow paths with connected devices (srcDevices=#srcEnabled, dstDevices=#dstEnabled)"() {
-        given: "Switches with turned 'on' multiTable property"
+        given: "Protected flow with connected devices"
         def flow = getFlowWithConnectedDevices(true, false, srcEnabled, dstEnabled)
-        def initialSrcProps = enableMultiTableIfNeeded(srcEnabled, flow.source.switchId)
-        def initialDstProps = enableMultiTableIfNeeded(dstEnabled, flow.destination.switchId)
 
         and: "Created protected flow with enabled or disabled connected devices"
         flowHelperV2.addFlow(flow)
@@ -361,10 +344,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Delete the flow and restore initial switch properties"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         [flow.source.switchId, flow.destination.switchId].each { database.removeConnectedDevices(it) }
-        initialSrcProps && restoreSwitchProperties(flow.source.switchId, initialSrcProps)
-        initialDstProps && restoreSwitchProperties(flow.destination.switchId, initialDstProps)
 
         where:
         [srcEnabled, dstEnabled] << [
@@ -374,9 +354,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     }
 
     def "Able to handle 'timeLastSeen' field when receive repeating LLDP packets from the same device"() {
-        given: "Switches with turned 'on' multiTable property"
+        given: "Flow with connected devices"
         def flow = getFlowWithConnectedDevices(false, false, true, false)
-        def initialSrcProps = enableMultiTableIfNeeded(true, flow.source.switchId)
 
         and: "Created flow that detects connected devices"
         flowHelperV2.addFlow(flow)
@@ -409,18 +388,13 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Disconnect the device and remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         device && device.close()
         lldpData && database.removeConnectedDevices(flow.source.switchId)
-
-        and: "Restore initial switch properties"
-        initialSrcProps && restoreSwitchProperties(flow.source.switchId, initialSrcProps)
     }
 
     def "Able to handle 'timeLastSeen' field when receive repeating ARP packets from the same device"() {
-        given: "Switches with turned 'on' multiTable property"
+        given: "Flow with connected devices"
         def flow = getFlowWithConnectedDevices(false, false, true, false)
-        def initialSrcProps = enableMultiTableIfNeeded(true, flow.source.switchId)
 
         and: "Created flow that detects connected devices"
         flowHelperV2.addFlow(flow)
@@ -453,18 +427,13 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Disconnect the device and remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         device && device.close()
         arpData && database.removeConnectedDevices(flow.source.switchId)
-
-        and: "Restore initial switch properties"
-        initialSrcProps && restoreSwitchProperties(flow.source.switchId, initialSrcProps)
     }
 
     def "Able to detect different devices on the same port (LLDP)"() {
-        given: "Switches with turned 'on' multiTable property"
+        given: "Flow with connected devices"
         def flow = getFlowWithConnectedDevices(false, false, false, true)
-        def initialDstProps = enableMultiTableIfNeeded(true, flow.destination.switchId)
 
         and: "Created flow that detects connected devices"
         flowHelperV2.addFlow(flow)
@@ -505,18 +474,13 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         filteredDevices.first() == lastDevice
 
         cleanup: "Disconnect the device and remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         device && device.close()
         lldpData1 && database.removeConnectedDevices(flow.destination.switchId)
-
-        and: "Restore initial switch properties"
-        initialDstProps && restoreSwitchProperties(flow.destination.switchId, initialDstProps)
     }
 
     def "Able to detect different devices on the same port (ARP)"() {
-        given: "Switches with turned 'on' multiTable property"
+        given: "Flow with connected devices"
         def flow = getFlowWithConnectedDevices(false, false, false, true)
-        def initialDstProps = enableMultiTableIfNeeded(true, flow.destination.switchId)
 
         and: "Created flow that detects connected devices"
         flowHelperV2.addFlow(flow)
@@ -558,12 +522,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         filteredDevices.first() == lastDevice
 
         cleanup: "Disconnect the device and remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         device && device.close()
         arpData1 && database.removeConnectedDevices(flow.destination.switchId)
-
-        and: "Restore initial switch properties"
-        initialDstProps && restoreSwitchProperties(flow.destination.switchId, initialDstProps)
     }
 
     def "System properly detects devices if feature is 'off' on switch level and 'on' on flow level"() {
@@ -571,7 +531,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def tg = topology.activeTraffGens.shuffled().first()
         def sw = tg.switchConnected
-        def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
         def swProps = northbound.getSwitchProperties(sw.dpId)
         assert !swProps.switchLldp
         assert !swProps.switchArp
@@ -598,12 +557,19 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
         flowHelperV2.addFlow(flow)
 
+        and: "Flow is valid and pingable"
+        northbound.validateFlow(flow.flowId).each { assert it.asExpected }
+        verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
+            assert it.forward.pingSuccess
+            assert it.reverse.pingSuccess
+        }
+
         and: "Device sends an lldp+arp packet into a flow port on that switch (with a correct flow vlan)"
         device.sendLldp(lldpData)
         device.sendArp(arpData)
 
         then: "LLDP and ARP devices are registered as flow devices"
-        Wrappers.wait(WAIT_OFFSET) {
+        Wrappers.wait(WAIT_OFFSET * 2) {
             verifyAll(northbound.getFlowConnectedDevices(flow.flowId)) {
                 it.source.lldp.size() == 1
                 verifyEquals(it.source.lldp.first(), lldpData)
@@ -625,12 +591,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Remove created flow and device"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         device && device.close()
         lldpData && database.removeConnectedDevices(sw.dpId)
-
-        and: "Restore initial switch properties"
-        initialProps && restoreSwitchProperties(sw.dpId, initialProps)
     }
 
     def "System properly detects devices if feature is 'on' on switch level and 'off' on flow level"() {
@@ -640,7 +602,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def sw = tg.switchConnected
         def initialProps = switchHelper.getCachedSwProps(sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
-            it.multiTable = true
             it.switchLldp = true
             it.switchArp = true
         })
@@ -683,7 +644,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Remove created flow and registered devices, revert switch props"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         lldpData && database.removeConnectedDevices(sw.dpId)
         initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
     }
@@ -696,7 +656,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def sw = tg.switchConnected
         def initialProps = switchHelper.getCachedSwProps(sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
-            it.multiTable = true
             it.switchLldp = true
             it.switchArp = true
         })
@@ -733,7 +692,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def sw = tg.switchConnected
         def initialProps = switchHelper.getCachedSwProps(sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
-            it.multiTable = true
             it.switchLldp = true
             it.switchArp = true
         })
@@ -872,8 +830,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Turn off devices prop, remove connected devices, remove flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        defaultFlow && flowHelperV2.deleteFlow(defaultFlow.flowId)
         lldpData && database.removeConnectedDevices(sw.dpId)
         initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
 
@@ -886,15 +842,13 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     }
 
     def "System properly detects device vlan in case of #descr"() {
-        given: "Switches with turned 'on' multiTable property"
+        given: "Flow with connected devices"
         def flow = getFlowWithConnectedDevices(true, false, true, true).tap {
             srcDefault && (it.source.vlanId = 0)
             dstDefault && (it.destination.vlanId = 0)
         }
         def srcTg = topology.activeTraffGens.find { it.switchConnected.dpId == flow.source.switchId }
         def dstTg = topology.activeTraffGens.find { it.switchConnected.dpId == flow.destination.switchId }
-        def initialSrcProps = enableMultiTableIfNeeded(true, flow.source.switchId)
-        def initialDstProps = enableMultiTableIfNeeded(true, flow.destination.switchId)
 
         and: "A flow with enbaled connected devices, #descr"
         flowHelperV2.addFlow(flow)
@@ -959,11 +913,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-
-        and: "Restore initial switch properties"
-        initialSrcProps && restoreSwitchProperties(flow.source.switchId, initialSrcProps)
-        initialDstProps && restoreSwitchProperties(flow.destination.switchId, initialDstProps)
         srcLldpData && [flow.source.switchId, flow.destination.switchId].each { database.removeConnectedDevices(it) }
 
         where:
@@ -980,14 +929,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue(encapsulationType != FlowEncapsulationType.VXLAN,
 "Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
 
-        given: "Two switches connected to traffgen and they support enabled multiTable mode"
-        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
-        assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find two active traffgens")
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { sw ->
-                sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
-            }
-        } ?: assumeTrue(false, "No suiting switches found")
+        given: "Two switches connected to traffgen"
+        def swP = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
 
         and: "A QinQ flow with enabled connected devices"
         def tgService = traffExamProvider.get()
@@ -997,10 +940,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flow.encapsulationType = encapsulationType
         flow.source.detectConnectedDevices.arp = true
         flow.source.detectConnectedDevices.lldp = true
-
-        and: "Switches with turned 'on' multiTable property"
-        def initialSrcProps = enableMultiTableIfNeeded(true, swP.src.dpId)
-        def initialDstProps = enableMultiTableIfNeeded(false, swP.dst.dpId)
 
         when: "Create a QinQ flow with connected devices"
         flowHelperV2.addFlow(flow)
@@ -1056,7 +995,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
-        def flowIsDeleted = true
 
         and: "Delete action removed all rules and meters"
         Wrappers.wait(WAIT_OFFSET) {
@@ -1064,9 +1002,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Restore initial switch properties"
-        !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
-        initialSrcProps && restoreSwitchProperties(swP.src.dpId, initialSrcProps)
-        initialDstProps && restoreSwitchProperties(swP.dst.dpId, initialDstProps)
         srcLldpData && database.removeConnectedDevices(swP.src.dpId)
 
         where:
@@ -1078,14 +1013,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     }
 
     def "System doesn't detect devices only if vlan match with outerVlan of qinq flow"() {
-        given: "Two switches connected to traffgen and they support enabled multiTable mode"
-        def allTraffGenSwitches = topology.activeTraffGens*.switchConnected
-        assumeTrue((allTraffGenSwitches.size() > 1), "Unable to find two active traffgens")
-        def swP = topologyHelper.getAllNeighboringSwitchPairs().find {
-            [it.src, it.dst].every { sw ->
-                sw.dpId in allTraffGenSwitches*.dpId && sw.features.contains(SwitchFeature.MULTI_TABLE)
-            }
-        } ?: assumeTrue(false, "No suiting switches found")
+        given: "Two switches connected to traffgen"
+        def swP = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
 
         and: "A QinQ flow with enabled connected devices"
         def tgService = traffExamProvider.get()
@@ -1095,11 +1024,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flow.source.innerVlanId = 200
         flow.source.detectConnectedDevices.arp = true
         flow.source.detectConnectedDevices.lldp = true
-
-        and: "Switches with turned 'on' multiTable property"
-        def initialSrcProps = enableMultiTableIfNeeded(true, swP.src.dpId)
-        def initialDstProps = enableMultiTableIfNeeded(false, swP.dst.dpId)
-
         flowHelperV2.addFlow(flow)
         waitForDevicesInputRules(database.getFlow(flow.flowId))
 
@@ -1130,11 +1054,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         and: "Devices are not registered on the src/dst switches"
         northboundV2.getConnectedDevices(flow.source.switchId).ports.empty
         northboundV2.getConnectedDevices(flow.destination.switchId).ports.empty
-
-        cleanup: "Delete the flow and restore initial switch properties"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        initialSrcProps && restoreSwitchProperties(swP.src.dpId, initialSrcProps)
-        initialDstProps && restoreSwitchProperties(swP.dst.dpId, initialDstProps)
     }
 
     @Tags([SMOKE_SWITCHES])
@@ -1143,7 +1062,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def sw = topology.activeTraffGens*.switchConnected.first()
         assumeTrue(sw.asBoolean(), "Wasn't able to find switch connected to traffGen")
-        def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
         def flow = flowHelperV2.singleSwitchFlow(sw)
         flow.source.detectConnectedDevices.lldp = true
@@ -1189,8 +1107,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Restore initial switch properties"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        initialProps && restoreSwitchProperties(sw.dpId, initialProps)
         lldpData && database.removeConnectedDevices(sw.dpId)
 
         where:
@@ -1207,7 +1123,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def sw = topology.activeTraffGens*.switchConnected.first()
         assumeTrue(sw.asBoolean(), "Wasn't able to find switch connected to traffGen")
-        def initialProps = enableMultiTableIfNeeded(true, sw.dpId)
 
         def flow1 = flowHelperV2.singleSwitchFlow(sw, true)
         flow1.source.detectConnectedDevices.lldp = true
@@ -1269,9 +1184,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Restore initial switch properties"
-        flow1 && flowHelperV2.deleteFlow(flow1.flowId)
-        flow2 && flowHelperV2.deleteFlow(flow2.flowId)
-        initialProps && restoreSwitchProperties(sw.dpId, initialProps)
         lldpData && database.removeConnectedDevices(sw.dpId)
 
         where:
@@ -1288,7 +1200,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def sw = tg.switchConnected
         def initialProps = switchHelper.getCachedSwProps(sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
-            it.multiTable = true
             it.switchLldp = true
             it.switchArp = true
         })
@@ -1302,7 +1213,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         when: "Turn LLDP and ARP detection off on switch"
         switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
-            it.multiTable = true
             it.switchLldp = false
             it.switchArp = false
         })
@@ -1310,11 +1220,9 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flowHelperV2.updateFlow(flow.flowId, flow)
 
         then: "Check excess rules are not registered on device"
-        wait(WAIT_OFFSET) {
-             verifySwitchRules(sw.dpId)
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
+
         cleanup: "Remove created flow and registered devices, revert switch props"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         sw && database.removeConnectedDevices(sw.dpId)
         initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
     }
@@ -1325,9 +1233,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def tg = topology.activeTraffGens.shuffled().first()
         def sw = tg.getSwitchConnected()
-        def initialPropsSource = enableMultiTableIfNeeded(true, sw.dpId)
+        def initialPropsSource = switchHelper.getCachedSwProps(sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
-            it.multiTable = true
             it.switchLldp = false
             it.switchArp = false
         })
@@ -1335,7 +1242,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         and: "Flow is created on a target switch with devices feature 'off'"
         def dstTg = topology.activeTraffGens.find{it != tg && it.getSwitchConnected().getDpId() != sw.getDpId()}
         def dst = dstTg.getSwitchConnected()
-        def initialPropsDst = enableMultiTableIfNeeded(true, dst.dpId)
         def flow = flowHelperV2.randomFlow(sw, dst)
         def outerVlan = 100
         flow.source.vlanId = outerVlan
@@ -1350,7 +1256,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         when: "update device properties and send lldp and arp packets on flow"
         switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
-            it.multiTable = true
             it.switchLldp = true
             it.switchArp = true
         })
@@ -1377,9 +1282,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Delete the flow and restore initial switch properties"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         initialPropsSource && restoreSwitchProperties(sw.dpId, initialPropsSource)
-        initialPropsDst && restoreSwitchProperties(dst.dpId, initialPropsDst)
         database.removeConnectedDevices(sw.dpId)
     }
 
@@ -1389,9 +1292,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def tg = topology.activeTraffGens.shuffled().first()
         def sw = tg.getSwitchConnected()
-        def initialPropsSource = enableMultiTableIfNeeded(true, sw.dpId)
+        def initialPropsSource = switchHelper.getCachedSwProps(sw.dpId)
         switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
-            it.multiTable = true
             it.switchLldp = true
             it.switchArp = true
         })
@@ -1399,7 +1301,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         and: "Flow is created on a target switch with devices feature 'off'"
         def dstTg = topology.activeTraffGens.find{it != tg && it.getSwitchConnected().getDpId() != sw.getDpId()}
         def dst = dstTg.getSwitchConnected()
-        def initialPropsDst = enableMultiTableIfNeeded(true, dst.dpId)
         def flow = flowHelperV2.randomFlow(sw, dst)
         def outerVlan = 100
         flow.source.vlanId = outerVlan
@@ -1410,7 +1311,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         when: "update device properties and send lldp and arp packets on flow"
         switchHelper.updateSwitchProperties(sw, initialPropsSource.jacksonCopy().tap {
-            it.multiTable = true
             it.switchLldp = false
             it.switchArp = false
         })
@@ -1436,9 +1336,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         cleanup: "Delete the flow and restore initial switch properties"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         initialPropsSource && restoreSwitchProperties(sw.dpId, initialPropsSource)
-        initialPropsDst && restoreSwitchProperties(dst.dpId, initialPropsDst)
         database.removeConnectedDevices(sw.dpId)
     }
 
@@ -1477,17 +1375,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 testData.dstEnabled, testData.switchPair)
     }
 
-    private SwitchPropertiesDto enableMultiTableIfNeeded(boolean needDevices, SwitchId switchId) {
-        def initialProps = northbound.getSwitchProperties(switchId)
-        if (needDevices && !initialProps.multiTable) {
-            def sw = topology.switches.find { it.dpId == switchId }
-            switchHelper.updateSwitchProperties(sw, initialProps.jacksonCopy().tap {
-                it.multiTable = true
-            })
-        }
-        return initialProps
-    }
-
     private void restoreSwitchProperties(SwitchId switchId, SwitchPropertiesDto initialProperties) {
         Switch sw = topology.switches.find { it.dpId == switchId }
         switchHelper.updateSwitchProperties(sw, initialProperties)
@@ -1502,10 +1389,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def tgSwitches = topology.activeTraffGens*.switchConnected
                                  .findAll { it.features.contains(SwitchFeature.MULTI_TABLE) }
         def unpickedTgSwitches = tgSwitches.unique(false) { [it.description, it.nbFormat().hardware].sort() }
-        List<SwitchPair> switchPairs = topologyHelper.switchPairs.collectMany { [it, it.reversed] }.findAll {
-            it.src in tgSwitches && it.dst in tgSwitches
-        }
-        assumeTrue(switchPairs.size() > 0, "Unable to find a switchPair with traffgens on both sides")
+        List<SwitchPair> switchPairs = switchPairs.all().withTraffgensOnBothEnds().getSwitchPairs()
         def result = []
         while (!unpickedTgSwitches.empty) {
             def pair = switchPairs.sort(false) { switchPair ->
@@ -1522,15 +1406,9 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     }
 
     private void validateFlowAndSwitches(Flow flow) {
-        northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-        [flow.srcSwitch, flow.destSwitch].each {
-            def validation = northbound.validateSwitch(it.switchId)
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex", "misconfiguredHex"])
-            if (it.ofVersion != "OF_12") {
-                validation.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
-            }
-        }
+        assert northbound.validateFlow(flow.flowId).each { assert it.asExpected }
+        assert switchHelper.synchronizeAndCollectFixedDiscrepancies([flow.srcSwitch.getSwitchId(), flow.destSwitch.getSwitchId()])
+                .isEmpty()
     }
 
     private void waitForSrcDevicesInputRules(Flow flow) {
@@ -1562,10 +1440,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         }
 
         def swProps = northbound.getSwitchProperties(sw.switchId)
-        def postIngressMeterCount = swProps.multiTable ? 1 : 0
+        def postIngressMeterCount = 1
         def switchLldpMeterCount = swProps.switchLldp ? 1 : 0
-        def vxlanMeterCount = swProps.multiTable && (sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
-                || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) ? 1 : 0
+        def vxlanMeterCount = sw.features.contains(SwitchFeature.NOVIFLOW_PUSH_POP_VXLAN)
+                || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN) ? 1 : 0
 
         def meters = northbound.getAllMeters(sw.switchId).meterEntries*.meterId
 

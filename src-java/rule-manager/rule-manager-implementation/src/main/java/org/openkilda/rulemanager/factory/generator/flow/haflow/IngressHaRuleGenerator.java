@@ -65,8 +65,7 @@ import java.util.UUID;
 public class IngressHaRuleGenerator implements MeteredRuleGenerator {
 
     /*
-     * This set must contain FlowSideAdapters with src multiTable=true which have same SwitchId and inPort as ingress
-     * endpoint of target subPath.
+     * This set must contain FlowSideAdapters which have same SwitchId and inPort as ingress endpoint of target subPath.
      */
     @Default
     private final Set<FlowSideAdapter> overlappingIngressAdapters = new HashSet<>();
@@ -129,7 +128,7 @@ public class IngressHaRuleGenerator implements MeteredRuleGenerator {
                 .table(OfTable.INGRESS)
                 .priority(getPriority(ingressEndpoint))
                 .flags(buildRuleFlags(sw.getFeatures()))
-                .match(makeIngressMatch(ingressEndpoint, true, sw.getFeatures()))
+                .match(makeIngressMatch(ingressEndpoint, sw.getFeatures()))
                 .instructions(buildInstructions(sw, actions))
                 .build();
     }

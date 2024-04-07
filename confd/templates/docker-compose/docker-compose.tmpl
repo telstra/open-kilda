@@ -127,7 +127,7 @@ services:
   mysql_db:
     hostname: mysql.pendev
     image: mysql:8.0.34
-    command: --default-authentication-plugin=mysql_native_password
+    command: --default-authentication-plugin=caching_sha2_password
     volumes:
       - ./docker/mysql/setup_data:/docker-entrypoint-initdb.d
       - sql_data:/var/lib/mysql

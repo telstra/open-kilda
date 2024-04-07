@@ -3,8 +3,10 @@ package org.openkilda.functionaltests.spec.switches
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_TURNING_COOKIE
@@ -47,7 +49,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         sw << getTopology().getActiveSwitches().unique { sw -> sw.description }
     }
 
-    @Tags([SMOKE])
+    @Tags([SMOKE, SWITCH_RECOVER_ON_FAIL])
     def "Default rules are installed when a new switch is connected"() {
         given: "A switch with no rules installed and not connected to the controller"
         def sw = topology.activeSwitches.first()
@@ -68,7 +70,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         cleanup:
         blockData && !switchIsActivated && switchHelper.reviveSwitch(sw, blockData)
         if (!testIsCompleted) {
-            northbound.synchronizeSwitch(sw.dpId, true)
+            switchHelper.synchronize(sw.dpId)
             wait(RULES_INSTALLATION_TIME) {
                 assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
                         .containsExactlyInAnyOrder(*sw.defaultCookies)
@@ -151,11 +153,9 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     }
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    def "Able to install default multitable rule on #sw.hwSwString [install-action=#data.installRulesAction]"(
+    def "Able to install default rule on #sw.hwSwString [install-action=#data.installRulesAction]"(
             Map data, Switch sw) {
         given: "A switch without rules"
-        assumeTrue(switchHelper.getCachedSwProps(sw.dpId).multiTable,
-                "Multi table should be enabled on the switch")
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
         assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
 
@@ -231,7 +231,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
         cleanup:
         if (!testIsCompleted) {
-            northbound.synchronizeSwitch(sw.dpId, true)
+            switchHelper.synchronize(sw.dpId)
             wait(RULES_INSTALLATION_TIME) {
                 assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
             }
@@ -264,11 +264,11 @@ class DefaultRulesSpec extends HealthCheckSpecification {
             excessRules.empty
             properRules.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
         }
-        verifyAll(northbound.validateSwitch(sw.dpId)) {
-            rules.missing == deletedRules
+        verifyAll(switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get()) {
+            rules.missing*.getCookie() == deletedRules
             rules.misconfigured.empty
             rules.excess.empty
-            rules.proper.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
+            rules.proper*.getCookie().sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
         }
 
         cleanup: "Install default rules back"
@@ -307,9 +307,8 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     }
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    def "Able to delete default multitable rule from #sw.hwSwString [delete-action=#data.deleteRulesAction]"(Map data, Switch sw) {
+    def "Able to delete default rule from #sw.hwSwString [delete-action=#data.deleteRulesAction]"(Map data, Switch sw) {
         when: "Delete rule from the switch"
-        assumeTrue(switchHelper.getCachedSwProps(sw.dpId).multiTable, "Multi table should be enabled on the switch")
         def defaultRules
         wait(RULES_INSTALLATION_TIME) {
             defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
@@ -331,11 +330,11 @@ class DefaultRulesSpec extends HealthCheckSpecification {
             excessRules.empty
             properRules.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
         }
-        verifyAll(northbound.validateSwitch(sw.dpId)) {
-            rules.missing == deletedRules
+        verifyAll(switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get()) {
+            rules.missing*.getCookie() == deletedRules
             rules.misconfigured.empty
             rules.excess.empty
-            rules.proper.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
+            rules.proper*.getCookie().sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
         }
 
         cleanup: "Install default rules back"
@@ -374,7 +373,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         ].combinations()
     }
 
-    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES, HARDWARE])
     def "Able to delete/install the server42 Flow RTT turning rule on a switch"() {
         setup: "Select a switch which support server42 turning rule"
         def sw = topology.activeSwitches.find { it.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST) } ?:
@@ -401,11 +400,11 @@ class DefaultRulesSpec extends HealthCheckSpecification {
             excessRules.empty
             properRules.sort() == sw.defaultCookies.findAll { it != SERVER_42_FLOW_RTT_TURNING_COOKIE }.sort()
         }
-        verifyAll(northbound.validateSwitch(sw.dpId)) {
-            rules.missing == [SERVER_42_FLOW_RTT_TURNING_COOKIE]
+        verifyAll(switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get()) {
+            rules.missing*.getCookie() == [SERVER_42_FLOW_RTT_TURNING_COOKIE]
             rules.misconfigured.empty
             rules.excess.empty
-            rules.proper.sort() == sw.defaultCookies.findAll { it != SERVER_42_FLOW_RTT_TURNING_COOKIE }.sort()
+            rules.proper*.getCookie().sort() == sw.defaultCookies.findAll { it != SERVER_42_FLOW_RTT_TURNING_COOKIE }.sort()
         }
 
         when: "Install the server42 turning rule"
@@ -460,11 +459,11 @@ class DefaultRulesSpec extends HealthCheckSpecification {
             excessRules.empty
             properRules.sort() == sw.defaultCookies.findAll { it != SERVER_42_ISL_RTT_TURNING_COOKIE }.sort()
         }
-        verifyAll(northbound.validateSwitch(sw.dpId)) {
-            rules.missing == [SERVER_42_ISL_RTT_TURNING_COOKIE]
+        verifyAll(switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get()) {
+            rules.missing*.getCookie() == [SERVER_42_ISL_RTT_TURNING_COOKIE]
             rules.misconfigured.empty
             rules.excess.empty
-            rules.proper.sort() == sw.defaultCookies.findAll { it != SERVER_42_ISL_RTT_TURNING_COOKIE }.sort()
+            rules.proper*.getCookie().sort() == sw.defaultCookies.findAll { it != SERVER_42_ISL_RTT_TURNING_COOKIE }.sort()
         }
 
         when: "Install the server42 ISL RTT turning rule"

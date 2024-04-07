@@ -1,5 +1,9 @@
 package org.openkilda.functionaltests
 
+import org.openkilda.functionaltests.helpers.IslHelper
+import org.openkilda.functionaltests.helpers.model.SwitchPairs
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 
@@ -11,11 +15,9 @@ import org.openkilda.functionaltests.helpers.StatsHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
-import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
@@ -68,7 +70,9 @@ class BaseSpecification extends Specification {
     @Autowired @Shared
     StatsHelper statsHelper
     @Autowired @Shared
-    LabService labService
+    SwitchPairs switchPairs
+    @Autowired @Shared
+    IslHelper islHelper
 
     @Value('${spring.profiles.active}') @Shared
     String profile
@@ -86,8 +90,6 @@ class BaseSpecification extends Specification {
     int antiflapCooldown
     @Value('${antiflap.min}') @Shared
     int antiflapMin
-    @Value('${use.multitable}') @Shared
-    boolean useMultitable
     @Value('${zookeeper.connect_string}') @Shared
     String zkConnectString
     @Value('${affinity.isl.cost:10000}') @Shared
@@ -96,6 +98,7 @@ class BaseSpecification extends Specification {
     int statsRouterRequestInterval
 
     static ThreadLocal<TopologyDefinition> threadLocalTopology = new ThreadLocal<>()
+    static ThreadLocal<CleanupManager> threadLocalCleanupManager = new ThreadLocal<>()
 
     def setupSpec() {
         log.info "Booked lab with id ${topology.getLabId().toString()} for spec ${this.class.simpleName}, thread: " +
@@ -113,12 +116,6 @@ class BaseSpecification extends Specification {
     def requireProfiles(String[] profiles) {
         assumeTrue(this.profile in profiles, "This test requires one of these profiles: '${profiles.join("")}'; " +
                 "but current active profile is '${this.profile}'")
-    }
-
-    void verifySwitchRules(SwitchId switchId) {
-        def rules = northbound.validateSwitchRules(switchId)
-        assert rules.excessRules.empty
-        assert rules.missingRules.empty
     }
 
     // this cleanup section should be removed after fixing the issue https://github.com/telstra/open-kilda/issues/5480

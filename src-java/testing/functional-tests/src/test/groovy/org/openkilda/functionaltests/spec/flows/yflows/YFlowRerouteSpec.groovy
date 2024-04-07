@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.helpers.Wrappers
+
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 
 import org.openkilda.functionaltests.error.yflow.YFlowRerouteExpectedError
@@ -53,12 +56,11 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     @Autowired @Shared
     FlowStats flowStats
 
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([TOPOLOGY_DEPENDENT, ISL_RECOVER_ON_FAIL])
     def "Valid y-flow can be rerouted"() {
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         given: "A qinq y-flow"
         def swT = topologyHelper.switchTriplets.find { it ->
-            def yPoints = yFlowHelper.findPotentialYPoints(it)
+            def yPoints = topologyHelper.findPotentialYPoints(it)
             [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
                     [it.pathsEp1, it.pathsEp2].every { it.size() > 1 } &&
                     it.ep1 != it.ep2 && yPoints.size() == 1 && yPoints[0] != it.shared &&
@@ -81,8 +83,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         def islToFail = pathHelper.getInvolvedIsls(PathHelper.convert(paths.subFlowPaths[0].forward)).first()
 
         when: "Fail a flow ISL (bring switch port down)"
-        antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        wait(WAIT_OFFSET) { northbound.getLink(islToFail).state == FAILED }
+        islHelper.breakIsl(islToFail)
 
         then: "The flow was rerouted after reroute delay"
         and: "History has relevant entries about y-flow reroute"
@@ -107,11 +108,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches pass switch validation"
-        def involvedSwitches = pathHelper.getInvolvedYSwitches(paths)
-        involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(pathHelper.getInvolvedYSwitches(paths)*.getDpId()).isEmpty()
 
         when: "Traffic starts to flow on both sub-flows with maximum bandwidth (if applicable)"
         def traffExam = traffExamProvider.get()
@@ -145,8 +142,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
-        islToFail && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
-        wait(WAIT_OFFSET) { northbound.getLink(islToFail).state == DISCOVERED }
+        islHelper.restoreIsl(islToFail)
         database.resetCosts(topology.isls)
     }
 
@@ -180,9 +176,9 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     def "Y-Flow reroute has been executed when more preferable path is available for both sub-flows (shared path cost was changed)" () {
         given: "The appropriate switches have been collected"
         //y-flow with shared path is created when shared_ep+ep1->neighbour && ep1+ep2->neighbour && shared_ep+ep2->not neighbour
-        def pairSharedEpAndEp1 = topologyHelper.getAllSwitchPairs().neighbouring().first()
-        def sharedEpNeighbouringSwitches = topologyHelper.getAllSwitchPairs().neighbouring().includeSwitch(pairSharedEpAndEp1.src).collectSwitches()
-        def pairEp1AndEp2 = topologyHelper.getAllSwitchPairs().neighbouring().excludePairs([pairSharedEpAndEp1])
+        def pairSharedEpAndEp1 = switchPairs.all().neighbouring().first()
+        def sharedEpNeighbouringSwitches = switchPairs.all().neighbouring().includeSwitch(pairSharedEpAndEp1.src).collectSwitches()
+        def pairEp1AndEp2 = switchPairs.all().neighbouring().excludePairs([pairSharedEpAndEp1])
                 .includeSwitch(pairSharedEpAndEp1.dst).excludeSwitches(sharedEpNeighbouringSwitches).first()
         def swT = new SwitchTriplet(shared: pairSharedEpAndEp1.src, ep1: pairEp1AndEp2.src, ep2: pairEp1AndEp2.dst)
 
@@ -231,9 +227,9 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     def "Y-Flow reroute has been executed when more preferable path is available for one of the sub-flows" () {
         given: "The appropriate switches have been collected"
         //y-flow with shared path is created when shared_ep+ep1->neighbour && ep1+ep2->neighbour && shared_ep+ep2->not neighbour
-        def pairSharedEpAndEp1 = topologyHelper.getAllSwitchPairs().neighbouring().first()
-        def sharedEpNeighbouringSwitches = topologyHelper.getAllSwitchPairs().neighbouring().includeSwitch(pairSharedEpAndEp1.src).collectSwitches()
-        def pairEp1AndEp2 = topologyHelper.getAllSwitchPairs().neighbouring().excludePairs([pairSharedEpAndEp1])
+        def pairSharedEpAndEp1 = switchPairs.all().neighbouring().first()
+        def sharedEpNeighbouringSwitches = switchPairs.all().neighbouring().includeSwitch(pairSharedEpAndEp1.src).collectSwitches()
+        def pairEp1AndEp2 = switchPairs.all().neighbouring().excludePairs([pairSharedEpAndEp1])
                 .includeSwitch(pairSharedEpAndEp1.dst).excludeSwitches(sharedEpNeighbouringSwitches).first()
         def swT = new SwitchTriplet(shared: pairSharedEpAndEp1.src, ep1: pairEp1AndEp2.src, ep2: pairEp1AndEp2.dst)
 
@@ -288,7 +284,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
-    @Tags([LOW_PRIORITY])
+    @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
     def "Y-Flow reroute has not been executed when one sub-flow is on the best path and there is no alternative path for another sub-flow due to the down ISLs" () {
         given: "Y-Flow has been created successfully"
         def swT = topologyHelper.switchTriplets.findAll{ SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it)}.first()
@@ -302,12 +298,10 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         def notIntersectedIsls = islsSubFlow1.size() > islsSubFlow2.size() ?
                 islsSubFlow1.findAll { !(it in islsSubFlow2) } : islsSubFlow2.findAll { !(it in islsSubFlow1) }
 
-        and: "Switch off all ports on the terminal switch of not intersected ISLs"
+        and: "Switch off all ISLs on the terminal switch"
         Switch terminalSwitch = notIntersectedIsls.last().dstSwitch
-        List<PortDto> portsDown = []
-        topology.getRelatedIsls(terminalSwitch).each {
-            portsDown.add(antiflap.portDown(terminalSwitch.dpId, it.srcSwitch == terminalSwitch ? it.srcPort : it.dstPort))
-        }
+        def broughtDownIsls = topology.getRelatedIsls(terminalSwitch)
+        islHelper.breakIsls(broughtDownIsls)
         wait(FLOW_CRUD_TIMEOUT) {
             northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.DEGRADED.getState()
         }
@@ -327,7 +321,10 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        portsDown && portsDown.each { antiflap.portUp(terminalSwitch.dpId, it.portNumber)}
+        islHelper.restoreIsls(broughtDownIsls)
+        wait(WAIT_OFFSET) {
+            northboundV2.getYFlow(yFlow.YFlowId).status == FlowState.UP.toString()
+        }
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 }

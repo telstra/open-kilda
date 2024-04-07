@@ -1,62 +1,41 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 
+import groovy.util.logging.Slf4j
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithMissingPathExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotDeletedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithMissingPathExpectedError
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.model.PathComputationStrategy
-import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
-import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
-import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
-import org.openkilda.northbound.dto.v2.flows.FlowStatistics
-
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
-import static org.openkilda.messaging.info.event.IslChangeType.MOVED
-import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
-import static org.openkilda.messaging.payload.flow.FlowState.UP
-import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
-import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
+import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
+import org.openkilda.northbound.dto.v2.flows.FlowStatistics
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -64,6 +43,28 @@ import spock.lang.See
 import spock.lang.Shared
 import spock.lang.Unroll
 import jakarta.inject.Provider
+
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
+import static org.openkilda.messaging.payload.flow.FlowState.UP
+import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN
+import static org.openkilda.model.FlowEncapsulationType.VXLAN
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/crud")
@@ -108,9 +109,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
 
         expect: "No rule discrepancies on every switch of the flow"
-        wait(WAIT_OFFSET) { //due to instability on jenkins in multiTable mode + server42
-            switches.each { verifySwitchRules(it.dpId) }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(switches*.getDpId()).isEmpty()
+
 
         and: "No discrepancies when doing flow validation"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
@@ -144,10 +144,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         }
 
         and: "No rule discrepancies on every switch of the flow"
-        switches.each { sw -> wait(WAIT_OFFSET) { verifySwitchRules(sw.dpId) } }
-
-        cleanup:
-        !flowIsDeleted && flow && flowHelperV2.deleteFlow(flow.flowId)
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(switches*.getDpId()).isEmpty()
 
         where:
         /*Some permutations may be missed, since at current implementation we only take 'direct' possible flows
@@ -174,9 +171,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         then: "Both flows are successfully created"
         northboundV2.getAllFlows()*.flowId.containsAll(flows*.flowId)
-
-        cleanup: "Delete flows"
-        flows.each { it && flowHelperV2.deleteFlow(it.flowId) }
 
         where:
         data << [
@@ -347,7 +341,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         expect: "No rule discrepancies on the switch"
-        verifySwitchRules(flow.source.switchId)
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.source.switchId).isPresent()
 
         and: "No discrepancies when doing flow validation"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
@@ -360,10 +354,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def flowIsDeleted = true
 
         and: "No rule discrepancies on the switch after delete"
-        wait(WAIT_OFFSET) { verifySwitchRules(flow.source.switchId) }
-
-        cleanup:
-        !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.source.switchId).isPresent()
 
         where:
         flow << getSingleSwitchSinglePortFlows()
@@ -380,9 +371,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         then: "Validation of flow with zero bandwidth must be succeed"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Unable to create single-switch flow with the same ports and vlans on both sides"() {
@@ -397,9 +385,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def error = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(
                 ~/It is not allowed to create one-switch flow for the same ports and VLANs/).matches(error)
-
-        cleanup:
-        !error && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Unroll("Unable to create flow with #data.conflict")
@@ -421,10 +406,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         then: "Error is returned, stating a readable reason of conflict"
         def error = thrown(HttpClientErrorException)
         new FlowNotCreatedWithConflictExpectedError(~/${data.getErrorDescription(flow, conflictingFlow)}/).matches(error)
-
-        cleanup: "Delete the dominant flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-        !error && flowHelperV2.deleteFlow(conflictingFlow.flowId)
 
         where:
         data << getConflictingData()
@@ -461,24 +442,16 @@ class FlowCrudSpec extends HealthCheckSpecification {
         forwardIsls.collect { it.reversed }.reverse() == reverseIsls
 
         cleanup: "Delete the flow and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         database.resetCosts(topology.isls)
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Error is returned if there is no available path to #data.isolatedSwitchType switch"() {
         given: "A switch that has no connection to other switches"
-        def isolatedSwitch = topologyHelper.notNeighboringSwitchPair.src
+        def isolatedSwitch = switchPairs.all().nonNeighbouring().random().src
         def flow = data.getFlow(isolatedSwitch)
-        topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
-            antiflap.portDown(isolatedSwitch.dpId, port)
-        }
-        //wait until ISLs are actually got failed
-        wait(WAIT_OFFSET) {
-            def islData = northbound.getAllLinks()
-            topology.getRelatedIsls(isolatedSwitch).each {
-                assert islUtils.getIslInfo(islData, it).get().state == FAILED
-            }
-        }
+        def connectedIsls = topology.getRelatedIsls(isolatedSwitch)
+        islHelper.breakIsls(connectedIsls)
 
         when: "Try building a flow using the isolated switch"
         flowHelperV2.addFlow(flow)
@@ -489,13 +462,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 ~/Switch ${isolatedSwitch.getDpId()} doesn\'t have links with enough bandwidth/).matches(error)
 
         cleanup: "Restore connection to the isolated switch and reset costs"
-        !error && flowHelperV2.deleteFlow(flow.flowId)
-        topology.getBusyPortsForSwitch(isolatedSwitch).each { port ->
-            antiflap.portUp(isolatedSwitch.dpId, port)
-        }
-        wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state == DISCOVERED }
-        }
+        islHelper.restoreIsls(connectedIsls)
         database.resetCosts(topology.isls)
 
         where:
@@ -503,19 +470,20 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 [
                         isolatedSwitchType: "source",
                         getFlow           : { Switch theSwitch ->
-                            getFlowHelperV2().randomFlow(getTopologyHelper().getAllNotNeighboringSwitchPairs()
-                                    .collectMany { [it, it.reversed] }.find {
-                                it.src == theSwitch
-                            })
+                            getFlowHelperV2().randomFlow(switchPairs.all()
+                                    .nonNeighbouring()
+                                    .includeSourceSwitch(theSwitch)
+                                    .random())
                         }
                 ],
                 [
                         isolatedSwitchType: "destination",
                         getFlow           : { Switch theSwitch ->
-                            getFlowHelperV2().randomFlow(getTopologyHelper().getAllNotNeighboringSwitchPairs()
-                                    .collectMany { [it, it.reversed] }.find {
-                                it.dst == theSwitch
-                            })
+                            getFlowHelperV2().randomFlow(switchPairs.all()
+                                    .nonNeighbouring()
+                                    .includeSourceSwitch(theSwitch)
+                                    .random()
+                                    .getReversed())
                         }
                 ]
         ]
@@ -548,27 +516,25 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "All related switches have no discrepancies in rules"
         switches.each {
-            def validation = northbound.validateSwitch(it.dpId)
-            validation.verifyMeterSectionsAreEmpty(["excess", "misconfigured", "missing"])
-            validation.verifyRuleSectionsAreEmpty(["excess", "missing"])
+            def syncResult = switchHelper.synchronize(it.getDpId())
+            with (syncResult) {
+                assert [rules.installed, rules.removed, meters.installed, meters.removed].every {it.empty}
+            }
             def swProps = switchHelper.getCachedSwProps(it.dpId)
-            def amountOfMultiTableRules = swProps.multiTable ? 1 : 0
             def amountOfServer42Rules = (swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId, dstSwitch.dpId]) ? 1 : 0
-            if (swProps.multiTable && swProps.server42FlowRtt) {
+            if (swProps.server42FlowRtt) {
                 if ((flow.destination.getSwitchId() == it.dpId && flow.destination.vlanId) || (flow.source.getSwitchId() == it.dpId && flow.source.vlanId))
                     amountOfServer42Rules += 1
             }
-            def amountOfFlowRules = 2 + amountOfMultiTableRules + amountOfServer42Rules
-            assert validation.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
+            def amountOfFlowRules = 3 + amountOfServer42Rules
+            assert syncResult.rules.proper.findAll { !new Cookie(it).serviceFlag }
+                    .size() == amountOfFlowRules
         }
-
-        cleanup: "Remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Unable to create a flow with #problem"() {
         given: "A flow with #problem"
-        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def switchPair = switchPairs.all().nonNeighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair, false)
         flow = update(flow)
         when: "Try to create a flow"
@@ -577,8 +543,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         then: "Flow is not created"
         def actualException = thrown(HttpClientErrorException)
         expectedException.matches(actualException)
-        cleanup:
-        !actualException && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         problem                      | update                                                              | expectedException
@@ -623,9 +587,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def actualError = thrown(HttpClientErrorException)
         expectedError.matches(actualError)
 
-        cleanup: "Remove the flow"
-        Wrappers.silent { flowHelperV2.deleteFlow(flow.flowId) }
-
         where:
         problem | update | expectedError
         "unavailable bandwidth" |
@@ -657,9 +618,6 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         def actualException = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError(~/To collect vlan statistics, the vlan IDs must be from 1 up to 4095/)
                 .matches(actualException)
-
-        cleanup: "Remove the flow"
-        Wrappers.silent { flowHelperV2.deleteFlow(flow.flowId) }
     }
 
     def "Unable to create a flow on an isl port in case port is occupied on a #data.switchType switch"() {
@@ -675,8 +633,6 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         then: "Flow is not created"
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(data.errorDescription(isl)).matches(exc)
-        cleanup:
-        !exc && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [
@@ -697,12 +653,12 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         ]
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Unable to create a flow on an isl port when ISL status is FAILED"() {
         given: "An inactive isl with failed state"
         Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
         assumeTrue(isl as boolean, "Unable to find required isl")
-        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        islUtils.waitForIslStatus([isl, isl.reversed], FAILED)
+        islHelper.breakIsl(isl)
 
         when: "Try to create a flow using ISL src port"
         def flow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch)
@@ -715,9 +671,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
                 getPortViolationErrorDescriptionPattern("source", isl.srcPort, isl.srcSwitch.dpId)).matches(exc)
 
         cleanup: "Restore state of the ISL"
-        !exc && flow && flowHelperV2.deleteFlow(flow.flowId)
-        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
+        islHelper.restoreIsl(isl)
         database.resetCosts(topology.isls)
     }
 
@@ -756,6 +710,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         database.resetCosts(topology.isls)
     }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
         given: "Disconnected switch"
         def sw = topology.getActiveSwitches()[0]
@@ -771,14 +726,11 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
                 ~/Source switch $sw.dpId and Destination switch $sw.dpId are not connected to the controller/).matches(exc)
         cleanup: "Connect switch back to the controller"
         blockData && switchHelper.reviveSwitch(sw, blockData, true)
-        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System allows to CRUD protected flow"() {
         given: "Two active not neighboring switches with two diverse paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -817,15 +769,12 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
                 assert rules.every { it != protectedForwardCookie && it != protectedReverseCookie }
             }
         }
-
-        cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
     def "System allows to set/update description/priority/max-latency for a flow"() {
         given: "Two active neighboring switches"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
 
         and: "Value for each field"
         def initPriority = 100
@@ -871,49 +820,40 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         newFlowInfo.maxLatencyTier2 == newMaxLatencyTier2
         newFlowInfo.description == newDescription
         newFlowInfo.periodicPings == newPeriodicPing
-
-        cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System doesn't ignore encapsulationType when flow is created with ignoreBandwidth = true"() {
         given: "Two active switches"
-        def swPair = topologyHelper.getNeighboringSwitchPair().find {
-            [it.src, it.dst].any { !switchHelper.isVxlanEnabled(it.dpId) }
-        } ?: assumeTrue(false, "Unable to find required switches in topology")
+        def swPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().random()
 
-        def srcProps = switchHelper.getCachedSwProps(swPair.src.dpId)
-        def dstProps = switchHelper.getCachedSwProps(swPair.dst.dpId)
-        def endpointName = "source"
+        def initialSrcProps = switchHelper.getCachedSwProps(swPair.src.dpId)
+        def initialSupportedEncapsulations = initialSrcProps.getSupportedTransitEncapsulation().collect()
+        switchHelper.updateSwitchProperties(swPair.getSrc(), initialSrcProps.tap {
+            it.supportedTransitEncapsulation = [TRANSIT_VLAN.toString()]})
 
-        def swWithoutVxlan = swPair.src
-        def encapsTypesWithoutVxlan = srcProps.supportedTransitEncapsulation.collect { it.toString().toUpperCase() }
-
-        if (srcProps.supportedTransitEncapsulation.contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())) {
-            swWithoutVxlan = swPair.dst
-            encapsTypesWithoutVxlan = dstProps.supportedTransitEncapsulation.collect { it.toString().toUpperCase() }
-            endpointName = "destination"
-        }
 
         when: "Create a flow with not supported encapsulation type on the switches"
         def flow = flowHelperV2.randomFlow(swPair)
         flow.ignoreBandwidth = true
         flow.maximumBandwidth = 0
-        flow.encapsulationType = FlowEncapsulationType.VXLAN
+        flow.encapsulationType = VXLAN
         flowHelperV2.addFlow(flow)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        new FlowNotCreatedExpectedError(~/Flow\'s $endpointName endpoint $swWithoutVxlan.dpId doesn\'t support \
-requested encapsulation type $FlowEncapsulationType.VXLAN. Choose one of the supported encapsulation \
+        new FlowNotCreatedExpectedError(~/Flow\'s source endpoint ${swPair.getSrc().getDpId()} doesn\'t support \
+requested encapsulation type $VXLAN. Choose one of the supported encapsulation \
 types .* or update switch properties and add needed encapsulation type./).matches(exc)
+
         cleanup:
-        !exc && flowHelperV2.deleteFlow(flow.flowId)
+        initialSrcProps && switchHelper.updateSwitchProperties(swPair.getSrc(), initialSrcProps.tap {
+            it.supportedTransitEncapsulation = initialSupportedEncapsulations
+        })
     }
 
     def "Flow status accurately represents the actual state of the flow and flow rules"() {
         when: "Create a flow on a long path"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().random()
         def longPath = swPair.paths.max { it.size() }
         swPair.paths.findAll { it != longPath }.each { pathHelper.makePathMorePreferable(longPath, it) }
         def flow = flowHelperV2.randomFlow(swPair)
@@ -934,7 +874,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
 
         when: "Delete flow"
-        def deleteResponse = northboundV2.deleteFlow(flow.flowId)
+        northboundV2.deleteFlow(flow.flowId)
 
         then: "Flow is actually removed from flows dump only after all rules are removed"
         wait(RULES_DELETION_TIME) {
@@ -952,7 +892,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         cleanup:
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        flow && !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -996,7 +935,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
         and: "Flow rules are recreated"
         def flowInfoFromDb2 = database.getFlow(flow.flowId)
         wait(RULES_INSTALLATION_TIME) {
-            def isMultiTableEnabled = switchHelper.getCachedSwProps(srcSwitch.dpId).multiTable
             with(northbound.getSwitchRules(srcSwitch.dpId).flowEntries.findAll {
                 !new Cookie(it.cookie).serviceFlag
             }) { rules ->
@@ -1006,8 +944,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
                 def ingressRule = rules.find { it.cookie == flowInfoFromDb2.forwardPath.cookie.value }
                 ingressRule.match.inPort == updatedFlow.source.portNumber.toString()
                 //vlan is matched in shared rule
-                isMultiTableEnabled ? !ingressRule.match.vlanVid : (ingressRule.match.vlanVid == updatedFlow.source
-                        .vlanId.toString())
+                !ingressRule.match.vlanVid
             }
         }
 
@@ -1019,10 +956,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
 
         and: "The src switch passes switch validation"
-        with(northbound.validateSwitch(srcSwitch.dpId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(srcSwitch.getDpId()).isPresent()
 
         when: "Update the flow: switch id on the dst endpoint"
         def newDstSwitch = allSwitches[2]
@@ -1077,24 +1011,14 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "The new and old dst switches pass switch validation"
         wait(RULES_DELETION_TIME) {
-            [dstSwitch, newDstSwitch]*.dpId.each { switchId ->
-                with(northbound.validateSwitch(switchId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
+            assert switchHelper.validateAndCollectFoundDiscrepancies([dstSwitch.getDpId(), newDstSwitch.getDpId()]).isEmpty()
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
     def "System reroutes flow to more preferable path while updating"() {
         given: "Two active not neighboring switches with two possible paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNPaths(2).random()
 
         and: "A flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -1121,29 +1045,15 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "All involved switches pass switch validation"
         def involvedSwitchIds = (currentPath*.switchId + newCurrentPath*.switchId).unique()
-        withPool {
-            involvedSwitchIds.eachParallel { SwitchId swId ->
-                with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     def "System doesn't rebuild path for a flow to more preferable path while updating portNumber/vlanId"() {
         given: "Two active switches connected to traffgens with two possible paths at least"
-        def activeTraffGens = topology.activeTraffGens
-        def allTraffgenSwitches = activeTraffGens*.switchConnected ?:
-                assumeTrue(false, "Should be at least two active traffgens connected to switches")
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            allTraffgenSwitches*.dpId.contains(swP.src.dpId) && allTraffgenSwitches*.dpId.contains(swP.dst.dpId) &&
-                    swP.paths.size() >= 2
-        } ?: assumeTrue(false, "Unable to find required switches/paths in topology")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
 
         and: "A flow"
         def flow = flowHelperV2.randomFlow(switchPair, false)
@@ -1190,9 +1100,9 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         then: "Update the flow: port number and vlanId on the src/dst endpoints"
         def updatedFlow = flow.jacksonCopy().tap {
-            it.source.portNumber = activeTraffGens.find { it.switchConnected.dpId == switchPair.src.dpId }.switchPort
+            it.source.portNumber = switchPair.getSrc().getTraffGens().first().getSwitchPort()
             it.source.vlanId = updatedFlowDstEndpoint.source.vlanId - 1
-            it.destination.portNumber = activeTraffGens.find { it.switchConnected.dpId == switchPair.dst.dpId }.switchPort
+            it.destination.portNumber = switchPair.getDst().getTraffGens().first().getSwitchPort()
             it.destination.vlanId = updatedFlowDstEndpoint.destination.vlanId - 1
         }
         flowHelperV2.updateFlow(flow.flowId, updatedFlow)
@@ -1227,25 +1137,16 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
 
         and: "All involved switches pass switch validation"
-        withPool {
-            currentPath*.switchId.eachParallel { SwitchId swId ->
-                with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(currentPath*.switchId).isEmpty()
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])
     def "System allows to update single switch flow to multi switch flow"() {
         given: "A single switch flow with enabled lldp/arp on the dst side"
-        assumeTrue(useMultitable, "This test can be run in multiTable mode due to lldp/arp")
-        def swPair = topologyHelper.getNeighboringSwitchPair()
+        def swPair = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.singleSwitchFlow(swPair.src)
         flow.destination.detectConnectedDevices.lldp = true
         flow.destination.detectConnectedDevices.arp = true
@@ -1275,20 +1176,12 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
 
         and: "Involved switches pass switch validation"
-        [swPair.src, swPair.dst].each { sw ->
-            with(northbound.validateSwitch(sw.dpId)) { validation ->
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.toList()*.dpId).isEmpty()
     }
 
     def "Unable to create a flow with both strict_bandwidth and ignore_bandwidth flags"() {
         when: "Try to create a flow with strict_bandwidth:true and ignore_bandwidth:true"
-        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0]).tap {
+        def flow = flowHelperV2.randomFlow(switchPairs.all().random()).tap {
             strictBandwidth = true
             ignoreBandwidth = true
         }
@@ -1298,15 +1191,12 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def error = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(
                 ~/Can not turn on ignore bandwidth flag and strict bandwidth flag at the same time/).matches(error)
-
-        cleanup:
-        !error && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY])
     def "Unable to update flow with incorrect id in request body"() {
         given:"A flow"
-        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
+        def flow = flowHelperV2.randomFlow(switchPairs.all().random())
         def oldFlowId = flowHelperV2.addFlow(flow).getFlowId()
         def newFlowId = "new_flow_id"
 
@@ -1317,17 +1207,12 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def error = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError("flow_id from body and from path are different",
         ~/Body flow_id: ${newFlowId}, path flow_id: ${oldFlowId}/).matches(error)
-
-        cleanup:
-        Wrappers.silent {
-            flowHelperV2.deleteFlow(oldFlowId)
-        }
     }
 
     @Tags([LOW_PRIORITY])
     def "Unable to update flow with incorrect id in request path"() {
         given: "A flow"
-        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0])
+        def flow = flowHelperV2.randomFlow(switchPairs.all().random())
         flowHelperV2.addFlow(flow)
         def newFlowId = "new_flow_id"
 
@@ -1338,17 +1223,12 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def error = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError("flow_id from body and from path are different",
                 ~/Body flow_id: ${flow.getFlowId()}, path flow_id: ${newFlowId}/).matches(error)
-
-        cleanup:
-        Wrappers.silent {
-            flowHelperV2.deleteFlow(flow.flowId)
-        }
     }
 
     @Tags(LOW_PRIORITY)
     def "Able to #method update with empty VLAN stats and non-zero VLANs (#5063)"() {
         given: "A flow with non empty vlans stats and with src and dst vlans set to '0'"
-        def switches = topologyHelper.getSwitchPairs().shuffled().first()
+        def switches = switchPairs.all().random()
         def flowRequest = flowHelperV2.randomFlow(switches, false).tap {
             it.source.tap { it.vlanId = 0 }
             it.destination.tap { it.vlanId = 0 }
@@ -1370,14 +1250,10 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(flow.getFlowId())
+        def flowIsDeleted = true
 
         then: "No excess rules left on the switches (#5141)"
         switchHelper.validate(involvedSwitches).isEmpty()
-
-        cleanup:
-        Wrappers.silent {
-            flowHelperV2.deleteFlow(flow.getFlowId())
-        }
 
         where:
         method           | updateCall
@@ -1401,7 +1277,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
     @Tags(LOW_PRIORITY)
     def "Unable to update to a flow with maxLatencyTier2 higher as maxLatency)"() {
         given: "A flow"
-        def swPair = topologyHelper.getRandomSwitchPair()
+        def swPair = switchPairs.singleSwitch().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
 
@@ -1415,9 +1291,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
                 ~/The maxLatency \d+ms is higher than maxLatencyTier2 \d+ms/)
         def actualException = thrown(HttpClientErrorException)
         expectedException.matches(actualException)
-
-        cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Shared
@@ -1458,7 +1331,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithoutTransitSwitch() {
-        def switchPairs = topologyHelper.getAllNeighboringSwitchPairs().sort(traffgensPrioritized)
+        def switchPairs = switchPairs.all(false).neighbouring().getSwitchPairs().sort(traffgensPrioritized)
                 .unique { [it.src, it.dst]*.description.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->
@@ -1486,7 +1359,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithTransitSwitch() {
-        def switchPairs = topologyHelper.getAllNotNeighboringSwitchPairs().sort(traffgensPrioritized)
+        def switchPairs = switchPairs.all().nonNeighbouring().getSwitchPairs().sort(traffgensPrioritized)
                 .unique { [it.src, it.dst]*.description.sort() }
 
         return switchPairs.inject([]) { r, switchPair ->

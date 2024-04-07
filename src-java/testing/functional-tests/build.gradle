@@ -46,6 +46,7 @@ test {
 tasks.register("functionalTest", Test) {
     dependsOn "compileGroovy"
     description = "Runs functional tests."
+    jvmArgs '--add-opens', 'java.base/java.time=ALL-UNNAMED'
     include "**/functionaltests/spec/**/*Spec.*"
     if (System.getProperty("excludeTests")) {
         def excludes = System.getProperty("excludeTests").split(",")
@@ -97,7 +98,7 @@ tasks.withType(Test).configureEach {
     }
     retry { //test-retry plugin config
         maxRetries = 2
-        maxFailures = 30
+        maxFailures = 50
         failOnPassedAfterRetry = false
     }
 }

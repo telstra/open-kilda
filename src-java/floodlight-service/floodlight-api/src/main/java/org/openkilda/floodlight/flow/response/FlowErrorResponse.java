@@ -65,6 +65,7 @@ public class FlowErrorResponse extends SpeakerFlowSegmentResponse {
         BAD_COMMAND,
         OPERATION_TIMED_OUT,
         MISSING_OF_FLOWS,
+        BAD_OUT_PORT,
         UNKNOWN
     }
 }

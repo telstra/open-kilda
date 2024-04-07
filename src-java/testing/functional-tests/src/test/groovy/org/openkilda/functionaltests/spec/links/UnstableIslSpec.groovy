@@ -1,12 +1,15 @@
 package org.openkilda.functionaltests.spec.links
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.PathNode
@@ -73,6 +76,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
         }
     }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     def "ISL is not considered unstable after deactivating/activating switch"() {
         //Switches with roundtrip isl latency will not have ISLs failed given that round trip rules remain installed
         given: "A switch that does not support round trip isl latency"
@@ -100,39 +104,26 @@ class UnstableIslSpec extends HealthCheckSpecification {
 
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "ISL is marked as 'unstable' after port down and system takes it into account during flow creation"() {
         given: "Two active neighboring switches with two parallel links"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.findAll { it.size() == 2 }.size() > 1
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNIslsBetweenNeighbouringSwitches(2).random()
 
         and: "Two possible paths for further manipulation with them"
         def firstPath = switchPair.paths.min { it.size() }
         def secondPath = switchPair.paths.findAll { it != firstPath }.min { it.size() }
-        def altPaths = switchPair.paths.findAll { it != firstPath && it != secondPath }
 
         and: "All alternative paths are unavailable (bring ports down on the srcSwitch)"
-        List<PathNode> broughtDownPorts = []
-        altPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(antiflapMin + WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def altPathsIsls = topology.getRelatedIsls(switchPair.src) - pathHelper.getInvolvedIsls(firstPath).first() -
+                pathHelper.getInvolvedIsls(secondPath).first()
+        islHelper.breakIsls(altPathsIsls)
 
         and: "First path is unstable (due to bringing port down/up)"
         // after bringing port down/up, the isl will be marked as unstable by updating the 'time_unstable' field in DB
         def islToBreak = pathHelper.getInvolvedIsls(firstPath).first()
-        [islToBreak, islToBreak.reversed].each { assert database.getIslTimeUnstable(it) == null }
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == FAILED }
+        islHelper.breakIsl(islToBreak)
         [islToBreak, islToBreak.reversed].each { assert database.getIslTimeUnstable(it) != null }
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(islToBreak).get().state == DISCOVERED }
+        islHelper.restoreIsl(islToBreak)
 
         and: "Cost of stable path is more preferable than the cost of unstable path (before penalties)"
         def involvedIslsInUnstablePath = pathHelper.getInvolvedIsls(firstPath)
@@ -176,16 +167,8 @@ class UnstableIslSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology, delete the flow and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        broughtDownPorts.each { it && antiflap.portUp(it.switchId, it.portNo) }
+        islHelper.restoreIsls(altPathsIsls + islToBreak)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each {
-                assert it.state != FAILED
-                assert it.actualState != FAILED
-
-            }
-        }
         database.resetCosts(topology.isls)
     }
 }

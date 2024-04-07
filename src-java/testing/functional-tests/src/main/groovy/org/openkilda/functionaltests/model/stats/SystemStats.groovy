@@ -1,19 +1,18 @@
 package org.openkilda.functionaltests.model.stats
 
-import org.openkilda.functionaltests.helpers.StatsHelper
+import org.openkilda.testing.service.tsdb.TsdbQueryService
 import org.openkilda.testing.service.tsdb.model.StatsResult
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 
 @Component
 class SystemStats {
-    private static StatsHelper statsHelper
+    private static TsdbQueryService tsdbQueryService
     private List<StatsResult> stats
-    private String metricPrefix
 
     @Autowired
-    SystemStats(StatsHelper statsHelper){
-        SystemStats.statsHelper = statsHelper
+    SystemStats(TsdbQueryService tsdbQueryService) {
+        SystemStats.tsdbQueryService = tsdbQueryService
     }
 
     static SystemStats of(SystemStatsMetric metric){
@@ -21,8 +20,7 @@ class SystemStats {
     }
 
     SystemStats(SystemStatsMetric metric) {
-        this.metricPrefix = statsHelper.getMetricPrefix()
-        this.stats = statsHelper.getTsdb().queryDataPointsForLastMinutes([metric], "switchid", "*", 10)
+        this.stats = tsdbQueryService.queryDataPointsForLastMinutes(/__name__="%s${metric.getValue()}"/, 10)
     }
 
     StatsResult get(String ruleCookieIdInHex) {

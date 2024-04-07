@@ -1,7 +1,8 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
@@ -55,9 +56,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
 
     def "Able to create a flow with protected path when maximumBandwidth=#bandwidth, vlan=#vlanId"() {
         given: "Two active not neighboring switches with two diverse paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create flow with protected path"
         def flow = flowHelper.randomFlow(switchPair)
@@ -79,9 +78,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
             assert direction.discrepancies.empty
         }
 
-        cleanup: "Delete the flow"
-        flow && flowHelper.deleteFlow(flow.id)
-
         where:
         bandwidth | vlanId
         1000      | 3378
@@ -90,9 +86,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
 
     def "Able to enable/disable protected path on a flow"() {
         given: "Two active not neighboring switches with two diverse paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create flow without protected path"
         def flow = flowHelper.randomFlow(switchPair)
@@ -139,9 +133,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 assert rules.every { it != protectedForwardCookie && it != protectedReverseCookie }
             }
         }
-
-        cleanup: "Delete the flow"
-        flow && flowHelper.deleteFlow(flow.id)
     }
 
     def "Unable to create a single switch flow with protected path"() {
@@ -159,9 +150,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == "Couldn't setup protected path for one-switch flow"
-
-        cleanup:
-        !exc && flowHelper.deleteFlow(flow.id)
     }
 
     def "Unable to update a single switch flow to enable protected path"() {
@@ -181,11 +169,9 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not update flow"
         errorDetails.errorDescription == "Couldn't setup protected path for one-switch flow"
-
-        cleanup:
-        flowHelper.deleteFlow(flow.id)
     }
 
+    @Tags(ISL_PROPS_DB_RESET)
     def "Unable to create a flow with protected path when there is not enough bandwidth"() {
         given: "Two active neighboring switches"
         def isls = topology.getIslsForActiveSwitches()
@@ -210,28 +196,15 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 "Couldn't find non overlapping protected path"
 
         cleanup:
-        !exc && flowHelper.deleteFlow(flow.id)
         isls.each { database.resetIslBandwidth(it) }
-        !exc && flowHelper.deleteFlow(flow.id)
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Unable to create #flowDescription flow with protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches without alt paths"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
-        List<PathNode> broughtDownPorts = []
-
-        switchPair.paths.sort { it.size() }[1..-1].unique {
-            it.first()
-        }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def switchPair = switchPairs.all().neighbouring().random()
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.src)[1..-1]
+        islHelper.breakIsls(broughtDownIsls)
 
         when: "Try to create a new flow with protected path"
         def flow = flowHelper.randomFlow(switchPair)
@@ -249,11 +222,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 " Couldn't find non overlapping protected path"
 
         cleanup:
-        !exc && flowHelper.deleteFlow(flow.id)
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
 
         where:
@@ -264,14 +233,11 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
 
     def "Able to swap main and protected paths manually"() {
         given: "A simple flow"
-        def tgSwitches = topology.getActiveTraffGens()*.getSwitchConnected()
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            def allowsTraffexam = it.src in tgSwitches && it.dst in tgSwitches
-            def usesUniqueSwitches = it.paths.collectMany { pathHelper.getInvolvedSwitches(it) }
-                    .unique { it.dpId }.size() > 3
-            return allowsTraffexam && usesUniqueSwitches
-        } ?: assumeTrue(false, "No suiting switches found")
-
+        def switchPair = switchPairs.all()
+                .nonNeighbouring()
+                .withTraffgensOnBothEnds()
+                .withPathHavingAtLeastNSwitches(4)
+                .random()
         def flow = flowHelper.randomFlow(switchPair, true)
         flow.allocateProtectedPath = false
         flowHelper.addFlow(flow)
@@ -286,15 +252,15 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         }*.cookie
         def srcSwProps = switchHelper.getCachedSwProps(switchPair.src.dpId)
         def amountOfserver42Rules = srcSwProps.server42FlowRtt ? 1 : 0
-        def amountOfFlowRulesSrcSw = srcSwProps.multiTable ? (3 + amountOfserver42Rules) : (2 + amountOfserver42Rules)
-        if (srcSwProps.multiTable && srcSwProps.server42FlowRtt && flow.source.vlanId) {
+        def amountOfFlowRulesSrcSw = 3 + amountOfserver42Rules
+        if (srcSwProps.server42FlowRtt && flow.source.vlanId) {
             amountOfFlowRulesSrcSw += 1
         }
         assert createdCookiesSrcSw.size() == amountOfFlowRulesSrcSw
         def dstSwProps = switchHelper.getCachedSwProps(switchPair.dst.dpId)
         def amountOfserver42RulesDstSw = dstSwProps.server42FlowRtt ? 1 : 0
-        def amountOfFlowRulesDstSw = dstSwProps.multiTable ? (3 + amountOfserver42RulesDstSw) : (2 + amountOfserver42RulesDstSw)
-        if (dstSwProps.multiTable && dstSwProps.server42FlowRtt && flow.destination.vlanId) {
+        def amountOfFlowRulesDstSw = 3 + amountOfserver42RulesDstSw
+        if (dstSwProps.server42FlowRtt && flow.destination.vlanId) {
             amountOfFlowRulesDstSw += 1
         }
         assert createdCookiesDstSw.size() == amountOfFlowRulesDstSw
@@ -321,11 +287,11 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
 
         and: "No rule discrepancies on every switch of the flow on the main path"
         def mainSwitches = pathHelper.getInvolvedSwitches(currentPath)
-        mainSwitches.each { verifySwitchRules(it.dpId) }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(mainSwitches*.getDpId()).isEmpty()
 
         and: "No rule discrepancies on every switch of the flow on the protected path)"
         def protectedSwitches = pathHelper.getInvolvedSwitches(currentProtectedPath)
-        protectedSwitches.each { verifySwitchRules(it.dpId) }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(protectedSwitches*.getDpId()).isEmpty()
 
         and: "The flow allows traffic(on the main path)"
         def traffExam = traffExamProvider.get()
@@ -369,36 +335,21 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         and: "Old meter is deleted on the src and dst switches"
         Wrappers.wait(WAIT_OFFSET) {
             [switchPair.src.dpId, switchPair.dst.dpId].each { switchId ->
-                def switchValidateInfo = northbound.validateSwitch(switchId)
+                def switchValidateInfo = switchHelper.validate(switchId)
                 if(switchValidateInfo.meters) {
                     assert switchValidateInfo.meters.proper.findAll({dto -> !isDefaultMeter(dto)}).size() == 1
-                    switchValidateInfo.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
                 }
-                assert switchValidateInfo.rules.proper.findAll { def cookie = new Cookie(it)
+                assert switchValidateInfo.rules.proper.findAll { def cookie = new Cookie(it.getCookie())
                     !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT }.size() ==
                         (switchId == switchPair.src.dpId) ? amountOfFlowRulesSrcSw + 1 : amountOfFlowRulesDstSw + 1
-                switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
+                switchValidateInfo.isAsExpected()
             }
         }
 
         and: "Transit switches store the correct info about rules and meters"
         def involvedTransitSwitches = (currentPath[1..-2].switchId + currentProtectedPath[1..-2].switchId).unique()
         Wrappers.wait(WAIT_OFFSET) {
-            involvedTransitSwitches.each { switchId ->
-                def amountOfRules = (switchId in currentProtectedPath*.switchId &&
-                        switchId in currentPath*.switchId) ? 4 : 2
-                if (northbound.getSwitch(switchId).description.contains("OF_12")) {
-                    def switchValidateInfo = northbound.validateSwitchRules(switchId)
-                    assert switchValidateInfo.properRules.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRules
-                    assert switchValidateInfo.missingRules.size() == 0
-                    assert switchValidateInfo.excessRules.size() == 0
-                } else {
-                    def switchValidateInfo = northbound.validateSwitch(switchId)
-                    assert switchValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfRules
-                    switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
-                    switchValidateInfo.verifyMeterSectionsAreEmpty()
-                }
-            }
+            assert switchHelper.validateAndCollectFoundDiscrepancies(involvedTransitSwitches).isEmpty()
         }
 
         and: "No rule discrepancies when doing flow validation"
@@ -409,11 +360,11 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
 
         and: "No rule discrepancies on every switch of the flow on the main path"
         def newMainSwitches = pathHelper.getInvolvedSwitches(newCurrentPath)
-        newMainSwitches.each { verifySwitchRules(it.dpId) }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(newMainSwitches*.getDpId()).isEmpty()
 
         and: "No rule discrepancies on every switch of the flow on the protected path)"
         def newProtectedSwitches = pathHelper.getInvolvedSwitches(newCurrentProtectedPath)
-        newProtectedSwitches.each { verifySwitchRules(it.dpId) }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(newProtectedSwitches*.getDpId()).isEmpty()
 
         and: "The flow allows traffic(on the protected path)"
         withPool {
@@ -423,9 +374,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 assert traffExam.waitExam(direction).hasTraffic()
             }
         }
-
-        cleanup:
-        flow && flowHelper.deleteFlow(flow.id)
     }
 
     def "Unable to perform the 'swap' request for a flow without protected path"() {
@@ -447,9 +395,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorDescription ==
                 "Could not swap paths: Flow $flow.id doesn't have protected path"
-
-        cleanup:
-        flow && flowHelper.deleteFlow(flow.id)
     }
 
     def "Unable to swap paths for a non-existent flow"() {
@@ -463,11 +408,10 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 "Could not swap paths: Flow $NON_EXISTENT_FLOW_ID not found"
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Unable to swap paths for an inactive flow"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "A flow with protected path"
         def flow = flowHelper.randomFlow(switchPair)
@@ -475,22 +419,9 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         flowHelper.addFlow(flow)
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
-        List<PathNode> broughtDownPorts = []
-        switchPair.paths.findAll {
-            it != pathHelper.convert(northbound.getFlowPath(flow.id)) &&
-                    it != pathHelper.convert(northbound.getFlowPath(flow.id).protectedPath)
-        }.unique {
-            it.first()
-        }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def flowPathIsl = pathHelper.getInvolvedIsls(pathHelper.convert(northbound.getFlowPath(flow.id).forwardPath))
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.src) - flowPathIsl
+        islHelper.breakIsls(broughtDownIsls)
 
         when: "Break ISL on a protected path (bring port down) for changing the flow state to DEGRADED"
         def flowPathInfo = northbound.getFlowPath(flow.id)
@@ -498,7 +429,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
         def protectedIsls = pathHelper.getInvolvedIsls(currentProtectedPath)
         def currentIsls = pathHelper.getInvolvedIsls(currentPath)
-        antiflap.portDown(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
+        islHelper.breakIsl(protectedIsls[0])
 
         then: "Flow state is changed to DEGRADED"
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.DEGRADED }
@@ -508,8 +439,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         }
 
         when: "Break ISL on the main path (bring port down) for changing the flow state to DOWN"
-        antiflap.portDown(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(currentIsls[0]).state == IslChangeType.FAILED }
+        islHelper.breakIsl(currentIsls[0])
 
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
@@ -533,8 +463,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 "Could not swap paths: Protected flow path $flow.id is not in ACTIVE state"
 
         when: "Restore ISL for the main path only"
-        antiflap.portUp(currentIsls[0].srcSwitch.dpId, currentIsls[0].srcPort)
-        antiflap.portUp(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
+        islHelper.restoreIsl(currentIsls[0])
 
         then: "Flow state is still DEGRADED"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -557,8 +486,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 "Could not swap paths: Protected flow path $flow.id is not in ACTIVE state"
 
         when: "Restore ISL for the protected path"
-        antiflap.portUp(protectedIsls[0].srcSwitch.dpId, protectedIsls[0].srcPort)
-        antiflap.portUp(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
+        islHelper.restoreIsl(protectedIsls[0])
 
         then: "Flow state is changed to UP"
         //it often fails in scope of the whole spec on the hardware env, that's why '* 1.5' is added
@@ -567,18 +495,13 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
-        flow && flowHelper.deleteFlow(flow.id)
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
     }
 
     def "System doesn't allow to enable the pinned flag on a protected flow"() {
         given: "A protected flow"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
-                assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
         def flow = flowHelper.randomFlow(switchPair)
         flow.allocateProtectedPath = true
         flowHelper.addFlow(flow)
@@ -592,9 +515,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not update flow"
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
-
-        cleanup: "Delete the flow"
-        flow && flowHelper.deleteFlow(flow.id)
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {

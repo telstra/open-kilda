@@ -38,9 +38,7 @@ RUN apt update \
         gcc \
         build-essential \
         automake \
-    && pip3 install setuptools==45.2.0 \
-    && pip3 install wheel==0.34.2 \
-    && pip3 install tox==3.14.4 \
+    && pip3 install setuptools==45.2.0 wheel==0.34.2 tox==3.14.4\
     && cd /root \
     && wget https://github.com/kilda/ovs/archive/refs/tags/${OVS_VERSION}.tar.gz \
     && tar -xvf ${OVS_VERSION}.tar.gz \

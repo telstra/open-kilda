@@ -100,7 +100,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
         }
 
         and: "System is able to successfully create a valid flow between regions"
-        def swPair = topologyHelper.switchPairs.find { pair ->
+        def swPair = switchPairs.all().getSwitchPairs().find { pair ->
             [pair.src, pair.dst].any { updatedRegions[it.dpId].contains(regionToBreak) }  &&
                     updatedRegions[pair.src.dpId] != updatedRegions[pair.dst.dpId]
         }
@@ -112,7 +112,6 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
 
         cleanup:
         nonRtlShouldFail?.join()
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         knockoutData.each { it.each { sw, data -> lockKeeper.reviveSwitch(sw, data) } }
         if(flOut) {
             lockKeeper.reviveFloodlight(regionToBreak)

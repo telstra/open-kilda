@@ -1,10 +1,12 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
 import spock.lang.Shared
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -63,11 +65,10 @@ class SwitchesSpec extends HealthCheckSpecification {
         new SwitchNotFoundExpectedError(NON_EXISTENT_SWITCH_ID).matches(error)
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Systems allows to get a flow that goes through a switch"() {
         given: "Two active not neighboring switches with two diverse paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "A protected flow"
         def protectedFlow = flowHelperV2.randomFlow(switchPair)
@@ -147,18 +148,8 @@ class SwitchesSpec extends HealthCheckSpecification {
         getSwitchFlowsResponse5*.id.sort() == [protectedFlow.flowId, singleFlow.flowId, defaultFlow.flowId].sort()
 
         when: "Bring down all ports on src switch to make flow DOWN"
-        def doPortDowns = true //helper var for cleanup
-        def portsToDown = topology.getBusyPortsForSwitch(switchPair.src)
-        withPool {
-            portsToDown.eachParallel { // https://github.com/telstra/open-kilda/issues/4014
-                antiflap.portDown(switchPair.src.dpId, it)
-            }
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == portsToDown.size() * 2
-        }
+        def switchIsls = topology.getRelatedIsls(switchPair.src)
+        islHelper.breakIsls(switchIsls)
 
         and: "Get all flows going through the src switch"
         Wrappers.wait(WAIT_OFFSET * 2) {
@@ -174,11 +165,7 @@ class SwitchesSpec extends HealthCheckSpecification {
         getSwitchFlowsResponse6*.id.sort() == [protectedFlow.flowId, singleFlow.flowId, defaultFlow.flowId].sort()
 
         cleanup: "Delete the flows"
-        [protectedFlow, singleFlow, defaultFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
-        doPortDowns && portsToDown.each { antiflap.portUp(switchPair.src.dpId, it) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(switchIsls)
         database.resetCosts(topology.isls)
     }
 
@@ -190,10 +177,10 @@ class SwitchesSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         new SwitchNotFoundExpectedError(NON_EXISTENT_SWITCH_ID).matches(exc)    }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     def "Systems allows to get all flows that goes through a DEACTIVATED switch"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().first() ?:
-                assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().random()
 
         and: "A simple flow"
         def simpleFlow = flowHelperV2.randomFlow(switchPair)
@@ -214,7 +201,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         switchFlowsResponseSrcSwitch*.id.sort() == [simpleFlow.flowId, singleFlow.flowId].sort()
 
         cleanup: "Revive the src switch and delete the flows"
-        [simpleFlow, singleFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
         blockData && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 
@@ -307,11 +293,11 @@ class SwitchesSpec extends HealthCheckSpecification {
                 [descr    : "synchronizing rules on",
                  operation: { getNorthbound().synchronizeSwitchRules(NON_EXISTENT_SWITCH_ID) }],
                 [descr    : "synchronizing",
-                 operation: { getNorthbound().synchronizeSwitch(NON_EXISTENT_SWITCH_ID, true) }],
+                 operation: { switchHelper.synchronize(NON_EXISTENT_SWITCH_ID) }],
                 [descr    : "validating rules on",
                  operation: { getNorthbound().validateSwitchRules(NON_EXISTENT_SWITCH_ID) }],
                 [descr    : "validating",
-                 operation: { getNorthbound().validateSwitch(NON_EXISTENT_SWITCH_ID) }]
+                 operation: { switchHelper.validate(NON_EXISTENT_SWITCH_ID) }]
         ]
     }
 

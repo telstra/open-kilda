@@ -22,7 +22,7 @@ class ContentionSpec extends BaseSpecification {
         when: "Create the same flow in parallel multiple times"
         def flowsAmount = 20
         def group = new DefaultPGroup(flowsAmount)
-        def flow = flowHelperV2.randomFlow(topologyHelper.notNeighboringSwitchPair)
+        def flow = flowHelperV2.randomFlow(switchPairs.all().nonNeighbouring().random())
         def tasks = (1..flowsAmount).collect {
             group.task { flowHelperV2.addFlow(flow) }
         }
@@ -39,9 +39,6 @@ class ContentionSpec extends BaseSpecification {
             size() == flowsAmount - 1
             it.each { assert it.statusCode == HttpStatus.CONFLICT }
         }
-
-        cleanup: "Remove flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/3934")
@@ -88,7 +85,7 @@ class ContentionSpec extends BaseSpecification {
 
     def "Reroute can be simultaneously performed with sync rules requests, removeExcess=#removeExcess"() {
         given: "A flow with reroute potential"
-        def switches = topologyHelper.getNotNeighboringSwitchPair()
+        def switches = switchPairs.all().nonNeighbouring().random()
         def flow = flowHelperV2.randomFlow(switches)
         flowHelperV2.addFlow(flow)
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
@@ -101,7 +98,7 @@ class ContentionSpec extends BaseSpecification {
         withPool {
             def rerouteTask = { northboundV2.rerouteFlow(flow.flowId) }
             rerouteTask.callAsync()
-            3.times { relatedSwitches.eachParallel { northbound.synchronizeSwitch(it.dpId, removeExcess) } }
+            3.times { relatedSwitches.eachParallel { switchHelper.synchronize(it.dpId, removeExcess) } }
         }
 
         then: "Flow is Up and path has changed"
@@ -112,11 +109,7 @@ class ContentionSpec extends BaseSpecification {
 
         and: "Related switches have no rule discrepancies"
         Wrappers.wait(WAIT_OFFSET) {
-            relatedSwitches.each {
-                def validation = northbound.validateSwitch(it.dpId)
-                validation.verifyRuleSectionsAreEmpty(["missing", "excess"])
-                validation.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
-            }
+            switchHelper.validateAndCollectFoundDiscrepancies(relatedSwitches*.getDpId()).isEmpty()
         }
         def switchesOk = true
 
@@ -124,9 +117,8 @@ class ContentionSpec extends BaseSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         cleanup: "remove flow and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        !switchesOk && relatedSwitches.each { northbound.synchronizeSwitch(it.dpId, true) }
+        !switchesOk && switchHelper.synchronizeAndCollectFixedDiscrepancies(relatedSwitches*.getDpId())
 
         where: removeExcess << [
                 false,

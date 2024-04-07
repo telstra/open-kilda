@@ -1,10 +1,12 @@
 package org.openkilda.functionaltests.spec.links
 
-import static groovyx.gpars.GParsPool.withPool
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
@@ -35,6 +37,10 @@ import java.util.concurrent.TimeUnit
 class LinkSpec extends HealthCheckSpecification {
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
+
+    def setupSpec() {
+        deleteAnyFlowsLeftoversIssue5480()
+    }
 
     @Tags([SMOKE_SWITCHES, SMOKE, LOCKKEEPER])
     def "Link (not BFD) status is properly changed when link connectivity is broken (not port down)"() {
@@ -129,10 +135,10 @@ class LinkSpec extends HealthCheckSpecification {
         database.resetCosts(topology.isls)
     }
 
-    @Tags(SMOKE)
+    @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "Get all flows (UP/DOWN) going through a particular link"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def switchPair = switchPairs.all().nonNeighbouring().random()
 
         and: "Forward flow from source switch to destination switch"
         def flow1 = flowHelperV2.randomFlow(switchPair).tap { it.pinned = true }
@@ -170,10 +176,8 @@ class LinkSpec extends HealthCheckSpecification {
         [flow3, flow4].each { assert !(it.flowId in linkFlows*.id) }
 
         when: "Bring all ports down on source switch that are involved in current and alternative paths"
-        topology.getBusyPortsForSwitch(switchPair.src).each { port ->
-            antiflap.portDown(switchPair.src.dpId, port)
-        }
-        def portsAreDown = true
+        def allSourceSwithIsls = topology.getRelatedIsls(switchPair.src)
+        islHelper.breakIsls(allSourceSwithIsls)
 
         then: "All flows go to 'Down' status"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
@@ -201,13 +205,7 @@ class LinkSpec extends HealthCheckSpecification {
         [flow3, flow4].each { assert !(it.flowId in linkFlows*.id) }
 
         when: "Bring ports up"
-        topology.getBusyPortsForSwitch(switchPair.src).each { port ->
-            antiflap.portUp(switchPair.src.dpId, port)
-        }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().every { it.state == DISCOVERED }
-        }
-        portsAreDown = false
+        islHelper.restoreIsls(allSourceSwithIsls)
 
         then: "All flows go to 'Up' status"
         Wrappers.wait(rerouteDelay + PATH_INSTALLATION_TIME) {
@@ -215,18 +213,11 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete all created flows and reset costs"
-        [flow1, flow2, flow3, flow4].each { it && flowHelperV2.deleteFlow(it.flowId) }
-        if (portsAreDown) {
-            topology.getBusyPortsForSwitch(switchPair.src).each { port ->
-                antiflap.portUp(switchPair.src.dpId, port)
-            }
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                northbound.getAllLinks().every { it.state == DISCOVERED }
-            }
-        }
+        islHelper.restoreIsls(allSourceSwithIsls)
         database.resetCosts(topology.isls)
     }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     def "ISL should immediately fail if the port went down while switch was disconnected"() {
         when: "A switch disconnects"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
@@ -358,15 +349,11 @@ class LinkSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.contains("ISL must NOT be in active state")
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Able to delete an inactive #islDescription link and re-discover it back afterwards"() {
         given: "An inactive link"
         assumeTrue(isl as boolean, "Unable to locate $islDescription ISL for this test")
-        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        def portIsDown = true
-        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getLink(isl).actualState == FAILED
-        }
+        islHelper.breakIsl(isl)
 
         when: "Try to delete the link"
         def response = northbound.deleteLink(islUtils.toLinkParameters(isl))
@@ -378,7 +365,6 @@ class LinkSpec extends HealthCheckSpecification {
 
         when: "Removed link becomes active again (port brought UP)"
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        portIsDown = false
 
         then: "The link is rediscovered in both directions"
         Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
@@ -388,14 +374,7 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        if (portIsDown) {
-            antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-            Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
-                def links = northbound.getAllLinks()
-                assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
-                assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
-            }
-        }
+        islHelper.restoreIsl(isl)
         database.resetCosts(topology.isls)
 
         where:
@@ -409,8 +388,7 @@ class LinkSpec extends HealthCheckSpecification {
 
     def "Reroute all flows going through a particular link"() {
         given: "Two active not neighboring switches with two possible paths at least"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { it.paths.size() > 1 } ?:
-                assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNPaths(2).random()
 
         and: "Make the first path more preferable than others by setting corresponding link props"
         switchPair.paths[1..-1].each { pathHelper.makePathMorePreferable(switchPair.paths.first(), it) }
@@ -446,7 +424,6 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete flows and delete link props"
-        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
@@ -676,8 +653,6 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-
         boolean isIslInInitialState = [isl, isl.reversed].every {
             islUtils.getIslInfo(links, it).get().maxBandwidth == initialMaxBandwidth
         }
@@ -719,20 +694,17 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Unable to delete inactive link with flowPath"() {
         given: "An inactive link with flow on it"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.pinned = true
         flowHelperV2.addFlow(flow)
         def flowPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
 
         def isl = pathHelper.getInvolvedIsls(flowPath)[0]
-        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getLink(isl).actualState == FAILED
-        }
+        islHelper.breakIsl(isl)
 
         when: "Try to delete the link"
         northbound.deleteLink(islUtils.toLinkParameters(isl))
@@ -744,19 +716,14 @@ class LinkSpec extends HealthCheckSpecification {
         exc.responseBodyAsString.contains("This ISL is busy by flow paths.")
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        !linkIsActive && antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsl(isl)
         database.resetCosts(topology.isls)
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "Able to delete an active link with flowPath if using force delete"() {
         given: "Two active neighboring switches and two possible paths at least"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "An active link with flow on it"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -793,17 +760,9 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         and: "Source and destination switches pass switch validation"
-        withPool {
-            [switchPair.src.dpId, switchPair.dst.dpId].eachParallel { SwitchId swId ->
-                with(northbound.validateSwitch(swId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId()).isEmpty()
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (linkIsDeleted) {
             antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
             antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
@@ -854,17 +813,10 @@ class LinkSpec extends HealthCheckSpecification {
 
         and: "The src/dst switches are valid"
         //https://github.com/telstra/open-kilda/issues/3906
-        if (!useMultitable) {
-            [isl.srcSwitch, isl.dstSwitch].each {
-                //Similar to https://github.com/telstra/open-kilda/issues/3906 but for Server42 ISL RTT rules.
-                if (!it.prop || (it.prop.server42IslRtt == "DISABLED")) {
-                    def validateInfo = northbound.validateSwitch(it.dpId).rules
-                    assert validateInfo.missing.empty
-                    assert validateInfo.excess.empty
-                    assert validateInfo.misconfigured.empty
-                }
-            }
+        def switchesNotAffectedBy3906 = [isl.srcSwitch, isl.dstSwitch].findAll {
+            !it.prop || (it.prop.server42IslRtt == "DISABLED")
         }
+        switchHelper.validateAndCollectFoundDiscrepancies(switchesNotAffectedBy3906*.getDpId()).isEmpty()
 
         cleanup:
         aSwitchForwardRuleIsDeleted && lockKeeper.addFlows([isl.aswitch])

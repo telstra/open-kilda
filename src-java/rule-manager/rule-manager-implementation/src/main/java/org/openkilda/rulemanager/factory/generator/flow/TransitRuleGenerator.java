@@ -40,7 +40,6 @@ public class TransitRuleGenerator extends NotIngressRuleGenerator {
     protected final FlowPath flowPath;
     protected final int inPort;
     protected final int outPort;
-    protected final boolean multiTable;
     protected final FlowTransitEncapsulation encapsulation;
 
     @Override
@@ -57,7 +56,7 @@ public class TransitRuleGenerator extends NotIngressRuleGenerator {
                 .switchId(sw.getSwitchId())
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(flowPath.getCookie())
-                .table(multiTable ? OfTable.TRANSIT : OfTable.INPUT)
+                .table(OfTable.TRANSIT)
                 .priority(Priority.FLOW_PRIORITY)
                 .match(makeTransitMatch(sw, inPort, encapsulation))
                 .instructions(Instructions.builder()

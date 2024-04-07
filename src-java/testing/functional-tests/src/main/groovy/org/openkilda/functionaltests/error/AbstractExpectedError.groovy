@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.error
 import org.openkilda.messaging.error.MessageError
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpStatusCodeException
 
 import java.util.regex.Pattern
 
@@ -18,7 +19,7 @@ abstract class AbstractExpectedError extends HttpClientErrorException{
         this.descriptionPattern = messagePattern
     }
 
-    boolean matches(HttpClientErrorException exception) {
+    boolean matches(HttpStatusCodeException exception) {
         MessageError messageError = exception.responseBodyAsString.to(MessageError)
         assert exception.statusCode == this.statusCode
         assert messageError.getErrorMessage() == this.message

@@ -137,16 +137,10 @@ class MflStatSpec extends HealthCheckSpecification {
                     .hasNonZeroValuesAfter(startTime)
         }
 
-        and: "Cleanup: Delete the flow"
+        cleanup: "Cleanup: Delete the flow"
         Wrappers.wait(WAIT_OFFSET + rerouteDelay) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
         } // make sure that flow is UP after switchUP event
-        Wrappers.retry(3, 2){
-            /*we expect that the flow is UP at this point,
-            but sometimes for no good reason the flow is IN_PROGRESS
-            then as a result system can't delete the flow*/
-            flowHelper.deleteFlow(flow.id)
-        }
     }
 
     //TODO: split these long tests into set of the smaller ones after https://github.com/telstra/open-kilda/pull/5256
@@ -256,12 +250,7 @@ class MflStatSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET + rerouteDelay) {
             assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
         } // make sure that flow is UP after switchUP event
-        Wrappers.retry(3, 2){
-            /*we expect that the flow is UP at this point,
-            but sometimes for no good reason the flow is IN_PROGRESS
-            then as a result system can't delete the flow*/
-            flowHelperV2.deleteFlow(flow.flowId)
-        }
+
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
@@ -376,12 +365,6 @@ class MflStatSpec extends HealthCheckSpecification {
         // make sure that flow is UP after switchUP event
         Wrappers.wait(WAIT_OFFSET + rerouteDelay) {
             assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
-        }
-        Wrappers.retry(3, 2){
-            /*we expect that the flow is UP at this point,
-            but sometimes for no good reason the flow is IN_PROGRESS
-            then as a result system can't delete the flow*/
-            flowHelperV2.deleteFlow(flow.flowId)
         }
     }
 

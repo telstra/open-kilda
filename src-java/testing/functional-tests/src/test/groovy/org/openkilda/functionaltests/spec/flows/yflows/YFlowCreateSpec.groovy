@@ -5,6 +5,7 @@ import org.openkilda.functionaltests.error.yflow.YFlowNotCreatedWithConflictExpe
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
@@ -51,9 +52,6 @@ class YFlowCreateSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT])
     def "Valid y-flow can be created#trafficDisclaimer, covered cases: #coveredCases"() {
         assumeTrue(swT != null, "These cases cannot be covered on given topology: $coveredCases")
-        if (coveredCases.toString().contains("qinq")) {
-            assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
-        }
 
         when: "Create a y-flow of certain configuration"
         def allLinksBefore = northbound.getAllLinks()
@@ -67,7 +65,9 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         northboundV2.getYFlow(yFlow.YFlowId).YPoint
 
         and: "2 sub-flows are created, visible via regular 'dump flows' API"
-        northboundV2.getAllFlows()*.flowId.sort() == yFlow.subFlows*.flowId.sort()
+        def regularFlowIds = northboundV2.getAllFlows()*.flowId
+        yFlow.subFlows.first().flowId in regularFlowIds
+        yFlow.subFlows.last().flowId in regularFlowIds
 
         and: "History has relevant entries about y-flow creation"
         Wrappers.wait(FLOW_CRUD_TIMEOUT) { flowHelper.getLatestHistoryEntry(yFlow.YFlowId).payload.last().action == CREATE_SUCCESS_Y }
@@ -100,11 +100,8 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches pass switch validation"
-        def involvedSwitches = pathHelper.getInvolvedYSwitches(paths)
-        involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        def involvedSwitches = pathHelper.getInvolvedYSwitches(paths)*.getDpId()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         and: "Bandwidth is properly consumed on shared and non-shared ISLs"
         def allLinksAfter = northbound.getAllLinks()
@@ -191,11 +188,8 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         and: "All involved switches pass switch validation"
         // https://github.com/telstra/open-kilda/issues/3411
-        northbound.synchronizeSwitch(yFlow.sharedEndpoint.switchId, true)
-        involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        switchHelper.synchronize(yFlow.sharedEndpoint.switchId)
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         cleanup:
         yFlow && !flowRemoved && yFlowHelper.deleteYFlow(yFlow.YFlowId)
@@ -409,7 +403,7 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
         }
     }
 
-    @Tags([TOPOLOGY_DEPENDENT])
+    @Tags([HARDWARE])
     def "System forbids to create a y-flow with conflict: shared endpoint port is inside a LAG group"() {
         given: "A LAG port"
         def swT = topologyHelper.switchTriplets.find { it.shared.features.contains(SwitchFeature.LAG) }
@@ -458,7 +452,7 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
         def slowestLinkSwitchIds = [slowestLinkOnTheWest.getSrcSwitchId(), slowestLinkOnTheWest.getDestSwitchId()]
         def switchTriplet = topologyHelper.getSwitchTriplets(true, false)
                 .find {
-                    def yPoints = yFlowHelper.findPotentialYPoints(it).collect {it.getDpId()}
+                    def yPoints = topologyHelper.findPotentialYPoints(it).collect {it.getDpId()}
                     slowestLinkSwitchIds.contains(it.shared.getDpId()) &&
                             !slowestLinkSwitchIds.intersect(yPoints).isEmpty()
                 }
@@ -550,12 +544,12 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
                 //se = shared endpoint, ep = subflow endpoint, yp = y-point
                 [name     : "se is wb and se!=yp",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
+                     def yPoints = topologyHelper.findPotentialYPoints(swT)
                      swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared
                  }],
                 [name     : "se is non-wb and se!=yp",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
+                     def yPoints = topologyHelper.findPotentialYPoints(swT)
                      !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared
                  }],
                 [name     : "ep on wb and different eps", //ep1 is not the same sw as ep2
@@ -564,37 +558,37 @@ source: switchId="${flow.sharedEndpoint.switchId}" port=${flow.sharedEndpoint.po
                  condition: { SwitchTriplet swT -> !swT.ep1.wb5164 && swT.ep1 != swT.ep2 }],
                 [name     : "se+yp on wb",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
+                     def yPoints = topologyHelper.findPotentialYPoints(swT)
                      swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared
                  }],
                 [name     : "se+yp on non-wb",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
+                     def yPoints = topologyHelper.findPotentialYPoints(swT)
                      !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared
                  }],
                 [name     : "yp on wb and yp!=se!=ep",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
+                     def yPoints = topologyHelper.findPotentialYPoints(swT)
                      swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared && yPoints[0] != swT.ep1 && yPoints[0] != swT.ep2
                  }],
                 [name     : "yp on non-wb and yp!=se!=ep",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
+                     def yPoints = topologyHelper.findPotentialYPoints(swT)
                      !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared && yPoints[0] != swT.ep1 && yPoints[0] != swT.ep2
                  }],
                 [name     : "ep+yp on wb",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
+                     def yPoints = topologyHelper.findPotentialYPoints(swT)
                      swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1 || yPoints[0] == swT.ep2)
                  }],
                 [name     : "ep+yp on non-wb",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
+                     def yPoints = topologyHelper.findPotentialYPoints(swT)
                      !swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1 || yPoints[0] == swT.ep2)
                  }],
                 [name     : "yp==se",
                  condition: { SwitchTriplet swT ->
-                     def yPoints = yFlowHelper.findPotentialYPoints(swT)
+                     def yPoints = topologyHelper.findPotentialYPoints(swT)
                      yPoints.size() == 1 && yPoints[0] == swT.shared && swT.shared != swT.ep1 && swT.shared != swT.ep2
                  }]
         ]

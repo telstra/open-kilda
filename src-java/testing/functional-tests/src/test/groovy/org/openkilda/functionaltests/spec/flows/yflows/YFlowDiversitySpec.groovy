@@ -160,15 +160,11 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to create y-flow with one switch sub flow and diverse with simple multiSwitch flow"() {
         given: "Two switches with two not overlapping paths at least"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.collect { pathHelper.getInvolvedIsls(it) }
-                    .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "Simple multiSwitch flow"
         def flow = flowHelperV2.randomFlow(switchPair.src, switchPair.dst, false)
@@ -199,7 +195,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
         cleanup:
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to get y-flow paths with correct overlapping segments stats"() {

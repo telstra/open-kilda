@@ -1,10 +1,11 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.*
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
@@ -14,10 +15,10 @@ import java.util.concurrent.TimeUnit
 
 class MultiRerouteSpec extends HealthCheckSpecification {
 
+    @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "Simultaneous reroute of multiple flows should not oversubscribe any ISLs"() {
         given: "Many flows on the same path, with alt paths available"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { it.paths.size() > 2 } ?:
-                assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(3).first()
         List<FlowRequestV2> flows = []
         def currentPath = switchPair.paths.first()
         switchPair.paths.findAll { it != currentPath }.each { pathHelper.makePathMorePreferable(currentPath, it) }
@@ -56,7 +57,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
             isls + isls*.reversed
         }.unique()
         def islToBreak = currentIsls.find { !notCurrentIsls.contains(it) }
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        islHelper.breakIsl(islToBreak)
         TimeUnit.SECONDS.sleep(rerouteDelay - 1)
 
         then: "Half of the flows are hosted on the preferable path"
@@ -88,13 +89,9 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         northbound.getAllLinks().each { assert it.availableBandwidth >= 0 }
 
         cleanup: "revert system to original state"
-        flows.each { it && flowHelperV2.deleteFlow(it.flowId) }
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        islHelper.restoreIsl(islToBreak)
         [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        wait(WAIT_OFFSET + discoveryInterval) {
-            assert northbound.getLink(islToBreak).state == IslChangeType.DISCOVERED
-        }
         database.resetCosts(topology.isls)
     }
 }

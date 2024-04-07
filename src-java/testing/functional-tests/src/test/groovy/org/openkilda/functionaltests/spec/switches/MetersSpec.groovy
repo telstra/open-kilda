@@ -1,11 +1,16 @@
 package org.openkilda.functionaltests.spec.switches
 
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.model.switches.Manufacturer.CENTEC
+import static org.openkilda.functionaltests.model.switches.Manufacturer.NOVIFLOW
+import static org.openkilda.functionaltests.model.switches.Manufacturer.OVS
+import static org.openkilda.functionaltests.model.switches.Manufacturer.WB5164
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule
 import static org.openkilda.model.cookie.Cookie.ARP_POST_INGRESS_COOKIE
@@ -21,7 +26,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.meter.MeterEntry
 import org.openkilda.messaging.info.rule.FlowEntry
@@ -49,6 +53,7 @@ class MetersSpec extends HealthCheckSpecification {
     static MIN_RATE_KBPS = 64
     static CENTEC_MIN_BURST = 1024 // Driven by the Centec specification
     static CENTEC_MAX_BURST = 32000 // Driven by the Centec specification
+    static final String NOT_OVS_REGEX = /^(?!.*\bOVS\b).*/
 
     @Value('${burst.coefficient}')
     double burstCoefficient
@@ -58,6 +63,7 @@ class MetersSpec extends HealthCheckSpecification {
     }
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Able to delete a meter from a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -77,15 +83,12 @@ class MetersSpec extends HealthCheckSpecification {
         !northbound.getAllMeters(sw.dpId).meterEntries.find { it.meterId == meterToDelete }
 
         when: "Delete the flow"
-        def flowDelete = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "No excessive meters are installed on the switch"
         Wrappers.wait(WAIT_OFFSET) {
             assert defaultMeters.meterEntries.sort() == northbound.getAllMeters(sw.dpId).meterEntries.sort()
         }
-
-        cleanup:
-        !flowDelete && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         switchType         | switches
@@ -96,6 +99,7 @@ class MetersSpec extends HealthCheckSpecification {
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Unable to delete a meter with invalid ID=#meterId on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -192,8 +196,8 @@ class MetersSpec extends HealthCheckSpecification {
                 assumeTrue(false, "Unable to find Noviflow Wb5164 switches in topology"))
     }
 
-    @Tags([TOPOLOGY_DEPENDENT])
-    @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /ignore_bandwidth=false/)
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Meters are created/deleted when creating/deleting a single-switch flow with ignore_bandwidth=#ignoreBandwidth \
 on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
@@ -222,17 +226,13 @@ on a #switchType switch"() {
         newMeterEntries*.rate.each { verifyRateSizeOnWb5164(it, flow.maximumBandwidth) }
 
         and: "Switch validation shows no discrepancies in meters"
-        def metersValidation = northbound.validateSwitch(sw.dpId).meters
-        metersValidation.proper.size() == 2 + sw.defaultMeters.size()
-        metersValidation.excess.empty
-        metersValidation.missing.empty
-        metersValidation.misconfigured.empty
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
 
         and: "Flow validation shows no discrepancies in meters"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "New meters should disappear from the switch"
         Wrappers.wait(WAIT_OFFSET) {
@@ -240,9 +240,6 @@ on a #switchType switch"() {
             newestMeters.meterEntries.containsAll(defaultMeters.meterEntries)
             newestMeters.meterEntries.size() == defaultMeters.meterEntries.size()
         }
-
-        cleanup:
-        !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         switchType         | switches              | ignoreBandwidth
@@ -257,6 +254,7 @@ on a #switchType switch"() {
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Meters are not created when creating a single-switch flow with maximum_bandwidth=0 on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -278,9 +276,6 @@ on a #switchType switch"() {
         def newMeterEntries = newMeters.meterEntries.findAll { !defaultMeters.meterEntries.contains(it) }
         newMeterEntries.empty
 
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-
         where:
         switchType         | switches
         "Centec"           | getCentecSwitches()
@@ -290,12 +285,14 @@ on a #switchType switch"() {
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Source/destination switches have meters only in flow ingress rule and intermediate switches don't have \
-meters in flow rules at all (#data.flowType flow)"() {
-        assumeTrue(data.switchPair != null, "Unable to find required switch pair in topology")
+meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
+        def switchPair = switchPairs.all().nonNeighbouring()
+                                .withSwitchesManufacturedBy(srcSwitch, dstSwitch).random()
 
         when: "Create a flow between given switches"
-        def flow = flowHelperV2.randomFlow(data.switchPair)
+        def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
         then: "The source and destination switches have only one meter in the flow's ingress rule"
@@ -308,40 +305,29 @@ meters in flow rules at all (#data.flowType flow)"() {
         def srcSwitchRules = northbound.getSwitchRules(flow.source.switchId).flowEntries.findAll { !Cookie.isDefaultRule(it.cookie) }
         def dstSwitchRules = northbound.getSwitchRules(flow.destination.switchId).flowEntries.findAll { !Cookie.isDefaultRule(it.cookie) }
 
-        if (switchHelper.getCachedSwProps(flow.source.switchId).multiTable) {
-            def srcSwIngressFlowRules = srcSwitchRules.findAll { it.match.inPort == flow.source.portNumber.toString() }
-            assert srcSwIngressFlowRules.size() == 2 //shared + simple ingress
-            def srcSwIngressSharedRule = srcSwIngressFlowRules.find {
-                new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
-            }
-            def srcSwIngressNonSharedRule = srcSwIngressFlowRules.find {
-                new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW
-            }
-            assert srcSwIngressSharedRule.match.vlanVid == flow.source.vlanId.toString()
-            assert !srcSwIngressSharedRule.instructions.goToMeter
-            assert srcSwFlowMeters[0].meterId == srcSwIngressNonSharedRule.instructions.goToMeter
-        } else {
-            def srcSwFlowIngressRule = filterRules(srcSwitchRules, flow.source.portNumber, flow.source.vlanId, null)[0]
-            assert srcSwFlowMeters[0].meterId == srcSwFlowIngressRule.instructions.goToMeter
+        def srcSwIngressFlowRules = srcSwitchRules.findAll { it.match.inPort == flow.source.portNumber.toString() }
+        assert srcSwIngressFlowRules.size() == 2 //shared + simple ingress
+        def srcSwIngressSharedRule = srcSwIngressFlowRules.find {
+            new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
         }
+        def srcSwIngressNonSharedRule = srcSwIngressFlowRules.find {
+            new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW
+        }
+        assert srcSwIngressSharedRule.match.vlanVid == flow.source.vlanId.toString()
+        assert !srcSwIngressSharedRule.instructions.goToMeter
+        assert srcSwFlowMeters[0].meterId == srcSwIngressNonSharedRule.instructions.goToMeter
 
-        if (switchHelper.getCachedSwProps(flow.destination.switchId).multiTable) {
-            def dstSwIngressFlowRules = dstSwitchRules.findAll { it.match.inPort == flow.destination.portNumber.toString() }
-            assert dstSwIngressFlowRules.size() == 2 //shared + simple ingress
-            def dstSwIngressSharedRule = dstSwIngressFlowRules.find {
-                new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
-            }
-            def dstSwIngressNonSharedRule = dstSwIngressFlowRules.find {
-                new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW
-            }
-            assert dstSwIngressSharedRule.match.vlanVid == flow.destination.vlanId.toString()
-            assert !dstSwIngressSharedRule.instructions.goToMeter
-            assert dstSwFlowMeters[0].meterId == dstSwIngressNonSharedRule.instructions.goToMeter
-        } else {
-            def dstSwFlowIngressRule = filterRules(dstSwitchRules, flow.destination.portNumber, flow.destination.vlanId,
-                    null)[0]
-            assert dstSwFlowMeters[0].meterId == dstSwFlowIngressRule.instructions.goToMeter
+        def dstSwIngressFlowRules = dstSwitchRules.findAll { it.match.inPort == flow.destination.portNumber.toString() }
+        assert dstSwIngressFlowRules.size() == 2 //shared + simple ingress
+        def dstSwIngressSharedRule = dstSwIngressFlowRules.find {
+            new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
         }
+        def dstSwIngressNonSharedRule = dstSwIngressFlowRules.find {
+            new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW
+        }
+        assert dstSwIngressSharedRule.match.vlanVid == flow.destination.vlanId.toString()
+        assert !dstSwIngressSharedRule.instructions.goToMeter
+        assert dstSwFlowMeters[0].meterId == dstSwIngressNonSharedRule.instructions.goToMeter
 
         and: "The source and destination switches have no meters in the flow's egress rule"
         def srcSwFlowEgressRule = filterRules(srcSwitchRules, null, null, flow.source.portNumber)[0]
@@ -357,49 +343,17 @@ meters in flow rules at all (#data.flowType flow)"() {
             flowRules.each { assert !it.instructions.goToMeter }
         }
 
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-
         where:
-        data << [
-                [
-                        flowType  : "Centec-Centec",
-                        switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            it.src.centec && it.dst.centec && hasOf13Path(it)
-                        }
-                ],
-                [
-                        flowType  : "Noviflow-Noviflow",
-                        switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            it.src.noviflow && it.src.ofVersion == "OF_13" &&
-                                    it.dst.noviflow && it.dst.ofVersion == "OF_13" && hasOf13Path(it)
-                        }
-                ],
-                //TODO(rtretiak): unlock above iterations by introducing a more clever cost manipulation
-                [
-                        flowType  : "Centec-Noviflow",
-                        switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            ((it.src.centec && it.dst.noviflow && it.dst.ofVersion == "OF_13") ||
-                                    (it.src.noviflow && it.src.ofVersion == "OF_13" && it.dst.centec)) &&
-                                    hasOf13Path(it)
-                        }
-                ],
-                [
-                        flowType  : "Noviflow_Wb5164-Noviflow_Wb5164",
-                        switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            it.src.wb5164 && it.dst.wb5164 && hasOf13Path(it)
-                        }
-                ],
-                [
-                        flowType  : "OVS-OVS",
-                        switchPair: getTopologyHelper().getAllNotNeighboringSwitchPairs().find {
-                            it.src.virtual && it.dst.virtual && hasOf13Path(it)
-                        }
-                ]
-        ]
+        srcSwitch | dstSwitch
+        CENTEC   | CENTEC
+        NOVIFLOW | NOVIFLOW
+        CENTEC   | NOVIFLOW
+        WB5164   | WB5164
+        OVS      | OVS
     }
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Meter burst size is correctly set on #data.switchType switches for #flowRate flow rate"() {
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible switch"
         def switches = data.switches
@@ -428,17 +382,10 @@ meters in flow rules at all (#data.flowType flow)"() {
         newMeters*.burstSize.each { assert it == switchHelper.getExpectedBurst(sw.dpId, flowRate) }
 
         and: "Switch validation shows no discrepancies in meters"
-        def metersValidation = northbound.validateSwitch(sw.dpId).meters
-        metersValidation.proper.size() == 2 + sw.defaultMeters.size()
-        metersValidation.excess.empty
-        metersValidation.missing.empty
-        metersValidation.misconfigured.empty
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
 
         and: "Flow validation shows no discrepancies in meters"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         [flowRate, data] << [
@@ -485,17 +432,10 @@ meters in flow rules at all (#data.flowType flow)"() {
         newMeters*.burstSize.every { it == expectedBurstSize }
 
         and: "Switch validation shows no discrepancies in meters"
-        def metersValidation = northbound.validateSwitch(sw.dpId).meters
-        metersValidation.proper.size() == 2 + sw.defaultMeters.size()
-        metersValidation.excess.empty
-        metersValidation.missing.empty
-        metersValidation.misconfigured.empty
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
 
         and: "Flow validation shows no discrepancies in meters"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         flowRate << [
@@ -544,23 +484,17 @@ meters in flow rules at all (#data.flowType flow)"() {
         }
 
         and: "Switch validation shows no discrepancies in meters"
-        def metersValidation = northbound.validateSwitch(sw.dpId).meters
-        metersValidation.proper.size() == 2 + sw.defaultMeters.size()
-        metersValidation.excess.empty
-        metersValidation.missing.empty
-        metersValidation.misconfigured.empty
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
 
         and: "Flow validation shows no discrepancies in meters"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         flowRate << [150, 1000, 1024, 5120, 10240, 2480, 960000]
     }
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "System allows to reset meter values to defaults without reinstalling rules for #data.description flow"() {
         given: "Switches combination (#data.description)"
         assumeTrue(data.switches.size() > 1, "Desired switch combination is not available in current topology")
@@ -629,9 +563,6 @@ meters in flow rules at all (#data.flowType flow)"() {
                     .ignoring("flowEntries.packetCount"))
         }
 
-        cleanup: "Delete flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-
         where:
         data << [
                 [
@@ -676,9 +607,6 @@ meters in flow rules at all (#data.flowType flow)"() {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorMessage == "Can't update meter: Flow '$flow.flowId' is unmetered"
-
-        cleanup: "Delete the created flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Memoized
@@ -723,15 +651,6 @@ meters in flow rules at all (#data.flowType flow)"() {
     def defaultMeters = { it.meterId <= MAX_SYSTEM_RULE_METER_ID }
 
     def flowMeters = { it.meterId > MAX_SYSTEM_RULE_METER_ID }
-
-    boolean hasOf13Path(SwitchPair pair) {
-        def possibleDefaultPaths = pair.paths.findAll {
-            it.size() == pair.paths.min { it.size() }.size()
-        }
-        !possibleDefaultPaths.find { path ->
-            path[1..-2].every { it.switchId.description.contains("OF_12") }
-        }
-    }
 
     void verifyBurstSizeOnWb5164(Long expected, Long actual) {
         //...ValidationServiceImpl.E_SWITCH_METER_RATE_EQUALS_DELTA_COEFFICIENT = 0.01
