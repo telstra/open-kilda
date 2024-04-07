@@ -86,7 +86,7 @@ public abstract class ZkClient implements Watcher {
                 .onRetry(e -> {
                     String message = format("Failed to init zk client, retrying... Attempt: %d", e.getAttemptCount());
                     if (e.getAttemptCount() <= 10) {
-                        log.info(message, e.getLastException());
+                        log.info(message, e.getLastException().getMessage());
                     } else if (e.getAttemptCount() <= 20) {
                         log.warn(message, e.getLastException());
                     } else {
