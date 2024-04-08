@@ -15,7 +15,7 @@
 
 package org.openkilda.rulemanager.factory.generator.service.isl;
 
-import static org.openkilda.rulemanager.Constants.Priority.ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE;
+import static org.openkilda.rulemanager.Constants.Priority.ISL_EGRESS_VLAN_RULE_PRIORITY;
 
 import org.openkilda.model.Switch;
 import org.openkilda.model.cookie.CookieBase.CookieType;
@@ -54,7 +54,7 @@ public class EgressIslVlanRuleGenerator implements RuleGenerator {
                 .ofVersion(OfVersion.of(sw.getOfVersion()))
                 .cookie(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES, islPort))
                 .table(OfTable.INPUT)
-                .priority(ISL_EGRESS_VLAN_RULE_PRIORITY_MULTITABLE)
+                .priority(ISL_EGRESS_VLAN_RULE_PRIORITY)
                 .match(match)
                 .instructions(instructions)
                 .build());

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.functionaltests.model.cleanup.CleanupAfter
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.messaging.payload.history.FlowHistoryEntry
 import org.openkilda.model.SwitchId
@@ -9,7 +11,6 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
-import static org.openkilda.testing.Constants.SINGLE_TABLE_ID
 import static org.openkilda.testing.Constants.TRANSIT_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
@@ -48,6 +49,10 @@ class FlowHelper {
     NorthboundService northbound
     @Autowired
     Database db
+    @Autowired
+    FlowHelperV2 flowHelperV2
+    @Autowired
+    CleanupManager cleanupManager
 
     def random = new Random()
     def faker = new Faker()
@@ -132,10 +137,22 @@ class FlowHelper {
      */
     FlowPayload addFlow(FlowPayload flow) {
         log.debug("Adding flow '${flow.id}'")
+        def flowId = flow.getId()
+        cleanupManager.addAction({flowHelperV2.safeDeleteFlow(flowId)}, CleanupAfter.TEST)
         def response = northbound.addFlow(flow)
         Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         return response
     }
+
+    /**
+     * Sends flow create request but doesn't wait for flow to go up.
+     */
+    FlowPayload attemptToAddFlow(FlowCreatePayload flow) {
+        def flowId = flow.getId()
+        cleanupManager.addAction({flowHelperV2.safeDeleteFlow(flowId)}, CleanupAfter.TEST)
+        return northbound.addFlow(flow)
+    }
+
 
     List<Integer> "get ports that flow uses on switch from path" (String flowId, SwitchId switchId) {
         def response = northbound.getFlowPath(flowId)
@@ -250,11 +267,6 @@ class FlowHelper {
 
         def commonSwitches = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
         def commonTransitSwitches = mainFlowTransitSwitches*.switchId.intersect(protectedFlowTransitSwitches*.switchId)
-        def multiTableIsEnabled = (mainFlowPath + protectedFlowPath).unique {
-            it.switchId
-        }*.switchId.collectEntries { swId ->
-            [swId, northbound.getSwitchProperties(swId).multiTable]
-        }
 
         def flowInfo = db.getFlow(flowId)
         def mainForwardCookie = flowInfo.forwardPath.cookie.value
@@ -263,36 +275,34 @@ class FlowHelper {
         def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
 
         def rulesOnSrcSwitch = northbound.getSwitchRules(srcMainSwitch.switchId).flowEntries
-        def multiTableStateSrcSw = multiTableIsEnabled[srcMainSwitch.switchId]
         assert rulesOnSrcSwitch.find {
             it.cookie == mainForwardCookie
-        }.tableId == (multiTableStateSrcSw ? INGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID)
+        }.tableId == INGRESS_RULE_MULTI_TABLE_ID
         assert rulesOnSrcSwitch.find {
             it.cookie == mainReverseCookie
-        }.tableId == (multiTableStateSrcSw ? EGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID)
+        }.tableId == EGRESS_RULE_MULTI_TABLE_ID
         assert rulesOnSrcSwitch.find {
             it.cookie == protectedReverseCookie
-        }.tableId == (multiTableStateSrcSw ? EGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID)
+        }.tableId == EGRESS_RULE_MULTI_TABLE_ID
         assert !rulesOnSrcSwitch*.cookie.contains(protectedForwardCookie)
 
         def rulesOnDstSwitch = northbound.getSwitchRules(dstMainSwitch.switchId).flowEntries
-        def multiTableStateDstSw = multiTableIsEnabled[dstMainSwitch.switchId]
         assert rulesOnDstSwitch.find {
             it.cookie == mainForwardCookie
-        }.tableId == (multiTableStateDstSw ? EGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID)
+        }.tableId == EGRESS_RULE_MULTI_TABLE_ID
         assert rulesOnDstSwitch.find {
             it.cookie == mainReverseCookie
-        }.tableId == (multiTableStateDstSw ? INGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID)
+        }.tableId == INGRESS_RULE_MULTI_TABLE_ID
         assert rulesOnDstSwitch.find {
             it.cookie == protectedForwardCookie
-        }.tableId == (multiTableStateDstSw ? EGRESS_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID)
+        }.tableId == EGRESS_RULE_MULTI_TABLE_ID
         assert !rulesOnDstSwitch*.cookie.contains(protectedReverseCookie)
 
         //this loop checks rules on common nodes(except src and dst switches)
         withPool {
             commonTransitSwitches.eachParallel { sw ->
                 def rules = northbound.getSwitchRules(sw).flowEntries
-                def transitTableId = multiTableIsEnabled[sw] ? TRANSIT_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID
+                def transitTableId = TRANSIT_RULE_MULTI_TABLE_ID
                 assert rules.find { it.cookie == mainForwardCookie }.tableId == transitTableId
                 assert rules.find { it.cookie == mainReverseCookie }.tableId == transitTableId
                 assert rules.find { it.cookie == protectedForwardCookie }.tableId == transitTableId
@@ -304,7 +314,7 @@ class FlowHelper {
         withPool {
             protectedFlowTransitSwitches.findAll { !commonSwitches.contains(it.switchId) }.eachParallel { node ->
                 def rules = northbound.getSwitchRules(node.switchId).flowEntries
-                def transitTableId = multiTableIsEnabled[node.switchId] ? TRANSIT_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID
+                def transitTableId = TRANSIT_RULE_MULTI_TABLE_ID
                 assert rules.find { it.cookie == protectedForwardCookie }.tableId == transitTableId
                 assert rules.find { it.cookie == protectedReverseCookie }.tableId == transitTableId
             }
@@ -314,7 +324,7 @@ class FlowHelper {
         withPool {
             mainFlowTransitSwitches.findAll { !commonSwitches.contains(it.switchId) }.eachParallel { node ->
                 def rules = northbound.getSwitchRules(node.switchId).flowEntries
-                def transitTableId = multiTableIsEnabled[node.switchId] ? TRANSIT_RULE_MULTI_TABLE_ID : SINGLE_TABLE_ID
+                def transitTableId = TRANSIT_RULE_MULTI_TABLE_ID
                 assert rules.find { it.cookie == mainForwardCookie }.tableId == transitTableId
                 assert rules.find { it.cookie == mainReverseCookie }.tableId == transitTableId
             }

@@ -30,15 +30,11 @@ import org.openkilda.model.SwitchProperties;
 import org.openkilda.rulemanager.RuleManagerConfig;
 import org.openkilda.rulemanager.factory.generator.flow.EgressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.EgressYRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.flow.EmptyGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.IngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.IngressYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.InputArpRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.InputLldpRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.flow.MultiTableIngressYRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.flow.MultiTableServer42IngressRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.flow.SingleTableIngressYRuleGenerator;
-import org.openkilda.rulemanager.factory.generator.flow.SingleTableServer42IngressRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.Server42IngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.TransitRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.TransitYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.VlanStatsRuleGenerator;
@@ -75,23 +71,13 @@ public class FlowRulesGeneratorFactory {
     public RuleGenerator getIngressRuleGenerator(
             FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
             Set<FlowSideAdapter> overlappingIngressAdapters) {
-        boolean multiTable = isPathSrcMultiTable();
-        if (multiTable) {
-            return MultiTableIngressRuleGenerator.builder()
-                    .config(config)
-                    .flowPath(flowPath)
-                    .flow(flow)
-                    .encapsulation(encapsulation)
-                    .overlappingIngressAdapters(overlappingIngressAdapters)
-                    .build();
-        } else {
-            return SingleTableIngressRuleGenerator.builder()
-                    .config(config)
-                    .flowPath(flowPath)
-                    .flow(flow)
-                    .encapsulation(encapsulation)
-                    .build();
-        }
+        return IngressRuleGenerator.builder()
+                .config(config)
+                .flowPath(flowPath)
+                .flow(flow)
+                .encapsulation(encapsulation)
+                .overlappingIngressAdapters(overlappingIngressAdapters)
+                .build();
     }
 
     /**
@@ -100,41 +86,24 @@ public class FlowRulesGeneratorFactory {
     public RuleGenerator getServer42IngressRuleGenerator(
             FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
             SwitchProperties switchProperties, Set<FlowSideAdapter> overlappingIngressAdapters) {
-        boolean multiTable = isPathSrcMultiTable();
-        if (multiTable) {
-            return MultiTableServer42IngressRuleGenerator.builder()
-                    .config(config)
-                    .flowPath(flowPath)
-                    .flow(flow)
-                    .encapsulation(encapsulation)
-                    .overlappingIngressAdapters(overlappingIngressAdapters)
-                    .switchProperties(switchProperties)
-                    .build();
-        } else {
-            return SingleTableServer42IngressRuleGenerator.builder()
-                    .config(config)
-                    .flowPath(flowPath)
-                    .flow(flow)
-                    .encapsulation(encapsulation)
-                    .switchProperties(switchProperties)
-                    .build();
-        }
+        return Server42IngressRuleGenerator.builder()
+                .config(config)
+                .flowPath(flowPath)
+                .flow(flow)
+                .encapsulation(encapsulation)
+                .overlappingIngressAdapters(overlappingIngressAdapters)
+                .switchProperties(switchProperties)
+                .build();
     }
 
     /**
      * Get vlan stats rule generator.
      */
     public RuleGenerator getVlanStatsRuleGenerator(FlowPath flowPath, Flow flow) {
-        boolean multiTable = isPathSrcMultiTable();
-        if (multiTable) {
-            return VlanStatsRuleGenerator.builder()
-                    .flow(flow)
-                    .flowPath(flowPath)
-                    .build();
-        } else {
-            // Vlan stats feature is not supported in single table mode.
-            return new EmptyGenerator();
-        }
+        return VlanStatsRuleGenerator.builder()
+                .flow(flow)
+                .flowPath(flowPath)
+                .build();
     }
 
     /**
@@ -144,29 +113,16 @@ public class FlowRulesGeneratorFactory {
             FlowPath flowPath, Flow flow, FlowTransitEncapsulation encapsulation,
             Set<FlowSideAdapter> overlappingIngressAdapters, MeterId sharedMeterId, UUID externalMeterCommandUuid,
             boolean generateMeterCommand) {
-        boolean multiTable = isPathSrcMultiTable();
-        if (multiTable) {
-            return MultiTableIngressYRuleGenerator.builder()
-                    .config(config)
-                    .flowPath(flowPath)
-                    .flow(flow)
-                    .encapsulation(encapsulation)
-                    .overlappingIngressAdapters(overlappingIngressAdapters)
-                    .sharedMeterId(sharedMeterId)
-                    .externalMeterCommandUuid(externalMeterCommandUuid)
-                    .generateMeterCommand(generateMeterCommand)
-                    .build();
-        } else {
-            return SingleTableIngressYRuleGenerator.builder()
-                    .config(config)
-                    .flowPath(flowPath)
-                    .flow(flow)
-                    .encapsulation(encapsulation)
-                    .sharedMeterId(sharedMeterId)
-                    .externalMeterCommandUuid(externalMeterCommandUuid)
-                    .generateMeterCommand(generateMeterCommand)
-                    .build();
-        }
+        return IngressYRuleGenerator.builder()
+                .config(config)
+                .flowPath(flowPath)
+                .flow(flow)
+                .encapsulation(encapsulation)
+                .overlappingIngressAdapters(overlappingIngressAdapters)
+                .sharedMeterId(sharedMeterId)
+                .externalMeterCommandUuid(externalMeterCommandUuid)
+                .generateMeterCommand(generateMeterCommand)
+                .build();
     }
 
     /**
@@ -176,7 +132,6 @@ public class FlowRulesGeneratorFactory {
         return FlowLoopIngressRuleGenerator.builder()
                 .flowPath(flowPath)
                 .flow(flow)
-                .multiTable(isPathSrcMultiTable())
                 .build();
     }
 
@@ -188,7 +143,6 @@ public class FlowRulesGeneratorFactory {
         return IngressMirrorRuleGenerator.builder()
                 .flowPath(flowPath)
                 .flow(flow)
-                .multiTable(isPathSrcMultiTable())
                 .config(config)
                 .encapsulation(encapsulation)
                 .sharedMeterCommandUuid(sharedMeterCommandUuid)
@@ -202,7 +156,6 @@ public class FlowRulesGeneratorFactory {
             FlowPath flowPath, Flow flow, Set<FlowSideAdapter> overlappingIngressAdapters) {
         return InputLldpRuleGenerator.builder()
                 .ingressEndpoint(FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint())
-                .multiTable(isPathSrcMultiTable())
                 .overlappingIngressAdapters(overlappingIngressAdapters)
                 .build();
     }
@@ -214,7 +167,6 @@ public class FlowRulesGeneratorFactory {
             FlowPath flowPath, Flow flow, Set<FlowSideAdapter> overlappingIngressAdapters) {
         return InputArpRuleGenerator.builder()
                 .ingressEndpoint(FlowSideAdapter.makeIngressAdapter(flow, flowPath).getEndpoint())
-                .multiTable(isPathSrcMultiTable())
                 .overlappingIngressAdapters(overlappingIngressAdapters)
                 .build();
     }
@@ -283,7 +235,6 @@ public class FlowRulesGeneratorFactory {
                 .encapsulation(encapsulation)
                 .inPort(firstSegment.getDestPort())
                 .outPort(secondSegment.getSrcPort())
-                .multiTable(true)
                 .build();
     }
 
@@ -310,7 +261,6 @@ public class FlowRulesGeneratorFactory {
                 .encapsulation(encapsulation)
                 .inPort(firstSegment.getDestPort())
                 .outPort(secondSegment.getSrcPort())
-                .multiTable(true)
                 .config(config)
                 .sharedMeterId(sharedMeterId)
                 .externalMeterCommandUuid(externalMeterCommandUuid)
@@ -443,15 +393,9 @@ public class FlowRulesGeneratorFactory {
         return FlowLoopTransitRuleGenerator.builder()
                 .flowPath(flowPath)
                 .flow(flow)
-                .multiTable(true)
                 .inPort(inPort)
                 .encapsulation(encapsulation)
                 .build();
-    }
-
-    private boolean isPathSrcMultiTable() {
-        // TODO remove
-        return true;
     }
 
     private void checkEgressRulePreRequirements(FlowPath flowPath, Flow flow, String ruleName) {

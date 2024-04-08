@@ -1,5 +1,173 @@
 # Changelog
 
+## v1.156.0 (26/02/2024)
+
+
+
+### Improvements:
+-  [#5584](https://github.com/telstra/open-kilda/pull/5584) Remove "draft" tag from HA-flow API in swagger. (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))
+-  [#5586](https://github.com/telstra/open-kilda/pull/5586) [TEST]: Flaky tests: Connected devices [**tests**]
+-  [#5581](https://github.com/telstra/open-kilda/pull/5581) [TEST]: Improvement: Fixing occurred discrepancies after refactoring [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.155.0...v1.156.0).
+
+---
+
+## v1.155.0 (14/02/2024)
+
+### Features:
+-  [#5000](https://github.com/telstra/open-kilda/pull/5000) Added design for long mirror with join traffic [**docs**]
+-  [#4919](https://github.com/telstra/open-kilda/pull/4919) Design of traffic mix in feature (Issue: [#4924](https://github.com/telstra/open-kilda/issues/4924)) [**docs**]
+
+
+### Improvements:
+-  [#5572](https://github.com/telstra/open-kilda/pull/5572) 5530 Fix css style warning
+-  [#5578](https://github.com/telstra/open-kilda/pull/5578) 5575: [TEST]: Fix retry mechanism in tests (Issue: [#5575](https://github.com/telstra/open-kilda/issues/5575)) [**tests**]
+-  [#5561](https://github.com/telstra/open-kilda/pull/5561) [TEST]: HA-Flow: Refactoring [**tests**]
+-  [#5114](https://github.com/telstra/open-kilda/pull/5114) Added OpenKilda contribution workflow description [**docs**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.154.0...v1.155.0).
+
+---
+
+## v1.154.0 (08/02/2024)
+
+### Bug Fixes:
+-  [#5552](https://github.com/telstra/open-kilda/pull/5552) 3566 Add validation for remotelog server ip (Issue: [#3566](https://github.com/telstra/open-kilda/issues/3566))
+-  [#5529](https://github.com/telstra/open-kilda/pull/5529) Allow BAD_OUT_PORT from OF errors
+-  [#5564](https://github.com/telstra/open-kilda/pull/5564) disable PingTopologyTests and StatsTopologyTests [**tests**]
+
+### Improvements:
+-  [#5548](https://github.com/telstra/open-kilda/pull/5548) 5390: [TEST]: Replace switch validation with switch synchronization where possible [**tests**]
+-  [#5558](https://github.com/telstra/open-kilda/pull/5558) [TEST]: Refactoring: Server42 [**tests**]
+-  [#5565](https://github.com/telstra/open-kilda/pull/5565) 5551 Add code check style guide
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.153.0...v1.154.0)
+
+---
+
+## v1.153.0 (29/01/2024)
+
+### Improvements:
+-  [#5544](https://github.com/telstra/open-kilda/pull/5544) Avoid non-existing directory warnings on WFM container creation
+-  [#5546](https://github.com/telstra/open-kilda/pull/5546) 5390: [TEST]: Fix flaky protected path test [**tests**]
+
+### Other changes:
+-  [#5540](https://github.com/telstra/open-kilda/pull/5540) 5521: [TEST] Update History validation test (Issue: [#5221](https://github.com/telstra/open-kilda/issues/5221)) [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.152.0...v1.153.0).
+
+---
+
+## v1.152.0 (19/01/2024)
+
+### Bug Fixes:
+-  [#5520](https://github.com/telstra/open-kilda/pull/5520) Add ordering for simple flow history actions (Issue: [#5519](https://github.com/telstra/open-kilda/issues/5519))
+-  [#5521](https://github.com/telstra/open-kilda/pull/5521) Add parameters validation to get flow and HA-flow history API.
+
+### Improvements:
+-  [#5536](https://github.com/telstra/open-kilda/pull/5536) upgrade java version in sonargate.yml
+-  [#5514](https://github.com/telstra/open-kilda/pull/5514) [TEST]: 5162: Refactoring HC [**tests**]
+-  [#5518](https://github.com/telstra/open-kilda/pull/5518) Add default options for gradle (Issue: [#5155](https://github.com/telstra/open-kilda/issues/5155)) [**configuration**]
+
+### Other changes:
+-  [#5525](https://github.com/telstra/open-kilda/pull/5525) [TEST] Refactoring the way to choose switch pairs for test pt.2 [**tests**]
+-  [#5532](https://github.com/telstra/open-kilda/pull/5532) [TEST] Unignore tests which can be run [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.151.0...v1.152.0).
+
+### Affected Components:
+history
+
+---
+
+## v1.151.0 (02/01/2024)
+
+### Improvements:
+-  [#5512](https://github.com/telstra/open-kilda/pull/5512) [TEST] Remove single-table support and checks in functional tests [**tests**]
+-  [#5502](https://github.com/telstra/open-kilda/pull/5502) Log message about isl removal only after transaction commit
+-  [#5510](https://github.com/telstra/open-kilda/pull/5510) [TEST]: Improvement #5390: Cleanup: Optional ISLs resetting if required (Issue: [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+
+### Other changes:
+-  [#5515](https://github.com/telstra/open-kilda/pull/5515) [TEST] Remove openTSDB support in tests [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.150.0...v1.151.0).
+
+---
+
+## v1.150.0 (15/12/2023)
+
+### Features:
+-  [#4931](https://github.com/telstra/open-kilda/pull/4931) Tool for dump/restore OpenTSDB data
+
+### Bug Fixes:
+-  [#5513](https://github.com/telstra/open-kilda/pull/5513) #5420: [TEST] Ignore failing WB5164 mirror check (Issue: [#5420](https://github.com/telstra/open-kilda/issues/5420)) [**tests**]
+-  [#5501](https://github.com/telstra/open-kilda/pull/5501) Adjust ordering of HA-flow history actions. (Issue: [#5366](https://github.com/telstra/open-kilda/issues/5366))
+
+### Improvements:
+-  [#5507](https://github.com/telstra/open-kilda/pull/5507) [TEST]: #5504: Storm: Updating network topology manipulation (Issue: [#5504](https://github.com/telstra/open-kilda/issues/5504)) [**tests**]
+-  [#5508](https://github.com/telstra/open-kilda/pull/5508) #5390: [TEST] Fixed tests after changes in history API pt.2 (Issues: [#5390](https://github.com/telstra/open-kilda/issues/5390) [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5491](https://github.com/telstra/open-kilda/pull/5491) Remove the deprecated authentication plugin for the MySQL container. (Issue: [#5460](https://github.com/telstra/open-kilda/issues/5460)) [**configuration**]
+-  [#5493](https://github.com/telstra/open-kilda/pull/5493) [TEST] Refactoring the way to choose switch pairs for test [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.149.0...v1.150.0).
+
+### Affected Components:
+history, otsdb
+
+---
+
+## v1.149.0 (07/12/2023)
+
+### Bug Fixes:
+-  [#5489](https://github.com/telstra/open-kilda/pull/5489) Improve dump payload format to not display empty protected path objects. (Issue: [#5368](https://github.com/telstra/open-kilda/issues/5368))
+-  [#5490](https://github.com/telstra/open-kilda/pull/5490) HA-Flow: move history dumps to the place where status of flow and paths are already set. (Issue: [#5371](https://github.com/telstra/open-kilda/issues/5371))
+-  [#5495](https://github.com/telstra/open-kilda/pull/5495) open-kilda-4485 [GUI] missing permission validation on the 'useractivity' page (Issue: [#4485](https://github.com/telstra/open-kilda/issues/4485)) [**gui**]
+-  [#5497](https://github.com/telstra/open-kilda/pull/5497) Simple flow: move saving history dumps so that they saved before or after the IN_PROGRESS state (Issue: [#5373](https://github.com/telstra/open-kilda/issues/5373))
+-  [#5500](https://github.com/telstra/open-kilda/pull/5500) Enable saving dumps before and after on HA-Flow path swap operation.
+
+### Improvements:
+-  [#5505](https://github.com/telstra/open-kilda/pull/5505) [TEST] Fixed flaky Y-Flow delete metod [**tests**]
+-  [#5509](https://github.com/telstra/open-kilda/pull/5509) Make writing data into OTSDB optional
+-  [#5382](https://github.com/telstra/open-kilda/pull/5382) Remove multi table from rule manager and DB
+-  [#5492](https://github.com/telstra/open-kilda/pull/5492) GUI: Add inner vlans into flows/add-new page (Issue: [#5296](https://github.com/telstra/open-kilda/issues/5296)) [**gui**]
+-  [#5498](https://github.com/telstra/open-kilda/pull/5498) #5390: [TEST] Prevent one way to false fail Flow Monitoring test (Issues: [#5390](https://github.com/telstra/open-kilda/issues/5390) [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5503](https://github.com/telstra/open-kilda/pull/5503) [TEST]: Storm: Disabling test that caused topology deletion issue [**tests**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.148.0...v1.149.0).
+
+### Affected Components:
+history
+
+### Upgrade notes:
+OrientDB schema have been changed in this release. You need to apply schema migration. Please follow [migration instructions](https://github.com/telstra/open-kilda/tree/develop/docker/db-migration/migrations).
+
+---
+
+## v1.148.0 (04/12/2023)
+
+### Bug Fixes:
+-  [#5476](https://github.com/telstra/open-kilda/pull/5476) Fix a bug with writing history before the history event is created. (Issue: [#4738](https://github.com/telstra/open-kilda/issues/4738))
+
+### Improvements:
+-  [#5472](https://github.com/telstra/open-kilda/pull/5472) Remove opentsdb from Kilda-gui [**gui**]
+-  [#5479](https://github.com/telstra/open-kilda/pull/5479) kilda-gui deps update [**gui**]
+-  [#5483](https://github.com/telstra/open-kilda/pull/5483) [TEST]: Server42: Flow: Rtt stats: Adding origin [**tests**]
+-  [#5484](https://github.com/telstra/open-kilda/pull/5484) #5390: [TEST] Avoid possibility of Y-Flow's subflows vlan conflict (Issues: [#5390](https://github.com/telstra/open-kilda/issues/5390) [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5487](https://github.com/telstra/open-kilda/pull/5487) [TEST]: Rigel: Stats: Victoria [**tests**]
+-  [#5488](https://github.com/telstra/open-kilda/pull/5488) #5390: [TEST] Fix flaky HA-Flow ping test (Issues: [#5390](https://github.com/telstra/open-kilda/issues/5390) [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5461](https://github.com/telstra/open-kilda/pull/5461) Change health check test for the MySQL container. Update docs. (Issue: [#5459](https://github.com/telstra/open-kilda/issues/5459)) [**configuration**]
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.147.1...v1.148.0).
+
+### Affected Components:
+history
+
+---
+
 ## v1.147.1 (27/11/2023)
 
 ### Bug Fixes:

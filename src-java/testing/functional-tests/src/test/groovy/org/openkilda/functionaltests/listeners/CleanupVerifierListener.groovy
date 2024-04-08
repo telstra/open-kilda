@@ -46,8 +46,6 @@ class CleanupVerifierListener extends AbstractSpringListener {
     Database database
     @Autowired
     SwitchHelper switchHelper
-    @Value('${use.multitable}')
-    boolean useMultitable
 
     @Override
     void afterIteration(IterationInfo iteration) {
@@ -66,13 +64,13 @@ class CleanupVerifierListener extends AbstractSpringListener {
     def runVerifications() {
         context.autowireCapableBeanFactory.autowireBean(this)
         assert northboundV2.getAllFlows().empty
+        assert northboundV2.getAllHaFlows().isEmpty()
         Wrappers.wait(RULES_DELETION_TIME) {
             assert switchHelper.validate(topology.activeSwitches*.dpId).isEmpty()
         }
         withPool {
             topology.activeSwitches.eachParallel { Switch sw ->
                 def swProps = northbound.getSwitchProperties(sw.dpId)
-                assert swProps.multiTable == useMultitable
                 def s42Config = sw.prop
                 if (s42Config) {
                     assert swProps.server42FlowRtt == s42Config.server42FlowRtt

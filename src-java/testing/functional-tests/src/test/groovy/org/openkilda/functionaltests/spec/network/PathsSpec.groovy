@@ -31,7 +31,7 @@ class PathsSpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Get paths between not neighboring switches"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllSwitchPairs()
+        def switchPair = switchPairs.all()
                 .nonNeighbouring()
                 .random()
 
@@ -55,15 +55,12 @@ class PathsSpec extends HealthCheckSpecification {
         def limited_paths = switchPair.getPathsFromApi([(MAX_PATH_COUNT): expectedPathsCount])
         assert limited_paths.size() == expectedPathsCount
         assert paths.size() > limited_paths.size()
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
     def "Able to get paths between switches for the LATENCY strategy"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllSwitchPairs()
+        def switchPair = switchPairs.all()
                 .nonNeighbouring()
                 .random()
 
@@ -81,9 +78,6 @@ class PathsSpec extends HealthCheckSpecification {
             }
             b.getBandwidth() <=> a.getBandwidth()
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -106,7 +100,7 @@ class PathsSpec extends HealthCheckSpecification {
 
     def "Unable to get paths with max_latency strategy without max latency parameter"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.getAllSwitchPairs()
+        def switchPair = switchPairs.all()
         .nonNeighbouring()
         .random()
 
@@ -125,7 +119,7 @@ class PathsSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Unable to get a path for a 'vxlan' flowEncapsulationType when switches do not support it"() {
         given: "Two active not supported 'vxlan' flowEncapsulationType switches"
-        def switchPair = topologyHelper.getAllSwitchPairs().random()
+        def switchPair = switchPairs.all().random()
         Map<Switch, SwitchPropertiesDto> initProps = [switchPair.src, switchPair.dst].collectEntries {
             [(it): switchHelper.getCachedSwProps(it.dpId)]
         }
@@ -158,7 +152,7 @@ class PathsSpec extends HealthCheckSpecification {
     @Unroll
     def "Protected path is #isIncludedString included into path list if #isIncludedString requested"() {
         given: "Two switches with potential protected path"
-        def switchPair = topologyHelper.getAllSwitchPairs()
+        def switchPair = switchPairs.all()
                 .withAtLeastNNonOverlappingPaths(2)
                 .random()
 
@@ -177,7 +171,7 @@ class PathsSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Protected path is null if it doesn't match criteria"() {
         given: "Two non-neighbouring switches with the one path shorter than others"
-        def switchPair = topologyHelper.getAllSwitchPairs()
+        def switchPair = switchPairs.all()
                 .nonNeighbouring()
                 .withShortestPathShorterThanOthers()
                 .sortedByShortestPathLengthAscending()

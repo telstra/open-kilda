@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.model.stats.FlowStats
 
 import static groovyx.gpars.GParsPool.withPool
@@ -109,11 +112,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         and: "All involved switches passes switch validation"
         def yFlowPaths = northboundV2.getYFlowPaths(yFlow.YFlowId)
-        def involvedSwitches = pathHelper.getInvolvedYSwitches(yFlowPaths)
-        involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        def involvedSwitches = pathHelper.getInvolvedYSwitches(yFlowPaths)*.getDpId()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         when: "Traffic starts to flow on both sub-flows with maximum bandwidth (if applicable)"
         def traffExam = traffExamProvider.get()
@@ -150,6 +150,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
     }
 
+    @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "System is able to switch a y-flow to protected paths"() {
         given: "A y-flow with protected paths"
         def swT = findSwitchTripletForYFlowWithProtectedPaths()
@@ -197,8 +198,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         when: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(sFlow1InitialPrimary)[-1]
-        def portDown = antiflap.portDown(islToBreak.dstSwitch.dpId, islToBreak.dstPort)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(islToBreak).state == IslChangeType.FAILED }
+        islHelper.breakIsl(islToBreak)
 
         then: "The sub-flows are switched to protected paths"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -239,17 +239,11 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         and: "All involved switches passes switch validation"
         def yFlowPaths = northboundV2.getYFlowPaths(yFlow.YFlowId)
-        def involvedSwitches = pathHelper.getInvolvedYSwitches(yFlowPaths)
-        involvedSwitches.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        def involvedSwitches = pathHelper.getInvolvedYSwitches(yFlowPaths)*.getDpId()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         when: "Restore port status"
-        def portUp = antiflap.portUp(islToBreak.dstSwitch.dpId, islToBreak.dstPort)
-        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
-        }
+        islHelper.restoreIsl(islToBreak)
 
         then: "Paths of the y-flow is not changed"
         Wrappers.wait(WAIT_OFFSET) {
@@ -281,17 +275,12 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         and: "All involved switches passes switch validation"
         def yFlowPathsAfter = northboundV2.getYFlowPaths(yFlow.YFlowId)
-        def involvedSwitchesAfter = pathHelper.getInvolvedYSwitches(yFlowPathsAfter)
-        involvedSwitchesAfter.each { sw ->
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            northbound.validateSwitch(sw.dpId).verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(pathHelper.getInvolvedYSwitches(yFlowPathsAfter)*.getDpId()).isEmpty()
 
         cleanup: "Revert system to original state"
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
-        portDown && !portUp && antiflap.portUp(islToBreak.dstSwitch.dpId, islToBreak.dstPort)
+        islHelper.restoreIsl(islToBreak)
         topology.getIslsForActiveSwitches().collectMany { [it, it.reversed] }.each { database.resetIslBandwidth(it) }
-        islToBreak && Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(islToBreak).state == IslChangeType.DISCOVERED }
         database.resetCosts(topology.isls)
     }
 
@@ -331,7 +320,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
                 "Y-flow $NON_EXISTENT_FLOW_ID not found"
     }
 
-    @Tags(LOW_PRIORITY)
+    @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "Unable to swap paths for an inactive y-flow"() {
         given: "A y-flow with protected paths"
         def swT = findSwitchTripletForYFlowWithProtectedPaths()
@@ -379,8 +368,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         when: "Break ISL on the protected path (bring port down) to make it INACTIVE"
         def islToBreak = pathHelper.getInvolvedIsls(sFlow1InitialProtected)[-1]
-        def portDown = antiflap.portDown(islToBreak.dstSwitch.dpId, islToBreak.dstPort)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(islToBreak).state == IslChangeType.FAILED }
+        islHelper.breakIsl(islToBreak)
 
         then: "The sub-flows are switched to protected paths"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -423,10 +411,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
                 "Could not swap y-flow paths: the protected path of sub-flow $sFlow1.flowId is not in ACTIVE state, but in INACTIVE/INACTIVE (forward/reverse) state"
 
         when: "Restore port status"
-        def portUp = antiflap.portUp(islToBreak.dstSwitch.dpId, islToBreak.dstPort)
-        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
-        }
+        islHelper.restoreIsl(islToBreak)
 
         then: "Paths of the y-flow is not changed"
         Wrappers.wait(WAIT_OFFSET) {
@@ -458,9 +443,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         cleanup: "Revert system to original state"
         yFlow && yFlowHelper.deleteYFlow(yFlow.YFlowId)
-        portDown && !portUp && antiflap.portUp(islToBreak.dstSwitch.dpId, islToBreak.dstPort)
+        islHelper.restoreIsl(islToBreak)
         topology.getIslsForActiveSwitches().collectMany { [it, it.reversed] }.each { database.resetIslBandwidth(it) }
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(islToBreak).state == IslChangeType.DISCOVERED }
         database.resetCosts(topology.isls)
     }
 
@@ -468,7 +452,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         return topologyHelper.switchTriplets.find {
             def ep1paths = it.pathsEp1.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
             def ep2paths = it.pathsEp2.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            def yPoints = yFlowHelper.findPotentialYPoints(it)
+            def yPoints = topologyHelper.findPotentialYPoints(it)
 
             it.ep1 != it.ep2 && it.ep1 != it.shared && it.ep2 != it.shared &&
                     yPoints.size() == 1 && yPoints[0] != it.shared && yPoints[0] != it.ep1 && yPoints[0] != it.ep2 &&

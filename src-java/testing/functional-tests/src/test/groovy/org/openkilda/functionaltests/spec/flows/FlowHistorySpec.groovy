@@ -1,5 +1,9 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+
+import org.openkilda.functionaltests.error.InvalidRequestParametersExpectedError
+
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ONLY_IN_DB
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
@@ -77,7 +81,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
 
     def "History records are created for the create/update actions using custom timeline"() {
         when: "Create a flow"
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         //set non default values
@@ -172,7 +175,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
         }
 
         when: "Delete the updated flow"
-        def deleteResponse = flowHelperV2.deleteFlow(flow.flowId)
+       flowHelperV2.deleteFlow(flow.flowId)
 
         then: "History is still available for the deleted flow"
         def flowHistory3 = northbound.getFlowHistory(flow.flowId, specStartTime, timestampAfterUpdate)
@@ -186,9 +189,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
         northboundV2.getFlowHistoryStatuses(flow.flowId, specStartTime, timestampAfterUpdate)
                 .historyStatuses*.statusBecome == ["UP", "UP"]
         northboundV2.getFlowHistoryStatuses(flow.flowId, 1).historyStatuses*.statusBecome == ["DELETED"]
-
-        cleanup:
-        !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "History records are created for the create/update actions using default timeline"() {
@@ -211,15 +211,12 @@ class FlowHistorySpec extends HealthCheckSpecification {
         checkHistoryUpdateAction(flowHistory1[1], flow.flowId)
 
         when: "Delete the updated flow"
-        def deleteResponse = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "History is still available for the deleted flow"
         def flowHistory3 = northbound.getFlowHistory(flow.flowId)
         assert flowHistory3.size() == 3
         checkHistoryDeleteAction(flowHistory3, flow.flowId)
-
-        cleanup:
-        !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "History records are created for the partial update actions #partialUpdateType"() {
@@ -268,9 +265,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
 //            it.forwardStatus == "ACTIVE"
 //            it.reverseStatus == "ACTIVE"
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         partialUpdateType                | historyAction             | partialUpdate
@@ -327,11 +321,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
                         expectedHistory: bigHistory[0..-2] //101
                 ],
                 [
-                        descr: "timeBefore > timeAfter returns empty results",
-                        params: [flowWithHistory, bigHistory[2].timestamp, bigHistory[0].timestamp],
-                        expectedHistory: []
-                ],
-                [
                         descr: "Calling history for never existed flow returns empty results",
                         params: [NON_EXISTENT_FLOW_ID],
                         expectedHistory: []
@@ -339,7 +328,19 @@ class FlowHistorySpec extends HealthCheckSpecification {
         ]
     }
 
-    @Tags([LOW_PRIORITY])
+    @Tags(LOW_PRIORITY)
+    def "Check history: timeBefore > timeAfter returns error"() {
+        when: "Request history with timeBefore > timeAfter returns error"
+        northbound.getFlowHistory(flowWithHistory, bigHistory[2].timestamp, bigHistory[0].timestamp)
+
+        then: "Error is returned"
+        def exc = thrown(HttpClientErrorException)
+        new InvalidRequestParametersExpectedError(
+                "Invalid 'timeFrom' and 'timeTo' arguments: ${bigHistory[2].timestamp} and ${bigHistory[0].timestamp + 1}",
+        ~/'timeFrom' must be less than or equal to 'timeTo'/).matches(exc)
+    }
+
+    @Tags([LOW_PRIORITY, SWITCH_RECOVER_ON_FAIL])
     def "Root cause is registered in flow history while rerouting"() {
         given: "An active flow"
         Switch srcSwitch
@@ -374,7 +375,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
         and: "The root cause('Switch is not active') is registered in flow history"
         Wrappers.wait(WAIT_OFFSET) {
             def flowHistory = flowHelper.getEarliestHistoryEntryByAction(flow.flowId, REROUTE_ACTION)
-            assert flowHistory.payload[0].action == "Started flow validation"
+            assert flowHistory.payload[0].action == "Flow rerouting operation has been started."
             assert flowHistory.payload[1].action == "ValidateFlowAction failed: Flow's $flow.flowId src switch is not active"
             assert flowHistory.payload[2].action == REROUTE_FAIL
         }
@@ -383,7 +384,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
         if (!swIsActive) {
             switchHelper.reviveSwitch(srcSwitch, blockData, true)
         }
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY])
@@ -422,16 +422,13 @@ class FlowHistorySpec extends HealthCheckSpecification {
         }
 
         when: "Delete the updated flow"
-        def deleteResponse = flowHelper.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             assert northbound.getFlowHistory(flow.id).last().payload.last().action == DELETE_SUCCESS
         }
 
         then: "History is still available for the deleted flow"
         northbound.getFlowHistory(flow.id, specStartTime, timestampAfterUpdate).size() == 2
-
-        cleanup:
-        !deleteResponse && flowHelper.deleteFlow(flow.id)
     }
 
     void checkHistoryCreateAction(FlowHistoryEntry flowHistory, String flowId) {

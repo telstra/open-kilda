@@ -86,7 +86,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Disabled("Sleep method from Storm Utils causes gradle to exit. Without the sleep, the test fails because there are"
-        + "no records when polling from the speaker")
+        + "no records when polling from the speaker See https://github.com/telstra/open-kilda/issues/5563")
 public class PingTopologyTest extends AbstractStormTest {
     public static final String COMPONENT_NAME = "ping";
     public static final String RUN_ID = "blue";

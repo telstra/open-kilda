@@ -21,7 +21,10 @@ import org.openkilda.model.Flow;
 import org.openkilda.model.FlowStatus;
 import org.openkilda.model.StatusInfo;
 import org.openkilda.persistence.PersistenceManager;
+import org.openkilda.wfm.share.history.model.DumpType;
+import org.openkilda.wfm.share.history.model.FlowDumpData;
 import org.openkilda.wfm.share.logger.FlowOperationsDashboardLogger;
+import org.openkilda.wfm.share.mappers.HistoryMapper;
 import org.openkilda.wfm.topology.flowhs.fsm.common.actions.FlowProcessingWithHistorySupportAction;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateContext;
 import org.openkilda.wfm.topology.flowhs.fsm.update.FlowUpdateFsm;
@@ -59,11 +62,35 @@ public class UpdateFlowStatusAction extends
                 flow.setStatusInfo(getDegradedFlowStatusInfo(flow, stateMachine));
             }
             stateMachine.setNewFlowStatus(flowStatus);
+
+            saveActionWithDumpToHistory(stateMachine, flow);
+
             return flowStatus;
         });
 
         if (stateMachine.getBulkUpdateFlowIds().isEmpty()) {
             stateMachine.saveActionToHistory(format("The flow status was set to %s", resultStatus));
+        }
+    }
+
+    private void saveActionWithDumpToHistory(FlowUpdateFsm stateMachine, Flow flow) {
+        FlowDumpData dumpData = HistoryMapper.INSTANCE.map(flow, flow.getForwardPath(), flow.getReversePath(),
+                DumpType.STATE_AFTER);
+
+        stateMachine.saveActionWithDumpToHistory("New primary paths were created",
+                format("The flow paths %s / %s were created (with allocated resources)",
+                        flow.getForwardPathId(), flow.getReversePathId()),
+                dumpData);
+
+        if (flow.getProtectedForwardPathId() != null && flow.getProtectedReversePathId() != null) {
+            FlowDumpData dumpDataWithProtectedPaths = HistoryMapper.INSTANCE.map(flow,
+                    flow.getProtectedForwardPath(), flow.getProtectedReversePath(),
+                    DumpType.STATE_AFTER);
+
+            stateMachine.saveActionWithDumpToHistory("New protected paths were created",
+                    format("The flow paths %s / %s were created (with allocated resources)",
+                            flow.getProtectedForwardPathId(), flow.getProtectedReversePathId()),
+                    dumpDataWithProtectedPaths);
         }
     }
 

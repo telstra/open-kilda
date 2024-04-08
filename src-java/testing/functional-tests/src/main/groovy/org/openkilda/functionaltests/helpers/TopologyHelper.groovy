@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.helpers
 
-import org.openkilda.functionaltests.helpers.model.SwitchPairs
 
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
@@ -40,97 +39,8 @@ class TopologyHelper {
     Database database
     @Autowired
     FloodlightsHelper flHelper
-
-    /**
-     * Get a switch pair of random switches.
-     *
-     * @param forceDifferent whether to exclude the picked src switch when looking for dst switch
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
-    Tuple2<Switch, Switch> getRandomSwitchPair(boolean forceDifferent = true) {
-        def randomSwitch = { List<Switch> switches ->
-            switches[new Random().nextInt(switches.size())]
-        }
-        def src = randomSwitch(topology.activeSwitches)
-        def dst = randomSwitch(forceDifferent ? topology.activeSwitches - src : topology.activeSwitches)
-        return new Tuple2(src, dst)
-    }
-
-    SwitchPairs getAllSwitchPairs(boolean includeReverse = false) {
-        return new SwitchPairs(getSwitchPairs(includeReverse))
-    }
-
-    /**
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
-    SwitchPair getSingleSwitchPair() {
-        return SwitchPair.singleSwitchInstance(topology.activeSwitches.first())
-    }
-
-    /**
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
-    List<SwitchPair> getAllSingleSwitchPairs() {
-        return topology.activeSwitches.collect { SwitchPair.singleSwitchInstance(it) }
-    }
-
-    /**
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
-    SwitchPair getNeighboringSwitchPair() {
-        getSwitchPairs().find {
-            it.paths.min { it.size() }?.size() == 2
-        }
-    }
-
-    /**
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
-    SwitchPair getNotNeighboringSwitchPair() {
-        getSwitchPairs().find {
-            it.paths.min { it.size() }?.size() > 2
-        }
-    }
-
-    /**
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
-    List<SwitchPair> getAllNeighboringSwitchPairs() {
-        getSwitchPairs().findAll {
-            it.paths.min { it.size() }?.size() == 2
-        }
-    }
-
-    /**
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
-    List<SwitchPair> getAllNotNeighboringSwitchPairs() {
-        getSwitchPairs().findAll {
-            it.paths.min { it.size() }?.size() > 2
-        }
-    }
-
-    def traffgenEnabled = { SwitchPair swPair ->
-        def tgSwitches = topology.activeTraffGens*.switchConnected
-        swPair.src in tgSwitches && swPair.dst in tgSwitches
-    }
-
-    /**
-     * @deprecated Use new mechanism from org.openkilda.functionaltests.helpers.model.SwitchPairs class
-     */
-    @Deprecated
-    List<SwitchPair> getSwitchPairs(boolean includeReverse = false) {
-        //get deep copy
-        def result = getSwitchPairsCached().collect()
-        return includeReverse ? result.collectMany { [it, it.reversed] } : result
-    }
+    @Autowired
+    PathHelper pathHelper
 
     List<SwitchTriplet> getSwitchTriplets(boolean includeReverse = false, boolean includeSingleSwitch = false) {
         //get deep copy
@@ -207,16 +117,10 @@ class TopologyHelper {
         }
     }
 
-    SwitchTriplet findSwitchTripletWithSharedEpInTheMiddleOfTheChain() {
-        def pairSharedEpAndEp1 = getAllSwitchPairs().neighbouring().random()
-        //shared endpoint should be in the middle of the switches chain to deploy ha-flow without shared path
-        def pairEp1AndEp2 = getAllSwitchPairs().neighbouring().excludePairs([pairSharedEpAndEp1]).includeSwitch(pairSharedEpAndEp1.src).random()
-        Switch thirdSwitch = pairSharedEpAndEp1.src == pairEp1AndEp2.dst ? pairEp1AndEp2.src : pairEp1AndEp2.dst
-        return switchTriplets.find {
-                    it.shared.dpId == pairSharedEpAndEp1.src.dpId
-                            && ((it.ep1.dpId == pairSharedEpAndEp1.dst.dpId && it.ep2.dpId == thirdSwitch.dpId)
-                            || (it.ep1.dpId == thirdSwitch.dpId && it.ep2.dpId == pairSharedEpAndEp1.dst.dpId))
-                }
+    SwitchTriplet findSwitchTripletWithYPointOnSharedEp() {
+        return getSwitchTriplets(true, false).find {
+            findPotentialYPoints(it).size() == 1 && it.getShared().getDpId() == findPotentialYPoints(it).get(0).getDpId()
+        }
     }
 
     SwitchTriplet findSwitchTripletForHaFlowWithProtectedPaths() {
@@ -265,18 +169,26 @@ class TopologyHelper {
     }
 
     @Memoized
-    private List<SwitchPair> getSwitchPairsCached() {
-        return [topology.activeSwitches, topology.activeSwitches].combinations()
-                .findAll { src, dst -> src != dst } //non-single-switch
-                .unique { it.sort() } //no reversed versions of same flows
-                .collect { Switch src, Switch dst ->
-                    new SwitchPair(src: src,
-                            dst: dst,
-                            paths: getDbPathsCached(src.dpId, dst.dpId),
-                            northboundService: northbound,
-                            topologyDefinition: topology)
-                }
+    List<Switch> findPotentialYPoints(SwitchTriplet swT) {
+        def sortedEp1Paths = swT.pathsEp1.sort { it.size() }
+        def potentialEp1Paths = sortedEp1Paths.takeWhile { it.size() == sortedEp1Paths[0].size() }
+        def potentialEp2Paths = potentialEp1Paths.collect { potentialEp1Path ->
+            def sortedEp2Paths = swT.pathsEp2.sort {
+                it.size() - it.intersect(potentialEp1Path).size()
+            }
+            [path1: potentialEp1Path,
+             potentialPaths2: sortedEp2Paths.takeWhile {it.size() == sortedEp2Paths[0].size() }]
+        }
+        return potentialEp2Paths.collectMany {path1WithPath2 ->
+            path1WithPath2.potentialPaths2.collect { List<PathNode> potentialPath2 ->
+                def switches = pathHelper.getInvolvedSwitches(path1WithPath2.path1)
+                        .intersect(pathHelper.getInvolvedSwitches(potentialPath2))
+                switches ? switches[-1] : null
+            }
+        }.findAll().unique()
     }
+
+
 
     @Memoized
     private List<SwitchTriplet> getSwitchTripletsCached(boolean includeSingleSwitch) {

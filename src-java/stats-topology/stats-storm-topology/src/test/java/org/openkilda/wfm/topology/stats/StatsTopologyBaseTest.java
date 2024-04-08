@@ -56,6 +56,7 @@ import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -68,6 +69,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
+@Disabled("Disabled due to flaky behaviour. See https://github.com/telstra/open-kilda/issues/5563")
 public class StatsTopologyBaseTest extends AbstractStormTest {
 
     protected static final long timestamp = System.currentTimeMillis();

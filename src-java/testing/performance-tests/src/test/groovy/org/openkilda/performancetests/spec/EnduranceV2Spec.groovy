@@ -165,7 +165,8 @@ idle, mass manual reroute, isl break. Step repeats pre-defined number of times"
         ]
         //define payload generating method that will be called each time flow creation is issued
         makeFlowPayload = {
-            def flow = flowHelperV2.randomFlow(*topoHelper.getRandomSwitchPair(), false, flows)
+            def flow = flowHelperV2.randomFlow(*topoHelper.getAllSwitchPairs().random(),
+                    false, flows)
             flow.maximumBandwidth = 200000
             flow.allocateProtectedPath = r.nextBoolean()
             return flow

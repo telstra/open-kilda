@@ -5,6 +5,8 @@ import org.openkilda.model.IslStatus
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.testing.Constants.SWITCHES_ACTIVATION_TIME
+import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static spock.util.matcher.HamcrestSupport.expect
@@ -19,7 +21,9 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.Constants
 
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Isolated
+import spock.lang.Issue
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -57,7 +61,7 @@ class StormLcmSpec extends HealthCheckSpecification {
         List<FlowRequestV2> flows = []
         def flowsAmount = topology.activeSwitches.size() * 3
         flowsAmount.times {
-            def flow = flowHelperV2.randomFlow(*topologyHelper.getRandomSwitchPair(false), false, flows)
+            def flow = flowHelperV2.randomFlow(switchPairs.all().random(), false, flows)
             flow.maximumBandwidth = 500000
             flowHelperV2.addFlow(flow)
             flows << flow
@@ -91,6 +95,19 @@ class StormLcmSpec extends HealthCheckSpecification {
 //                .ignoring("outVertex")
 //                .ignoring("id")
 
+        and: "Topology is recovered after storm topology restarting"
+        Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {
+            assert northbound.getAllLinks().findAll {
+                it.source.switchId in topology.switches.dpId && it.state == IslChangeType.DISCOVERED
+            }.size() == topology.islsForActiveSwitches.size() * 2
+        }
+        //wait until switches are activated
+        Wrappers.wait(SWITCHES_ACTIVATION_TIME) {
+            assert northbound.getAllSwitches().findAll {
+                it.switchId in topology.switches.dpId && it.state == SwitchChangeType.ACTIVATED
+            }.size() == topology.activeSwitches.size()
+        }
+
         and: "Flows remain valid in terms of installed rules and meters"
         flows.each { flow ->
             northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
@@ -104,14 +121,19 @@ class StormLcmSpec extends HealthCheckSpecification {
         flowHelperV2.updateFlow(flowToUpdate.flowId, flowToUpdate.tap { it.source.vlanId = unusedVlan })
         northbound.validateFlow(flowToUpdate.flowId).each { direction -> assert direction.asExpected }
 
-        and: "Cleanup: remove flows"
+        cleanup: "Cleanup: remove flows"
         flows.each { flowHelperV2.deleteFlow(it.flowId) }
     }
 
+    @Ignore
+    @Issue("https://github.com/telstra/open-kilda/issues/5506 (ISL between deactivated switches is in a DISCOVERED state)")
     @Tags(LOW_PRIORITY)
     def "System's able to fail an ISL if switches on both ends go offline during restart of network topology"() {
+        given: "Actual network topology"
+        String networkTopologyName = wfmManipulator.getStormActualNetworkTopology()
+
         when: "Kill network topology"
-        wfmManipulator.killTopology("network")
+        wfmManipulator.killTopology(networkTopologyName)
 
         and: "Disconnect switches on both ends of ISL"
         def islUnderTest = topology.islsForActiveSwitches.first()
@@ -119,7 +141,7 @@ class StormLcmSpec extends HealthCheckSpecification {
         def dstBlockData = lockKeeper.knockoutSwitch(islUnderTest.dstSwitch, RW)
 
         and: "Deploy network topology back"
-        wfmManipulator.deployTopology("network")
+        wfmManipulator.deployTopology(networkTopologyName)
         def networkDeployed = true
         TimeUnit.SECONDS.sleep(45) //after deploy topology needs more time to actually begin working
 
@@ -137,7 +159,7 @@ class StormLcmSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        !networkDeployed && wfmManipulator.deployTopology("network")
+        networkTopologyName && !networkDeployed && wfmManipulator.deployTopology(networkTopologyName)
         srcBlockData && lockKeeper.reviveSwitch(islUnderTest.srcSwitch, srcBlockData)
         dstBlockData && lockKeeper.reviveSwitch(islUnderTest.dstSwitch, dstBlockData)
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET * 3) {

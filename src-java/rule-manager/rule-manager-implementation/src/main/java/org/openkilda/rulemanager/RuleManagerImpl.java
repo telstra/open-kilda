@@ -95,7 +95,7 @@ public class RuleManagerImpl implements RuleManager {
         if (!flow.isProtectedPath(flowPath.getPathId())) {
             Set<FlowSideAdapter> overlappingAdapters = new HashSet<>();
             if (filterOutUsedSharedRules) {
-                overlappingAdapters = getOverlappingMultiTableIngressAdapters(flowPath, adapter);
+                overlappingAdapters = getOverlappingIngressAdapters(flowPath, adapter);
             }
             result.addAll(buildIngressCommands(adapter.getSwitch(flowPath.getSrcSwitchId()), flowPath, flow,
                     encapsulation, overlappingAdapters, adapter.getSwitchProperties(flowPath.getSrcSwitchId()),
@@ -124,22 +124,22 @@ public class RuleManagerImpl implements RuleManager {
         return postProcessCommands(result);
     }
 
-    private Set<FlowSideAdapter> getOverlappingMultiTableIngressAdapters(FlowPath path, DataAdapter adapter) {
+    private Set<FlowSideAdapter> getOverlappingIngressAdapters(FlowPath path, DataAdapter adapter) {
         Flow flow = adapter.getFlow(path.getPathId());
         FlowEndpoint endpoint = makeIngressAdapter(flow, path).getEndpoint();
         Set<PathId> excludePathIds = Sets.newHashSet(
                 path.getPathId(), flow.getForwardPathId(), flow.getReversePathId());
-        return getOverlappingMultiTableIngressAdapters(endpoint, excludePathIds, adapter);
+        return getOverlappingIngressAdapters(endpoint, excludePathIds, adapter);
     }
 
-    private Set<FlowSideAdapter> getOverlappingMultiTableIngressAdapters(
+    private Set<FlowSideAdapter> getOverlappingIngressAdapters(
             HaFlow haFlow, FlowPath subPath, Collection<PathId> subPathIds, DataAdapter adapter) {
         Set<PathId> excludePathIds = Sets.newHashSet(subPathIds);
         FlowEndpoint endpoint = makeIngressAdapter(haFlow, subPath).getEndpoint();
-        return getOverlappingMultiTableIngressAdapters(endpoint, excludePathIds, adapter);
+        return getOverlappingIngressAdapters(endpoint, excludePathIds, adapter);
     }
 
-    private Set<FlowSideAdapter> getOverlappingMultiTableIngressAdapters(
+    private Set<FlowSideAdapter> getOverlappingIngressAdapters(
             FlowEndpoint endpoint, Set<PathId> excludePathIds, DataAdapter adapter) {
 
         Set<FlowSideAdapter> result = new HashSet<>();
@@ -489,7 +489,8 @@ public class RuleManagerImpl implements RuleManager {
         SwitchProperties switchProperties = adapter.getSwitchProperties(switchId);
         Switch sw = adapter.getSwitch(switchId);
         List<RuleGenerator> generators = getIslServiceRuleGenerators(port);
-        if (adapter.getFeatureToggles().getServer42IslRtt() && switchProperties.hasServer42IslRttEnabled()) {
+        if (adapter.getFeatureToggles().getServer42IslRtt() && switchProperties != null
+                && switchProperties.hasServer42IslRttEnabled()) {
             generators.add(serviceRulesFactory
                     .getServer42IslRttInputRuleGenerator(switchProperties.getServer42Port(), port));
         }
@@ -536,7 +537,7 @@ public class RuleManagerImpl implements RuleManager {
             HaFlowPath haPath, boolean filterOutUsedSharedRules, DataAdapter adapter) {
         HaFlow haFlow = adapter.getHaFlow(haPath.getHaPathId());
         return buildRulesHaFlowPath(haPath, filterOutUsedSharedRules, false,
-                !haFlow.isProtectedPath(haPath.getHaPathId()), true,  adapter);
+                !haFlow.isProtectedPath(haPath.getHaPathId()), true, adapter);
     }
 
     @Override
@@ -629,7 +630,7 @@ public class RuleManagerImpl implements RuleManager {
             if (ingress) {
                 Set<FlowSideAdapter> overlappingAdapters = new HashSet<>();
                 if (filterOutUsedSharedRules) {
-                    overlappingAdapters.addAll(getOverlappingMultiTableIngressAdapters(
+                    overlappingAdapters.addAll(getOverlappingIngressAdapters(
                             haFlow, subPath, subPathIds, adapter));
                 }
                 if (subPath.getSrcSwitchId().equals(haPath.getYPointSwitchId())) {
@@ -751,7 +752,7 @@ public class RuleManagerImpl implements RuleManager {
             boolean ignoreUnknownSwitches, DataAdapter adapter) {
         Set<FlowSideAdapter> overlappingAdapters = new HashSet<>();
         if (filterOutUsedSharedRules) {
-            overlappingAdapters.addAll(getOverlappingMultiTableIngressAdapters(
+            overlappingAdapters.addAll(getOverlappingIngressAdapters(
                     haFlow, haPath.getSubPaths().get(0), haPath.getSubPathIds(), adapter));
         }
 

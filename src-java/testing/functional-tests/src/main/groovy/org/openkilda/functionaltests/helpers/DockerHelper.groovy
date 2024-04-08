@@ -59,4 +59,12 @@ class DockerHelper {
     private String getNetworkName() {
         dockerClient.listNetworks()*.name().find { it.contains('_default') && it.contains('kilda') }
     }
+
+    String execute(String containerId, String [] command) {
+        def execCreation = dockerClient.execCreate(containerId, command,
+                DockerClient.ExecCreateParam.attachStdout(), DockerClient.ExecCreateParam.attachStderr())
+        def output = dockerClient.execStart(execCreation.id())
+        def execOutput = output.readFully()
+        return execOutput
+    }
 }

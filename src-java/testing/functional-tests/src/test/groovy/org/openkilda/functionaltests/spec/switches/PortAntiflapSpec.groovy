@@ -130,12 +130,7 @@ timeout"() {
         }
 
         cleanup: "Bring port up"
-        islPort && antiflap.portUp(sw.dpId, islPort)
-        if (isl) {
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                islUtils.getIslInfo(isl).get().state == DISCOVERED
-            }
-        }
+        islHelper.restoreIsl(isl)
     }
 
     /**
@@ -217,16 +212,10 @@ timeout"() {
 
         when: "Port down event happens"
         def timestampBefore = System.currentTimeMillis()
-        northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        def portIsDown = true
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getLink(isl).state == FAILED
-            assert northbound.getLink(isl.reversed).state == FAILED
-        }
+        islHelper.breakIsl(isl)
 
         and: "Port up event happens"
         northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        portIsDown = false
 
         then: "The ISL is failed till 'antiflap' is deactivated"
         Wrappers.timedLoop(antiflapCooldown * 0.8) {
@@ -251,15 +240,7 @@ timeout"() {
         }
 
         cleanup:
-        portIsDown && antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        Wrappers.wait(antiflapCooldown + discoveryInterval + WAIT_OFFSET) {
-            def fr = northbound.getLink(isl)
-            def rv = northbound.getLink(isl.reversed)
-            assert fr.state == DISCOVERED
-            assert fr.actualState == DISCOVERED
-            assert rv.state == DISCOVERED
-            assert rv.actualState == DISCOVERED
-        }
+        islHelper.restoreIsl(isl)
     }
 
     def cleanup() {

@@ -44,11 +44,6 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         Map<SwitchId, SwitchPropertiesDto> initSwProps = [srcSwitch, dstSwitch, newDstSwitch].collectEntries {
             [(it): switchHelper.getCachedSwProps(it.dpId)]
         }
-        initSwProps.each { sw, swProps ->
-            switchHelper.updateSwitchProperties(sw, swProps.jacksonCopy().tap {
-                it.multiTable = true
-            })
-        }
 
         def bandwidth = 1000
         def vlanFlow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
@@ -109,7 +104,6 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        [vlanFlow, defaultFlow, qinqFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
         initSwProps.each { sw, swProps ->
             switchHelper.updateSwitchProperties(sw, swProps)
         }
@@ -152,9 +146,6 @@ class DefaultFlowSpec extends HealthCheckSpecification {
                 assert traffExam.waitExam(direction).hasTraffic()
             }
         }
-
-        cleanup: "Delete the flows"
-        defaultFlow && flowHelperV2.deleteFlow(defaultFlow.flowId)
     }
 
     @Tags([SMOKE_SWITCHES])
@@ -189,9 +180,6 @@ class DefaultFlowSpec extends HealthCheckSpecification {
             direction.setResources(resources)
             assert !traffExam.waitExam(direction).hasTraffic()
         }
-
-        cleanup: "Delete the flows"
-        [defaultFlow, simpleflow].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     def "Unable to create two default flow on the same port"() {
@@ -216,9 +204,5 @@ class DefaultFlowSpec extends HealthCheckSpecification {
 '$defaultFlow1.flowId'. Details: requested flow '$defaultFlow2.flowId' source: switchId=\"$defaultFlow2.source.switchId\" \
 port=$defaultFlow2.source.portNumber, existing flow '$defaultFlow1.flowId' \
 source: switchId=\"$defaultFlow1.source.switchId\" port=$defaultFlow1.source.portNumber"
-
-        cleanup: "Delete the flow"
-        defaultFlow1 && flowHelperV2.deleteFlow(defaultFlow1.flowId)
-        defaultFlow2 && !exc && flowHelperV2.deleteFlow(defaultFlow2.flowId)
     }
 }

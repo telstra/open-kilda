@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.stats
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.model.stats.FlowStats
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -49,11 +51,7 @@ class FlowStatSpec extends HealthCheckSpecification {
 
     def "System is able to collect stats after intentional swapping flow path to protected"() {
         given: "Two active neighboring switches with two diverse paths at least"
-        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches &&
-                    it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
         def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "Flow with protected path"
@@ -119,18 +117,15 @@ class FlowStatSpec extends HealthCheckSpecification {
         then: "System collects stats for previous egress cookie of protected path with non zero value"
         def newFlowStats = stats.of(flow.getFlowId())
         newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, protectedReverseCookie).hasNonZeroValues()
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System collects stats when a protected flow was intentionally rerouted"() {
         given: "Two active not neighboring switches with three diverse paths at least"
-        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches &&
-                    it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all()
+                .nonNeighbouring()
+                .withTraffgensOnBothEnds()
+                .withAtLeastNNonOverlappingPaths(3)
+                .random()
         def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "A flow with protected path"
@@ -149,7 +144,7 @@ class FlowStatSpec extends HealthCheckSpecification {
                 (int) flow.maximumBandwidth, 3).tap { udp = true }
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
-        //statsHelper."force kilda to collect stats"()
+        statsHelper."force kilda to collect stats"()
 
         then: "Stats is not empty for main path cookies"
         def flowInfo = database.getFlow(flow.flowId)
@@ -184,7 +179,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         and: "Generate traffic on the flow"
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
-        //statsHelper."force kilda to collect stats"()
+        statsHelper."force kilda to collect stats"()
 
 
         then: "Stats is not empty for new main path cookies"
@@ -203,17 +198,17 @@ class FlowStatSpec extends HealthCheckSpecification {
         !newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, newProtectedReverseCookie).hasNonZeroValues()
 
         cleanup: "revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "System collects stats when a protected flow was automatically rerouted"() {
         given: "Two active not neighboring switches with three not overlapping paths at least"
-        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches &&
-                    it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 3
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all()
+                .nonNeighbouring()
+                .withTraffgensOnBothEnds()
+                .withAtLeastNNonOverlappingPaths(3)
+                .random()
         def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "A flow with protected path"
@@ -251,8 +246,7 @@ class FlowStatSpec extends HealthCheckSpecification {
 
         when: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        def portIsDown = true
+        islHelper.breakIsl(islToBreak)
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             assert northboundV2.getFlowStatus(flow.id).status == FlowState.UP
             assert pathHelper.convert(northbound.getFlowPath(flow.id)) == currentProtectedPath
@@ -275,21 +269,19 @@ class FlowStatSpec extends HealthCheckSpecification {
         !newFlowStats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValuesAfter(timeAfterSwap)
 
         cleanup:
-        flow && flowHelper.deleteFlow(flow.id)
-        islToBreak && portIsDown && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
-        }
+        islHelper.restoreIsl(islToBreak)
         database.resetCosts(topology.isls)
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "System collects stat when protected flow is DEGRADED"() {
         given: "Two active not neighboring switches with two not overlapping paths at least"
         def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches &&
-                    it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all()
+                .nonNeighbouring()
+                .withTraffgensOnBothEnds()
+                .withAtLeastNNonOverlappingPaths(2)
+                .random()
         def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "A flow with protected path"
@@ -298,30 +290,17 @@ class FlowStatSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
-        List<PathNode> broughtDownPorts = []
         def flowPathInfo = northbound.getFlowPath(flow.flowId)
-        switchPair.paths.findAll {
-            it.first() != pathHelper.convert(flowPathInfo).first() &&
-                    it.first() != pathHelper.convert(flowPathInfo.protectedPath).first()
-        }.unique {
-            it.first()
-        }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        def srcPortIsDown = true
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
-
-        when: "Break ISL on a protected path (bring port down) for changing the flow state to DEGRADED"
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
         def protectedIsls = pathHelper.getInvolvedIsls(currentProtectedPath)
-        antiflap.portDown(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
-        def dstPortIsDown = true
+        def altIsls = topology.getRelatedIsls(switchPair.src) -
+                pathHelper.getInvolvedIsls(pathHelper.convert(flowPathInfo.forwardPath)) -
+                protectedIsls.first()
+        islHelper.breakIsls(altIsls)
+
+
+        when: "Break ISL on a protected path (bring port down) for changing the flow state to DEGRADED"
+        islHelper.breakIsl(protectedIsls.first())
         Wrappers.wait(WAIT_OFFSET) {
             verifyAll(northboundV2.getFlow(flow.flowId)) {
                 status == "Degraded"
@@ -349,23 +328,14 @@ class FlowStatSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        protectedIsls && srcPortIsDown && antiflap.portUp(protectedIsls[0].srcSwitch.dpId, protectedIsls[0].srcPort)
-        protectedIsls && dstPortIsDown && antiflap.portUp(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
-        broughtDownPorts && broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(altIsls + protectedIsls.first())
         database.resetCosts(topology.isls)
     }
 
     @Tags([SMOKE_SWITCHES])
     def "System collects stats when flow is pinned and unmetered"() {
         given: "Two active not neighboring switches"
-        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find {
-            it.src.dpId in traffGenSwitches && it.dst.dpId in traffGenSwitches
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().withTraffgensOnBothEnds().random()
         def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "An unmetered flow"
@@ -394,17 +364,11 @@ class FlowStatSpec extends HealthCheckSpecification {
             stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValues()
             stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValues()
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System is able to collect stats after partial updating(port) on a flow endpoint"() {
         given: "Two active neighboring switches connected to the traffgens"
-        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.switchPairs.find {
-            [it.src, it.dst].every { it.dpId in traffGenSwitches }
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
         def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "A flow with updated port on src endpoint via partial update"
@@ -436,17 +400,11 @@ class FlowStatSpec extends HealthCheckSpecification {
             stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValues()
             stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValues()
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System is able to collect stats after partial updating(vlan) on a flow endpoint"() {
         given: "Two active neighboring switches connected to the traffgens"
-        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.switchPairs.find {
-            [it.src, it.dst].every { it.dpId in traffGenSwitches }
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
         def srcSwitchId = switchPair.getSrc().getDpId()
 
         and: "A flow with updated vlan on src endpoint via partial update"
@@ -477,18 +435,11 @@ class FlowStatSpec extends HealthCheckSpecification {
             stats.get(FLOW_RAW_BYTES, srcSwitchId, mainForwardCookie).hasNonZeroValues()
             stats.get(FLOW_RAW_BYTES, srcSwitchId, mainReverseCookie).hasNonZeroValues()
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "System is able to collect stats after partial updating(inner vlan) on a flow endpoint"() {
         given: "Two active neighboring switches connected to the traffgens"
-        def traffGenSwitches = topology.activeTraffGens*.switchConnected*.dpId
-        def switchPair = topologyHelper.switchPairs.find {
-            [it.src, it.dst].every { it.dpId in traffGenSwitches } &&
-                    switchHelper.getCachedSwProps(it.src.dpId).multiTable
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
 
 
         and: "A flow with updated inner vlan on src endpoint via partial update"
@@ -517,8 +468,5 @@ class FlowStatSpec extends HealthCheckSpecification {
             stats.get(FLOW_RAW_BYTES, switchPair.getSrc().getDpId(), mainForwardCookie).hasNonZeroValues()
             stats.get(FLOW_RAW_BYTES, switchPair.getSrc().getDpId(), mainReverseCookie).hasNonZeroValues()
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 }

@@ -3,8 +3,6 @@ package org.openkilda.functionaltests.spec.switches
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 
-import static org.junit.jupiter.api.Assumptions.assumeFalse
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -34,7 +32,6 @@ import org.openkilda.rulemanager.MeterSpeakerData
 import org.openkilda.rulemanager.OfVersion
 
 import com.google.common.collect.Sets
-import groovy.transform.Memoized
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
@@ -59,7 +56,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         def sw = topology.activeSwitches.first()
 
         when: "Synchronize the switch that doesn't have any rule and meter discrepancies"
-        def syncResult = northbound.synchronizeSwitch(sw.dpId, removeExcess)
+        def syncResult = switchHelper.synchronize(sw.dpId, removeExcess)
 
         then: "Operation is successful"
         syncResult.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 0
@@ -81,8 +78,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
 
     def "Able to synchronize switch (install missing rules and meters)"() {
         given: "Two active not neighboring switches"
-        def switchPair = topologyHelper.allNotNeighboringSwitchPairs.find { it.src.ofVersion != "OF_12" &&
-                it.dst.ofVersion != "OF_12" } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().nonNeighbouring().random()
 
         and: "Create an intermediate-switch flow"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -90,6 +86,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
 
         and: "Drop all rules an meters from related switches (both default and non-default)"
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
+        def involvedSwitchIds = involvedSwitches*.getDpId()
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
                 !(it.cookie in sw.defaultCookies)
@@ -104,37 +101,31 @@ class SwitchSyncSpec extends HealthCheckSpecification {
             northbound.getAllMeters(sw.dpId).meterEntries.each { northbound.deleteMeter(sw.dpId, it.meterId) }
         }
         Wrappers.wait(RULES_DELETION_TIME) {
-            def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
+            def validationResultsMap = switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitchIds)
             involvedSwitches[1..-2].each {
                 assert validationResultsMap[it.dpId].rules.missing.size() == 2 + it.defaultCookies.size()
-                assert validationResultsMap[it.dpId].rules.missingHex.size() == 2 + it.defaultCookies.size()
                 assert validationResultsMap[it.dpId].meters.missing.meterId.sort() == it.defaultMeters.sort()
             }
-            [switchPair.src, switchPair.dst].each {
+            switchPair.toList().each {
                 def swProps = switchHelper.getCachedSwProps(it.dpId)
                 def amountFlowRules = 2 //INGRESS_REVERSE, INGRESS_FORWARD
-                def amountS42Rules = swProps.server42FlowRtt ? 1 : 0
-                def amountMultiTableSharedRules = 0
-                if (swProps.multiTable) {
-                    amountS42Rules = swProps.server42FlowRtt ? amountS42Rules + 2 : amountS42Rules
-                    amountMultiTableSharedRules += 1
-                }
+                def amountMultiTableSharedRules = 1
+                def amountS42Rules = swProps.server42FlowRtt ? 3 : 0
                 /**
                  * s42Rules
-                 * multi/single table: SERVER_42_FLOW_RTT_INGRESS_REVERSE
-                 * multiTable: SERVER_42_FLOW_RTT_INPUT, SERVER_42_FLOW_RTT_TURNING_COOKIE, SERVER42_QINQ_OUTER_VLAN
+                 * SERVER_42_FLOW_RTT_INGRESS_REVERSE, SERVER_42_FLOW_RTT_INPUT, SERVER_42_FLOW_RTT_TURNING_COOKIE,
+                 * SERVER42_QINQ_OUTER_VLAN (for QinQ flows, should not present in this test)
                  * some rule is in defaultCookies (SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE)
                  */
 
                 def amountRules = amountFlowRules + amountS42Rules + amountMultiTableSharedRules + it.defaultCookies.size()
                 assert validationResultsMap[it.dpId].rules.missing.size() == amountRules
-                assert validationResultsMap[it.dpId].rules.missingHex.size() == amountRules
                 assert validationResultsMap[it.dpId].meters.missing.size() == 1 + it.defaultMeters.size()
             }
         }
 
         when: "Try to synchronize all switches"
-        def syncResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.synchronizeSwitch(it.dpId, false)] }
+        def syncResultsMap = switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds)
 
         then: "System detects missing rules and meters (both default and flow-related), then installs them"
         involvedSwitches.each {
@@ -144,7 +135,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
             assert syncResultsMap[it.dpId].rules.removed.size() == 0
             assert syncResultsMap[it.dpId].rules.installed.containsAll(cookiesMap[it.dpId])
         }
-        [switchPair.src, switchPair.dst].each {
+        switchPair.toList().each {
             assert syncResultsMap[it.dpId].meters.proper.size() == 0
             assert syncResultsMap[it.dpId].meters.excess.size() == 0
             assert syncResultsMap[it.dpId].meters.missing*.meterId == metersMap[it.dpId].sort()
@@ -154,27 +145,21 @@ class SwitchSyncSpec extends HealthCheckSpecification {
 
         and: "Switch validation doesn't complain about any missing rules and meters"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            involvedSwitches.each {
-                def validationResult = northbound.validateSwitch(it.dpId)
-                assert validationResult.rules.missing.size() == 0
-                if(!it.dpId.description.contains("OF_12")) {
-                    assert validationResult.meters.missing.size() == 0
-                }
-            }
+            switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitchIds).isEmpty()
         }
 
         cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds)
     }
 
     def "Able to synchronize #switchKind switch (delete excess rules and meters)"() {
         given: "Flow with intermediate switches"
-        def switchPair = topologyHelper.getAllSwitchPairs().nonNeighbouring().random()
+        def switchPair = switchPairs.all().nonNeighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
         def switchId = getSwitch(flow)
         def ofVersion = topology.getActiveSwitches().find{it.getDpId() == switchId}.getOfVersion()
-        assert northboundV2.validateSwitch(switchId).isAsExpected()
+        assert !switchHelper.synchronizeAndCollectFixedDiscrepancies(switchId).isPresent()
 
         and: "Force install excess rules and meters on switch"
         def producer = new KafkaProducer(producerProps)
@@ -202,8 +187,9 @@ class SwitchSyncSpec extends HealthCheckSpecification {
             !switchHelper.validate(switchId).getRules().getExcess().isEmpty()
         }
 
-        when: "Try to synchronize all switches"
+        when: "Try to synchronize the switch"
         def syncResult = switchHelper.synchronize(switchId)
+
         then: "System detects excess rules and meters"
         verifyAll (syncResult) {
             rules.excess == [excessRuleCookie]
@@ -218,8 +204,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        switchHelper.synchronize([switchId])
+        switchHelper.synchronize(switchId)
 
         where:
         switchKind | getSwitch | table
@@ -233,12 +218,8 @@ class SwitchSyncSpec extends HealthCheckSpecification {
     }
 
     def "Able to synchronize switch with 'vxlan' rule(install missing rules and meters)"() {
-        given: "Two active not neighboring Noviflow switches"
-        def switchPair = topologyHelper.getAllNotNeighboringSwitchPairs().find { swP ->
-            swP.paths.find { path ->
-                pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
-            }
-        } ?: assumeTrue(false, "Unable to find required switches in topology")
+        given: "Two active not neighboring switches which support VXLAN encapsulation"
+        def switchPair = switchPairs.all().nonNeighbouring().withBothSwitchesVxLanEnabled().random()
 
         and: "Create a flow with vxlan encapsulation"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -248,6 +229,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         and: "Reproduce situation when switches have missing rules and meters"
         def flowInfoFromDb = database.getFlow(flow.flowId)
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
+        def involvedSwitchIds = involvedSwitches*.getDpId()
         def transitSwitchIds = involvedSwitches[1..-2]*.dpId
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
@@ -263,25 +245,25 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         involvedSwitches.each { northbound.deleteSwitchRules(it.dpId, DeleteRulesAction.IGNORE_DEFAULTS) }
         [switchPair.src, switchPair.dst].each { northbound.deleteMeter(it.dpId, metersMap[it.dpId][0]) }
         Wrappers.wait(RULES_DELETION_TIME) {
-            def validationResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.validateSwitch(it.dpId)] }
+            def validationResultsMap = switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitchIds)
             involvedSwitches.each {
                 def swProps = switchHelper.getCachedSwProps(it.dpId)
                 def switchIdInSrcOrDst = (it.dpId in [switchPair.src.dpId, switchPair.dst.dpId])
                 def defaultAmountOfFlowRules = 2 // ingress + egress
                 def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
-                if (swProps.multiTable && swProps.server42FlowRtt) {
+                if (swProps.server42FlowRtt) {
                     if ((flow.destination.getSwitchId() == it.dpId && flow.destination.vlanId) || (
                             flow.source.getSwitchId() == it.dpId && flow.source.vlanId))
                         amountOfServer42Rules += 1
                 }
                 def rulesCount = defaultAmountOfFlowRules + amountOfServer42Rules +
-                        (switchIdInSrcOrDst && swProps.multiTable ? 1 : 0)
+                        (switchIdInSrcOrDst ? 1 : 0)
                 assert validationResultsMap[it.dpId].rules.missing.size() == rulesCount }
-            [switchPair.src, switchPair.dst].each { assert validationResultsMap[it.dpId].meters.missing.size() == 1 }
+            switchPair.toList().each { assert validationResultsMap[it.dpId].meters.missing.size() == 1 }
         }
 
         when: "Try to synchronize all switches"
-        def syncResultsMap = involvedSwitches.collectEntries { [it.dpId, northbound.synchronizeSwitch(it.dpId, false)] }
+        def syncResultsMap = switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds)
 
         then: "System detects missing rules and meters, then installs them"
         involvedSwitches.each {
@@ -291,7 +273,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
             assert syncResultsMap[it.dpId].rules.removed.size() == 0
             assert syncResultsMap[it.dpId].rules.installed.containsAll(cookiesMap[it.dpId])
         }
-        [switchPair.src, switchPair.dst].each {
+        switchPair.toList().each {
             assert syncResultsMap[it.dpId].meters.proper.findAll { !it.defaultMeter }.size() == 0
             assert syncResultsMap[it.dpId].meters.excess.size() == 0
             assert syncResultsMap[it.dpId].meters.missing*.meterId == metersMap[it.dpId]
@@ -301,11 +283,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
 
         and: "Switch validation doesn't complain about missing rules and meters"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            involvedSwitches.each {
-                def validationResult = northbound.validateSwitch(it.dpId)
-                assert validationResult.rules.missing.size() == 0
-                assert validationResult.meters.missing.size() == 0
-            }
+            switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitchIds).isEmpty()
         }
 
         and: "Rules are synced correctly"
@@ -339,9 +317,6 @@ class SwitchSyncSpec extends HealthCheckSpecification {
                 }.match.tunnelId
             }
         }
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([VIRTUAL, LOW_PRIORITY])
@@ -356,22 +331,22 @@ class SwitchSyncSpec extends HealthCheckSpecification {
 
         lockKeeper.updateBurstSizeAndRate(sw, meterToManipulate.meterId, newBurstSize, newRate)
         Wrappers.wait(RULES_DELETION_TIME) {
-            def validateInfo = northbound.validateSwitch(sw.dpId)
+            def validateInfo = switchHelper.validate(sw.dpId)
             assert validateInfo.rules.missing.empty
             assert validateInfo.rules.misconfigured.empty
             assert validateInfo.meters.misconfigured.size() == 1
-            assert validateInfo.meters.misconfigured[0].actual.burstSize == newBurstSize
+            assert validateInfo.meters.misconfigured[0].discrepancies.burstSize == newBurstSize
             assert validateInfo.meters.misconfigured[0].expected.burstSize == meterToManipulate.burstSize
-            assert validateInfo.meters.misconfigured[0].actual.rate == newRate
+            assert validateInfo.meters.misconfigured[0].discrepancies.rate == newRate
             assert validateInfo.meters.misconfigured[0].expected.rate == meterToManipulate.rate
         }
 
         when: "Synchronize switch"
-        northbound.synchronizeSwitch(sw.dpId, false)
+        switchHelper.synchronize(sw.dpId, false)
 
         then: "The misconfigured meter is fixed and moved to the 'proper' section"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            with(northbound.validateSwitch(sw.dpId)) {
+            with(switchHelper.validate(sw.dpId)) {
                 it.meters.misconfigured.empty
                 it.meters.proper.find { it.meterId == broadcastCookieMeterId }.burstSize == meterToManipulate.burstSize
                 it.meters.proper.find { it.meterId == broadcastCookieMeterId }.rate == meterToManipulate.rate
@@ -379,7 +354,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        sw && switchHelper.synchronize([sw.dpId])
+        sw && switchHelper.synchronize(sw.dpId)
     }
 
     @Tags([VIRTUAL, SMOKE])
@@ -409,20 +384,20 @@ class SwitchSyncSpec extends HealthCheckSpecification {
 
         and: "Validate switch endpoint shows the updated meter as misconfigured"
         Wrappers.wait(RULES_DELETION_TIME) {
-            def validateInfo = northbound.validateSwitch(sw.dpId)
+            def validateInfo = switchHelper.validate(sw.dpId)
             assert validateInfo.meters.misconfigured.size() == 1
-            assert validateInfo.meters.misconfigured[0].actual.burstSize == newBurstSize
+            assert validateInfo.meters.misconfigured[0].discrepancies.burstSize == newBurstSize
             assert validateInfo.meters.misconfigured[0].expected.burstSize == flowMeterIdToManipulate.burstSize
-            assert validateInfo.meters.misconfigured[0].actual.rate == newRate
+            assert validateInfo.meters.misconfigured[0].discrepancies.rate == newRate
             assert validateInfo.meters.misconfigured[0].expected.rate == flowMeterIdToManipulate.rate
         }
 
         when: "Synchronize switch"
-        northbound.synchronizeSwitch(sw.dpId, false)
+        switchHelper.synchronize(sw.dpId, false)
 
         then: "The misconfigured meter was fixed and moved to the 'proper' section"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            with(northbound.validateSwitch(sw.dpId)) {
+            with(switchHelper.validate(sw.dpId)) {
                 it.meters.misconfigured.empty
                 it.meters.proper.find {
                     it.meterId == flowMeterIdToManipulate.meterId
@@ -435,14 +410,5 @@ class SwitchSyncSpec extends HealthCheckSpecification {
 
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-    }
-
-    @Memoized
-    def isVxlanEnabled(SwitchId switchId) {
-        return northbound.getSwitchProperties(switchId).supportedTransitEncapsulation
-                .contains(FlowEncapsulationType.VXLAN.toString().toLowerCase())
     }
 }

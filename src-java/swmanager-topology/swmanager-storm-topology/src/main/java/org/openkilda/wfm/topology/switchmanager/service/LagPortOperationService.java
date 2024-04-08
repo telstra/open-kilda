@@ -56,9 +56,9 @@ import org.openkilda.wfm.topology.switchmanager.service.configs.LagPortOperation
 
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
+import dev.failsafe.RetryPolicy;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.collections4.map.LRUMap;
 
 import java.util.ArrayList;
@@ -417,11 +417,12 @@ public class LagPortOperationService {
                 .onRetry(
                         e -> log.warn(
                                 "Unable to {} LAG logical port DB record for switch {}: {}. Retrying #{}...",
-                                action, switchId, e.getLastFailure().getMessage(), e.getAttemptCount()))
+                                action, switchId, e.getLastException().getMessage(), e.getAttemptCount()))
                 .onRetriesExceeded(
                         e -> log.error(
                                 "Failed to {} LAG logical port DB record for switch {}: {}",
-                                action, switchId, e.getFailure().getMessage(), e.getFailure()));
+                                action, switchId, e.getException().getMessage(), e.getException()))
+                .build();
     }
 
     private static String formatPortNumbersSet(Set<Integer> ports) {

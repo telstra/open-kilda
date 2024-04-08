@@ -23,7 +23,7 @@ class PathComputationSpec extends HealthCheckSpecification {
                 new KildaConfigurationDto(pathComputationStrategy: PathComputationStrategy.COST))
 
         and: "Switch pair with two paths at least"
-        def swPair = topologyHelper.switchPairs.find { it.paths.size() >= 2 }
+        def swPair = switchPairs.all().withAtLeastNPaths(2).random()
 
         and: "Update paths so that one path has minimal total latency and the other has minimal total cost"
         def costEffectivePath = swPair.paths[0]
@@ -70,15 +70,13 @@ class PathComputationSpec extends HealthCheckSpecification {
 
         cleanup: "Restore kilda config and remove flows, restore costs and latencies"
         initConfig && northbound.updateKildaConfiguration(initConfig)
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        flow2 && flowHelperV2.deleteFlow(flow2.flowId)
         originalLatencies && originalLatencies.each { isl, latency -> database.updateIslLatency(isl, latency) }
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     def "Flow path computation strategy can be updated from LATENCY to COST"() {
         given: "Switch pair with two paths at least"
-        def swPair = topologyHelper.switchPairs.find { it.paths.size() >= 2 }
+        def swPair = switchPairs.all().withAtLeastNPaths(2).random()
 
         and: "Update paths so that one path has minimal total latency and the other has minimal total cost"
         def costEffectivePath = swPair.paths[0]
@@ -104,14 +102,13 @@ class PathComputationSpec extends HealthCheckSpecification {
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == costEffectivePath
 
         cleanup: "Remove the flow, reset latencies and costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         originalLatencies && originalLatencies.each { isl, latency -> database.updateIslLatency(isl, latency) }
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     def "Target flow path computation strategy is not applied immediately in case flow was updated partially"() {
         given: "Switch pair with two paths at least"
-        def swPair = topologyHelper.switchPairs.find { it.paths.size() >= 2 }
+        def swPair = switchPairs.all().withAtLeastNPaths(2).random()
 
         and: "A flow with cost strategy"
         def latencyStrategy = PathComputationStrategy.LATENCY.toString().toLowerCase()
@@ -142,14 +139,11 @@ class PathComputationSpec extends HealthCheckSpecification {
             pathComputationStrategy == latencyStrategy
             !targetPathComputationStrategy
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Target path computation strategy is applied after updating/rerouting a flow"() {
         given: "Switch pair with two paths at least"
-        def swPair = topologyHelper.switchPairs.find { it.paths.size() >= 2 }
+        def swPair = switchPairs.all().withAtLeastNPaths(2).random()
 
         and: "A flow with cost strategy"
         def latencyStrategy = PathComputationStrategy.LATENCY.toString().toLowerCase()
@@ -185,8 +179,5 @@ class PathComputationSpec extends HealthCheckSpecification {
             pathComputationStrategy == costStrategy
             !targetPathComputationStrategy
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 }

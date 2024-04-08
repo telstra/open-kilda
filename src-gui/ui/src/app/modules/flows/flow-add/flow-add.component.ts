@@ -28,7 +28,6 @@ export class FlowAddComponent implements OnInit {
   switches: Select2Data = [];
   sourceSwitches: Select2Data = [];
   targetSwitches: Select2Data = [];
-  enableSearch: Number = 1;
   sourcePorts = [];
   mainSourcePorts = [];
   targetPorts = [];
@@ -80,9 +79,11 @@ export class FlowAddComponent implements OnInit {
       source_switch: [null, Validators.required],
       source_port: [null, Validators.required],
       source_vlan: ['0'],
+      source_inner_vlan: ['0'],
       target_switch: [null, Validators.required],
       target_port: [null, Validators.required],
       target_vlan: ['0'],
+      target_inner_vlan: ['0'],
       diverse_flowid: [null],
       allocate_protected_path: [null],
       ignore_bandwidth: [null],
@@ -92,9 +93,7 @@ export class FlowAddComponent implements OnInit {
       max_latency_tier2: ['']
     });
 
-    this.vlanPorts = Array.from({ length: 4095 }, (v, k) => {
-      return { label: k.toString() , value: k.toString()  };
-    });
+    this.vlanPorts = this.flowService.getVlansForFlow();
     this.getflowList();
     this.getSwitchList();
   }
@@ -152,9 +151,11 @@ export class FlowAddComponent implements OnInit {
       if (switchType == 'source_switch') {
         this.flowAddForm.controls['source_port'].setValue(null);
         this.flowAddForm.controls['source_vlan'].setValue('0');
+        this.flowAddForm.controls['source_inner_vlan'].setValue('0');
       } else {
         this.flowAddForm.controls['target_port'].setValue(null);
         this.flowAddForm.controls['target_vlan'].setValue('0');
+        this.flowAddForm.controls['target_inner_vlan'].setValue('0');
       }
 
       this.loaderService.show('Loading Ports');
@@ -194,9 +195,11 @@ export class FlowAddComponent implements OnInit {
       if (switchType == 'source_switch') {
         this.flowAddForm.controls['source_port'].setValue(null);
         this.flowAddForm.controls['source_vlan'].setValue('0');
+        this.flowAddForm.controls['source_inner_vlan'].setValue('0');
       } else {
         this.flowAddForm.controls['target_port'].setValue(null);
         this.flowAddForm.controls['target_vlan'].setValue('0');
+        this.flowAddForm.controls['target_inner_vlan'].setValue('0');
       }
     }
   }
@@ -212,13 +215,13 @@ export class FlowAddComponent implements OnInit {
         'switch_id': this.flowAddForm.controls['source_switch'].value,
         'port_number': this.flowAddForm.controls['source_port'].value,
         'vlan_id': this.flowAddForm.controls['source_vlan'].value,
-        'inner_vlan_id': 0,
+        'inner_vlan_id': this.flowAddForm.controls['source_inner_vlan'].value,
       },
       destination: {
         'switch_id': this.flowAddForm.controls['target_switch'].value,
         'port_number': this.flowAddForm.controls['target_port'].value,
         'vlan_id': this.flowAddForm.controls['target_vlan'].value,
-        'inner_vlan_id': 0,
+        'inner_vlan_id': this.flowAddForm.controls['target_inner_vlan'].value,
       },
       'flow_id': this.flowAddForm.controls['flowname'].value,
       'maximum_bandwidth': this.flowAddForm.controls['maximum_bandwidth'].value,
@@ -278,10 +281,10 @@ export class FlowAddComponent implements OnInit {
   getVLAN(type) {
     if (type == 'source_port') {
       this.flowAddForm.controls['source_vlan'].setValue('0');
+      this.flowAddForm.controls['source_inner_vlan'].setValue('0');
     } else {
       this.flowAddForm.controls['target_vlan'].setValue('0');
+      this.flowAddForm.controls['target_inner_vlan'].setValue('0');
     }
   }
-
-
 }

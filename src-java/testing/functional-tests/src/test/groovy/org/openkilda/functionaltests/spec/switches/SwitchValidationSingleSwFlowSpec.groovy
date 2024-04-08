@@ -1,12 +1,15 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.messaging.model.FlowDirectionType
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
+import static org.openkilda.functionaltests.spec.switches.MetersSpec.NOT_OVS_REGEX
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -46,7 +49,7 @@ Description of fields:
 - excess - those meters/rules, which are present on a switch, but are NOT present in db
 - proper - meters/rules values are the same on a switch and in db
 """)
-@Tags([SMOKE_SWITCHES])
+@Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
 class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerSwitchManagerTopic()}")
     String speakerTopic
@@ -58,7 +61,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         deleteAnyFlowsLeftoversIssue5480()
     }
 
-    @Tags([TOPOLOGY_DEPENDENT, SMOKE])
+    @Tags([SMOKE])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Switch validation is able to store correct information on a #switchType switch in the 'proper' section"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -74,7 +78,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         meterIds.size() == 2
 
         and: "The correct info is stored in the 'proper' section"
-        def switchValidateInfo = northbound.validateSwitch(sw.dpId)
+        def switchValidateInfo = switchHelper.validateV1(sw.dpId)
         switchValidateInfo.meters.proper.collect { it.meterId }.containsAll(meterIds)
 
         def createdCookies = getCookiesWithMeter(sw.dpId)
@@ -97,11 +101,11 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
 
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
-            def switchValidateInfoAfterDelete = northbound.validateSwitch(sw.dpId)
+            def switchValidateInfoAfterDelete = switchHelper.validateV1(sw.dpId)
             switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
@@ -109,7 +113,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def testIsCompleted = true
 
         cleanup:
-        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
@@ -120,7 +123,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
-    @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Switch validation is able to detect meter info into the 'misconfigured' section on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -128,7 +131,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.first()
 
         when: "Create a flow"
-        def amountOfMultiTableFlRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 0 //2 SHARED_OF_FLOW, 2 MULTI_TABLE_INGRESS_RULES
+        def amountOfMultiTableFlRules = 4 //2 SHARED_OF_FLOW, 2 MULTI_TABLE_INGRESS_RULES
         def amountOfFlowRules = 2 //SERVICE_OR_FLOW_SEGMENT(ingress/egress)
         def amountOfSwRules = northbound.getSwitchRules(sw.dpId).flowEntries.size()
         def amountOfRules = amountOfSwRules + amountOfFlowRules + amountOfMultiTableFlRules
@@ -146,7 +149,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         //at this point existing meters do not correspond with the flow
 
         then: "Meters info is moved into the 'misconfigured' section"
-        def switchValidateInfo = northbound.validateSwitch(sw.dpId)
+        def switchValidateInfo = switchHelper.validateV1(sw.dpId)
         def createdCookies = getCookiesWithMeter(sw.dpId)
         switchValidateInfo.meters.misconfigured.meterId.size() == 2
         switchValidateInfo.meters.misconfigured*.meterId.containsAll(meterIds)
@@ -201,7 +204,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         northbound.resetMeters(flow.flowId)
 
         then: "Misconfigured meters are reinstalled according to the new bandwidth and moved into the 'proper' section"
-        with(northbound.validateSwitch(sw.dpId)) {
+        with(switchHelper.validateV1(sw.dpId)) {
             it.meters.proper.findAll { it.meterId in meterIds }.each { assert it.rate == newBandwidth }
             it.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
         }
@@ -213,18 +216,17 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        def deletedFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
-            def switchValidateInfoAfterDelete = northbound.validateSwitch(sw.dpId)
+            def switchValidateInfoAfterDelete = switchHelper.validateV1(sw.dpId)
             switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
         def testIsCompleted = true
 
         cleanup:
-        flow && !deletedFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
@@ -235,7 +237,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
-    @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Switch validation is able to detect meter info into the 'missing' section on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -252,7 +254,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         then: "Meters info/rules are moved into the 'missing' section"
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
-        def switchValidateInfo = northbound.validateSwitch(sw.dpId)
+        def switchValidateInfo = switchHelper.validateV1(sw.dpId)
         def createdCookies = getCookiesWithMeter(sw.dpId)
         switchValidateInfo.meters.missing.meterId.size() == 2
         switchValidateInfo.rules.missing.containsAll(createdCookies)
@@ -270,7 +272,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.verifyMeterSectionsAreEmpty(["proper", "misconfigured", "excess"])
 
         when: "Try to synchronize the switch"
-        def syncResponse = northbound.synchronizeSwitch(sw.dpId, false)
+        def syncResponse = switchHelper.synchronize(sw.dpId, false)
 
         then: "System detects missing rules and meters, then installs them"
         syncResponse.rules.missing.size() == 2
@@ -283,18 +285,17 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         syncResponse.meters.installed*.meterId.containsAll(meterIds)
 
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
-            def switchValidateInfoAfterDelete = northbound.validateSwitch(sw.dpId)
+            def switchValidateInfoAfterDelete = switchHelper.validateV1(sw.dpId)
             switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
         def testIsCompleted = true
 
         cleanup:
-        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
@@ -305,7 +306,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
-    @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Switch validation is able to detect meter info into the 'excess' section on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -318,9 +319,9 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
 
         then: "Rules and meters are created"
-        def swValidateInfo = northbound.validateSwitch(sw.dpId)
+        def swValidateInfo = switchHelper.validateV1(sw.dpId)
         def properMeters = swValidateInfo.meters.proper.findAll({ !isDefaultMeter(it) })
-        def amountOfFlowRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 2
+        def amountOfFlowRules = 4
         properMeters.meterId.size() == 2
         swValidateInfo.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
 
@@ -329,7 +330,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         database.updateFlowMeterId(flow.flowId, newMeterId)
 
         then: "Origin meters are moved into the 'excess' section"
-        def switchValidateInfo = northbound.validateSwitch(sw.dpId)
+        def switchValidateInfo = switchHelper.validateV1(sw.dpId)
         switchValidateInfo.meters.excess.meterId.size() == 2
         switchValidateInfo.meters.excess.collect { it.meterId }.containsAll(metersIds)
         switchValidateInfo.meters.excess.each {
@@ -353,21 +354,20 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
 
         when: "Delete the flow"
-        def deletedFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         and: "Delete excess meters"
         metersIds.each { northbound.deleteMeter(sw.dpId, it) }
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
-            def switchValidateInfoAfterDelete = northbound.validateSwitch(sw.dpId)
+            def switchValidateInfoAfterDelete = switchHelper.validateV1(sw.dpId)
             switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
-
         def testIsCompleted = true
+
         cleanup:
-        flow && !deletedFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
 
@@ -380,7 +380,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
-    @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Switch validation is able to detect rule info into the 'missing' section on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
@@ -396,7 +396,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
 
         then: "Rule info is moved into the 'missing' section"
-        def switchValidateInfo = northbound.validateSwitch(sw.dpId)
+        def switchValidateInfo = switchHelper.validateV1(sw.dpId)
         switchValidateInfo.rules.missing.containsAll(createdCookies)
         switchValidateInfo.rules.missingHex.containsAll(createdHexCookies)
 
@@ -405,21 +405,21 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.verifyHexRuleSectionsAreEmpty(["properHex", "excessHex"])
 
         when: "Try to synchronize the switch"
-        def syncResponse = northbound.synchronizeSwitch(sw.dpId, false)
+        def syncResponse = switchHelper.synchronize(sw.dpId, false)
 
         then: "System detects missing rules, then installs them"
-        def amountOfFlowRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 2
+        def amountOfFlowRules = 4
         syncResponse.rules.missing.size() == amountOfFlowRules
         syncResponse.rules.missing.containsAll(createdCookies)
         syncResponse.rules.installed.size() == amountOfFlowRules
         syncResponse.rules.installed.containsAll(createdCookies)
 
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
-            def switchValidateInfoAfterDelete = northbound.validateSwitch(sw.dpId)
+            def switchValidateInfoAfterDelete = switchHelper.validateV1(sw.dpId)
             switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
@@ -427,7 +427,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def testIsCompleted = true
 
         cleanup:
-        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
@@ -438,13 +437,13 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
-    @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Switch validation is able to detect rule/meter info into the 'excess' section on a #switchType switch"() {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
         setup: "Select a #switchType switch and no meters/rules exist on a switch"
         def sw = switches.first()
-        def switchValidateInfoInitState = northbound.validateSwitch(sw.dpId)
+        def switchValidateInfoInitState = switchHelper.validateV1(sw.dpId)
         switchValidateInfoInitState.verifyRuleSectionsAreEmpty()
         switchValidateInfoInitState.verifyMeterSectionsAreEmpty()
 
@@ -496,7 +495,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         //they will be added after the next line
         def switchValidateInfo
         Wrappers.wait(WAIT_OFFSET) {
-            switchValidateInfo = northbound.validateSwitch(sw.dpId)
+            switchValidateInfo = switchHelper.validateV1(sw.dpId)
             //excess egress/ingress/transit rules are added
             switchValidateInfo.rules.excess.size() == 3
             switchValidateInfo.rules.excessHex.size() == 3
@@ -511,7 +510,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Try to synchronize the switch"
-        def syncResponse = northbound.synchronizeSwitch(sw.dpId, true)
+        def syncResponse = switchHelper.synchronize(sw.dpId, true)
 
         then: "System detects excess rules and meters, then deletes them"
         syncResponse.rules.excess.size() == 3
@@ -524,7 +523,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         and: "Switch validation doesn't complain about excess rules and meters"
         Wrappers.wait(WAIT_OFFSET) {
-            def switchValidateResponse = northbound.validateSwitch(sw.dpId)
+            def switchValidateResponse = switchHelper.validateV1(sw.dpId)
             switchValidateResponse.verifyRuleSectionsAreEmpty()
             switchValidateResponse.verifyMeterSectionsAreEmpty()
         }
@@ -543,22 +542,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         "OVS"              | getVirtualSwitches()
     }
 
-    def "Able to get the switch validate info on a NOT supported switch"() {
-        given: "Not supported switch"
-        def sw = topology.activeSwitches.find { it.ofVersion == "OF_12" }
-        assumeTrue(sw as boolean, "Unable to find required switches in topology")
-
-        when: "Try to invoke the switch validate request"
-        def response = northbound.validateSwitch(sw.dpId)
-
-        then: "Response without meter section is returned"
-        response.rules.proper.findAll { !new Cookie(it).serviceFlag }.empty
-        response.rules.missing.empty
-        response.rules.excess.empty
-        !response.meters
-    }
-
-    @Tags([TOPOLOGY_DEPENDENT])
+    @IterationTag(tags = [HARDWARE], iterationNameRegex = NOT_OVS_REGEX)
     def "Able to validate and sync a #switchType switch having missing rules of single-port single-switch flow"() {
         assumeTrue(sw as boolean, "Unable to find $switchType switch in topology")
         given: "A single-port single-switch flow"
@@ -568,17 +552,17 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
 
         then: "Switch validation shows missing rules"
-        def amountOfFlowRules = switchHelper.getCachedSwProps(sw.dpId).multiTable ? 4 : 2
-        northbound.validateSwitch(sw.dpId).rules.missing.size() == amountOfFlowRules
-        northbound.validateSwitch(sw.dpId).rules.missingHex.size() == amountOfFlowRules
+        def amountOfFlowRules = 4
+        switchHelper.validateV1(sw.dpId).rules.missing.size() == amountOfFlowRules
+        switchHelper.validateV1(sw.dpId).rules.missingHex.size() == amountOfFlowRules
 
         when: "Synchronize switch"
-        with(northbound.synchronizeSwitch(sw.dpId, false)) {
+        with(switchHelper.synchronize(sw.dpId, false)) {
             it.rules.installed.size() == amountOfFlowRules
         }
 
         then: "Switch validation shows no discrepancies"
-        with(northbound.validateSwitch(sw.dpId)) {
+        with(switchHelper.validateV1(sw.dpId)) {
             it.verifyRuleSectionsAreEmpty(["missing", "excess"])
             it.verifyHexRuleSectionsAreEmpty(["missingHex", "excessHex"])
             it.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == amountOfFlowRules
@@ -587,10 +571,10 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Switch validation returns empty sections"
-        with(northbound.validateSwitch(sw.dpId)) {
+        with(switchHelper.validateV1(sw.dpId)) {
             it.verifyRuleSectionsAreEmpty()
             it.verifyMeterSectionsAreEmpty()
         }
@@ -598,7 +582,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def testIsCompleted = true
 
         cleanup:
-        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
@@ -651,7 +634,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
     }
 
     private void synchronizeAndValidateRules(Switch sw) {
-        northbound.synchronizeSwitch(sw.dpId, true)
+        switchHelper.synchronize(sw.dpId)
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
         }

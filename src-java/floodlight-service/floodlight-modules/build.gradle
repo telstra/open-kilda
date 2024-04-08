@@ -25,7 +25,7 @@ dependencies {
     implementation("org.aspectj:aspectjrt")
     implementation("org.mapstruct:mapstruct")
     implementation("org.mapstruct:mapstruct-processor")
-    implementation("net.jodah:failsafe")
+    implementation("dev.failsafe:failsafe")
     implementation("org.hibernate.validator:hibernate-validator")
     implementation("org.glassfish:jakarta.el")
     implementation("com.google.guava:guava")

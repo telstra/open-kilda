@@ -66,7 +66,6 @@ public class InputArpRuleGeneratorTest {
 
         InputArpRuleGenerator generator = InputArpRuleGenerator.builder()
                 .ingressEndpoint(endpoint)
-                .multiTable(true)
                 .overlappingIngressAdapters(Sets.newHashSet(overlapAdapter))
                 .build();
 
@@ -99,23 +98,10 @@ public class InputArpRuleGeneratorTest {
     }
 
     @Test
-    public void buildArpRuleForSingleTableTest() {
-        FlowEndpoint endpoint = new FlowEndpoint(SW.getSwitchId(), PORT_NUMBER_1, 0, 0, true, false);
-        InputArpRuleGenerator generator = InputArpRuleGenerator.builder()
-                .ingressEndpoint(endpoint)
-                .multiTable(false)
-                .overlappingIngressAdapters(new HashSet<>())
-                .build();
-
-        assertEquals(0, generator.generateCommands(SW).size());
-    }
-
-    @Test
     public void buildArpRuleWithoutArpTest() {
         FlowEndpoint endpoint = new FlowEndpoint(SW.getSwitchId(), PORT_NUMBER_1, 0, 0, false, false);
         InputArpRuleGenerator generator = InputArpRuleGenerator.builder()
                 .ingressEndpoint(endpoint)
-                .multiTable(true)
                 .overlappingIngressAdapters(new HashSet<>())
                 .build();
 
@@ -133,7 +119,6 @@ public class InputArpRuleGeneratorTest {
                 .build());
         InputArpRuleGenerator generator = InputArpRuleGenerator.builder()
                 .ingressEndpoint(endpoint)
-                .multiTable(true)
                 .overlappingIngressAdapters(Sets.newHashSet(adapter))
                 .build();
 

@@ -35,10 +35,7 @@ kafka.topic.topo.disco=kilda.topo.disco.storm
 lab-api.endpoint=http://localhost:8288
 lockkeeper.port=5001
 
-legacy.tsdb.endpoint=http://localhost:4242
 tsdb.endpoint=http://localhost:8428
-use.legacy.tsdb=false
-
 tsdb.metric.prefix=kilda.
 
 spring.profiles.active=virtual
@@ -52,7 +49,7 @@ discovery.exhausted.interval=60
 discovery.auxiliary.interval=30
 
 antiflap.min=1
-antiflap.warmup=3
+antiflap.warmup=5
 antiflap.cooldown=7
 
 pce.isl.cost.when.unstable=10000
@@ -84,7 +81,6 @@ latency.update.interval = 120
 flow.sla.check.interval.seconds = 60
 
 use.hs=true
-use.multitable=true
 cleanup.verifier=true
 #set value to 'false' to skip health check verification
 health_check.verifier=true

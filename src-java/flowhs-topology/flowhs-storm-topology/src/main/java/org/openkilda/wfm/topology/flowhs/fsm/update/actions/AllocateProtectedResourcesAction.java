@@ -109,7 +109,7 @@ public class AllocateProtectedResourcesAction extends
                     stateMachine.getSharedBandwidthGroupId());
             log.debug("New protected path has been created: {}", createdPaths);
 
-            saveAllocationActionWithDumpsToHistory(stateMachine, tmpFlow, "protected", createdPaths);
+            stateMachine.saveActionToHistory("Protected resources have been allocated");
         }
     }
 

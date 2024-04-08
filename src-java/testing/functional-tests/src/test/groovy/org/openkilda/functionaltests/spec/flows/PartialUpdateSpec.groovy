@@ -49,7 +49,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     def "Able to partially update flow '#data.field' without reinstalling its rules"() {
         given: "A flow"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flow.tap{
             pathComputationStrategy = "cost"
@@ -77,9 +77,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "Flow rules have not been reinstalled"
         assertThat(northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.toArray()).containsAll(originalCookies)
-
-        cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [
@@ -121,7 +118,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Able to partially update flow #data.field without reinstalling its rules(v1)"() {
         given: "A flow"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
@@ -141,9 +138,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
-
-        cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [
@@ -168,7 +162,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     def "Able to partially update flow #data.field which causes a reroute"() {
         given: "A flow"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll { !new Cookie(it.cookie).serviceFlag }
@@ -192,9 +186,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         !newCookies.findAll { new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW  }
                 .any { it in originalCookies.findAll { new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW } }
 
-        cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
-
         where:
         data << [
                 [
@@ -210,9 +201,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     def "Able to turn on diversity feature using partial update"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
-        def switchPair = topologyHelper.switchPairs.find {
-            it.paths.collect { pathHelper.getInvolvedIsls(it) }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
-        } ?: assumeTrue(false, "Can't find a switch pair with 2 not overlapping paths")
+        def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create 2 not diverse flows going through these switches"
         def flow1 = flowHelperV2.randomFlow(switchPair)
@@ -230,14 +219,11 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         then: "Flows use diverse paths"
         pathHelper.getInvolvedIsls(flow1.flowId).intersect(pathHelper.getInvolvedIsls(flow2.flowId)).empty
-
-        cleanup:
-        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     def "Able to do partial update on a single-switch flow"() {
         given: "A single-switch flow"
-        def swPair = topologyHelper.singleSwitchPair
+        def swPair = switchPairs.singleSwitch().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
@@ -258,9 +244,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
-
-        cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Able to update a flow port and vlan using partial update"() {
@@ -300,13 +283,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         }
 
         and: "The src switch passes switch validation"
-        with(northbound.validateSwitch(srcSwitch.dpId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(srcSwitch.dpId).isPresent()
     }
 
     def "Able to update a flow endpoint using partial update"() {
@@ -354,27 +331,16 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "The new and old dst switches pass switch validation"
         Wrappers.wait(RULES_DELETION_TIME) {
-            [dstSwitch, newDstSwitch]*.dpId.each { switchId ->
-                with(northbound.validateSwitch(switchId)) { validation ->
-                    validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                    validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
+            assert switchHelper.validateAndCollectFoundDiscrepancies([dstSwitch, newDstSwitch]*.dpId).isEmpty()
         }
-        def dstSwitchesAreFine = false
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        !dstSwitchesAreFine && [dstSwitch, newDstSwitch]*.dpId.each { northbound.synchronizeSwitch(it, true) }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies([dstSwitch, newDstSwitch]*.dpId)
     }
 
     def "Able to update flow encapsulationType using partial update"() {
         given: "A flow with a 'transit_vlan' encapsulation"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find { swP ->
-            [swP.src, swP.dst].every { switchHelper.isVxlanEnabled(it.dpId) }
-        }
-        assumeTrue(switchPair as boolean, "Unable to find required switches in topology")
-
+        def switchPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
         flowHelperV2.addFlow(flow)
@@ -399,9 +365,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         !northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll { def cookie = new Cookie(it.cookie)
             !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT
         }.any { it in originalCookies }
-
-        cleanup: "Remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -451,13 +414,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         }
 
         and: "The switch passes switch validation"
-        with(northbound.validateSwitch(flow.source.switchId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.source.switchId).isPresent()
     }
 
     @Tags(LOW_PRIORITY)
@@ -511,19 +468,13 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         }
 
         and: "The switch passes switch validation"
-        with(northbound.validateSwitch(flow.source.switchId)) { validation ->
-            validation.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            validation.verifyMeterSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.source.switchId).isPresent()
     }
 
     @Tags([LOW_PRIORITY])
     def "Partial update with empty body does not actually update flow in any way(v1)"() {
         given: "A flow"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(flow)
         def originalCookies = northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
@@ -545,16 +496,11 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
-
-        cleanup: "Remove the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "Partial update with empty body does not actually update flow in any way"() {
         given: "A flow"
-        def swPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.collect { pathHelper.getInvolvedIsls(it) }.unique { a, b -> a.intersect(b) ? 0 : 1 }.size() > 1
-        } ?: assumeTrue(false, "Need at least 2 non-overlapping paths for diverse flow")
+        def swPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
         def helperFlow = flowHelperV2.randomFlow(swPair)
         flowHelperV2.addFlow(helperFlow)
         def flow = flowHelperV2.randomFlow(swPair).tap {
@@ -581,9 +527,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "Flow rules have not been reinstalled"
         northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.containsAll(originalCookies)
-
-        cleanup: "Remove flows"
-        [flow, helperFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     def "Unable to partial update a flow in case new port is an isl port on a #data.switchType switch"() {
@@ -603,8 +546,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         then: "Error is returned"
         def exc = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError(data.descriptionPattern(isl)).matches(exc)
-        cleanup: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         data << [
@@ -628,7 +569,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     @Unroll("Unable to partial update flow (#data.conflict)")
     def "Unable to partial update flow when there are conflicting vlans"() {
         given: "Two potential flows"
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().random()
         def flow1 = flowHelperV2.randomFlow(swPair, false)
         def flow2 = flowHelperV2.randomFlow(swPair, false, [flow1])
         FlowPatchV2 patch = data.getPatch(flow1)
@@ -643,9 +584,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         then: "Error is returned, stating a readable reason of conflict"
         def error = thrown(HttpClientErrorException)
         new FlowNotUpdatedWithConflictExpectedError(data.errorDescription(flow1, flow2, patch)).matches(error)
-
-        cleanup:
-        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
 
         where:
         data <<[
@@ -708,7 +646,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
     def "Unable to update a flow to have both strict_bandwidth and ignore_bandwidth flags at the same time"() {
         given: "An existing flow without flag conflicts"
-        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0]).tap {
+        def flow = flowHelperV2.randomFlow(switchPairs.all().random()).tap {
             ignoreBandwidth = initialIgnore
             strictBandwidth = initialStrict
         }
@@ -725,9 +663,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         new FlowNotUpdatedExpectedError(
                 ~/Can not turn on ignore bandwidth flag and strict bandwidth flag at the same time/).matches(error)
 
-        cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
-
         where:
         initialIgnore   | initialStrict | updateIgnore  | updateStrict
         false           | false         | true          | true
@@ -738,8 +673,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Able to update vlanId via partialUpdate in case vlanId==0 and innerVlanId!=0"() {
         given: "A default flow"
-        assumeTrue(useMultitable, "Multi table is not enabled in kilda configuration")
-        def swPair = topologyHelper.switchPairs.first()
+        def swPair = switchPairs.all().random()
         def defaultFlow = flowHelperV2.randomFlow(swPair).tap {
             source.vlanId = 0
             source.innerVlanId = 0
@@ -764,15 +698,12 @@ class PartialUpdateSpec extends HealthCheckSpecification {
             it.source.vlanId == newSrcInnerVlanId
             it.source.innerVlanId == defaultFlow.source.vlanId
         }
-
-        cleanup:
-        defaultFlow && flowHelperV2.deleteFlow(defaultFlow.flowId)
     }
 
     @Unroll("Unable to partial update flow (maxLatency #maxLatencyAfter and maxLatencyTier2 #maxLatencyT2After)")
     def "Unable to partial update flow with maxLatency incorrect value"() {
         given: "Two potential flows"
-        def flow = flowHelperV2.randomFlow(topologyHelper.switchPairs[0]).tap {
+        def flow = flowHelperV2.randomFlow(switchPairs.all().random()).tap {
             maxLatency = maxLatencyBefore
             maxLatencyTier2 = maxLatencyT2Before
 
@@ -788,9 +719,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         then: "Bad Request response is returned"
         def error = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError("Invalid flow data", description).matches(error)
-
-        cleanup:
-        flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         maxLatencyBefore | maxLatencyT2Before | maxLatencyAfter | maxLatencyT2After | description

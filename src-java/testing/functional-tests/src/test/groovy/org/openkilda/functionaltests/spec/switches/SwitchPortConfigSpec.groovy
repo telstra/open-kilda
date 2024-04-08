@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.model.stats.SwitchStats
 import org.openkilda.functionaltests.model.stats.SwitchStatsMetric
 import org.springframework.beans.factory.annotation.Autowired
@@ -27,50 +29,28 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
     @Autowired @Shared
     SwitchStats switchStats;
 
-    @Tags([TOPOLOGY_DEPENDENT, SMOKE])
+    @Tags([TOPOLOGY_DEPENDENT, SMOKE, ISL_RECOVER_ON_FAIL])
     def "Able to bring ISL-busy port down/up on an #isl.srcSwitch.ofVersion switch #isl.srcSwitch.dpId"() {
         when: "Bring port down on the switch"
         def portDownTime = new Date().getTime()
-        antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
+        islHelper.breakIsl(isl)
 
-        then: "Forward and reverse ISLs between switches becomes 'FAILED'"
-        Wrappers.wait(WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.FAILED
-            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.FAILED
-        }
-
-        and: "Port failure is logged in TSDB"
+        then: "Port failure is logged in TSDB"
         def statsData = [:]
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
-            switchStats.of(isl.getSrcSwitch().getDpId(), [STATE]).get(STATE, isl.getSrcPort()).hasValue(0)
+            switchStats.of(isl.getSrcSwitch().getDpId()).get(STATE, isl.getSrcPort()).hasValue(0)
         }
 
         when: "Bring port up on the switch"
-        def portUpTime = new Date()
-        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        islHelper.restoreIsl(isl)
 
-        then: "Forward and reverse ISLs between switches becomes 'DISCOVERED'"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
-            assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
-        }
-
-        and: "Port UP event is logged in TSDB"
+        then: "Port UP event is logged in TSDB"
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
-            switchStats.of(isl.getSrcSwitch().getDpId(), [STATE]).get(STATE, isl.getSrcPort()).hasValue(1)
+            switchStats.of(isl.getSrcSwitch().getDpId()).get(STATE, isl.getSrcPort()).hasValue(1)
         }
 
         cleanup:
-        if (portDownTime && !portUpTime) {
-            antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                def links = northbound.getAllLinks()
-                assert islUtils.getIslInfo(links, isl).get().state == IslChangeType.DISCOVERED
-                assert islUtils.getIslInfo(links, isl.reversed).get().state == IslChangeType.DISCOVERED
-            }
-        }
+        islHelper.restoreIsl(isl)
         database.resetCosts(topology.isls)
 
         where:

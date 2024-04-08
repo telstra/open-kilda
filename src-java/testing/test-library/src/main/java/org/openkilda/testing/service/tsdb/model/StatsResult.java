@@ -72,4 +72,8 @@ public class StatsResult {
     public Long getNewestTimeStamp() {
         return dataPoints.keySet().stream().max(Long::compareTo).orElse(0L);
     }
+
+    public boolean isEmpty() {
+        return dataPoints.isEmpty();
+    }
 }

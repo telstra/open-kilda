@@ -15,6 +15,8 @@
 
 package org.openkilda.floodlight.command.flow;
 
+import static org.openkilda.floodlight.command.flow.FlowSegmentReportErrorDecoder.decodeError;
+
 import org.openkilda.floodlight.KafkaChannel;
 import org.openkilda.floodlight.api.response.SpeakerFlowSegmentResponse;
 import org.openkilda.floodlight.api.response.SpeakerResponse;
@@ -30,8 +32,6 @@ import org.openkilda.floodlight.service.kafka.IKafkaProducerService;
 
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.projectfloodlight.openflow.protocol.OFErrorMsg;
-import org.projectfloodlight.openflow.protocol.errormsg.OFFlowModFailedErrorMsg;
 
 @Slf4j
 public class FlowSegmentReport extends SpeakerCommandRemoteReport {
@@ -59,7 +59,9 @@ public class FlowSegmentReport extends SpeakerCommandRemoteReport {
         } catch (SwitchNotFoundException e) {
             errorResponse.errorCode(ErrorCode.SWITCH_UNAVAILABLE);
         } catch (SessionErrorResponseException e) {
-            decodeError(errorResponse, e.getErrorResponse());
+            if (!decodeError(errorResponse, e.getErrorResponse())) {
+                log.error("Unable to decode OF error response: {}", e.getErrorResponse());
+            }
         } catch (SwitchMissingFlowsException e) {
             errorResponse.errorCode(ErrorCode.MISSING_OF_FLOWS);
             errorResponse.description(e.getMessage());
@@ -87,31 +89,6 @@ public class FlowSegmentReport extends SpeakerCommandRemoteReport {
                         command.getMessageContext() != null ? command.getMessageContext().getCreateTime() : 0)
                 .executionTime(getExecutionTime() != null ? getExecutionTime().toNanos() : 0)
                 .build();
-    }
-
-    protected void decodeError(FlowErrorResponseBuilder errorResponse, OFErrorMsg error) {
-        if (error instanceof OFFlowModFailedErrorMsg) {
-            decodeError(errorResponse, (OFFlowModFailedErrorMsg) error);
-        } else {
-            log.error("Unable to decode OF error response: {}", error);
-            errorResponse.errorCode(ErrorCode.UNKNOWN);
-        }
-    }
-
-    private void decodeError(FlowErrorResponseBuilder errorResponse, OFFlowModFailedErrorMsg error) {
-        switch (error.getCode()) {
-            case UNSUPPORTED:
-                errorResponse.errorCode(ErrorCode.UNSUPPORTED);
-                break;
-            case BAD_COMMAND:
-                errorResponse.errorCode(ErrorCode.BAD_COMMAND);
-                break;
-            case BAD_FLAGS:
-                errorResponse.errorCode(ErrorCode.BAD_FLAGS);
-                break;
-            default:
-                errorResponse.errorCode(ErrorCode.UNKNOWN);
-        }
     }
 
     private FlowErrorResponse.FlowErrorResponseBuilder makeErrorTemplate() {

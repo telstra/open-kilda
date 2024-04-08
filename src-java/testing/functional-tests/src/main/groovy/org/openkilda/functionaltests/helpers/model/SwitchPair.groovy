@@ -47,12 +47,26 @@ class SwitchPair {
     }
 
     @JsonIgnore
+    List<Switch> toList() {
+        return [src, dst]
+    }
+
+    @JsonIgnore
     SwitchPair getReversed() {
         new SwitchPair(src: dst,
                 dst: src,
                 paths: paths.collect { it.reverse() },
                 northboundService: northboundService,
                 topologyDefinition: topologyDefinition)
+    }
+
+    boolean hasOf13Path() {
+        def possibleDefaultPaths = paths.findAll {
+            it.size() == paths.min { it.size() }.size()
+        }
+        !possibleDefaultPaths.find { path ->
+            path[1..-2].every { it.switchId.description.contains("OF_12") }
+        }
     }
 
     @Override

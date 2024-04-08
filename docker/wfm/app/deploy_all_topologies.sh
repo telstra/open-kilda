@@ -30,7 +30,7 @@ for TOPOLOGY in $(find . -name "*-topology" -type d); do
     TOPOLOGY_JAR=$(ls -1 /app/${TOPOLOGY_NAME}-storm-topology/libs/ | grep -v "\-original" | head -1)
     COMMA_SEPARATED_DEPENDENCY_LIST=""
 
-    for DEPENDENCY_JAR in $(ls -1 ${TOPOLOGY}/dependency-jars);
+    for DEPENDENCY_JAR in $([[ -d ${TOPOLOGY}/dependency-jars ]] && ls -1 ${TOPOLOGY}/dependency-jars);
     do
         COMMA_SEPARATED_DEPENDENCY_LIST="${COMMA_SEPARATED_DEPENDENCY_LIST:+$COMMA_SEPARATED_DEPENDENCY_LIST,}/app/${TOPOLOGY_NAME}-storm-topology/dependency-jars/${DEPENDENCY_JAR}"
     done

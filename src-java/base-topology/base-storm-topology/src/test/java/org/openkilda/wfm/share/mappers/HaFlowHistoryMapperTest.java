@@ -15,8 +15,8 @@
 
 package org.openkilda.wfm.share.mappers;
 
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -53,6 +53,8 @@ import org.openkilda.wfm.share.history.model.HaFlowHistoryData;
 import org.openkilda.wfm.share.history.model.HaFlowPathDump;
 import org.openkilda.wfm.share.history.model.HaSubFlowDump;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
 
@@ -60,6 +62,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class HaFlowHistoryMapperTest {
@@ -275,8 +278,8 @@ public class HaFlowHistoryMapperTest {
     
     @Test
     public void persistenceToPayload() {
-        HaFlowEventDump source =
-                createHaFlowEventDump(org.openkilda.model.history.DumpType.STATE_BEFORE, "correlation ID");
+        HaFlowEventDump source = createHaFlowEventDumpWithProtectedPaths(
+                org.openkilda.model.history.DumpType.STATE_BEFORE, "correlation ID");
 
         HaFlowDumpPayload result = mapper.persistenceToPayload(source);
 
@@ -335,6 +338,9 @@ public class HaFlowHistoryMapperTest {
         assertEquals(source.getReversePath().getYPointSwitchId(),
                 result.getReversePath().getYPointSwitchId());
         assertEquals(source.getReversePath().getStatus(), result.getReversePath().getStatus().toString());
+
+        assertNotNull(result.getProtectedForwardPath());
+        assertNotNull(result.getProtectedReversePath());
     }
 
     @Test
@@ -452,8 +458,57 @@ public class HaFlowHistoryMapperTest {
         assertEquals(source.getReversePath().getStatus(), dump.getReversePath().getStatus());
     }
 
-    private HaFlowEventDump createHaFlowEventDump(org.openkilda.model.history.DumpType dumpType, String correlationId) {
-        return new HaFlowEventDump(HaFlowEventDumpDataImpl.builder()
+    @Test
+    public void whenDumpContainsEmptyListsInPathPayload_theWholePathPayloadIsExcluded() throws JsonProcessingException {
+        HaFlowDumpPayload payloadWithEmptyPaths = HaFlowDumpPayload.builder()
+                .taskId("1")
+                .protectedReversePath(HaFlowPathPayload.builder()
+                        .paths(Collections.EMPTY_LIST)
+                        .haSubFlows(Collections.EMPTY_LIST)
+                        .build())
+                .protectedForwardPath(HaFlowPathPayload.builder()
+                        .paths(Collections.EMPTY_LIST)
+                        .haSubFlows(Collections.EMPTY_LIST)
+                        .build())
+                .build();
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        String json = objectMapper.writeValueAsString(payloadWithEmptyPaths);
+        assertFalse(json.contains("protected_reverse_path"),
+                "Protected reverse must not be present, because all fields are null and lists are empty");
+        assertFalse(json.contains("protected_forward_path"),
+                "Protected forward must not be present, because all fields are null and lists are empty");
+    }
+
+    @Test
+    void whenDumpContainsNonEmptyListsInPathPayload_theWholePathPayloadIsIncluded() throws JsonProcessingException {
+        HaFlowDumpPayload payloadWithPaths = HaFlowDumpPayload.builder()
+                .taskId("1")
+                .protectedReversePath(HaFlowPathPayload.builder()
+                        .paths(Collections.singletonList(Collections.singletonList(
+                                org.openkilda.messaging.payload.flow.PathNodePayload.builder().inputPort(1).build())))
+                        .haSubFlows(Collections.EMPTY_LIST)
+                        .build())
+                .protectedForwardPath(HaFlowPathPayload.builder()
+                        .haPathId("1")
+                        .paths(Collections.EMPTY_LIST)
+                        .haSubFlows(Collections.EMPTY_LIST)
+                        .build())
+                .build();
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        String jsonWithPaths = objectMapper.writeValueAsString(payloadWithPaths);
+
+        assertTrue(jsonWithPaths.contains("protected_forward_path"),
+                "Protected forward must be present, because there is a paths list with one element");
+        assertTrue(jsonWithPaths.contains("protected_reverse_path"),
+                "Protected reverse must not be present, because there is a non-null field");
+    }
+
+    private HaFlowEventDumpDataImpl.HaFlowEventDumpDataImplBuilder getHaFlowEventData(
+            org.openkilda.model.history.DumpType dumpType, String correlationId) {
+        return HaFlowEventDumpDataImpl.builder()
                 .affinityGroupId(AFFINITY_GROUP_ID)
                 .allocateProtectedPath(ALLOCATE_PROTECTED_PATH)
                 .description(DESCRIPTION)
@@ -479,10 +534,15 @@ public class HaFlowHistoryMapperTest {
                 .strictBandwidth(STRICT_BANDWIDTH)
                 .taskId(correlationId)
                 .haSubFlows(createPersistenceHaSubFlowDumpWrapper())
+                .forwardPath(createPersistenceHaFlowPathDump(FlowPathDirection.FORWARD))
+                .reversePath(createPersistenceHaFlowPathDump(FlowPathDirection.REVERSE));
+    }
+
+    private HaFlowEventDump createHaFlowEventDumpWithProtectedPaths(org.openkilda.model.history.DumpType dumpType,
+                                                                    String correlationId) {
+        return new HaFlowEventDump(getHaFlowEventData(dumpType, correlationId)
                 .protectedForwardPath(createPersistenceHaFlowPathDump(FlowPathDirection.FORWARD))
                 .protectedReversePath(createPersistenceHaFlowPathDump(FlowPathDirection.REVERSE))
-                .forwardPath(createPersistenceHaFlowPathDump(FlowPathDirection.FORWARD))
-                .reversePath(createPersistenceHaFlowPathDump(FlowPathDirection.REVERSE))
                 .build());
     }
 

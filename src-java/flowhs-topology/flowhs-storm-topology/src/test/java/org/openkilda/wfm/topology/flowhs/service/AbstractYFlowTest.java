@@ -71,8 +71,8 @@ import org.openkilda.wfm.share.flow.resources.FlowResourcesManager;
 import org.openkilda.wfm.topology.flowhs.service.common.NorthboundResponseCarrier;
 
 import com.google.common.collect.ImmutableList;
+import dev.failsafe.function.CheckedConsumer;
 import lombok.SneakyThrows;
-import net.jodah.failsafe.function.CheckedConsumer;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;

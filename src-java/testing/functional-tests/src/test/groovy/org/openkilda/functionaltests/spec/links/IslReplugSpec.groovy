@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.links
 
 import static org.junit.Assume.assumeNotNull
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.FLOW_SYSTEM_PACKETS
@@ -30,6 +31,7 @@ class IslReplugSpec extends HealthCheckSpecification {
     @Autowired @Shared
     SwitchStats switchStats
 
+    @Tags(HARDWARE)
     def "Round-trip ISL status changes to MOVED when replugging it into another switch"() {
         given: "A connected a-switch link, round-trip-enabled"
         and: "A non-connected a-switch link with round-trip support"
@@ -88,11 +90,8 @@ class IslReplugSpec extends HealthCheckSpecification {
         def newIslIsRemoved = true
 
         and: "The src and dst switches of the isl pass switch validation"
-        [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique().each { swId ->
-            with(northbound.validateSwitch(swId)) { validationResponse ->
-                validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(
+                [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique()).isEmpty()
 
         cleanup:
         if (!originIslIsUp) {
@@ -155,11 +154,8 @@ class IslReplugSpec extends HealthCheckSpecification {
         /* Need wait because of parallel s42 tests. Sw validation may show a missing s42 rule. Just wait for it.
         If problem persists, add a 'read' resource lock for s42_toggle */
         Wrappers.wait(WAIT_OFFSET) {
-            [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique().each { swId ->
-                with(northbound.validateSwitch(swId)) { validationResponse ->
-                    validationResponse.verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-                }
-            }
+            switchHelper.validateAndCollectFoundDiscrepancies(
+                    [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique()).isEmpty()
         }
 
         cleanup:
@@ -230,7 +226,8 @@ class IslReplugSpec extends HealthCheckSpecification {
         def expectedIsl = islUtils.replug(islToPlug, true, islToPlugInto, true, true)
 
         then: "The potential self-loop ISL is not present in the list of ISLs (wait for discovery interval)"
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
+        sleep(discoveryInterval * 1000)
+        Wrappers.wait(WAIT_OFFSET) {
             def allLinks = northbound.getAllLinks()
             !islUtils.getIslInfo(allLinks, expectedIsl).present
             !islUtils.getIslInfo(allLinks, expectedIsl.reversed).present
@@ -238,7 +235,7 @@ class IslReplugSpec extends HealthCheckSpecification {
 
         and: "Self-loop rule packet counter is incremented and logged in tsdb"
         Wrappers.wait(statsRouterRequestInterval) {
-            switchStats.of(expectedIsl.getSrcSwitch().getDpId(), [FLOW_SYSTEM_PACKETS])
+            switchStats.of(expectedIsl.getSrcSwitch().getDpId())
                     .get(FLOW_SYSTEM_PACKETS, DROP_LOOP_RULE.toHexString())
                     .hasNonZeroValuesAfter(beforeReplugTime.getTime())
         }

@@ -1,11 +1,13 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.error.flowloop.FlowLoopNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -59,10 +61,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
     ])
     def "Able to create flowLoop for a #data.flowDescription flow"() {
         given: "An active and valid  #data.flowDescription flow"
-        def allTraffGenSwIds = topology.activeTraffGens*.switchConnected*.dpId
-        assumeTrue((allTraffGenSwIds.size() > 1), "Unable to find switches connected to traffGens")
-        def switchPair = data.switchPair(allTraffGenSwIds)
-        assumeTrue(switchPair != null, "Unable to find required switch pair in topology")
+        def switchPair = data.switchPair
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.tap(data.flowTap)
         flowHelperV2.addFlow(flow)
@@ -96,8 +95,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(switchPair.dst.dpId).empty
 
         and: "The src switch is valid"
-        northbound.validateSwitch(switchPair.src.dpId)
-                .verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        switchHelper.synchronizeAndCollectFixedDiscrepancies([switchPair.getSrc().getDpId()]).isEmpty()
 
         when: "Send traffic via flow in the forward direction"
         def traffExam = traffExamProvider.get()
@@ -174,8 +172,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         }
 
         and: "The src switch is valid"
-        northbound.validateSwitch(switchPair.src.dpId)
-                .verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.getSrc().getDpId()).isPresent()
 
         and: "Flow allows traffic"
         withPool {
@@ -186,22 +183,15 @@ class FlowLoopSpec extends HealthCheckSpecification {
             }
         }
 
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-
         where:
         data << [[
                          flowDescription: "pinned",
-                         switchPair     : { List<SwitchId> switchIds ->
-                             getSwPairConnectedToTraffGenForSimpleFlow(switchIds)
-                         },
+                         switchPair     : switchPairs.all().withTraffgensOnBothEnds().random(),
                          flowTap        : { FlowRequestV2 fl -> fl.pinned = true }
                  ],
                  [
                          flowDescription: "default",
-                         switchPair     : { List<SwitchId> switchIds ->
-                             getSwPairConnectedToTraffGenForSimpleFlow(switchIds)
-                         },
+                         switchPair     : switchPairs.all().withTraffgensOnBothEnds().random(),
                          flowTap        : { FlowRequestV2 fl ->
                              fl.source.vlanId = 0
                              fl.destination.vlanId = 0
@@ -209,23 +199,25 @@ class FlowLoopSpec extends HealthCheckSpecification {
                  ],
                  [
                          flowDescription: "protected",
-                         switchPair     : { List<SwitchId> switchIds ->
-                             getSwPairConnectedToTraffGenForProtectedFlow(switchIds)
-                         },
+                         switchPair     : switchPairs.all()
+                                 .withTraffgensOnBothEnds()
+                                 .withAtLeastNNonOverlappingPaths(2)
+                                 .random(),
                          flowTap        : { FlowRequestV2 fl -> fl.allocateProtectedPath = true }
                  ],
                  [
                          flowDescription: "vxlan",
-                         switchPair     : { List<SwitchId> switchIds ->
-                             getSwPairConnectedToTraffGenForVxlanFlow(switchIds)
-                         },
+                         switchPair     : switchPairs.all()
+                                 .withTraffgensOnBothEnds()
+                                 .withBothSwitchesVxLanEnabled()
+                                 .random(),
                          flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
                  ],
                  [
                          flowDescription: "qinq",
-                         switchPair     : { List<SwitchId> switchIds ->
-                             getSwPairConnectedToTraffGenForQinQ(switchIds)
-                         },
+                         switchPair     : switchPairs.all()
+                                 .withTraffgensOnBothEnds()
+                                 .random(),
                          flowTap        : { FlowRequestV2 fl ->
                              fl.source.vlanId = 10
                              fl.source.innerVlanId = 100
@@ -239,7 +231,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Able to delete a flow with created flowLoop on it"() {
         given: "A active multi switch flow"
-        def switchPair = topologyHelper.switchPairs.first()
+        def switchPair = switchPairs.all().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
@@ -268,32 +260,24 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         when: "Delete the flow"
         flowHelperV2.deleteFlow(flow.flowId)
-        def flowIsDeleted = true
 
         then: "FlowLoop rules are deleted from the dst switch"
         Wrappers.wait(RULES_DELETION_TIME) {
             assert getFlowLoopRules(switchPair.dst.dpId).empty
         }
 
-        and: "The dst switch is valid"
-        northbound.validateSwitch(switchPair.src.dpId)
-                .verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        def testIsCompleted = true
-
-        cleanup: "Delete the flow"
-        flow && !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
-        !testIsCompleted && [switchPair.src.dpId, switchPair.dst.dpId].each {
-            northbound.synchronizeSwitch(it, true)
-        }
+        and: "Both switches are valid"
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId()).isEmpty()
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "System is able to reroute a flow when flowLoop is created on it"() {
         given: "A multi switch flow with one alternative path at least"
-        def allTraffGenSwIds = topology.activeTraffGens*.switchConnected*.dpId
-        assumeTrue((allTraffGenSwIds.size() > 1), "Unable to find switches connected to traffGens")
-        // pick swPair for protected flow, we can fail any ISL on a flow path and be sure that an alternative path is available
-        def switchPair = getSwPairConnectedToTraffGenForProtectedFlow(allTraffGenSwIds)
-        assumeTrue(switchPair != null, "Unable to find required switch pair in topology")
+        def switchPair = switchPairs.all()
+                .nonNeighbouring()
+                .withTraffgensOnBothEnds()
+                .withAtLeastNNonOverlappingPaths(2)
+                .random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
         def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
@@ -309,7 +293,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         when: "Fail a flow ISL (bring switch port down)"
         def islToFail = pathHelper.getInvolvedIsls(flowPath).last()
-        antiflap.portDown(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        islHelper.breakIsl(islToFail)
 
         then: "The flow was rerouted"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
@@ -328,8 +312,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(switchPair.dst.dpId).size() == 2
 
         and: "The src switch is valid"
-        northbound.validateSwitch(switchPair.src.dpId)
-                .verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.getSrc().getDpId()).isPresent()
 
         and: "Flow doesn't allow traffic, because it is grubbed by flowLoop rules"
         def traffExam = traffExamProvider.get()
@@ -346,8 +329,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(switchPair.src.dpId)*.packetCount.every { it > 0 }
 
         cleanup: "Revive the ISL back (bring switch port up) and delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        islToFail && antiflap.portUp(islToFail.srcSwitch.dpId, islToFail.srcPort)
+        islHelper.restoreIsl(islToFail)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
         }
@@ -356,7 +338,8 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
     def "System is able to detect and sync missing flowLoop rules"() {
         given: "An active flow with created flowLoop on the src switch"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
+        def sourceSwitchId = switchPair.getSrc().getDpId()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
         northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
@@ -367,15 +350,15 @@ class FlowLoopSpec extends HealthCheckSpecification {
         }
 
         when: "Delete flowLoop rules"
-        flowLoopRules.each { northbound.deleteSwitchRules(switchPair.src.dpId, it) }
+        flowLoopRules.each { northbound.deleteSwitchRules(sourceSwitchId, it) }
 
         then: "System detects missing flowLoop rules"
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert northbound.validateSwitch(switchPair.src.dpId).rules.missing.sort() == flowLoopRules.sort()
+            assert switchHelper.validate(sourceSwitchId).rules.missing*.cookie.sort() == flowLoopRules.sort()
         }
 
         when: "Sync the src switch"
-        def syncResponse = northbound.synchronizeSwitch(switchPair.src.dpId, true)
+        def syncResponse = switchHelper.synchronizeAndCollectFixedDiscrepancies(sourceSwitchId).get()
 
         then: "Sync response contains flowLoop rules into the installed section"
         syncResponse.rules.installed.sort() == flowLoopRules.sort()
@@ -384,22 +367,17 @@ class FlowLoopSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert getFlowLoopRules(switchPair.src.dpId).size() == 2
         }
-        northbound.validateSwitch(switchPair.src.dpId).rules.missing.empty
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.src.dpId).isPresent()
         def testIsCompleted = true
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        !testIsCompleted && northbound.synchronizeSwitch(switchPair.src.dpId, true)
+        !testIsCompleted && switchHelper.synchronize(switchPair.src.dpId)
     }
 
     @Tags(LOW_PRIORITY)
     def "Systems allows to get all flowLoops that goes through a switch"() {
         given: "Two active switches"
-        def switchPair = topologyHelper.switchPairs.find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        }
-        assumeTrue(switchPair != null, "Unable to find required switch pair in topology")
-
+        def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
         and: "Three multi switch flows"
         def flow1 = flowHelperV2.randomFlow(switchPair)
         flow1.allocateProtectedPath = true
@@ -437,21 +415,15 @@ class FlowLoopSpec extends HealthCheckSpecification {
         flowLoopDstSw.size() == 1
         flowLoopDstSw[0].flowId == flow3.flowId
         flowLoopDstSw[0].switchId == switchPair.dst.dpId
-
-        cleanup: "Delete the flows"
-        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
+    @Tags(ISL_RECOVER_ON_FAIL)
     def "System is able to autoSwapPath for a protected flow when flowLoop is created on it"() {
         given: "Two active switches with three diverse paths at least"
-        def allTraffGenSwIds = topology.activeTraffGens*.switchConnected*.dpId
-        assumeTrue((allTraffGenSwIds.size() > 1), "Unable to find switches connected to traffGens")
-        def switchPair = topologyHelper.getSwitchPairs().find {
-            [it.dst, it.src].every { it.dpId in allTraffGenSwIds } && it.paths.unique(false) {
-                a, b -> a.intersect(b) == [] ? 1 : 0
-            }.size() >= 3
-        } ?: assumeTrue(false, "No suiting switches found")
-
+        def switchPair = switchPairs.all()
+                .withAtLeastNNonOverlappingPaths(3)
+                .withTraffgensOnBothEnds()
+                .random()
 
         and: "A protected unmetered flow with flowLoop on the src switch"
         def flow = flowHelperV2.randomFlow(switchPair).tap {
@@ -471,8 +443,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         def currentPath = pathHelper.convert(flowPathInfo)
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        def portIsDown = true
+        islHelper.breakIsl(islToBreak)
 
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -490,8 +461,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
             def flowLoopRules = getFlowLoopRules(switchPair.src.dpId)
             assert flowLoopRules.size() == 2
             assert flowLoopRules*.packetCount.every { it == 0 }
-            northbound.validateSwitch(switchPair.src.dpId)
-                    .verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            assert !switchHelper.validateAndCollectFoundDiscrepancies(switchPair.getSrc().getDpId()).isPresent()
         }
 
         when: "Send traffic via flow"
@@ -512,13 +482,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(switchPair.src.dpId)*.packetCount.every { it > 0 }
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        if (portIsDown) {
-            antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-                assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
-            }
-        }
+        islHelper.restoreIsl(islToBreak)
         database.resetCosts(topology.isls)
     }
 
@@ -552,7 +516,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         and: "The switch is valid"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert getFlowLoopRules(sw.dpId).size() == 2
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
+            assert !switchHelper.validateAndCollectFoundDiscrepancies(sw.getDpId()).isPresent()
         }
 
 
@@ -572,12 +536,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         and: "The switch is valid"
-        northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        def testIsCompleted = true
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        !testIsCompleted && northbound.synchronizeSwitch(sw.dpId, true)
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.getDpId()).isPresent()
     }
 
     @Tags(LOW_PRIORITY)
@@ -605,29 +564,23 @@ class FlowLoopSpec extends HealthCheckSpecification {
         and: "The switch is valid"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert getFlowLoopRules(sw.dpId).size() == 2
-            northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
         }
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.getDpId()).isPresent()
 
         when: "Delete the flow with created flowLoop"
         flowHelperV2.deleteFlow(flow.flowId)
-        def flowIsDeleted = true
 
         then: "FlowLoop rules are deleted from the switch"
         getFlowLoopRules(sw.dpId).empty
 
         and: "The switch is valid"
-        northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        def testIsCompleted = true
-
-        cleanup: "Delete the flow"
-        !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
-        !testIsCompleted && northbound.synchronizeSwitch(sw.dpId, true)
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.getDpId()).isPresent()
     }
 
     @Tags(LOW_PRIORITY)
     def "Attempt to create the exact same flowLoop twice just reinstalls the rules"() {
         given: "An active multi switch flow with created flowLoop on the src switch"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
         northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
@@ -641,9 +594,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "The src/dst switches are valid"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            [switchPair.src, switchPair.dst].each {
-                northbound.validateSwitch(it.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-            }
+            assert switchHelper.validateAndCollectFoundDiscrepancies(switchPair.toList()*.getDpId()).isEmpty()
         }
 
         and: "No extra rules are created on the src/dst switches"
@@ -652,7 +603,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         when: "Delete the flow with created flowLoop"
         flowHelperV2.deleteFlow(flow.flowId)
-        def flowIsDeleted = true
 
         then: "FlowLoop rules are deleted"
         Wrappers.wait(RULES_DELETION_TIME) {
@@ -661,16 +611,13 @@ class FlowLoopSpec extends HealthCheckSpecification {
         def testIsCompleted = true
 
         cleanup:
-        !flowIsDeleted && flowHelperV2.deleteFlow(flow.flowId)
-        if (!testIsCompleted) {
-            [switchPair.src, switchPair.dst].each { northbound.synchronizeSwitch(it.dpId, true) }
-        }
+        !testIsCompleted && switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
     }
 
-    @Tags(LOW_PRIORITY)
+    @Tags([LOW_PRIORITY, SWITCH_RECOVER_ON_FAIL])
     def "Unable to create flowLoop when a switch is deactivated"() {
         given: "An active flow"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
 
@@ -692,6 +639,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         then: "Human readable error is returned" //system can't update the flow when it is down
         def exc = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError(~/Source switch $switchPair.src.dpId is not connected to the controller/).matches(exc)
+
         then: "FlowLoop is not created"
         !northbound.getFlow(flow.flowId).loopSwitchId
 
@@ -699,14 +647,13 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(switchPair.dst.dpId).empty
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         switchHelper.reviveSwitch(switchPair.src, blockData, true)
     }
 
     @Tags(LOW_PRIORITY)
     def "Unable to create flowLoop on the src switch when it is already created on the dst switch"() {
         given: "An active flow with created flowLoop on the src switch"
-        def switchPair = topologyHelper.getNeighboringSwitchPair()
+        def switchPair = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
         northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
@@ -718,15 +665,12 @@ class FlowLoopSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         new FlowLoopNotCreatedExpectedError(flow.getFlowId(),
                 ~/Flow is already looped on switch \'$switchPair.src.dpId\'/).matches(exc)
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
     def "Unable to create flowLoop on a transit switch"() {
         given: "An active multi switch flow with transit switch"
-        def switchPair = topologyHelper.getNotNeighboringSwitchPair()
+        def switchPair = switchPairs.all().nonNeighbouring().random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flowHelperV2.addFlow(flow)
         def transitSwId = PathHelper.convert(northbound.getFlowPath(flow.flowId))[1].switchId
@@ -742,9 +686,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "FlowLoop rules are not created on the transit switch"
         getFlowLoopRules(transitSwId).empty
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -760,17 +701,13 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(sw.dpId).empty
 
         and: "The switch is valid"
-        northbound.validateSwitch(sw.dpId).verifyRuleSectionsAreEmpty(["missing", "excess", "misconfigured"])
-        def switchIsValid = true
-
-        cleanup:
-        !switchIsValid && northbound.synchronizeSwitch(sw.dpId, true)
+        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.getDpId()).isPresent()
     }
 
     @Tags(LOW_PRIORITY)
     def "Unable to create flowLoop on a non existent switch"() {
         given: "An active multi switch flow"
-        def swP = topologyHelper.getNeighboringSwitchPair()
+        def swP = switchPairs.all().neighbouring().random()
         def flow = flowHelperV2.randomFlow(swP)
         flowHelperV2.addFlow(flow)
 
@@ -782,39 +719,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         new FlowNotUpdatedExpectedError(~/Loop switch is not terminating in flow path/).matches(exc)
         and: "FlowLoop rules are not created for the flow"
         !northboundV2.getFlow(flow.flowId).loopSwitchId
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-    }
-
-    def "getSwPairConnectedToTraffGenForSimpleFlow"(List<SwitchId> switchIds) {
-        getTopologyHelper().getSwitchPairs().collectMany { [it, it.reversed] }.find { swP ->
-            [swP.dst, swP.src].every { it.dpId in switchIds }
-        }
-    }
-
-    def "getSwPairConnectedToTraffGenForProtectedFlow"(List<SwitchId> switchIds) {
-        getTopologyHelper().getSwitchPairs().find {
-            [it.dst, it.src].every { it.dpId in switchIds } && it.paths.unique(false) {
-                a, b -> a.intersect(b) == [] ? 1 : 0
-            }.size() >= 2
-        }
-    }
-
-    def "getSwPairConnectedToTraffGenForVxlanFlow"(List<SwitchId> switchIds) {
-        getTopologyHelper().getSwitchPairs().find {
-            [it.dst, it.src].every {
-                it.dpId in switchIds && switchHelper.isVxlanEnabled(it.dpId)
-            }
-        }
-    }
-
-    def "getSwPairConnectedToTraffGenForQinQ"(List<SwitchId> switchIds) {
-        return getTopologyHelper().getSwitchPairs().find { swP ->
-            [swP.dst, swP.src].every { it.dpId in switchIds } && swP.paths.findAll { path ->
-                pathHelper.getInvolvedSwitches(path).every { getSwitchHelper().getCachedSwProps(it.dpId).multiTable }
-            }
-        }
     }
 
     def getFlowLoopRules(SwitchId switchId) {

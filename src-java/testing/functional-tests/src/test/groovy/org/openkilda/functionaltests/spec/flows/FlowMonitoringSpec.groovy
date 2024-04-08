@@ -58,11 +58,8 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
 
     def setupSpec() {
         //setup: Two active switches with two diverse paths
-        List<List<PathNode>> paths
-        switchPair = topologyHelper.switchPairs.find {
-            paths = it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            paths.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
+        List<List<PathNode>> paths = switchPair.getPaths()
         mainPath = paths[0]
         alternativePath = paths[1]
         mainIsls = pathHelper.getInvolvedIsls(mainPath)
@@ -72,7 +69,7 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         islsToBreak = switchPair.paths.findAll { !paths.contains(it) }
                 .collect { pathHelper.getInvolvedIsls(it).find { !isls.contains(it) && !isls.contains(it.reversed) } }
                 .unique { [it, it.reversed].sort() }
-        islsToBreak.each { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
+        islHelper.breakIsls(islsToBreak)
     }
 
     @ResourceLock(S42_TOGGLE)
@@ -98,7 +95,7 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
         //wait for generating some flow-monitoring stats
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
 
         def path = northbound.getFlowPath(flow.flowId)
@@ -131,7 +128,6 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         srcInterfaceName && lockKeeper.cleanupLinkDelay(srcInterfaceName)
         dstInterfaceName && lockKeeper.cleanupLinkDelay(dstInterfaceName)
         initFeatureToggle && northbound.toggleFeature(initFeatureToggle)
@@ -161,7 +157,7 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         flowHelperV2.addFlow(flow)
         //wait for generating some flow-monitoring stats
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
-            assert flowStats.rttOf(flow.getFlowId()).get(FLOW_RTT, REVERSE, FLOW_MONITORING).hasNonZeroValues()
+            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
 
@@ -184,7 +180,6 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         srcInterfaceName && lockKeeper.cleanupLinkDelay(srcInterfaceName)
         dstInterfaceName && lockKeeper.cleanupLinkDelay(dstInterfaceName)
         initFeatureToggle && northbound.toggleFeature(initFeatureToggle)
@@ -205,17 +200,14 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
     }
 
     void verifyLatencyInTsdb(flowId, expectedMs) {
-        def actual = flowStats.rttOf(flowId).get(FLOW_RTT).getDataPoints().max {it.getKey()}.getValue()
+        def actual = flowStats.of(flowId).get(FLOW_RTT).getDataPoints().max {it.getKey()}.getValue()
         def nanoMultiplier = 1000000
         def expectedNs = expectedMs * nanoMultiplier
         assert Math.abs(expectedNs - actual) <= expectedNs * 0.3 //less than 0.3 is unstable on jenkins
     }
 
     def cleanupSpec() {
-        islsToBreak.each { getAntiflap().portUp(it.srcSwitch.dpId, it.srcPort) }
-        wait(getDiscoveryInterval() + WAIT_OFFSET) {
-            assert getNorthbound().getActiveLinks().size() == getTopology().islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsls(islsToBreak)
         getDatabase().resetCosts(getTopology().isls)
     }
 }

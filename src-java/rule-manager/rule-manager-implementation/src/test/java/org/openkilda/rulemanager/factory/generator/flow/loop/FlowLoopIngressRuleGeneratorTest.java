@@ -75,9 +75,9 @@ public class FlowLoopIngressRuleGeneratorTest {
             .build();
 
     @Test
-    public void buildMultiTableDoubleVlanRuleTest() {
+    public void buildDoubleVlanRuleTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_1, INNER_VLAN_1, 0, 0);
-        List<SpeakerData> commands = buildGenerator(flow, true).generateCommands(SWITCH_1);
+        List<SpeakerData> commands = buildGenerator(flow).generateCommands(SWITCH_1);
         assertIngressCommands(commands, OfTable.INGRESS, Priority.LOOP_DOUBLE_VLAN_FLOW_PRIORITY,
                 newHashSet(
                         FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
@@ -90,9 +90,9 @@ public class FlowLoopIngressRuleGeneratorTest {
     }
 
     @Test
-    public void buildMultiTableSingleVlanRuleTest() {
+    public void buildSingleVlanRuleTest() {
         Flow flow = buildFlow(PATH, OUTER_VLAN_1, 0, OUTER_VLAN_2, INNER_VLAN_2);
-        List<SpeakerData> commands = buildGenerator(flow, true).generateCommands(SWITCH_1);
+        List<SpeakerData> commands = buildGenerator(flow).generateCommands(SWITCH_1);
         assertIngressCommands(commands, OfTable.INGRESS, Priority.LOOP_FLOW_PRIORITY,
                 newHashSet(
                         FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
@@ -104,30 +104,10 @@ public class FlowLoopIngressRuleGeneratorTest {
     }
 
     @Test
-    public void buildMultiTableDefaultFlowRuleTest() {
+    public void buildDefaultFlowRuleTest() {
         Flow flow = buildFlow(PATH, 0, 0, OUTER_VLAN_2, INNER_VLAN_2);
-        List<SpeakerData> commands = buildGenerator(flow, true).generateCommands(SWITCH_1);
+        List<SpeakerData> commands = buildGenerator(flow).generateCommands(SWITCH_1);
         assertIngressCommands(commands, OfTable.INGRESS, Priority.LOOP_DEFAULT_FLOW_PRIORITY,
-                newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()),
-                newArrayList(new PortOutAction(new PortNumber(SpecialPortType.IN_PORT))));
-    }
-
-    @Test
-    public void buildSingleTableSingleVlanRuleTest() {
-        Flow flow = buildFlow(PATH, OUTER_VLAN_1, 0, OUTER_VLAN_2, 0);
-        List<SpeakerData> commands = buildGenerator(flow, false).generateCommands(SWITCH_1);
-        assertIngressCommands(commands, OfTable.INPUT, Priority.LOOP_FLOW_PRIORITY,
-                newHashSet(
-                        FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build(),
-                        FieldMatch.builder().field(Field.VLAN_VID).value(OUTER_VLAN_1).build()),
-                newArrayList(new PortOutAction(new PortNumber(SpecialPortType.IN_PORT))));
-    }
-
-    @Test
-    public void buildSingleTableDefaultFlowRuleTest() {
-        Flow flow = buildFlow(PATH, 0, 0, 0, 0);
-        List<SpeakerData> commands = buildGenerator(flow, false).generateCommands(SWITCH_1);
-        assertIngressCommands(commands, OfTable.INPUT, Priority.LOOP_DEFAULT_FLOW_PRIORITY,
                 newHashSet(FieldMatch.builder().field(Field.IN_PORT).value(PORT_NUMBER_1).build()),
                 newArrayList(new PortOutAction(new PortNumber(SpecialPortType.IN_PORT))));
     }
@@ -136,7 +116,7 @@ public class FlowLoopIngressRuleGeneratorTest {
     public void buildRulesForLoopLessFlowTest() {
         Flow flow = buildFlow(PATH, 0, 0, 0, 0);
         flow.setLoopSwitchId(null);
-        List<SpeakerData> commands = buildGenerator(flow, false).generateCommands(SWITCH_1);
+        List<SpeakerData> commands = buildGenerator(flow).generateCommands(SWITCH_1);
         Assertions.assertEquals(0, commands.size());
     }
 
@@ -182,11 +162,10 @@ public class FlowLoopIngressRuleGeneratorTest {
         return flow;
     }
 
-    private FlowLoopIngressRuleGenerator buildGenerator(Flow flow, boolean multiTable) {
+    private FlowLoopIngressRuleGenerator buildGenerator(Flow flow) {
         return FlowLoopIngressRuleGenerator.builder()
                 .flow(flow)
                 .flowPath(PATH)
-                .multiTable(multiTable)
                 .build();
     }
 }

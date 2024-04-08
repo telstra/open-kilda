@@ -25,11 +25,11 @@ import com.syncleus.ferma.DelegatingFramedGraph;
 import com.syncleus.ferma.framefactories.FrameFactory;
 import com.syncleus.ferma.typeresolvers.TypeResolver;
 import com.syncleus.ferma.typeresolvers.UntypedTypeResolver;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import lombok.NonNull;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 import org.apache.tinkerpop.gremlin.orientdb.OrientGraph;
 import org.apache.tinkerpop.gremlin.orientdb.OrientGraphFactory;
 
@@ -71,14 +71,14 @@ public class OrientDbGraphFactory implements FramedGraphFactory<DelegatingFramed
     }
 
     private RetryPolicy<OrientGraph> newPoolAcquireRetryPolicy() {
-        return new RetryPolicy<OrientGraph>()
+        return RetryPolicy.<OrientGraph>builder()
                 .handle(OException.class)
                 .handle(RecoverablePersistenceException.class)
                 .withMaxRetries(config.getPoolAcquireAttempts())
                 .onRetry(e -> log.debug("Failure in acquiring a graph from the pool. Retrying #{}...",
-                        e.getAttemptCount(), e.getLastFailure()))
+                        e.getAttemptCount(), e.getLastException()))
                 .onRetriesExceeded(e -> log.error("Failure in acquiring a graph from the pool. No more retries",
-                        e.getFailure()));
+                        e.getException())).build();
     }
 
     private void validateGraph(@NonNull OrientGraph obtainedGraph) {

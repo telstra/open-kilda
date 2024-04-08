@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
+
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
@@ -66,37 +66,32 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         rules[damagedSwitch.toString()] == cookieToDelete.toString()
 
         and: "Affected switch should have one missing rule with the same cookie as the damaged flow"
-        def switchValidationResult = northbound.validateSwitchRules(damagedSwitch)
-        switchValidationResult.missingRules.size() == 1
-        switchValidationResult.missingRules[0] == cookieToDelete
+        def switchSynchronizationResult = switchHelper.synchronizeAndCollectFixedDiscrepancies(damagedSwitch).get()
+        switchSynchronizationResult.getRules().getMissing() == [cookieToDelete]
 
         and: "There should be no excess rules on the affected switch"
-        switchValidationResult.excessRules.size() == 0
+        switchSynchronizationResult.getRules().getExcess().isEmpty()
 
         and: "Validation of non-affected switches (if any) should succeed"
         if (damagedFlowSwitches.size() > 1) {
-            def nonAffectedSwitches = damagedFlowSwitches.findAll { it != damagedFlowSwitches[item] }
-            nonAffectedSwitches.each { sw -> assert northbound.validateSwitchRules(sw).missingRules.size() == 0 }
-            nonAffectedSwitches.each { sw -> assert northbound.validateSwitchRules(sw).excessRules.size() == 0 }
+            def nonAffectedSwitches = damagedFlowSwitches.findAll { it != damagedSwitch }
+            switchHelper.synchronizeAndCollectFixedDiscrepancies(nonAffectedSwitches).isEmpty()
         }
 
-        cleanup: "Delete the flows"
-        [flowToBreak, intactFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
-
         where:
-        flowConfig      | switchPair                                        | item | switchNo | flowType
-        "single switch" | getTopologyHelper().getSingleSwitchPair()         | 0    | "single" | "forward"
-        "single switch" | getTopologyHelper().getSingleSwitchPair()         | 0    | "single" | "reverse"
-        "neighbouring"  | getTopologyHelper().getNeighboringSwitchPair()    | 0    | "first"  | "forward"
-        "neighbouring"  | getTopologyHelper().getNeighboringSwitchPair()    | 0    | "first"  | "reverse"
-        "neighbouring"  | getTopologyHelper().getNeighboringSwitchPair()    | 1    | "last"   | "forward"
-        "neighbouring"  | getTopologyHelper().getNeighboringSwitchPair()    | 1    | "last"   | "reverse"
-        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | 0    | "first"  | "forward"
-        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | 0    | "first"  | "reverse"
-        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | 1    | "middle" | "forward"
-        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | 1    | "middle" | "reverse"
-        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | -1   | "last"   | "forward"
-        "transit"       | getTopologyHelper().getNotNeighboringSwitchPair() | -1   | "last"   | "reverse"
+        flowConfig      | switchPair                                   | item | switchNo | flowType
+        "single switch" | switchPairs.singleSwitch().random()          | 0    | "single" | "forward"
+        "single switch" | switchPairs.singleSwitch().random()          | 0    | "single" | "reverse"
+        "neighbouring"  | switchPairs.all().neighbouring().random()    | 0    | "first"  | "forward"
+        "neighbouring"  | switchPairs.all().neighbouring().random()    | 0    | "first"  | "reverse"
+        "neighbouring"  | switchPairs.all().neighbouring().random()    | 1    | "last"   | "forward"
+        "neighbouring"  | switchPairs.all().neighbouring().random()    | 1    | "last"   | "reverse"
+        "transit"       | switchPairs.all().nonNeighbouring().random() | 0    | "first"  | "forward"
+        "transit"       | switchPairs.all().nonNeighbouring().random() | 0    | "first"  | "reverse"
+        "transit"       | switchPairs.all().nonNeighbouring().random() | 1    | "middle" | "forward"
+        "transit"       | switchPairs.all().nonNeighbouring().random() | 1    | "middle" | "reverse"
+        "transit"       | switchPairs.all().nonNeighbouring().random() | -1   | "last"   | "forward"
+        "transit"       | switchPairs.all().nonNeighbouring().random() | -1   | "last"   | "reverse"
     }
 
     def "Unable to #data.description a non-existent flow"() {
@@ -154,9 +149,7 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
 
     def "Able to detect discrepancies for a flow with protected path"() {
         when: "Create a flow with protected path"
-        def switchPair = topologyHelper.getAllNeighboringSwitchPairs().find {
-            it.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.allocateProtectedPath = true
         flowHelperV2.addFlow(flow)
@@ -199,9 +192,6 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         then: "Flow validate detects discrepancies for all deleted rules"
         def responseValidateFlow2 = northbound.validateFlow(flow.flowId).findAll { !it.discrepancies.empty }*.discrepancies
         assert responseValidateFlow2.size() == 4
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     /**

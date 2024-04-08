@@ -78,7 +78,6 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (switchesAreOffline) {
             switchHelper.reviveSwitch(isl.srcSwitch, srcBlockData)
             switchHelper.reviveSwitch(isl.dstSwitch, dstBlockData)
@@ -92,7 +91,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
     @Ignore("https://github.com/telstra/open-kilda/issues/3398")
     def "System is able to finish the reroute if switch blinks in the middle of it"() {
         given: "A flow"
-        def swPair = topologyHelper.allNotNeighboringSwitchPairs.find { it.paths.size() > 1 }
+        def swPair = switchPairs.all().nonNeighbouring().withAtLeastNPaths(2).random()
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(swPair))
 
         when: "Current path breaks and reroute starts"
@@ -114,17 +113,14 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         }
 
         and: "Blinking switch has no rule anomalies"
-        def validation = northbound.validateSwitch(swPair.src.dpId)
-        validation.verifyRuleSectionsAreEmpty(["missing", "misconfigured", "excess"])
-        validation.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "excess"])
+        !switchHelper.validateAndCollectFoundDiscrepancies(swPair.src.dpId).isPresent()
 
         and: "Flow validation is OK"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
 
         cleanup:
         lockKeeper.cleanupTrafficShaperRules(swPair.dst.regions)
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        islToBreak && antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        islHelper.restoreIsl(islToBreak)
         database.resetCosts(topology.isls)
     }
 
@@ -153,10 +149,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         }
 
         and: "Dst switch validation shows no missing rules"
-        with(northbound.validateSwitch(dstSwitch.dpId)) {
-            it.verifyRuleSectionsAreEmpty(["missing", "proper", "misconfigured"])
-            it.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "proper", "excess"])
-        }
+        !switchHelper.validateAndCollectFoundDiscrepancies(dstSwitch.dpId).isPresent()
 
         when: "Try to validate flow"
         northbound.validateFlow(flow.flowId)
@@ -188,10 +181,9 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { assert it.discrepancies.empty }
 
         and: "Flow can be removed"
-        def deleteFlow = flowHelper.deleteFlow(flow.flowId)
+        flowHelper.deleteFlow(flow.flowId)
 
         cleanup:
-        flow && !deleteFlow && flowHelper.deleteFlow(flow.flowId)
         blockData && !swIsOnline && switchHelper.reviveSwitch(srcSwitch, blockData)
     }
 

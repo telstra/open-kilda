@@ -27,7 +27,7 @@ import org.openkilda.model.SwitchStatus;
 import org.openkilda.model.TransitVlan;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.history.FlowEvent;
-import org.openkilda.northbound.dto.v2.haflows.HaFlow;
+import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import java.time.Instant;
@@ -45,6 +45,8 @@ public interface Database {
     boolean updateIslAvailableBandwidth(Isl isl, long value);
 
     boolean resetIslBandwidth(Isl isl);
+
+    boolean resetIslsBandwidth(List<Isl> isls);
 
     int getIslCost(Isl isl);
 
@@ -96,9 +98,9 @@ public interface Database {
 
     Set<Cookie> getHaFlowCookies(String haFlowId);
 
-    Set<Cookie> getHaSubFlowsCookies(HaFlow haFlow);
+    Set<Cookie> getHaSubFlowsCookies(List<HaSubFlow> subFlows);
 
-    Set<FlowMeter> getHaFlowMeters(HaFlow haFlow);
+    Set<FlowMeter> getHaFlowMeters(List<HaSubFlow> subFlows, String haFlowId);
 
     //history
     void addFlowEvent(FlowEvent event);
