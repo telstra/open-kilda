@@ -32,7 +32,7 @@ import org.openkilda.floodlight.service.session.SessionService;
 import org.openkilda.model.SwitchId;
 
 import com.google.common.collect.ImmutableMap;
-import edu.umd.cs.findbugs.annotations.NonNull;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.internal.IOFSwitchService;

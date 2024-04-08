@@ -239,7 +239,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         def allLinks = northbound.getAllLinks()
         changedIsls.each {
             islUtils.getIslInfo(allLinks, it).each {
-                assert it.value.availableBandwidth == newBw
+                assert it.get().availableBandwidth == newBw
             }
         }
 
