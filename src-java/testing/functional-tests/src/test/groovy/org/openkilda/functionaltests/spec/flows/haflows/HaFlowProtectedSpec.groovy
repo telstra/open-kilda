@@ -1,30 +1,35 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
-import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
 
-import com.shazam.shazamcrest.matcher.CustomisableMatcher
 import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
+import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify operations with protected paths on Ha-Flows.")
 @Tags([HA_FLOW])
 class HaFlowProtectedSpec extends HealthCheckSpecification {
 
+    @Shared
+    @Autowired
+    HaFlowFactory haFlowFactory
+
     def "Able to enable protected path on an HA-Flow"() {
         given: "A simple HA-Flow"
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        def haFlow = haFlowFactory.getRandom(swT)
         assert !haFlow.allocateProtectedPath
 
         def haFlowPaths = haFlow.retrievedAllEntityPaths()
@@ -67,7 +72,8 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
         given: "An HA-Flow with protected path"
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).withProtectedPath(true).create()
+        def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(true)
+                .build().waitForBeingInState(FlowState.UP)
 
         def haFlowPaths = haFlow.retrievedAllEntityPaths()
         assert !haFlowPaths.subFlowPaths.protectedPath.forward.isEmpty()
@@ -106,33 +112,23 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
 
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).withProtectedPath(true).create()
+        def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(true)
+                .build().waitForBeingInState(FlowState.UP)
+        assert haFlow.allocateProtectedPath
+
         def haFlowPaths = haFlow.retrievedAllEntityPaths()
         assert !haFlowPaths.subFlowPaths.protectedPath.forward.isEmpty()
 
-        def haFlowDetails = haFlow.waitForBeingInState(FlowState.UP)
-        assert haFlowDetails.allocateProtectedPath
-
         haFlow.tap(data.updateClosure)
-
         def update = haFlow.convertToUpdateRequest()
 
         when: "Update the ha-Flow"
-        def updateResponse = northboundV2.updateHaFlow(haFlow.haFlowId, update)
-        def ignores = ["subFlows.timeUpdate",
-                       "subFlows.status",
-                       "subFlows.forwardLatency",
-                       "subFlows.reverseLatency",
-                       "subFlows.latencyLastModifiedTime",
-                       "timeUpdate",
-                       "status"]
+        def updateResponse = haFlow.sendUpdateRequest(update)
+        def updatedHaFlow = haFlow.waitForBeingInState(FlowState.UP)
 
         then: "Requested updates are reflected in the response and in 'get' API"
-        haFlowDetails.tap(data.updateClosure)
-        expect updateResponse, sameBeanAs(haFlowDetails, ignores)
-
-        def haFlowDetailsAfterUpdating = haFlow.waitForBeingInState(FlowState.UP)
-        expect haFlowDetailsAfterUpdating, sameBeanAs(updateResponse, ignores)
+        updateResponse.hasTheSamePropertiesAs(haFlow)
+        updatedHaFlow.hasTheSamePropertiesAs(haFlow)
 
         and: "And involved switches pass validation"
         switchHelper.synchronizeAndCollectFixedDiscrepancies( haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)).isEmpty()
@@ -146,7 +142,7 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
         where: data << [
                 [
                         descr: "shared port and subflow ports",
-                        updateClosure: { def payload ->
+                        updateClosure: { HaFlowExtended payload ->
                             def allowedSharedPorts = topology.getAllowedPortsForSwitch(topology.find(
                                     payload.sharedEndpoint.switchId)) - payload.sharedEndpoint.portNumber
                             payload.sharedEndpoint.portNumber = allowedSharedPorts[0]
@@ -159,7 +155,7 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
                 ],
                 [
                         descr: "shared switch and subflow switches",
-                        updateClosure: { def payload ->
+                        updateClosure: { HaFlowExtended payload ->
                             def newSwT = topologyHelper.getSwitchTriplets(true).find {
                                 it.shared.dpId != payload.sharedEndpoint.switchId &&
                                         it.ep1.dpId != payload.subFlows[0].endpoint.switchId &&
@@ -182,11 +178,5 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
                         updateClosure: { }
                 ]
         ]
-    }
-
-    static <T> CustomisableMatcher<T> sameBeanAs(final T expected, List<String> ignores) {
-        def matcher = sameBeanAs(expected)
-        ignores.each { matcher.ignoring(it) }
-        return matcher
     }
 }

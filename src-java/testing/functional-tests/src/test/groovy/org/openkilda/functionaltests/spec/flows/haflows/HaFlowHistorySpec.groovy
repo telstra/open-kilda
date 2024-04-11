@@ -9,6 +9,7 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.HistoryMaxCountExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.messaging.info.event.IslChangeType
@@ -17,18 +18,24 @@ import org.openkilda.model.history.DumpType
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
 import org.openkilda.testing.service.northbound.model.HaFlowActionType
 
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
+import spock.lang.Shared
 
 @Narrative("""Verify that history records are created for the basic actions applied to HA-Flow.""")
 @Tags([HA_FLOW])
 class HaFlowHistorySpec extends HealthCheckSpecification {
 
+    @Shared
+    @Autowired
+    HaFlowFactory haFlowFactory
+
     def "History records with links details are created during link create operations and can be retrieved with timeline"() {
         given: "HA-Flow has been created"
         def swT = topologyHelper.switchTriplets[0]
         def timeBeforeCreation = System.currentTimeSeconds()
-        HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
         haFlow.waitForHistoryEvent(HaFlowActionType.CREATE)
 
         when: "Request for history records"
@@ -50,7 +57,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
     def "History records with links details are created during link #updateType operations and can be retrieved without timeline"() {
         given: "HA-Flow has been created"
         def swT = topologyHelper.switchTriplets[0]
-        HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
 
         when: "#type action has been executed"
         HaFlowExtended haFlowAfterUpdating = update(haFlow)
@@ -99,7 +106,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         given: "HA-Flow has been created"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
         Long timeBeforeOperation = System.currentTimeSeconds()
-        HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
 
         when: "Delete HA-Flow"
         def deletedFlow = haFlow.delete()
@@ -126,7 +133,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         given: "HA-Flow"
         def swT = topologyHelper.switchTriplets[0]
         def timeBeforeAction = System.currentTimeMillis()
-        HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
 
         when: "Get timestamp after create event"
         def historyRecord = haFlow.getHistory(timeBeforeAction, System.currentTimeMillis() + 2000)
@@ -146,7 +153,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         given: "HA-Flow has been created"
         def swT = topologyHelper.switchTriplets[0]
         Long timeBeforeOperation = System.currentTimeSeconds()
-        HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
 
         when: "Deactivate the shared switch"
         def blockData = switchHelper.knockoutSwitch(swT.shared, RW)
@@ -188,7 +195,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
     def "Empty history returned in case filters return no results"() {
         given: "HA-Flow"
         def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
-        HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
         haFlow.waitForHistoryEvent(HaFlowActionType.CREATE)
 
         when: "Get timestamp after create event"
@@ -206,7 +213,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         given: "HA-Flow has been created"
         def swT = topologyHelper.switchTriplets[0]
         Long timeBeforeOperation = System.currentTimeSeconds()
-        HaFlowExtended haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
 
         and: "HA-Flow has been updated"
         haFlow.partialUpdate(HaFlowPatchPayload.builder().priority(1).build())

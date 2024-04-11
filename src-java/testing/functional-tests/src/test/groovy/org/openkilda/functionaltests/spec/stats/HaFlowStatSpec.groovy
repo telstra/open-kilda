@@ -15,11 +15,13 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.functionaltests.model.stats.HaFlowStats
 import org.openkilda.functionaltests.model.stats.HaFlowStatsMetric
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -51,6 +53,9 @@ class HaFlowStatSpec extends HealthCheckSpecification {
     @Shared
     @Autowired
     Provider<TraffExamService> traffExamProvider
+    @Shared
+    @Autowired
+    HaFlowFactory haFlowFactory
 
     def setupSpec() {
         switchTriplet = topologyHelper.getSwitchTriplets(true, false).find {
@@ -59,8 +64,8 @@ class HaFlowStatSpec extends HealthCheckSpecification {
                     && it.ep2.getTraffGens().size() > 1 // needed for update flow test
         } ?: assumeTrue(false, "No suiting switches found")
         // Flow with low maxBandwidth to make meters to drop packets when traffgens can't generate high load
-        haFlow = HaFlowExtended.build(switchTriplet, northboundV2, topology).withBandwidth(10).create()
-        def exam = haFlow.traffExam(traffExamProvider, haFlow.getMaximumBandwidth() * 10, traffgenRunDuration)
+        haFlow = haFlowFactory.getBuilder(switchTriplet).withBandwidth(10).build().waitForBeingInState(FlowState.UP)
+        def exam = haFlow.traffExam(traffExamProvider.get(), haFlow.getMaximumBandwidth() * 10, traffgenRunDuration)
         wait(statsRouterRequestInterval * 3 + WAIT_OFFSET) {
             exam.run()
             statsHelper."force kilda to collect stats"()
@@ -116,6 +121,9 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
     @Shared
     @Autowired
     Provider<TraffExamService> traffExamProvider
+    @Shared
+    @Autowired
+    HaFlowFactory haFlowFactory
 
     @Tags(LOW_PRIORITY)
     def "Stats are collected after #data.descr of HA-Flow are updated"() {
@@ -124,7 +132,7 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
                 .findAll(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT)
                 .findAll(SwitchTriplet.TRAFFGEN_CAPABLE).shuffled().first()
 
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology, false).create()
+        def haFlow = haFlowFactory.getRandom(swT, false)
 
         when: "Update the ha-flow"
         haFlow.tap(data.updateClosure)
@@ -132,7 +140,7 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
         haFlow.update(updateRequest)
 
         then: "Traffic passes through HA-Flow"
-        haFlow.traffExam(traffExamProvider).run().hasTraffic()
+        haFlow.traffExam(traffExamProvider.get()).run().hasTraffic()
         statsHelper."force kilda to collect stats"()
 
         then: "Stats are collected"
@@ -182,7 +190,7 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
         def swT = topologyHelper.getSwitchTriplets(true, false)
                 .findAll(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT)
                 .findAll(SwitchTriplet.TRAFFGEN_CAPABLE).shuffled().first()
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Partially update HA-Flow"
         def newVlanId = haFlow.sharedEndpoint.vlanId - 1
@@ -192,7 +200,7 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
         def timeAfterUpdate = new Date().getTime()
 
         then: "traffic passes through flow"
-        haFlow.traffExam(traffExamProvider).run().hasTraffic()
+        haFlow.traffExam(traffExamProvider.get()).run().hasTraffic()
         statsHelper."force kilda to collect stats"()
 
         then: "Stats are collected"

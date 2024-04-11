@@ -2,17 +2,13 @@ package org.openkilda.functionaltests.helpers.builder
 
 import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
 import static org.openkilda.functionaltests.helpers.SwitchHelper.getRandomAvailablePort
-import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType
-import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v2.flows.BaseFlowEndpointV2
-import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.northbound.dto.v2.haflows.HaFlowCreatePayload
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowCreatePayload
@@ -163,28 +159,10 @@ class HaFlowBuilder {
         return this
     }
 
-    /**
-     * Adds ha-flow and waits for it to become UP.
-     */
-    HaFlowExtended create() {
-        log.debug("Adding ha-flow")
-        def response = northboundV2.addHaFlow(haFlowRequest)
-        assert response.haFlowId
-        HaFlow haFlow
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-            haFlow = northboundV2.getHaFlow(response.haFlowId)
-            assert haFlow.status == FlowState.UP.toString()
-                    && haFlow.getSubFlows().status.unique() == [FlowState.UP.toString()], "Flow: ${haFlow}"
-        }
-        new HaFlowExtended(haFlow, northboundV2, topologyDefinition)
-    }
-
-    /**
-     * Adds ha-flow without waiting for successful creation
-     */
-    HaFlow add() {
-        log.debug("Send request to create ha-flow")
-        northboundV2.addHaFlow(haFlowRequest)
+    HaFlowExtended build() {
+        log.debug("Adding HA-Flow")
+        def haFlow = northboundV2.addHaFlow(haFlowRequest)
+        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition)
     }
 
     private String generateDescription() {

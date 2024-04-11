@@ -19,11 +19,13 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.functionaltests.model.stats.FlowStats
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
 
@@ -46,11 +48,16 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     @Shared
     FlowStats flowStats
 
+    @Shared
+    @Autowired
+    HaFlowFactory haFlowFactory
+
     @Tags([LOW_PRIORITY])
     def "Able to turn off periodic pings on a HA-Flow"() {
         given: "An HA-Flow with periodic pings turned on"
         def swT = topologyHelper.findSwitchTripletWithYPointOnSharedEp()
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).withPeriodicPing(true).create()
+        def haFlow = haFlowFactory.getBuilder(swT).withPeriodicPing(true)
+                .build().waitForBeingInState(FlowState.UP)
         assert haFlow.periodicPings
 
         and: "Neither of the sub-flows end on Y-Point (ping is disabled for such kind of HA-Flow)"
@@ -84,8 +91,8 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     def "Unable to ping one of the HA-subflows via periodic pings if related ISL is broken"() {
         given: "Pinned HA-flow with periodic pings turned on which won't be rerouted after ISL fails"
         def swT = topologyHelper.findSwitchTripletWithYPointOnSharedEp()
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology)
-                .withPeriodicPing(true).withPinned(true).create()
+        def haFlow = haFlowFactory.getBuilder(swT).withPeriodicPing(true).withPinned(true)
+                .build().waitForBeingInState(FlowState.UP)
         assert haFlow.periodicPings
 
         and: "Neither of the sub-flows end on Y-Point (ping is disabled for such kind of HA-Flow)"
@@ -130,7 +137,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         given: "Create a Ha-flow without periodic pings turned on"
         def swT = topologyHelper.findSwitchTripletWithYPointOnSharedEp()
         def beforeCreationTime = new Date().getTime()
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        def haFlow = haFlowFactory.getRandom(swT)
 
         and: "Neither of the sub-flows end on Y-Point (ping is disabled for such kind of HA-Flow)"
         def paths = haFlow.retrievedAllEntityPaths()
@@ -166,7 +173,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
             SwitchTriplet.ONE_SUB_FLOW_IS_ONE_SWITCH_FLOW(it)
         }
         assumeTrue(switchTriplet != null, "These cases cannot be covered on given topology:")
-        def haFlow = HaFlowExtended.build(switchTriplet, northboundV2, topology).create()
+        def haFlow = haFlowFactory.getRandom(switchTriplet)
 
         when: "Ping HA-Flow"
         def pingResult = haFlow.ping(2000)
@@ -184,7 +191,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     def "Able to ping HA-Flow when neither of the sub-flows end on Y-Point"() {
         given: "HA-Flow has been created"
         def swT = topologyHelper.findSwitchTripletWithYPointOnSharedEp()
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        def haFlow = haFlowFactory.getRandom(swT)
 
         and: "Neither of the sub-flows end on Y-Point (ping is disabled for such kind of HA-Flow)"
         def paths = haFlow.retrievedAllEntityPaths()

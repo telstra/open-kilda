@@ -54,6 +54,7 @@ import org.openkilda.rulemanager.group.WatchGroup;
 import org.openkilda.rulemanager.group.WatchPort;
 import org.openkilda.rulemanager.match.FieldMatch;
 import org.openkilda.wfm.topology.switchmanager.model.SwitchValidationContext;
+import org.openkilda.wfm.topology.switchmanager.model.ValidateRulesResult;
 import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateGroupsResultV2;
 import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateLogicalPortsResultV2;
 import org.openkilda.wfm.topology.switchmanager.model.v2.ValidateMetersResultV2;
@@ -161,7 +162,7 @@ public class ValidationMapperTest {
     public static Set<FieldMatch> matches = new HashSet<>();
     public static Instructions instructions;
 
-    private static FlowSpeakerData initializeFlowSpeakerData(int uniquePriorityField) {
+    private static FlowSpeakerData initializeFlowSpeakerData(int uniquePriorityField, Cookie cookie) {
 
         applyActions.add(SET_FIELD_ACTION);
         for (Field field : Field.values()) {
@@ -173,7 +174,7 @@ public class ValidationMapperTest {
                 OF_METADATA);
 
         return FlowSpeakerData.builder()
-                .cookie(COOKIE)
+                .cookie(cookie)
                 .durationSeconds(DURATION_SECONDS)
                 .durationNanoSeconds(DURATION_NANOSECONDS)
                 .table(OF_TABLE_FIELD)
@@ -187,6 +188,10 @@ public class ValidationMapperTest {
                 .instructions(instructions)
                 .flags(flowFlags)
                 .build();
+    }
+
+    private static FlowSpeakerData initializeFlowSpeakerData(int uniquePriorityField) {
+        return initializeFlowSpeakerData(uniquePriorityField, COOKIE);
     }
 
     public static Set<MeterFlag> meterFlags = new HashSet<>();
@@ -251,6 +256,12 @@ public class ValidationMapperTest {
                 .id("12")
                 .expected(RuleEntryConverter.INSTANCE.toRuleEntry(initializeFlowSpeakerData(4)))
                 .discrepancies(RuleEntryConverter.INSTANCE.toRuleEntry(initializeFlowSpeakerData(5)))
+                .build());
+
+        misconfiguredRules.add(MisconfiguredInfo.<RuleInfoEntryV2>builder()
+                .id("15")
+                .expected(RuleEntryConverter.INSTANCE.toRuleEntry(initializeFlowSpeakerData(6, new Cookie(1))))
+                .discrepancies(RuleEntryConverter.INSTANCE.toRuleEntry(initializeFlowSpeakerData(7, null)))
                 .build());
 
         missingMeters.add(MeterEntryConverter.INSTANCE.toMeterEntry(initializeMeterSpeakerData(new MeterId(1))));
@@ -319,5 +330,17 @@ public class ValidationMapperTest {
         Assertions.assertEquals(properMeters, metersEntry.getProper());
         Assertions.assertEquals(excessMeters, metersEntry.getExcess());
         Assertions.assertEquals(misconfiguredMeters, metersEntry.getMisconfigured());
+    }
+
+    @Test
+    public void mapValidateRulesResultV2ToValidateRulesResultIncludingNullCookieInDiscrepancy() {
+        ValidateRulesResultV2 validateRulesResultV2 = new ValidateRulesResultV2(false, missingRules, properRules,
+                excessRules, misconfiguredRules);
+
+        ValidateRulesResult validateRulesResult =
+                ValidationMapper.INSTANCE.map(validateRulesResultV2);
+
+        Assertions.assertEquals(2, validateRulesResult.getMisconfiguredRules().size());
+        validateRulesResult.getMisconfiguredRules().forEach(Assertions::assertNotNull);
     }
 }

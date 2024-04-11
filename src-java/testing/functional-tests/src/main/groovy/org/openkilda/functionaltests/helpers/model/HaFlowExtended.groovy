@@ -29,6 +29,7 @@ import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.Host
 import org.openkilda.testing.service.traffexam.model.TimeLimit
 import org.openkilda.testing.service.traffexam.model.Vlan
+import org.openkilda.testing.tools.SoftAssertions
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.google.common.collect.ImmutableList
@@ -111,9 +112,9 @@ class HaFlowExtended {
         this.topologyDefinition = topologyDefinition
     }
 
-    HaFlowAllEntityPaths retrievedAllEntityPaths() {
+    FlowWithSubFlowsEntityPath retrievedAllEntityPaths() {
         HaFlowPaths haFlowPaths = northboundV2.getHaFlowPaths(haFlowId)
-        new HaFlowAllEntityPaths(haFlowPaths, topologyDefinition)
+        new FlowWithSubFlowsEntityPath(haFlowPaths, topologyDefinition)
     }
 
     static HaFlowBuilder build(SwitchTriplet swT, NorthboundServiceV2 northboundV2, TopologyDefinition topologyDefinition,
@@ -138,15 +139,15 @@ class HaFlowExtended {
         return new HaFlowHistory (historyRecords)
     }
 
-    HaFlow waitForBeingInState(FlowState flowState, double timeout = WAIT_OFFSET) {
-        def flowDetails
+    HaFlowExtended waitForBeingInState(FlowState flowState, double timeout = WAIT_OFFSET) {
+        def flowDetails = null
         Wrappers.wait(timeout) {
             flowDetails = northboundV2.getHaFlow(haFlowId)
             assert FlowState.getByValue(flowDetails.status) == flowState && flowDetails.subFlows.every {
                 FlowState.getByValue(it.status) == flowState
             }
         }
-        flowDetails
+        return new HaFlowExtended(flowDetails, northboundV2, topologyDefinition)
     }
 
     void waitForHistoryEvent(HaFlowActionType action, double timeout = WAIT_OFFSET) {
@@ -155,18 +156,28 @@ class HaFlowExtended {
         }
     }
 
+    HaFlowExtended sendPartialUpdateRequest(HaFlowPatchPayload updateRequest) {
+        log.debug("Updating ha-flow '${haFlowId}'(partial update)")
+        def haFlow = northboundV2.partialUpdateHaFlow(haFlowId, updateRequest)
+        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition)
+    }
+
     HaFlowExtended partialUpdate(HaFlowPatchPayload updateRequest) {
         log.debug("Updating ha-flow '${haFlowId}'(partial update)")
         northboundV2.partialUpdateHaFlow(haFlowId, updateRequest)
-        def haFlow = waitForBeingInState(FlowState.UP)
-        new HaFlowExtended(haFlow, northboundV2, topologyDefinition)
+        return waitForBeingInState(FlowState.UP)
+    }
+
+    HaFlowExtended sendUpdateRequest(HaFlowUpdatePayload updateRequest) {
+        log.debug("Updating ha-flow '${haFlowId}'")
+        def haFlow = northboundV2.updateHaFlow(haFlowId, updateRequest)
+        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition)
     }
 
     HaFlowExtended update(HaFlowUpdatePayload updateRequest) {
         log.debug("Updating ha-flow '${haFlowId}'")
         northboundV2.updateHaFlow(haFlowId, updateRequest)
-        def haFlow = waitForBeingInState(FlowState.UP)
-        new HaFlowExtended(haFlow, northboundV2, topologyDefinition)
+        return waitForBeingInState(FlowState.UP)
     }
 
     HaFlowRerouteResult reroute() {
@@ -177,13 +188,13 @@ class HaFlowExtended {
     HaFlowExtended retrieveDetails() {
         log.debug("Getting ha-flow details '${haFlowId}'")
         def haFlow = northboundV2.getHaFlow(haFlowId)
-        new HaFlowExtended(haFlow, northboundV2, topologyDefinition)
+        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition)
     }
 
     HaFlowExtended swap() {
         log.debug("Swap ha-flow '${haFlowId}'")
         def haFlow = northboundV2.swapHaFlowPaths(haFlowId)
-        new HaFlowExtended(haFlow, northboundV2, topologyDefinition)
+        return new HaFlowExtended(haFlow, northboundV2, topologyDefinition)
     }
 
     HaFlowPingResult ping(int timeoutMillis) {
@@ -231,9 +242,8 @@ class HaFlowExtended {
         }
     }
 
-    HaFlowBidirectionalExam traffExam(Provider<TraffExamService> traffExamProvider, long bandwidth = 0, Long duration = 5) {
+    HaFlowBidirectionalExam traffExam(TraffExamService traffExam, long bandwidth = 0, Long duration = 5) {
         log.debug("Traffic generation for ha-flow '${haFlowId}'")
-        def traffExam = traffExamProvider.get()
         def subFlow1 = subFlows.first()
         def subFlow2 = subFlows.last()
         Optional<TraffGen> shared = Optional.ofNullable(topologyDefinition.getTraffGen(sharedEndpoint.switchId));
@@ -283,5 +293,53 @@ class HaFlowExtended {
                 .destVlans(srcVlanId)
                 .build();
         return new HaFlowBidirectionalExam(traffExam, forward1, forward2, reverse1, reverse2);
+    }
+
+    /**
+     * This check allows us to perform main HA-Flow properties comparison after updating operations
+     * Note, some fields such as timeUpdate, status, subFlows.timeUpdate, subFlows.status, subFlows.forwardLatency,
+     * subFlows.reverseLatency, subFlows.latencyLastModifiedTime are excluded for verification.
+     * The main reason for the exclusions above is that these fields are specified by the system automatically.
+     * @param expectedHaFlowExtended
+     */
+    void hasTheSamePropertiesAs(HaFlowExtended expectedHaFlowExtended) {
+        SoftAssertions assertions = new SoftAssertions()
+        assertions.checkSucceeds { assert this.haFlowId == expectedHaFlowExtended.haFlowId }
+        assertions.checkSucceeds { assert this.maximumBandwidth == expectedHaFlowExtended.maximumBandwidth }
+        assertions.checkSucceeds { assert this.pathComputationStrategy == expectedHaFlowExtended.pathComputationStrategy }
+        assertions.checkSucceeds { assert this.encapsulationType == expectedHaFlowExtended.encapsulationType }
+        assertions.checkSucceeds { assert this.maxLatency == expectedHaFlowExtended.maxLatency }
+        assertions.checkSucceeds { assert this.maxLatencyTier2 == expectedHaFlowExtended.maxLatencyTier2 }
+        assertions.checkSucceeds { assert this.ignoreBandwidth == expectedHaFlowExtended.ignoreBandwidth }
+        assertions.checkSucceeds { assert this.periodicPings == expectedHaFlowExtended.periodicPings }
+        assertions.checkSucceeds { assert this.pinned == expectedHaFlowExtended.pinned }
+        assertions.checkSucceeds { assert this.priority == expectedHaFlowExtended.priority }
+        assertions.checkSucceeds { assert this.strictBandwidth == expectedHaFlowExtended.strictBandwidth }
+        assertions.checkSucceeds { assert this.description == expectedHaFlowExtended.description }
+        assertions.checkSucceeds { assert this.allocateProtectedPath == expectedHaFlowExtended.allocateProtectedPath }
+        assertions.checkSucceeds { assert this.diverseWithFlows.sort() == expectedHaFlowExtended.diverseWithFlows.sort() }
+        assertions.checkSucceeds { assert this.diverseWithYFlows.sort() == expectedHaFlowExtended.diverseWithYFlows.sort() }
+        assertions.checkSucceeds { assert this.diverseWithHaFlows.sort() == expectedHaFlowExtended.diverseWithHaFlows.sort() }
+
+        assertions.checkSucceeds { assert this.sharedEndpoint.switchId == expectedHaFlowExtended.sharedEndpoint.switchId }
+        assertions.checkSucceeds { assert this.sharedEndpoint.portNumber == expectedHaFlowExtended.sharedEndpoint.portNumber }
+        assertions.checkSucceeds { assert this.sharedEndpoint.vlanId == expectedHaFlowExtended.sharedEndpoint.vlanId }
+        assertions.checkSucceeds { assert this.sharedEndpoint.innerVlanId == expectedHaFlowExtended.sharedEndpoint.innerVlanId }
+
+
+        this.subFlows.each { actualSubFlow ->
+            def expectedSubFlow = expectedHaFlowExtended.subFlows.find { it.flowId == actualSubFlow.flowId }
+            assertions.checkSucceeds { assert actualSubFlow.flowId == expectedSubFlow.flowId }
+
+            assertions.checkSucceeds { assert actualSubFlow.endpoint.switchId == expectedSubFlow.endpoint.switchId }
+            assertions.checkSucceeds { assert actualSubFlow.endpoint.portNumber == expectedSubFlow.endpoint.portNumber }
+            assertions.checkSucceeds { assert actualSubFlow.endpoint.vlanId == expectedSubFlow.endpoint.vlanId }
+            assertions.checkSucceeds { assert actualSubFlow.endpoint.innerVlanId == expectedSubFlow.endpoint.innerVlanId }
+
+            assertions.checkSucceeds { assert actualSubFlow.timeCreate == expectedSubFlow.timeCreate }
+            assertions.checkSucceeds { assert actualSubFlow.description == expectedSubFlow.description }
+        }
+
+        assertions.verify()
     }
 }

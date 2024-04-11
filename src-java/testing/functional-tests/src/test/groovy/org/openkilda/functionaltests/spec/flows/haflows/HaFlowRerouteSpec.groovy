@@ -17,6 +17,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.model.stats.HaFlowStats
 import org.openkilda.messaging.payload.flow.FlowState
@@ -42,6 +43,10 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
 
     @Shared
     @Autowired
+    HaFlowFactory haFlowFactory
+
+    @Shared
+    @Autowired
     Provider<TraffExamService> traffExamProvider
 
     @Tags([TOPOLOGY_DEPENDENT, ISL_RECOVER_ON_FAIL])
@@ -49,7 +54,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         given: "An HA-flow"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        def haFlow = haFlowFactory.getRandom(swT)
 
         def initialPaths = haFlow.retrievedAllEntityPaths()
         def islToFail = initialPaths.subFlowPaths.first().getInvolvedIsls(true).first()
@@ -95,7 +100,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
 
         and: "Traffic passes through HA-Flow"
         if (swT.isHaTraffExamAvailable()) {
-            assert haFlow.traffExam(traffExamProvider).run().hasTraffic()
+            assert haFlow.traffExam(traffExamProvider.get()).run().hasTraffic()
             statsHelper."force kilda to collect stats"()
         }
 
@@ -122,7 +127,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         given: "An HA-flow"
         def swT = topologyHelper.findSwitchTripletWithAlternativeFirstPortPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        def haFlow = haFlowFactory.getRandom(swT)
 
         def initialPaths = haFlow.retrievedAllEntityPaths()
         def subFlowsFirstIsls = initialPaths.subFlowPaths.collect{ it.getInvolvedIsls(true).first()} as Set
@@ -176,7 +181,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         given: "An HA-flow without alternative paths"
         def swT = topologyHelper.findSwitchTripletWithDifferentEndpoints()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        def haFlow = haFlowFactory.getRandom(swT)
 
         def initialPaths = haFlow.retrievedAllEntityPaths()
         def subFlowsFirstIsls = initialPaths.subFlowPaths.collect{ it.getInvolvedIsls(true).first()}.unique()

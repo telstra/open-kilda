@@ -87,14 +87,13 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
                 .build())
 
         and : "A flow with max_latency 210"
-        def createFlowTime = new Date()
         def flow = flowHelperV2.randomFlow(switchPair).tap {
             maxLatency = 210
             pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
         }
         flowHelperV2.addFlow(flow)
         //wait for generating some flow-monitoring stats
-        wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
+        wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET * 2) {
             assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
 
@@ -200,10 +199,11 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
     }
 
     void verifyLatencyInTsdb(flowId, expectedMs) {
-        def actual = flowStats.of(flowId).get(FLOW_RTT).getDataPoints().max {it.getKey()}.getValue()
+        def flowStatsResult = flowStats.of(flowId).get(FLOW_RTT, FORWARD, FLOW_MONITORING)
+        def actual = flowStatsResult.getDataPoints().max {it.getKey()}.getValue()
         def nanoMultiplier = 1000000
         def expectedNs = expectedMs * nanoMultiplier
-        assert Math.abs(expectedNs - actual) <= expectedNs * 0.3 //less than 0.3 is unstable on jenkins
+        assert Math.abs(expectedNs - actual) <= expectedNs * 0.3, flowStatsResult //less than 0.3 is unstable on jenkins
     }
 
     def cleanupSpec() {
