@@ -1,28 +1,11 @@
 package org.openkilda.functionaltests.spec.stats
 
-import groovy.transform.Memoized
-import org.openkilda.functionaltests.model.stats.SwitchStats
-import org.openkilda.functionaltests.model.stats.SwitchStatsMetric
-import org.openkilda.functionaltests.model.stats.SystemStats
-import org.openkilda.model.SwitchId
-import org.springframework.beans.factory.annotation.Autowired
-
 import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-
-import groovy.time.TimeCategory
-import spock.lang.Narrative
-import spock.lang.Shared
-import spock.lang.Unroll
-import spock.util.mop.Use
-
 import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.PACKET_IN_ACTION_SET_PACKETS
 import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.PACKET_IN_APPLY_ACTION_PACKETS
 import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.PACKET_IN_GROUP_PACKETS
@@ -34,18 +17,30 @@ import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.PACKET
 import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.PACKET_OUT_ETH_0
 import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.PACKET_OUT_TOTAL_PACKETS_DATAPLANE
 import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.PACKET_OUT_TOTAL_PACKETS_HOST
-import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.STATE
-import static org.openkilda.functionaltests.model.stats.SystemStatsMetric.FLOW_SYSTEM_METER_BITS
-import static org.openkilda.functionaltests.model.stats.SystemStatsMetric.FLOW_SYSTEM_METER_BYTES
-import static org.openkilda.functionaltests.model.stats.SystemStatsMetric.FLOW_SYSTEM_METER_PACKETS
 import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.RX_BITS
 import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.RX_BYTES
 import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.RX_PACKETS
 import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.TX_BITS
 import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.TX_BYTES
 import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.TX_PACKETS
+import static org.openkilda.functionaltests.model.stats.SystemStatsMetric.FLOW_SYSTEM_METER_BITS
+import static org.openkilda.functionaltests.model.stats.SystemStatsMetric.FLOW_SYSTEM_METER_BYTES
+import static org.openkilda.functionaltests.model.stats.SystemStatsMetric.FLOW_SYSTEM_METER_PACKETS
 import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_BROADCAST_RULE
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.model.stats.SwitchStats
+import org.openkilda.functionaltests.model.stats.SwitchStatsMetric
+import org.openkilda.functionaltests.model.stats.SystemStats
+import org.openkilda.model.SwitchId
+
+import groovy.time.TimeCategory
+import groovy.transform.Memoized
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Narrative
+import spock.lang.Shared
+import spock.util.mop.Use
 
 @Use(TimeCategory)
 @Narrative("Verify that basic stats logging happens.")
@@ -82,9 +77,8 @@ class TsdbSpec extends HealthCheckSpecification {
         }
     }
 
-    @Unroll("Stats are being logged for TX/RX metric:#metric")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE])
-    def "Basic stats are being logged"(switchId, metric) {
+    def "Basic stats are being logged for TX/RX metric:#metric"(switchId, metric) {
         expect: "At least 1 result in the past 15 minutes"
         assert !statsMap.get(switchId).get(metric).getDataPoints().isEmpty()
 
@@ -98,9 +92,8 @@ class TsdbSpec extends HealthCheckSpecification {
          TX_BITS], getUniqueSwitches()].combinations())
     }
 
-    @Unroll("Stats are being logged for verification broadcast rule metric:#metric")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE])
-    def "Basic stats are being logged"(switchId, metric) {
+    def "Basic stats are being logged for verification broadcast rule metric:#metric"(switchId, metric) {
         expect: "At least 1 result in the past 15 minutes"
         assert !statsMap.get(switchId).get(metric, VERIFICATION_BROADCAST_RULE.toHexString()).getDataPoints().isEmpty()
 
@@ -112,8 +105,7 @@ class TsdbSpec extends HealthCheckSpecification {
     }
 
     @Tags(HARDWARE)
-    @Unroll("Stats are being logged for metric:#metric")
-    def "Basic stats are being logged (10min interval)"(metric) {
+    def "Basic stats are being logged for metric:#metric (10min interval)"(metric) {
         expect: "At least 1 result in the past 15 minutes"
         assert !systemStats.of(metric).get(VERIFICATION_BROADCAST_RULE.toHexString()).getDataPoints().isEmpty()
 
@@ -122,9 +114,8 @@ class TsdbSpec extends HealthCheckSpecification {
 
     }
 
-    @Unroll("GRPC stats are being logged for metric:#metric, sw:#sw.hwSwString")
     @Tags([HARDWARE])
-    def "GRPC stats are being logged"(metric, sw) {
+    def "GRPC stats are being logged for metric:#metric, sw: #sw.hwSwString"(metric, sw) {
         assumeTrue(northbound.getFeatureToggles().collectGrpcStats,
 "This test is skipped because 'collectGrpcStats' is disabled")
         expect: "At least 1 result in the past 15 minutes"

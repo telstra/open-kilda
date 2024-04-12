@@ -30,7 +30,7 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
     SwitchStats switchStats;
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, ISL_RECOVER_ON_FAIL])
-    def "Able to bring ISL-busy port down/up on an #isl.srcSwitch.ofVersion switch #isl.srcSwitch.dpId"() {
+    def "Able to bring ISL-busy port down/up on an #isl.srcSwitch.ofVersion switch #isl.srcSwitch.hwSwString"() {
         when: "Bring port down on the switch"
         def portDownTime = new Date().getTime()
         islHelper.breakIsl(isl)

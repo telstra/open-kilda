@@ -14,7 +14,6 @@ import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
@@ -41,7 +40,6 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
-import spock.lang.Unroll
 
 import javax.inject.Provider
 
@@ -55,7 +53,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDEN
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
 import static org.openkilda.messaging.payload.flow.FlowState.UP
@@ -158,8 +155,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         srcDstStr = "src:${topology.find(flow.source.switchId).hwSwString}->dst:${topology.find(flow.destination.switchId).hwSwString}"
     }
 
-    @Unroll("Able to create a second flow if #data.description")
-    def "Able to create multiple flows on certain combinations of switch-port-vlans"() {
+    def "Able to create multiple flows with #data.description"() {
         given: "Two potential flows that should not conflict"
         Tuple2<FlowRequestV2, FlowRequestV2> flows = data.getNotConflictingFlows()
 
@@ -335,7 +331,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    def "Able to create single switch single port flow with different vlan (#flow.source.switchId)"(
+    def "Able to create single switch single port flow with different vlan (#flow.source.switchId.description)"(
             FlowRequestV2 flow) {
         given: "A flow"
         flowHelperV2.addFlow(flow)
@@ -387,8 +383,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 ~/It is not allowed to create one-switch flow for the same ports and VLANs/).matches(error)
     }
 
-    @Unroll("Unable to create flow with #data.conflict")
-    def "Unable to create flow with conflicting vlans or flow IDs"() {
+    def "Unable to create flow with conflict data (#data.conflict)"() {
         given: "A potential flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)

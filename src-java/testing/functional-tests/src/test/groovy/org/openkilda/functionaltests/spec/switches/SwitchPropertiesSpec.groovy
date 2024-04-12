@@ -89,7 +89,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         new SwitchPropertiesNotFoundExpectedError(NON_EXISTENT_SWITCH_ID, ~/Failed to update switch properties./).matches(exc)    }
 
-    def "Informative error is returned when trying to update switch properties with incorrect information"() {
+    def "Informative error is returned when trying to update switch properties with incorrect information(#invalidType)"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
 
@@ -102,13 +102,13 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         expectedError.matches(exc)
         where:
-        supportedTransitEncapsulation | expectedError
-        ["test"]                      | new SwitchPropertiesNotUpdatedExpectedError("Unable to parse request payload",
-                ~/No enum constant org.openkilda.messaging.payload.flow.FlowEncapsulationType.TEST/)
-        []                            | new SwitchPropertiesNotUpdatedExpectedError(
-                "Supported transit encapsulations should not be null or empty")
-        null                          | new SwitchPropertiesNotUpdatedExpectedError(
-                "Supported transit encapsulations should not be null or empty")
+        invalidType    | supportedTransitEncapsulation | expectedError
+        "invalid type" | ["test"]                      | new SwitchPropertiesNotUpdatedExpectedError("Unable to parse request payload",
+                                                        ~/No enum constant org.openkilda.messaging.payload.flow.FlowEncapsulationType.TEST/)
+        "empty list"   | []                            | new SwitchPropertiesNotUpdatedExpectedError(
+                                                         "Supported transit encapsulations should not be null or empty")
+        "null"         | null                          | new SwitchPropertiesNotUpdatedExpectedError(
+                                                         "Supported transit encapsulations should not be null or empty")
     }
 
     def "Error is returned when trying to #data.desc"() {

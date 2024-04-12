@@ -22,7 +22,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
-import spock.lang.Unroll
 
 @Narrative("Verifies feature to retrieve list of flows passing the switch grouped by port number. Details: #5015")
 class SwitchesFlowsV2Spec extends HealthCheckSpecification {
@@ -93,7 +92,6 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         }
     }
 
-    @Unroll
     def "System allows to get a flow that #switchRole switch"() {
         given: "Flow that #switchRole switch"
         when: "Get all flows going through the switch"
@@ -110,7 +108,6 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         "ends on"       | switchPair.getDst()
     }
 
-    @Unroll
     def "System allows to get a flow which protected path that goes through switch"() {
         given: "Flow which protected path goes through switch"
         when: "Get all flows going through the switch"

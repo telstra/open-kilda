@@ -42,7 +42,6 @@ import spock.lang.Ignore
 import spock.lang.Isolated
 import spock.lang.ResourceLock
 import spock.lang.Shared
-import spock.lang.Unroll
 
 @Slf4j
 @ResourceLock(S42_TOGGLE)
@@ -60,8 +59,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     int statsWaitSeconds = 4
 
     @Tags([LOW_PRIORITY])
-    @Unroll
-    def "ISL RTT stats are available only if both global and switch toggles are 'on'"() {
+    def "ISL RTT stats are available only if both global and switch toggles are ON (featureToggle: #featureToggle && switchToggle: #switchToggle => statsAvailable: #statsAvailable)"() {
         given: "An active ISL with both switches having server42"
         def server42switchesDpIds = topology.getActiveServer42Switches()*.dpId
         def isl = topology.islsForActiveSwitches.find {

@@ -30,7 +30,6 @@ import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
-import spock.lang.Unroll
 
 class DefaultRulesSpec extends HealthCheckSpecification {
 
@@ -38,9 +37,8 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         deleteAnyFlowsLeftoversIssue5480()
     }
 
-    @Unroll("Default rules are installed on #sw.hwSwString")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
-    def "Default rules are installed on switches"() {
+    def "Default rules are installed on switches #sw.hwSwString"() {
         expect: "Default rules are installed on the switch"
         def cookies = northbound.getSwitchRules(sw.dpId).flowEntries*.cookie
         cookies.sort() == sw.defaultCookies.sort()
@@ -153,7 +151,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     }
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    def "Able to install default rule on #sw.hwSwString [install-action=#data.installRulesAction]"(
+    def "Able to install default rule on switch: #sw.hwSwString [install-action=#data.installRulesAction]"(
             Map data, Switch sw) {
         given: "A switch without rules"
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries

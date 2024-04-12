@@ -28,7 +28,7 @@ class GrpcCommonSpec extends GrpcBaseSpecification {
         sw << getNoviflowSwitches()
     }
 
-    def "Able to get switch packet in out stats"() {
+    def "Able to get switch packet in out stats on the #switches.hwSwString (#switches.description) switch"() {
         when: "Get switch packet in out stats"
         def response = grpc.getPacketInOutStats(switches.address)
 

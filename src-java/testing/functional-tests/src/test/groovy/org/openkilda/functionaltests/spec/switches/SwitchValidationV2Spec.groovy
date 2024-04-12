@@ -4,7 +4,6 @@ import org.openkilda.functionaltests.helpers.DockerHelper
 import org.openkilda.functionaltests.helpers.model.ContainerName
 import org.openkilda.messaging.model.FlowDirectionType
 import spock.lang.Shared
-import spock.lang.Unroll
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -960,7 +959,6 @@ misconfigured"
         sectionsToVerifyPresence << [["meters"], ["meters", "groups"], ["meters", "groups", "rules"]]
     }
 
-    @Unroll
     @Tags([VIRTUAL, LOW_PRIORITY])
     def "Able to validate switch using #apiVersion API when GRPC is down"() {
         given: "Random switch without LAG feature enabled"
