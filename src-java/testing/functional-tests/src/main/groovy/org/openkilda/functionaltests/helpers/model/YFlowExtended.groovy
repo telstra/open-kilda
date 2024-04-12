@@ -30,7 +30,7 @@ import org.openkilda.testing.service.traffexam.model.Host
 import org.openkilda.testing.service.traffexam.model.TimeLimit
 import org.openkilda.testing.service.traffexam.model.Vlan
 import org.openkilda.testing.service.traffexam.model.YFlowBidirectionalExam
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -349,7 +349,7 @@ class YFlowExtended {
      * @param isYPointVerificationIncluded
      */
     void hasTheSamePropertiesAs(YFlowExtended expectedYFlowExtended, boolean isYPointVerificationIncluded = true) {
-        SoftAssertions assertions = new SoftAssertions()
+        SoftAssertionsWrapper assertions = new SoftAssertionsWrapper()
         assertions.checkSucceeds { assert this.yFlowId == expectedYFlowExtended.yFlowId }
         assertions.checkSucceeds { assert this.maximumBandwidth == expectedYFlowExtended.maximumBandwidth }
         assertions.checkSucceeds { assert this.pathComputationStrategy == expectedYFlowExtended.pathComputationStrategy }
