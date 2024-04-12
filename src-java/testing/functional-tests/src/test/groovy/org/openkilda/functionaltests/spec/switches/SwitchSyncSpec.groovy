@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.model.switches.Manufacturer.WB5164
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 
@@ -78,7 +80,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
 
     def "Able to synchronize switch (install missing rules and meters)"() {
         given: "Two active not neighboring switches"
-        def switchPair = switchPairs.all().nonNeighbouring().random()
+        def switchPair = switchPairs.all().withSwitchesNotManufacturedBy(WB5164).nonNeighbouring().random()
 
         and: "Create an intermediate-switch flow"
         def flow = flowHelperV2.randomFlow(switchPair)

@@ -190,6 +190,13 @@ class SwitchPairs {
         return this
     }
 
+    SwitchPairs withSwitchesNotManufacturedBy(Manufacturer srcManufacturer) {
+        switchPairs = switchPairs.findAll {
+            !srcManufacturer.isSwitchMatch(it.getSrc()) && it.hasOf13Path() && !srcManufacturer.isSwitchMatch(it.getDst()) && it.hasOf13Path()
+        }
+        return this
+    }
+
     SwitchPairs withIslRttSupport() {
         this.assertAllSwitchPairsAreNeighbouring()
         switchPairs = switchPairs.findAll { [it.src, it.dst].every { it.features.contains(NOVIFLOW_COPY_FIELD) } }
