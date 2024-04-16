@@ -58,6 +58,8 @@ import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult
 import org.openkilda.northbound.dto.v2.switches.MeterInfoDtoV2
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2
 import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
+import org.openkilda.northbound.dto.v2.switches.LagPortRequest
+import org.openkilda.northbound.dto.v2.switches.LagPortResponse
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -74,6 +76,8 @@ import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtende
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult
 import org.openkilda.testing.tools.IslUtils
 import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
 
 import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
@@ -122,6 +126,9 @@ class SwitchHelper {
 
     @Autowired
     LockKeeperService lockKeeper
+
+    @Autowired
+    CleanupManager cleanupManager
 
     @Autowired
     SwitchHelper(@Qualifier("northboundServiceImpl") NorthboundService northbound,
@@ -751,5 +758,21 @@ class SwitchHelper {
     @Memoized
     static SwitchPropertiesDto getCachedSwProps(SwitchId switchId) {
         return getCachedAllSwProps().find { it.switchId == switchId }
+    }
+
+    static def safeDeleteLagPort(SwitchId switchId, Integer LagPortNumber) {
+        def lagPortsNums = northboundV2.get().getLagLogicalPort(switchId)*.logicalPortNumber
+        if (lagPortsNums.contains(LagPortNumber)) {
+            northboundV2.get().deleteLagLogicalPort(switchId, LagPortNumber)
+        }
+    }
+
+    LagPortResponse createLagPort(SwitchId switchId, LagPortRequest payload, cleanupAfter = TEST) {
+        def response = northboundV2.get().createLagLogicalPort(switchId, payload)
+        if (response?.logicalPortNumber != null) {
+            cleanupManager.addAction(
+                    { safeDeleteLagPort(switchId, response.logicalPortNumber) }, cleanupAfter)
+        }
+        return response
     }
 }

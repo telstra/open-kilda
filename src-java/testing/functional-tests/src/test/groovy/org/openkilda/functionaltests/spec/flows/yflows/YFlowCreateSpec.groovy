@@ -364,7 +364,7 @@ source: switchId="${flowParams.yFlowRequest.sharedEndpoint.switchId}" port=${flo
         assumeTrue(swT != null, "Unable to find a switch that supports LAG")
         def portsArray = topology.getAllowedPortsForSwitch(swT.shared)[-2, -1]
         def payload = new LagPortRequest(portNumbers: portsArray)
-        def lagPort = northboundV2.createLagLogicalPort(swT.shared.dpId, payload).logicalPortNumber
+        def lagPort = switchHelper.createLagPort(swT.shared.dpId, payload).logicalPortNumber
 
         when: "Try creating a Y-Flow with shared endpoint port being inside LAG"
         def yFlow = yFlowFactory.getBuilder(swT).withSharedEpPort(portsArray[0]).build()
@@ -387,7 +387,6 @@ source: switchId="${flowParams.yFlowRequest.sharedEndpoint.switchId}" port=${flo
 
         cleanup:
         yFlow && !exc && yFlow.delete()
-        lagPort && northboundV2.deleteLagLogicalPort(swT.shared.dpId, lagPort)
     }
 
     @Tags([LOW_PRIORITY])

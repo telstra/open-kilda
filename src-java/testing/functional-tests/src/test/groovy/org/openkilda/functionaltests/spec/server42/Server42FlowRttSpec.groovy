@@ -671,7 +671,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         when: "Create a LAG port on the src switch"
         def portsForLag = topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1]
         def payload = new LagPortRequest(portNumbers: portsForLag)
-        def lagPort = northboundV2.createLagLogicalPort(switchPair.src.dpId, payload).logicalPortNumber
+        def lagPort = switchHelper.createLagPort(switchPair.src.dpId, payload).logicalPortNumber
 
         and: "Create a flow"
         def flowCreateTime = new Date()
@@ -687,7 +687,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Revert system to original state"
-        lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
         flowRttFeatureStartState && changeFlowRttToggle(flowRttFeatureStartState)
         initialSrcSwS42Props && changeFlowRttSwitch(switchPair.src, initialSrcSwS42Props)
         initialDstSwS42Props && changeFlowRttSwitch(switchPair.dst, initialSrcSwS42Props)
