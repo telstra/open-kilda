@@ -11,4 +11,4 @@ wget -nc https://github.com/Kitware/CMake/releases/download/v3.15.3/cmake-3.15.3
 tar -xzvf cmake-3.15.3-Linux-x86_64.tar.gz && \
 cd - && \
 ln -sf tools/cmake/cmake-3.15.3-Linux-x86_64/bin/cmake . && \
-pip3 install "docker==4.4.4" netifaces==0.11.0
+pip3 install "urllib3<2" "docker==4.4.4" netifaces==0.11.0

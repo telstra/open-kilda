@@ -27,6 +27,7 @@ public interface KafkaConfig {
     int STATS_TOPOLOGY_TEST_KAFKA_PORT_3 = 2152;
     int ISL_LATENCY_TOPOLOGY_TEST_KAFKA_PORT = 2189;
     int FLOW_PING_TOPOLOGY_TEST_KAFKA_PORT = 2190;
+    int SERVER42_CONTROL_TOPOLOGY_TEST_KAFKA_PORT = 2191;
 
     @Key("hosts")
     String getHosts();

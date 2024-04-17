@@ -29,7 +29,7 @@ import java.util.Set;
 @EqualsAndHashCode(of = {"value", "mask"})
 public abstract class MetadataBase {
     // update ALL_FIELDS if modify fields list
-    static final BitField TYPE_FIELD = new BitField(0x0000_0000_F000_0000L);
+    static final BitField TYPE_FIELD = new BitField(0x0000_0000_E000_0000L);
 
     // used by unit tests to check fields intersections
     static final BitField[] ALL_FIELDS = new BitField[]{TYPE_FIELD};

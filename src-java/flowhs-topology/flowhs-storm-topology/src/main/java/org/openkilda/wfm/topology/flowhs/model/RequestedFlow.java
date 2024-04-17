@@ -16,6 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.model;
 
 import org.openkilda.model.FlowEncapsulationType;
+import org.openkilda.model.FlowEndpoint;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
 
@@ -66,5 +67,17 @@ public class RequestedFlow {
 
     public boolean isOneSwitchFlow() {
         return Objects.equals(srcSwitch, destSwitch);
+    }
+
+    /**
+     * Returns dst endpoint.
+     */
+    public FlowEndpoint getDstEndpoint() {
+        return FlowEndpoint.builder()
+                .switchId(destSwitch)
+                .portNumber(destPort)
+                .outerVlanId(destVlan)
+                .innerVlanId(destInnerVlan)
+                .build();
     }
 }

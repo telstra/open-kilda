@@ -39,22 +39,32 @@ public class PortColourCookie extends CookieBase implements Comparable<PortColou
 
     // update ALL_FIELDS if modify fields list
     //                    used by generic cookie -> 0x9FF0_0000_0000_0000L
-    static final BitField PORT_FIELD = new BitField(0x0000_0000_FFFF_FFFFL);
+    static final BitField PORT_FIELD     = new BitField(0x0000_0000_FFFF_FFFFL);
+    static final BitField SUB_TYPE_FIELD = new BitField(0x0000_000F_0000_0000L);
 
     // used by unit tests to check fields intersections
-    static final BitField[] ALL_FIELDS = ArrayUtils.addAll(CookieBase.ALL_FIELDS, PORT_FIELD);
+    static final BitField[] ALL_FIELDS = ArrayUtils.addAll(CookieBase.ALL_FIELDS, PORT_FIELD, SUB_TYPE_FIELD);
 
     public PortColourCookie(long value) {
         super(value);
     }
 
     @Builder
+    public PortColourCookie(CookieType type, int portNumber, FlowSubType subType) {
+        super(makeValue(type, portNumber, subType), type);
+    }
+
     public PortColourCookie(CookieType type, int portNumber) {
-        super(makeValue(type, portNumber), type);
+        this(type, portNumber, null);
     }
 
     public int getPortNumber() {
         return (int) getField(PORT_FIELD);
+    }
+
+    public FlowSubType getFlowSubType() {
+        long longValue = getField(SUB_TYPE_FIELD);
+        return resolveEnum(FlowSubType.values(), longValue).orElse(FlowSubType.INVALID);
     }
 
     /**
@@ -63,6 +73,7 @@ public class PortColourCookie extends CookieBase implements Comparable<PortColou
     public PortColourCookieBuilder toBuilder() {
         return new PortColourCookieBuilder()
                 .type(getType())
+                .subType(getFlowSubType())
                 .portNumber(getPortNumber());
     }
 
@@ -71,12 +82,18 @@ public class PortColourCookie extends CookieBase implements Comparable<PortColou
         return cookieComparison(other);
     }
 
-    private static long makeValue(CookieType type, int portNumber) {
+    private static long makeValue(CookieType type, int portNumber, FlowSubType subType) {
         if (! allowedTypes.contains(type)) {
             throw new IllegalArgumentException(formatIllegalTypeError(type, allowedTypes));
         }
 
-        long value = setField(0, SERVICE_FLAG, 1);
-        return setField(value, PORT_FIELD, portNumber);
+        long result = setField(0, SERVICE_FLAG, 1);
+        result = setField(result, PORT_FIELD, portNumber);
+
+        if (subType != null) {
+            result = setField(result, SUB_TYPE_FIELD, subType.getValue());
+        }
+
+        return result;
     }
 }

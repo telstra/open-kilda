@@ -42,7 +42,6 @@ import org.openkilda.server42.control.topology.storm.bolt.isl.command.Deactivate
 import org.openkilda.server42.control.topology.storm.bolt.isl.command.IslCommand;
 import org.openkilda.server42.control.topology.storm.bolt.isl.command.SendIslListOnSwitchCommand;
 import org.openkilda.wfm.AbstractBolt;
-import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.zk.ZkStreams;
 import org.openkilda.wfm.share.zk.ZooKeeperBolt;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
@@ -99,7 +98,7 @@ public class Router extends AbstractBolt
         service.processSync();
     }
 
-    private void handleMessage(Tuple input, Message message) throws PipelineException {
+    private void handleMessage(Tuple input, Message message) {
         if (message instanceof InfoMessage) {
             handleInfoMessage(input, ((InfoMessage) message).getData());
         } else {
@@ -107,11 +106,11 @@ public class Router extends AbstractBolt
         }
     }
 
-    private void handleInfoMessage(Tuple input, InfoData payload) throws PipelineException {
+    private void handleInfoMessage(Tuple input, InfoData payload) {
         if (payload instanceof ActivateFlowMonitoringInfoData) {
             ActivateFlowMonitoringInfoData data = (ActivateFlowMonitoringInfoData) payload;
-            emit(STREAM_FLOW_ID, input, makeTuple(new ActivateFlowMonitoringCommand(data, true)));
             emit(STREAM_FLOW_ID, input, makeTuple(new ActivateFlowMonitoringCommand(data, false)));
+            emit(STREAM_FLOW_ID, input, makeTuple(new ActivateFlowMonitoringCommand(data, true)));
         } else if (payload instanceof DeactivateFlowMonitoringInfoData) {
             DeactivateFlowMonitoringInfoData data = (DeactivateFlowMonitoringInfoData) payload;
             for (SwitchId switchId : data.getSwitchIds()) {

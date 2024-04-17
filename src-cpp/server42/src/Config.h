@@ -34,7 +34,9 @@ namespace org::openkilda {
         virtual uint32_t get_control_port() const = 0;
 
         virtual bool is_debug() const = 0;
-        
+
+        virtual bool is_hpet() const = 0;
+
         using ptr = boost::shared_ptr<const Config>;
 
         using cref_ptr = const ptr&;

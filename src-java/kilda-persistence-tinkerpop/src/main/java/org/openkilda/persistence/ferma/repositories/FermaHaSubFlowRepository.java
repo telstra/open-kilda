@@ -17,10 +17,12 @@ package org.openkilda.persistence.ferma.repositories;
 
 import org.openkilda.model.HaSubFlow;
 import org.openkilda.model.HaSubFlow.HaSubFlowData;
+import org.openkilda.model.SwitchId;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.ferma.FermaPersistentImplementation;
 import org.openkilda.persistence.ferma.frames.HaSubFlowFrame;
 import org.openkilda.persistence.ferma.frames.KildaBaseVertexFrame;
+import org.openkilda.persistence.ferma.frames.converters.SwitchIdConverter;
 import org.openkilda.persistence.repositories.FlowStatsRepository;
 import org.openkilda.persistence.repositories.HaSubFlowRepository;
 
@@ -67,6 +69,17 @@ public class FermaHaSubFlowRepository extends FermaGenericRepository<HaSubFlow, 
     @Override
     public Optional<HaSubFlow> findById(String haSubFlowId) {
         return HaSubFlowFrame.load(framedGraph(), haSubFlowId).map(HaSubFlow::new);
+    }
+
+    @Override
+    public Collection<HaSubFlow> findByEndpointSwitchId(SwitchId switchId) {
+        return framedGraph().traverse(g -> g.V()
+                        .hasLabel(HaSubFlowFrame.FRAME_LABEL)
+                        .has(HaSubFlowFrame.ENDPOINT_SWITCH_ID_PROPERTY,
+                                SwitchIdConverter.INSTANCE.toGraphProperty(switchId)))
+                .toListExplicit(HaSubFlowFrame.class).stream()
+                .map(HaSubFlow::new)
+                .collect(Collectors.toList());
     }
 
     @Override

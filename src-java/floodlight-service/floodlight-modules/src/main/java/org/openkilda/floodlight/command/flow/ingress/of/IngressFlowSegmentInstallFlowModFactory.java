@@ -79,11 +79,7 @@ abstract class IngressFlowSegmentInstallFlowModFactory extends IngressInstallFlo
         switch (encapsulation.getType()) {
             case TRANSIT_VLAN:
                 MacAddress ethSrc = MacAddress.of(sw.getId());
-                MacAddress ethDst = MacAddress.of(command.getEgressSwitchId().toLong());
-
                 actions.add(of.actions().setField(of.oxms().ethSrc(ethSrc)));
-                actions.add(of.actions().setField(of.oxms().ethDst(ethDst)));
-
                 if (!getCommand().getMetadata().isMultiTable()) {
                     actions.add(of.actions()
                             .setField(of.oxms().udpSrc(TransportPort.of(SERVER_42_FLOW_RTT_FORWARD_UDP_PORT))));
