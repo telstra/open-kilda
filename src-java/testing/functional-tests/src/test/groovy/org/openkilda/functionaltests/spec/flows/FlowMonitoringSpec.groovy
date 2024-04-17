@@ -7,7 +7,6 @@ import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.springframework.beans.factory.annotation.Autowired
@@ -82,13 +81,11 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
 
         and: "flowLatencyMonitoringReactions is enabled in featureToggle"
         and: "Disable s42 in featureToggle for generating flow-monitoring stats"
-        def initFeatureToggle = northbound.getFeatureToggles()
+        def initFeatureToggle = featureToggles.getFeatureToggles()
         cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {northbound.toggleFeature(initFeatureToggle)})
-        northbound.toggleFeature(FeatureTogglesDto.builder()
-                .flowLatencyMonitoringReactions(true)
-                .server42FlowRtt(false)
-                .build())
+                {featureToggles.toggleMultipleFeatures(initFeatureToggle)})
+        featureToggles.flowLatencyMonitoringReactions(true)
+        featureToggles.server42FlowRtt(false)
 
         and : "A flow with max_latency 210"
         def flow = flowHelperV2.randomFlow(switchPair).tap {
@@ -142,13 +139,10 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
 
         and: "flowLatencyMonitoringReactions is disabled in featureToggle"
         and: "Disable s42 in featureToggle for generating flow-monitoring stats"
-        def initFeatureToggle = northbound.getFeatureToggles()
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {northbound.toggleFeature(initFeatureToggle)})
-        northbound.toggleFeature(FeatureTogglesDto.builder()
-                .flowLatencyMonitoringReactions(false)
-                .server42FlowRtt(false)
-                .build())
+        def initFeatureToggle = featureToggles.getFeatureToggles()
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.toggleMultipleFeatures(initFeatureToggle)})
+        featureToggles.flowLatencyMonitoringReactions(false)
+        featureToggles.server42FlowRtt(false)
 
         and : "A flow with max_latency 210"
         def createFlowTime = new Date()

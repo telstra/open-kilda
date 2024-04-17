@@ -8,6 +8,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.model.system.FeatureTogglesDto
+import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 
@@ -53,9 +54,8 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
         def flow = flowHelperV2.addFlow(flowRequest)
 
         when: "Set create_flow toggle to false"
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {northbound.toggleFeature(FeatureTogglesDto.builder().createFlowEnabled(true).build())})
-        def disableFlowCreation = northbound.toggleFeature(FeatureTogglesDto.builder().createFlowEnabled(false).build())
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.createFlowEnabled(true)})
+        def disableFlowCreation = featureToggles.createFlowEnabled(false)
 
         and: "Try to create a new flow"
         flowHelperV2.addFlow(flowHelperV2.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
@@ -76,9 +76,8 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flowRequest)
 
         when: "Set update_flow toggle to false"
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {northbound.toggleFeature(FeatureTogglesDto.builder().updateFlowEnabled(true).build())})
-        def disableFlowUpdating = northbound.toggleFeature(FeatureTogglesDto.builder().updateFlowEnabled(false).build())
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.updateFlowEnabled(true)})
+        def disableFlowUpdating = featureToggles.updateFlowEnabled(false)
 
         and: "Try to update the flow"
         northboundV2.updateFlow(flowRequest.flowId, flowRequest.tap { it.description = it.description + "updated" })
@@ -98,8 +97,8 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
 
         when: "Set delete_flow toggle to false"
         cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {northbound.toggleFeature(FeatureTogglesDto.builder().deleteFlowEnabled(true).build())})
-        def disableFlowDeletion = northbound.toggleFeature(FeatureTogglesDto.builder().deleteFlowEnabled(false).build())
+                {featureToggles.deleteFlowEnabled(true)})
+        def disableFlowDeletion = featureToggles.deleteFlowEnabled(false)
 
         and: "Try to delete the flow"
         northboundV2.deleteFlow(flowRequest.flowId)
@@ -114,7 +113,7 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
         flowHelperV2.updateFlow(flowRequest.flowId, flowRequest.tap { it.description = it.description + "updated" })
 
         when: "Set delete_flow toggle back to true"
-        def enableFlowDeletion = northbound.toggleFeature(FeatureTogglesDto.builder().deleteFlowEnabled(true).build())
+        def enableFlowDeletion = featureToggles.deleteFlowEnabled(true)
 
         then: "Able to delete flows"
         flowHelper.deleteFlow(flow.flowId)
@@ -129,12 +128,10 @@ feature toggle"() {
         def swPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().withAtLeastNPaths(2).random()
 
         and: "The 'flows_reroute_using_default_encap_type' feature is enabled"
-        def initFeatureToggle = northbound.getFeatureToggles()
+        def initFeatureToggle = featureToggles.getFeatureToggles()
         cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {northbound.toggleFeature(FeatureTogglesDto.builder()
-                .flowsRerouteUsingDefaultEncapType(initFeatureToggle.flowsRerouteUsingDefaultEncapType).build())})
-        !initFeatureToggle.flowsRerouteUsingDefaultEncapType && northbound.toggleFeature(FeatureTogglesDto.builder()
-                .flowsRerouteUsingDefaultEncapType(true).build())
+                {featureToggles.flowsRerouteUsingDefaultEncapType(initFeatureToggle.flowsRerouteUsingDefaultEncapType)})
+        !initFeatureToggle.flowsRerouteUsingDefaultEncapType && featureToggles.flowsRerouteUsingDefaultEncapType(true)
 
         and: "A flow with default encapsulation"
         def initKildaConfig = kildaConfiguration.getKildaConfiguration()
@@ -164,7 +161,7 @@ feature toggle"() {
         kildaConfiguration.updateFlowEncapsulationType(initKildaConfig.flowEncapsulationType)
 
         and: "Disable the 'flows_reroute_using_default_encap_type' feature toggle"
-        northbound.toggleFeature(FeatureTogglesDto.builder().flowsRerouteUsingDefaultEncapType(false).build())
+        featureToggles.flowsRerouteUsingDefaultEncapType(false)
 
         and: "Restore previous path"
         islHelper.restoreIsl(islToBreak)
@@ -196,12 +193,10 @@ feature toggle"() {
         })
 
         and: "The 'flows_reroute_using_default_encap_type' feature is enabled"
-        def initFeatureToggle = northbound.getFeatureToggles()
+        def initFeatureToggle = featureToggles.getFeatureToggles()
         cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {northbound.toggleFeature(FeatureTogglesDto.builder()
-                .flowsRerouteUsingDefaultEncapType(initFeatureToggle.flowsRerouteUsingDefaultEncapType).build())})
-        !initFeatureToggle.flowsRerouteUsingDefaultEncapType && northbound.toggleFeature(FeatureTogglesDto.builder()
-                .flowsRerouteUsingDefaultEncapType(true).build())
+                {featureToggles.flowsRerouteUsingDefaultEncapType(initFeatureToggle.flowsRerouteUsingDefaultEncapType)})
+        !initFeatureToggle.flowsRerouteUsingDefaultEncapType && featureToggles.flowsRerouteUsingDefaultEncapType(true)
 
         and: "A flow with transit_vlan encapsulation"
         def flow = flowHelperV2.randomFlow(swPair).tap { encapsulationType = FlowEncapsulationType.TRANSIT_VLAN }
@@ -273,12 +268,8 @@ feature toggle"() {
 
         and: "Set flowsRerouteOnIslDiscovery=false"
         cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {northbound.toggleFeature(FeatureTogglesDto.builder()
-                .flowsRerouteOnIslDiscoveryEnabled(true)
-                .build())})
-        northbound.toggleFeature(FeatureTogglesDto.builder()
-                .flowsRerouteOnIslDiscoveryEnabled(false)
-                .build())
+                {featureToggles.flowsRerouteOnIslDiscoveryEnabled(true)})
+        featureToggles.flowsRerouteOnIslDiscoveryEnabled(false)
         def featureToogleIsUpdated = true
 
         when: "Break the flow path(bring port down on the src switch)"

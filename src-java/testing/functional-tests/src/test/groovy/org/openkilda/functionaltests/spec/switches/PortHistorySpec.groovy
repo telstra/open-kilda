@@ -8,7 +8,6 @@ import org.openkilda.functionaltests.helpers.model.PortHistoryEvent
 import org.openkilda.functionaltests.model.cleanup.CleanupActionType
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse
 import org.openkilda.testing.tools.SoftAssertions
@@ -227,12 +226,8 @@ class PortHistoryIsolatedSpec extends HealthCheckSpecification {
     //isolation: global fl sync toggle is changed
     def "Port history is able to show ANTI_FLAP statistic"() {
         given: "floodlightRoutePeriodicSync is disabled"
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {northbound.toggleFeature(FeatureTogglesDto.builder()
-                .floodlightRoutePeriodicSync(true)
-                .build())})
-        northbound.toggleFeature(FeatureTogglesDto.builder()
-                .floodlightRoutePeriodicSync(false)
-                .build())
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.floodlightRoutePeriodicSync(true)})
+        featureToggles.floodlightRoutePeriodicSync(false)
 
         and: "A port in a stable state"
         def isl = getTopology().islsForActiveSwitches.first()

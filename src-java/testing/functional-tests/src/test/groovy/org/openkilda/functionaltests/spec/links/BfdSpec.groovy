@@ -6,7 +6,6 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.links.BfdProperties
 import org.springframework.beans.factory.annotation.Autowired
@@ -33,6 +32,7 @@ Main purpose is to detect ISL failure on switch level, which is times faster tha
 controller-involved discovery mechanism""")
 @Tags([HARDWARE])
 class BfdSpec extends HealthCheckSpecification {
+
     @Shared
     BfdProperties defaultBfdProps = new BfdProperties(350, (short)3)
     @Autowired @Shared
@@ -167,9 +167,8 @@ class BfdSpec extends HealthCheckSpecification {
         }
 
         when: "Set BFD toggle to 'off' state"
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {northbound.toggleFeature(FeatureTogglesDto.builder().useBfdForIslIntegrityCheck(true).build())})
-        def toggleOff = northbound.toggleFeature(FeatureTogglesDto.builder().useBfdForIslIntegrityCheck(false).build())
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.useBfdForIslIntegrityCheck(true)})
+        def toggleOff = featureToggles.useBfdForIslIntegrityCheck(false)
 
         and: "Interrupt ISL connection by breaking rule on a-switch"
         lockKeeper.removeFlows([isl.aswitch])
@@ -188,7 +187,7 @@ class BfdSpec extends HealthCheckSpecification {
 
         when: "Set BFD toggle back to 'on' state and restore the ISL"
         lockKeeper.addFlows([isl.aswitch])
-        def toggleOn = northbound.toggleFeature(FeatureTogglesDto.builder().useBfdForIslIntegrityCheck(true).build())
+        def toggleOn = featureToggles.useBfdForIslIntegrityCheck(true)
         Wrappers.wait(discoveryAuxiliaryInterval + WAIT_OFFSET) {
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
             assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED

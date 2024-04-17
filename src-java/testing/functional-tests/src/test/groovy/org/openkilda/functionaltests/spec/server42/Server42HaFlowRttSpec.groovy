@@ -21,7 +21,6 @@ import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.functionaltests.model.stats.Origin
-import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.cookie.CookieBase.CookieType
 
@@ -51,8 +50,8 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
         assert swT, "There is no switch triplet for the further ha-flow creation"
 
         when: "Set server42FlowRtt toggle to true"
-        def flowRttToggleInitialState = northbound.featureToggles.server42FlowRtt
-        !flowRttToggleInitialState && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(true).build())
+        def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
+        !flowRttToggleInitialState && featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on all switches"
@@ -77,7 +76,7 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
 
         cleanup: "Revert system to original state"
         haFlow && haFlow.delete() && switchHelper.verifyAbsenceOfServer42FlowRttRules(initialSwitchesProps.keySet())
-        flowRttToggleInitialState != null && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())
+        flowRttToggleInitialState != null && featureToggles.server42FlowRtt(flowRttToggleInitialState)
         initialSwitchesProps && switchHelper.revertToOriginSwitchSetup(initialSwitchesProps, flowRttToggleInitialState)
 
         where:
@@ -103,8 +102,8 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
         assert swT, "There is no switch triplet for the ha-flow creation"
 
         and: "Set server42FlowRtt toggle to true"
-        def flowRttToggleInitialState = northbound.featureToggles.server42FlowRtt
-        !flowRttToggleInitialState && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(true).build())
+        def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
+        !flowRttToggleInitialState && featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on all switches"
@@ -185,7 +184,7 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
 
         cleanup: "Revert system to original state"
         haFlow && haFlow.delete() && switchHelper.verifyAbsenceOfServer42FlowRttRules(initialSwitchesProps.keySet())
-        flowRttToggleInitialState != null && northbound.toggleFeature(FeatureTogglesDto.builder().server42FlowRtt(flowRttToggleInitialState).build())
+        flowRttToggleInitialState != null && featureToggles.server42FlowRtt(flowRttToggleInitialState)
         initialSwitchesProps && switchHelper.revertToOriginSwitchSetup(initialSwitchesProps, flowRttToggleInitialState)
 
         where:
