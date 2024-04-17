@@ -1,8 +1,10 @@
 package org.openkilda.functionaltests.spec.xresilience
 
-
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PATH_SWAP_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
@@ -34,6 +36,7 @@ import java.util.concurrent.TimeUnit
 @Slf4j
 class RetriesSpec extends HealthCheckSpecification {
 
+    @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET, SWITCH_RECOVER_ON_FAIL])
     def "System retries the reroute (global retry) if it fails to install rules on one of the current target path's switches"() {
         given: "Switch pair with at least 3 available paths, one path should have a transit switch that we will break \
 and at least 1 path must remain safe"
@@ -79,10 +82,7 @@ and at least 1 path must remain safe"
         database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.ACTIVE)
 
         when: "Main path of the flow breaks initiating a reroute"
-        def portDown = antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        wait(WAIT_OFFSET) {
-            assert northbound.getLink(islToBreak).state == IslChangeType.FAILED
-        }
+        islHelper.breakIsl(islToBreak)
 
         then: "System fails to install rules on desired path and tries to retry reroute and find new path (global retry)"
         wait(WAIT_OFFSET * 3, 0.1) {
@@ -91,7 +91,7 @@ and at least 1 path must remain safe"
             }
         }
 
-        when: "Switch is officially marked as offline"
+        when: "Switch is marked as offline"
         database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.INACTIVE)
 
         then: "System finds another working path and successfully reroutes the flow (one of the retries succeeds)"
@@ -111,22 +111,16 @@ and at least 1 path must remain safe"
         switchHelper.validateAndCollectFoundDiscrepancies(switchesToVerify*.getDpId()).isEmpty()
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if(blockData) {
             database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(switchToBreak, blockData)
         }
-        if(portDown) {
-            antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        }
-        wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsl(islToBreak)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
     }
 
-    @Tags([SMOKE_SWITCHES, LOCKKEEPER])
+    @Tags([SMOKE_SWITCHES, LOCKKEEPER, ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET, SWITCH_RECOVER_ON_FAIL])
     def "System tries to retry rule installation during #data.description if previous one is failed"(){
         given: "Two active neighboring switches with two diverse paths at least"
         def swPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
@@ -136,21 +130,9 @@ and at least 1 path must remain safe"
         List<PathNode> protectedPath = allPaths.findAll { it != mainPath && it.size() != 2 }.min { it.size() }
 
         and: "All alternative paths unavailable (bring ports down)"
-        def broughtDownIsls = []
-        def otherIsls = []
-        def involvedIsls = (pathHelper.getInvolvedIsls(mainPath) + pathHelper.getInvolvedIsls(protectedPath)).unique()
-        allPaths.findAll { it != mainPath && it != protectedPath }.each {
-            pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) }.each {
-                otherIsls.add(it)
-            }
-        }
-        broughtDownIsls = otherIsls.unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
-        broughtDownIsls.every { northbound.portDown(it.srcSwitch.dpId, it.srcPort) }
-        wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownIsls.size() * 2
-        }
+        def altIsls = topology.getRelatedIsls(swPair.src) - pathHelper.getInvolvedIsls(mainPath).first() -
+                pathHelper.getInvolvedIsls(protectedPath).first()
+        islHelper.breakIsls(altIsls)
 
         and: "A protected flow"
         /** At this point we have the following topology:
@@ -220,16 +202,12 @@ and at least 1 path must remain safe"
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (!isSwitchActivated && blockData) {
             database.setSwitchStatus(swToManipulate.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(swToManipulate, blockData)
             switchHelper.synchronize(swToManipulate.dpId)
         }
-        broughtDownIsls.every { northbound.portUp(it.srcSwitch.dpId, it.srcPort) }
-        wait(discoveryInterval + WAIT_OFFSET + antiflapCooldown) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsls(altIsls)
         database.resetCosts(topology.isls)
 
         where:
@@ -255,6 +233,7 @@ and at least 1 path must remain safe"
         ]
     }
 
+    @Tags([SWITCH_RECOVER_ON_FAIL])
     def "Flow is successfully deleted from the system even if some rule delete commands fail (no rollback for delete)"() {
         given: "A flow"
         def swPair = switchPairs.all().first()
@@ -282,6 +261,7 @@ and at least 1 path must remain safe"
         switchHelper.reviveSwitch(swPair.src, blockData, true)
     }
 
+    @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET, SWITCH_RECOVER_ON_FAIL])
     def "System retries the intentional rerouteV1 if it fails to install rules on a switch"() {
         given: "Two active neighboring switches with two diverse paths at least(main and backup paths)"
         def swPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
@@ -291,21 +271,8 @@ and at least 1 path must remain safe"
         List<PathNode> backupPath = swPair.paths.findAll { it != mainPath && it.size() != 2 }.min { it.size() }
 
         and: "All alternative paths unavailable (bring ports down)"
-        def broughtDownIsls = []
-        def otherIsls = []
-        def involvedIsls = (pathHelper.getInvolvedIsls(mainPath) + pathHelper.getInvolvedIsls(backupPath)).unique()
-        swPair.paths.findAll { it != mainPath && it != backupPath }.each {
-            pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) }.each {
-                otherIsls.add(it)
-            }
-        }
-        broughtDownIsls = otherIsls.unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
-        broughtDownIsls.every { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
-        wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == otherIsls.size() * 2
-        }
+        def altIsls = topology.getRelatedIsls(swPair.src) - pathHelper.getInvolvedIsls(mainPath).first() -
+                pathHelper.getInvolvedIsls(backupPath).first()
 
         and: "A flow on the main path"
         def flow = flowHelperV2.randomFlow(swPair)
@@ -361,16 +328,12 @@ and at least 1 path must remain safe"
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         if (!isSwitchActivated && blockData) {
             database.setSwitchStatus(swToManipulate.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(swToManipulate, blockData)
             switchHelper.synchronize(swToManipulate.dpId)
         }
-        broughtDownIsls.every { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
-        wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsls(altIsls)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
     }
@@ -383,6 +346,7 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
     @Shared int globalTimeout = 30 //global timeout for h&s operation
 
     //isolation: requires no 'up' events in the system while flow is Down
+    @Tags([ISL_RECOVER_ON_FAIL])
     def "System does not retry after global timeout for reroute operation"() {
         given: "A flow with ability to reroute"
         def swPair = switchPairs.all().withAtLeastNPaths(2).random()
@@ -421,9 +385,7 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
 
         cleanup:
         lockKeeper.cleanupTrafficShaperRules(swPair.src.regions)
-        flowHelperV2.deleteFlow(flow.flowId)
-        northbound.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        wait(WAIT_OFFSET) { northbound.activeLinks.size() == topology.islsForActiveSwitches.size() * 2 }
+        islHelper.restoreIsl(islToBreak)
         database.resetCosts(topology.isls)
     }
 }

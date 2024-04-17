@@ -12,6 +12,7 @@ import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.model.stats.HaFlowStats
@@ -33,6 +34,10 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
     @Shared
     HaFlowStats haFlowStats
 
+    @Shared
+    @Autowired
+    HaFlowFactory haFlowFactory
+
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
@@ -40,7 +45,8 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
         given: "An HA-Flow with protected paths"
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "No suiting switches found.")
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).withProtectedPath(true).create()
+        def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(true)
+                .build().waitForBeingInState(FlowState.UP)
 
         and: "Current paths are not equal to protected paths"
         def haFlowPathInfoBefore = haFlow.retrievedAllEntityPaths()
@@ -74,7 +80,7 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
 
         and: "Traffic passes through HA-Flow"
         if (swT.isHaTraffExamAvailable()) {
-            assert haFlow.traffExam(traffExamProvider).run().hasTraffic()
+            assert haFlow.traffExam(traffExamProvider.get()).run().hasTraffic()
             statsHelper."force kilda to collect stats"()
         }
 
@@ -98,11 +104,12 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
         given: "An HA-Flow without protected path"
         def swT = topologyHelper.switchTriplets[0]
         assumeTrue(swT != null, "No suiting switches found.")
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).withProtectedPath(false).create()
+        def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(false)
+                .build().waitForBeingInState(FlowState.UP)
         assert !haFlow.allocateProtectedPath
 
         when: "Try to swap paths for HA-Flow that doesn't have a protected path"
-        northboundV2.swapHaFlowPaths(haFlow.haFlowId)
+        haFlow.swap()
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)

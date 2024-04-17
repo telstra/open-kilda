@@ -91,7 +91,6 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         !(isl in pathHelper.getInvolvedIsls(flow2PathUpdated))
 
         cleanup: "Delete flows and unset maintenance mode"
-        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         isl && northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, false, false))
     }
 
@@ -112,32 +111,16 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         assert flow1Path == flow2Path
 
         and: "Make only one alternative path available for both flows"
-        def altPaths = switchPair.paths.findAll {
-            it != flow1Path && it.first().portNo != flow1Path.first().portNo
-        }.sort { it.size() }
-        def availablePath = altPaths.first()
-
-        List<PathNode> broughtDownPorts = []
-        altPaths[1..-1].unique { it.first() }.findAll {
-            it.first().portNo != availablePath.first().portNo
-        }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(antiflapMin + WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def flow1ActualIsl = pathHelper.getInvolvedIsls(flow1Path).first()
+        def altIsls = topology.getRelatedIsls(switchPair.src) - flow1ActualIsl
+        islHelper.breakIsls(altIsls[1..-1])
 
         and: "Set maintenance mode for the first link involved in alternative path"
-        def islUnderMaintenance = pathHelper.getInvolvedIsls(availablePath).first()
+        def islUnderMaintenance = altIsls.first()
         northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(islUnderMaintenance, true, false))
 
         when: "Force flows to reroute by bringing port down on the source switch"
-        broughtDownPorts.add(flow1Path.first())
-        antiflap.portDown(flow1Path.first().switchId, flow1Path.first().portNo)
+        islHelper.breakIsl(flow1ActualIsl)
 
         then: "Flows are rerouted to alternative path with link under maintenance"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET*2) {
@@ -154,13 +137,9 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Restore topology, delete flows, unset maintenance mode and reset costs"
-        broughtDownPorts.each { it && antiflap.portUp(it.switchId, it.portNo) }
-        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         islUnderMaintenance && northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(
                 islUnderMaintenance, false, false))
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(altIsls + flow1ActualIsl)
         database.resetCosts(topology.isls)
     }
 }

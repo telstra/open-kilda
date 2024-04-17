@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.functionaltests.model.cleanup.CleanupAfter
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.messaging.payload.history.FlowHistoryEntry
 import org.openkilda.model.SwitchId
@@ -47,6 +49,10 @@ class FlowHelper {
     NorthboundService northbound
     @Autowired
     Database db
+    @Autowired
+    FlowHelperV2 flowHelperV2
+    @Autowired
+    CleanupManager cleanupManager
 
     def random = new Random()
     def faker = new Faker()
@@ -131,10 +137,22 @@ class FlowHelper {
      */
     FlowPayload addFlow(FlowPayload flow) {
         log.debug("Adding flow '${flow.id}'")
+        def flowId = flow.getId()
+        cleanupManager.addAction({flowHelperV2.safeDeleteFlow(flowId)}, CleanupAfter.TEST)
         def response = northbound.addFlow(flow)
         Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         return response
     }
+
+    /**
+     * Sends flow create request but doesn't wait for flow to go up.
+     */
+    FlowPayload attemptToAddFlow(FlowCreatePayload flow) {
+        def flowId = flow.getId()
+        cleanupManager.addAction({flowHelperV2.safeDeleteFlow(flowId)}, CleanupAfter.TEST)
+        return northbound.addFlow(flow)
+    }
+
 
     List<Integer> "get ports that flow uses on switch from path" (String flowId, SwitchId switchId) {
         def response = northbound.getFlowPath(flowId)

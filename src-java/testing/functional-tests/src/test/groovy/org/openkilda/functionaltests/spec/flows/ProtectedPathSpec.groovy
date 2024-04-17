@@ -1,5 +1,28 @@
 package org.openkilda.functionaltests.spec.flows
 
+import groovy.util.logging.Slf4j
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.StatusInfo
+import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.tools.FlowTrafficExamBuilder
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
+import spock.lang.See
+import spock.lang.Shared
+
+import javax.inject.Provider
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
@@ -10,7 +33,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
@@ -18,32 +40,6 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.StatusInfo
-import org.openkilda.model.SwitchId
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
-import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
-import groovy.util.logging.Slf4j
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Narrative
-import spock.lang.See
-import spock.lang.Shared
-
-import javax.inject.Provider
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/protected-paths")
@@ -89,9 +85,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         northbound.validateFlow(flow.flowId).each { direction ->
             assert direction.discrepancies.empty
         }
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         bandwidth | vlanId
@@ -151,9 +144,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 assert rules.every { it != protectedForwardCookie && it != protectedReverseCookie }
             }
         }
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(SMOKE)
@@ -300,9 +290,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 assert traffExam.waitExam(direction).hasTraffic()
             }
         }
-
-        cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -350,8 +337,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         when: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
-        def portDown = antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(islToBreak).state == IslChangeType.FAILED }
+        islHelper.breakIsl(islToBreak)
 
         then: "Flows are switched to protected paths"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -368,22 +354,13 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         }
 
         when: "Restore port status"
-        def portUp = antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
-        }
+        islHelper.restoreIsl(islToBreak)
 
         then: "Path of the flow is not changed"
         flows.each { assert pathHelper.convert(northbound.getFlowPath(it.flowId)) == currentProtectedPath }
 
         cleanup: "Revert system to original state"
-        flows.each { it && flowHelperV2.deleteFlow(it.flowId) }
-        if (portDown && !portUp) {
-            antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-                assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
-            }
-        }
+        islHelper.restoreIsl(islToBreak)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
 
@@ -396,7 +373,13 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute(no bw)"() {
         given: "Two switches with 2 diverse paths at least"
-        def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
+        //def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
+        //https://github.com/telstra/open-kilda/issues/5608
+        def switchesWhere5608IsReproducible = topology.activeSwitches.findAll {it.dpId.toString().endsWith("08")
+        ||it.dpId.toString().endsWith("09")}
+        def switchPair = switchPairs.all()
+                .excludeSwitches(switchesWhere5608IsReproducible)
+                .withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair).tap { allocateProtectedPath = true }
@@ -414,7 +397,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Main flow path breaks"
         def mainIsl = pathHelper.getInvolvedIsls(path).first()
-        def mainIslDown = antiflap.portDown(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
+        islHelper.breakIsl(mainIsl)
 
         then: "Main path swaps to protected, flow becomes degraded, main path UP, protected DOWN"
         Wrappers.wait(WAIT_OFFSET) {
@@ -431,8 +414,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         when: "ISL gets back up"
-        def mainIslUp = antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(mainIsl).state == IslChangeType.DISCOVERED }
+        islHelper.restoreIsl(mainIsl)
 
         then: "Main path remains the same, flow becomes UP, main path UP, protected UP"
         Wrappers.wait(WAIT_OFFSET) {
@@ -446,17 +428,22 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        mainIslDown && !mainIslUp && antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
+        islHelper.restoreIsl(mainIsl)
         otherIsls && otherIsls.collectMany{[it, it.reversed]}.each { database.resetIslBandwidth(it) }
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(mainIsl).state == IslChangeType.DISCOVERED }
         database.resetCosts(topology.isls)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute(no path)"() {
         given: "Two switches with 2 diverse paths at least"
-        def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
+        //def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
+        //https://github.com/telstra/open-kilda/issues/5608
+        def switchesWhere5608IsReproducible = topology.activeSwitches.findAll {it.dpId.toString().endsWith("08")
+                ||it.dpId.toString().endsWith("09")}
+        def switchPair = switchPairs.all()
+                .excludeSwitches(switchesWhere5608IsReproducible)
+                .withAtLeastNNonOverlappingPaths(2).random()
+
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair).tap { allocateProtectedPath = true }
@@ -471,19 +458,11 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
                 it != originalProtectedPath }.collectMany { pathHelper.getInvolvedIsls(it) }
                 .findAll {!usedIsls.contains(it) }
                 .unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
-        withPool {
-            otherIsls.eachParallel {
-                antiflap.portDown(it.srcSwitch.dpId, it.srcPort)
-            }
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            assert otherIsls.each {islUtils.getIslInfo(links, it).get().state == FAILED}
-        }
+        islHelper.breakIsls(otherIsls)
 
         and: "Main flow path breaks"
         def mainIsl = pathHelper.getInvolvedIsls(path).first()
-        def mainIslDown = antiflap.portDown(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
+        islHelper.breakIsl(mainIsl)
 
         then: "Main path swaps to protected, flow becomes degraded, main path UP, protected DOWN"
         Wrappers.wait(WAIT_OFFSET) {
@@ -498,8 +477,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         when: "ISL on broken path gets back up"
-        def mainIslUp = antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(mainIsl).state == IslChangeType.DISCOVERED }
+        islHelper.restoreIsl(mainIsl)
 
         then: "Main path remains the same (no swap), flow becomes UP, main path remains UP, protected path becomes UP"
         Wrappers.wait(WAIT_OFFSET) {
@@ -514,11 +492,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        mainIslDown && !mainIslUp && antiflap.portUp(mainIsl.srcSwitch.dpId, mainIsl.srcPort)
-        otherIsls && otherIsls.each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state == IslChangeType.DISCOVERED } }
+        islHelper.restoreIsls(otherIsls + mainIsl)
         database.resetCosts(topology.isls)
     }
 
@@ -568,7 +542,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         where:
@@ -606,7 +579,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
 
         and: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
-        def portDown = antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        islHelper.breakIsl(islToBreak)
 
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -624,22 +597,13 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         when: "Restore port status"
-        def portUp = antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
-        }
+        islHelper.restoreIsl(islToBreak)
 
         then: "Path of the flow is not changed"
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentProtectedPath
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        if (portDown && !portUp) {
-            antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
-            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-                assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
-            }
-        }
+        islHelper.restoreIsl(islToBreak)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
 
@@ -672,9 +636,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         def newFlowPathInfo = northbound.getFlowPath(flow.flowId)
         pathHelper.convert(newFlowPathInfo) == currentPath
         pathHelper.convert(newFlowPathInfo.protectedPath) == currentProtectedPath
-
-        cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY, ISL_PROPS_DB_RESET])
@@ -707,7 +668,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup: "Delete the flow and restore available bandwidth"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         isls.each { database.resetIslBandwidth(it) }
     }
 
@@ -737,7 +697,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         database.getTransitVlans(flowInfo.protectedForwardPathId, flowInfo.protectedReversePathId).size() == 1
 
         cleanup: "Delete the flow and restore available bandwidth"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         isls.each { database.resetIslBandwidth(it) }
     }
 
@@ -773,11 +732,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
 
         when: "Break ISL on the protected path (bring port down) to init the recalculate procedure"
         def islToBreakProtectedPath = protectedIsls[0]
-        def portDown = antiflap.portDown(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
-
-        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-            assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.FAILED
-        }
+        islHelper.breakIsl(islToBreakProtectedPath)
 
         then: "Protected path is recalculated"
         def newProtectedPath
@@ -816,22 +771,13 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         originInfoBrokenIsl.availableBandwidth == currentInfoBrokenIsl.availableBandwidth
 
         when: "Restore port status"
-        def portUp = antiflap.portUp(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
-        Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-            assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.DISCOVERED
-        }
+        islHelper.restoreIsl(islToBreakProtectedPath)
 
         then: "Path is not recalculated again"
         pathHelper.convert(northbound.getFlowPath(flow.flowId).protectedPath) == newProtectedPath
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        if (portDown && !portUp) {
-            antiflap.portUp(islToBreakProtectedPath.dstSwitch.dpId, islToBreakProtectedPath.dstPort)
-            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-                assert islUtils.getIslInfo(islToBreakProtectedPath).get().state == IslChangeType.DISCOVERED
-            }
-        }
+        islHelper.restoreIsl(islToBreakProtectedPath)
         database.resetCosts(topology.isls)
     }
 
@@ -850,18 +796,11 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         flowHelperV2.addFlow(flow)
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
-        List<PathNode> broughtDownPorts = []
-        switchPair.paths.findAll { it != pathHelper.convert(northbound.getFlowPath(flow.flowId)) }.unique { it.first() }
-                .each { path ->
-                    def src = path.first()
-                    broughtDownPorts.add(src)
-                    antiflap.portDown(src.switchId, src.portNo)
-                }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def flowPathPortOnSourceSwitch = pathHelper.convert(northbound.getFlowPath(flow.flowId)).first().portNo
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.getSrc())
+                .findAll{it.srcSwitch == switchPair.getSrc() && it.srcPort != flowPathPortOnSourceSwitch }
+        islHelper.breakIsls(broughtDownIsls)
+
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
         northboundV2.updateFlow(flow.flowId, flow.tap { it.allocateProtectedPath = true })
 
@@ -873,11 +812,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
 
         where:
@@ -909,12 +844,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         def islsToBreak = altPaths.collectMany { pathHelper.getInvolvedIsls(it) }
                                                  .collectMany { [it, it.reversed] }.unique()
                                                  .findAll { !untouchableIsls.contains(it) }.unique { [it, it.reversed].sort() }
-        withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort) } }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == islsToBreak.size() * 2
-        }
+        islHelper.breakIsls(islsToBreak)
 
         then: "Flow status is DEGRADED"
         Wrappers.wait(WAIT_OFFSET) {
@@ -938,11 +868,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup: "Restore topology, delete flow and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        withPool { islsToBreak.eachParallel { Isl isl -> antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort) } }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(islsToBreak)
         database.resetCosts(topology.isls)
 
         where:
@@ -966,17 +892,13 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         def mainPathIsl = pathHelper.getInvolvedIsls(mainPath).first()
         def protectedPath = pathHelper.convert(paths.protectedPath)
         def protectedPathIsl = pathHelper.getInvolvedIsls(protectedPath).first()
-        antiflap.portDown(mainPathIsl.srcSwitch.dpId, mainPathIsl.srcPort)
-        Wrappers.wait(3, 0) {
-            assert northbound.getLink(mainPathIsl).state == IslChangeType.FAILED
-        }
+        islHelper.breakIsl(mainPathIsl)
 
         and: "Protected path breaks when swap is in progress"
         //we want to break the second ISL right when the protected path reroute starts. race here
         //+750ms correction was found experimentally. helps to hit the race condition more often (local env)
         sleep(Math.max(0, (rerouteDelay - antiflapMin) * 1000 + 750))
-        antiflap.portDown(protectedPathIsl.srcSwitch.dpId, protectedPathIsl.srcPort)
-        def portsDown = true
+        islHelper.breakIsl(protectedPathIsl)
 
         then: "Both paths are successfully evacuated from broken isls and the flow is UP"
         log.debug("original main: $mainPath\n original protected: $protectedPath")
@@ -993,15 +915,9 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        if(portsDown) {
-            [mainPathIsl, protectedPathIsl].each { antiflap.portUp(it.srcSwitch.dpId, it.srcPort) }
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                assert northbound.getLink(mainPathIsl).state == IslChangeType.DISCOVERED
-                assert northbound.getLink(protectedPathIsl).state == IslChangeType.DISCOVERED
-            }
-            database.resetCosts(topology.isls)
-        }
+        islHelper.restoreIsls([mainPathIsl, protectedPathIsl])
+        database.resetCosts(topology.isls)
+
     }
 
     def "System reuses current protected path when can't find new non overlapping protected path while intentional\
@@ -1057,7 +973,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
@@ -1129,22 +1044,9 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         and: "All alternative paths unavailable (bring ports down on the source switch)"
-        List<PathNode> broughtDownPorts = []
-        def altPaths = allPaths.findAll { !(it in allPathsWithThreeSwitches) }
-        altPaths*.first().unique().findAll {
-            !(it in allPathsWithThreeSwitches*.first().unique())
-        }.each { broughtDownPorts.add(it) }
-        altPaths*.last().unique().findAll {
-            !(it in allPathsWithThreeSwitches*.last().unique())
-        }.each { broughtDownPorts.add(it) }
-        broughtDownPorts.each {
-            antiflap.portDown(it.switchId, it.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        List<Isl> broughtDownIsls = topology.getRelatedIsls(swPair.src) -
+                [mainPath1, mainPath2, protectedPath].collect {pathHelper.getInvolvedIsls(it).first()}
+        islHelper.breakIsls(broughtDownIsls)
 
         when: "Create a protected flow"
         /** At this point we have the following topology:
@@ -1179,17 +1081,13 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
 
         cleanup:
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        broughtDownPorts && broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsls(broughtDownIsls)
         withPool {
             (involvedSwP1 + involvedSwP2 + involvedSwProtected).unique().eachParallel { swId ->
                 northboundV2.partialSwitchUpdate(swId, new SwitchPatchDto().tap { it.pop = "" })
             }
         }
-        broughtDownPorts && database.resetCosts(topology.isls)
+        database.resetCosts(topology.isls)
     }
 
     @Tags(LOW_PRIORITY)
@@ -1212,9 +1110,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         exc.rawStatusCode == 400
         exc.responseBodyAsString.to(MessageError).errorDescription ==
                 "Could not swap paths: Flow $flow.flowId doesn't have protected path"
-
-        cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -1255,13 +1150,15 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
 
         cleanup: "Restore available bandwidth"
         isls.each { database.resetIslBandwidth(it) }
-        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
     def "Unable to swap paths for an inactive flow"() {
         given: "Two active neighboring switches with two not overlapping paths at least"
-        def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
+        def switchPair = switchPairs.all().neighbouring()
+                //https://github.com/telstra/open-kilda/issues/5608
+                .excludeSwitches(topology.activeSwitches.findAll {it.dpId.toString().endsWith("08")})
+                .withAtLeastNNonOverlappingPaths(2).random()
 
         and: "A flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -1269,22 +1166,9 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         flowHelperV2.addFlow(flow)
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
-        List<PathNode> broughtDownPorts = []
-        switchPair.paths.findAll {
-            it != pathHelper.convert(northbound.getFlowPath(flow.flowId)) &&
-                    it != pathHelper.convert(northbound.getFlowPath(flow.flowId).protectedPath)
-        }.unique {
-            it.first()
-        }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def flowPathIsl = pathHelper.getInvolvedIsls(pathHelper.convert(northbound.getFlowPath(flow.flowId)))
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.src) - flowPathIsl
+        islHelper.breakIsls(broughtDownIsls)
 
         when: "Break ISL on a protected path (bring port down) for changing the flow state to DEGRADED"
         def flowPathInfo = northbound.getFlowPath(flow.flowId)
@@ -1292,7 +1176,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
         def protectedIsls = pathHelper.getInvolvedIsls(currentProtectedPath)
         def currentIsls = pathHelper.getInvolvedIsls(currentPath)
-        antiflap.portDown(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
+        islHelper.breakIsl(protectedIsls[0])
 
         then: "Flow state is changed to DEGRADED"
         Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED }
@@ -1302,7 +1186,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         when: "Break ISL on the main path (bring port down) for changing the flow state to DOWN"
-        antiflap.portDown(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
+        islHelper.breakIsl(currentIsls[0])
 
         then: "Flow state is changed to DOWN"
         Wrappers.wait(WAIT_OFFSET) {
@@ -1326,8 +1210,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
                 "Could not swap paths: Protected flow path $flow.flowId is not in ACTIVE state"
 
         when: "Restore ISL for the main path only"
-        antiflap.portUp(currentIsls[0].srcSwitch.dpId, currentIsls[0].srcPort)
-        antiflap.portUp(currentIsls[0].dstSwitch.dpId, currentIsls[0].dstPort)
+        islHelper.restoreIsl(currentIsls[0])
 
         then: "Flow state is still DEGRADED"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
@@ -1351,8 +1234,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
                 "Could not swap paths: Protected flow path $flow.flowId is not in ACTIVE state"
 
         when: "Restore ISL for the protected path"
-        antiflap.portUp(protectedIsls[0].srcSwitch.dpId, protectedIsls[0].srcPort)
-        antiflap.portUp(protectedIsls[0].dstSwitch.dpId, protectedIsls[0].dstPort)
+        islHelper.restoreIsl(protectedIsls[0])
 
         then: "Flow state is changed to UP"
         //it often fails in scope of the whole spec on the hardware env, that's why '* 1.5' is added
@@ -1361,11 +1243,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         }
 
         cleanup: "Restore topology, delete flows and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
     }
 
@@ -1385,9 +1263,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == "Couldn't setup protected path for one-switch flow"
-
-        cleanup:
-        !exc && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(LOW_PRIORITY)
@@ -1408,9 +1283,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not update flow"
         errorDetails.errorDescription == "Couldn't setup protected path for one-switch flow"
-
-        cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -1418,20 +1290,8 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
     def "Unable to create #flowDescription flow with protected path if all alternative paths are unavailable"() {
         given: "Two active neighboring switches without alt paths"
         def switchPair = switchPairs.all().neighbouring().random()
-        List<PathNode> broughtDownPorts = []
-
-        switchPair.paths.sort { it.size() }[1..-1].unique {
-            it.first()
-        }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.src)[1..-1]
+        islHelper.breakIsls(broughtDownIsls)
 
         when: "Try to create a new flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair)
@@ -1449,11 +1309,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
                 " Couldn't find non overlapping protected path"
 
         cleanup: "Restore topology, delete flows and reset costs"
-        !exc && flowHelperV2.deleteFlow(flow.flowId)
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
 
         where:
@@ -1477,25 +1333,14 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
         def flowPathInfo = northbound.getFlowPath(flow.flowId)
         def currentPath = pathHelper.convert(flowPathInfo)
+        def currentPathIsls = pathHelper.getInvolvedIsls(currentPath)
         def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
-        List<PathNode> broughtDownPorts = []
-        switchPair.paths.findAll { it != currentPath && it != currentProtectedPath }.unique {
-            it.first()
-        }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def protectedIslToBreak = pathHelper.getInvolvedIsls(currentProtectedPath)[0]
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.src) - currentPathIsls.first() - protectedIslToBreak
+        islHelper.breakIsls(broughtDownIsls)
 
         and: "ISL on a protected path is broken(bring port down) for changing the flow state to DEGRADED"
-        def protectedIslToBreak = pathHelper.getInvolvedIsls(currentProtectedPath)[0]
-        antiflap.portDown(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
-
+        islHelper.breakIsl(protectedIslToBreak)
         Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DEGRADED }
 
         when: "Make the current path less preferable than alternative path"
@@ -1509,10 +1354,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         assert northbound.getLink(currentIsl).cost > northbound.getLink(alternativeIsl).cost
 
         and: "Make alternative path available(bring port up on the source switch)"
-        antiflap.portUp(alternativeIsl.srcSwitch.dpId, alternativeIsl.srcPort)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(alternativeIsl).get().state == IslChangeType.DISCOVERED
-        }
+        islHelper.restoreIsl(alternativeIsl)
 
         then: "Flow state is changed to UP"
         Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
@@ -1523,12 +1365,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         pathHelper.convert(newFlowPathInfo.protectedPath) == alternativePath
 
         cleanup: "Restore topology, delete flow and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
-        antiflap.portUp(protectedIslToBreak.dstSwitch.dpId, protectedIslToBreak.dstPort)
-        broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getActiveLinks().size() == topology.islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsls(broughtDownIsls + protectedIslToBreak)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
     }
@@ -1550,9 +1387,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         def errorDetails = exc.responseBodyAsString.to(MessageError)
         errorDetails.errorMessage == "Could not update flow"
         errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
-
-        cleanup: "Delete the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     List<Integer> getCreatedMeterIds(SwitchId switchId) {

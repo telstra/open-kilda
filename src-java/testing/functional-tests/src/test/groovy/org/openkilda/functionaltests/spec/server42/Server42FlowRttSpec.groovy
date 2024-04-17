@@ -459,8 +459,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                 .hasNonZeroValuesAfter(timeWhenEndpointWereSwapped + 1000)
 
         cleanup:
-        flow1 && flowHelperV2.deleteFlow(flow1.flowId)
-        flow2 && flowHelperV2.deleteFlow(flow2.flowId)
         flowRttFeatureStartState && changeFlowRttToggle(flowRttFeatureStartState)
         fl1SwPair && changeFlowRttSwitch(fl1SwPair.src, true)
     }
@@ -501,7 +499,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         flowRttFeatureStartState && changeFlowRttToggle(flowRttFeatureStartState)
         initialSrcSwS42Props && changeFlowRttSwitch(switchPair.src, initialSrcSwS42Props)
     }
@@ -652,7 +649,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         flowRttFeatureStartState && changeFlowRttToggle(flowRttFeatureStartState)
         switchPair && changeFlowRttSwitch(switchPair.src, initialFlowRttSw)
         swPropIsWrong && northbound.updateSwitchProperties(switchPair.src.dpId, originalSrcSwPros)
@@ -691,7 +687,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Revert system to original state"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         lagPort && northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
         flowRttFeatureStartState && changeFlowRttToggle(flowRttFeatureStartState)
         initialSrcSwS42Props && changeFlowRttSwitch(switchPair.src, initialSrcSwS42Props)

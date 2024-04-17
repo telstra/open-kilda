@@ -94,7 +94,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flows.each { it && flowHelperV2.deleteFlow(it.flowId) }
         brokenIsls.each {
             antiflap.portUp(it.srcSwitch.dpId, it.srcPort)
         }
@@ -171,7 +170,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flows && flows.each { flowHelperV2.deleteFlow(it.flowId) }
         stop = true
         starter.join()
         rerouteTriggers.each { it.join() } //each thread revives ISL after itself
@@ -193,7 +191,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
         and: "Immediately remove the flow before reroute delay runs out and flow is actually rerouted"
         flowHelperV2.deleteFlow(flow.flowId)
-        def flowIsDeleted = true
 
         then: "The flow is not present in NB"
         !northboundV2.getAllFlows().find { it.flowId == flow.flowId}
@@ -205,7 +202,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flow && !flowIsDeleted && northboundV2.deleteFlow(flow.flowId)
         brokenIsl && antiflap.portUp(brokenIsl.srcSwitch.dpId, brokenIsl.srcPort)
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(brokenIsl).state == IslChangeType.DISCOVERED }
     }
@@ -232,6 +228,5 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
             assert northbound.getLink(brokenIsl).state == IslChangeType.FAILED
         }
         return brokenIsl
-
     }
 }

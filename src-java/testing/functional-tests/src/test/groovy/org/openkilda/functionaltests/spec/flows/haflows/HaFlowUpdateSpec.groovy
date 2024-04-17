@@ -1,48 +1,49 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
-import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.haflow.HaFlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
 import org.openkilda.northbound.dto.v2.haflows.HaSubFlowPatchPayload
 
-import com.shazam.shazamcrest.matcher.CustomisableMatcher
 import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
+import spock.lang.Shared
 
 @Slf4j
 @Narrative("Verify update and partial update operations on HA-Flows.")
 @Tags([HA_FLOW])
 class HaFlowUpdateSpec extends HealthCheckSpecification {
+
+    @Shared
+    @Autowired
+    HaFlowFactory haFlowFactory
+
     def "User can update #data.descr of a HA-Flow"() {
         given: "Existing HA-Flow"
         def swT = topologyHelper.switchTriplets[0]
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
-        def haFlowDetails = haFlow.waitForBeingInState(FlowState.UP)
+        def haFlow = haFlowFactory.getRandom(swT)
 
-        haFlowDetails.tap(data.updateClosure)
-        def update = new HaFlowExtended(haFlowDetails, northboundV2, topology).convertToUpdateRequest()
+        haFlow.tap(data.updateClosure)
+        def update = haFlow.convertToUpdateRequest()
 
         when: "Update the HA-Flow"
-        def updateResponse = northboundV2.updateHaFlow(haFlow.haFlowId, update)
-        def ignores = ["subFlows.timeUpdate", "subFlows.status", "subFlows.forwardLatency",
-                       "subFlows.reverseLatency", "subFlows.latencyLastModifiedTime", "timeUpdate", "status"]
-
+        def updateResponse = haFlow.sendUpdateRequest(update)
+        def updatedHaFlow = haFlow.waitForBeingInState(FlowState.UP)
         then: "Requested updates are reflected in the response and in 'get' API"
-        expect updateResponse, sameBeanAs(haFlowDetails, ignores)
-        expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlowDetails, ignores)
+        updateResponse.hasTheSamePropertiesAs(haFlow)
+        updatedHaFlow.hasTheSamePropertiesAs(haFlow)
 
         and: "And involved switches pass validation"
-        haFlow.waitForBeingInState(FlowState.UP)
         switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)).isEmpty()
 
         and: "HA-Flow pass validation"
@@ -54,7 +55,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         where: data << [
                 [
                         descr: "shared port and subflow ports",
-                        updateClosure: { HaFlow payload ->
+                        updateClosure: { HaFlowExtended payload ->
                             def allowedSharedPorts = topology.getAllowedPortsForSwitch(topology.find(
                                     payload.sharedEndpoint.switchId)) - payload.sharedEndpoint.portNumber
                             payload.sharedEndpoint.portNumber = allowedSharedPorts[0]
@@ -67,7 +68,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                 ],
                 [
                         descr: "shared switch and subflow switches",
-                        updateClosure: { HaFlow payload ->
+                        updateClosure: { HaFlowExtended payload ->
                             def newSwT = topologyHelper.getSwitchTriplets(true).find {
                                 it.shared.dpId != payload.sharedEndpoint.switchId &&
                                         it.ep1.dpId != payload.subFlows[0].endpoint.switchId &&
@@ -97,25 +98,22 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         def switchTriplet = topologyHelper.getSwitchTriplets(true, true)
                 .find{it.ep1 == it.shared && it.ep2 != it.shared}
 
-        def haFlow = HaFlowExtended.build(switchTriplet, northboundV2, topology).create()
-        def haFlowDetails = haFlow.waitForBeingInState(FlowState.UP)
+        def haFlow = haFlowFactory.getRandom(switchTriplet)
 
-        haFlowDetails.setDescription("new description")
-        def endPoint = haFlowDetails.getSubFlows().get(0).getEndpoint()
+        haFlow.setDescription("new description")
+        def endPoint = haFlow.subFlows.first().endpoint
         endPoint.setPortNumber(topology.getAllowedPortsForSwitch(topology.find(endPoint.getSwitchId())).first())
 
         when: "Update the HA-Flow"
-        def update = new HaFlowExtended(haFlowDetails, northboundV2, topology).convertToUpdateRequest()
-        def updateResponse = northboundV2.updateHaFlow(haFlow.haFlowId, update)
-        def ignores = ["subFlows.timeUpdate", "subFlows.status", "subFlows.forwardLatency",
-                       "subFlows.reverseLatency", "subFlows.latencyLastModifiedTime", "timeUpdate", "status"]
+        def update = haFlow.convertToUpdateRequest()
+        def updateResponse = haFlow.sendUpdateRequest(update)
+        def updatedHaFlow = haFlow.waitForBeingInState(FlowState.UP)
 
         then: "Requested updates are reflected in the response and in 'get' API"
-        expect updateResponse, sameBeanAs(haFlowDetails, ignores)
-        expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlowDetails, ignores)
+        updateResponse.hasTheSamePropertiesAs(haFlow)
+        updatedHaFlow.hasTheSamePropertiesAs(haFlow)
 
         and: "And involved switches pass validation"
-        haFlow.waitForBeingInState(FlowState.UP)
         switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)).isEmpty()
 
         and: "HA-Flow pass validation"
@@ -128,22 +126,19 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
     def "User can partially update #data.descr of a HA-Flow"() {
         given: "Existing HA-Flow"
         def swT = topologyHelper.switchTriplets.find { it.ep1 != it.ep2 }
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
-        def haFlowDetails = haFlow.waitForBeingInState(FlowState.UP)
+        def haFlow = haFlowFactory.getRandom(swT)
 
-        def patch = data.buildPatchRequest(haFlowDetails)
+        def patch = data.buildPatchRequest(haFlow)
 
         when: "Partial update the HA-Flow"
-        def updateResponse = northboundV2.partialUpdateHaFlow(haFlow.haFlowId, patch)
-        def ignores = ["subFlows.timeUpdate", "subFlows.status", "subFlows.forwardLatency",
-                       "subFlows.reverseLatency", "subFlows.latencyLastModifiedTime", "timeUpdate", "status"]
+        def updateResponse = haFlow.sendPartialUpdateRequest(patch)
+        def updatedHaFlow = haFlow.waitForBeingInState(FlowState.UP)
 
         then: "Requested updates are reflected in the response and in 'get' API"
-        expect updateResponse, sameBeanAs(haFlowDetails, ignores)
-        expect northboundV2.getHaFlow(haFlow.haFlowId), sameBeanAs(haFlowDetails, ignores)
+        updateResponse.hasTheSamePropertiesAs(haFlow)
+        updatedHaFlow.hasTheSamePropertiesAs(haFlow)
 
         and: "And involved switches pass validation"
-        haFlow.waitForBeingInState(FlowState.UP)
         switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)).isEmpty()
 
         and: "HA-Flow pass validation"
@@ -157,7 +152,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         where: data << [
                 [
                         descr: "shared port and subflow ports",
-                        buildPatchRequest: { HaFlow payload ->
+                        buildPatchRequest: { HaFlowExtended payload ->
                             def allowedSharedPorts = topology.getAllowedPortsForSwitch(topology.find(
                                     payload.sharedEndpoint.switchId)) - payload.sharedEndpoint.portNumber
                             def patchBuilder = HaFlowPatchPayload.builder()
@@ -183,7 +178,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                 ],
                 [
                         descr: "sub flow vlan on only one sub flow",
-                        buildPatchRequest: { HaFlow payload ->
+                        buildPatchRequest: { HaFlowExtended payload ->
                             def subFlow = payload.subFlows[0]
                             def newVlan = subFlow.endpoint.vlanId + 1
                             def patchBuilder = HaFlowPatchPayload.builder()
@@ -199,7 +194,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                 ],
                 [
                         descr: "shared switch and subflow switches",
-                        buildPatchRequest: { HaFlow payload ->
+                        buildPatchRequest: { HaFlowExtended payload ->
                             def newSwT = topologyHelper.getSwitchTriplets(true).find {
                                 it.shared.dpId != payload.sharedEndpoint.switchId &&
                                         it.ep1.dpId != payload.subFlows[0].endpoint.switchId &&
@@ -253,13 +248,13 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
     def "User cannot update a HA-Flow #data.descr"() {
         given: "Existing HA-Flow"
         def swT = topologyHelper.switchTriplets[0]
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        def haFlow = haFlowFactory.getRandom(swT)
 
         haFlow.tap(data.updateClosure)
         def update = haFlow.convertToUpdateRequest()
 
         when: "Try to update the HA-Flow with invalid payload"
-        northboundV2.updateHaFlow(haFlow.haFlowId, update)
+        haFlow.update(update)
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
@@ -315,12 +310,12 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
     def "User cannot partial update a HA-Flow with #data.descr"() {
         given: "Existing HA-Flow"
         def swT = topologyHelper.switchTriplets[0]
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
-        def patch = data.buildPatchRequest(haFlow)
+        def haFlow = haFlowFactory.getRandom(swT)
+        HaFlowPatchPayload patch = data.buildPatchRequest(haFlow)
 
 
         when: "Try to partial update the HA-Flow with invalid payload"
-        northboundV2.partialUpdateHaFlow(haFlow.haFlowId, patch)
+        haFlow.partialUpdate(patch)
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
@@ -420,11 +415,5 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
 endpoints which are placed on one switch .* you must set equal inner vlan for both endpoints.*/
                 ]
         ]
-    }
-
-    static <T> CustomisableMatcher<T> sameBeanAs(final T expected, List<String> ignores) {
-        def matcher = sameBeanAs(expected)
-        ignores.each { matcher.ignoring(it) }
-        return matcher
     }
 }

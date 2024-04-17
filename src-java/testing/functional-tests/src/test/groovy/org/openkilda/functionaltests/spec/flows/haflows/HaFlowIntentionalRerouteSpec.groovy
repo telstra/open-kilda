@@ -9,27 +9,35 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.HaFlowAllEntityPaths
+import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
+import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
+import spock.lang.Shared
 
 @Narrative("Verify that on-demand HA-Flow reroute operations are performed accurately.")
 @Tags([HA_FLOW])
 class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
+
+    @Shared
+    @Autowired
+    HaFlowFactory haFlowFactory
 
     @Tags(ISL_PROPS_DB_RESET)
     def "Not able to reroute to a path with not enough bandwidth available"() {
         given: "An HA-Flow with alternate paths available"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
         assumeTrue(swT != null, "No suiting switches found")
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).withBandwidth(10000).create()
+        def haFlow = haFlowFactory.getBuilder(swT).withBandwidth(10000)
+                .build().waitForBeingInState(FlowState.UP)
 
         def initialPath = haFlow.retrievedAllEntityPaths()
         def involvedIsls = initialPath.getInvolvedIsls(true)
@@ -75,8 +83,8 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         given: "An HA-Flow with alternate paths available"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
         assumeTrue(swT != null, "No suiting switches found")
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology)
-                .withEncapsulationType(TRANSIT_VLAN).withBandwidth(10000).create()
+        def haFlow = haFlowFactory.getBuilder(swT).withEncapsulationType(TRANSIT_VLAN)
+                .withBandwidth(10000).build().waitForBeingInState(FlowState.UP)
 
         def initialPath = haFlow.retrievedAllEntityPaths()
         def initialPathNodesView = initialPath.subFlowPaths.collect { it.path.forward.nodes.toPathNode() }
@@ -147,8 +155,9 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         given: "A HA-Flow with alternate paths available"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
         assumeTrue(swT != null, "No suiting switches found")
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).withEncapsulationType(TRANSIT_VLAN)
-                .withBandwidth(10000).withIgnoreBandwidth(true).create()
+        def haFlow = haFlowFactory.getBuilder(swT).withEncapsulationType(TRANSIT_VLAN)
+                .withBandwidth(10000).withIgnoreBandwidth(true)
+                .build().waitForBeingInState(FlowState.UP)
 
         def initialPath = haFlow.retrievedAllEntityPaths()
         def initialPathNodesView = initialPath.subFlowPaths.collect { it.path.forward.nodes.toPathNode() }
@@ -209,13 +218,13 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    private getAlternativesPaths(HaFlowAllEntityPaths actualPathNodes, List<List<PathNode>> existingPaths) {
+    private getAlternativesPaths(FlowWithSubFlowsEntityPath actualPathNodes, List<List<PathNode>> existingPaths) {
         existingPaths.findAll {
             !actualPathNodes.subFlowPaths.collect { it.path.forward.nodes.toPathNode() }.contains(it)
         }
     }
 
-    private void assertRerouteResponsePaths(HaFlowAllEntityPaths haFlowPath, HaFlowRerouteResult rerouteResponse) {
+    private void assertRerouteResponsePaths(FlowWithSubFlowsEntityPath haFlowPath, HaFlowRerouteResult rerouteResponse) {
         assert haFlowPath.subFlowPaths.size() == rerouteResponse.subFlowPaths.size()
         haFlowPath.subFlowPaths.each {subFlow ->
             def rerouteSubFlowPath =  rerouteResponse.subFlowPaths.find { it.flowId == subFlow.flowId}.nodes

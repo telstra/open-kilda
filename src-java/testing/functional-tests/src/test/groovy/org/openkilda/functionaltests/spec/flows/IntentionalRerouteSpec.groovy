@@ -75,7 +75,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
 
         cleanup: "Remove the flow, restore the bandwidth on ISLs, reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         changedIsls.each {
             database.resetIslBandwidth(it)
             database.resetIslBandwidth(it.reversed)
@@ -129,7 +128,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
 
         cleanup: "Remove the flow, restore bandwidths on ISLs, reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         thinIsl && [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
     }
 
@@ -191,9 +189,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
             //assert it.consumerReport.lostPercent < 1
             assert it.hasTraffic()
         }
-
-        cleanup: "Remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags(ISL_PROPS_DB_RESET)
@@ -249,7 +244,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         }
 
         cleanup: "Remove the flow, restore the bandwidth on ISLs, reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         changedIsls.each {
             database.resetIslBandwidth(it)
             database.resetIslBandwidth(it.reversed)
@@ -298,9 +292,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
             //https://github.com/telstra/open-kilda/issues/5406
             //assert it.consumerReport.lostPercent < 1
         }
-
-        cleanup: "Remove the flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY, ISL_PROPS_DB_RESET])
@@ -342,7 +333,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         PathHelper.convert(northbound.getFlowPath(flow.id)) == currentPath
 
         cleanup: "Remove the flow, restore the bandwidth on ISLs, reset costs"
-        flowHelper.deleteFlow(flow.id)
         changedIsls.each {
             database.resetIslBandwidth(it)
             database.resetIslBandwidth(it.reversed)
@@ -394,7 +384,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
 
         cleanup: "Remove the flow, restore bandwidths on ISLs, reset costs"
-        flow && flowHelper.deleteFlow(flow.id)
         thinIsl && [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
     }
 

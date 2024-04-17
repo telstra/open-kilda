@@ -39,9 +39,6 @@ class ContentionSpec extends BaseSpecification {
             size() == flowsAmount - 1
             it.each { assert it.statusCode == HttpStatus.CONFLICT }
         }
-
-        cleanup: "Remove flow"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/3934")
@@ -120,7 +117,6 @@ class ContentionSpec extends BaseSpecification {
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
 
         cleanup: "remove flow and reset costs"
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         !switchesOk && switchHelper.synchronizeAndCollectFixedDiscrepancies(relatedSwitches*.getDpId())
 

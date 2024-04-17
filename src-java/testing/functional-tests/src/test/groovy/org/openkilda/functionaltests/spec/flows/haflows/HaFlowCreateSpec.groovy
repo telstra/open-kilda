@@ -9,8 +9,8 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.haflow.HaFlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.haflow.HaFlowNotCreatedWithConflictExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.builder.HaFlowBuilder
-import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -19,6 +19,7 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
+import spock.lang.Shared
 
 import javax.inject.Provider
 
@@ -26,6 +27,11 @@ import javax.inject.Provider
 @Narrative("Verify create operations on HA-Flows.")
 @Tags([HA_FLOW])
 class HaFlowCreateSpec extends HealthCheckSpecification {
+
+    @Shared
+    @Autowired
+    HaFlowFactory haFlowFactory
+
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
@@ -34,7 +40,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         assumeTrue(swT != null, "These cases cannot be covered on given topology: $coveredCases")
 
         when: "Create an HA-Flow of certain configuration"
-        def haFlow = new HaFlowExtended(haFlowBuilder.add(), northboundV2, topology)
+        def haFlow = haFlowBuilder.build()
         def haFlowPath = haFlow.retrievedAllEntityPaths()
 
         def subFlowsPaths = haFlowPath.subFlowPaths.collect { it.path.forward.nodes.toPathNode() }
@@ -46,7 +52,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
 
         and: "Traffic passes through HA-Flow"
         if (swT.isHaTraffExamAvailable()) {
-            assert haFlow.traffExam(traffExamProvider).run().hasTraffic()
+            assert haFlow.traffExam(traffExamProvider.get()).run().hasTraffic()
         }
 
         and: "HA-flow pass validation"
@@ -86,12 +92,12 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
     def "User cannot create a HA-Flow with existent ha_flow_id"() {
         given: "Existing HA-Flow"
         def swT = topologyHelper.switchTriplets[0]
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Try to create the same HA-Flow"
-        def haFlowInvalidRequest = HaFlowExtended.build(swT, northboundV2, topology, false, haFlow.occupiedEndpoints())
+        def haFlowInvalidRequest = haFlowFactory.getBuilder(swT, false, haFlow.occupiedEndpoints())
                 .tap { it.haFlowRequest.haFlowId = haFlow.haFlowId }
-        def invalidHaFlow = haFlowInvalidRequest.add()
+        def invalidHaFlow = haFlowInvalidRequest.build()
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
@@ -99,7 +105,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
 
         cleanup:
         haFlow && haFlow.delete()
-        invalidHaFlow && northboundV2.deleteHaFlow(invalidHaFlow.haFlowId)
+        invalidHaFlow && invalidHaFlow.delete()
 
     }
 
@@ -109,10 +115,10 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         def iShapedSwitchTriplet = new SwitchTriplet(swT.shared, swT.ep1, swT.ep1, swT.pathsEp1, swT.pathsEp1)
 
         when: "Try to create I-shaped HA-Flow request with equal A-B endpoint switches and different innerVlans"
-        def haFlowInvalidRequest = HaFlowExtended.build(iShapedSwitchTriplet, northboundV2, topology)
+        def haFlowInvalidRequest = haFlowFactory.getBuilder(iShapedSwitchTriplet)
                 .withEp1Vlan(1).withEp1QnQ(2)
                 .withEp2Vlan(3).withEp2QnQ(4)
-        def haFlow = haFlowInvalidRequest.add()
+        def haFlow = haFlowInvalidRequest.build()
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
@@ -122,7 +128,7 @@ Current inner vlans: ${haFlowInvalidRequest.haFlowRequest.subFlows[0].endpoint.i
 and ${haFlowInvalidRequest.haFlowRequest.subFlows[1].endpoint.innerVlanId}./).matches(exc)
 
         cleanup:
-        haFlow && northboundV2.deleteFlow(haFlow.haFlowId)
+        haFlow && haFlow.delete()
     }
 
     def "User cannot create a one switch HA-Flow"() {
@@ -131,20 +137,20 @@ and ${haFlowInvalidRequest.haFlowRequest.subFlows[1].endpoint.innerVlanId}./).ma
         def sw = swT.shared.dpId
 
         when: "Try to create one switch HA-Flow"
-        def haFlowInvalidRequest = HaFlowExtended.build(swT, northboundV2, topology)
+        def haFlowInvalidRequest = haFlowFactory.getBuilder(swT)
                 .tap {
                     it.haFlowRequest.sharedEndpoint.switchId = sw
                     it.haFlowRequest.subFlows.first().endpoint.switchId = sw
                     it.haFlowRequest.subFlows.last().endpoint.switchId = sw
                 }
-        def haFlow = haFlowInvalidRequest.add()
+        def haFlow = haFlowInvalidRequest.build()
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
         new HaFlowNotCreatedExpectedError(~/The ha-flow .*? is one switch flow/).matches(exc)
 
         cleanup:
-        haFlow && northboundV2.deleteHaFlow(haFlow.haFlowId)
+        haFlow && haFlow.delete()
     }
 
     /**
@@ -156,25 +162,25 @@ and ${haFlowInvalidRequest.haFlowRequest.subFlows[1].endpoint.innerVlanId}./).ma
 
         //random vlans on getSwTripletsTestData
         testData.findAll { it.swT != null }.each {
-            it.haFlowBuilder = HaFlowExtended.build(it.swT, owner.northboundV2, owner.topology)
+            it.haFlowBuilder = owner.haFlowFactory.getBuilder(it.swT)
             it.coveredCases << "random vlans"
         }
         //se noVlan, ep1-ep2 same sw-port, vlan+vlan
         testData.with {
             def swT = owner.topologyHelper.switchTriplets.find { it.ep1 == it.ep2 }
-            def haFlowBuilder = HaFlowExtended.build(swT, owner.northboundV2, owner.topology).withSharedEndpointFullPort().withEp1AndEp2SameSwitchAndPort()
+            def haFlowBuilder = owner.haFlowFactory.getBuilder(swT).withSharedEndpointFullPort().withEp1AndEp2SameSwitchAndPort()
             add([swT: swT, haFlowBuilder: haFlowBuilder, coveredCases: ["noVlan, ep1-ep2 same sw-port, vlan+vlan"]])
         }
         //se qinq, ep1 default, ep2 qinq
         testData.with {
             def swT = owner.topologyHelper.switchTriplets.find { it.ep1 != it.ep2 }
-            def haFlowBuilder = HaFlowExtended.build(swT, owner.northboundV2, owner.topology).withSharedEndpointQnQ().withEp1FullPort().withEp2QnQ()
+            def haFlowBuilder = owner.haFlowFactory.getBuilder(swT).withSharedEndpointQnQ().withEp1FullPort().withEp2QnQ()
             add([swT: swT, haFlowBuilder: haFlowBuilder, coveredCases: ["se qinq, ep1 default, ep2 qinq"]])
         }
         //se qinq, ep1-ep2 same sw-port, qinq
         testData.with {
             def swT = owner.topologyHelper.switchTriplets.find { it.ep1 == it.ep2 }
-            def haFlowBuilder = HaFlowExtended.build(swT, owner.northboundV2, owner.topology).withSharedEndpointQnQ()
+            def haFlowBuilder = owner.haFlowFactory.getBuilder(swT).withSharedEndpointQnQ()
                     .withEp1AndEp2SameSwitchAndPort().withEp1AndEp2SameQnQ()
             add([swT: swT, haFlowBuilder: haFlowBuilder, coveredCases: ["se qinq, ep1-ep2 same sw-port, qinq"]])
         }

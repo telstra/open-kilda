@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -13,6 +14,7 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
@@ -30,6 +32,10 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
     @Shared
     SwitchRulesFactory switchRulesFactory
 
+    @Shared
+    @Autowired
+    HaFlowFactory haFlowFactory
+
     @Tags([SMOKE_SWITCHES, SMOKE])
     def "Able to synchronize an HA-Flow (install missing rules, reinstall existing). protectedPath=#data.protectedPath"() {
         given: "An HA-Flow with deleted rules on shared switch"
@@ -38,7 +44,8 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
                 : topologyHelper.findSwitchTripletWithDifferentEndpoints()
         assumeTrue(swT != null, "Can't find required switch triplet")
 
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).withProtectedPath(data.protectedPath).create()
+        def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(data.protectedPath)
+                .build().waitForBeingInState(FlowState.UP)
         def initialHaFlowPaths = haFlow.retrievedAllEntityPaths()
 
         def switchToManipulate = swT.shared
@@ -91,14 +98,16 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         ]
     }
 
-    def "Able to synchronize an HA-Flow if Ha-flow switch is inactive protectedPath=#data.protectedPath"() {
+    @Tags(SWITCH_RECOVER_ON_FAIL)
+    def "Able to synchronize an HA-Flow if HA-Flow switch is inactive protectedPath=#data.protectedPath"() {
         given: "An HA-Flow with down shared endpoint"
         def swT = data.protectedPath
                 ? topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
                 : topologyHelper.findSwitchTripletWithDifferentEndpoints()
         assumeTrue(swT != null, "Can't find required switch triplet")
 
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).withProtectedPath(data.protectedPath).create()
+        def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(data.protectedPath)
+                .build().waitForBeingInState(FlowState.UP)
         def initialHaFlowPaths = haFlow.retrievedAllEntityPaths()
 
         def downSwitch = swT.shared

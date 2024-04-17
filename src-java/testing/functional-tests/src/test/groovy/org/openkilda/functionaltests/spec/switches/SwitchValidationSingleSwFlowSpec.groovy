@@ -101,7 +101,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
 
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -113,7 +113,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def testIsCompleted = true
 
         cleanup:
-        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
@@ -217,7 +216,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        def deletedFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -228,7 +227,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def testIsCompleted = true
 
         cleanup:
-        flow && !deletedFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
@@ -287,7 +285,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         syncResponse.meters.installed*.meterId.containsAll(meterIds)
 
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -298,7 +296,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def testIsCompleted = true
 
         cleanup:
-        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
@@ -357,7 +354,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
 
         when: "Delete the flow"
-        def deletedFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         and: "Delete excess meters"
         metersIds.each { northbound.deleteMeter(sw.dpId, it) }
@@ -368,10 +365,9 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
-
         def testIsCompleted = true
+
         cleanup:
-        flow && !deletedFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
 
@@ -419,7 +415,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         syncResponse.rules.installed.containsAll(createdCookies)
 
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -431,7 +427,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def testIsCompleted = true
 
         cleanup:
-        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
@@ -576,7 +571,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        def deleteFlow = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "Switch validation returns empty sections"
         with(switchHelper.validateV1(sw.dpId)) {
@@ -587,7 +582,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def testIsCompleted = true
 
         cleanup:
-        flow && !deleteFlow && flowHelperV2.deleteFlow(flow.flowId)
         flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:

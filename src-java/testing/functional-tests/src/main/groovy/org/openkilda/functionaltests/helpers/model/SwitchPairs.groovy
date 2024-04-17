@@ -96,7 +96,11 @@ class SwitchPairs {
     }
 
     SwitchPairs excludePairs(List<SwitchPair> excludePairs) {
-        switchPairs = switchPairs.findAll { !excludePairs.contains(it) }
+        List<SwitchPair> includeReversePairsForExclusion = []
+        excludePairs.each { swPair ->
+            includeReversePairsForExclusion.addAll([swPair, swPair.getReversed()])
+        }
+        switchPairs = switchPairs.findAll { !includeReversePairsForExclusion.contains(it) }
         return this
     }
 

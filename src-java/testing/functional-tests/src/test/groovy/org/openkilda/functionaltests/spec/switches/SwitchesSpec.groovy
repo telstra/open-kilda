@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 
 import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
 import spock.lang.Shared
@@ -147,18 +148,8 @@ class SwitchesSpec extends HealthCheckSpecification {
         getSwitchFlowsResponse5*.id.sort() == [protectedFlow.flowId, singleFlow.flowId, defaultFlow.flowId].sort()
 
         when: "Bring down all ports on src switch to make flow DOWN"
-        def doPortDowns = true //helper var for cleanup
-        def portsToDown = topology.getBusyPortsForSwitch(switchPair.src)
-        withPool {
-            portsToDown.eachParallel { // https://github.com/telstra/open-kilda/issues/4014
-                antiflap.portDown(switchPair.src.dpId, it)
-            }
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == portsToDown.size() * 2
-        }
+        def switchIsls = topology.getRelatedIsls(switchPair.src)
+        islHelper.breakIsls(switchIsls)
 
         and: "Get all flows going through the src switch"
         Wrappers.wait(WAIT_OFFSET * 2) {
@@ -174,11 +165,7 @@ class SwitchesSpec extends HealthCheckSpecification {
         getSwitchFlowsResponse6*.id.sort() == [protectedFlow.flowId, singleFlow.flowId, defaultFlow.flowId].sort()
 
         cleanup: "Delete the flows"
-        [protectedFlow, singleFlow, defaultFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
-        doPortDowns && portsToDown.each { antiflap.portUp(switchPair.src.dpId, it) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(switchIsls)
         database.resetCosts(topology.isls)
     }
 
@@ -190,6 +177,7 @@ class SwitchesSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         new SwitchNotFoundExpectedError(NON_EXISTENT_SWITCH_ID).matches(exc)    }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     def "Systems allows to get all flows that goes through a DEACTIVATED switch"() {
         given: "Two active not neighboring switches"
         def switchPair = switchPairs.all().nonNeighbouring().random()
@@ -213,7 +201,6 @@ class SwitchesSpec extends HealthCheckSpecification {
         switchFlowsResponseSrcSwitch*.id.sort() == [simpleFlow.flowId, singleFlow.flowId].sort()
 
         cleanup: "Revive the src switch and delete the flows"
-        [simpleFlow, singleFlow].each { it && flowHelperV2.deleteFlow(it.flowId) }
         blockData && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 

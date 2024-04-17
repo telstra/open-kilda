@@ -80,7 +80,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         when: "Delete flows"
         [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
-        def flowsAreDeleted = true
 
         then: "Flows' histories contain 'diverseGroupId' information in 'delete' operation"
         [flow1, flow2].each {
@@ -94,9 +93,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
             !it.find { it.type == "stateBefore" }?.diverseGroupId
             !it.find { it.type == "stateAfter" }?.diverseGroupId
         }
-
-        cleanup:
-        !flowsAreDeleted && [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     def "Able to update flows to become diverse"() {
@@ -147,9 +143,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
             pathHelper.getInvolvedIsls(it)
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
-
-        cleanup: "Delete flows"
-        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     @Tags(SMOKE)
@@ -204,7 +197,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         cleanup: "Delete flows"
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
@@ -218,17 +210,9 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.flowId))
 
         and: "Make all alternative paths unavailable (bring ports down on the source switch)"
-        List<PathNode> broughtDownPorts = []
-        switchPair.paths.findAll { it != flow1Path }.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.getSrc())
+                .findAll {it.srcPort != flow1Path.first().portNo}
+        islHelper.breakIsls(broughtDownIsls)
 
         when: "Create the second flow with diversity enabled"
         def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.flowId }
@@ -239,11 +223,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         flow2Path == flow1Path
 
         cleanup: "Restore topology, delete flows and reset costs"
-        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
-        broughtDownPorts.each { antiflap.portUp(it.switchId, it.portNo) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
     }
 
@@ -296,7 +276,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         involvedIsls.unique(false) == involvedIsls
 
         cleanup: "Delete flows and link props"
-        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
@@ -318,9 +297,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         then: "Flow path response for all flows has correct overlapping segments stats"
         verifySegmentsStats([flow1Path, flow2Path, flow3Path],
                 expectedThreeFlowsPathIntersectionValuesMap(flow1Path, flow2Path, flow3Path))
-
-        cleanup: "Delete flows"
-        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
     }
 
     def "Able to get flow paths with correct overlapping segments stats (casual + single-switch flows)"() {
@@ -348,10 +324,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         verifySegmentsStats([flow1Path, flow2Path, flow3Path],
                 expectedThreeFlowsPathIntersectionValuesMap(flow1Path, flow2Path, flow3Path))
 
-        cleanup: "Delete flows"
-        withPool {
-            [flow1, flow2, flow3].eachParallel { it && flowHelperV2.deleteFlow(it.flowId) }
-        }
+        cleanup:
         //https://github.com/telstra/open-kilda/issues/5221
         switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
     }
@@ -381,11 +354,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         then: "Update response contains information about diverse flow"
         updateResponse.diverseWith == [flow1.flowId] as Set
-
-        cleanup: "Delete flows"
-        withPool {
-            [flow1, flow2].eachParallel { it && flowHelperV2.deleteFlow(it.flowId) }
-        }
     }
 
     @Deprecated //there is a v2 version
@@ -410,9 +378,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
             pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(it.id)))
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
-
-        cleanup: "Delete flows"
-        [flow1, flow2, flow3].each { it && flowHelper.deleteFlow(it.id) }
     }
 
     void verifySegmentsStats(List<FlowPathPayload> flowPaths, Map expectedValuesMap) {

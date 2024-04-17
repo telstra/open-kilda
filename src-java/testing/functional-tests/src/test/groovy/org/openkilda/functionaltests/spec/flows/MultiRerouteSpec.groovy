@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.*
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -58,7 +57,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
             isls + isls*.reversed
         }.unique()
         def islToBreak = currentIsls.find { !notCurrentIsls.contains(it) }
-        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        islHelper.breakIsl(islToBreak)
         TimeUnit.SECONDS.sleep(rerouteDelay - 1)
 
         then: "Half of the flows are hosted on the preferable path"
@@ -90,13 +89,9 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         northbound.getAllLinks().each { assert it.availableBandwidth >= 0 }
 
         cleanup: "revert system to original state"
-        flows.each { it && flowHelperV2.deleteFlow(it.flowId) }
-        antiflap.portUp(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
+        islHelper.restoreIsl(islToBreak)
         [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        wait(WAIT_OFFSET + discoveryInterval) {
-            assert northbound.getLink(islToBreak).state == IslChangeType.DISCOVERED
-        }
         database.resetCosts(topology.isls)
     }
 }

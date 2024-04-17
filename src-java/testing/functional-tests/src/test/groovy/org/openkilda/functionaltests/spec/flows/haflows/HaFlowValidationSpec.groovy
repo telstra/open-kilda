@@ -7,6 +7,7 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchMetersFactory
@@ -27,11 +28,15 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
     @Shared
     SwitchMetersFactory switchMetersFactory
 
+    @Shared
+    @Autowired
+    HaFlowFactory haFlowFactory
+
     @Tags(SMOKE)
     def "HA-Flow passes validation after creation"() {
         given: "HA-Flow on non-neighbouring switches"
         def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Validate HA-Flow"
         def validationResult = haFlow.validate()
@@ -47,7 +52,7 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
     def "HA-Flow validation should fail in case of missing rule on #switchRole switch"() {
         given: "HA-Flow on non-neighbouring switches"
         def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Delete HA-Flow rule on switch"
         def swIdToManipulate = switchToManipulate(haFlow)
@@ -79,7 +84,7 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
     def "HA-Flow validation should fail in case of missing meter on #switchRole switch"() {
         given: "HA-Flow on non-neighbouring switches"
         def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
-        def haFlow = HaFlowExtended.build(swT, northboundV2, topology).create()
+        def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Delete HA-Flow meter"
         def swIdToManipulate = switchToManipulate(haFlow)

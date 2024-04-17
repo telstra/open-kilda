@@ -1,6 +1,8 @@
 package org.openkilda.functionaltests
 
+import org.openkilda.functionaltests.helpers.IslHelper
 import org.openkilda.functionaltests.helpers.model.SwitchPairs
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -13,11 +15,9 @@ import org.openkilda.functionaltests.helpers.StatsHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
-import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
@@ -71,6 +71,8 @@ class BaseSpecification extends Specification {
     StatsHelper statsHelper
     @Autowired @Shared
     SwitchPairs switchPairs
+    @Autowired @Shared
+    IslHelper islHelper
 
     @Value('${spring.profiles.active}') @Shared
     String profile
@@ -96,6 +98,7 @@ class BaseSpecification extends Specification {
     int statsRouterRequestInterval
 
     static ThreadLocal<TopologyDefinition> threadLocalTopology = new ThreadLocal<>()
+    static ThreadLocal<CleanupManager> threadLocalCleanupManager = new ThreadLocal<>()
 
     def setupSpec() {
         log.info "Booked lab with id ${topology.getLabId().toString()} for spec ${this.class.simpleName}, thread: " +

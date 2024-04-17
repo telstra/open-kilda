@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
@@ -73,9 +74,6 @@ class SwapEndpointSpec extends HealthCheckSpecification {
             [it.source.datapath, it.destination.datapath].collect { findSw(it) }
         }.unique()
         validateSwitches(involvedSwitches)
-
-        cleanup: "Delete flows"
-        flows.each { it && flowHelper.deleteFlow(it.id) }
 
         where:
         data << [
@@ -242,9 +240,6 @@ switches"() {
         validateSwitches(data.switchPairs[0])
         validateSwitches(data.switchPairs[1])
 
-        cleanup: "Delete flows"
-        [data.flow1, data.flow2].each { it && flowHelper.deleteFlow(it.id) }
-
         where:
         data << [{
                      it.endpointsPart = "vlans"
@@ -303,9 +298,6 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(data.switchPairs[0])
         validateSwitches(data.switchPairs[1])
-
-        cleanup: "Delete flows"
-        [data.flow1, data.flow2].each { it && flowHelper.deleteFlow(it.id) }
 
         where:
         data << [{
@@ -373,9 +365,6 @@ switches"() {
         validateSwitches(swPairs[0])
         validateSwitches(swPairs[1])
 
-        cleanup: "Delete flows"
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-
         where:
         endpointsPart << ["vlans", "ports", "switches"]
         proprtyName << ["vlanId", "portNumber", "datapath"]
@@ -418,9 +407,6 @@ switches"() {
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
 
-        cleanup: "Delete flows"
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-
         where:
         endpointsPart << ["vlans", "ports", "switches"]
         proprtyName << ["vlanId", "portNumber", "datapath"]
@@ -458,9 +444,6 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
-
-        cleanup: "Delete flows"
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
 
         where:
         data << [{
@@ -538,7 +521,6 @@ switches"() {
         def isTestComplete = true
 
         cleanup: "Delete the flow"
-        flow1 && flowHelper.deleteFlow(flow1.id)
         !isTestComplete && switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
     }
 
@@ -565,7 +547,6 @@ switches"() {
         Boolean isTestCompleted = true
 
         cleanup: "Delete flows"
-        [flow1, flow2, flow3].each { it && flowHelper.deleteFlow(it.id) }
         if (!isTestCompleted) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies([data.flow1SwitchPair.src.dpId,
                                                                   data.flow1SwitchPair.dst.dpId,
@@ -684,7 +665,6 @@ switches"() {
         Boolean isTestCompleted = true
 
         cleanup: "Delete flows"
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!isTestCompleted) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
                                                                   flow1SwitchPair.dst.dpId,
@@ -751,7 +731,6 @@ switches"() {
         Boolean isTestCompleted = true
 
         cleanup: "Delete flows"
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         !isTestCompleted && switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.toList()*.getDpId())
     }
 
@@ -780,18 +759,9 @@ switches"() {
         Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow1.id).status == FlowState.UP }
 
         and: "Break all alternative paths for the first flow"
-        def altPaths = flow1SwitchPair.paths.findAll { it != flow1Path }
-        List<PathNode> broughtDownPorts = []
-        altPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src) - flow1Isl
+        islHelper.breakIsls(broughtDownIsls)
+
 
         and: "Update max bandwidth for the second flow's link so that it is equal to max bandwidth of the first flow"
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
@@ -800,17 +770,9 @@ switches"() {
                 flow2Isl.dstPort, flow1IslMaxBw)
 
         and: "Break all alternative paths for the second flow"
-        altPaths = flow2SwitchPair.paths.findAll { it != flow2Path && it[1].switchId != flow1SwitchPair.src.dpId }
-        altPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src) - flow2Isl - broughtDownIsls
+        islHelper.breakIsls(flow2BroughtDownIsls)
+        broughtDownIsls += flow2BroughtDownIsls
 
         when: "Try to swap endpoints for two flows"
         def flow1Src = flow2.source
@@ -836,12 +798,8 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Restore topology and delete flows"
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
+        islHelper.restoreIsls(broughtDownIsls)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
         if (!isSwitchValid) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
                                                                   flow1SwitchPair.dst.dpId,
@@ -876,18 +834,8 @@ switches"() {
         Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow1.id).status == FlowState.UP }
 
         and: "Break all alternative paths for the first flow"
-        def altPaths = flow1SwitchPair.paths.findAll { it != flow1Path }
-        List<PathNode> broughtDownPorts = []
-        altPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src) - flow1Isl
+        islHelper.breakIsls(broughtDownIsls)
 
         and: "Update max bandwidth for the second flow's link so that it is not enough bandwidth for the first flow"
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
@@ -896,17 +844,9 @@ switches"() {
                 flow2Isl.dstPort, flow1IslMaxBw - 1)
 
         and: "Break all alternative paths for the second flow"
-        altPaths = flow2SwitchPair.paths.findAll { it != flow2Path && it[1].switchId != flow1SwitchPair.src.dpId }
-        altPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src) - flow2Isl - broughtDownIsls
+        islHelper.breakIsls(flow2BroughtDownIsls)
+        broughtDownIsls += flow2BroughtDownIsls
 
         when: "Try to swap endpoints for two flows"
         def flow1Src = flow2.source
@@ -928,12 +868,8 @@ switches"() {
         Boolean isTestCompleted = true
 
         cleanup: "Restore topology and delete flows"
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
+        islHelper.restoreIsls(broughtDownIsls)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
         if (!isTestCompleted) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
                                                                   flow1SwitchPair.dst.dpId,
@@ -968,18 +904,8 @@ switches"() {
         Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow1.id).status == FlowState.UP }
 
         and: "Break all alternative paths for the first flow"
-        def altPaths = flow1SwitchPair.paths.findAll { it != flow1Path }
-        List<PathNode> broughtDownPorts = []
-        altPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src) - flow1Isl
+        islHelper.breakIsls(broughtDownIsls)
 
         and: "Update max bandwidth for the second flow's link so that it is not enough bandwidth for the first flow"
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
@@ -988,17 +914,9 @@ switches"() {
                 flow2Isl.dstPort, flow1IslMaxBw - 1)
 
         and: "Break all alternative paths for the second flow"
-        altPaths = flow2SwitchPair.paths.findAll { it != flow2Path && it[1].switchId != flow1SwitchPair.src.dpId }
-        altPaths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-        }
+        def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src) - flow2Isl - broughtDownIsls
+        islHelper.breakIsls(flow2BroughtDownIsls)
+        broughtDownIsls += flow2BroughtDownIsls
 
         when: "Try to swap endpoints for two flows"
         def flow1Src = flow2.source
@@ -1024,12 +942,8 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Restore topology and delete flows"
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
+        islHelper.restoreIsls(broughtDownIsls)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
         if (!isSwitchValid) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
                                                                   flow1SwitchPair.dst.dpId,
@@ -1062,21 +976,9 @@ switches"() {
         ).unique()
 
         and: "Break all paths for the first flow"
-        List<PathNode> broughtDownPorts = []
-        flow1SwitchPair.paths.unique { it.first() }.each { path ->
-            def src = path.first()
-            broughtDownPorts.add(src)
-            antiflap.portDown(src.switchId, src.portNo)
-        }
-        Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.FAILED
-            }.size() == broughtDownPorts.size() * 2
-            assert northbound.getFlowStatus(flow1.id).status == FlowState.DOWN
-            assert flowHelper.getHistoryEntriesByAction(flow1.id, REROUTE_ACTION).find {
-                it.taskId =~ (/.+ : retry #1 ignore_bw true/)
-            }?.payload?.last()?.action == REROUTE_FAIL
-        }
+        def broughtDownIsls = topology.getRelatedIsls(flow1SwitchPair.src)
+        islHelper.breakIsls(broughtDownIsls)
+
 
         when: "Try to swap endpoints for two flows"
         northbound.swapFlowEndpoint(
@@ -1098,11 +1000,7 @@ switches"() {
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwIds)
 
         cleanup: "Restore topology and delete flows"
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
-        broughtDownPorts.every { antiflap.portUp(it.switchId, it.portNo) }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
+        islHelper.restoreIsls(broughtDownIsls)
         database.resetCosts(topology.isls)
     }
 
@@ -1132,7 +1030,6 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Delete flows"
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!isSwitchValid) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
                                                                   flow1SwitchPair.dst.dpId,
@@ -1243,7 +1140,6 @@ switches"() {
         }
 
         cleanup: "Delete flows"
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!isSwitchValid) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
                                                                   flow1SwitchPair.dst.dpId,
@@ -1279,7 +1175,6 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Delete flows"
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         !isSwitchValid && switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
 
         where:
@@ -1335,7 +1230,6 @@ switches"() {
         def isSwitchValid = true
 
         cleanup: "Delete flows"
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         !isSwitchValid && switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
 
         where:
@@ -1369,6 +1263,7 @@ switches"() {
         flow2 = data.flow2 as FlowCreatePayload
     }
 
+    @Tags(SWITCH_RECOVER_ON_FAIL)
     def "System reverts both flows if fails during rule installation when swapping endpoints"() {
         given: "Two flows with different src switches and same dst"
         def swPair1 = switchPairs.all().random()
@@ -1432,13 +1327,12 @@ switches"() {
         when: "Delete both flows"
         def switches = (pathHelper.getInvolvedSwitches(flow1.flowId) +
                 pathHelper.getInvolvedSwitches(flow2.flowId)).unique().findAll { it.dpId != swPair1.src.dpId }
-        def deleteResponses = [flow1, flow2].collect { flowHelperV2.deleteFlow(it.flowId) }
+        [flow1, flow2].collect { flowHelperV2.deleteFlow(it.flowId) }
 
         then: "Related switches have no rule anomalies"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(switches*.getDpId()).isEmpty()
 
         cleanup:
-        deleteResponses?.size() != 2 && [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         if (blockData) {
             database.setSwitchStatus(swPair1.src.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(swPair1.src, blockData, true)
@@ -1522,7 +1416,6 @@ switches"() {
         getFlowLoopRules(flow1SwitchPair.dst.dpId)*.packetCount.every { it > 0 }
 
         cleanup: "Restore topology and delete flows"
-        [flow1, flow2].each { it && flowHelper.deleteFlow(it.id) }
         if (!switchesAreValid) {
             switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
                                                                   flow1SwitchPair.dst.dpId,

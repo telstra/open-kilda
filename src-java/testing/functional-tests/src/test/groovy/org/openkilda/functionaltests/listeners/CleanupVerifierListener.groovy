@@ -65,6 +65,7 @@ class CleanupVerifierListener extends AbstractSpringListener {
     def runVerifications() {
         context.autowireCapableBeanFactory.autowireBean(this)
         assert northboundV2.getAllFlows().empty
+        assert northboundV2.getAllHaFlows().isEmpty()
         Wrappers.wait(RULES_DELETION_TIME) {
             assert switchHelper.validate(topology.activeSwitches*.dpId).isEmpty()
         }

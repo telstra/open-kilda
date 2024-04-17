@@ -126,7 +126,6 @@ class SimulateStatsSpec extends HealthCheckSpecification {
 
     @Override
     def cleanupSpec() {
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         producer && producer.close()
     }
 

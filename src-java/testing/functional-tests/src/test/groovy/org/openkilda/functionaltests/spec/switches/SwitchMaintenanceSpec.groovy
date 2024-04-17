@@ -16,8 +16,6 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
 
-import java.util.concurrent.TimeUnit
-
 class SwitchMaintenanceSpec extends HealthCheckSpecification {
 
     @Tags(SMOKE)
@@ -115,7 +113,6 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         !(sw in pathHelper.getInvolvedSwitches(flow2PathUpdated))
 
         cleanup: "Delete flows and unset maintenance mode"
-        [flow1, flow2].each { it && flowHelperV2.deleteFlow(it.flowId) }
         northbound.setSwitchMaintenance(sw.dpId, false, false)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
@@ -126,9 +123,7 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         def isl = topology.islsForActiveSwitches.first()
 
         and: "Bring port down on the switch to fail the link"
-        def portDown = antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
-        TimeUnit.SECONDS.sleep(2) //receive any in-progress disco packets
-        Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED }
+        islHelper.breakIsl(isl)
 
         and: "Delete the link"
         northbound.deleteLink(islUtils.toLinkParameters(isl))
@@ -154,18 +149,8 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        portDown && !portUp && antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        islHelper.restoreIsl(isl)
         setSwMaintenance && northbound.setSwitchMaintenance(isl.srcSwitch.dpId, false, false)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            def links = northbound.getAllLinks()
-            def islInfo = islUtils.getIslInfo(links, isl).get()
-            def reverseIslInfo = islUtils.getIslInfo(links, isl.reversed).get()
-
-            [islInfo, reverseIslInfo].each {
-                assert it.state == IslChangeType.DISCOVERED
-                assert !it.underMaintenance
-            }
-        }
         database.resetCosts(topology.isls)
     }
 }

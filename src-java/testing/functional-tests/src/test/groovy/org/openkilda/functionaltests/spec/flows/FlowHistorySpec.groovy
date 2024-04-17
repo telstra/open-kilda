@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+
 import org.openkilda.functionaltests.error.InvalidRequestParametersExpectedError
 
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ACTION
@@ -173,7 +175,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
         }
 
         when: "Delete the updated flow"
-        def deleteResponse = flowHelperV2.deleteFlow(flow.flowId)
+       flowHelperV2.deleteFlow(flow.flowId)
 
         then: "History is still available for the deleted flow"
         def flowHistory3 = northbound.getFlowHistory(flow.flowId, specStartTime, timestampAfterUpdate)
@@ -187,9 +189,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
         northboundV2.getFlowHistoryStatuses(flow.flowId, specStartTime, timestampAfterUpdate)
                 .historyStatuses*.statusBecome == ["UP", "UP"]
         northboundV2.getFlowHistoryStatuses(flow.flowId, 1).historyStatuses*.statusBecome == ["DELETED"]
-
-        cleanup:
-        !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "History records are created for the create/update actions using default timeline"() {
@@ -212,15 +211,12 @@ class FlowHistorySpec extends HealthCheckSpecification {
         checkHistoryUpdateAction(flowHistory1[1], flow.flowId)
 
         when: "Delete the updated flow"
-        def deleteResponse = flowHelperV2.deleteFlow(flow.flowId)
+        flowHelperV2.deleteFlow(flow.flowId)
 
         then: "History is still available for the deleted flow"
         def flowHistory3 = northbound.getFlowHistory(flow.flowId)
         assert flowHistory3.size() == 3
         checkHistoryDeleteAction(flowHistory3, flow.flowId)
-
-        cleanup:
-        !deleteResponse && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     def "History records are created for the partial update actions #partialUpdateType"() {
@@ -269,9 +265,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
 //            it.forwardStatus == "ACTIVE"
 //            it.reverseStatus == "ACTIVE"
         }
-
-        cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
 
         where:
         partialUpdateType                | historyAction             | partialUpdate
@@ -347,7 +340,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
         ~/'timeFrom' must be less than or equal to 'timeTo'/).matches(exc)
     }
 
-    @Tags([LOW_PRIORITY])
+    @Tags([LOW_PRIORITY, SWITCH_RECOVER_ON_FAIL])
     def "Root cause is registered in flow history while rerouting"() {
         given: "An active flow"
         Switch srcSwitch
@@ -391,7 +384,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
         if (!swIsActive) {
             switchHelper.reviveSwitch(srcSwitch, blockData, true)
         }
-        flow && flowHelperV2.deleteFlow(flow.flowId)
     }
 
     @Tags([LOW_PRIORITY])
@@ -430,16 +422,13 @@ class FlowHistorySpec extends HealthCheckSpecification {
         }
 
         when: "Delete the updated flow"
-        def deleteResponse = flowHelper.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
         Wrappers.wait(FLOW_CRUD_TIMEOUT) {
             assert northbound.getFlowHistory(flow.id).last().payload.last().action == DELETE_SUCCESS
         }
 
         then: "History is still available for the deleted flow"
         northbound.getFlowHistory(flow.id, specStartTime, timestampAfterUpdate).size() == 2
-
-        cleanup:
-        !deleteResponse && flowHelper.deleteFlow(flow.id)
     }
 
     void checkHistoryCreateAction(FlowHistoryEntry flowHistory, String flowId) {

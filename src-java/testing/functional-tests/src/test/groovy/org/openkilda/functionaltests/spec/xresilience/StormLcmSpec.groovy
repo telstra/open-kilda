@@ -5,6 +5,8 @@ import org.openkilda.model.IslStatus
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.testing.Constants.SWITCHES_ACTIVATION_TIME
+import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static spock.util.matcher.HamcrestSupport.expect
@@ -93,6 +95,19 @@ class StormLcmSpec extends HealthCheckSpecification {
 //                .ignoring("outVertex")
 //                .ignoring("id")
 
+        and: "Topology is recovered after storm topology restarting"
+        Wrappers.wait(TOPOLOGY_DISCOVERING_TIME) {
+            assert northbound.getAllLinks().findAll {
+                it.source.switchId in topology.switches.dpId && it.state == IslChangeType.DISCOVERED
+            }.size() == topology.islsForActiveSwitches.size() * 2
+        }
+        //wait until switches are activated
+        Wrappers.wait(SWITCHES_ACTIVATION_TIME) {
+            assert northbound.getAllSwitches().findAll {
+                it.switchId in topology.switches.dpId && it.state == SwitchChangeType.ACTIVATED
+            }.size() == topology.activeSwitches.size()
+        }
+
         and: "Flows remain valid in terms of installed rules and meters"
         flows.each { flow ->
             northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
@@ -106,7 +121,7 @@ class StormLcmSpec extends HealthCheckSpecification {
         flowHelperV2.updateFlow(flowToUpdate.flowId, flowToUpdate.tap { it.source.vlanId = unusedVlan })
         northbound.validateFlow(flowToUpdate.flowId).each { direction -> assert direction.asExpected }
 
-        and: "Cleanup: remove flows"
+        cleanup: "Cleanup: remove flows"
         flows.each { flowHelperV2.deleteFlow(it.flowId) }
     }
 

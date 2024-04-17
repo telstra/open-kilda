@@ -69,7 +69,7 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         islsToBreak = switchPair.paths.findAll { !paths.contains(it) }
                 .collect { pathHelper.getInvolvedIsls(it).find { !isls.contains(it) && !isls.contains(it.reversed) } }
                 .unique { [it, it.reversed].sort() }
-        islsToBreak.each { antiflap.portDown(it.srcSwitch.dpId, it.srcPort) }
+        islHelper.breakIsls(islsToBreak)
     }
 
     @ResourceLock(S42_TOGGLE)
@@ -87,14 +87,13 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
                 .build())
 
         and : "A flow with max_latency 210"
-        def createFlowTime = new Date()
         def flow = flowHelperV2.randomFlow(switchPair).tap {
             maxLatency = 210
             pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
         }
         flowHelperV2.addFlow(flow)
         //wait for generating some flow-monitoring stats
-        wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
+        wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET * 2) {
             assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
 
@@ -128,7 +127,6 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         srcInterfaceName && lockKeeper.cleanupLinkDelay(srcInterfaceName)
         dstInterfaceName && lockKeeper.cleanupLinkDelay(dstInterfaceName)
         initFeatureToggle && northbound.toggleFeature(initFeatureToggle)
@@ -181,7 +179,6 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
 
         cleanup:
-        flow && flowHelperV2.deleteFlow(flow.flowId)
         srcInterfaceName && lockKeeper.cleanupLinkDelay(srcInterfaceName)
         dstInterfaceName && lockKeeper.cleanupLinkDelay(dstInterfaceName)
         initFeatureToggle && northbound.toggleFeature(initFeatureToggle)
@@ -202,17 +199,15 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
     }
 
     void verifyLatencyInTsdb(flowId, expectedMs) {
-        def actual = flowStats.of(flowId).get(FLOW_RTT).getDataPoints().max {it.getKey()}.getValue()
+        def flowStatsResult = flowStats.of(flowId).get(FLOW_RTT, FORWARD, FLOW_MONITORING)
+        def actual = flowStatsResult.getDataPoints().max {it.getKey()}.getValue()
         def nanoMultiplier = 1000000
         def expectedNs = expectedMs * nanoMultiplier
-        assert Math.abs(expectedNs - actual) <= expectedNs * 0.3 //less than 0.3 is unstable on jenkins
+        assert Math.abs(expectedNs - actual) <= expectedNs * 0.3, flowStatsResult //less than 0.3 is unstable on jenkins
     }
 
     def cleanupSpec() {
-        islsToBreak.each { getAntiflap().portUp(it.srcSwitch.dpId, it.srcPort) }
-        wait(getDiscoveryInterval() + WAIT_OFFSET) {
-            assert getNorthbound().getActiveLinks().size() == getTopology().islsForActiveSwitches.size() * 2
-        }
+        islHelper.restoreIsls(islsToBreak)
         getDatabase().resetCosts(getTopology().isls)
     }
 }

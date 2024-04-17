@@ -9,7 +9,7 @@ class RegisterListenersExtension extends ContextAwareGlobalExtension {
     @Override
     void visitSpec(SpecInfo spec) {
         //order matters. first added first executed
-        [new DoCleanupListener(), new CleanupVerifierListener(), new LogParallelSpecsListener(),
+        [new AutomaticCleanupListener(), new DoCleanupListener(), new CleanupVerifierListener(), new LogParallelSpecsListener(),
          new ReleaseLabListener(), new CollectFailedTestLogsListener()].each {
             spec.addListener(it)
         }
