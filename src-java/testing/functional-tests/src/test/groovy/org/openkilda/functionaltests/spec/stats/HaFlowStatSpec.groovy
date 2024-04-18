@@ -31,7 +31,7 @@ import spock.lang.Narrative
 import spock.lang.Shared
 import spock.lang.Unroll
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @Tags([LOW_PRIORITY, HA_FLOW])
 @Narrative("Verify that statistic is collected for different type of HA-Flow")
