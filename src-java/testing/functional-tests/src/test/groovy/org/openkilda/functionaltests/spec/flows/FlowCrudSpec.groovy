@@ -78,8 +78,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     final static FlowStatistics FLOW_STATISTICS_CAUSING_ERROR =
             new FlowStatistics([[4096, 0].shuffled().first(), 2001] as Set)
 
-    @Autowired
-    @Shared
+    @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
 
     @Shared

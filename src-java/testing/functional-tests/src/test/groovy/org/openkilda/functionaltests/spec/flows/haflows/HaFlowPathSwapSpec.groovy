@@ -25,7 +25,7 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @Narrative("Verify path swap operations on HA-flows.")
 @Tags([HA_FLOW])
