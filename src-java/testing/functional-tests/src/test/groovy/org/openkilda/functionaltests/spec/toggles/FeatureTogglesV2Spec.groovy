@@ -8,9 +8,9 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.model.system.FeatureTogglesDto
-import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
+
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Isolated
@@ -137,7 +137,7 @@ feature toggle"() {
                 .flowsRerouteUsingDefaultEncapType(true).build())
 
         and: "A flow with default encapsulation"
-        def initKildaConfig = northbound.getKildaConfiguration()
+        def initKildaConfig = kildaConfiguration.getKildaConfiguration()
         def flow = flowHelperV2.randomFlow(swPair).tap { encapsulationType = null }
         flowHelperV2.addFlow(flow)
         assert northboundV2.getFlow(flow.flowId).encapsulationType == initKildaConfig.flowEncapsulationType
@@ -145,7 +145,7 @@ feature toggle"() {
         when: "Update default flow encapsulation type in kilda configuration"
         def newFlowEncapsulationType = initKildaConfig.flowEncapsulationType == "transit_vlan" ?
                 FlowEncapsulationType.VXLAN : FlowEncapsulationType.TRANSIT_VLAN
-        northbound.updateKildaConfiguration(new KildaConfigurationDto(flowEncapsulationType: newFlowEncapsulationType))
+        kildaConfiguration.updateFlowEncapsulationType(newFlowEncapsulationType)
 
         and: "Init a flow reroute by breaking current path"
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
@@ -161,8 +161,7 @@ feature toggle"() {
         northboundV2.getFlow(flow.flowId).encapsulationType == newFlowEncapsulationType.toString().toLowerCase()
 
         when: "Update default flow encapsulation type in kilda configuration"
-        northbound.updateKildaConfiguration(
-                new KildaConfigurationDto(flowEncapsulationType: initKildaConfig.flowEncapsulationType))
+        kildaConfiguration.updateFlowEncapsulationType(initKildaConfig.flowEncapsulationType)
 
         and: "Disable the 'flows_reroute_using_default_encap_type' feature toggle"
         northbound.toggleFeature(FeatureTogglesDto.builder().flowsRerouteUsingDefaultEncapType(false).build())
@@ -209,12 +208,10 @@ feature toggle"() {
         flowHelperV2.addFlow(flow)
 
         when: "Set vxlan as default flow encapsulation type in kilda configuration if it is not set"
-        def initGlobalConfig = northbound.getKildaConfiguration()
+        def initGlobalConfig = kildaConfiguration.getKildaConfiguration()
         def vxlanEncapsulationType = FlowEncapsulationType.VXLAN
         (initGlobalConfig.flowEncapsulationType == vxlanEncapsulationType.toString().toLowerCase()) ?:
-                northbound.updateKildaConfiguration(
-                        new KildaConfigurationDto(flowEncapsulationType: vxlanEncapsulationType)
-                )
+                kildaConfiguration.updateFlowEncapsulationType(vxlanEncapsulationType)
 
         and: "Init a flow reroute by breaking current path"
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
@@ -258,7 +255,7 @@ feature toggle"() {
 
         cleanup:
         initGlobalConfig && initGlobalConfig.flowEncapsulationType != vxlanEncapsulationType.toString().toLowerCase() &&
-                northbound.updateKildaConfiguration(initGlobalConfig)
+                kildaConfiguration.updateKildaConfiguration(initGlobalConfig)
     }
 
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])

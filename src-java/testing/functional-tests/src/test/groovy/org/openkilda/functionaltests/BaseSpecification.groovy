@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests
 
 import org.openkilda.functionaltests.helpers.IslHelper
+import org.openkilda.functionaltests.helpers.model.KildaConfiguration
 import org.openkilda.functionaltests.helpers.model.SwitchPairs
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 
@@ -38,6 +39,8 @@ import spock.lang.Specification
 @Slf4j
 class BaseSpecification extends Specification {
 
+    @Shared @Autowired
+    KildaConfiguration kildaConfiguration
     @Shared @Autowired
     TopologyDefinition topology
     @Shared @Autowired
