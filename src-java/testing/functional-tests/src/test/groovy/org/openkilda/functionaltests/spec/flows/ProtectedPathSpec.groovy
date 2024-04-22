@@ -456,7 +456,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         def usedIsls = pathHelper.getInvolvedIsls(originalMainPath) + pathHelper.getInvolvedIsls(originalProtectedPath)
         def otherIsls = switchPair.paths.findAll { it != originalMainPath &&
                 it != originalProtectedPath }.collectMany { pathHelper.getInvolvedIsls(it) }
-                .findAll {!usedIsls.contains(it) }
+                .findAll { !usedIsls.contains(it) && !usedIsls.contains(it.reversed) }
                 .unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
         islHelper.breakIsls(otherIsls)
 
