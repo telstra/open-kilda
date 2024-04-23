@@ -1,8 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-
 import groovy.util.logging.Slf4j
+import jakarta.inject.Provider
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
@@ -14,7 +13,6 @@ import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
@@ -42,7 +40,6 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 import spock.lang.Unroll
-import jakarta.inject.Provider
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -50,11 +47,11 @@ import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FA
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
 import static org.openkilda.messaging.payload.flow.FlowState.UP
@@ -856,7 +853,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def longPath = swPair.paths.max { it.size() }
         swPair.paths.findAll { it != longPath }.each { pathHelper.makePathMorePreferable(longPath, it) }
         def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow, IN_PROGRESS)
+        flowHelperV2.attemptToAddFlow(flow)
 
         then: "Flow status is changed to UP only when all rules are actually installed"
         northboundV2.getFlowStatus(flow.flowId).status == IN_PROGRESS

@@ -1,7 +1,20 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotValidatedExpectedError
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
+import spock.lang.Narrative
 
+import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -12,20 +25,6 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
-
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
-import spock.lang.Narrative
 
 @Narrative("""
 This spec verifies different situations when Kilda switches suddenly disconnect from the controller.
@@ -128,9 +127,11 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         when: "Start creating a flow between switches and lose connection to src before rules are set"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.attemptToAddFlow(flow)
-        sleep(50)
-        def blockData = lockKeeper.knockoutSwitch(srcSwitch, RW)
+        def blockData = withPool {
+            [{flowHelperV2.attemptToAddFlow(flow)},
+             {sleep(50); lockKeeper.knockoutSwitch(srcSwitch, RW)}]
+                    .collectParallel{it()}
+        }.last()
 
         then: "Flow eventually goes DOWN"
         Wrappers.wait(WAIT_OFFSET) {
@@ -157,6 +158,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         then: "Error is returned, explaining that this is impossible for DOWN flows"
         def e = thrown(HttpClientErrorException)
         new FlowNotValidatedExpectedError(~/Could not validate flow: Flow $flow.flowId is in DOWN state/).matches(e)
+
         when: "Switch returns back UP"
         switchHelper.reviveSwitch(srcSwitch, blockData)
         def swIsOnline = true
