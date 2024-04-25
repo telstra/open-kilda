@@ -373,13 +373,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute(no bw)"() {
         given: "Two switches with 2 diverse paths at least"
-        //def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
-        //https://github.com/telstra/open-kilda/issues/5608
-        def switchesWhere5608IsReproducible = topology.activeSwitches.findAll {it.dpId.toString().endsWith("08")
-        ||it.dpId.toString().endsWith("09")}
-        def switchPair = switchPairs.all()
-                .excludeSwitches(switchesWhere5608IsReproducible)
-                .withAtLeastNNonOverlappingPaths(2).random()
+        def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair).tap { allocateProtectedPath = true }
@@ -387,7 +381,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def path = northbound.getFlowPath(flow.flowId)
 
         and: "Other paths have not enough bandwidth to host the flow in case of reroute"
-        def otherIsls = switchPair.paths.findAll { it != pathHelper.convert(path.protectedPath) &&
+        def otherIsls = switchPair.paths.findAll {
                 it != pathHelper.convert(path) }.collectMany { pathHelper.getInvolvedIsls(it) }
                 .unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
         otherIsls.collectMany{[it, it.reversed]}.each {
@@ -436,14 +430,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute(no path)"() {
         given: "Two switches with 2 diverse paths at least"
-        //def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
-        //https://github.com/telstra/open-kilda/issues/5608
-        def switchesWhere5608IsReproducible = topology.activeSwitches.findAll {it.dpId.toString().endsWith("08")
-                ||it.dpId.toString().endsWith("09")}
-        def switchPair = switchPairs.all()
-                .excludeSwitches(switchesWhere5608IsReproducible)
-                .withAtLeastNNonOverlappingPaths(2).random()
-
+        def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair).tap { allocateProtectedPath = true }
