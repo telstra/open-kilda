@@ -178,7 +178,7 @@ services:
       context: docker/db-mysql-migration
       dockerfile: Dockerfile
       args:
-        base_image: "liquibase/liquibase:${LIQUIBASE_TAG:-4.4}"
+        base_image: "liquibase/liquibase:${LIQUIBASE_TAG:-4.27}"
     command: /kilda/migrate-develop.sh
     volumes:
       - ./docker/db-mysql-migration/migrations:/liquibase/changelog
