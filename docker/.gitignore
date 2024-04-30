@@ -1,5 +1,7 @@
 # Docker build foilder
 BUILD/*
+lib/
+libs/
 base/kilda-base-lab-service/merged-requirements.txt
 lab-service/*.whl
 lab-service/log.json
