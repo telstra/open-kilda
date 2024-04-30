@@ -1,35 +1,21 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-
+import com.google.common.collect.Sets
+import groovy.util.logging.Slf4j
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithMissingPathExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotDeletedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithConflictExpectedError
-
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
-import static org.openkilda.messaging.info.event.IslChangeType.MOVED
-import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-import static org.openkilda.testing.tools.KafkaUtils.buildMessage
-
-import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowPayload
@@ -45,11 +31,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
-import com.google.common.collect.Sets
-import groovy.util.logging.Slf4j
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
@@ -60,8 +41,24 @@ import spock.lang.See
 import spock.lang.Shared
 import spock.lang.Unroll
 
-import java.time.Instant
 import javax.inject.Provider
+import java.time.Instant
+
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
 @Slf4j
 @See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/usecase/flow-crud-create-full.png",
@@ -72,6 +69,8 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     @Value("#{kafkaTopicsConfig.getSpeakerSwitchManagerTopic()}") @Shared
     String speakerTopic
@@ -452,6 +451,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
                 "different number of hops found")
 
         and: "Make all shorter forward paths not preferable. Shorter reverse paths are still preferable"
+        cleanupManager.addAction(RESET_ISLS_COST, {database.resetCosts(topology.isls)})
         possibleFlowPaths.findAll { it.size() == pathNodeCount }.each {
             pathHelper.getInvolvedIsls(it).each { database.updateIslCost(it, Integer.MAX_VALUE) }
         }
@@ -468,9 +468,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         def forwardIsls = pathHelper.getInvolvedIsls(PathHelper.convert(flowPath))
         def reverseIsls = pathHelper.getInvolvedIsls(PathHelper.convert(flowPath, "reversePath"))
         forwardIsls.collect { it.reversed }.reverse() == reverseIsls
-
-        cleanup: "Delete the flow and reset costs"
-        database.resetCosts(topology.isls)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -489,10 +486,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         new FlowNotCreatedWithMissingPathExpectedError(~/Not enough bandwidth or no path found. Switch \
 ${isolatedSwitch.dpId.toString()} doesn\'t have links with enough bandwidth, \
 Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(error)
-
-        cleanup:
-        islHelper.restoreIsls(connectedIsls)
-        database.resetCosts(topology.isls)
 
         where:
         data << [
@@ -643,10 +636,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         then: "Flow is not created"
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)).matches(exc)
-
-        cleanup:
-        islHelper.restoreIsl(isl)
-        database.resetCosts(topology.isls)
     }
 
     def "Unable to create a flow on an isl port when ISL status is MOVED"() {
@@ -672,6 +661,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         then: "Flow is not created"
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)).matches(exc)
+
         cleanup: "Restore status of the ISL and delete new created ISL"
         if (islIsMoved) {
             islUtils.replug(newIsl, true, isl, false, false)
@@ -680,7 +670,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
             northbound.deleteLink(islUtils.toLinkParameters(newIsl))
             Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
         }
-        database.resetCosts(topology.isls)
     }
 
     def "Able to CRUD #flowDescription single switch pinned flow"() {
@@ -751,9 +740,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/).matches(er
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(~/Source switch ${sw.getDpId()} and Destination switch ${sw.getDpId()} \
 are not connected to the controller/).matches(exc)
-
-        cleanup: "Activate the switch and reset costs"
-        blockData && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/2625")
@@ -831,7 +817,7 @@ are not connected to the controller/).matches(exc)
         def islsToModify = involvedIsls[1]
         def newIslBandwidth = flowBandwidth - 1
         islsToModify.each {
-            database.updateIslAvailableBandwidth(it.reversed, newIslBandwidth)
+            islHelper.setAvailableBandwidth(it.reversed, newIslBandwidth)
             database.updateIslMaxBandwidth(it.reversed, newIslBandwidth)
         }
 
@@ -843,14 +829,6 @@ are not connected to the controller/).matches(exc)
         then: "Flow is not created"
         def e = thrown(HttpClientErrorException)
         new FlowNotCreatedWithMissingPathExpectedError(~/Not enough bandwidth or no path found./).matches(e)
-
-        cleanup: "Restore topology, delete the flow and reset costs"
-        islHelper.restoreIsls(islsToBreak)
-        database.resetCosts(topology.isls)
-        islsToModify.each {
-            database.resetIslBandwidth(it)
-            database.resetIslBandwidth(it.reversed)
-        }
     }
 
     //this is for v1 mapped to h&s

@@ -1,10 +1,7 @@
 package org.openkilda.functionaltests.spec.grpc
 
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.model.ContainerName.GRPC_STUB
-import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
-
+import groovy.transform.Memoized
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckBaseSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.DockerHelper
@@ -12,13 +9,15 @@ import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchLocationDto
 import org.openkilda.testing.service.grpc.GrpcService
-
-import groovy.transform.Memoized
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.See
 import spock.lang.Shared
+
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.model.ContainerName.GRPC_STUB
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/grpc-client")
 @Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])

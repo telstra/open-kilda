@@ -1,9 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
-import static groovyx.gpars.GParsExecutorsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -15,11 +12,13 @@ import org.openkilda.functionaltests.helpers.model.YFlowFactory
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
+
+import static groovyx.gpars.GParsExecutorsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 
 @Slf4j
 @Narrative("Verify the ability to create diverse y-flows in the system.")
@@ -47,6 +46,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
         def yFlow3 = yFlowFactory.getBuilder(swT, false, yFlow1.occupiedEndpoints() + yFlow2.occupiedEndpoints())
                 .withDiverseFlow(yFlow2.yFlowId).build().waitForBeingInState(FlowState.UP)
+        def yFlowsAreDeleted = false
 
         then: "Y-Flow create response contains info about diverse yFlow"
         !yFlow1.diverseWithYFlows
@@ -80,7 +80,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         withPool {
             [yFlow1, yFlow2, yFlow3].each { yFlow -> yFlow.delete() }
         }
-        def yFlowsAreDeleted = true
+        yFlowsAreDeleted = true
 
         then: "Y-Flows' histories contain 'diverseGroupId' information in 'delete' operation"
         verifyAll(flowHelper.getEarliestHistoryEntryByAction(yFlow1.subFlows[0].flowId,  FlowActionType.DELETE.value).dumps) {

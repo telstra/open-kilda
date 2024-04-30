@@ -1,12 +1,50 @@
 package org.openkilda.functionaltests.spec.flows
 
+import com.github.javafaker.Faker
+import groovy.transform.AutoClone
+import groovy.transform.Memoized
+import groovy.util.logging.Slf4j
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.IterationTags
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.Flow
+import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.MeterId
+import org.openkilda.model.SwitchFeature
+import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.northbound.dto.v1.flows.ConnectedDeviceDto
 import org.openkilda.northbound.dto.v1.flows.PingInput
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
+import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDeviceDto
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.service.traffexam.model.ArpData
+import org.openkilda.testing.service.traffexam.model.LldpData
+import org.openkilda.testing.tools.ConnectedDevice
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
+import spock.lang.See
+import spock.lang.Shared
+
+import javax.inject.Provider
+import java.time.Instant
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.cookie.Cookie.LLDP_INGRESS_COOKIE
@@ -19,53 +57,18 @@ import static org.openkilda.model.cookie.CookieBase.CookieType.ARP_INPUT_CUSTOME
 import static org.openkilda.model.cookie.CookieBase.CookieType.LLDP_INPUT_CUSTOMER_TYPE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
-import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.functionaltests.extension.tags.IterationTags
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.Flow
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.MeterId
-import org.openkilda.model.SwitchFeature
-import org.openkilda.model.SwitchId
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.northbound.dto.v1.flows.ConnectedDeviceDto
-import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
-import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
-import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDeviceDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.service.traffexam.model.ArpData
-import org.openkilda.testing.service.traffexam.model.LldpData
-import org.openkilda.testing.tools.ConnectedDevice
-
-import com.github.javafaker.Faker
-import groovy.transform.AutoClone
-import groovy.transform.Memoized
-import groovy.util.logging.Slf4j
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Narrative
-import spock.lang.See
-import spock.lang.Shared
-
-import java.time.Instant
-import javax.inject.Provider
-
 @Slf4j
 @Narrative("""
 Verify ability to detect connected devices per flow endpoint (src/dst). 
 Verify allocated Connected Devices resources and installed rules.""")
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/connected-devices-lldp")
+
 class ConnectedDevicesSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTags([
@@ -134,9 +137,6 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
             validateSwitchHasNoFlowRulesAndMeters(flow.source.switchId)
             validateSwitchHasNoFlowRulesAndMeters(flow.destination.switchId)
         }
-
-        cleanup: "Restore initial switch properties"
-        srcLldpData && [data.switchPair.src, data.switchPair.dst].each { database.removeConnectedDevices(it.dpId) }
 
         where:
         data <<
@@ -235,9 +235,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             }
         }
 
-        cleanup: "Delete the flow"
-        srcLldpData && [flow.source.switchId, flow.destination.switchId].each { database.removeConnectedDevices(it) }
-
         where:
         [oldSrcEnabled, oldDstEnabled, newSrcEnabled, newDstEnabled] << [
                 [false, false, false, false],
@@ -259,6 +256,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def sw = topology.activeTraffGens*.switchConnected.first()
 
         def flow = flowHelperV2.singleSwitchFlow(sw)
+        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(flow.source.switchId)})
         flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
         flowHelperV2.addFlow(flow)
 
@@ -291,9 +289,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
         new FlowNotFoundExpectedError(flow.getFlowId(), ~/Could not get connected devices for non existent flow/).matches(e)
-
-        cleanup: "Restore initial switch properties"
-        lldpData && database.removeConnectedDevices(sw.dpId)
     }
 
     def "Able to swap flow paths with connected devices (srcDevices=#srcEnabled, dstDevices=#dstEnabled)"() {
@@ -343,9 +338,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             }
         }
 
-        cleanup: "Delete the flow and restore initial switch properties"
-        [flow.source.switchId, flow.destination.switchId].each { database.removeConnectedDevices(it) }
-
         where:
         [srcEnabled, dstEnabled] << [
                 [true, false],
@@ -363,6 +355,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         and: "A connected device"
         def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.source.switchId),
                 [flow.source.vlanId])
+        cleanupManager.addAction(OTHER, {device.close()})
 
         when: "Device sends lldp packet"
         def lldpData = LldpData.buildRandom()
@@ -386,10 +379,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             assert Instant.parse(devices[0].timeFirstSeen) == Instant.parse(devices1[0].timeFirstSeen)
             assert Instant.parse(devices[0].timeLastSeen) > Instant.parse(devices1[0].timeLastSeen)
         }
-
-        cleanup: "Disconnect the device and remove the flow"
-        device && device.close()
-        lldpData && database.removeConnectedDevices(flow.source.switchId)
     }
 
     def "Able to handle 'timeLastSeen' field when receive repeating ARP packets from the same device"() {
@@ -402,6 +391,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         and: "A connected device"
         def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.source.switchId),
                 [flow.source.vlanId])
+        cleanupManager.addAction(OTHER, {device.close()})
 
         when: "Device sends ARP packet"
         def arpData = ArpData.buildRandom()
@@ -425,10 +415,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             assert Instant.parse(devices[0].timeFirstSeen) == Instant.parse(devices1[0].timeFirstSeen)
             assert Instant.parse(devices[0].timeLastSeen) > Instant.parse(devices1[0].timeLastSeen)
         }
-
-        cleanup: "Disconnect the device and remove the flow"
-        device && device.close()
-        arpData && database.removeConnectedDevices(flow.source.switchId)
     }
 
     def "Able to detect different devices on the same port (LLDP)"() {
@@ -441,6 +427,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         and: "A connected device"
         def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.destination.switchId),
                 [flow.destination.vlanId])
+        cleanupManager.addAction(OTHER, {device.close()})
 
         when: "Two completely different lldp packets are sent"
         def lldpData1 = LldpData.buildRandom()
@@ -472,10 +459,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         then: "Only 1 device is returned (the latest registered)"
         filteredDevices.size() == 1
         filteredDevices.first() == lastDevice
-
-        cleanup: "Disconnect the device and remove the flow"
-        device && device.close()
-        lldpData1 && database.removeConnectedDevices(flow.destination.switchId)
     }
 
     def "Able to detect different devices on the same port (ARP)"() {
@@ -488,6 +471,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         and: "A connected device"
         def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.destination.switchId),
                 [flow.destination.vlanId])
+        cleanupManager.addAction(OTHER, {device.close()})
 
         when: "Two completely different ARP packets are sent"
         def arpData1 = ArpData.buildRandom()
@@ -520,10 +504,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         then: "Only 1 device is returned (the latest registered)"
         filteredDevices.size() == 1
         filteredDevices.first() == lastDevice
-
-        cleanup: "Disconnect the device and remove the flow"
-        device && device.close()
-        arpData1 && database.removeConnectedDevices(flow.destination.switchId)
     }
 
     def "System properly detects devices if feature is 'off' on switch level and 'on' on flow level"() {
@@ -540,6 +520,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def arpData = ArpData.buildRandom()
         def deviceVlan = 666
         def device = new ConnectedDevice(traffExamProvider.get(), tg, [deviceVlan])
+        cleanupManager.addAction(OTHER, {device.close()})
         device.sendLldp(lldpData)
         device.sendArp(arpData)
 
@@ -551,6 +532,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         when: "Flow is created on a target switch with devices feature 'on'"
         def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
+        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         def flow = flowHelperV2.randomFlow(sw, dst).tap {
             it.source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
             it.source.vlanId = deviceVlan
@@ -589,10 +571,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             it[0].arp.first().flowId == flow.flowId
             verifyEquals(it[0].arp.first(), arpData)
         }
-
-        cleanup: "Remove created flow and device"
-        device && device.close()
-        lldpData && database.removeConnectedDevices(sw.dpId)
     }
 
     def "System properly detects devices if feature is 'on' on switch level and 'off' on flow level"() {
@@ -608,6 +586,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Flow is created on a target switch with devices feature 'off'"
         def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
+        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         def flow = flowHelperV2.randomFlow(sw, dst).tap {
             it.source.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
         }
@@ -642,10 +621,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             verifyEquals(it.source.lldp.first(), lldpData)
             verifyEquals(it.source.arp.first(), arpData)
         }
-
-        cleanup: "Remove created flow and registered devices, revert switch props"
-        lldpData && database.removeConnectedDevices(sw.dpId)
-        initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
     }
 
     @Tags([SMOKE_SWITCHES])
@@ -664,6 +639,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
         def vlan = 123
+        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         new ConnectedDevice(traffExamProvider.get(), tg, [vlan]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
@@ -679,10 +655,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 verifyEquals(port.arp.first(), arpData)
             }
         }
-
-        cleanup: "Turn off devices prop, remove connected devices"
-        initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
-        lldpData && database.removeConnectedDevices(sw.dpId)
     }
 
     def "Able to distinguish devices between default and non-default single-switch flows (#descr)"() {
@@ -697,6 +669,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         })
 
         and: "A single-sw flow with devices feature 'on'"
+        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         def flow = flowHelperV2.randomFlow(sw, sw).tap {
             it.source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
         }
@@ -829,10 +802,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             verifyEquals(it.source.arp.sort { it.timeFirstSeen }.last(), arpData3)
         }
 
-        cleanup: "Turn off devices prop, remove connected devices, remove flow"
-        lldpData && database.removeConnectedDevices(sw.dpId)
-        initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
-
         where:
         srcDefault | dstDefault
         true       | false
@@ -912,9 +881,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             verifyEquals(it[0].arp.first(), dstArpData)
         }
 
-        cleanup: "Delete the flow"
-        srcLldpData && [flow.source.switchId, flow.destination.switchId].each { database.removeConnectedDevices(it) }
-
         where:
         srcDefault | dstDefault
         false      | true
@@ -934,6 +900,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "A QinQ flow with enabled connected devices"
         def tgService = traffExamProvider.get()
+        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(swP.src.dpId)})
         def flow = flowHelperV2.randomFlow(swP)
         flow.source.vlanId = vlanId
         flow.source.innerVlanId = innerVlanId
@@ -1001,9 +968,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             validateSwitchHasNoFlowRulesAndMeters(swP.src.dpId)
         }
 
-        cleanup: "Restore initial switch properties"
-        srcLldpData && database.removeConnectedDevices(swP.src.dpId)
-
         where:
         vlanId | innerVlanId | encapsulationType
         0      | 200         | FlowEncapsulationType.TRANSIT_VLAN
@@ -1063,6 +1027,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def sw = topology.activeTraffGens*.switchConnected.first()
         assumeTrue(sw.asBoolean(), "Wasn't able to find switch connected to traffGen")
 
+        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         def flow = flowHelperV2.singleSwitchFlow(sw)
         flow.source.detectConnectedDevices.lldp = true
         flow.source.detectConnectedDevices.arp = true
@@ -1106,9 +1071,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             verifyEquals(it[0].arp.first(), arpData)
         }
 
-        cleanup: "Restore initial switch properties"
-        lldpData && database.removeConnectedDevices(sw.dpId)
-
         where:
         vlanId | innerVlanId | encapsulationType
         0      | 200         | FlowEncapsulationType.TRANSIT_VLAN
@@ -1124,6 +1086,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def sw = topology.activeTraffGens*.switchConnected.first()
         assumeTrue(sw.asBoolean(), "Wasn't able to find switch connected to traffGen")
 
+        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         def flow1 = flowHelperV2.singleSwitchFlow(sw, true)
         flow1.source.detectConnectedDevices.lldp = true
         flow1.source.detectConnectedDevices.arp = true
@@ -1183,9 +1146,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             verifyEquals(it[0].arp.first(), arpData)
         }
 
-        cleanup: "Restore initial switch properties"
-        lldpData && database.removeConnectedDevices(sw.dpId)
-
         where:
         commonOuterVlanId | innerVlanIdFlow1 | innerVlanIdFlow2 | encapsulationType
         1                 | 2                | 4                | FlowEncapsulationType.TRANSIT_VLAN
@@ -1205,6 +1165,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         })
 
         and: "Flow is created on a target switch with devices feature 'off'"
+        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
         def flow = flowHelperV2.randomFlow(sw, dst)
         flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
@@ -1221,10 +1182,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Check excess rules are not registered on device"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
-
-        cleanup: "Remove created flow and registered devices, revert switch props"
-        sw && database.removeConnectedDevices(sw.dpId)
-        initialProps && switchHelper.updateSwitchProperties(sw, initialProps)
     }
 
     def "System starts detect connected after device properties turned on"() {
@@ -1299,6 +1256,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         })
 
         and: "Flow is created on a target switch with devices feature 'off'"
+        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         def dstTg = topology.activeTraffGens.find{it != tg && it.getSwitchConnected().getDpId() != sw.getDpId()}
         def dst = dstTg.getSwitchConnected()
         def flow = flowHelperV2.randomFlow(sw, dst)
@@ -1334,10 +1292,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 it.ports.arp.empty
             }
         }
-
-        cleanup: "Delete the flow and restore initial switch properties"
-        initialPropsSource && restoreSwitchProperties(sw.dpId, initialPropsSource)
-        database.removeConnectedDevices(sw.dpId)
     }
 
 
@@ -1357,6 +1311,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             flow = flowHelperV2.randomFlow(switchPair)
             flow.allocateProtectedPath = protectedFlow
         }
+        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(flow.source.switchId)})
+        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(flow.destination.switchId)})
         flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(srcEnabled, srcEnabled)
         flow.destination.detectConnectedDevices = new DetectConnectedDevicesV2(dstEnabled, dstEnabled)
         return flow

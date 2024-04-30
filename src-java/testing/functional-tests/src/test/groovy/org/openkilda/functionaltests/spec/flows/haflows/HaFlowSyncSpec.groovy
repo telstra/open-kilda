@@ -142,7 +142,7 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         cleanup: "Delete the HA-Flow"
         downSwitch && blockData && switchHelper.reviveSwitch(downSwitch, blockData, true)
         haFlow && Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert haFlow.retrieveDetails().status != FlowState.IN_PROGRESS
+            assert !(haFlow.retrieveDetails().status  in [FlowState.IN_PROGRESS, FlowState.DOWN])
         }
         haFlow && haFlow.delete()
 

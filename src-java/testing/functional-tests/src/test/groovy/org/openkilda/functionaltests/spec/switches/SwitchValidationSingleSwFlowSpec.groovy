@@ -1,25 +1,16 @@
 package org.openkilda.functionaltests.spec.switches
 
-import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.messaging.model.FlowDirectionType
-
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
-import static org.openkilda.functionaltests.spec.switches.MetersSpec.NOT_OVS_REGEX
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
-import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.tools.KafkaUtils.buildMessage
-
+import com.google.common.collect.Sets
+import groovy.transform.Memoized
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.messaging.model.FlowDirectionType
 import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
@@ -30,16 +21,25 @@ import org.openkilda.rulemanager.MeterSpeakerData
 import org.openkilda.rulemanager.OfTable
 import org.openkilda.rulemanager.OfVersion
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
-import com.google.common.collect.Sets
-import groovy.transform.Memoized
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 import spock.lang.See
+import spock.lang.Shared
+
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.SYNCHRONIZE_SWITCH
+import static org.openkilda.functionaltests.spec.switches.MetersSpec.NOT_OVS_REGEX
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-validate")
 @Narrative("""This test suite checks the switch validate feature on a single flow switch.
@@ -56,6 +56,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     def setupSpec() {
         deleteAnyFlowsLeftoversIssue5480()
@@ -110,11 +112,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
 
-        def testIsCompleted = true
-
-        cleanup:
-        flow && !testIsCompleted && synchronizeAndValidateRules(sw)
-
         where:
         switchType         | switches
         "Centec"           | getCentecSwitches()
@@ -143,6 +140,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         and: "Change bandwidth for the created flow directly in DB"
         Long newBandwidth = flow.maximumBandwidth + 100
+
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronize(sw.dpId)})
         /** at this point meters are set for given flow. Now update flow bandwidth directly via DB,
          it is done just for moving meters from the 'proper' section into the 'misconfigured'*/
         database.updateFlowBandwidth(flow.flowId, newBandwidth)
@@ -224,10 +223,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
-        def testIsCompleted = true
-
-        cleanup:
-        flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
         switchType         | switches
@@ -249,6 +244,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def meterIds = getCreatedMeterIds(sw.dpId)
 
         and: "Remove created meter"
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronize(sw.dpId)})
         northbound.deleteMeter(sw.dpId, meterIds[0])
         northbound.deleteMeter(sw.dpId, meterIds[1])
 
@@ -293,10 +289,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
-        def testIsCompleted = true
-
-        cleanup:
-        flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
         switchType         | switches
@@ -327,6 +319,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         when: "Update meterId for created flow directly via db"
         long newMeterId = 100;
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronize(sw.dpId)})
         database.updateFlowMeterId(flow.flowId, newMeterId)
 
         then: "Origin meters are moved into the 'excess' section"
@@ -365,12 +358,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchValidateInfoAfterDelete.verifyRuleSectionsAreEmpty()
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
-        def testIsCompleted = true
-
-        cleanup:
-        flow && !testIsCompleted && synchronizeAndValidateRules(sw)
-
-
 
         where:
         switchType         | switches
@@ -393,7 +380,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def createdHexCookies = createdCookies.collect { Long.toHexString(it) }
 
         and: "Delete created rules"
-        northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
+        switchHelper.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
 
         then: "Rule info is moved into the 'missing' section"
         def switchValidateInfo = switchHelper.validateV1(sw.dpId)
@@ -424,11 +411,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             switchValidateInfoAfterDelete.verifyMeterSectionsAreEmpty()
         }
 
-        def testIsCompleted = true
-
-        cleanup:
-        flow && !testIsCompleted && synchronizeAndValidateRules(sw)
-
         where:
         switchType         | switches
         "Centec"           | getCentecSwitches()
@@ -454,6 +436,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         //pick a meter id which is not yet used on src switch
         def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
                 .meterEntries*.meterId).first()
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronize(sw.dpId)})
         producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
                 FlowSpeakerData.builder()
                         .switchId(sw.dpId)
@@ -532,7 +515,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
 
         cleanup:
         producer && producer.close()
-        !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
         switchType         | switches
@@ -549,7 +531,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchSinglePortFlow(sw))
 
         when: "Remove flow rules from the switch, so that they become missing"
-        northbound.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
+        switchHelper.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
 
         then: "Switch validation shows missing rules"
         def amountOfFlowRules = 4
@@ -578,11 +560,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             it.verifyRuleSectionsAreEmpty()
             it.verifyMeterSectionsAreEmpty()
         }
-
-        def testIsCompleted = true
-
-        cleanup:
-        flow && !testIsCompleted && synchronizeAndValidateRules(sw)
 
         where:
         switchType         | sw
@@ -630,13 +607,6 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
             assert Math.abs(expected - actual) <= expected * 0.01
         } else {
             assert expected == actual
-        }
-    }
-
-    private void synchronizeAndValidateRules(Switch sw) {
-        switchHelper.synchronize(sw.dpId)
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
         }
     }
 }

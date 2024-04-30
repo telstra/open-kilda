@@ -1,20 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
-import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
-import static org.openkilda.functionaltests.model.stats.HaFlowStatsMetric.HA_FLOW_RAW_BITS
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
-import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowFactory
@@ -25,13 +11,25 @@ import org.openkilda.model.history.DumpType
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.northbound.model.HaFlowActionType
 import org.openkilda.testing.service.traffexam.TraffExamService
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
 
 import javax.inject.Provider
+
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
+import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
+import static org.openkilda.functionaltests.model.stats.HaFlowStatsMetric.HA_FLOW_RAW_BITS
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Slf4j
 @Narrative("Verify reroute operations on HA-flows.")
@@ -118,8 +116,6 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
 
         cleanup:
         haFlow && haFlow.delete()
-        islHelper.restoreIsl(islToFail)
-        database.resetCosts(topology.isls)
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
@@ -173,7 +169,6 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
 
         cleanup: "Bring port involved in the original path up and delete the HA-flow"
         haFlow && haFlow.delete()
-        islHelper.restoreIsls(alternativeIsls + subFlowsFirstIsls)
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
@@ -212,16 +207,5 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
 
         cleanup: "Bring port involved in the original path up and delete the HA-flow"
         haFlow && haFlow.delete()
-        islHelper.restoreIsls(alternativeIsls + subFlowsFirstIsls.first())
-    }
-
-    private boolean waitForIslsFail(List<Isl> islsToFail) {
-        wait(WAIT_OFFSET) {
-            withPool {
-                islsToFail.each {
-                    assert northbound.getLink(it).state == FAILED
-                }
-            }
-        }
     }
 }

@@ -1,26 +1,22 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.model.stats.SwitchStats
-import org.openkilda.functionaltests.model.stats.SwitchStatsMetric
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Narrative
 import spock.lang.Shared
 
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.model.stats.SwitchStatsMetric.STATE
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import spock.lang.Narrative
 
 @Narrative("Verify that Kilda allows to properly control port state on switches (bring ports up or down).")
 @Tags([SMOKE_SWITCHES])
@@ -32,11 +28,9 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, ISL_RECOVER_ON_FAIL])
     def "Able to bring ISL-busy port down/up on an #isl.srcSwitch.ofVersion switch #isl.srcSwitch.dpId"() {
         when: "Bring port down on the switch"
-        def portDownTime = new Date().getTime()
         islHelper.breakIsl(isl)
 
         then: "Port failure is logged in TSDB"
-        def statsData = [:]
         Wrappers.wait(STATS_LOGGING_TIMEOUT) {
             switchStats.of(isl.getSrcSwitch().getDpId()).get(STATE, isl.getSrcPort()).hasValue(0)
         }
@@ -49,10 +43,6 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
             switchStats.of(isl.getSrcSwitch().getDpId()).get(STATE, isl.getSrcPort()).hasValue(1)
         }
 
-        cleanup:
-        islHelper.restoreIsl(isl)
-        database.resetCosts(topology.isls)
-
         where:
         isl << uniqueIsls
     }
@@ -63,20 +53,16 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
 
         when: "Bring port down on the switch"
         def port = topology.getAllowedPortsForSwitch(sw).find { "LINK_DOWN" in northbound.getPort(sw.dpId, it).state }
-        northbound.portDown(sw.dpId, port)
+        antiflap.portDown(sw.dpId, port)
 
         then: "Port is really DOWN"
         Wrappers.wait(WAIT_OFFSET) { assert "PORT_DOWN" in northbound.getPort(sw.dpId, port).config }
 
         when: "Bring port up on the switch"
-        def portUp = northbound.portUp(sw.dpId, port)
+        northbound.portUp(sw.dpId, port)
 
         then: "Port is really UP"
         Wrappers.wait(WAIT_OFFSET) { assert !("PORT_DOWN" in northbound.getPort(sw.dpId, port).config) }
-
-        cleanup:
-        !portUp && northbound.portUp(sw.dpId, port)
-        database.resetCosts(topology.isls)
 
         where:
         // It is impossible to understand whether ISL-free port is UP/DOWN on OF_12 switches.

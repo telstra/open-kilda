@@ -1,33 +1,31 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.PortNotFoundExpectedError
 import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
-
-import static org.junit.jupiter.api.Assumptions.assumeFalse
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.model.PortProperties.DISCOVERY_ENABLED_DEFAULT
-import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesResponse
-
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
+import spock.lang.Shared
 
-import java.util.concurrent.TimeUnit
+import static org.junit.jupiter.api.Assumptions.assumeFalse
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_PORT_PROPERTIES
+import static org.openkilda.model.PortProperties.DISCOVERY_ENABLED_DEFAULT
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery/disable-port-discovery")
 @Narrative("""Some switch ports should not be used in network discovery process.
@@ -37,6 +35,8 @@ Admin has ability to enable/disable discovery on a specific port on a switch usi
 This spec assumes that port discovery property is enabled for all available ports.
 """)
 class PortPropertiesSpec extends HealthCheckSpecification {
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Able to manipulate port properties"() {
@@ -55,8 +55,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         PortPropertiesDto newPortProperties = new PortPropertiesDto()
         def newDiscoveryEnabled = !DISCOVERY_ENABLED_DEFAULT
         newPortProperties.discoveryEnabled = newDiscoveryEnabled
-        def updatePortPropertiesResponse = northboundV2.updatePortProperties(isl.srcSwitch.dpId, isl.srcPort,
-                newPortProperties)
+        def updatePortPropertiesResponse = disableDiscoveryOnPort(isl.srcSwitch.dpId, isl.srcPort)
 
         then: "Correct response is returned"
         verifyAll(updatePortPropertiesResponse) {
@@ -73,10 +72,6 @@ class PortPropertiesSpec extends HealthCheckSpecification {
                 it.discoveryEnabled == newDiscoveryEnabled
             }
         }
-
-        cleanup: "Restore init port discovery property on the port"
-        isl && northboundV2.updatePortProperties(isl.srcSwitch.dpId, isl.srcPort,
-                new PortPropertiesDto(discoveryEnabled: DISCOVERY_ENABLED_DEFAULT))
     }
 
     def "Informative error is returned when trying to get/update port properties with non-existing switch"() {
@@ -88,6 +83,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def e = thrown(HttpClientErrorException)
         new SwitchNotFoundExpectedError(NON_EXISTENT_SWITCH_ID, ~/Couldn't get port properties/).matches(e)
+
         when: "Try to update port discovery property for non-existing switch"
         northboundV2.updatePortProperties(NON_EXISTENT_SWITCH_ID, port, new PortPropertiesDto(discoveryEnabled: true))
 
@@ -139,7 +135,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         def dstPortDiscoveryOff = disableDiscoveryOnPort(islToManipulate.dstSwitch.dpId, islToManipulate.dstPort)
 
         and: "Bring port up on the src switch"
-        def portUp = antiflap.portUp(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
+        antiflap.portUp(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
 
         then: "Link is not detected"
         Wrappers.timedLoop(discoveryInterval + WAIT_OFFSET / 2) {
@@ -147,22 +143,8 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         }
 
         when: "Deactivate/activate src switch"
-        def blockData = lockKeeper.knockoutSwitch(sw, RW)
-        def switchStatus
-        Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
-            switchStatus = northbound.getSwitch(sw.dpId).state
-            assert switchStatus == SwitchChangeType.DEACTIVATED
-        }
-
-        lockKeeper.reviveSwitch(sw, blockData)
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            switchStatus = northbound.getSwitch(sw.dpId).state
-            assert switchStatus == SwitchChangeType.ACTIVATED
-            def links = northbound.getAllLinks()
-            (relatedIsls - islToManipulate).forEach {
-                assert islUtils.getIslInfo(links, it).get().state == IslChangeType.DISCOVERED
-            }
-        }
+        def blockData = switchHelper.knockoutSwitch(sw, RW)
+        switchHelper.reviveSwitch(sw, blockData)
 
         then: "Link is still not detected"
         Wrappers.timedLoop(discoveryInterval) {
@@ -170,7 +152,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         }
 
         when: "Enable port discovery property on the src switch"
-        def srcPortDiscoveryOn = enableDiscoveryOnPort(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
+        enableDiscoveryOnPort(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
 
         then: "Link is detected and status of one-way ISL is FAILED"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -184,18 +166,13 @@ class PortPropertiesSpec extends HealthCheckSpecification {
         }
 
         when: "Enable port discovery property on the dst switch"
-        def dstPortDiscoveryOn = enableDiscoveryOnPort(islToManipulate.dstSwitch.dpId, islToManipulate.dstPort)
+        enableDiscoveryOnPort(islToManipulate.dstSwitch.dpId, islToManipulate.dstPort)
 
         then: "Link status is changed to DISCOVERED"
         Wrappers.wait(WAIT_OFFSET) {
             assert islUtils.getIslInfo(islToManipulate).get().state == IslChangeType.DISCOVERED
             assert islUtils.getIslInfo(islToManipulate.reversed).get().state == IslChangeType.DISCOVERED
         }
-        cleanup:
-        antiflap.portUp(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
-        srcPortDiscoveryOff && !srcPortDiscoveryOn && enableDiscoveryOnPort(islToManipulate.srcSwitch.dpId, islToManipulate.srcPort)
-        dstPortDiscoveryOff && !dstPortDiscoveryOn && enableDiscoveryOnPort(islToManipulate.dstSwitch.dpId, islToManipulate.dstPort)
-        switchStatus && switchStatus == SwitchChangeType.DEACTIVATED && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
     @Tags([SMOKE, SMOKE_SWITCHES])
@@ -245,6 +222,7 @@ class PortPropertiesSpec extends HealthCheckSpecification {
     }
 
     private PortPropertiesResponse disableDiscoveryOnPort(SwitchId switchId, Integer port) {
+        cleanupManager.addAction(RESTORE_PORT_PROPERTIES, {enableDiscoveryOnPort(switchId, port)})
         northboundV2.updatePortProperties(switchId, port, new PortPropertiesDto(discoveryEnabled: false))
     }
 }

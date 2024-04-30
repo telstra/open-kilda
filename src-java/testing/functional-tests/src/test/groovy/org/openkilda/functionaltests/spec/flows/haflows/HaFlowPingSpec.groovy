@@ -12,8 +12,6 @@ import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.LATENCY
 import static org.openkilda.functionaltests.model.stats.Status.ERROR
 import static org.openkilda.functionaltests.model.stats.Status.SUCCESS
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -129,8 +127,6 @@ class HaFlowPingSpec extends HealthCheckSpecification {
 
         cleanup:
         haFlow && haFlow.delete()
-        islHelper.restoreIsl(islToFail)
-        database.resetCosts(topology.isls)
     }
 
     def "Able to turn on periodic pings on an Ha-flow"() {

@@ -1,33 +1,14 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-
-import org.openkilda.functionaltests.error.flow.FlowNotReroutedExpectedError
-import org.openkilda.functionaltests.helpers.model.SwitchPairs
-
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_COMPLETE
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
-import static org.openkilda.functionaltests.helpers.Wrappers.retry
-import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
-import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flow.FlowNotReroutedExpectedError
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.functionaltests.helpers.model.SwitchPairs
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
@@ -40,17 +21,40 @@ import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
-
-import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Isolated
 import spock.lang.Narrative
 
 import java.util.concurrent.TimeUnit
 
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_COMPLETE
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
+import static org.openkilda.functionaltests.helpers.Wrappers.retry
+import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+
 @Slf4j
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
+
 class AutoRerouteSpec extends HealthCheckSpecification {
+        @Autowired
+        CleanupManager cleanupManager
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     @IterationTag(tags = [TOPOLOGY_DEPENDENT], iterationNameRegex = /vxlan/)
@@ -74,9 +78,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
         }
-
-        cleanup: "Revive the ISL back (bring switch port up) and delete the flow"
-        islHelper.restoreIsl(islToFail)
 
         where:
         description | flowData
@@ -105,6 +106,8 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         def involvedIsls = pathHelper.getInvolvedIsls(currentPath)
         def altIsls = altPaths.collectMany { pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) } }
                 .unique { a, b -> (a == b || a == b.reversed) ? 0 : 1 }
+        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
+                {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
         altIsls.each {isl ->
             def linkProp = islUtils.toLinkProps(isl, [cost: "1"])
             northbound.updateLinkProps([linkProp])
@@ -170,9 +173,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
             assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
         }
-
-        cleanup:
-        islHelper.restoreIsl(islToFail)
     }
 
     @Tags([ISL_RECOVER_ON_FAIL, SWITCH_RECOVER_ON_FAIL])
@@ -184,7 +184,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         when: "The switch is disconnected"
         def blockData = switchHelper.knockoutSwitch(sw, RW)
-        def isSwitchDisconnected = true
 
         then: "Flow becomes 'Down'"
         wait(WAIT_OFFSET) {
@@ -208,7 +207,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         when: "The switch is connected back"
         switchHelper.reviveSwitch(sw, blockData, true)
-        isSwitchDisconnected = false
 
         then: "Flow becomes 'Up'"
         wait(WAIT_OFFSET) {
@@ -217,10 +215,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         and: "Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        cleanup: "Remove the flow"
-        isSwitchDisconnected && switchHelper.reviveSwitch(sw, blockData, true)
-        islHelper.restoreIsl(islToFail)
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
@@ -263,9 +257,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
                 it.action == "The flow status was reverted to UP" || it.action == REROUTE_SUCCESS
             }
         }
-
-        cleanup: "Restore topology to the original state, remove the flow"
-        islHelper.restoreIsls(broughtDownIsls + isl)
 
         where:
         strictBw    | reroutesCount
@@ -316,9 +307,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
             timedLoop(3) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
             assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
         }
-
-        cleanup: "Bring port involved in the original path up and delete the flow"
-        islHelper.restoreIsls(broughtDownIsls)
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
@@ -347,9 +335,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         TimeUnit.SECONDS.sleep(rerouteDelay + WAIT_OFFSET)
         northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
-
-        cleanup:
-        islHelper.restoreIsl(islToFail)
     }
 
     @Tags([SMOKE])
@@ -386,9 +371,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         TimeUnit.SECONDS.sleep(rerouteDelay + WAIT_OFFSET)
         northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
-
-        cleanup: "Delete the flow"
-        blockData && !switchIsOnline && switchHelper.reviveSwitch(switchToDisconnect, blockData, true)
     }
 
     @Tags([HARDWARE, SMOKE])
@@ -416,11 +398,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         then: "The flow is not rerouted"
         TimeUnit.SECONDS.sleep(rerouteDelay)
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
-
-        cleanup: "Bring flow ports up and delete the flow"
-        if (flow) {
-            ["source", "destination"].each { northbound.portUp(flow."$it".switchId, flow."$it".portNumber) }
-        }
     }
 
     @Tags(HARDWARE)
@@ -438,7 +415,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         when: "Deactivate the src switch"
         def swToDeactivate = switchPair.src
         def blockData = lockKeeper.knockoutSwitch(swToDeactivate, RW)
-        def isSwDeactivated = true
         // it takes more time to DEACTIVATE a switch via the 'knockoutSwitch' method on the stage env
         wait(WAIT_OFFSET * 4) {
             assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED
@@ -455,24 +431,12 @@ class AutoRerouteSpec extends HealthCheckSpecification {
                 it.state == IslChangeType.DISCOVERED
             }.size() == topology.islsForActiveSwitches.size() * 2
         }
-        isSwDeactivated = false
 
         then: "System doesn't try to reroute the flow on the switchUp event because flow is already in UP state"
         timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
             assert flowHelper.getHistoryEntriesByAction(flow.flowId, REROUTE_ACTION).findAll {
                 !(it.details =~ /Reason: ISL .* status become ACTIVE/)
             }.isEmpty()
-        }
-
-        cleanup:
-        if (isSwDeactivated) {
-            lockKeeper.reviveSwitch(swToDeactivate, blockData)
-            wait(WAIT_OFFSET) {
-                assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
-                assert northbound.getAllLinks().findAll {
-                    it.state == IslChangeType.DISCOVERED
-                }.size() == topology.islsForActiveSwitches.size() * 2
-            }
         }
     }
 
@@ -524,10 +488,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
             !(it.details =~ /Reason: ISL .* status become ACTIVE/) && //exclude ISL up reasons from parallel streams
                     it.action == REROUTE_ACTION
         }.size() == 0
-
-        cleanup: "Restore topology, delete the flow and reset costs"
-        !isSwitchActivated && blockData && switchHelper.reviveSwitch(switchToManipulate, blockData)
-        islHelper.restoreIsls(islsToBreak)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -623,7 +583,6 @@ triggering one more reroute of the current path"
 
         cleanup:
         swPair && lockKeeper.cleanupTrafficShaperRules(swPair.dst.regions)
-        islHelper.restoreIsls([mainPathUniqueIsl, commonIsl])
     }
 
     def singleSwitchFlow() {
@@ -652,7 +611,6 @@ triggering one more reroute of the current path"
     }
 
     def cleanup() {
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
     }
 }
@@ -661,8 +619,12 @@ triggering one more reroute of the current path"
 @Slf4j
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
 @Isolated
+
 class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
     //isolation: global toggle flowsRerouteOnIslDiscoveryEnabled is changed
+    @Autowired
+    CleanupManager cleanupManager
+
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Flow in 'Down' status is rerouted after switchUp event"() {
         given: "First switch pair with two parallel links and two available paths"
@@ -672,6 +634,8 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
                 .withAtLeastNIslsBetweenNeighbouringSwitches(2)
                 .random()
         // disable auto-reroute on islDiscovery event
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {northbound.toggleFeature(FeatureTogglesDto.builder().flowsRerouteOnIslDiscoveryEnabled(true).build())})
         northbound.toggleFeature(FeatureTogglesDto.builder().flowsRerouteOnIslDiscoveryEnabled(false).build())
 
         and: "Second switch pair where the srс switch from the first switch pair is a transit switch"
@@ -799,18 +763,6 @@ Failed to find path with requested bandwidth= ignored"
                 }
             }
         }
-
-        cleanup: "Restore topology, delete the flow and reset costs"
-        flowHelperV2.safeDeleteFlow(firstFlow.flowId)
-        flowHelperV2.safeDeleteFlow(secondFlow.flowId)
-        !isSwitchActivated && blockData && lockKeeper.reviveSwitch(switchPair1.src, blockData)
-        northbound.toggleFeature(FeatureTogglesDto.builder().flowsRerouteOnIslDiscoveryEnabled(true).build())
-        wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(switchPair1.src.dpId).state == SwitchChangeType.ACTIVATED
-        }
-        islHelper.restoreIsls(islsToBreak + islToBreak)
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        database.resetCosts(topology.isls)
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
@@ -832,6 +784,8 @@ Failed to find path with requested bandwidth= ignored"
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
         def involvedIsls = pathHelper.getInvolvedIsls(currentPath)
         def altIsls = topology.getRelatedIsls(topologyHelper.getSwitch(flow.getSource().getSwitchId())) - involvedIsls
+        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
+                {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
         altIsls.each {isl ->
             def linkProp = islUtils.toLinkProps(isl, [cost: "1"])
             northbound.updateLinkProps([linkProp])
@@ -907,10 +861,6 @@ Failed to find path with requested bandwidth= ignored"
         wait(rerouteDelay + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
-
-        cleanup:
-        islHelper.restoreIsls([islToFail, islToBlink])
-        database.resetCosts()
     }
 
     def noIntermediateSwitchFlow(int minAltPathsCount = 0, boolean getAllPaths = false) {

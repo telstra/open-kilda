@@ -1,5 +1,16 @@
 package org.openkilda.functionaltests.spec.links
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.stats.SwitchStats
+import org.openkilda.model.SwitchFeature
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Ignore
+import spock.lang.Narrative
+import spock.lang.Shared
+
 import static org.junit.Assume.assumeNotNull
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -11,18 +22,6 @@ import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.testing.Constants.DefaultRule.DROP_LOOP_RULE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.model.stats.SwitchStats
-import org.openkilda.model.SwitchFeature
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
-import org.springframework.beans.factory.annotation.Autowired
-import spock.lang.Ignore
-import spock.lang.Narrative
-import spock.lang.Shared
 
 @Narrative("Verify scenarios around replugging ISLs between different switches/ports.")
 @Tags([TOPOLOGY_DEPENDENT])
@@ -261,7 +260,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         def notConnectedIsl = topology.notConnectedIsls.find { it.srcSwitch.features.contains(SwitchFeature.BFD) &&
                 it.srcSwitch != isl.dstSwitch }
         assumeTrue(notConnectedIsl as boolean, "Require at least one 'not connected' ISL")
-        northboundV2.setLinkBfd(isl)
+        islHelper.setLinkBfd(isl)
         Wrappers.wait(WAIT_OFFSET) {
             [isl, isl.reversed].each {
                 verifyAll(northbound.getLink(it)) {
@@ -334,6 +333,5 @@ class IslReplugSpec extends HealthCheckSpecification {
 
         cleanup: "Removed Moved ISL, turn off bfd" //this cleanup is not comprehensive
         newIsl && northbound.deleteLink(islUtils.toLinkParameters(newIsl))
-        northboundV2.deleteLinkBfd(newOldIsl)
     }
 }

@@ -141,11 +141,6 @@ class PathsSpec extends HealthCheckSpecification {
         errorDetails.errorMessage == "Switch $switchPair.src.dpId doesn't support $VXLAN " +
                 "encapsulation type. Choose one of the supported encapsulation types $encapsTypesWithoutVxlan or " +
                 "update switch properties and add needed encapsulation type."
-
-        cleanup:
-        initProps.each { sw, swProps ->
-            switchHelper.updateSwitchProperties(sw, swProps)
-        }
     }
 
     @Tags(LOW_PRIORITY)
