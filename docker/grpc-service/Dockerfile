@@ -19,4 +19,4 @@ FROM ${base_image}
 ADD BUILD/grpc-service/libs/grpc-service.jar /app/
 ADD BUILD/grpc-service/resources/log4j2.xml /app
 WORKDIR /app
-CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseContainerSupport", "-jar", "grpc-service.jar"]
+CMD ["java", "-XX:+PrintFlagsFinal", "-jar", "grpc-service.jar"]
