@@ -134,6 +134,7 @@ add or modify the line with the `vm.max_map_count` setting:
 ```shell
 vm.max_map_count=262144
 ```
+To apply the changes, restart the host or execute: `sudo sysctl --system`.
 
 ### How to build OpenKilda Controller
 
