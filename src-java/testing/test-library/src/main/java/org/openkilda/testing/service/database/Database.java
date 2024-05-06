@@ -28,7 +28,6 @@ import org.openkilda.model.TransitVlan;
 import org.openkilda.model.YFlow;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.history.FlowEvent;
-import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 
 import java.time.Instant;
@@ -103,9 +102,9 @@ public interface Database {
 
     Set<Cookie> getHaFlowCookies(String haFlowId);
 
-    Set<Cookie> getHaSubFlowsCookies(List<HaSubFlow> subFlows);
+    Set<Cookie> getHaSubFlowsCookies(List<String> haSubFlowIds);
 
-    Set<FlowMeter> getHaFlowMeters(List<HaSubFlow> subFlows, String haFlowId);
+    Set<FlowMeter> getHaFlowMeters(List<String> haSubFlowIds, String haFlowId);
 
     //Y-Flows
 

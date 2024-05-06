@@ -1,5 +1,20 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.model.HaFlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
+import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.functionaltests.model.stats.Direction
+import org.openkilda.functionaltests.model.stats.FlowStats
+import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+import spock.lang.Narrative
+import spock.lang.Shared
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
@@ -14,23 +29,6 @@ import static org.openkilda.functionaltests.model.stats.Status.ERROR
 import static org.openkilda.functionaltests.model.stats.Status.SUCCESS
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
-import org.openkilda.functionaltests.helpers.model.HaFlowExtended
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
-import org.openkilda.functionaltests.helpers.model.SwitchTriplet
-import org.openkilda.functionaltests.model.stats.Direction
-import org.openkilda.functionaltests.model.stats.FlowStats
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
-
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.Narrative
-import spock.lang.Shared
 
 @Narrative("""This spec tests 'periodic ping' functionality.""")
 @Tags([HA_FLOW])
@@ -51,11 +49,11 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     HaFlowFactory haFlowFactory
 
     @Tags([LOW_PRIORITY])
-    def "Able to turn off periodic pings on a HA-Flow"() {
+    def "Able to turn off periodic pings on an HA-Flow"() {
         given: "An HA-Flow with periodic pings turned on"
         def swT = topologyHelper.findSwitchTripletWithYPointOnSharedEp()
         def haFlow = haFlowFactory.getBuilder(swT).withPeriodicPing(true)
-                .build().waitForBeingInState(FlowState.UP)
+                .build().create()
         assert haFlow.periodicPings
 
         and: "Neither of the sub-flows end on Y-Point (ping is disabled for such kind of HA-Flow)"
@@ -63,7 +61,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         assert !paths.sharedPath.path.forward.nodes.nodes
 
         wait(STATS_LOGGING_TIMEOUT) {
-            assert flowStats.of(haFlow.getSubFlows().get(0).getFlowId()).get(LATENCY, REVERSE).hasNonZeroValues()
+            assert flowStats.of(haFlow.subFlows.first().haSubFlowId).get(LATENCY, REVERSE).hasNonZeroValues()
         }
         when: "Turn off periodic pings"
         def updatedHaFlow = haFlow.partialUpdate(HaFlowPatchPayload.builder().periodicPings(false).build())
@@ -75,14 +73,11 @@ class HaFlowPingSpec extends HealthCheckSpecification {
 
         and: "There is no metrics for HA-subflows"
         timedLoop(pingInterval + WAIT_OFFSET) {
-            [haFlow.subFlows*.flowId, [FORWARD, REVERSE]].combinations().each {String flowId, Direction direction ->
+            [haFlow.subFlows*.haSubFlowId, [FORWARD, REVERSE]].combinations().each {String flowId, Direction direction ->
                     def stats = flowStats.of(flowId).get(LATENCY, direction)
                     assert stats != null && !stats.hasNonZeroValuesAfter(afterUpdateTime + 1000)
             }
         }
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
@@ -90,7 +85,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         given: "Pinned HA-flow with periodic pings turned on which won't be rerouted after ISL fails"
         def swT = topologyHelper.findSwitchTripletWithYPointOnSharedEp()
         def haFlow = haFlowFactory.getBuilder(swT).withPeriodicPing(true).withPinned(true)
-                .build().waitForBeingInState(FlowState.UP)
+                .build().create()
         assert haFlow.periodicPings
 
         and: "Neither of the sub-flows end on Y-Point (ping is disabled for such kind of HA-Flow)"
@@ -124,13 +119,10 @@ class HaFlowPingSpec extends HealthCheckSpecification {
                 stats.get(LATENCY, direction, SUCCESS).hasNonZeroValuesAfter(afterFailTime)
             }
         }
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 
     def "Able to turn on periodic pings on an Ha-flow"() {
-        given: "Create a Ha-flow without periodic pings turned on"
+        given: "Create an Ha-flow without periodic pings turned on"
         def swT = topologyHelper.findSwitchTripletWithYPointOnSharedEp()
         def beforeCreationTime = new Date().getTime()
         def haFlow = haFlowFactory.getRandom(swT)
@@ -150,15 +142,12 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         and: "Metrics for HA-subflows have 'success' in tsdb"
         wait(pingInterval + WAIT_OFFSET, 2) {
             withPool {
-                [haFlow.subFlows*.flowId, [FORWARD, REVERSE]].combinations().eachParallel {
+                [haFlow.subFlows*.haSubFlowId, [FORWARD, REVERSE]].combinations().eachParallel {
                     String flowId, Direction direction ->
                         flowStats.of(flowId).get(LATENCY, direction, SUCCESS).hasNonZeroValuesAfter(beforeCreationTime)
                 }
             }
         }
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 
 
@@ -178,9 +167,6 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         !pingResult.isPingSuccess()
         pingResult.haFlowId == haFlow.haFlowId
         pingResult.error == "Temporary disabled. HaFlow ${haFlow.haFlowId} has one sub-flow with endpoint switch equals to Y-point switch"
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 
     @Tags([LOW_PRIORITY])
@@ -210,9 +196,6 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         pingResult.subFlows.each {subFlow ->
             assert subFlow.reverse.pingSuccess && !subFlow.reverse.error
         }
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 
     private void arePingRuleCountersGrow(SwitchTriplet swT, HaFlowExtended haFlow) {
@@ -228,6 +211,6 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     }
 
     private long getPacketCountOfVlanPingRule(SwitchId switchId, HaFlowExtended haFlow) {
-        return switchRulesFactory.get(switchId).pingRule(haFlow.encapsulationType).packetCount
+        return switchRulesFactory.get(switchId).pingRule(haFlow.encapsulationType.toString()).packetCount
     }
 }

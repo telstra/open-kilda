@@ -44,9 +44,6 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
         then: "HA-Flow is validated successfully"
         validationResult.asExpected
         validationResult.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty() }
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 
     def "HA-Flow validation should fail in case of missing rule on #switchRole switch"() {
@@ -69,15 +66,12 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
             assert missingRules.get(0).getRule().contains(haFlowRuleToDelete.getCookie().toString())
         }
 
-        cleanup:
-        haFlow && haFlow.delete()
-
         where:
         switchRole        | switchToManipulate
         "shared endpoint" | { HaFlowExtended flow -> flow.sharedEndpoint.switchId }
-        "other endpoint"  | { HaFlowExtended flow -> flow.subFlows.shuffled().first().endpoint.switchId }
+        "other endpoint"  | { HaFlowExtended flow -> flow.subFlows.shuffled().first().endpointSwitchId }
         "transit"         | { HaFlowExtended flow ->
-            (flow.retrievedAllEntityPaths().getInvolvedSwitches(true) - (flow.subFlows*.endpoint.switchId + flow.sharedEndpoint.switchId)).first()
+            (flow.retrievedAllEntityPaths().getInvolvedSwitches(true) - (flow.subFlows*.endpointSwitchId + flow.sharedEndpoint.switchId)).first()
         }
     }
 
@@ -104,13 +98,10 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
             assert missingRuleCookieIds(missingMeters) == expectedDeletedSwitchRules.collect { it.getCookie() } as Set
         }
 
-        cleanup:
-        haFlow && haFlow.delete()
-
         where:
         switchRole         | switchToManipulate
         "shared endpoint"  | { HaFlowExtended flow -> flow.sharedEndpoint.switchId }
-        "other endpoint"   | { HaFlowExtended flow -> flow.subFlows.shuffled().first().endpoint.switchId }
+        "other endpoint"   | { HaFlowExtended flow -> flow.subFlows.shuffled().first().endpointSwitchId }
         "transit (YPoint)" | { HaFlowExtended flow ->
             def flowPath = flow.retrievedAllEntityPaths()
             flowPath.sharedPath.path.isPathAbsent() ? flow.sharedEndpoint.switchId : flowPath.sharedPath.path.forward.nodes.nodes.last().switchId

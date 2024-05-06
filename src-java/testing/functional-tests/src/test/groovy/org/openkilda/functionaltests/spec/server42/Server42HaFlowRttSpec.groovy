@@ -1,12 +1,15 @@
 package org.openkilda.functionaltests.spec.server42
 
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.VXLAN
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
-import static org.openkilda.messaging.payload.flow.FlowEncapsulationType.VXLAN
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.STATS_FROM_SERVER42_LOGGING_TIMEOUT
@@ -40,6 +43,8 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     SwitchRulesFactory switchRulesFactory
+    @Autowired
+    CleanupManager cleanupManager
 
     @Tags(TOPOLOGY_DEPENDENT)
     def "Create an Ha-Flow (#description) with server42 Rtt feature and check datapoints in tsdb"() {
@@ -51,33 +56,30 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
 
         when: "Set server42FlowRtt toggle to true"
         def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {featureToggles.server42FlowRtt(flowRttToggleInitialState)})
         !flowRttToggleInitialState && featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on all switches"
-        def initialSwitchesProps = [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
+        [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
 
         and: "Create Ha-Flow"
-        HaFlowExtended haFlow = haFlowBuilder(swT).build().waitForBeingInState(FlowState.UP)
+        HaFlowExtended haFlow = haFlowBuilder(swT).build().create()
 
         then: "Check if stats for FORWARD and REVERSE directions are available for the first sub-Flow"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            def subFlow1Stats = flowStats.of(haFlow.subFlows.first().flowId)
+            def subFlow1Stats = flowStats.of(haFlow.subFlows.first().haSubFlowId)
             assert subFlow1Stats.get(FLOW_RTT, FORWARD, Origin.SERVER_42).hasNonZeroValues()
             assert subFlow1Stats.get(FLOW_RTT, REVERSE, Origin.SERVER_42).hasNonZeroValues()
         }
 
         and: "Check if stats for FORWARD and REVERSE directions are available for the second sub-Flow"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            def subFlow2Stats = flowStats.of(haFlow.subFlows.last().flowId)
+            def subFlow2Stats = flowStats.of(haFlow.subFlows.last().haSubFlowId)
             assert subFlow2Stats.get(FLOW_RTT, FORWARD, Origin.SERVER_42).hasNonZeroValues()
             assert subFlow2Stats.get(FLOW_RTT, REVERSE, Origin.SERVER_42).hasNonZeroValues()
         }
-
-        cleanup: "Revert system to original state"
-        haFlow && haFlow.delete() && switchHelper.verifyAbsenceOfServer42FlowRttRules(initialSwitchesProps.keySet())
-        flowRttToggleInitialState != null && featureToggles.server42FlowRtt(flowRttToggleInitialState)
-        initialSwitchesProps && switchHelper.revertToOriginSwitchSetup(initialSwitchesProps, flowRttToggleInitialState)
 
         where:
         description                                                                  | haFlowBuilder
@@ -103,11 +105,13 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
 
         and: "Set server42FlowRtt toggle to true"
         def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {featureToggles.server42FlowRtt(flowRttToggleInitialState)})
         !flowRttToggleInitialState && featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on all switches"
-        def initialSwitchesProps = [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
+        [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, true)] }
 
         and: "Create Ha-Flow"
         HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
@@ -115,11 +119,11 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
 
         and: "Verify server42 rtt stats are available for both sub-Flows in forward and reverse direction"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            def subFlow1Stats = flowStats.of(haFlow.subFlows.first().getFlowId())
+            def subFlow1Stats = flowStats.of(haFlow.subFlows.first().haSubFlowId)
             assert subFlow1Stats.get(FLOW_RTT, FORWARD, Origin.SERVER_42).hasNonZeroValues()
             assert subFlow1Stats.get(FLOW_RTT, REVERSE, Origin.SERVER_42).hasNonZeroValues()
 
-            def subFlow2Stats = flowStats.of(haFlow.subFlows.last().getFlowId())
+            def subFlow2Stats = flowStats.of(haFlow.subFlows.last().haSubFlowId)
             assert subFlow2Stats.get(FLOW_RTT, FORWARD, Origin.SERVER_42).hasNonZeroValues()
             assert subFlow2Stats.get(FLOW_RTT, REVERSE, Origin.SERVER_42).hasNonZeroValues()
         }
@@ -148,13 +152,17 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
         def timeWhenMissingRuleIsDetected = new Date().getTime()
 
         and: "The server42 stats for both sub-Flows in forward direction are not increased"
-        !flowStats.of(haFlow.subFlows.first().flowId).get(FLOW_RTT, FORWARD, Origin.SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
-        !flowStats.of(haFlow.subFlows.last().flowId).get(FLOW_RTT, FORWARD, Origin.SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
+        !flowStats.of(haFlow.subFlows.first().haSubFlowId)
+                .get(FLOW_RTT, FORWARD, Origin.SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
+        !flowStats.of(haFlow.subFlows.last().haSubFlowId)
+                .get(FLOW_RTT, FORWARD, Origin.SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
 
         and: "The server42 stats for both sub-Flows in reverse direction are increased"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET) {
-            assert flowStats.of(haFlow.subFlows.first().flowId).get(FLOW_RTT, REVERSE, Origin.SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
-            assert flowStats.of(haFlow.subFlows.last().flowId).get(FLOW_RTT, REVERSE, Origin.SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
+            assert flowStats.of(haFlow.subFlows.first().haSubFlowId)
+                    .get(FLOW_RTT, REVERSE, Origin.SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
+            assert flowStats.of(haFlow.subFlows.last().haSubFlowId)
+                    .get(FLOW_RTT, REVERSE, Origin.SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
         }
 
         when: "Synchronize the Ha-Flow"
@@ -170,22 +178,17 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
 
         then: "The server42 stats for both FORWARD and REVERSE directions are available for the first sub-flow"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET, 1) {
-            def stats = flowStats.of(haFlow.subFlows.first().flowId)
+            def stats = flowStats.of(haFlow.subFlows.first().haSubFlowId)
             assert stats.get(FLOW_RTT, FORWARD, Origin.SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsReinstalled)
             assert stats.get(FLOW_RTT, REVERSE, Origin.SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsReinstalled)
         }
 
         and: "The server42 stats for both FORWARD and REVERSE directions are available for the second sub-flow"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET) {
-            def stats = flowStats.of(haFlow.subFlows.last().flowId)
+            def stats = flowStats.of(haFlow.subFlows.last().haSubFlowId)
             assert stats.get(FLOW_RTT, FORWARD, Origin.SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
             assert stats.get(FLOW_RTT, REVERSE, Origin.SERVER_42).hasNonZeroValuesAfter(timeWhenMissingRuleIsDetected)
         }
-
-        cleanup: "Revert system to original state"
-        haFlow && haFlow.delete() && switchHelper.verifyAbsenceOfServer42FlowRttRules(initialSwitchesProps.keySet())
-        flowRttToggleInitialState != null && featureToggles.server42FlowRtt(flowRttToggleInitialState)
-        initialSwitchesProps && switchHelper.revertToOriginSwitchSetup(initialSwitchesProps, flowRttToggleInitialState)
 
         where:
         isHaFlowWithSharedPath | swT
