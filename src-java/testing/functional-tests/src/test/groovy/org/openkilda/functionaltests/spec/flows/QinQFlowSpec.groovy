@@ -1,15 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static groovyx.gpars.GParsPool.withPool
-import static org.assertj.core.api.Assertions.assertThat
-import static org.junit.jupiter.api.Assumptions.assumeFalse
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
+import groovy.transform.Memoized
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
@@ -27,16 +19,24 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
-import groovy.transform.Memoized
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Shared
 
 import javax.inject.Provider
 
+import static groovyx.gpars.GParsPool.withPool
+import static org.assertj.core.api.Assertions.assertThat
+import static org.junit.jupiter.api.Assumptions.assumeFalse
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 @Slf4j
+
 class QinQFlowSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
@@ -757,7 +757,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         when: "Delete all flow rules(ingress/egress/shared) on the src switch"
-        northbound.deleteSwitchRules(swP.src.dpId, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
+        switchHelper.deleteSwitchRules(swP.src.dpId, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
 
         then: "System detects missing rules on the src switch"
         def amountOfServer42Rules = switchHelper.getCachedSwProps(swP.src.dpId).server42FlowRtt ? 2 : 0
@@ -836,9 +836,6 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "All involved switches pass switch validation"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(currentPath*.switchId).isEmpty()
-
-        cleanup: "Revert system to original state"
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Memoized

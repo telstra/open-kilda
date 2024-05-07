@@ -1,5 +1,18 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.messaging.payload.flow.FlowPathPayload
+import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+import spock.lang.Narrative
+import spock.lang.See
+import spock.lang.Shared
+
 import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -7,21 +20,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_ACTION
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.flow.FlowPathPayload
-import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
-
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.Narrative
-import spock.lang.See
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/pce-diverse-flows")
 @Narrative("""
@@ -37,6 +36,7 @@ path. The cost of paths for diverse flows is calculated in real time and consist
 
 Refer to https://github.com/telstra/open-kilda/issues/1231 for more details.
 """)
+
 class FlowDiversitySpec extends HealthCheckSpecification {
 
     @Value('${diversity.isl.cost}')
@@ -44,6 +44,9 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
     @Value('${diversity.switch.cost}')
     int diversitySwitchCost
+
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     @Tags(SMOKE)
     def "Able to create diverse flows"() {
@@ -194,9 +197,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         and: "The 'diverse_with' field is removed"
         !northboundV2.getFlow(flow3.flowId).diverseWith
-
-        cleanup: "Delete flows"
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
@@ -221,10 +221,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         then: "The second flow is built through the same path as the first flow"
         flow2Path == flow1Path
-
-        cleanup: "Restore topology, delete flows and reset costs"
-        islHelper.restoreIsls(broughtDownIsls)
-        database.resetCosts(topology.isls)
     }
 
     @Tags(SMOKE)
@@ -251,6 +247,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
             int difference = flow1PathCost - altPathCost
             def firstAltPathIsl = pathHelper.getInvolvedIsls(altPath)[0]
             int firstAltPathIslCost = database.getIslCost(firstAltPathIsl)
+            cleanupManager.addAction(DELETE_ISLS_PROPERTIES, {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
             northbound.updateLinkProps([islUtils.toLinkProps(firstAltPathIsl,
                     ["cost": (firstAltPathIslCost + Math.abs(difference) + 1).toString()])])
         }
@@ -274,9 +271,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def involvedIsls = [flow2Path, flow3Path].collectMany { pathHelper.getInvolvedIsls(it) }
         flow3Path != flow2Path
         involvedIsls.unique(false) == involvedIsls
-
-        cleanup: "Delete flows and link props"
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     def "Able to get flow paths with correct overlapping segments stats (casual flows)"() {

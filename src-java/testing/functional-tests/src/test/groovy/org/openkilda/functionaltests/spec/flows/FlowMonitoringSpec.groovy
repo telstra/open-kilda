@@ -1,9 +1,22 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.functionaltests.model.cleanup.CleanupAfter
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.FlowStats
+import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.model.system.FeatureTogglesDto
+import org.openkilda.model.PathComputationStrategy
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+import spock.lang.Isolated
+import spock.lang.ResourceLock
+import spock.lang.See
+import spock.lang.Shared
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.FLOW_MON_TOGGLE
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -12,25 +25,12 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.CLEAN_LINK_DELAY
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
-import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
 import static org.openkilda.functionaltests.model.stats.Origin.FLOW_MONITORING
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.model.system.FeatureTogglesDto
-import org.openkilda.model.PathComputationStrategy
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.Isolated
-import spock.lang.ResourceLock
-import spock.lang.See
-import spock.lang.Shared
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-monitoring")
 @Tags([VIRTUAL, LOW_PRIORITY])
@@ -55,6 +55,8 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
     Integer flowSlaCheckIntervalSeconds
     @Shared
     def flowLatencySlaTimeoutSeconds = 30 //kilda_flow_latency_sla_timeout_seconds: 30
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     def setupSpec() {
         //setup: Two active switches with two diverse paths
@@ -69,7 +71,7 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         islsToBreak = switchPair.paths.findAll { !paths.contains(it) }
                 .collect { pathHelper.getInvolvedIsls(it).find { !isls.contains(it) && !isls.contains(it.reversed) } }
                 .unique { [it, it.reversed].sort() }
-        islHelper.breakIsls(islsToBreak)
+        islHelper.breakIsls(islsToBreak, CleanupAfter.CLASS)
     }
 
     @ResourceLock(S42_TOGGLE)
@@ -81,6 +83,8 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         and: "flowLatencyMonitoringReactions is enabled in featureToggle"
         and: "Disable s42 in featureToggle for generating flow-monitoring stats"
         def initFeatureToggle = northbound.getFeatureToggles()
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {northbound.toggleFeature(initFeatureToggle)})
         northbound.toggleFeature(FeatureTogglesDto.builder()
                 .flowLatencyMonitoringReactions(true)
                 .server42FlowRtt(false)
@@ -105,6 +109,8 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         String srcInterfaceName = isl.srcSwitch.name + "-" + isl.srcPort
         String dstInterfaceName = isl.dstSwitch.name + "-" + isl.dstPort
         def newLatency = (flow.maxLatency + (flow.maxLatency * flowLatencySlaThresholdPercent)).toInteger()
+        cleanupManager.addAction(CLEAN_LINK_DELAY, {lockKeeper.cleanupLinkDelay(srcInterfaceName)})
+        cleanupManager.addAction(CLEAN_LINK_DELAY, {lockKeeper.cleanupLinkDelay(dstInterfaceName)})
         lockKeeper.setLinkDelay(srcInterfaceName, newLatency)
         lockKeeper.setLinkDelay(dstInterfaceName, newLatency)
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
@@ -125,11 +131,6 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
                 || (history.details.contains("healthy") &&
                     (history.payload.last().action in [REROUTE_SUCCESS,REROUTE_FAIL])) //just check 'reroute'
         }
-
-        cleanup:
-        srcInterfaceName && lockKeeper.cleanupLinkDelay(srcInterfaceName)
-        dstInterfaceName && lockKeeper.cleanupLinkDelay(dstInterfaceName)
-        initFeatureToggle && northbound.toggleFeature(initFeatureToggle)
     }
 
     @ResourceLock(S42_TOGGLE)
@@ -142,6 +143,8 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         and: "flowLatencyMonitoringReactions is disabled in featureToggle"
         and: "Disable s42 in featureToggle for generating flow-monitoring stats"
         def initFeatureToggle = northbound.getFeatureToggles()
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
+                {northbound.toggleFeature(initFeatureToggle)})
         northbound.toggleFeature(FeatureTogglesDto.builder()
                 .flowLatencyMonitoringReactions(false)
                 .server42FlowRtt(false)
@@ -165,6 +168,8 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         String srcInterfaceName = isl.srcSwitch.name + "-" + isl.srcPort
         String dstInterfaceName = isl.dstSwitch.name + "-" + isl.dstPort
         def newLatency = (flow.maxLatency + (flow.maxLatency * flowLatencySlaThresholdPercent)).toInteger()
+        cleanupManager.addAction(CLEAN_LINK_DELAY, {lockKeeper.cleanupLinkDelay(srcInterfaceName)})
+        cleanupManager.addAction(CLEAN_LINK_DELAY, {lockKeeper.cleanupLinkDelay(dstInterfaceName)})
         lockKeeper.setLinkDelay(srcInterfaceName, newLatency)
         lockKeeper.setLinkDelay(dstInterfaceName, newLatency)
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
@@ -177,11 +182,6 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
 
         and: "Flow path is not changed"
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
-
-        cleanup:
-        srcInterfaceName && lockKeeper.cleanupLinkDelay(srcInterfaceName)
-        dstInterfaceName && lockKeeper.cleanupLinkDelay(dstInterfaceName)
-        initFeatureToggle && northbound.toggleFeature(initFeatureToggle)
     }
 
     def setLatencyForPaths(int mainPathLatency, int alternativePathLatency) {
@@ -204,10 +204,5 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         def nanoMultiplier = 1000000
         def expectedNs = expectedMs * nanoMultiplier
         assert Math.abs(expectedNs - actual) <= expectedNs * 0.3, flowStatsResult //less than 0.3 is unstable on jenkins
-    }
-
-    def cleanupSpec() {
-        islHelper.restoreIsls(islsToBreak)
-        getDatabase().resetCosts(getTopology().isls)
     }
 }

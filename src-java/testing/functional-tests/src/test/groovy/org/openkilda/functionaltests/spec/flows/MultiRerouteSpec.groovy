@@ -1,17 +1,17 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.openkilda.functionaltests.extension.tags.Tag.*
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.tools.SoftAssertions
 
 import java.util.concurrent.TimeUnit
+
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 class MultiRerouteSpec extends HealthCheckSpecification {
 
@@ -47,9 +47,11 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         }.unique(false)
         def thinIsl = prefIsls.find { !notPrefIsls.contains(it) }
         def halfOfFlows = flows[0..flows.size() / 2 - 1]
-        long newBw = halfOfFlows.sum { it.maximumBandwidth }
-        [thinIsl, thinIsl.reversed].each { database.updateIslMaxBandwidth(it, newBw) }
-        [thinIsl, thinIsl.reversed].each { database.updateIslAvailableBandwidth(it, newBw) }
+        long newBw = halfOfFlows.sum { it.maximumBandwidth } as Long
+        [thinIsl, thinIsl.reversed].each {
+            islHelper.setAvailableBandwidth(it, newBw)
+            database.updateIslMaxBandwidth(it, newBw)
+        }
 
         and: "Init simultaneous reroute of all flows by bringing current path's ISL down"
         def notCurrentIsls = switchPair.paths.findAll { it != currentPath }.collectMany {
@@ -87,11 +89,5 @@ class MultiRerouteSpec extends HealthCheckSpecification {
 
         and: "None ISLs are oversubscribed"
         northbound.getAllLinks().each { assert it.availableBandwidth >= 0 }
-
-        cleanup: "revert system to original state"
-        islHelper.restoreIsl(islToBreak)
-        [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        database.resetCosts(topology.isls)
     }
 }

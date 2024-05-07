@@ -1,12 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.testing.Constants.DEFAULT_COST
-import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -16,6 +9,13 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.testing.Constants.DEFAULT_COST
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 class SwitchMaintenanceSpec extends HealthCheckSpecification {
 
     @Tags(SMOKE)
@@ -24,7 +24,7 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         def sw = topology.activeSwitches.first()
 
         when: "Set maintenance mode for the switch"
-        def setMaintenance = northbound.setSwitchMaintenance(sw.dpId, true, false)
+        def setMaintenance = switchHelper.setSwitchMaintenance(sw.dpId, true, false)
 
         then: "Maintenance flag for the switch is really set"
         setMaintenance.underMaintenance
@@ -58,9 +58,6 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
             assert database.getIslCost(it) == DEFAULT_COST
             assert database.getIslCost(it.reversed) == DEFAULT_COST
         }
-
-        cleanup:
-        setMaintenance && !unsetMaintenance && northbound.setSwitchMaintenance(sw.dpId, false, false)
     }
 
     @Tags(SMOKE)
@@ -87,7 +84,7 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         assert PathHelper.convert(northbound.getFlowPath(flow2.flowId)) == path
 
         when: "Set maintenance mode without flows evacuation flag for some intermediate switch involved in flow paths"
-        northbound.setSwitchMaintenance(sw.dpId, true, false)
+        switchHelper.setSwitchMaintenance(sw.dpId, true, false)
 
         then: "Flows are not evacuated (rerouted) and have the same paths"
         PathHelper.convert(northbound.getFlowPath(flow1.flowId)) == path
@@ -111,10 +108,6 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         and: "Switch under maintenance is not involved in new flow paths"
         !(sw in pathHelper.getInvolvedSwitches(flow1PathUpdated))
         !(sw in pathHelper.getInvolvedSwitches(flow2PathUpdated))
-
-        cleanup: "Delete flows and unset maintenance mode"
-        northbound.setSwitchMaintenance(sw.dpId, false, false)
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -131,10 +124,10 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         !islUtils.getIslInfo(isl.reversed)
 
         when: "Set maintenance mode for the switch"
-        def setSwMaintenance = northbound.setSwitchMaintenance(isl.srcSwitch.dpId, true, false)
+        switchHelper.setSwitchMaintenance(isl.srcSwitch.dpId, true, false)
 
         and: "Bring port up to discover the deleted link"
-        def portUp = antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
 
         then: "The link is discovered and marked as maintained"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -147,10 +140,5 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
                 assert it.underMaintenance
             }
         }
-
-        cleanup:
-        islHelper.restoreIsl(isl)
-        setSwMaintenance && northbound.setSwitchMaintenance(isl.srcSwitch.dpId, false, false)
-        database.resetCosts(topology.isls)
     }
 }

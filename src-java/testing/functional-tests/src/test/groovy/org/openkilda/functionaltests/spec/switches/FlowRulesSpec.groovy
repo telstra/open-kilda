@@ -1,5 +1,30 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.info.rule.FlowEntry
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.model.cookie.CookieBase.CookieType
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.tools.FlowTrafficExamBuilder
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
+import spock.lang.Shared
+
+import javax.inject.Provider
+
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -17,35 +42,9 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static spock.util.matcher.HamcrestSupport.expect
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.messaging.command.switches.InstallRulesAction
-import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.info.rule.FlowEntry
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.model.cookie.CookieBase.CookieType
-import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Narrative
-import spock.lang.Shared
-
-import javax.inject.Provider
-
 @Narrative("""Verify how Kilda behaves with switch rules (either flow rules or default rules) under different 
 circumstances: e.g. persisting rules on newly connected switch, installing default rules on new switch etc.""")
+
 class FlowRulesSpec extends HealthCheckSpecification {
 
     @Autowired
@@ -111,21 +110,12 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         when: "Delete rules from the switch"
         def expectedRules = data.getExpectedRules(srcSwitch, srcSwDefaultRules)
-        def deletedRules = northbound.deleteSwitchRules(srcSwitch.dpId, data.deleteRulesAction)
+        def deletedRules = switchHelper.deleteSwitchRules(srcSwitch.dpId, data.deleteRulesAction)
 
         then: "The corresponding rules are really deleted"
         deletedRules.size() == data.rulesDeleted
         Wrappers.wait(RULES_DELETION_TIME) {
             compareRules(northbound.getSwitchRules(srcSwitch.dpId).flowEntries, expectedRules)
-        }
-
-        cleanup: "Delete the flow and install default rules if necessary"
-        if (data.deleteRulesAction in [DeleteRulesAction.DROP_ALL, DeleteRulesAction.REMOVE_DEFAULTS]) {
-            flowHelperV2.safeDeleteFlow(flow.getFlowId())
-            northbound.installSwitchRules(srcSwitch.dpId, InstallRulesAction.INSTALL_DEFAULTS)
-            Wrappers.wait(RULES_INSTALLATION_TIME) {
-                assert northbound.getSwitchRules(srcSwitch.dpId).flowEntries.size() == srcSwDefaultRules.size()
-            }
         }
 
         where:
@@ -204,7 +194,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def expectedDeletedRules = northbound.getSwitchRules(data.switch.dpId).flowEntries
                 .findAll { it."$data.identifier" ==  ruleToDelete."$data.identifier" &&
                 !new Cookie(it.cookie).serviceFlag }
-        def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, ruleToDelete."$data.identifier")
+        def deletedRules = switchHelper.deleteSwitchRules(data.switch.dpId, ruleToDelete."$data.identifier")
 
         then: "The requested rules are really deleted"
         deletedRules.size() == expectedDeletedRules.size()
@@ -240,7 +230,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
 
         when: "Delete switch rules by non-existing #data.description"
-        def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.value)
+        def deletedRules = switchHelper.deleteSwitchRules(data.switch.dpId, data.value)
 
         then: "All rules are kept intact"
         deletedRules.size() == 0
@@ -269,7 +259,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def s42IsEnabled = switchHelper.getCachedSwProps(data.switch.dpId).server42FlowRtt
 
         when: "Delete switch rules by #data.description"
-        def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan,
+        def deletedRules = switchHelper.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan,
                 data.encapsulationType, data.outPort)
 
         then: "The requested rules are really deleted"
@@ -328,7 +318,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def originalRules = northbound.getSwitchRules(data.switch.dpId).flowEntries*.cookie.sort()
 
         when: "Delete switch rules by non-existing #data.description"
-        def deletedRules = northbound.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan,
+        def deletedRules = switchHelper.deleteSwitchRules(data.switch.dpId, data.inPort, data.inVlan,
                 data.encapsulationType, data.outPort)
 
         then: "All rules are kept intact"
@@ -405,7 +395,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
             [switchId, (rulesCount)]
         }
         involvedSwitches.each { switchId ->
-            northbound.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
+            switchHelper.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
             Wrappers.wait(RULES_DELETION_TIME) {
                 assert northbound.validateSwitchRules(switchId).missingRules.size() == amountOfRulesMap[switchId]
             }
@@ -432,9 +422,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
                 excessRules.empty
             }
         }
-
-        cleanup: "Delete the flow and reset costs"
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         where:
         description         | maximumBandwidth
@@ -480,8 +467,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         and: "Delete flow rules(for main and protected paths) on involved switches for creating missing rules"
-        commonNodeIds.each { northbound.deleteSwitchRules(it, DeleteRulesAction.IGNORE_DEFAULTS) }
-        uniqueNodes.each { northbound.deleteSwitchRules(it, DeleteRulesAction.IGNORE_DEFAULTS) }
+        commonNodeIds.each { switchHelper.deleteSwitchRules(it, DeleteRulesAction.IGNORE_DEFAULTS) }
+        uniqueNodes.each { switchHelper.deleteSwitchRules(it, DeleteRulesAction.IGNORE_DEFAULTS) }
         commonNodeIds.each { switchId ->
             assert northbound.validateSwitchRules(switchId).missingRules.size() > 0
         }
@@ -667,10 +654,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
             it.packetCount == 0
             it.byteCount == 0
          }
-
-        cleanup: "Revive the ISL back (bring switch port up), delete the flow and reset costs"
-        islHelper.restoreIsl(islToFail)
-        database.resetCosts(topology.isls)
     }
 
     @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY, SMOKE_SWITCHES])//uses legacy 'rules validation', has a switchValidate analog in SwitchValidationSpec
@@ -706,7 +689,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         involvedSwitches.each { switchId ->
-            northbound.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
+            switchHelper.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
             Wrappers.wait(RULES_DELETION_TIME) {
                 assert northbound.validateSwitchRules(switchId).missingRules.size() == rulesCountMap[switchId]
             }

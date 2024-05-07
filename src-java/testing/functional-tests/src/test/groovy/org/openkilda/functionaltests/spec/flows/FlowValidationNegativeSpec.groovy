@@ -1,9 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
-
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
-
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.messaging.command.switches.DeleteRulesAction
@@ -11,10 +8,11 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
-
-import groovy.util.logging.Slf4j
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
+
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 @Slf4j
 @Narrative("""The specification covers the following scenarios:
@@ -25,6 +23,7 @@ import spock.lang.Narrative
                  - ingress, transit and egress switches
                  - Single switch, two switch and three+ switch flow spans.
             """)
+
 class FlowValidationNegativeSpec extends HealthCheckSpecification {
 
     @IterationTag(tags = [SMOKE], iterationNameRegex = /reverse/)
@@ -45,7 +44,7 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         def cookieToDelete = flowType == "forward" ? database.getFlow(flowToBreak.flowId).forwardPath.cookie.value :
                 database.getFlow(flowToBreak.flowId).reversePath.cookie.value
         SwitchId damagedSwitch = damagedFlowSwitches[item]
-        northbound.deleteSwitchRules(damagedSwitch, cookieToDelete)
+        switchHelper.deleteSwitchRules(damagedSwitch, cookieToDelete)
 
         then: "Intact flow should be validated successfully"
         def intactFlowValidation = northbound.validateFlow(intactFlow.flowId)
@@ -174,7 +173,7 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
                     it.match.inPort == protectedPath[0].outputPort.toString()
         }.cookie
 
-        northbound.deleteSwitchRules(switchPair.src.dpId, ruleToDelete)
+        switchHelper.deleteSwitchRules(switchPair.src.dpId, ruleToDelete)
 
         then: "Flow validate detects discrepancies"
         //TODO(andriidovhan) try to extend this test when the issues/2302 is fixed
@@ -186,7 +185,7 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
         def mainPath = flowPathInfo.forwardPath
         def involvedSwitchIds = (mainPath*.switchId + protectedPath*.switchId).unique()
         involvedSwitchIds.each { switchId ->
-            northbound.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
+            switchHelper.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
         }
 
         then: "Flow validate detects discrepancies for all deleted rules"

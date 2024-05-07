@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-
 import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
@@ -15,6 +13,7 @@ import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
@@ -49,9 +48,11 @@ import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FA
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
@@ -69,6 +70,7 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 @Narrative(""""Verify CRUD operations and health of basic vlan flows on different types of switches.
 More specific cases like partialUpdate/protected/diverse etc. are covered in separate specifications
 """)
+
 class FlowCrudSpec extends HealthCheckSpecification {
 
     final static Integer IMPOSSIBLY_LOW_LATENCY = 1
@@ -78,6 +80,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     Provider<TraffExamService> traffExamProvider
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     @Shared
     def getPortViolationErrorDescriptionPattern = { String endpoint, int port, SwitchId swId ->
@@ -419,6 +423,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 "with two possible flow paths at least and different number of hops found")
 
         and: "Make all shorter forward paths not preferable. Shorter reverse paths are still preferable"
+        cleanupManager.addAction(RESET_ISLS_COST, {database.resetCosts(topology.isls)})
         possibleFlowPaths.findAll { it.size() == pathNodeCount }.each {
             pathHelper.getInvolvedIsls(it).each { database.updateIslCost(it, Integer.MAX_VALUE) }
         }
@@ -435,9 +440,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def forwardIsls = pathHelper.getInvolvedIsls(PathHelper.convert(flowPath))
         def reverseIsls = pathHelper.getInvolvedIsls(PathHelper.convert(flowPath, "reversePath"))
         forwardIsls.collect { it.reversed }.reverse() == reverseIsls
-
-        cleanup: "Delete the flow and reset costs"
-        database.resetCosts(topology.isls)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -455,10 +457,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
         def error = thrown(HttpClientErrorException)
         new FlowNotCreatedWithMissingPathExpectedError(
                 ~/Switch ${isolatedSwitch.getDpId()} doesn\'t have links with enough bandwidth/).matches(error)
-
-        cleanup: "Restore connection to the isolated switch and reset costs"
-        islHelper.restoreIsls(connectedIsls)
-        database.resetCosts(topology.isls)
 
         where:
         data << [
@@ -664,10 +662,6 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(
                 getPortViolationErrorDescriptionPattern("source", isl.srcPort, isl.srcSwitch.dpId)).matches(exc)
-
-        cleanup: "Restore state of the ISL"
-        islHelper.restoreIsl(isl)
-        database.resetCosts(topology.isls)
     }
 
     def "Unable to create a flow on an isl port when ISL status is MOVED"() {
@@ -694,6 +688,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(
                 getPortViolationErrorDescriptionPattern("source", isl.srcPort, isl.srcSwitch.dpId)).matches(exc)
+
         cleanup: "Restore status of the ISL and delete new created ISL"
         if (islIsMoved) {
             islUtils.replug(newIsl, true, isl, false, false)
@@ -702,14 +697,13 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
             northbound.deleteLink(islUtils.toLinkParameters(newIsl))
             wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
         }
-        database.resetCosts(topology.isls)
     }
 
     @Tags(SWITCH_RECOVER_ON_FAIL)
     def "System doesn't allow to create a one-switch flow on a DEACTIVATED switch"() {
         given: "Disconnected switch"
         def sw = topology.getActiveSwitches()[0]
-        def blockData = switchHelper.knockoutSwitch(sw, RW)
+        switchHelper.knockoutSwitch(sw, RW)
 
         when: "Try to create a one-switch flow on a deactivated switch"
         def flow = flowHelperV2.singleSwitchFlow(sw)
@@ -719,8 +713,6 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(
                 ~/Source switch $sw.dpId and Destination switch $sw.dpId are not connected to the controller/).matches(exc)
-        cleanup: "Connect switch back to the controller"
-        blockData && switchHelper.reviveSwitch(sw, blockData, true)
     }
 
     def "System allows to CRUD protected flow"() {
@@ -822,8 +814,7 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         def swPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().random()
 
         def initialSrcProps = switchHelper.getCachedSwProps(swPair.src.dpId)
-        def initialSupportedEncapsulations = initialSrcProps.getSupportedTransitEncapsulation().collect()
-        switchHelper.updateSwitchProperties(swPair.getSrc(), initialSrcProps.tap {
+        switchHelper.updateSwitchProperties(swPair.getSrc(), initialSrcProps.jacksonCopy().tap {
             it.supportedTransitEncapsulation = [TRANSIT_VLAN.toString()]})
 
 
@@ -839,11 +830,6 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         new FlowNotCreatedExpectedError(~/Flow\'s source endpoint ${swPair.getSrc().getDpId()} doesn\'t support \
 requested encapsulation type $VXLAN. Choose one of the supported encapsulation \
 types .* or update switch properties and add needed encapsulation type./).matches(exc)
-
-        cleanup:
-        initialSrcProps && switchHelper.updateSwitchProperties(swPair.getSrc(), initialSrcProps.tap {
-            it.supportedTransitEncapsulation = initialSupportedEncapsulations
-        })
     }
 
     def "Flow status accurately represents the actual state of the flow and flow rules"() {
@@ -884,9 +870,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
             }
         }
         northboundV2.getAllFlows().empty
-
-        cleanup:
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tags(LOW_PRIORITY)
@@ -1041,9 +1024,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
         and: "All involved switches pass switch validation"
         def involvedSwitchIds = (currentPath*.switchId + newCurrentPath*.switchId).unique()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
-
-        cleanup: "Revert system to original state"
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     def "System doesn't rebuild path for a flow to more preferable path while updating portNumber/vlanId"() {
@@ -1133,9 +1113,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "All involved switches pass switch validation"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(currentPath*.switchId).isEmpty()
-
-        cleanup: "Revert system to original state"
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])

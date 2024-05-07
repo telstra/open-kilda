@@ -1,26 +1,31 @@
 package org.openkilda.functionaltests.spec.network
 
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
+import org.junit.jupiter.api.parallel.ResourceLock
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.ResourceLockConstants
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.model.system.KildaConfigurationDto
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Shared
 
-import org.junit.jupiter.api.parallel.ResourceLock
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @ResourceLock(ResourceLockConstants.DEFAULT_PATH_COMPUTATION)
+
 class PathComputationSpec extends HealthCheckSpecification {
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     def "Default path computation strategy is used when flow does not specify it"() {
         given: "Default path computation strategy is COST"
-        def initConfig = northbound.getKildaConfiguration()
-        northbound.updateKildaConfiguration(
-                new KildaConfigurationDto(pathComputationStrategy: PathComputationStrategy.COST))
+        def initConfig = kildaConfiguration.getKildaConfiguration()
+        cleanupManager.addAction(OTHER, {kildaConfiguration.updateKildaConfiguration(initConfig)})
+        kildaConfiguration.updatePathComputationStrategy(PathComputationStrategy.COST)
 
         and: "Switch pair with two paths at least"
         def swPair = switchPairs.all().withAtLeastNPaths(2).random()
@@ -45,8 +50,7 @@ class PathComputationSpec extends HealthCheckSpecification {
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == costEffectivePath
 
         when: "Update default strategy to LATENCY"
-        northbound.updateKildaConfiguration(
-                new KildaConfigurationDto(pathComputationStrategy: PathComputationStrategy.LATENCY.toString()))
+        kildaConfiguration.updatePathComputationStrategy(PathComputationStrategy.LATENCY)
 
         then: "Existing flow remains with COST strategy and on the same path"
         northboundV2.getFlow(flow.flowId).pathComputationStrategy == PathComputationStrategy.COST.toString().toLowerCase()
@@ -69,9 +73,7 @@ class PathComputationSpec extends HealthCheckSpecification {
         pathHelper.convert(northbound.getFlowPath(flow2.flowId)) == latencyEffectivePath
 
         cleanup: "Restore kilda config and remove flows, restore costs and latencies"
-        initConfig && northbound.updateKildaConfiguration(initConfig)
         originalLatencies && originalLatencies.each { isl, latency -> database.updateIslLatency(isl, latency) }
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     def "Flow path computation strategy can be updated from LATENCY to COST"() {
@@ -103,7 +105,6 @@ class PathComputationSpec extends HealthCheckSpecification {
 
         cleanup: "Remove the flow, reset latencies and costs"
         originalLatencies && originalLatencies.each { isl, latency -> database.updateIslLatency(isl, latency) }
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     def "Target flow path computation strategy is not applied immediately in case flow was updated partially"() {

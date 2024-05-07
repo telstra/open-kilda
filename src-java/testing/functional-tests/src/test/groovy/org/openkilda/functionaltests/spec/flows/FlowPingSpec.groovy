@@ -16,7 +16,7 @@ import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
@@ -25,7 +25,6 @@ import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v1.flows.PingOutput.PingOutputBuilder
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -37,6 +36,7 @@ This spec tests all the functionality related to flow pings.
 Flow ping feature sends a 'ping' packet at the one end of the flow, expecting that this packet will 
 be delivered at the other end. 'Pings' the flow in both directions(forward and reverse).
 """)
+
 class FlowPingSpec extends HealthCheckSpecification {
 
     @Value('${flow.ping.interval}')
@@ -181,11 +181,6 @@ class FlowPingSpec extends HealthCheckSpecification {
 
         cleanup: "Restore rules, costs and remove the flow"
         rulesToRemove && lockKeeper.addFlows(rulesToRemove)
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
-        }
-        database.resetCosts(topology.isls)
 
         where:
         data << [
@@ -284,7 +279,7 @@ class FlowPingSpec extends HealthCheckSpecification {
             !new Cookie(it.cookie).serviceFlag
         }*.cookie
         rulesToDelete.each { cookie ->
-            northbound.deleteSwitchRules(intermediateSwId, cookie)
+            switchHelper.deleteSwitchRules(intermediateSwId, cookie)
         }
 
         and: "Ping the flow"
