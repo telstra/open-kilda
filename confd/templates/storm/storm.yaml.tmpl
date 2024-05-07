@@ -68,18 +68,13 @@ supervisor.slots.ports:
 #     argument:
 #       - endpoint: "metrics-collector.mycompany.org"
 
-## Enabling Storm monitoring via JMX
-# These options enable remote JMX. Use a client (such as VisualVM or JConsole) to connect and gather JVM data.
-# Since Storm is executed inside a docker container, the ports specified here must be forwarded and appropriate rules created for the host's firewall.
-# Don't forget to comment out default settings.
-#nimbus.childopts: "-Xmx4g -Djava.net.preferIPv4Stack=true -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9446 -Djava.rmi.server.hostname=172.19.114.89 -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false"
-#worker.childopts: "-Xmx512m -XX:+UseG1GC -Djava.net.preferIPv4Stack=true -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9447 -Djava.rmi.server.hostname=172.19.114.89 -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false"
-#supervisor.childopts: "-Xmx4g -Djava.net.preferIPv4Stack=true -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9448 -Djava.rmi.server.hostname=172.19.114.89 -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false"
-
 ## Memory settings
-nimbus.childopts: "-Xmx4g -Djava.net.preferIPv4Stack=true"
-worker.childopts: "-Xmx512m -XX:+UseG1GC -Djava.net.preferIPv4Stack=true"
-supervisor.childopts: "-Xmx4g -Djava.net.preferIPv4Stack=true"
+nimbus.childopts: "-Xmx2g -Djava.net.preferIPv4Stack=true"
+
+worker.childopts: "-Xmx512m -Djava.net.preferIPv4Stack=true"
+
+supervisor.childopts: "-Xmx512m -Djava.net.preferIPv4Stack=true"
+
 ui.childopts: "-Xmx512m"
 
 nimbus.task.timeout.secs: 30
@@ -98,19 +93,18 @@ topology.executor.receive.buffer.size: 1024 # the queue size that needs to be pr
 topology.transfer.buffer.size: 1024
 
 topology.spout.wait.strategy: org.apache.storm.policy.WaitStrategyProgressive
-topology.backpressure.wait.strategy: org.apache.storm.policy.WaitStrategyProgressive
-topology.bolt.wait.strategy: org.apache.storm.policy.WaitStrategyProgressive
-
 topology.spout.wait.progressive.level1.count: 1
 topology.spout.wait.progressive.level2.count: 1
-topology.spout.wait.progressive.level3.sleep.millis: 5
+topology.spout.wait.progressive.level3.sleep.millis: 15
 
+topology.bolt.wait.strategy: org.apache.storm.policy.WaitStrategyProgressive
 topology.bolt.wait.progressive.level1.count: 1
 topology.bolt.wait.progressive.level2.count: 1
-topology.bolt.wait.progressive.level3.sleep.millis: 5
+topology.bolt.wait.progressive.level3.sleep.millis: 15
 
+topology.backpressure.wait.strategy: org.apache.storm.policy.WaitStrategyProgressive
 topology.backpressure.wait.progressive.level1.count: 1
 topology.backpressure.wait.progressive.level2.count: 1
-topology.backpressure.wait.progressive.level3.sleep.millis: 5
+topology.backpressure.wait.progressive.level3.sleep.millis: 15
 
 topology.stats.sample.rate: 0.05
