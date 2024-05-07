@@ -5,7 +5,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.ResourceLockConstants
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto
@@ -24,10 +23,9 @@ class PathComputationSpec extends HealthCheckSpecification {
 
     def "Default path computation strategy is used when flow does not specify it"() {
         given: "Default path computation strategy is COST"
-        def initConfig = northbound.getKildaConfiguration()
-        cleanupManager.addAction(OTHER, {northbound.updateKildaConfiguration(initConfig)})
-        northbound.updateKildaConfiguration(
-                new KildaConfigurationDto(pathComputationStrategy: PathComputationStrategy.COST))
+        def initConfig = kildaConfiguration.getKildaConfiguration()
+        cleanupManager.addAction(OTHER, {kildaConfiguration.updateKildaConfiguration(initConfig)})
+        kildaConfiguration.updatePathComputationStrategy(PathComputationStrategy.COST)
 
         and: "Switch pair with two paths at least"
         def swPair = switchPairs.all().withAtLeastNPaths(2).random()
@@ -52,8 +50,7 @@ class PathComputationSpec extends HealthCheckSpecification {
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == costEffectivePath
 
         when: "Update default strategy to LATENCY"
-        northbound.updateKildaConfiguration(
-                new KildaConfigurationDto(pathComputationStrategy: PathComputationStrategy.LATENCY.toString()))
+        kildaConfiguration.updatePathComputationStrategy(PathComputationStrategy.LATENCY)
 
         then: "Existing flow remains with COST strategy and on the same path"
         northboundV2.getFlow(flow.flowId).pathComputationStrategy == PathComputationStrategy.COST.toString().toLowerCase()
