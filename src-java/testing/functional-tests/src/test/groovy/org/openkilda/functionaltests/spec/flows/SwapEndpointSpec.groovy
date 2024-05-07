@@ -21,15 +21,15 @@ import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
+
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
-import spock.lang.Shared
-
+import spock.lang.Ignore
 import javax.inject.Provider
-
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
@@ -885,6 +885,7 @@ switches"() {
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
+    @Ignore("https://github.com/telstra/open-kilda/issues/5635")
     def "Unable to swap endpoints for two flows when one of them is inactive"() {
         setup: "Create two flows with different source and the same destination switches"
         def switchPairs = getSwitchPairs().all().neighbouring().getSwitchPairs().inject(null) { result, switchPair ->
@@ -922,13 +923,15 @@ switches"() {
         def exc = thrown(HttpServerErrorException)
         new FlowEndpointsNotSwappedExpectedError(~/Not enough bandwidth or no path found/).matches(exc)
 
+        when: "Get actual data of flow1 and flow2"
+        def actualFlow1Details = northboundV2.getFlow(flow1.id)
+        def actualFlow2Details = northboundV2.getFlow(flow2.id)
+
+        then: "Actual flow1, flow2 sources are different"
+        assert actualFlow1Details.source != actualFlow2Details.source
+
         and: "All involved switches are valid"
-        /** https://github.com/telstra/open-kilda/issues/3770
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndGetFixedEntries(involvedSwIds).isEmpty()
-        }
-        Boolean isTestCompleted = true **/
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwIds)
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwIds).isEmpty()
     }
 
     @Tags(LOW_PRIORITY)

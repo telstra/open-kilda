@@ -102,6 +102,9 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         and: "Make only one alternative path available for both flows"
         def flow1ActualIsl = pathHelper.getInvolvedIsls(flow1Path).first()
         def altIsls = topology.getRelatedIsls(switchPair.src) - flow1ActualIsl
+        /* altIsls can have only 1 element (the only one alt ISL).
+        In this case it will be set under maintenance mode, and breaking the other
+        alternative ISLs will be skipped: "altIsls - altIsls.first()" will be empty. */
         islHelper.breakIsls(altIsls - altIsls.first())
 
         and: "Set maintenance mode for the first link involved in alternative path"
