@@ -167,8 +167,7 @@ class BfdSpec extends HealthCheckSpecification {
         }
 
         when: "Set BFD toggle to 'off' state"
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.useBfdForIslIntegrityCheck(true)})
-        def toggleOff = featureToggles.useBfdForIslIntegrityCheck(false)
+        featureToggles.useBfdForIslIntegrityCheck(false)
 
         and: "Interrupt ISL connection by breaking rule on a-switch"
         lockKeeper.removeFlows([isl.aswitch])
@@ -187,7 +186,7 @@ class BfdSpec extends HealthCheckSpecification {
 
         when: "Set BFD toggle back to 'on' state and restore the ISL"
         lockKeeper.addFlows([isl.aswitch])
-        def toggleOn = featureToggles.useBfdForIslIntegrityCheck(true)
+        featureToggles.useBfdForIslIntegrityCheck(true)
         Wrappers.wait(discoveryAuxiliaryInterval + WAIT_OFFSET) {
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
             assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED

@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.helpers.builder
 
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.northbound.dto.v2.yflows.SubFlow
+
 import static org.openkilda.functionaltests.helpers.FlowHelperV2.availableVlanList
 import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
 import static org.openkilda.functionaltests.helpers.FlowNameGenerator.Y_FLOW
@@ -13,8 +16,6 @@ import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
-import org.openkilda.northbound.dto.v2.yflows.SubFlowUpdatePayload
-import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload
 import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpoint
 import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpointEncapsulation
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -22,29 +23,30 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
 import com.github.javafaker.Faker
-import groovy.transform.ToString
 import groovy.util.logging.Slf4j
 
 @Slf4j
-@ToString(includeNames = true, excludes = 'northbound, northboundV2, topologyDefinition')
 class YFlowBuilder {
 
-    YFlowCreatePayload yFlowRequest
-
-    NorthboundService northbound
-    NorthboundServiceV2 northboundV2
-    TopologyDefinition topologyDefinition
+    YFlowExtended yFlow
 
     static def random = new Random()
     static def faker = new Faker()
 
-    YFlowBuilder(SwitchTriplet swT, NorthboundService northbound, NorthboundServiceV2 northboundV2, TopologyDefinition topologyDefinition,
-                 boolean useTraffgenPorts = true, List<SwitchPortVlan> busyEndpoints = []) {
-        this.northbound = northbound
-        this.northboundV2 = northboundV2
-        this.topologyDefinition = topologyDefinition
+    YFlowBuilder(SwitchTriplet swT,
+                 NorthboundService northbound,
+                 NorthboundServiceV2 northboundV2,
+                 TopologyDefinition topologyDefinition,
+                 CleanupManager cleanupManager,
+                 boolean useTraffgenPorts = true,
+                 List<SwitchPortVlan> busyEndpoints = []) {
+        yFlow = new YFlowExtended(Y_FLOW.generateId(),
+        northbound,
+        northboundV2,
+        topologyDefinition,
+        cleanupManager)
 
-        def se = YFlowSharedEndpoint.builder()
+        yFlow.sharedEndpoint = YFlowSharedEndpoint.builder()
                 .switchId(swT.shared.dpId)
                 .portNumber(getRandomAvailablePort(swT.shared, topologyDefinition, useTraffgenPorts,
                         busyEndpoints.findAll { it.sw == swT.shared.dpId }*.port))
@@ -53,12 +55,12 @@ class YFlowBuilder {
         def subFlows
         //single switch Y-Flow
         if (swT.isSingleSwitch()) {
-            busyEndpoints << new SwitchPortVlan(se.switchId, se.portNumber)
+            busyEndpoints << new SwitchPortVlan(yFlow.sharedEndpoint.switchId, yFlow.sharedEndpoint.portNumber)
             def epPort = getRandomAvailablePort(swT.shared, topologyDefinition, useTraffgenPorts, busyEndpoints*.port)
             def availableVlanList = availableVlanList(busyEndpoints*.vlan).shuffled()
             subFlows = [swT.ep1, swT.ep2].collect { sw ->
                 def seVlan = availableVlanList.get(new Random().nextInt(availableVlanList.size()))
-                def ep = SubFlowUpdatePayload.builder()
+                def ep = SubFlow.builder()
                         .sharedEndpoint(YFlowSharedEndpointEncapsulation.builder().vlanId(seVlan).build())
                         .endpoint(FlowEndpointV2.builder()
                                 .switchId(sw.dpId)
@@ -71,8 +73,8 @@ class YFlowBuilder {
         } else {
             subFlows = [swT.ep1, swT.ep2].collect { sw ->
                 def seVlan = randomVlan(busyEndpoints*.vlan)
-                busyEndpoints << new SwitchPortVlan(se.switchId, se.portNumber, seVlan)
-                def ep = SubFlowUpdatePayload.builder()
+                busyEndpoints << new SwitchPortVlan(yFlow.sharedEndpoint.switchId, yFlow.sharedEndpoint.portNumber, seVlan)
+                def ep = SubFlow.builder()
                         .sharedEndpoint(YFlowSharedEndpointEncapsulation.builder().vlanId(seVlan).build())
                         .endpoint(FlowEndpointV2.builder()
                                 .switchId(sw.dpId)
@@ -85,153 +87,149 @@ class YFlowBuilder {
                 ep
             }
         }
-        String flowId = Y_FLOW.generateId()
-        subFlows.first().flowId = "S1." + flowId
-        subFlows.last().flowId = "S2." + flowId
-        this.yFlowRequest = YFlowCreatePayload.builder()
-                .yFlowId(flowId)
-                .sharedEndpoint(se)
-                .subFlows(subFlows)
-                .maximumBandwidth(1000)
-                .ignoreBandwidth(false)
-                .periodicPings(false)
-                .description(generateDescription())
-                .strictBandwidth(false)
-                .encapsulationType(TRANSIT_VLAN.toString())
-                .pathComputationStrategy(COST.toString())
-                .build()
+        subFlows.first().flowId = "S1." + yFlow.yFlowId
+        subFlows.last().flowId = "S2." + yFlow.yFlowId
+        yFlow.subFlows = subFlows
+        yFlow.maximumBandwidth = 1000
+        yFlow.ignoreBandwidth = false
+        yFlow.periodicPings = false
+        yFlow.description = generateDescription()
+        yFlow.strictBandwidth = false
+        yFlow.encapsulationType = TRANSIT_VLAN
+        yFlow.pathComputationStrategy = COST
+        yFlow.diverseWithFlows = [] as Set
+        yFlow.diverseWithYFlows = [] as Set
+        yFlow.diverseWithHaFlows = [] as Set
     }
 
     YFlowBuilder withProtectedPath(boolean allocateProtectedPath) {
-        this.yFlowRequest.allocateProtectedPath = allocateProtectedPath
+        yFlow.allocateProtectedPath = allocateProtectedPath
         return this
     }
 
     YFlowBuilder withMaxLatency(Long latency) {
-        this.yFlowRequest.maxLatency = latency
+        yFlow.maxLatency = latency
         return this
     }
 
     YFlowBuilder withMaxLatencyTier2(Long latency) {
-        this.yFlowRequest.maxLatencyTier2 = latency
+        yFlow.maxLatencyTier2 = latency
         return this
     }
 
     YFlowBuilder withEncapsulationType(FlowEncapsulationType encapsulationType) {
-        this.yFlowRequest.encapsulationType = encapsulationType.toString()
+        yFlow.encapsulationType = encapsulationType
         return this
     }
 
     YFlowBuilder withDiverseFlow(String flowId) {
-        this.yFlowRequest.diverseFlowId = flowId
+        yFlow.diverseWithFlows.add(flowId)
         return this
     }
 
     YFlowBuilder withPeriodicPings(boolean periodicPings) {
-        this.yFlowRequest.periodicPings = periodicPings
+        yFlow.periodicPings = periodicPings
         return this
     }
 
     YFlowBuilder withBandwidth(Long bandwidth) {
-        this.yFlowRequest.maximumBandwidth = bandwidth
+        yFlow.maximumBandwidth = bandwidth
         return this
     }
 
     YFlowBuilder withEp1QnQ(Integer innerVlan = new Random().nextInt(4095)) {
-        this.yFlowRequest.subFlows.first().endpoint.innerVlanId = innerVlan
+        yFlow.subFlows.first().endpoint.innerVlanId = innerVlan
         return this
     }
 
     YFlowBuilder withEp2QnQ(Integer innerVlan = new Random().nextInt(4095)) {
-        this.yFlowRequest.subFlows.last().endpoint.innerVlanId = innerVlan
+        yFlow.subFlows.last().endpoint.innerVlanId = innerVlan
         return this
     }
 
     YFlowBuilder withSharedEpQnQ(Integer innerVlan1 = new Random().nextInt(4095), Integer innerVlan2 = new Random().nextInt(4095)) {
-        this.yFlowRequest.subFlows.first().sharedEndpoint.innerVlanId = innerVlan1
-        this.yFlowRequest.subFlows.last().sharedEndpoint.innerVlanId = innerVlan2
+        yFlow.subFlows.first().sharedEndpoint.innerVlanId = innerVlan1
+        yFlow.subFlows.last().sharedEndpoint.innerVlanId = innerVlan2
         return this
     }
 
 
     YFlowBuilder withEp1AndEp2SameSwitchAndPort() {
-        this.yFlowRequest.subFlows.first().endpoint.switchId = this.yFlowRequest.subFlows.last().endpoint.switchId
-        this.yFlowRequest.subFlows.first().endpoint.portNumber = this.yFlowRequest.subFlows.last().endpoint.portNumber
+        yFlow.subFlows.first().endpoint.switchId = yFlow.subFlows.last().endpoint.switchId
+        yFlow.subFlows.first().endpoint.portNumber = yFlow.subFlows.last().endpoint.portNumber
         return this
     }
 
 
     YFlowBuilder withSameSharedEndpointsVlan() {
-        this.yFlowRequest.subFlows.last().sharedEndpoint.vlanId = this.yFlowRequest.subFlows.first().sharedEndpoint.vlanId
+        yFlow.subFlows.last().sharedEndpoint.vlanId = yFlow.subFlows.first().sharedEndpoint.vlanId
         return this
     }
 
     YFlowBuilder withSharedEndpointsVlan(Integer vlanId1, Integer vlanId2) {
-        this.yFlowRequest.subFlows.first().sharedEndpoint.vlanId = vlanId1
-        this.yFlowRequest.subFlows.last().sharedEndpoint.vlanId = vlanId2
+        yFlow.subFlows.first().sharedEndpoint.vlanId = vlanId1
+        yFlow.subFlows.last().sharedEndpoint.vlanId = vlanId2
         return this
     }
 
     YFlowBuilder withSubFlow2SharedEp(Integer vlan) {
-        this.yFlowRequest.subFlows.last().sharedEndpoint.vlanId = vlan
+        yFlow.subFlows.last().sharedEndpoint.vlanId = vlan
         return this
     }
 
     YFlowBuilder withEp1Vlan(Integer vlan) {
-        this.yFlowRequest.subFlows.first().endpoint.vlanId = vlan
+        yFlow.subFlows.first().endpoint.vlanId = vlan
         return this
     }
 
     YFlowBuilder withEp1AndEp2Vlan(Integer subFlow1Vlan, Integer subFlow2Vlan) {
-        this.yFlowRequest.subFlows.first().endpoint.vlanId = subFlow1Vlan
-        this.yFlowRequest.subFlows.last().endpoint.vlanId = subFlow2Vlan
+        yFlow.subFlows.first().endpoint.vlanId = subFlow1Vlan
+        yFlow.subFlows.last().endpoint.vlanId = subFlow2Vlan
         return this
     }
 
     YFlowBuilder withSharedEpPort(Integer portNumber) {
-        this.yFlowRequest.sharedEndpoint.portNumber = portNumber
+        yFlow.sharedEndpoint.portNumber = portNumber
         return this
     }
 
     YFlowBuilder withEp2Port(Integer portNumber) {
-        this.yFlowRequest.subFlows.last().endpoint.portNumber = portNumber
+        yFlow.subFlows.last().endpoint.portNumber = portNumber
         return this
     }
 
     YFlowBuilder withEp1VlanSameAsEp2Vlan() {
-        this.yFlowRequest.subFlows.first().endpoint.vlanId = this.yFlowRequest.subFlows.last().endpoint.vlanId
+        yFlow.subFlows.first().endpoint.vlanId = yFlow.subFlows.last().endpoint.vlanId
         return this
     }
 
     YFlowBuilder withEp2QnqAsEp1Vlan() {
-        this.yFlowRequest.subFlows.last().endpoint.innerVlanId = this.yFlowRequest.subFlows.first().endpoint.vlanId
-        this.yFlowRequest.subFlows.last().endpoint.vlanId = 0
-        this.yFlowRequest.subFlows.first().endpoint.innerVlanId = 0
+        yFlow.subFlows.last().endpoint.innerVlanId = yFlow.subFlows.first().endpoint.vlanId
+        yFlow.subFlows.last().endpoint.vlanId = 0
+        yFlow.subFlows.first().endpoint.innerVlanId = 0
         return this
     }
 
     YFlowBuilder withSubFlow1SharedEpQnqAsSubFlow2SharedEpVlan() {
-        this.yFlowRequest.subFlows.last().sharedEndpoint.innerVlanId = this.yFlowRequest.subFlows.first().sharedEndpoint.vlanId
-        this.yFlowRequest.subFlows.last().sharedEndpoint.vlanId = 0
-        this.yFlowRequest.subFlows.first().sharedEndpoint.innerVlanId = 0
+        yFlow.subFlows.last().sharedEndpoint.innerVlanId = yFlow.subFlows.first().sharedEndpoint.vlanId
+        yFlow.subFlows.last().sharedEndpoint.vlanId = 0
+        yFlow.subFlows.first().sharedEndpoint.innerVlanId = 0
         return this
     }
 
     YFlowBuilder withEp1OnISLPort() {
-        def islPort = topologyDefinition.getBusyPortsForSwitch(yFlowRequest.subFlows.first().endpoint.switchId).first()
-        this.yFlowRequest.subFlows.first().endpoint.portNumber = islPort
+        def islPort = yFlow.topologyDefinition.getBusyPortsForSwitch(yFlow.subFlows.first().endpoint.switchId).first()
+        yFlow.subFlows.first().endpoint.portNumber = islPort
         return this
     }
 
     YFlowBuilder withSharedEpOnISLPort() {
-        def islPort = topologyDefinition.getBusyPortsForSwitch(yFlowRequest.subFlows.first().endpoint.switchId).first()
-        this.yFlowRequest.sharedEndpoint.portNumber = islPort
+        def islPort = yFlow.topologyDefinition.getBusyPortsForSwitch(yFlow.subFlows.first().endpoint.switchId).first()
+        yFlow.sharedEndpoint.portNumber = islPort
         return this
     }
 
     YFlowExtended build() {
-        log.debug("Adding Y-Flow")
-        def yFlow = northboundV2.addYFlow(yFlowRequest)
-        new YFlowExtended(yFlow, northbound, northboundV2, topologyDefinition)
+        return yFlow
     }
 }

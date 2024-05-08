@@ -55,10 +55,7 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
         assert swT, "There is no switch triplet for the further ha-flow creation"
 
         when: "Set server42FlowRtt toggle to true"
-        def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {featureToggles.server42FlowRtt(flowRttToggleInitialState)})
-        !flowRttToggleInitialState && featureToggles.server42FlowRtt(true)
+        featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on all switches"
@@ -104,10 +101,7 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
         assert swT, "There is no switch triplet for the ha-flow creation"
 
         and: "Set server42FlowRtt toggle to true"
-        def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {featureToggles.server42FlowRtt(flowRttToggleInitialState)})
-        !flowRttToggleInitialState && featureToggles.server42FlowRtt(true)
+        featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on all switches"

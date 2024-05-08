@@ -633,8 +633,6 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
                 .withAtLeastNIslsBetweenNeighbouringSwitches(2)
                 .random()
         // disable auto-reroute on islDiscovery event
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {featureToggles.flowsRerouteOnIslDiscoveryEnabled(true)})
         featureToggles.flowsRerouteOnIslDiscoveryEnabled(false)
 
         and: "Second switch pair where the srс switch from the first switch pair is a transit switch"

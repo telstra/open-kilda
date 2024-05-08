@@ -107,9 +107,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def switchPair = switchPairFilter(switchPairs.all().withBothSwitchesConnectedToServer42()).random()
 
         when: "Set server42FlowRtt toggle to true"
-        def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.server42FlowRtt(flowRttToggleInitialState)})
-        !flowRttToggleInitialState && featureToggles.server42FlowRtt(true)
+        featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on src and dst switches"
@@ -158,9 +156,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         SwitchPair switchPair = switchPairs.all().withBothSwitchesConnectedToServer42().random()
 
         and: "server42FlowRtt feature toggle is set to true"
-        def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.server42FlowRtt(flowRttToggleInitialState)})
-        !flowRttToggleInitialState && featureToggles.server42FlowRtt(true)
+        featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on src and dst switches"
@@ -208,9 +204,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def statsWaitSeconds = 4
 
         and: "server42FlowRtt toggle is turned off"
-        def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.server42FlowRtt(flowRttToggleInitialState)})
-        flowRttToggleInitialState && featureToggles.server42FlowRtt(false)
+        featureToggles.server42FlowRtt(false)
         switchHelper.waitForS42SwRulesSetup(false)
 
         and: "server42FlowRtt is turned off on src and dst"
@@ -296,9 +290,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().withBothSwitchesConnectedToSameServer42Instance().random()
 
         and: "server42FlowRtt feature enabled globally and on src/dst switch"
-        def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.server42FlowRtt(flowRttToggleInitialState)})
-        !flowRttToggleInitialState && featureToggles.server42FlowRtt(true)
+        featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         [switchPair.src, switchPair.dst].each { sw -> switchHelper.setServer42FlowRttForSwitch(sw, true) }
@@ -341,9 +333,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         given: "A switch pair connected to server42"
         def switchPair = switchPairs.all().withBothSwitchesConnectedToServer42().random()
         //enable server42 in featureToggle and on the switches
-        def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.server42FlowRtt(flowRttToggleInitialState)})
-        !flowRttToggleInitialState && featureToggles.server42FlowRtt(true)
+        featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         def server42Switch = switchPair.src
@@ -419,9 +409,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                 .getReversed()
 
         and: "server42 is enabled on the src sw of the first switch pair"
-        def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.server42FlowRtt(flowRttToggleInitialState)})
-        !flowRttToggleInitialState && featureToggles.server42FlowRtt(true)
+        featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         switchHelper.setServer42FlowRttForSwitch(fl1SwPair.src, true)
@@ -490,9 +478,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().withOnlySourceSwitchConnectedToServer42().random()
 
         when: "Set server42FlowRtt toggle to true"
-        def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.server42FlowRtt(flowRttToggleInitialState)})
-        !flowRttToggleInitialState && featureToggles.server42FlowRtt(true)
+        featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on src switch"
@@ -531,9 +517,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         assumeTrue(switchPair != null, "Was not able to find a switchPair with a server42 connection")
 
         and: "server42FlowRtt toggle is set to true"
-        def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.server42FlowRtt(flowRttToggleInitialState)})
-        !flowRttToggleInitialState && featureToggles.server42FlowRtt(true)
+        featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on src and dst switches"
@@ -603,11 +587,8 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         given: "Two active switches, src has server42 connected with incorrect config in swProps"
         def switchPair = switchPairs.all().withOnlySourceSwitchConnectedToServer42().random()
 
-        def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, { featureToggles.server42FlowRtt(flowRttToggleInitialState) })
-        !flowRttToggleInitialState && featureToggles.server42FlowRtt(true)
+        featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
-
         switchHelper.setServer42FlowRttForSwitch(switchPair.src, true)
 
         when: "Update the server42 in switch properties on ths src switch(incorrect port)"
@@ -678,10 +659,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().withBothSwitchesConnectedToServer42().random()
 
         and: "server42FlowRtt toggle is set to true"
-        def flowRttToggleInitialState = featureToggles.getFeatureToggles().server42FlowRtt
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {featureToggles.server42FlowRtt(flowRttToggleInitialState)})
-        !flowRttToggleInitialState && featureToggles.server42FlowRtt(true)
+        featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on src/dst switches"

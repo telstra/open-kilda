@@ -71,7 +71,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
 
         def yFlow = yFlowFactory.getBuilder(swT).withEp1QnQ().withEp2QnQ().withSharedEpQnQ()
-                .build().waitForBeingInState(FlowState.UP)
+                .build().create()
 
         def paths = yFlow.retrieveAllEntityPaths()
         def islToFail = paths.subFlowPaths.first().getInvolvedIsls().first()
@@ -138,10 +138,6 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
             assert stats.get(FLOW_RAW_BYTES, subflow.getEndpoint().getSwitchId(), mainForwardCookie).hasNonZeroValues()
             assert stats.get(FLOW_RAW_BYTES, yFlow.getSharedEndpoint().getSwitchId(), mainReverseCookie).hasNonZeroValues()
         }
-
-        cleanup:
-        yFlow && yFlow.delete()
-        database.resetCosts(topology.isls)
     }
 
     @Tags([LOW_PRIORITY])
@@ -164,9 +160,6 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
             yFlow.retrieveDetails().status == FlowState.UP
             yFlowPathAfterReroute == yFlowPathBeforeReroute
         }
-
-        cleanup:
-        yFlow && yFlow.delete()
     }
 
     @Tags([LOW_PRIORITY])
@@ -209,10 +202,6 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
             yFlowPathAfterReroute.subFlowPaths.last().path.forward != yFlowPathBeforeReroute.subFlowPaths.last().path.forward
             yFlowPathAfterReroute.subFlowPaths.last().path.reverse != yFlowPathBeforeReroute.subFlowPaths.last().path.reverse
         }
-
-        cleanup:
-        northbound.deleteLinkProps(northbound.getLinkProps(sharedPathIslBeforeReroute + directSwTripletIsls))
-        yFlow && yFlow.delete()
     }
 
     @Tags([LOW_PRIORITY])
@@ -270,10 +259,6 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
             yFlowPathAfterReroute.subFlowPaths.find { it.flowId != subFlowId }.path.forward == yFlowPathBeforeReroute.subFlowPaths.find { it.flowId != subFlowId }.path.forward
             yFlowPathAfterReroute.subFlowPaths.find { it.flowId != subFlowId }.path.reverse == yFlowPathBeforeReroute.subFlowPaths.find { it.flowId != subFlowId }.path.reverse
         }
-
-        cleanup:
-        northbound.deleteLinkProps(northbound.getLinkProps(islsToModify + directSwTripletIsls))
-        yFlow && yFlow.delete()
     }
 
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
@@ -309,10 +294,5 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
             yFlow.retrieveDetails().status == FlowState.DEGRADED
             yFlowPathAfterReroute == yFlowPathBeforeReroute
         }
-
-        cleanup:
-        islHelper.restoreIsls(broughtDownIsls)
-        yFlow.waitForBeingInState(FlowState.UP)
-        yFlow && yFlow.delete()
     }
 }

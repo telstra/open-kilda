@@ -72,7 +72,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
             ![switchPair.getSrc(), switchPair.getDst()].contains(it)
         }
 
-        yFlow = yFlowFactory.getRandom(switchTriplet)
+        yFlow = yFlowFactory.getRandom(switchTriplet, true, [], CLASS)
         yFlowSubFlow1Id = yFlow.subFlows.first().flowId
         yFlowSubFlow2Id = yFlow.subFlows.last().flowId
     }
@@ -165,6 +165,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         def swT = topologyHelper.getSwitchTriplet(switchProtectedPathGoesThrough.dpId,
                 switchProtectedPathGoesThrough.dpId, switchProtectedPathGoesThrough.dpId)
         def yFlow = yFlowFactory.getRandom(swT, false)
+
         when: "Request flows on switch"
         def flows = switchHelper.getFlowsV2(switchProtectedPathGoesThrough, [])
 
@@ -172,11 +173,5 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         flows.flowsByPort.collectMany { it.value }*.flowId
                 .containsAll(yFlow.subFlows*.flowId)
 
-        cleanup:
-        yFlow && yFlow.delete()
-    }
-
-    def cleanupSpec() {
-       yFlow.delete()
     }
 }

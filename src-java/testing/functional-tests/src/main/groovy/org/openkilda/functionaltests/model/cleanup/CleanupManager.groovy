@@ -86,13 +86,13 @@ class CleanupManager {
 
     private static List<Exception> runActionsByType(ConcurrentHashMap<CleanupActionType, List<Closure>> actions) {
         def exceptions = []
+        exceptions += runActionsSynchronously(firstElementOrEmptyList(actions[RESTORE_FEATURE_TOGGLE]))
         exceptions += runActionsSynchronously(actions[DELETE_FLOW])
         exceptions += runActionsSynchronously(actions[DELETE_YFLOW])
         exceptions += runActionsAsynchronously(actions[REVIVE_SWITCH])
         exceptions += runActionsAsynchronously(actions[RESET_SWITCH_MAINTENANCE])
         /* We don't have tests that change several different toggles, so we can just roll the env back to the initial
         state (which is the first action stored) */
-        exceptions += runActionsSynchronously(firstElementOrEmptyList(actions[RESTORE_FEATURE_TOGGLE]))
         exceptions += runActionsSynchronously(actions[RESTORE_SWITCH_PROPERTIES].reverse())
         exceptions += runActionsAsynchronously(actions[RESTORE_PORT_PROPERTIES].reverse())
         exceptions += runActionsSynchronously(actions[DELETE_LAG_LOGICAL_PORT].reverse())

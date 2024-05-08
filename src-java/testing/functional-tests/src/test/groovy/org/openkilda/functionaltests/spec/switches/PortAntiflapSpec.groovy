@@ -60,9 +60,7 @@ class PortAntiflapSpec extends HealthCheckSpecification {
     CleanupManager cleanupManager
 
     def setupSpec() {
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {featureToggles.floodlightRoutePeriodicSync(true)}, CleanupAfter.CLASS)
-        featureToggles.floodlightRoutePeriodicSync(false)
+        featureToggles.floodlightRoutePeriodicSync(false, CleanupAfter.CLASS)
     }
 
     @Tags(SMOKE)

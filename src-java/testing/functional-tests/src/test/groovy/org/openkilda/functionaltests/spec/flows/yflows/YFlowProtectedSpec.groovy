@@ -83,8 +83,5 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
 
         and: "All involved switches passes switch validation"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
-
-        cleanup:
-        yFlow && yFlow.delete()
     }
 }
