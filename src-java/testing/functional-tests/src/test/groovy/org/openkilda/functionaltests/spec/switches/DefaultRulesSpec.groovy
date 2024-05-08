@@ -1,19 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.messaging.Message
-import org.openkilda.messaging.command.CommandData
-import org.openkilda.messaging.command.CommandMessage
-import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.messaging.command.switches.InstallRulesAction
-import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
-import org.openkilda.model.SwitchFeature
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.model.cookie.CookieBase.CookieType
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import spock.lang.Unroll
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -31,15 +17,29 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static spock.util.matcher.HamcrestSupport.expect
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.messaging.Message
+import org.openkilda.messaging.command.CommandData
+import org.openkilda.messaging.command.CommandMessage
+import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.messaging.command.switches.InstallRulesAction
+import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
+import org.openkilda.model.SwitchFeature
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.model.cookie.CookieBase.CookieType
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+
+import spock.lang.Unroll
+
 class DefaultRulesSpec extends HealthCheckSpecification {
 
     def setupSpec() {
         deleteAnyFlowsLeftoversIssue5480()
     }
 
-    @Unroll("Default rules are installed on #sw.hwSwString")
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
-    def "Default rules are installed on switches"() {
+    def "Default rules are installed on switches #sw.hwSwString"() {
         expect: "Default rules are installed on the switch"
         def cookies = northbound.getSwitchRules(sw.dpId).flowEntries*.cookie
         cookies.sort() == sw.defaultCookies.sort()
@@ -132,7 +132,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     }
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    def "Able to install default rule on #sw.hwSwString [install-action=#data.installRulesAction]"(
+    def "Able to install default rule on switch: #sw.hwSwString [install-action=#data.installRulesAction]"(
             Map data, Switch sw) {
         given: "A switch without rules"
         def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries

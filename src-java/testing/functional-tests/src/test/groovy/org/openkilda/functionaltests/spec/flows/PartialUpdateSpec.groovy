@@ -25,7 +25,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
-import spock.lang.Unroll
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.assertj.core.api.Assertions.assertThat
@@ -562,8 +561,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Unroll("Unable to partial update flow (#data.conflict)")
-    def "Unable to partial update flow when there are conflicting vlans"() {
+    def "Unable to partial update flow when there are conflicting vlans (#data.conflict)"() {
         given: "Two potential flows"
         def swPair = switchPairs.all().random()
         def flow1 = flowHelperV2.randomFlow(swPair, false)
@@ -696,8 +694,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         }
     }
 
-    @Unroll("Unable to partial update flow (maxLatency #maxLatencyAfter and maxLatencyTier2 #maxLatencyT2After)")
-    def "Unable to partial update flow with maxLatency incorrect value"() {
+    def "Unable to partial update flow with maxLatency incorrect value(#description)"() {
         given: "Two potential flows"
         def flow = flowHelperV2.randomFlow(switchPairs.all().random()).tap {
             maxLatency = maxLatencyBefore

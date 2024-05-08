@@ -29,7 +29,6 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
-import spock.lang.Unroll
 
 import javax.inject.Provider
 
@@ -76,7 +75,6 @@ class HaFlowStatSpec extends HealthCheckSpecification {
 
     }
 
-    @Unroll
     def "System is able to collect #stat meter stats"() {
         expect: "#stat stats is available"
         assert stats.get(stat).hasNonZeroValues()
@@ -85,7 +83,6 @@ class HaFlowStatSpec extends HealthCheckSpecification {
         stat << HaFlowStatsMetric.values().findAll { it.getValue().contains("meter.") }
     }
 
-    @Unroll
     def "System is able to collect #stat stats and they grow monotonically"() {
         expect: "#stat stats is available"
         assert stats.get(stat, direction).isGrowingMonotonically()
@@ -95,16 +92,19 @@ class HaFlowStatSpec extends HealthCheckSpecification {
                               [FORWARD, REVERSE]].combinations()
     }
 
-    @Unroll
-    def "System is able to collect latency stats for subflows"() {
-        expect: "#stat stats is available"
+
+    def "System is able to collect latency stats for #description in #direction direction"() {
+        expect: "The appropriate statistics data is available"
         wait(statsRouterRequestInterval) {
             assert flowStats.of(subFlow).get(FLOW_RTT, direction).hasNonZeroValues()
         }
 
         where:
-        [subFlow, direction] << [haFlow.subFlows*.flowId,
-                              [FORWARD, REVERSE]].combinations()
+        description  | direction | subFlow
+        "sub-flow-a" | FORWARD   | haFlow.subFlows.flowId.find { it.contains("haflow-a") }
+        "sub-flow-a" | REVERSE   | haFlow.subFlows.flowId.find { it.contains("haflow-a") }
+        "sub-flow-b" | FORWARD   | haFlow.subFlows.flowId.find { it.contains("haflow-b") }
+        "sub-flow-b" | REVERSE   | haFlow.subFlows.flowId.find { it.contains("haflow-b") }
     }
 
     def cleanupSpec() {

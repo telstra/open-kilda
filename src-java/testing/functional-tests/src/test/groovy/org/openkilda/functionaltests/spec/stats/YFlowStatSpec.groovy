@@ -28,7 +28,6 @@ import org.openkilda.testing.service.traffexam.model.Exam
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
-import spock.lang.Unroll
 
 import javax.inject.Provider
 
@@ -81,7 +80,6 @@ class YFlowStatSpec extends HealthCheckSpecification {
         subflow2Stats = flowStats.of(yFlow.getSubFlows().get(1).getFlowId())
     }
 
-    @Unroll
     def "System is able to collect #stat meter stats and they grow monotonically"() {
         when: "Stats were collected"
         then: "#stat stats is available"
@@ -92,7 +90,6 @@ class YFlowStatSpec extends HealthCheckSpecification {
         stat << YFlowStatsMetric.getEnumConstants()
     }
 
-    @Unroll
     def "System is able to collect subflow #stat-#direction stats and they grow monotonically"() {
         when: "Stats were collected"
         then: "#stat stats is available"

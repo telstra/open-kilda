@@ -22,7 +22,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
-import spock.lang.Unroll
 
 import javax.inject.Provider
 
@@ -183,9 +182,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Unroll("Able to delete switch rules by #data.identifier")
     @Tags([SMOKE, SMOKE_SWITCHES])
-    def "Able to delete switch rules by cookie/priority"() {
+    def "Able to delete switch rules by cookie/priority #data.identifier"() {
         given: "A switch with some flow rules installed"
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flowHelperV2.addFlow(flow)
@@ -216,8 +214,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Unroll("Attempt to delete switch rules by supplying non-existing #data.description leaves all rules intact")
-    def "Attempt to delete switch rules by supplying non-existing cookie/priority leaves all rules intact"() {
+    def "Attempt to delete switch rules by supplying non-existing #data.description leaves all rules intact"() {
         given: "A switch with some flow rules installed"
         assumeTrue(data.description != "priority", "https://github.com/telstra/open-kilda/issues/1701")
 
@@ -253,10 +250,9 @@ class FlowRulesSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Unroll("Able to delete switch rules by #data.description")
     @Tags(SMOKE_SWITCHES)
     @IterationTag(tags = [SMOKE], iterationNameRegex = /inPort/)
-    def "Able to delete switch rules by inPort/inVlan/outPort"() {
+    def "Able to delete switch rules by #data.description"() {
         given: "A switch with some flow rules installed"
         flowHelperV2.addFlow(flow)
         def cookiesBefore = northbound.getSwitchRules(data.switch.dpId).flowEntries*.cookie.sort()
@@ -314,9 +310,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         flow = data.flow as FlowRequestV2
     }
 
-    @Unroll("Attempt to delete switch rules by supplying non-existing #data.description leaves all rules intact")
     @IterationTag(tags = [SMOKE], iterationNameRegex = /inVlan/)
-    def "Attempt to delete switch rules by supplying non-existing inPort/inVlan/outPort leaves all rules intact"() {
+    def "Attempt to delete switch rules by supplying non-existing #data.description keeps all rules intact"() {
         given: "A switch with some flow rules installed"
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flowHelperV2.addFlow(flow)

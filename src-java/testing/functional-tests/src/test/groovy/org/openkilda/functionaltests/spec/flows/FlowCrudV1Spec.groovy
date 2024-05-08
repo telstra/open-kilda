@@ -1,16 +1,28 @@
 package org.openkilda.functionaltests.spec.flows
 
-import com.google.common.collect.Sets
-import groovy.util.logging.Slf4j
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
-import org.openkilda.functionaltests.HealthCheckSpecification
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+import static org.openkilda.testing.tools.KafkaUtils.buildMessage
+
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithMissingPathExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotDeletedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithConflictExpectedError
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -31,6 +43,11 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.FlowNotApplicableException
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
+
+import com.google.common.collect.Sets
+import groovy.util.logging.Slf4j
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
@@ -39,26 +56,9 @@ import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
-import spock.lang.Unroll
 
-import javax.inject.Provider
 import java.time.Instant
-
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.MOVED
-import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-import static org.openkilda.testing.tools.KafkaUtils.buildMessage
+import javax.inject.Provider
 
 @Slf4j
 @See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/usecase/flow-crud-create-full.png",
@@ -149,8 +149,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         srcDstStr = "src:${topology.find(flow.source.datapath).hwSwString}->dst:${topology.find(flow.destination.datapath).hwSwString}"
     }
 
-    @Unroll("Able to create a second flow if #data.description")
-    def "Able to create multiple flows on certain combinations of switch-port-vlans"() {
+    def "Able to create multiple flows with #data.description"() {
         given: "Two potential flows that should not conflict"
         Tuple2<FlowPayload, FlowPayload> flows = data.getNotConflictingFlows()
 
@@ -326,7 +325,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
-    def "Able to create single switch single port flow with different vlan (#flow.source.datapath)"(FlowPayload flow) {
+    def "Able to create single switch single port flow with different vlan (#flow.source.getSwitchDpId().description)"(FlowPayload flow) {
         given: "A flow"
         flowHelper.addFlow(flow)
 
@@ -377,8 +376,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
                 ~/It is not allowed to create one-switch flow for the same ports and VLANs/).matches(error)
     }
 
-    @Unroll("Unable to create flow with #data.conflict")
-    def "Unable to create flow with conflicting vlans or flow IDs"() {
+    def "Unable to create flow with conflict data (#data.conflict)"() {
         given: "A potential flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -412,8 +410,7 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
         ]
     }
 
-    @Unroll("Unable to update flow (#data.conflict)")
-    def "Unable to update flow when there are conflicting vlans"() {
+    def "Unable to update flow when there are conflicting vlans((#data.conflict))"() {
         given: "Two potential flows"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow1 = flowHelper.randomFlow(srcSwitch, dstSwitch, false)
@@ -866,7 +863,7 @@ are not connected to the controller/).matches(exc)
     }
 
     /**
-     * Get list of all unique flows without transit switch (neighboring switches), permute by vlan presence. 
+     * Get list of all unique flows without transit switch (neighboring switches), permute by vlan presence.
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithoutTransitSwitch() {
@@ -894,7 +891,7 @@ are not connected to the controller/).matches(exc)
     }
 
     /**
-     * Get list of all unique flows with transit switch (not neighboring switches), permute by vlan presence. 
+     * Get list of all unique flows with transit switch (not neighboring switches), permute by vlan presence.
      * By unique flows it considers combinations of unique src/dst switch descriptions and OF versions.
      */
     def getFlowsWithTransitSwitch() {

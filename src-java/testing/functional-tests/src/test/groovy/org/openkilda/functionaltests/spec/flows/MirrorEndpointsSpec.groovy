@@ -40,7 +40,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.See
 import spock.lang.Shared
-import spock.lang.Unroll
 
 import javax.inject.Provider
 import java.util.regex.Pattern
@@ -705,8 +704,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     }
 
     @Tags([LOW_PRIORITY])
-    @Unroll("#testData.testName, #testData.mirrorPoint.mirrorPointDirection")
-    def "Test possible error scenarios during mirror point creation"(MirrorErrorTestData testData) {
+    def "Test possible error scenarios during mirror point creation: [#testData.testName, #testData.mirrorPoint.mirrorPointDirection]"(MirrorErrorTestData testData) {
         given: "A flow"
         def flow = testData.flow
         flowHelperV2.addFlow(flow)

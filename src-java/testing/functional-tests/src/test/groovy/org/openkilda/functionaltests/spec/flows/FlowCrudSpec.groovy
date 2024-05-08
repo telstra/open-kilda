@@ -39,7 +39,6 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
-import spock.lang.Unroll
 
 import javax.inject.Provider
 
@@ -160,8 +159,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
         srcDstStr = "src:${topology.find(flow.source.switchId).hwSwString}->dst:${topology.find(flow.destination.switchId).hwSwString}"
     }
 
-    @Unroll("Able to create a second flow if #data.description")
-    def "Able to create multiple flows on certain combinations of switch-port-vlans"() {
+    def "Able to create multiple flows with #data.description"() {
         given: "Two potential flows that should not conflict"
         Tuple2<FlowRequestV2, FlowRequestV2> flows = data.getNotConflictingFlows()
 
@@ -337,7 +335,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    def "Able to create single switch single port flow with different vlan (#flow.source.switchId)"(
+    def "Able to create single switch single port flow with different vlan (#flow.source.switchId.description)"(
             FlowRequestV2 flow) {
         given: "A flow"
         flowHelperV2.addFlow(flow)
@@ -389,8 +387,7 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 ~/It is not allowed to create one-switch flow for the same ports and VLANs/).matches(error)
     }
 
-    @Unroll("Unable to create flow with #data.conflict")
-    def "Unable to create flow with conflicting vlans or flow IDs"() {
+    def "Unable to create flow with conflict data (#data.conflict)"() {
         given: "A potential flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)

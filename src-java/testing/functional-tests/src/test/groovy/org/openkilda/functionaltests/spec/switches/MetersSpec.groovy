@@ -1,26 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import groovy.transform.Memoized
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.meter.MeterEntry
-import org.openkilda.messaging.info.rule.FlowEntry
-import org.openkilda.messaging.info.rule.SwitchFlowEntries
-import org.openkilda.model.SwitchId
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.model.cookie.CookieBase.CookieType
-import org.openkilda.testing.Constants
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Narrative
-import spock.lang.Unroll
-
-import java.math.RoundingMode
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -41,6 +20,27 @@ import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COO
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
+
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.info.meter.MeterEntry
+import org.openkilda.messaging.info.rule.FlowEntry
+import org.openkilda.messaging.info.rule.SwitchFlowEntries
+import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.model.cookie.CookieBase.CookieType
+import org.openkilda.testing.Constants
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+
+import groovy.transform.Memoized
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
+
+import java.math.RoundingMode
 
 @Narrative("""The test suite checks if traffic meters, including default, are set and deleted in a correct way.
 Note that many tests are bind to meter implementations of certain hardware manufacturers.""")
@@ -400,8 +400,7 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
     }
 
     @Tags([HARDWARE, TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    @Unroll("Flow burst should be correctly set on Centec switches in case of #flowRate kbps flow bandwidth")
-    def "Flow burst is correctly set on Centec switches"() {
+    def "Flow burst should be correctly set on Centec switches in case of #flowRate kbps flow bandwidth"() {
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible Centec switch"
         def switches = getCentecSwitches()
         assumeTrue(switches as boolean, "Unable to find required switches in topology")

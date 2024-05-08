@@ -1,5 +1,16 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_RULE
+import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
+import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static spock.util.matcher.HamcrestSupport.expect
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.extension.tags.IterationTag
@@ -18,18 +29,6 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
-import spock.lang.Unroll
-
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_RULE
-import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
-import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static spock.util.matcher.HamcrestSupport.expect
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-ping")
 @Narrative("""
@@ -43,9 +42,8 @@ class FlowPingSpec extends HealthCheckSpecification {
     @Value('${flow.ping.interval}')
     int pingInterval
 
-    @Unroll("Able to ping a flow with vlan between switches #swPair.toString()")
     @Tags([TOPOLOGY_DEPENDENT])
-    def "Able to ping a flow with vlan"(Switch srcSwitch, Switch dstSwitch) {
+    def "Able to ping a flow with vlan between #switchPairDescription"(Switch srcSwitch, Switch dstSwitch) {
         given: "A flow with random vlan"
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flow.encapsulationType=  FlowEncapsulationType.TRANSIT_VLAN
@@ -83,10 +81,9 @@ class FlowPingSpec extends HealthCheckSpecification {
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
-        swPair = new SwitchPair(src: srcSwitch, dst: dstSwitch, paths: [])
+        switchPairDescription = "src[$srcSwitch.description $srcSwitch.ofVersion]-dst[$dstSwitch.description $dstSwitch.ofVersion]"
     }
 
-    @Unroll("Able to ping a flow with vxlan between switches #swPair.toString()")
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to ping a flow with vxlan"() {
         given: "A flow with random vxlan"
@@ -121,9 +118,8 @@ class FlowPingSpec extends HealthCheckSpecification {
         }
     }
 
-    @Unroll("Able to ping a flow with no vlan between switches #swPair.toString()")
     @Tags([TOPOLOGY_DEPENDENT])
-    def "Able to ping a flow with no vlan"(Switch srcSwitch, Switch dstSwitch) {
+    def "Able to ping a flow with no vlan between #switchPairDescription"(Switch srcSwitch, Switch dstSwitch) {
         given: "A flow with no vlan"
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flow.source.vlanId = 0
@@ -144,12 +140,12 @@ class FlowPingSpec extends HealthCheckSpecification {
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
-        swPair = new SwitchPair(src: srcSwitch, dst: dstSwitch, paths: [])
+        switchPairDescription = "src[$srcSwitch.description $srcSwitch.ofVersion]-dst[$dstSwitch.description $dstSwitch.ofVersion]"
+
     }
 
-    @Unroll("Flow ping can detect a broken #description")
     @IterationTag(tags = [SMOKE], iterationNameRegex = /forward path/)
-    def "Flow ping can detect a broken path for a vlan flow"() {
+    def "Flow ping can detect a broken path(#description) for a vlan flow"() {
         given: "A flow with at least 1 a-switch link"
         def switches = topology.activeSwitches.findAll { !it.centec && it.ofVersion != "OF_12" }
         List<List<PathNode>> allPaths = []

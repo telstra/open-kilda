@@ -1,27 +1,5 @@
 package org.openkilda.functionaltests.spec.server42
 
-import groovy.util.logging.Slf4j
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.SwitchHelper
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.functionaltests.model.stats.IslStats
-import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
-import org.openkilda.messaging.model.system.FeatureTogglesDto
-import org.openkilda.model.SwitchFeature
-import org.openkilda.model.SwitchId
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.model.cookie.CookieBase.CookieType
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
-import spock.lang.Isolated
-import spock.lang.ResourceLock
-import spock.lang.Shared
-import spock.lang.Unroll
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.Assertions.assertThat
@@ -45,6 +23,28 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static spock.util.matcher.HamcrestSupport.expect
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.SwitchHelper
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.functionaltests.model.stats.IslStats
+import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
+import org.openkilda.messaging.model.system.FeatureTogglesDto
+import org.openkilda.model.SwitchFeature
+import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.model.cookie.CookieBase.CookieType
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+
+import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
+import spock.lang.Isolated
+import spock.lang.ResourceLock
+import spock.lang.Shared
+
 @Slf4j
 @ResourceLock(S42_TOGGLE)
 @Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
@@ -64,8 +64,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     int statsWaitSeconds = 4
 
     @Tags([LOW_PRIORITY])
-    @Unroll
-    def "ISL RTT stats are available only if both global and switch toggles are 'on'"() {
+    def "ISL RTT stats are available only if both global and switch toggles are ON (featureToggle: #featureToggle && switchToggle: #switchToggle => statsAvailable: #statsAvailable)"() {
         given: "An active ISL with both switches having server42"
         def server42switchesDpIds = topology.getActiveServer42Switches()*.dpId
         def isl = topology.islsForActiveSwitches.find {

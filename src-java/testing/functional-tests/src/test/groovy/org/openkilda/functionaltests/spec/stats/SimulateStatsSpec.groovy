@@ -19,7 +19,6 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 import spock.lang.Shared
-import spock.lang.Unroll
 import spock.util.mop.Use
 
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
@@ -105,22 +104,21 @@ class SimulateStatsSpec extends HealthCheckSpecification {
 
     }
 
-    @Unroll
     def "Flow stats #metric with big values are properly being saved to stats db (noviflow boundaries)"() {
         expect: "Corresponding entries appear in tsdb"
         getStats(stats).hasValue(value)
 
         where:
-        metric               |getStats | value
-        FLOW_EGRESS_PACKETS  | {FlowStats flStats -> flStats.get(FLOW_EGRESS_PACKETS, REVERSE)} |NOVI_MAX_PACKET_COUNT
-        FLOW_EGRESS_BYTES    | {FlowStats flStats -> flStats.get(FLOW_EGRESS_BYTES, REVERSE)}   |NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE
-        FLOW_EGRESS_BITS     | {FlowStats flStats -> flStats.get(FLOW_EGRESS_BITS, REVERSE)}    |NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE * 8
-        FLOW_INGRESS_PACKETS | {FlowStats flStats -> flStats.get(FLOW_INGRESS_PACKETS, FORWARD)} |NOVI_MAX_PACKET_COUNT
-        FLOW_INGRESS_BYTES   | {FlowStats flStats -> flStats.get(FLOW_INGRESS_BYTES, FORWARD)}|NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE
-        FLOW_INGRESS_BITS    |  {FlowStats flStats -> flStats.get(FLOW_INGRESS_BITS, FORWARD)}|NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE * 8
-        FLOW_RAW_PACKETS     | {FlowStats flStats -> flStats.get(FLOW_RAW_PACKETS, inPort, outPort)}|NOVI_MAX_PACKET_COUNT
-        FLOW_RAW_BYTES       | {FlowStats flStats -> flStats.get(FLOW_RAW_BYTES, inPort, outPort)}|NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE
-        FLOW_RAW_BITS        | {FlowStats flStats -> flStats.get(FLOW_RAW_BITS, inPort, outPort)}|NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE * 8
+        metric               | getStats                                                                | value
+        FLOW_EGRESS_PACKETS  | { FlowStats flStats -> flStats.get(FLOW_EGRESS_PACKETS, REVERSE) }      | NOVI_MAX_PACKET_COUNT
+        FLOW_EGRESS_BYTES    | { FlowStats flStats -> flStats.get(FLOW_EGRESS_BYTES, REVERSE) }        | NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE
+        FLOW_EGRESS_BITS     | { FlowStats flStats -> flStats.get(FLOW_EGRESS_BITS, REVERSE) }         | NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE * 8
+        FLOW_INGRESS_PACKETS | { FlowStats flStats -> flStats.get(FLOW_INGRESS_PACKETS, FORWARD) }     | NOVI_MAX_PACKET_COUNT
+        FLOW_INGRESS_BYTES   | { FlowStats flStats -> flStats.get(FLOW_INGRESS_BYTES, FORWARD) }       | NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE
+        FLOW_INGRESS_BITS    | { FlowStats flStats -> flStats.get(FLOW_INGRESS_BITS, FORWARD) }        | NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE * 8
+        FLOW_RAW_PACKETS     | { FlowStats flStats -> flStats.get(FLOW_RAW_PACKETS, inPort, outPort) } | NOVI_MAX_PACKET_COUNT
+        FLOW_RAW_BYTES       | { FlowStats flStats -> flStats.get(FLOW_RAW_BYTES, inPort, outPort) }   | NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE
+        FLOW_RAW_BITS        | { FlowStats flStats -> flStats.get(FLOW_RAW_BITS, inPort, outPort) }    | NOVI_MAX_PACKET_COUNT * MAX_PACKET_SIZE * 8
     }
 
     @Override

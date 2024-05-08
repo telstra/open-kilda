@@ -462,7 +462,7 @@ class LinkSpec extends HealthCheckSpecification {
         getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
     }
 
-    def "Get links with specifying query parameters"() {
+    def "Get links with specifying query parameters: #description"() {
         when: "Get links with specifying query parameters"
         def links = northbound.getLinks(srcSwId, srcSwPort, dstSwId, dstSwPort)
 
@@ -477,12 +477,12 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         where:
-        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort
-        null                    | null             | null                    | null
-        getIsl().srcSwitch.dpId | null             | null                    | null
-        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | getIsl().dstPort
+        description                              | srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort
+        "without params"                         | null                    | null             | null                    | null
+        "with src(swId)"                         | getIsl().srcSwitch.dpId | null             | null                    | null
+        "with src(swId+port)"                    | getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null
+        "with src(swId+port) and dst(swId)"      | getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null
+        "with src(swId+port) and dst(swId+port)" | getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | getIsl().dstPort
     }
 
     def "Get links with specifying NOT existing query parameters (#item doesn't exist)"() {
