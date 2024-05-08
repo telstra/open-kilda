@@ -116,7 +116,7 @@ class TsdbSpec extends HealthCheckSpecification {
 
     @Tags([HARDWARE])
     def "GRPC stats are being logged for metric:#metric, sw: #sw.hwSwString"(metric, sw) {
-        assumeTrue(northbound.getFeatureToggles().collectGrpcStats,
+        assumeTrue(featureToggles.getFeatureToggles().collectGrpcStats,
 "This test is skipped because 'collectGrpcStats' is disabled")
         expect: "At least 1 result in the past 15 minutes"
         assert !switchStats.of(sw.getDpId(), 15).get(metric).getDataPoints().isEmpty()

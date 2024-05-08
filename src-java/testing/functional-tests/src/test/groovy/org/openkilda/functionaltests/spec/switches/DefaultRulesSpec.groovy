@@ -330,7 +330,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
                 assumeTrue(false, "No suiting switch found")
 
         and: "Server42 is enabled in feature toggle"
-        assumeTrue(northbound.getFeatureToggles().server42FlowRtt)
+        assumeTrue(featureToggles.getFeatureToggles().server42FlowRtt)
 
         when: "Delete the server42 turning rule from the switch"
         def deleteResponse = switchHelper.deleteSwitchRules(sw.dpId, DeleteRulesAction.REMOVE_SERVER_42_TURNING)
@@ -377,7 +377,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         assumeTrue(sw != null, "No suiting switch found")
 
         and: "Server42 is enabled in feature toggle"
-        assumeTrue(northbound.getFeatureToggles().server42IslRtt)
+        assumeTrue(featureToggles.getFeatureToggles().server42IslRtt)
 
         and: "server42IslRtt is enabled on the switch"
         def originSwProps = switchHelper.getCachedSwProps(sw.dpId)

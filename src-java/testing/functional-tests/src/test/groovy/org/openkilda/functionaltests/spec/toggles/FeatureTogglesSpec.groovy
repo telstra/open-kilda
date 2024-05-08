@@ -6,7 +6,7 @@ import org.openkilda.functionaltests.error.flow.FlowForbiddenToDeleteExpectedErr
 import org.openkilda.functionaltests.error.flow.FlowForbiddenToUpdateExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.messaging.model.system.FeatureTogglesDto
+
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Isolated
@@ -36,9 +36,8 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         def flow = flowHelper.addFlow(flowRequest)
 
         when: "Set create_flow toggle to false"
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {northbound.toggleFeature(FeatureTogglesDto.builder().createFlowEnabled(true).build())})
-        def disableFlowCreation = northbound.toggleFeature(FeatureTogglesDto.builder().createFlowEnabled(false).build())
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.createFlowEnabled(true)})
+        def disableFlowCreation = featureToggles.createFlowEnabled(false)
 
         and: "Try to create a new flow"
         flowHelper.addFlow(flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
@@ -60,8 +59,8 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
 
         when: "Set update_flow toggle to false"
         cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {northbound.toggleFeature(FeatureTogglesDto.builder().updateFlowEnabled(true).build())})
-        def disableFlowUpdating = northbound.toggleFeature(FeatureTogglesDto.builder().updateFlowEnabled(false).build())
+                {featureToggles.updateFlowEnabled(true)})
+        def disableFlowUpdating = featureToggles.updateFlowEnabled(false)
 
         and: "Try to update the flow"
         northbound.updateFlow(flowRequest.id, flowRequest.tap { it.description = it.description + "updated" })
@@ -81,8 +80,8 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
 
         when: "Set delete_flow toggle to false"
         cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {northbound.toggleFeature(FeatureTogglesDto.builder().deleteFlowEnabled(true).build())})
-        def disableFlowDeletion = northbound.toggleFeature(FeatureTogglesDto.builder().deleteFlowEnabled(false).build())
+                {featureToggles.deleteFlowEnabled(true)})
+        def disableFlowDeletion = featureToggles.deleteFlowEnabled(false)
 
         and: "Try to delete the flow"
         northbound.deleteFlow(flowRequest.id)
@@ -97,7 +96,7 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         flowHelper.updateFlow(flowRequest.id, flowRequest.tap { it.description = it.description + "updated" })
 
         when: "Set delete_flow toggle back to true"
-        def enableFlowDeletion = northbound.toggleFeature(FeatureTogglesDto.builder().deleteFlowEnabled(true).build())
+        def enableFlowDeletion = featureToggles.deleteFlowEnabled(true)
 
         then: "Able to delete flows"
         flowHelper.deleteFlow(flow.id)

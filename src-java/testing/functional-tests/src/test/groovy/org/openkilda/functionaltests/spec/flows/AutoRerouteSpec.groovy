@@ -12,7 +12,6 @@ import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.messaging.payload.history.FlowHistoryEntry
 import org.openkilda.model.SwitchFeature
@@ -635,8 +634,8 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
                 .random()
         // disable auto-reroute on islDiscovery event
         cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {northbound.toggleFeature(FeatureTogglesDto.builder().flowsRerouteOnIslDiscoveryEnabled(true).build())})
-        northbound.toggleFeature(FeatureTogglesDto.builder().flowsRerouteOnIslDiscoveryEnabled(false).build())
+                {featureToggles.flowsRerouteOnIslDiscoveryEnabled(true)})
+        featureToggles.flowsRerouteOnIslDiscoveryEnabled(false)
 
         and: "Second switch pair where the srс switch from the first switch pair is a transit switch"
         List<PathNode> secondFlowPath

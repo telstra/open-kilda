@@ -73,7 +73,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         assumeTrue(isl != null, "Was not able to find an ISL with a server42 connected")
 
         when: "server42IslRtt feature toggle is set #featureToggle"
-        def islRttFeatureStartState = changeIslRttToggle(featureToggle)
+        changeIslRttToggle(featureToggle)
 
         and: "server42IslRtt is set #switchToggle on src and dst switches"
         [isl.srcSwitch, isl.dstSwitch].each {changeIslRttSwitch(it, switchToggle)}
@@ -110,7 +110,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         assumeTrue(isl != null, "Was not able to find an ISL with both endpoints on the same server42")
 
         when: "server42IslRtt feature toggle is set to true"
-        def islRttFeatureStartState = changeIslRttToggle(true)
+        changeIslRttToggle(true)
 
         and: "server42IslRtt is enabled on src and dst switches"
         [isl.srcSwitch, isl.dstSwitch].each {changeIslRttSwitch(it, true)}
@@ -249,7 +249,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         def islRvIsBroken = true
 
         when: "server42IslRtt feature toggle is set to true"
-        def islRttFeatureStartState = changeIslRttToggle(true)
+        changeIslRttToggle(true)
 
         and: "server42IslRtt is enabled on src and dst switches"
         [isl.srcSwitch, isl.dstSwitch].each {changeIslRttSwitch(it, true)}
@@ -581,10 +581,10 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     }
 
     def changeIslRttToggle(boolean requiredState) {
-        def originalState = northbound.featureToggles.server42IslRtt
+        def originalState = featureToggles.getFeatureToggles().server42IslRtt
         if (originalState != requiredState) {
-            cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {northbound.toggleFeature(FeatureTogglesDto.builder().server42IslRtt(originalState).build())})
-            northbound.toggleFeature(FeatureTogglesDto.builder().server42IslRtt(requiredState).build())
+            cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {featureToggles.server42IslRtt(originalState)})
+            featureToggles.server42IslRtt(requiredState)
         }
         //not going to check rules on every switch in the system. sleep does the trick fine
         sleep(3000)

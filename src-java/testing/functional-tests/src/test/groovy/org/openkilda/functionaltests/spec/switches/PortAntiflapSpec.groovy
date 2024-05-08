@@ -8,7 +8,6 @@ import org.openkilda.functionaltests.helpers.thread.PortBlinker
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.PortChangeType
-import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchFeature
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.springframework.beans.factory.annotation.Autowired
@@ -62,9 +61,8 @@ class PortAntiflapSpec extends HealthCheckSpecification {
 
     def setupSpec() {
         cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {getNorthbound().toggleFeature(FeatureTogglesDto.builder().floodlightRoutePeriodicSync(true).build())},
-                CleanupAfter.CLASS)
-        northbound.toggleFeature(FeatureTogglesDto.builder().floodlightRoutePeriodicSync(false).build())
+                {featureToggles.floodlightRoutePeriodicSync(true)}, CleanupAfter.CLASS)
+        featureToggles.floodlightRoutePeriodicSync(false)
     }
 
     @Tags(SMOKE)
