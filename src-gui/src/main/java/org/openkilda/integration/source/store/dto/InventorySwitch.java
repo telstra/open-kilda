@@ -19,16 +19,15 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
 import lombok.Data;
 
 import java.io.Serializable;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({ "uuid", "switch-id", "description", "state", "name", "common-name", "pop-location", "model",
+@JsonPropertyOrder({"uuid", "switch-id", "description", "name", "common-name", "pop-location", "model",
         "status", "rack-location", "reference-url", "serial-number", "rack-number", "software-version",
-        "manufacturer" })
+        "manufacturer"})
 @Data
 public class InventorySwitch implements Serializable {
 
@@ -42,9 +41,6 @@ public class InventorySwitch implements Serializable {
 
     @JsonProperty("description")
     private String description;
-
-    @JsonProperty("state")
-    private String state;
 
     @JsonProperty("name")
     private String name;

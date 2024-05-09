@@ -39,7 +39,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-public class SwitchStoreService {
+public class SwitchInventoryService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FlowStoreService.class);
 
@@ -65,7 +65,7 @@ public class SwitchStoreService {
             throw new StoreIntegrationException(e);
         }
     }
-    
+
     /**
      * Gets the customer flows.
      *
@@ -88,7 +88,7 @@ public class SwitchStoreService {
             throw new StoreIntegrationException(e);
         }
     }
-    
+
     /**
      * Gets the switch port.
      *
@@ -99,12 +99,12 @@ public class SwitchStoreService {
         try {
             UrlDto urlDto = storeService.getUrl(StoreType.SWITCH_STORE, Url.GET_SWITCH_PORTS);
             AuthConfigDto authDto = authService.getAuth(StoreType.SWITCH_STORE);
-            
+
             Map<String, String> params = new HashMap<String, String>();
             params.put(RequestParams.SWITCH_ID.getName(), switchId);
 
             urlDto.setParams(params);
-            
+
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponseList(urlDto, authDto, Port.class);
         } catch (Exception e) {
@@ -112,8 +112,8 @@ public class SwitchStoreService {
             throw new StoreIntegrationException(e);
         }
     }
-    
-    
+
+
     /**
      * Gets the switch with params.
      *
@@ -122,7 +122,7 @@ public class SwitchStoreService {
     public InventorySwitch getSwitch(String switchId) {
         try {
             UrlDto urlDto = storeService.getUrl(StoreType.SWITCH_STORE, Url.GET_SWITCH);
-            
+
             Map<String, String> params = new HashMap<String, String>();
             params.put(RequestParams.SWITCH_ID.getName(), switchId);
 
