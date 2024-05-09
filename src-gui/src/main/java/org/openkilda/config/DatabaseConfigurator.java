@@ -52,19 +52,19 @@ public class DatabaseConfigurator {
 
     @PersistenceContext
     private EntityManager entityManager;
-    
+
     private static final Logger LOGGER = Logger.getLogger(DatabaseConfigurator.class);
-    
+
     private static final String SCRIPT_FILE_PREFIX = "import-script_";
     private static final String SCRIPT_FILE_SUFFIX = ".sql";
     private static final String SCRIPT_LOCATION = "db";
-    
-    private ResourceLoader resourceLoader;
 
-    private VersionRepository versionEntityRepository;
+    private final ResourceLoader resourceLoader;
 
-    private DataSource dataSource;
-    
+    private final VersionRepository versionEntityRepository;
+
+    private final DataSource dataSource;
+
     public DatabaseConfigurator(@Autowired final VersionRepository versionRepository, final DataSource dataSource,
             final ResourceLoader resourceLoader, EntityManager em) {
         this.versionEntityRepository = versionRepository;
@@ -81,15 +81,15 @@ public class DatabaseConfigurator {
 
     private void loadInitialData() {
         List<Long> versionNumberList = versionEntityRepository.findAllVersionNumber();
-        
-        if (versionNumberList.size() == 0) {
+
+        if (versionNumberList.isEmpty()) {
             try {
 
                 List<VersionEntity> list = new ArrayList<VersionEntity>();
                 List<Long> newVersionList = new ArrayList<Long>();
                 List<Object[]> results = entityManager.createNativeQuery("SELECT v.version_id ,"
                         + "v.version_deployment_date, v.version_number FROM version v").getResultList();
-               
+
                 for (Object[] perTestEntity :results) {
                     VersionEntity versionEntity = new VersionEntity();
                     versionEntity.setVersionId(BigInteger.valueOf(Long.valueOf(
@@ -125,7 +125,7 @@ public class DatabaseConfigurator {
             for (Long scriptFileNumber :  sortedList) {
                 if (!versionNumberList.isEmpty()) {
                     if (!versionNumberList.contains(scriptFileNumber)) {
-                        inputStream = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/" 
+                        inputStream = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/"
                + SCRIPT_FILE_PREFIX + scriptFileNumber + SCRIPT_FILE_SUFFIX).getInputStream();
                         if (inputStream != null) {
                             runScript(inputStream);
@@ -134,7 +134,7 @@ public class DatabaseConfigurator {
                         }
                     }
                 } else {
-                    inputStream = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/" 
+                    inputStream = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/"
                               + SCRIPT_FILE_PREFIX + scriptFileNumber + SCRIPT_FILE_SUFFIX).getInputStream();
                     if (inputStream != null) {
                         runScript(inputStream);
