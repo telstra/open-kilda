@@ -74,7 +74,7 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
         haFlow.validate().asExpected
 
         and: "All involved switches pass switch validation"
-        def involvedSwitches = haFlowPathInfoAfter.getInvolvedSwitches(true)
+        def involvedSwitches = haFlowPathInfoAfter.getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         and: "Traffic passes through HA-Flow"

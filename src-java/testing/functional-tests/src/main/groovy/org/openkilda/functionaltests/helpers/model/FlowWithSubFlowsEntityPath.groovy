@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.helpers.model
 
-
+import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPaths
 import org.openkilda.northbound.dto.v2.yflows.YFlowPaths
@@ -88,9 +88,9 @@ class FlowWithSubFlowsEntityPath {
         subFlowPaths.collect { it.getInvolvedIsls(isForward) }.flatten().unique() as List<Isl>
     }
 
-    List<SwitchId> getInvolvedSwitches(boolean isForward = true) {
+    List<SwitchId> getInvolvedSwitches(Direction direction = Direction.FORWARD) {
         List<SwitchId> switches = []
-        if (isForward) {
+        if (direction == Direction.FORWARD) {
             switches.addAll(sharedPath.path.forward.getInvolvedSwitches() + sharedPath?.protectedPath?.forward?.getInvolvedSwitches())
             subFlowPaths.each { subFlowPath ->
                 switches.addAll(subFlowPath.path.forward.getInvolvedSwitches() + subFlowPath?.protectedPath?.forward?.getInvolvedSwitches())

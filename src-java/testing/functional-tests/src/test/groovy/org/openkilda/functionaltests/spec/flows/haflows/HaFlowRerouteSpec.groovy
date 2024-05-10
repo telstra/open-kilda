@@ -90,7 +90,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         haFlow.validate().asExpected
 
         and: "All involved switches pass switch validation"
-        def allInvolvedSwitchIds = initialPaths.getInvolvedSwitches(true) + newPaths.getInvolvedSwitches(true)
+        def allInvolvedSwitchIds = initialPaths.getInvolvedSwitches() + newPaths.getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
 
         and: "Traffic passes through HA-Flow"
@@ -158,7 +158,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         haFlow.validate().asExpected
 
         and: "All involved switches pass switch validation"
-        def allInvolvedSwitchIds = initialPaths.getInvolvedSwitches(true)+ newPaths.getInvolvedSwitches(true)
+        def allInvolvedSwitchIds = initialPaths.getInvolvedSwitches()+ newPaths.getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
     }
 
@@ -194,6 +194,6 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches pass switch validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(initialPaths.getInvolvedSwitches(true)).isEmpty()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(initialPaths.getInvolvedSwitches()).isEmpty()
     }
 }
