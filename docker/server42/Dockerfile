@@ -22,4 +22,4 @@ ADD BUILD/server42-control-storm-stub/libs/server42-control-storm-stub.jar /app/
 ADD BUILD/server42-control-server-stub/libs/server42-control-server-stub.jar /app/
 
 WORKDIR /app
-CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseContainerSupport", "-jar", "server42-control.jar"]
+CMD ["java", "-jar", "server42-control.jar"]

@@ -24,7 +24,7 @@ ENV DEBIAN_FRONTEND noninteractive
 
 ENV JAVA_VER 17
 ENV JAVA_HOME /usr/lib/jvm/java-17-openjdk-amd64
-ENV JAVA_MEM_CONFIG "-XX:+PrintFlagsFinal -XX:+UnlockExperimentalVMOptions -XX:+UseContainerSupport"
+ENV JAVA_MEM_CONFIG ""
 ENV DEBIAN_FRONTEND noninteractive
 
 COPY app /app
