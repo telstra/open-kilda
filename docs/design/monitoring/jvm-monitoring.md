@@ -5,7 +5,7 @@ This document describes how to enable monitoring for OpenKilda to get runtime in
 To enable JMX for northbound, start NB with the following modifications to northbound dockerfile:
 
 ```dockerfile
-CMD ["java", "-Dcom.sun.management.jmxremote", "-Dcom.sun.management.jmxremote.rmi.port=9445", "-Dcom.sun.management.jmxremote.port=9445", "-Djava.rmi.server.hostname=172.19.114.89", "-Dcom.sun.management.jmxremote.local.only=false", "-Dcom.sun.management.jmxremote.ssl=false", "-Dcom.sun.management.jmxremote.authenticate=false", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseContainerSupport", "-jar", "northbound.jar"]
+CMD ["java", "-Dcom.sun.management.jmxremote", "-Dcom.sun.management.jmxremote.rmi.port=9445", "-Dcom.sun.management.jmxremote.port=9445", "-Djava.rmi.server.hostname=172.19.114.89", "-Dcom.sun.management.jmxremote.local.only=false", "-Dcom.sun.management.jmxremote.ssl=false", "-Dcom.sun.management.jmxremote.authenticate=false", "-jar", "northbound.jar"]
 EXPOSE 9445
 ```
 

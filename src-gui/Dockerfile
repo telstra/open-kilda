@@ -5,5 +5,5 @@ WORKDIR /app
 
 EXPOSE 1010
 
-CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseContainerSupport", "-jar", "openkilda-gui.war"]
+CMD ["java", "-jar", "openkilda-gui.war"]
 
