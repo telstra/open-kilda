@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.helpers.model
 
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -12,11 +13,13 @@ class SwitchRulesFactory {
     @Autowired
     @Qualifier("northboundServiceImpl")
     NorthboundService northboundService
+    @Autowired
+    CleanupManager cleanupManager
 
     @Autowired
     Database database
 
     SwitchRules get(SwitchId switchId) {
-        return new SwitchRules(northboundService, database, switchId)
+        return new SwitchRules(northboundService, database, cleanupManager, switchId)
     }
 }

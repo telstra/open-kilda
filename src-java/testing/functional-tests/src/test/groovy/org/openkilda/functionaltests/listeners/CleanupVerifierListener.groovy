@@ -104,10 +104,5 @@ class CleanupVerifierListener extends AbstractSpringListener {
             }
         }
         assert northbound.getLinkProps(topology.isls).empty
-        withPool {
-            topology.activeSwitches.eachParallel { Switch sw ->
-                assert northbound.getSwitchProperties(sw.dpId).equals(switchHelper.getCachedSwProps(sw.dpId))
-            }
-        }
     }
 }

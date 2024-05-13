@@ -37,7 +37,6 @@ import org.openkilda.model.TransitVlan;
 import org.openkilda.model.YFlow;
 import org.openkilda.model.cookie.Cookie;
 import org.openkilda.model.history.FlowEvent;
-import org.openkilda.northbound.dto.v2.haflows.HaSubFlow;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.persistence.context.PersistenceContext;
 import org.openkilda.persistence.context.PersistenceContextManager;
@@ -527,10 +526,7 @@ public class DatabaseSupportImpl implements Database {
     }
 
     @Override
-    public Set<Cookie> getHaSubFlowsCookies(List<HaSubFlow> subFlows) {
-        Set<String> haSubFlowIds = subFlows.stream()
-                .map(HaSubFlow::getFlowId)
-                .collect(toSet());
+    public Set<Cookie> getHaSubFlowsCookies(List<String> haSubFlowIds) {
         return transactionManager.doInTransaction(() ->
                 flowPathRepository.findAll().stream()
                         .filter(flowPath -> haSubFlowIds.contains(flowPath.getHaSubFlowId()))
@@ -539,11 +535,7 @@ public class DatabaseSupportImpl implements Database {
     }
 
     @Override
-    public Set<FlowMeter> getHaFlowMeters(List<HaSubFlow> subFlows, String haFlowId) {
-        Set<String> haRelatedFlowIds = subFlows.stream()
-                .map(HaSubFlow::getFlowId)
-                .collect(toSet());
-        haRelatedFlowIds.add(haFlowId);
+    public Set<FlowMeter> getHaFlowMeters(List<String> haSubFlowIds, String haFlowId) {
         return transactionManager.doInTransaction(() -> {
             org.openkilda.model.HaFlow haFlowModel = findHaFlow(haFlowId);
             Map<SwitchId, Set<MeterId>> meterMap = new HashMap<>();

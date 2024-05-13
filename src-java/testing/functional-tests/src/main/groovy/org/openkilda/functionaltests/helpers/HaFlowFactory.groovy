@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
@@ -23,18 +24,18 @@ import org.springframework.stereotype.Component
 @Component
 @Scope(SCOPE_PROTOTYPE)
 class HaFlowFactory {
-
     @Autowired
     TopologyDefinition topology
-
     @Autowired @Qualifier("islandNbV2")
     NorthboundServiceV2 northboundV2
+    @Autowired
+    CleanupManager cleanupManager
 
     /*
     This method allows customization of the HA-Flow with desired parameters for further creation
      */
     HaFlowBuilder getBuilder(SwitchTriplet swT, boolean useTraffgenPorts = true, List<SwitchPortVlan> busyEndpoints = []) {
-        return new HaFlowBuilder(swT, northboundV2, topology, useTraffgenPorts, busyEndpoints)
+        return new HaFlowBuilder(swT, northboundV2, topology, cleanupManager, useTraffgenPorts, busyEndpoints)
     }
 
     /*
@@ -43,15 +44,6 @@ class HaFlowFactory {
      */
 
     HaFlowExtended getRandom(SwitchTriplet swT, boolean useTraffgenPorts = true, List<SwitchPortVlan> busyEndpoints = []) {
-        HaFlowBuilder haFlowBuilder = getBuilder(swT, useTraffgenPorts, busyEndpoints)
-        def response = haFlowBuilder.build()
-        assert response.haFlowId
-        HaFlow haFlow = null
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-            haFlow = northboundV2.getHaFlow(response.haFlowId)
-            assert haFlow.status == FlowState.UP.toString()
-                    && haFlow.getSubFlows().status.unique() == [FlowState.UP.toString()], "Flow: ${haFlow}"
-        }
-        return new HaFlowExtended(haFlow, northboundV2, topology)
+        return getBuilder(swT, useTraffgenPorts, busyEndpoints).build().create()
     }
 }

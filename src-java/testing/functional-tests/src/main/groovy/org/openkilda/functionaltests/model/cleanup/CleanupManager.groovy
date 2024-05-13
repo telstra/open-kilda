@@ -88,7 +88,6 @@ class CleanupManager {
         def exceptions = []
         exceptions += runActionsSynchronously(actions[DELETE_FLOW])
         exceptions += runActionsSynchronously(actions[DELETE_YFLOW])
-        exceptions += runActionsSynchronously(actions[DELETE_HAFLOW])
         exceptions += runActionsAsynchronously(actions[REVIVE_SWITCH])
         exceptions += runActionsAsynchronously(actions[RESET_SWITCH_MAINTENANCE])
         /* We don't have tests that change several different toggles, so we can just roll the env back to the initial
@@ -106,6 +105,7 @@ class CleanupManager {
         if (actions[DELETE_ISLS_PROPERTIES]) {
             exceptions += runActionsSynchronously([actions[DELETE_ISLS_PROPERTIES].first()])
         }
+        exceptions += runActionsSynchronously(actions[DELETE_HAFLOW])
         exceptions += runActionsAsynchronously(actions[SYNCHRONIZE_SWITCH])
         exceptions += runActionsSynchronously(actions[RESET_ISL_AVAILABLE_BANDWIDTH])
         exceptions += runActionsSynchronously(actions[OTHER])

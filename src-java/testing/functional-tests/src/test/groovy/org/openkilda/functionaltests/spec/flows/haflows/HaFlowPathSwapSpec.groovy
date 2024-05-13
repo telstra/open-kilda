@@ -14,7 +14,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.model.stats.HaFlowStats
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
@@ -46,7 +45,7 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "No suiting switches found.")
         def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(true)
-                .build().waitForBeingInState(FlowState.UP)
+                .build().create()
 
         and: "Current paths are not equal to protected paths"
         def haFlowPathInfoBefore = haFlow.retrievedAllEntityPaths()
@@ -88,15 +87,11 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
         if (swT.isHaTraffExamAvailable()) {
             Wrappers.wait(STATS_LOGGING_TIMEOUT) {
                 assert haFlowStats.of(haFlow.haFlowId).get(HA_FLOW_RAW_BITS,
-                        REVERSE, haFlow.subFlows.shuffled().first().endpoint).hasNonZeroValuesAfter(timeAfterSwap)
-
+                        REVERSE, haFlow.subFlows.shuffled().first()).hasNonZeroValuesAfter(timeAfterSwap)
                 assert haFlowStats.of(haFlow.haFlowId).get(HA_FLOW_RAW_BITS,
                         FORWARD, haFlow.sharedEndpoint).hasNonZeroValuesAfter(timeAfterSwap)
             }
         }
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 
     @Tags(LOW_PRIORITY)
@@ -105,7 +100,7 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
         def swT = topologyHelper.switchTriplets[0]
         assumeTrue(swT != null, "No suiting switches found.")
         def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(false)
-                .build().waitForBeingInState(FlowState.UP)
+                .build().create()
         assert !haFlow.allocateProtectedPath
 
         when: "Try to swap paths for HA-Flow that doesn't have a protected path"
@@ -117,9 +112,6 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
 
         def errorDescription = exc.responseBodyAsString.to(MessageError).errorDescription
         errorDescription == "Could not swap paths: HA-flow ${haFlow.haFlowId} doesn't have protected path"
-
-        cleanup: "Revert system to original state"
-        haFlow && haFlow.delete()
     }
 
     @Tags(LOW_PRIORITY)
