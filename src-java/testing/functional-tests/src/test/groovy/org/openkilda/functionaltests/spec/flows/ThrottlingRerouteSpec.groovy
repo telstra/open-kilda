@@ -48,7 +48,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         flows found*/
         def swPairs = switchPairs.all(false).neighbouring().getSwitchPairs()
 
-        assumeTrue(swPairs.size() > 3, "Topology is too small to run this test")
+        assumeTrue(swPairs.size() > 4, "Topology is too small to run this test")
         def flows = swPairs.take(5).collect { switchPair ->
             def flow = flowHelperV2.randomFlow(switchPair)
             flowHelperV2.addFlow(flow)
@@ -57,20 +57,30 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         def flowPaths = flows.collect { northbound.getFlowPath(it.flowId) }
 
         when: "All flows break one by one"
+        def timeBeforeBreak = new Date().time
         def brokenIsls = flowPaths.collect {
-            breakFlow(it)
+            breakFlow(it, false)
             //don't sleep here, since there is already an antiFlapMin delay between actual port downs
         }
+        def rerouteTriggersEnd = new Date().time
         /*At this point all reroute triggers have happened. Save this time in order to calculate when the actual
         reroutes will happen (time triggers stopped + reroute delay seconds)*/
-        def rerouteTriggersEnd = new Date()
-        def untilReroutesBegin = { rerouteTriggersEnd.time + rerouteDelay * 1000 - new Date().time }
 
         then: "The oldest broken flow is still not rerouted before rerouteDelay run out"
-        sleep(untilReroutesBegin() - (long) (rerouteDelay * 1000 * 0.5)) //check after 50% of rerouteDelay has passed
-        flowHelper.getLatestHistoryEntry(flows.first().flowId).action == "Flow creating" //reroute didn't start yet
+        Wrappers.wait(rerouteDelay * 3) {
+            assert flowHelper.getLatestHistoryEntry(flows.first().flowId).action == "Flow rerouting"
+            // wait till reroute starts
+        }
+        def rerouteTimestamp = flowHelper.getLatestHistoryEntry(flows.first().flowId).timestampIso
+        // check time diff between the time when reroute was triggered and the first action of reroute in history
+        def differenceInMillis = flowHelper.convertStringTimestampIsoToLong(rerouteTimestamp) - rerouteTriggersEnd
+        // reroute starts not earlier than the expected reroute delay
+        assert differenceInMillis > (rerouteDelay) * 1000
+        // reroute starts not later than 2 seconds later than the expected delay
+        assert differenceInMillis < (rerouteDelay + 2) * 1000
 
         and: "The oldest broken flow is rerouted when the rerouteDelay runs out"
+        def untilReroutesBegin = { rerouteTriggersEnd + rerouteDelay * 1000 - new Date().time }
         def waitTime = untilReroutesBegin() / 1000.0 + PATH_INSTALLATION_TIME * 2
         Wrappers.wait(waitTime) {
             //Flow should go DOWN or change path on reroute. In our case it doesn't matter which of these happen.
@@ -198,7 +208,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
      * @param flowpath path to break
      * @return ISL which 'src' was brought down in order to break the path
      */
-    Isl breakFlow(FlowPathPayload flowpath) {
+    Isl breakFlow(FlowPathPayload flowpath, boolean waitForBrokenIsl = true) {
         def sw = flowpath.forwardPath.first().switchId
         def port = flowpath.forwardPath.first().outputPort
         def brokenIsl = (topology.islsForActiveSwitches +
@@ -207,8 +217,10 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         }
         assert brokenIsl, "This should not be possible. Trying to switch port on ISL which is not present in config?"
         antiflap.portDown(sw, port)
-        Wrappers.wait(WAIT_OFFSET, 0) {
-            assert northbound.getLink(brokenIsl).state == IslChangeType.FAILED
+        if (waitForBrokenIsl) {
+            Wrappers.wait(WAIT_OFFSET, 0) {
+                assert northbound.getLink(brokenIsl).state == IslChangeType.FAILED
+            }
         }
         return brokenIsl
     }
