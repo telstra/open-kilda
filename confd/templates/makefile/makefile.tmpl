@@ -40,6 +40,12 @@ build-stable: build-base compile-blue
 run-dev:
 	docker compose up
 
+.PHONY: rerun-dev
+rerun-dev: clean-test up-test-mode test-topology
+
+.PHONY: rerun-dev-build
+rerun-dev: build-stable rerun-dev
+
 up-test-mode:
 	@echo ~~
 	@echo ~~ Starting KILDA, and will print the status of Storm Topology deployments
