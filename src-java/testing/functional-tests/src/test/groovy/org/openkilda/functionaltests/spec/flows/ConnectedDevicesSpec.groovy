@@ -509,7 +509,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     def "System properly detects devices if feature is 'off' on switch level and 'on' on flow level"() {
         given: "A switch with devices feature turned off"
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
-        def tg = topology.activeTraffGens.shuffled().first()
+        // Skip tg88 due to the issue https://github.com/telstra/open-kilda/issues/5663
+        def tgsWhere5663IsNotReproduced = topology.activeTraffGens
+                .shuffled().findAll { it.name != "tg88" }
+        def tg = tgsWhere5663IsNotReproduced.first()
         def sw = tg.switchConnected
         def swProps = northbound.getSwitchProperties(sw.dpId)
         assert !swProps.switchLldp
