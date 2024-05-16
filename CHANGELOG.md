@@ -1,5 +1,21 @@
 # Changelog
-## v1.157.0 (15/04/2024)
+
+## v1.158.0 (23/04/2024)
+
+### Features:
+-  [#5353](https://github.com/telstra/open-kilda/pull/5353) 5208 add ha flow support into server42
+
+
+### Improvements:
+-  [#5481](https://github.com/telstra/open-kilda/pull/5481) [TEST]: 5208: Server42 RTT: HaFlow [**tests**]
+-  [#5522](https://github.com/telstra/open-kilda/pull/5522) remove opentsdb and hbase (Issue: [#4925](https://github.com/telstra/open-kilda/issues/4925))
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.157.0...v1.158.0).
+
+---
+
+## v1.157.0 (17/04/2024)
 
 ### Bug Fixes:
 -  [#5632](https://github.com/telstra/open-kilda/pull/5632) GUI hotfix.  [**gui**]
