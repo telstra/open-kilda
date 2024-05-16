@@ -42,6 +42,7 @@ import static org.springframework.beans.factory.config.ConfigurableBeanFactory.S
 
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchFeature
@@ -751,5 +752,72 @@ class SwitchHelper {
     @Memoized
     static SwitchPropertiesDto getCachedSwProps(SwitchId switchId) {
         return getCachedAllSwProps().find { it.switchId == switchId }
+    }
+
+    static def setServer42FlowRttForSwitch(Switch sw, boolean isServer42FlowRttEnabled, boolean isS42ToggleOn = true) {
+        def originalProps = northbound.get().getSwitchProperties(sw.dpId)
+        if (originalProps.server42FlowRtt != isServer42FlowRttEnabled) {
+            def s42Config = sw.prop
+            northbound.get().updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap {
+                server42FlowRtt = isServer42FlowRttEnabled
+                server42MacAddress = s42Config ? s42Config.server42MacAddress : null
+                server42Port = s42Config ? s42Config.server42Port : null
+                server42Vlan = s42Config ? s42Config.server42Vlan : null
+            })
+        }
+        int expectedNumberOfS42Rules = (isS42ToggleOn && isServer42FlowRttEnabled) ? getExpectedS42SwitchRulesBasedOnVxlanSupport(sw.dpId) : 0
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert getS42SwitchRules(sw.dpId).size() == expectedNumberOfS42Rules
+        }
+        return originalProps.server42FlowRtt
+    }
+
+    static List<FlowEntry> getS42SwitchRules(SwitchId swId) {
+        northbound.get().getSwitchRules(swId).flowEntries
+                .findAll { it.cookie in [SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE, SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE] }
+    }
+
+    static int getExpectedS42SwitchRulesBasedOnVxlanSupport(SwitchId swId) {
+        //one rule per vlan/vxlan
+        isVxlanEnabled(swId) ? 2 : 1
+    }
+
+    static void waitForS42SwRulesSetup(boolean isS42ToggleOn = true) {
+        List<SwitchPropertiesDto> switchDetails = northboundV2.get().getAllSwitchProperties().switchProperties
+
+        withPool {
+            Wrappers.wait(RULES_INSTALLATION_TIME) {
+                switchDetails.eachParallel { sw ->
+                    def expectedRulesNumber = (isS42ToggleOn && sw.server42FlowRtt) ? getExpectedS42SwitchRulesBasedOnVxlanSupport(sw.switchId) : 0
+                    assert getS42SwitchRules(sw.switchId).size() == expectedRulesNumber
+                }
+            }
+        }
+    }
+
+    static void verifyAbsenceOfServer42FlowRttRules(Set<Switch> switches) {
+        //make sure that s42 rules are deleted
+        withPool {
+            Wrappers.wait(RULES_INSTALLATION_TIME) {
+                switches.eachParallel { sw ->
+                    assert northbound.get().getSwitchRules(sw.dpId).flowEntries.findAll {
+                        new Cookie(it.cookie).getType() in [CookieType.SERVER_42_FLOW_RTT_INPUT,
+                                                            CookieType.SERVER_42_FLOW_RTT_INGRESS]
+                    }.empty
+                }
+            }
+        }
+    }
+
+    static def revertToOriginSwitchSetup(def initialSwitchRttProps, boolean isS42ToggleOn = true) {
+        initialSwitchRttProps.each { sw, state -> setServer42FlowRttForSwitch(sw, state, isS42ToggleOn)  }
+        initialSwitchRttProps.keySet().each { Switch sw ->
+            Wrappers.wait(RULES_INSTALLATION_TIME) {
+                def actualCookies = northbound.get().getSwitchRules(sw.dpId).flowEntries*.cookie
+                actualCookies.removeAll(actualCookies.intersect(sw.defaultCookies))
+                assert actualCookies.isEmpty(), "Switch: ${sw.dpId}." +
+                        "\nDefault rules: \n${sw.defaultCookies} \nNon-default rules: \n${actualCookies}"
+            }
+        }
     }
 }

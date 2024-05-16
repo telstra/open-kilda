@@ -87,6 +87,7 @@ public class RemoveOldRulesAction extends
                     .withHaFlowId(stateMachine.getHaFlowId()));
             stateMachine.fire(Event.RULES_REMOVED);
         } else {
+            commands.removeAll(stateMachine.getTargetSpeakerDataCommands());
             Collection<DeleteSpeakerCommandsRequest> deleteRequests = buildHaFlowDeleteRequests(
                     commands, stateMachine.getCommandContext());
 

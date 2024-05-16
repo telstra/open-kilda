@@ -36,7 +36,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchFeature;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
-import org.openkilda.model.cookie.FlowSegmentCookie.FlowSubType;
+import org.openkilda.model.cookie.FlowSubType;
 import org.openkilda.rulemanager.Constants.Priority;
 import org.openkilda.rulemanager.FlowSpeakerData;
 import org.openkilda.rulemanager.Instructions;

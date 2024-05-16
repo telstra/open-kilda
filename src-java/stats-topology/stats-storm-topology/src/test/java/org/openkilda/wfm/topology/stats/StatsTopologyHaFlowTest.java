@@ -50,6 +50,7 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
+import org.openkilda.model.cookie.FlowSubType;
 import org.openkilda.wfm.share.mappers.FlowPathMapper;
 
 import com.google.common.collect.Lists;
@@ -202,7 +203,7 @@ public class StatsTopologyHaFlowTest extends StatsTopologyBaseTest {
                 false, false, true, SUB_FLOW_ID_SHARED);
 
         FlowSegmentCookie cookieForwardSubflowUpdated1 = haFlowUpdated.getForwardPath()
-                .getCookie().toBuilder().subType(FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1).build();
+                .getCookie().toBuilder().subType(FlowSubType.HA_SUB_FLOW_1).build();
         FlowStatsEntry forwardTransitPoint2Updated = new FlowStatsEntry(
                 1, cookieForwardSubflowUpdated1.getValue(), 130L, 270L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_4, Collections.singletonList(forwardTransitPoint2Updated)));
@@ -215,7 +216,7 @@ public class StatsTopologyHaFlowTest extends StatsTopologyBaseTest {
         validateHaFlowStats(HA_FLOW_ID_1, forwardEgressPoint1Updated, cookieForwardSubflowUpdated1, SWITCH_ID_5,
                 false, true, false, SUB_FLOW_ID_1);
         FlowSegmentCookie cookieForwardSubflowUpdated2 = haFlowUpdated.getForwardPath()
-                .getCookie().toBuilder().subType(FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2).build();
+                .getCookie().toBuilder().subType(FlowSubType.HA_SUB_FLOW_2).build();
         FlowStatsEntry forwardEgressPoint2Updated = new FlowStatsEntry(
                 1, cookieForwardSubflowUpdated2.getValue(), 110L, 250L, 10, 10);
         sendStatsMessage(new FlowStatsData(SWITCH_ID_6, Collections.singletonList(forwardEgressPoint2Updated)));
@@ -1032,17 +1033,17 @@ public class StatsTopologyHaFlowTest extends StatsTopologyBaseTest {
         haFlowPathRepository.add(haPath2);
 
         FlowPath flowPathForward1 = createPathWithSegments(SUB_PATH_ID_1, haPath1, subFlow1,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1, null, switch1, switch2, switch3, switch4, switch5);
+                FlowSubType.HA_SUB_FLOW_1, null, switch1, switch2, switch3, switch4, switch5);
         FlowPath flowPathForward2 = createPathWithSegments(SUB_PATH_ID_2, haPath1, subFlow2,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2, null, switch1, switch2, switch3, switch6);
+                FlowSubType.HA_SUB_FLOW_2, null, switch1, switch2, switch3, switch6);
         haPath1.setSubPaths(Lists.newArrayList(flowPathForward1, flowPathForward2));
         haPath1.setHaSubFlows(Lists.newArrayList(subFlow1, subFlow2));
 
         FlowPath flowPathReverse1 = createPathWithSegments(SUB_PATH_ID_3, haPath2, subFlow1,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1, METER_ID_REVERSE_SUB_PATH_1,
+                FlowSubType.HA_SUB_FLOW_1, METER_ID_REVERSE_SUB_PATH_1,
                 switch5, switch4, switch3, switch2, switch1);
         FlowPath flowPathReverse2 = createPathWithSegments(SUB_PATH_ID_4, haPath2, subFlow2,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2,
+                FlowSubType.HA_SUB_FLOW_2,
                 METER_ID_REVERSE_SUB_PATH_2, switch6, switch3, switch2, switch1);
         haPath2.setSubPaths(Lists.newArrayList(flowPathReverse1, flowPathReverse2));
         haPath2.setHaSubFlows(Lists.newArrayList(subFlow2, subFlow1));
@@ -1093,16 +1094,16 @@ public class StatsTopologyHaFlowTest extends StatsTopologyBaseTest {
         haFlowPathRepository.add(haPath2);
 
         FlowPath flowPathForward1 = create2SwitchPath(SUB_PATH_ID_1, haPath1, subFlow1,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1, switch2, switch3, null);
+                FlowSubType.HA_SUB_FLOW_1, switch2, switch3, null);
         FlowPath flowPathForward2 = create2SwitchPath(SUB_PATH_ID_2, haPath1, subFlow2,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2, switch2, switch4, null);
+                FlowSubType.HA_SUB_FLOW_2, switch2, switch4, null);
         haPath1.setSubPaths(Lists.newArrayList(flowPathForward1, flowPathForward2));
         haPath1.setHaSubFlows(Lists.newArrayList(subFlow1, subFlow2));
 
         FlowPath flowPathReverse1 = create2SwitchPath(SUB_PATH_ID_3, haPath2, subFlow1,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1, switch3, switch2, METER_ID_REVERSE_SUB_PATH_1);
+                FlowSubType.HA_SUB_FLOW_1, switch3, switch2, METER_ID_REVERSE_SUB_PATH_1);
         FlowPath flowPathReverse2 = create2SwitchPath(SUB_PATH_ID_4, haPath2, subFlow2,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2, switch4, switch2, METER_ID_REVERSE_SUB_PATH_2);
+                FlowSubType.HA_SUB_FLOW_2, switch4, switch2, METER_ID_REVERSE_SUB_PATH_2);
         haPath2.setSubPaths(Lists.newArrayList(flowPathReverse1, flowPathReverse2));
         haPath2.setHaSubFlows(Lists.newArrayList(subFlow2, subFlow1));
 
@@ -1152,16 +1153,16 @@ public class StatsTopologyHaFlowTest extends StatsTopologyBaseTest {
         haFlowPathRepository.add(haPath2);
 
         FlowPath flowPathForward1 = createPathWithSegments(SUB_PATH_ID_1, haPath1, subFlow1,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1, null, switch1, switch2, switch3);
+                FlowSubType.HA_SUB_FLOW_1, null, switch1, switch2, switch3);
         FlowPath flowPathForward2 = create2SwitchPath(SUB_PATH_ID_2, haPath1, subFlow2,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2, switch1, switch2, null);
+                FlowSubType.HA_SUB_FLOW_2, switch1, switch2, null);
         haPath1.setSubPaths(Lists.newArrayList(flowPathForward1, flowPathForward2));
         haPath1.setHaSubFlows(Lists.newArrayList(subFlow1, subFlow2));
 
         FlowPath flowPathReverse1 = createPathWithSegments(SUB_PATH_ID_3, haPath2, subFlow1,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1, METER_ID_REVERSE_SUB_PATH_1, switch3, switch2, switch1);
+                FlowSubType.HA_SUB_FLOW_1, METER_ID_REVERSE_SUB_PATH_1, switch3, switch2, switch1);
         FlowPath flowPathReverse2 = create2SwitchPath(SUB_PATH_ID_4, haPath2, subFlow2,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2, switch2, switch1, METER_ID_REVERSE_SUB_PATH_2);
+                FlowSubType.HA_SUB_FLOW_2, switch2, switch1, METER_ID_REVERSE_SUB_PATH_2);
         haPath2.setSubPaths(Lists.newArrayList(flowPathReverse1, flowPathReverse2));
         haPath2.setHaSubFlows(Lists.newArrayList(subFlow2, subFlow1));
 
@@ -1208,16 +1209,16 @@ public class StatsTopologyHaFlowTest extends StatsTopologyBaseTest {
         haFlowPathRepository.add(haPath2);
 
         FlowPath flowPathForward1 = create2SwitchPath(SUB_PATH_ID_1, haPath1, subFlow1,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1, switch1, switch2, null);
+                FlowSubType.HA_SUB_FLOW_1, switch1, switch2, null);
         FlowPath flowPathForward2 = create2SwitchPath(SUB_PATH_ID_2, haPath1, subFlow2,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2, switch1, switch2, null);
+                FlowSubType.HA_SUB_FLOW_2, switch1, switch2, null);
         haPath1.setSubPaths(Lists.newArrayList(flowPathForward1, flowPathForward2));
         haPath1.setHaSubFlows(Lists.newArrayList(subFlow1, subFlow2));
 
         FlowPath flowPathReverse1 = create2SwitchPath(SUB_PATH_ID_3, haPath2, subFlow1,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1, switch2, switch1, METER_ID_REVERSE_SUB_PATH_1);
+                FlowSubType.HA_SUB_FLOW_1, switch2, switch1, METER_ID_REVERSE_SUB_PATH_1);
         FlowPath flowPathReverse2 = create2SwitchPath(SUB_PATH_ID_4, haPath2, subFlow2,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2, switch2, switch1, METER_ID_REVERSE_SUB_PATH_2);
+                FlowSubType.HA_SUB_FLOW_2, switch2, switch1, METER_ID_REVERSE_SUB_PATH_2);
         haPath2.setSubPaths(Lists.newArrayList(flowPathReverse1, flowPathReverse2));
         haPath2.setHaSubFlows(Lists.newArrayList(subFlow2, subFlow1));
 
@@ -1264,16 +1265,16 @@ public class StatsTopologyHaFlowTest extends StatsTopologyBaseTest {
         haFlowPathRepository.add(haPath2);
 
         FlowPath flowPathForward1 = create2SwitchPath(SUB_PATH_ID_1, haPath1, subFlow1,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1, switch1, switch2, null);
+                FlowSubType.HA_SUB_FLOW_1, switch1, switch2, null);
         FlowPath flowPathForward2 = createPathWithSegments(SUB_PATH_ID_2, haPath1, subFlow2,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2, null, switch1);
+                FlowSubType.HA_SUB_FLOW_2, null, switch1);
         haPath1.setSubPaths(Lists.newArrayList(flowPathForward1, flowPathForward2));
         haPath1.setHaSubFlows(Lists.newArrayList(subFlow1, subFlow2));
 
         FlowPath flowPathReverse1 = create2SwitchPath(SUB_PATH_ID_3, haPath2, subFlow1,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1, switch2, switch1, METER_ID_REVERSE_SUB_PATH_1);
+                FlowSubType.HA_SUB_FLOW_1, switch2, switch1, METER_ID_REVERSE_SUB_PATH_1);
         FlowPath flowPathReverse2 = createPathWithSegments(SUB_PATH_ID_4, haPath2, subFlow2,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2, METER_ID_REVERSE_SUB_PATH_2, switch1);
+                FlowSubType.HA_SUB_FLOW_2, METER_ID_REVERSE_SUB_PATH_2, switch1);
         haPath2.setSubPaths(Lists.newArrayList(flowPathReverse1, flowPathReverse2));
         haPath2.setHaSubFlows(Lists.newArrayList(subFlow2, subFlow1));
 
@@ -1284,7 +1285,7 @@ public class StatsTopologyHaFlowTest extends StatsTopologyBaseTest {
     }
 
     private FlowPath createPathWithSegments(
-            PathId pathId, HaFlowPath haFlowPath, HaSubFlow haSubFlow, FlowSegmentCookie.FlowSubType cookieSubType,
+            PathId pathId, HaFlowPath haFlowPath, HaSubFlow haSubFlow, FlowSubType cookieSubType,
             MeterId meterId, Switch... switches) {
         FlowPath path = buildPath(pathId, haFlowPath, switches[0], switches[switches.length - 1]);
         path.setMeterId(meterId);
@@ -1296,7 +1297,7 @@ public class StatsTopologyHaFlowTest extends StatsTopologyBaseTest {
     }
 
     private FlowPath buildPathWithSegments(
-            PathId pathId, HaFlowPath haFlowPath, HaSubFlow haSubFlow, FlowSegmentCookie.FlowSubType cookieSubType,
+            PathId pathId, HaFlowPath haFlowPath, HaSubFlow haSubFlow, FlowSubType cookieSubType,
             MeterId meterId, Switch... switches) {
         FlowPath path = buildPath(pathId, haFlowPath, switches[0], switches[switches.length - 1]);
         path.setMeterId(meterId);
@@ -1307,7 +1308,7 @@ public class StatsTopologyHaFlowTest extends StatsTopologyBaseTest {
     }
 
     private FlowPath create2SwitchPath(
-            PathId pathId, HaFlowPath haFlowPath, HaSubFlow haSubFlow, FlowSegmentCookie.FlowSubType cookieSubType,
+            PathId pathId, HaFlowPath haFlowPath, HaSubFlow haSubFlow, FlowSubType cookieSubType,
             Switch switch1, Switch switch2, MeterId meterId) {
         FlowPath path = buildPath(pathId, haFlowPath, switch1, switch2);
         path.setMeterId(meterId);
@@ -1421,17 +1422,17 @@ public class StatsTopologyHaFlowTest extends StatsTopologyBaseTest {
 
 
         FlowPath flowPathForward1 = buildPathWithSegments(SUB_PATH_ID_1, haPath1, subFlow1,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1, null, switch1, switch2, switch3, switch4, switch5);
+                FlowSubType.HA_SUB_FLOW_1, null, switch1, switch2, switch3, switch4, switch5);
         FlowPath flowPathForward2 = buildPathWithSegments(SUB_PATH_ID_2, haPath1, subFlow2,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2, null, switch1, switch2, switch3, switch6);
+                FlowSubType.HA_SUB_FLOW_2, null, switch1, switch2, switch3, switch6);
         haPath1.setSubPaths(Lists.newArrayList(flowPathForward1, flowPathForward2));
         haPath1.setHaSubFlows(Lists.newArrayList(subFlow1, subFlow2));
 
         FlowPath flowPathReverse1 = buildPathWithSegments(SUB_PATH_ID_3, haPath2, subFlow1,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_1, METER_ID_REVERSE_SUB_PATH_1,
+                FlowSubType.HA_SUB_FLOW_1, METER_ID_REVERSE_SUB_PATH_1,
                 switch5, switch4, switch3, switch2, switch1);
         FlowPath flowPathReverse2 = buildPathWithSegments(SUB_PATH_ID_4, haPath2, subFlow2,
-                FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_2,
+                FlowSubType.HA_SUB_FLOW_2,
                 METER_ID_REVERSE_SUB_PATH_2, switch6, switch3, switch2, switch1);
         haPath2.setSubPaths(Lists.newArrayList(flowPathReverse1, flowPathReverse2));
         haPath2.setHaSubFlows(Lists.newArrayList(subFlow2, subFlow1));

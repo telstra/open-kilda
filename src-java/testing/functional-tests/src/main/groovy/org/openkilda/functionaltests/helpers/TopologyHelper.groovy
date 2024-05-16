@@ -123,6 +123,24 @@ class TopologyHelper {
         }
     }
 
+    SwitchTriplet findSwitchTripletWithSharedEpInTheMiddleOfTheChainServer42Support() {
+        def server42switches = topology.getActiveServer42Switches()
+        return switchTriplets.findAll(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT).find {
+            it.shared.dpId in server42switches.dpId
+                && it.ep1.dpId in server42switches.dpId
+                && it.ep2.dpId in server42switches.dpId
+                && (it.pathsEp1[0].size() == 2 && it.pathsEp2[0].size() == 2) }
+    }
+
+    SwitchTriplet findSwitchTripletWithSharedEpThatIsNotNeighbourToEp1AndEp2Server42Support() {
+        def server42switches = topology.getActiveServer42Switches()
+        return switchTriplets.findAll(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT).find {
+            it.shared.dpId in server42switches.dpId
+                    && it.ep1.dpId in server42switches.dpId
+                    && it.ep2.dpId in server42switches.dpId
+                    && (it.pathsEp1[0].size() > 2 && it.pathsEp2[0].size() > 2) }
+    }
+
     SwitchTriplet findSwitchTripletForHaFlowWithProtectedPaths() {
         return switchTriplets.find {
             if (!SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it)) {

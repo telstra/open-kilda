@@ -49,6 +49,7 @@ namespace org::openkilda {
         FlowCreateArgument arg = {
                 .flow_pool = flow_pool,
                 .device = device,
+                .switch_id = addFlow.flow().switch_id(),
                 .dst_mac = addFlow.flow().dst_mac(),
                 .tunnel_id = addFlow.flow().tunnel_id(),
                 .inner_tunnel_id = addFlow.flow().inner_tunnel_id(),
@@ -65,6 +66,7 @@ namespace org::openkilda {
 
     void remove_flow(org::openkilda::server42::control::messaging::flowrtt::RemoveFlow &remove_flow,
                      org::openkilda::flow_pool_t &flow_pool) {
+        BOOST_LOG_TRIVIAL(info) << "Remove flow: " << remove_flow.flow().flow_id() << ":" << remove_flow.flow().direction();
         flow_pool.remove_packet(make_flow_endpoint(remove_flow.flow().flow_id(), remove_flow.flow().direction()));
     }
 
@@ -92,6 +94,7 @@ namespace org::openkilda {
     }
 
     buffer_t get_list_flows(const CommandPacket &command_packet, flow_pool_t &pool) {
+        BOOST_LOG_TRIVIAL(info) << "Get list flows";
         CommandPacketResponse response;
         response.set_communication_id(command_packet.communication_id());
 
@@ -100,13 +103,16 @@ namespace org::openkilda {
             const google::protobuf::Any &any = command_packet.command(0);
             any.UnpackTo(&filter);
             auto flow_list = pool.get_metadata_db()->get_endpoint_from_switch(filter.dst_mac());
+            BOOST_LOG_TRIVIAL(debug) << "Flow list size: " << flow_list.size() << " flows for switch " << filter.dst_mac();
             for (auto f : flow_list) {
                 Flow flow;
                 flow.set_flow_id(std::get<int(flow_endpoint_members::flow_id)>(f));
                 flow.set_direction(std::get<int(flow_endpoint_members::direction)>(f));
+                BOOST_LOG_TRIVIAL(debug) << "Flow: " << flow.flow_id() << ":" << flow.direction();
                 response.add_response()->PackFrom(flow);
             }
         } else {
+            BOOST_LOG_TRIVIAL(debug) << "Flow list size: " << pool.get_packetbyendpoint_table().size();
             for (const flow_endpoint_t &flow_endpoint : pool.get_packetbyendpoint_table()) {
                 Flow flow;
                 flow.set_flow_id(std::get<int(flow_endpoint_members::flow_id)>(flow_endpoint));
@@ -143,6 +149,7 @@ namespace org::openkilda {
 
     void remove_isl(org::openkilda::server42::control::messaging::islrtt::RemoveIsl &remove_isl,
                      org::openkilda::isl_pool_t &isl_pool) {
+        BOOST_LOG_TRIVIAL(info) << "Remove ISL: " << remove_isl.isl().switch_id() << ":" << remove_isl.isl().port();
         isl_pool.remove_packet(make_isl_endpoint(remove_isl.isl().switch_id(), remove_isl.isl().port()));
     }
 
@@ -249,6 +256,9 @@ namespace org::openkilda {
                     return clear_isls(command_packet, ctx.isl_pool, ctx.pool_guard);
                 case Command::CommandPacket_Type_LIST_ISLS:
                     return get_list_isls(command_packet, ctx.isl_pool);
+                default:
+                    BOOST_LOG_TRIVIAL(error) << "Unknown command type: " << command_packet.type();
+                    return error_response_from(command_packet.communication_id(), "Unknown command type");
             }
         }
     }

@@ -42,6 +42,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class BuildNewRulesAction
@@ -81,6 +83,9 @@ public class BuildNewRulesAction
                         protectedPath, true, false, false, true, dataAdapter));
             }
         }
+
+        stateMachine.setTargetSpeakerDataCommands(Stream.concat(ingressCommands.stream(), nonIngressCommands.stream())
+                .collect(Collectors.toList()));
 
         buildHaFlowInstallRequests(ingressCommands, stateMachine.getCommandContext(), true)
                 .forEach(request -> stateMachine.getIngressCommands().put(request.getCommandId(), request));

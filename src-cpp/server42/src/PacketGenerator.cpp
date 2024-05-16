@@ -20,7 +20,7 @@ namespace org::openkilda {
         auto flow_meta = db->get(flow_id_key);
         if (flow_meta && flow_meta->get_hash() == arg.hash) {
             BOOST_LOG_TRIVIAL(debug)
-                << "skip add_flow command for " << arg.flow_id
+                << "skip add_flow command for " << arg.flow_id << " and switch_id " << arg.switch_id
                 << " and direction " << arg.direction_str() << " with hash " << arg.hash << " already exists";
             return;
         }
@@ -75,6 +75,9 @@ namespace org::openkilda {
 
         auto packet = flow_pool_t::allocator_t::allocate(newPacket.getRawPacket(), arg.device);
 
+        BOOST_LOG_TRIVIAL(debug) << "add flow " << arg.flow_id << " and switch_id " << arg.switch_id
+                << " and direction " << arg.direction_str() << " and dst_mac " << arg.dst_mac;
+
         if (flow_meta) {
             BOOST_LOG_TRIVIAL(debug)
                 << "update flow " << arg.flow_id
@@ -84,7 +87,7 @@ namespace org::openkilda {
         }
 
         auto meta = std::shared_ptr<FlowMetadata>(
-                new FlowMetadata(arg.flow_id, arg.direction, arg.dst_mac, arg.hash));
+                new FlowMetadata(arg.flow_id, arg.direction, arg.switch_id, arg.hash));
 
         bool success = arg.flow_pool.add_packet(flow_id_key, packet, meta);
 

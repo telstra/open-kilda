@@ -28,6 +28,7 @@ namespace org::openkilda {
         uint32_t first_stats_port;
         uint32_t control_port;
         bool debug;
+        bool hpet;
 
     public:
 
@@ -50,6 +51,8 @@ namespace org::openkilda {
             process_control_port(vm);
 
             process_debug(vm);
+
+            process_hpet(vm);
         }
 
         uint32_t get_core_mask() const override {
@@ -80,6 +83,10 @@ namespace org::openkilda {
             return debug;
         }
 
+        virtual bool is_hpet() const override {
+            return hpet;
+        }
+
         constexpr static const char *arg_core = "c";
         constexpr static const char *arg_master_core = "master-lcore";
         constexpr static const char *arg_mbuf_pool_size_per_device = "kilda-mbuf-pool-size-per-device";
@@ -87,6 +94,7 @@ namespace org::openkilda {
         constexpr static const char *arg_first_stats_port = "first-stats-port";
         constexpr static const char *arg_control_port = "control-port";
         constexpr static const char *arg_debug = "debug";
+        constexpr static const char *arg_no_hpet = "no-hpet";
 
     private:
 
@@ -132,7 +140,8 @@ namespace org::openkilda {
                      "Size of queue from read thread and send thread Must be power of 2")
                     (arg_first_stats_port, po::value<int>()->default_value(5556), "First stats port for zmq")
                     (arg_control_port, po::value<int>()->default_value(5555), "Control port for zmq")
-                    (arg_debug, po::bool_switch());
+                    (arg_debug, po::bool_switch())
+                    (arg_no_hpet, po::bool_switch());
             return desc;
         }
 
@@ -191,13 +200,17 @@ namespace org::openkilda {
             BOOST_LOG_TRIVIAL(info) << "debug " << debug;
         }
 
+        void process_hpet(const po::variables_map &vm) {
+            hpet = !vm[arg_no_hpet].as<bool>();
+            BOOST_LOG_TRIVIAL(info) << "hpet " << hpet;
+        }
     };
 
     int create_config_from_cmd(int argc, char **argv, Config::ptr &config) {
         auto p = boost::make_shared<Config_impl>();
         try {
             p->fill_from_cmd(argc, argv);
-        } catch (InvalidCmd _) {
+        } catch (InvalidCmd const&) {
             return 1;
         }
         config = std::move(p);

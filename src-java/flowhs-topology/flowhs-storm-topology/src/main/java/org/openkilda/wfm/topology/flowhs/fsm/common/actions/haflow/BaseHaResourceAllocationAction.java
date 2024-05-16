@@ -31,7 +31,7 @@ import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.model.cookie.FlowSegmentCookie.FlowSegmentCookieBuilder;
-import org.openkilda.model.cookie.FlowSegmentCookie.FlowSubType;
+import org.openkilda.model.cookie.FlowSubType;
 import org.openkilda.pce.GetHaPathsResult;
 import org.openkilda.pce.HaPath;
 import org.openkilda.pce.Path;

@@ -116,6 +116,10 @@ public final class Utils {
                 .build();
     }
 
+    public static SwitchProperties buildSwitchPropertiesServer42(Switch sw) {
+        return buildSwitchProperties(sw, false, false, true, RttState.DISABLED);
+    }
+
     /**
      * Find Speaker Command Data of specific type.
      */

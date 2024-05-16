@@ -33,23 +33,28 @@ import lombok.Value;
 public class ActivateFlowMonitoringInfoData extends InfoData {
 
     @JsonProperty(Utils.FLOW_ID)
-    private String id;
+    String id;
 
     @NonNull
     @JsonProperty("source")
-    private FlowEndpointPayload source;
+    FlowEndpointPayload source;
 
     @NonNull
     @JsonProperty("destination")
-    private FlowEndpointPayload destination;
+    FlowEndpointPayload destination;
+
+    @JsonProperty("ha-flow-id")
+    String haFlowId;
 
     @Builder
     @JsonCreator
     public ActivateFlowMonitoringInfoData(@JsonProperty(Utils.FLOW_ID) String flowId,
                                           @JsonProperty("source") FlowEndpointPayload source,
-                                          @JsonProperty("destination") FlowEndpointPayload destination) {
+                                          @JsonProperty("destination") FlowEndpointPayload destination,
+                                          @JsonProperty("ha-flow-id")  String haFlowId) {
         this.id = flowId;
         this.source = source;
         this.destination = destination;
+        this.haFlowId = haFlowId;
     }
 }

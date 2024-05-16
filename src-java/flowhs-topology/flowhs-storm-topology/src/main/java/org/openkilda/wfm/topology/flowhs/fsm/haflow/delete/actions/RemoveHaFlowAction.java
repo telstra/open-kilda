@@ -47,6 +47,8 @@ public class RemoveHaFlowAction extends
 
         String affinityGroup = transactionManager.doInTransaction(() -> {
             HaFlow haFlow = getHaFlow(haFlowId);
+            // ha-flow is saved in the fsm to be used in OnFinishedAction
+            stateMachine.setTargetHaFlow(haFlow);
             log.debug("Removing the ha-flow {}", haFlowId);
             haFlowRepository.remove(haFlow);
             return haFlow.getAffinityGroupId();
