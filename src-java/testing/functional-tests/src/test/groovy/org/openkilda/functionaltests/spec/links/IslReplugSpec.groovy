@@ -52,7 +52,7 @@ class IslReplugSpec extends HealthCheckSpecification {
 "Wasn't able to find enough not connected a-switch links with round-trip")
 
         when: "Replug one end of the connected link to the not connected one"
-        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, false)
+        def newIsl = islHelper.replugDestination(isl, notConnectedIsl, true, false)
 
         then: "Replugged ISL status changes to MOVED"
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
@@ -73,7 +73,6 @@ class IslReplugSpec extends HealthCheckSpecification {
 
         then: "Original ISL becomes DISCOVERED again"
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
-        def originIslIsUp = true
 
         and: "Replugged ISL status changes to MOVED"
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
@@ -91,20 +90,6 @@ class IslReplugSpec extends HealthCheckSpecification {
         and: "The src and dst switches of the isl pass switch validation"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(
                 [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique()).isEmpty()
-
-        cleanup:
-        if (!originIslIsUp) {
-            islUtils.replug(newIsl, true, isl, false, true)
-            islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
-        }
-        if (newIsl && !newIslIsRemoved) {
-            northbound.deleteLink(islUtils.toLinkParameters(newIsl))
-            Wrappers.wait(WAIT_OFFSET) {
-                assert !islUtils.getIslInfo(newIsl).isPresent()
-                assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
-            }
-        }
-        database.resetCosts(topology.isls)
     }
 
     def "ISL status changes to MOVED when replugging ISL into another switch"() {
@@ -119,7 +104,7 @@ class IslReplugSpec extends HealthCheckSpecification {
         assumeTrue(notConnectedIsl.asBoolean(), "Wasn't able to find enough of required a-switch links")
 
         when: "Replug one end of the connected link to the not connected one"
-        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, true)
+        def newIsl = islHelper.replugDestination(isl, notConnectedIsl, true, true)
 
         then: "Replugged ISL status changes to MOVED"
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
@@ -134,7 +119,6 @@ class IslReplugSpec extends HealthCheckSpecification {
 
         then: "Original ISL becomes DISCOVERED again"
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
-        def originIslIsUp = true
 
         and: "Replugged ISL status changes to MOVED"
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
@@ -147,7 +131,6 @@ class IslReplugSpec extends HealthCheckSpecification {
             assert !islUtils.getIslInfo(newIsl).isPresent()
             assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
         }
-        def newIslIsRemoved = true
 
         and: "The src and dst switches of the isl pass switch validation"
         /* Need wait because of parallel s42 tests. Sw validation may show a missing s42 rule. Just wait for it.
@@ -156,20 +139,6 @@ class IslReplugSpec extends HealthCheckSpecification {
             switchHelper.validateAndCollectFoundDiscrepancies(
                     [isl.srcSwitch.dpId, isl.dstSwitch.dpId, notConnectedIsl.srcSwitch.dpId].unique()).isEmpty()
         }
-
-        cleanup:
-        if (!originIslIsUp) {
-            islUtils.replug(newIsl, true, isl, false, true)
-            islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
-        }
-        if (newIsl && !newIslIsRemoved) {
-            northbound.deleteLink(islUtils.toLinkParameters(newIsl))
-            Wrappers.wait(WAIT_OFFSET) {
-                assert !islUtils.getIslInfo(newIsl).isPresent()
-                assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
-            }
-        }
-        database.resetCosts(topology.isls)
     }
 
     def "New potential self-loop ISL (the same port on the same switch) is not getting discovered when replugging"() {
@@ -330,8 +299,5 @@ class IslReplugSpec extends HealthCheckSpecification {
                 bfdSessionStatus == "up"
             }
         }
-
-        cleanup: "Removed Moved ISL, turn off bfd" //this cleanup is not comprehensive
-        newIsl && northbound.deleteLink(islUtils.toLinkParameters(newIsl))
     }
 }

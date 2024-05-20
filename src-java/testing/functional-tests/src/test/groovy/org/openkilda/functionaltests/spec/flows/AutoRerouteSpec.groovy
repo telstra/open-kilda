@@ -8,7 +8,6 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchPairs
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
@@ -20,7 +19,6 @@ import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Isolated
 import spock.lang.Narrative
@@ -41,8 +39,6 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE
 import static org.openkilda.functionaltests.helpers.Wrappers.retry
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -52,8 +48,6 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 @Narrative("Verify different cases when Kilda is supposed to automatically reroute certain flow(s).")
 
 class AutoRerouteSpec extends HealthCheckSpecification {
-        @Autowired
-        CleanupManager cleanupManager
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     @IterationTag(tags = [TOPOLOGY_DEPENDENT], iterationNameRegex = /vxlan/)
@@ -105,11 +99,9 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         def involvedIsls = pathHelper.getInvolvedIsls(currentPath)
         def altIsls = altPaths.collectMany { pathHelper.getInvolvedIsls(it).findAll { !(it in involvedIsls || it.reversed in involvedIsls) } }
                 .unique { a, b -> (a == b || a == b.reversed) ? 0 : 1 }
-        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
-                {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
         altIsls.each {isl ->
             def linkProp = islUtils.toLinkProps(isl, [cost: "1"])
-            northbound.updateLinkProps([linkProp])
+            pathHelper.updateIslsCost([isl], 1)
             def helperFlow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch, false, [flow, *helperFlows]).tap {
                 maximumBandwidth = northbound.getLink(isl).availableBandwidth - flow.maximumBandwidth + 1
             }
@@ -479,7 +471,6 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         }
         def expectedZeroReroutesTimestamp = System.currentTimeSeconds()
         switchHelper.reviveSwitch(switchToManipulate, blockData)
-        isSwitchActivated = true
 
         then: "Flow is not triggered for reroute due to switchUp event because switch is not related to the flow"
         TimeUnit.SECONDS.sleep(rerouteDelay * 2) // it helps to be sure that the auto-reroute operation is completed
@@ -546,7 +537,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         and: "Right when reroute starts: an ISL which is common for current path and potential backup path breaks too, \
 triggering one more reroute of the current path"
         //add latency to make reroute process longer to allow us break the target path while rules are being installed
-        lockKeeper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(1000))
+        switchHelper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(1000))
         //break the second ISL when the first reroute has started and is in progress
         wait(WAIT_OFFSET) {
             assert flowHelper.getHistoryEntriesByAction(flow.flowId, REROUTE_ACTION).size() == 1
@@ -579,9 +570,6 @@ triggering one more reroute of the current path"
             }
             true
         }
-
-        cleanup:
-        swPair && lockKeeper.cleanupTrafficShaperRules(swPair.dst.regions)
     }
 
     def singleSwitchFlow() {
@@ -608,10 +596,6 @@ triggering one more reroute of the current path"
         def switchPair = switchPairs.withBothSwitchesVxLanEnabled().withAtLeastNPaths(minAltPathsCount + 1).random()
         return [flowHelperV2.randomFlow(switchPair), switchPair.paths]
     }
-
-    def cleanup() {
-        database.resetCosts(topology.isls)
-    }
 }
 
 
@@ -621,8 +605,6 @@ triggering one more reroute of the current path"
 
 class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
     //isolation: global toggle flowsRerouteOnIslDiscoveryEnabled is changed
-    @Autowired
-    CleanupManager cleanupManager
 
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Flow in 'Down' status is rerouted after switchUp event"() {
@@ -781,11 +763,9 @@ Failed to find path with requested bandwidth= ignored"
         def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
         def involvedIsls = pathHelper.getInvolvedIsls(currentPath)
         def altIsls = topology.getRelatedIsls(topologyHelper.getSwitch(flow.getSource().getSwitchId())) - involvedIsls
-        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
-                {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
         altIsls.each {isl ->
             def linkProp = islUtils.toLinkProps(isl, [cost: "1"])
-            northbound.updateLinkProps([linkProp])
+            pathHelper.updateIslsCost([isl], 1)
             def helperFlow = flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch, false, [flow, *helperFlows]).tap {
                 maximumBandwidth = northbound.getLink(isl).availableBandwidth - flow.maximumBandwidth + 1
             }

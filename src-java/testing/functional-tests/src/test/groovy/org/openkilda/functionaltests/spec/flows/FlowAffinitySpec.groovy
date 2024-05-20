@@ -3,9 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.PathNode
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
@@ -13,15 +11,12 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_ACTION
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 @Narrative("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/pce-affinity-flows/")
 
 class FlowAffinitySpec extends HealthCheckSpecification {
-    @Autowired
-    CleanupManager cleanupManager
 
     def "Can create more than 2 affinity flows"() {
         when: "Create flow1"
@@ -147,9 +142,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         and: "Isl which is taken by the main flow weighs more/less than the neighboring ISL, taking into account affinity penalty"
         def isls = pathHelper.getInvolvedIsls(flow.flowId)
         assert isls.size() == 1
-        def linkProps = [islUtils.toLinkProps(isls[0], ["cost": mainIslCost.toString()])]
-        cleanupManager.addAction(DELETE_ISLS_PROPERTIES, {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
-        northbound.updateLinkProps(linkProps)
+        pathHelper.updateIslsCost([isls[0]], mainIslCost)
 
         when: "Create affinity flow on the same switch pair"
         def affinityFlow = flowHelperV2.randomFlow(swPair, false, [flow]).tap { affinityFlowId = flow.flowId }

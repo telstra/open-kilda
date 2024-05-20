@@ -183,7 +183,7 @@ class MflStatSpec extends HealthCheckSpecification {
         lockKeeper.reviveSwitch(srcSwitch, statsBlockData)
         switchIsConnectedToFl(srcSwitch.dpId, true, true)
         needToRestoreConnectionToStats = false
-        def mgmtBlockData = lockKeeper.knockoutSwitch(srcSwitch, RW)
+        def mgmtBlockData = switchHelper.knockoutSwitch(srcSwitch, RW)
         def needToRestoreConnectionToManagement = true
         switchIsConnectedToFl(srcSwitch.dpId, false, true)
         def timeWhenSwitchWasDisconnectedFromManagement = new Date().getTime()
@@ -234,14 +234,6 @@ class MflStatSpec extends HealthCheckSpecification {
                     .hasNonZeroValuesAfter(startTime)
 
         }
-
-        cleanup: "Cleanup: Delete the flow"
-        needToRestoreConnectionToManagement && lockKeeper.reviveSwitch(srcSwitch, mgmtBlockData)
-        needToRestoreConnectionToStats && lockKeeper.reviveSwitch(srcSwitch, statsBlockData)
-        Wrappers.wait(WAIT_OFFSET + rerouteDelay) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
-        } // make sure that flow is UP after switchUP event
-
     }
 
     @Tags([TOPOLOGY_DEPENDENT])

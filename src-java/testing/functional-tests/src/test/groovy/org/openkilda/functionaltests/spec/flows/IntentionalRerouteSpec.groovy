@@ -4,7 +4,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
@@ -23,7 +22,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
@@ -35,8 +33,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
-    @Autowired
-    CleanupManager cleanupManager
 
     @Tags(ISL_PROPS_DB_RESET)
     def "Not able to reroute to a path with not enough bandwidth available"() {
@@ -150,10 +146,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
         assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == longestPath
         //now make another long path more preferable, for reroute to rebuild the rules on other switches in the future
-        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
-                {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
-        northbound.updateLinkProps((changedIsls + changedIsls*.reversed)
-                .collect { islUtils.toLinkProps(it, [cost: DEFAULT_COST.toString()]) })
+        pathHelper.updateIslsCost((changedIsls + changedIsls*.reversed) as List, DEFAULT_COST)
         def potentialNewPath = allPaths.findAll { it != longestPath }.max { it.size() }
         allPaths.findAll { it != potentialNewPath }.each { pathHelper.makePathMorePreferable(potentialNewPath, it) }
 
@@ -321,8 +314,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         int seqId = 0
         rerouteResponse.path.path.each { assert it.seqId == seqId++ }
         PathHelper.convert(northbound.getFlowPath(flow.id)) == currentPath
-
-        cleanup: "Remove the flow, restore the bandwidth on ISLs, reset costs"
     }
 
     @Tags([LOW_PRIORITY, ISL_PROPS_DB_RESET])

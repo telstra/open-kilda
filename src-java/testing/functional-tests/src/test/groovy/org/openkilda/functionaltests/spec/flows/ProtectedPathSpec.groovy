@@ -5,7 +5,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.StatusInfo
@@ -34,7 +33,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
@@ -63,8 +61,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
-    @Autowired @Shared
-    CleanupManager cleanupManager
+
 
     @Tags(LOW_PRIORITY)
     def "Able to create a flow with protected path when maximumBandwidth=#bandwidth, vlan=#vlanId"() {
@@ -952,12 +949,12 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Src, dst and transit switches belongs to different POPs(src:1, dst:4, tr1/tr2:2, tr3:3)"
         // tr1/tr2 for the main path and tr3 for the protected path
-        northboundV2.partialSwitchUpdate(swPair.src.dpId, new SwitchPatchDto().tap { it.pop = "1" })
+        switchHelper.partialUpdate(swPair.src.dpId, new SwitchPatchDto().tap { it.pop = "1" })
         [involvedSwP1[1], involvedSwP2[1]].each { swId ->
-            northboundV2.partialSwitchUpdate(swId, new SwitchPatchDto().tap { it.pop = "2" })
+            switchHelper.partialUpdate(swId, new SwitchPatchDto().tap { it.pop = "2" })
         }
-        northboundV2.partialSwitchUpdate(swPair.dst.dpId, new SwitchPatchDto().tap { it.pop = "4" })
-        northboundV2.partialSwitchUpdate(involvedSwProtected[1], new SwitchPatchDto().tap { it.pop = "3" })
+        switchHelper.partialUpdate(swPair.dst.dpId, new SwitchPatchDto().tap { it.pop = "4" })
+        switchHelper.partialUpdate(involvedSwProtected[1], new SwitchPatchDto().tap { it.pop = "3" })
 
         and: "Path which contains tr3 is non preferable"
         /** There is not possibility to use the 'makePathNotPreferable' method,
@@ -986,11 +983,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 pathHelper.getInvolvedIsls(protectedPath).size()).toInteger()
         log.debug("newCost: $newIslCost")
 
-        islsToUpdate.unique().each { isl ->
-            cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
-                    {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
-            northbound.updateLinkProps([islUtils.toLinkProps(isl, ["cost": newIslCost.toString()])])
-        }
+        pathHelper.updateIslsCost(islsToUpdate, newIslCost)
 
         and: "All alternative paths unavailable (bring ports down on the source switch)"
         List<Isl> broughtDownIsls = topology.getRelatedIsls(swPair.src) -
@@ -1027,13 +1020,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Protected path is built through the non preferable path(tr3)"
         pathHelper.getInvolvedSwitches(pathHelper.convert(flowPaths.protectedPath))*.dpId == involvedSwProtected
-
-        cleanup:
-        withPool {
-            (involvedSwP1 + involvedSwP2 + involvedSwProtected).unique().eachParallel { swId ->
-                northboundV2.partialSwitchUpdate(swId, new SwitchPatchDto().tap { it.pop = "" })
-            }
-        }
     }
 
     @Tags(LOW_PRIORITY)

@@ -56,8 +56,6 @@ class PortAntiflapSpec extends HealthCheckSpecification {
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
-    @Autowired @Shared
-    CleanupManager cleanupManager
 
     def setupSpec() {
         featureToggles.floodlightRoutePeriodicSync(false, CleanupAfter.CLASS)
@@ -72,7 +70,7 @@ timeout"() {
 
         when: "ISL port begins to blink"
         def interval = (long) (antiflapMin * 1000 / 2)
-        def blinker = new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, interval)
+        def blinker = islHelper.getPortBlinkerForSource(isl, interval)
         def untilWarmupEnds = { blinker.timeStarted.time + antiflapWarmup * 1000 - new Date().time }
         def untilCooldownEnds = { blinker.timeStopped.time + antiflapCooldown * 1000 - new Date().time }
         blinker.start()
@@ -100,15 +98,6 @@ timeout"() {
         and: "After cooldown timeout the ISL goes up"
         Wrappers.wait(untilCooldownEnds() / 1000.0 + WAIT_OFFSET / 2 + discoveryInterval) {
             islUtils.getIslInfo(isl).get().state == DISCOVERED
-        }
-        def linkIsUp = true
-
-        cleanup:
-        blinker?.isRunning() && blinker.stop(true)
-        if (isl && !linkIsUp) {
-            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-                islUtils.getIslInfo(isl).get().state == DISCOVERED
-            }
         }
     }
 
@@ -138,7 +127,7 @@ timeout"() {
 
         when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in UP state"
         def isl = topology.islsForActiveSwitches[0]
-        def blinker = new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, 1)
+        def blinker = islHelper.getPortBlinkerForSource(isl, 1)
         blinker.start()
         TimeUnit.SECONDS.sleep(antiflapWarmup + 1)
         blinker.stop(true)
@@ -153,15 +142,6 @@ timeout"() {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == DISCOVERED
         }
-        def linkIsUp = true
-
-        cleanup:
-        blinker?.isRunning() && blinker.stop(true)
-        if (isl && !linkIsUp) {
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                assert islUtils.getIslInfo(isl).get().state == DISCOVERED
-            }
-        }
     }
 
     /**
@@ -174,7 +154,7 @@ timeout"() {
 
         when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in DOWN state"
         def isl = topology.islsForActiveSwitches[0]
-        def blinker = new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, 1)
+        def blinker = islHelper.getPortBlinkerForSource(isl, 1)
         blinker.kafkaChangePort(PortChangeType.DOWN)
         blinker.start()
         TimeUnit.SECONDS.sleep(antiflapWarmup + 1)
@@ -191,9 +171,10 @@ timeout"() {
             TimeUnit.SECONDS.sleep(1)
         }
 
-        cleanup: "restore broken ISL"
-        new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, 0)
-                .kafkaChangePort(PortChangeType.UP)
+        when: "restore broken ISL"
+        islHelper.getPortBlinkerForSource(isl, 1).kafkaChangePort(PortChangeType.UP)
+
+        then: "ISL is restored"
         Wrappers.wait(WAIT_OFFSET) { islUtils.getIslInfo(isl).get().state == DISCOVERED }
     }
 

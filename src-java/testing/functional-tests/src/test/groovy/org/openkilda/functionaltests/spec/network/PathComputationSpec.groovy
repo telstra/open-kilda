@@ -4,27 +4,18 @@ import org.junit.jupiter.api.parallel.ResourceLock
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.ResourceLockConstants
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.springframework.beans.factory.annotation.Autowired
-import spock.lang.Shared
 
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @ResourceLock(ResourceLockConstants.DEFAULT_PATH_COMPUTATION)
 
 class PathComputationSpec extends HealthCheckSpecification {
-    @Autowired @Shared
-    CleanupManager cleanupManager
 
     def "Default path computation strategy is used when flow does not specify it"() {
         given: "Default path computation strategy is COST"
-        def initConfig = kildaConfiguration.getKildaConfiguration()
-        cleanupManager.addAction(OTHER, {kildaConfiguration.updateKildaConfiguration(initConfig)})
         kildaConfiguration.updatePathComputationStrategy(PathComputationStrategy.COST)
 
         and: "Switch pair with two paths at least"
@@ -35,8 +26,7 @@ class PathComputationSpec extends HealthCheckSpecification {
         def latencyEffectivePath = swPair.paths[1]
         swPair.paths.findAll { it != costEffectivePath }.each { pathHelper.makePathMorePreferable(costEffectivePath, it) }
         def latencyIsls = pathHelper.getInvolvedIsls(latencyEffectivePath).collectMany { [it, it.reversed] }
-        Map<Isl, Long> originalLatencies = latencyIsls.collectEntries { [(it): northbound.getLink(it).latency] }
-        latencyIsls.each { database.updateIslLatency(it, 1) }
+        latencyIsls.each { islHelper.updateIslLatency(it, 1) }
 
         when: "Create flow without selecting path strategy"
         def flow = flowHelperV2.randomFlow(swPair).tap { it.pathComputationStrategy = null }
@@ -71,9 +61,6 @@ class PathComputationSpec extends HealthCheckSpecification {
 
         and: "New flow actually uses path with the least latency (ignoring cost)"
         pathHelper.convert(northbound.getFlowPath(flow2.flowId)) == latencyEffectivePath
-
-        cleanup: "Restore kilda config and remove flows, restore costs and latencies"
-        originalLatencies && originalLatencies.each { isl, latency -> database.updateIslLatency(isl, latency) }
     }
 
     def "Flow path computation strategy can be updated from LATENCY to COST"() {
@@ -85,8 +72,7 @@ class PathComputationSpec extends HealthCheckSpecification {
         def latencyEffectivePath = swPair.paths[1]
         swPair.paths.findAll { it != costEffectivePath }.each { pathHelper.makePathMorePreferable(costEffectivePath, it) }
         def latencyIsls = pathHelper.getInvolvedIsls(latencyEffectivePath).collectMany { [it, it.reversed] }
-        Map<Isl, Long> originalLatencies = latencyIsls.collectEntries { [(it): northbound.getLink(it).latency] }
-        latencyIsls.each { database.updateIslLatency(it, 1) }
+        latencyIsls.each { islHelper.updateIslLatency(it, 1) }
 
         when: "Create flow using Latency strategy"
         def flow = flowHelperV2.randomFlow(swPair)
@@ -102,9 +88,6 @@ class PathComputationSpec extends HealthCheckSpecification {
 
         then: "Flow path has changed to the least-cost path"
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == costEffectivePath
-
-        cleanup: "Remove the flow, reset latencies and costs"
-        originalLatencies && originalLatencies.each { isl, latency -> database.updateIslLatency(isl, latency) }
     }
 
     def "Target flow path computation strategy is not applied immediately in case flow was updated partially"() {

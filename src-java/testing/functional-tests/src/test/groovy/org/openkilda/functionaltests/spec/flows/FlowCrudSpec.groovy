@@ -1,26 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.MOVED
-import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
-import static org.openkilda.messaging.payload.flow.FlowState.UP
-import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
@@ -53,8 +33,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.ExamReport
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -62,6 +40,26 @@ import spock.lang.See
 import spock.lang.Shared
 
 import javax.inject.Provider
+
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
+import static org.openkilda.messaging.payload.flow.FlowState.UP
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/crud")
@@ -78,9 +76,6 @@ class FlowCrudSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     Provider<TraffExamService> traffExamProvider
-    @Autowired
-    @Shared
-    CleanupManager cleanupManager
     @Autowired
     @Shared
     FlowFactory flowFactory
@@ -431,10 +426,10 @@ class FlowCrudSpec extends HealthCheckSpecification {
                 "with two possible flow paths at least and different number of hops found")
 
         and: "Make all shorter forward paths not preferable. Shorter reverse paths are still preferable"
-        cleanupManager.addAction(RESET_ISLS_COST, {database.resetCosts(topology.isls)})
-        List<Isl> modifiedIsls = possibleFlowPaths.findAll { it.size() == pathNodeCount }.collectMany {
-            pathHelper.getInvolvedIsls(it).each {database.updateIslCost(it, Integer.MAX_VALUE) }
-        }
+        List<Isl> modifiedIsls = possibleFlowPaths.findAll { it.size() == pathNodeCount }.collect {
+            pathHelper.getInvolvedIsls(it)
+        }.flatten().unique()
+        pathHelper.updateIslsCostInDatabase(modifiedIsls, Integer.MAX_VALUE)
 
         when: "Create a flow"
         def flow = flowFactory.getRandom(srcSwitch, dstSwitch)
@@ -673,13 +668,12 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         def notConnectedIsls = topology.notConnectedIsls
         assumeTrue(notConnectedIsls.size() > 0, "Unable to find non-connected isl")
         def notConnectedIsl = notConnectedIsls.first()
-        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, false)
+        def newIsl = islHelper.replugDestination(isl, notConnectedIsl, true, false)
 
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
         wait(discoveryExhaustedInterval + WAIT_OFFSET) {
             [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
         }
-        def islIsMoved = true
 
         when: "Try to create a flow using ISL src port"
         def invalidFlowEntity = flowFactory.getBuilder(isl.srcSwitch, isl.dstSwitch).withSourcePort(isl.srcPort).build()
@@ -689,15 +683,6 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(
                 getPortViolationErrorDescriptionPattern("source", isl.srcPort, isl.srcSwitch.dpId)).matches(exc)
-
-        cleanup: "Restore status of the ISL and delete new created ISL"
-        if (islIsMoved) {
-            islUtils.replug(newIsl, true, isl, false, false)
-            islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
-            islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
-            northbound.deleteLink(islUtils.toLinkParameters(newIsl))
-            wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
-        }
     }
 
     @Tags(SWITCH_RECOVER_ON_FAIL)
@@ -1348,13 +1333,6 @@ types .* or update switch properties and add needed encapsulation type./).matche
                     ]
                     r
                 }
-    }
-
-    boolean isFlowPingable(FlowRequestV2 flow) {
-        if (flow.source.switchId == flow.destination.switchId) {
-            return false
-        } else return !(topology.find(flow.source.switchId).ofVersion == "OF_12" ||
-                topology.find(flow.destination.switchId).ofVersion == "OF_12")
     }
 
     /**

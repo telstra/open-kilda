@@ -170,7 +170,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         def rulesToRemove = []
         data.breakForward && rulesToRemove << islToBreak.aswitch
         data.breakReverse && rulesToRemove << islToBreak.aswitch.reversed
-        lockKeeper.removeFlows(rulesToRemove)
+        aSwitchFlows.removeFlows(rulesToRemove)
 
         and: "Ping the flow"
         def response = northbound.pingFlow(flow.flowId, data.pingInput)
@@ -178,9 +178,6 @@ class FlowPingSpec extends HealthCheckSpecification {
         then: "Ping response properly shows that certain direction is unpingable"
         expect response, sameBeanAs(expectedPingResult)
                 .ignoring("forward.latency").ignoring("reverse.latency")
-
-        cleanup: "Restore rules, costs and remove the flow"
-        rulesToRemove && lockKeeper.addFlows(rulesToRemove)
 
         where:
         data << [

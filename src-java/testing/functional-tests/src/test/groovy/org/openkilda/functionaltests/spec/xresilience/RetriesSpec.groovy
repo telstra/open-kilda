@@ -111,13 +111,6 @@ and at least 1 path must remain safe"
         def switchesToVerify = [mainPath, failoverPath, currentPath].collectMany { pathHelper.getInvolvedSwitches(it) }.unique()
                 .findAll { it != switchToBreak }
         switchHelper.validateAndCollectFoundDiscrepancies(switchesToVerify*.getDpId()).isEmpty()
-
-        cleanup:
-        if(blockData) {
-            database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.INACTIVE)
-            switchHelper.reviveSwitch(switchToBreak, blockData)
-        }
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tags([SMOKE_SWITCHES, LOCKKEEPER, ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET, SWITCH_RECOVER_ON_FAIL])
@@ -240,11 +233,11 @@ and at least 1 path must remain safe"
         flowHelperV2.addFlow(flow)
 
         when: "Send delete request for the flow"
-        lockKeeper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(1000))
+        switchHelper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(1000))
         northboundV2.deleteFlow(flow.flowId)
 
         and: "One of the related switches does not respond"
-        def blockData = switchHelper.knockoutSwitch(swPair.src, RW)
+        switchHelper.knockoutSwitch(swPair.src, RW)
 
         then: "Flow history shows failed delete rule retry attempts but flow deletion is successful at the end"
         wait(WAIT_OFFSET) {
@@ -254,10 +247,6 @@ and at least 1 path must remain safe"
             assert history.last().action == DELETE_SUCCESS
         }
         !northboundV2.getFlowStatus(flow.flowId)
-
-        cleanup:
-        lockKeeper.cleanupTrafficShaperRules(swPair.src.regions)
-        switchHelper.reviveSwitch(swPair.src, blockData, true)
     }
 
     @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET, SWITCH_RECOVER_ON_FAIL])
@@ -361,7 +350,7 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
         northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         and: "Connection to src switch is slow in order to simulate a global timeout on reroute operation"
-        lockKeeper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(5000))
+        switchHelper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(5000))
 
         then: "After global timeout expect flow reroute to fail and flow to become DOWN"
         TimeUnit.SECONDS.sleep(globalTimeout)
@@ -385,8 +374,5 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
         wait(WAIT_OFFSET * 2) { //due to instability
             switchHelper.validateAndCollectFoundDiscrepancies([flow.source.switchId, flow.destination.switchId]).isEmpty()
         }
-
-        cleanup:
-        lockKeeper.cleanupTrafficShaperRules(swPair.src.regions)
     }
 }

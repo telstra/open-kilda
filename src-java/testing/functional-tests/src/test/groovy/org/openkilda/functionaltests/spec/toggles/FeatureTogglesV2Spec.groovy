@@ -6,18 +6,13 @@ import org.openkilda.functionaltests.error.flow.FlowForbiddenToDeleteExpectedErr
 import org.openkilda.functionaltests.error.flow.FlowForbiddenToUpdateExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.messaging.model.system.FeatureTogglesDto
-import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Isolated
 import spock.lang.Narrative
 import spock.lang.ResourceLock
-import spock.lang.Shared
 
 import static org.openkilda.functionaltests.ResourceLockConstants.DEFAULT_FLOW_ENCAP
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -27,7 +22,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -45,9 +39,6 @@ flow_latency_monitoring_reactions toggle is tested in FlowMonitoringSpec
 @Tags(SMOKE)
 @Isolated
 class FeatureTogglesV2Spec extends HealthCheckSpecification {
-    @Autowired @Shared
-    CleanupManager cleanupManager
-
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"
         def flowRequest = flowHelperV2.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
@@ -61,6 +52,7 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
+
         new FlowForbiddenToCreateExpectedError(~/Flow create feature is disabled/).matches(e)
         and: "Update of previously existing flow is still possible"
         flowHelperV2.updateFlow(flow.flowId, flowRequest.tap { it.description = it.description + "updated" })
@@ -102,6 +94,7 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
         new FlowForbiddenToDeleteExpectedError(~/Flow delete feature is disabled/).matches(e)
+
         and: "Creating new flow is still possible"
         def newFlow = flowHelperV2.addFlow(flowHelperV2.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
 

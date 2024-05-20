@@ -1187,7 +1187,7 @@ switches"() {
         flowHelperV2.addFlow(flow2)
 
         when: "Try to swap flow src endoints, but flow1 src switch does not respond"
-        def blockData = switchHelper.knockoutSwitch(swPair1.src, RW)
+        switchHelper.knockoutSwitch(swPair1.src, RW)
         database.setSwitchStatus(swPair1.src.dpId, SwitchStatus.ACTIVE)
         northbound.swapFlowEndpoint(new SwapFlowPayload(flow1.flowId, flow2.source, flow1.destination),
                 new SwapFlowPayload(flow2.flowId, flow1.source, flow2.destination))
@@ -1236,11 +1236,6 @@ switches"() {
 
         then: "Related switches have no rule anomalies"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(switches*.getDpId()).isEmpty()
-
-        cleanup:
-        if (blockData) {
-            database.setSwitchStatus(swPair1.src.dpId, SwitchStatus.INACTIVE)
-        }
     }
 
     def "Able to swap endpoints for a flow with flowLoop"() {

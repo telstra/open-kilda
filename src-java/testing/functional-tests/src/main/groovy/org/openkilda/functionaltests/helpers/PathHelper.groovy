@@ -29,6 +29,7 @@ import java.util.AbstractMap.SimpleEntry
 import java.util.stream.Collectors
 
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN
 import static org.openkilda.model.FlowEncapsulationType.VXLAN
 import static org.openkilda.model.PathComputationStrategy.COST
@@ -77,6 +78,11 @@ class PathHelper {
         northbound.updateLinkProps(isls.collectMany { isl ->
             [islUtils.toLinkProps(isl, ["cost": (newCost).toString()])]
         })
+    }
+
+    void updateIslsCostInDatabase(List<Isl> isls, Integer newCost) {
+        cleanupManager.addAction(RESET_ISLS_COST,{database.resetCosts(topology.isls)})
+        isls.each {database.updateIslCost(it, newCost)}
     }
 
     /**

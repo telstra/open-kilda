@@ -1,34 +1,11 @@
 package org.openkilda.functionaltests.spec.server42
 
-import groovy.time.TimeCategory
-import static java.util.concurrent.TimeUnit.SECONDS
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
-import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
-import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
-import static org.openkilda.functionaltests.model.stats.Origin.FLOW_MONITORING
-import static org.openkilda.functionaltests.model.stats.Origin.SERVER_42
-import static org.openkilda.functionaltests.model.switches.Manufacturer.WB5164
-import static org.openkilda.model.FlowEncapsulationType.VXLAN
-import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
-import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.SERVER42_STATS_LAG
-import static org.openkilda.testing.Constants.STATS_FROM_SERVER42_LOGGING_TIMEOUT
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchPairs
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.payload.flow.FlowState
@@ -38,8 +15,6 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload
-import org.openkilda.northbound.dto.v2.switches.LagPortRequest
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Autowired
@@ -57,8 +32,6 @@ import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_SWITCH_PROPERTIES
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
@@ -66,7 +39,6 @@ import static org.openkilda.functionaltests.model.stats.Origin.FLOW_MONITORING
 import static org.openkilda.functionaltests.model.stats.Origin.SERVER_42
 import static org.openkilda.functionaltests.model.switches.Manufacturer.WB5164
 import static org.openkilda.model.FlowEncapsulationType.VXLAN
-import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
 import static org.openkilda.model.cookie.Cookie.SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
@@ -92,9 +64,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     @Shared
     @Value('${flow.sla.check.interval.seconds}')
     Integer flowSlaCheckIntervalSeconds
-
-    @Autowired @Shared
-    CleanupManager cleanupManager
 
     @Autowired
     @Shared
@@ -198,7 +167,9 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
     }
 
-    def "Flow rtt stats are available only if both global and switch toggles are 'on' on both endpoints"() {
+    def "Stats are available only if both global and switch toggles are 'on' on both endpoints"() {
+        /*This test runs the last (by alphabet) on jenkins, because if it runs before other test,
+        switchHelper.waitForS42SwRulesSetup() call in the next tests fails. No idea why.*/
         given: "Two active switches with having server42"
         def switchPair = switchPairs.all().withBothSwitchesConnectedToServer42().random()
         def statsWaitSeconds = 4

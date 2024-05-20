@@ -9,7 +9,6 @@ import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
@@ -33,7 +32,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_SUCCESS
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.SYNCHRONIZE_SWITCH
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
@@ -52,8 +50,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
-    @Autowired @Shared
-    CleanupManager cleanupManager
 
     @IterationTags([
             @IterationTag(tags = [SMOKE_SWITCHES, TOPOLOGY_DEPENDENT], iterationNameRegex = /protected/),
@@ -344,7 +340,6 @@ class FlowLoopSpec extends HealthCheckSpecification {
         }
 
         when: "Delete flowLoop rules"
-        cleanupManager.addAction(SYNCHRONIZE_SWITCH,{switchHelper.synchronize(switchPair.src.dpId)})
         flowLoopRules.each { switchHelper.deleteSwitchRules(sourceSwitchId, it) }
 
         then: "System detects missing flowLoop rules"
