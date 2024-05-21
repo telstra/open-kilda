@@ -174,6 +174,11 @@ class FlowBuilder {
         return this
     }
 
+    FlowBuilder withPinned(boolean pinned) {
+        this.flowExtended.pinned = pinned
+        return this
+    }
+
     FlowBuilder withStrictBandwidth(boolean strictBandwidth) {
         this.flowExtended.strictBandwidth = strictBandwidth
         return this

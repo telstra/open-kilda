@@ -84,8 +84,8 @@ class FlowWithSubFlowsEntityPath {
         this.topologyDefinition = topologyDefinition
     }
 
-    List<Isl> getInvolvedIsls(boolean isForward = true) {
-        subFlowPaths.collect { it.getInvolvedIsls(isForward) }.flatten().unique() as List<Isl>
+    List<Isl> getInvolvedIsls(Direction direction = Direction.FORWARD) {
+        subFlowPaths.collect { it.getInvolvedIsls(direction) }.flatten().unique() as List<Isl>
     }
 
     List<SwitchId> getInvolvedSwitches(Direction direction = Direction.FORWARD) {

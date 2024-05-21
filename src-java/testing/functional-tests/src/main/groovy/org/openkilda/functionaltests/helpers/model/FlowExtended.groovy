@@ -13,6 +13,7 @@ import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.messaging.payload.flow.FlowResponsePayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
@@ -183,6 +184,20 @@ class FlowExtended {
         this.northboundV2 = northboundV2
         this.topologyDefinition = topologyDefinition
         this.cleanupManager = cleanupManager
+
+        if(flow instanceof FlowResponsePayload) {
+            this.diverseWith == flow.diverseWith
+            this.statusDetails = !flow.flowStatusDetails ? null : PathStatus.builder()
+                    .mainPath(flow.flowStatusDetails.mainFlowPathStatus)
+                    .protectedPath(flow.flowStatusDetails.protectedFlowPathStatus).build()
+            this.statusInfo = flow.statusInfo
+            this.targetPathComputationStrategy = flow.targetPathComputationStrategy
+            this.loopSwitchId = flow.loopSwitchId
+            this.forwardPathLatencyNs = flow.forwardLatency
+            this.reversePathLatencyNs = flow.reverseLatency
+            this.latencyLastModifiedTime = flow.latencyLastModifiedTime
+            this.yFlowId = flow.getYFlowId()
+        }
     }
 
     FlowExtended create(FlowState expectedState = FlowState.UP, CleanupAfter cleanupAfter = TEST) {
@@ -218,26 +233,17 @@ class FlowExtended {
     }
 
     FlowExtended createV1(FlowState expectedState = FlowState.UP, CleanupAfter cleanupAfter = TEST) {
-        def flowRequest = FlowPayload.builder()
-                .id(flowId)
-                .source(convertEndpointToV1(source))
-                .destination(convertEndpointToV1(destination))
-                .maximumBandwidth(maximumBandwidth)
-                .ignoreBandwidth(ignoreBandwidth)
-                .periodicPings(periodicPings)
-                .allocateProtectedPath(allocateProtectedPath)
-                .description(description)
-                .maxLatency(maxLatency)
-                .priority(priority)
-                .pinned(pinned)
-                .encapsulationType(encapsulationType ? encapsulationType.toString() : null)
-                .pathComputationStrategy(pathComputationStrategy ? pathComputationStrategy.toString() : null)
-                .build()
-
+        def flowRequest = convertToFlowPayload()
         cleanupManager.addAction(DELETE_FLOW, { delete() }, cleanupAfter)
-
         northbound.addFlow(flowRequest)
         waitForBeingInState(expectedState)
+    }
+
+    FlowExtended sendCreateRequestV1(CleanupAfter cleanupAfter = TEST) {
+        def flowRequest = convertToFlowPayload()
+        cleanupManager.addAction(DELETE_FLOW, { delete() }, cleanupAfter)
+        def flow = northbound.addFlow(flowRequest)
+        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager)
     }
 
     static FlowEndpointV2 convertEndpointToV2(FlowEndpointPayload endpointToConvert) {
@@ -273,6 +279,12 @@ class FlowExtended {
         return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager)
     }
 
+    def retrieveDetailsV1() {
+        log.debug("Get Flow '$flowId' details")
+        def flow = northbound.getFlow(flowId)
+        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager)
+    }
+
     FlowIdStatusPayload retrieveFlowStatus() {
         log.debug("Get Flow '$flowId' status")
         return northboundV2.getFlowStatus(flowId)
@@ -304,6 +316,11 @@ class FlowExtended {
 
     FlowExtended update(FlowExtended expectedEntity, FlowState flowState = FlowState.UP) {
         northboundV2.updateFlow(flowId, expectedEntity.convertToUpdate())
+        return waitForBeingInState(flowState)
+    }
+
+    FlowExtended updateV1(FlowExtended expectedEntity, FlowState flowState = FlowState.UP) {
+        northbound.updateFlow(flowId, expectedEntity.convertToFlowPayload())
         return waitForBeingInState(flowState)
     }
 
@@ -378,10 +395,35 @@ class FlowExtended {
     }
 
     /**
+     * Sends delete request for flow and waits for that flow to disappear from flows list (only V1 API is used)
+     */
+    FlowPayload deleteV1() {
+        if (flowId in northbound.getAllFlows()*.getId()) {
+            wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
+        }
+
+        log.debug("Deleting flow '$flowId'")
+        def response = northbound.deleteFlow(flowId)
+        wait(FLOW_CRUD_TIMEOUT) {
+            assert !northbound.getFlowStatus(flowId)
+            assert retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).first()
+                    .payload.last().action == FlowActionType.DELETE.payloadLastAction
+        }
+        return response
+    }
+
+    /**
      * Sends delete request for flow without actual clarification of flow deletion
      */
     FlowResponseV2 sendDeleteRequest() {
         northboundV2.deleteFlow(flowId)
+    }
+
+    /**
+     * Sends delete request for flow without actual clarification of flow deletion (API.V1)
+     */
+    FlowPayload sendDeleteRequestV1() {
+        northbound.deleteFlow(flowId)
     }
 
     List<SwitchPortVlan> occupiedEndpoints() {
@@ -390,14 +432,21 @@ class FlowExtended {
     }
 
     FlowPayload convertToFlowPayload() {
-        def flowV1Details = northbound.getFlow(flowId)
-        def builder = FlowPayload.builder()
-        FlowPayload.class.getDeclaredFields()*.name.each {
-            if (it != "serialVersionUID") {
-                builder."$it" = flowV1Details."$it"
-            }
-        }
-        return builder.build()
+        FlowPayload.builder()
+                .id(flowId)
+                .source(convertEndpointToV1(source))
+                .destination(convertEndpointToV1(destination))
+                .maximumBandwidth(maximumBandwidth)
+                .ignoreBandwidth(ignoreBandwidth)
+                .periodicPings(periodicPings)
+                .allocateProtectedPath(allocateProtectedPath)
+                .description(description)
+                .maxLatency(maxLatency)
+                .priority(priority)
+                .pinned(pinned)
+                .encapsulationType(encapsulationType ? encapsulationType.toString() : null)
+                .pathComputationStrategy(pathComputationStrategy ? pathComputationStrategy.toString() : null)
+                .build()
     }
 
     String retrieveAnyDiverseFlow() {

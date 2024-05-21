@@ -52,7 +52,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(swT)
 
         def initialPaths = haFlow.retrievedAllEntityPaths()
-        def islToFail = initialPaths.subFlowPaths.first().getInvolvedIsls(true).first()
+        def islToFail = initialPaths.subFlowPaths.first().getInvolvedIsls().first()
 
         when: "Fail an HA-flow ISL (bring switch port down)"
         islHelper.breakIsl(islToFail)
@@ -120,7 +120,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(swT)
 
         def initialPaths = haFlow.retrievedAllEntityPaths()
-        def subFlowsFirstIsls = initialPaths.subFlowPaths.collect{ it.getInvolvedIsls(true).first()} as Set
+        def subFlowsFirstIsls = initialPaths.subFlowPaths.collect{ it.getInvolvedIsls().first()} as Set
         assert subFlowsFirstIsls.size() == 1, "Selected ISL is not common for both sub-flows (not shared switch)"
 
         when: "Bring all ports down on the shared switch that are involved in the current and alternative paths"
@@ -151,7 +151,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "The first (shared) subFlow's ISl  has been chnaged due to the ha-Flow reroute"
-        def newPathSubFlowsFirstIsls = newPaths.subFlowPaths.collect{ it.getInvolvedIsls(true).first()} as Set
+        def newPathSubFlowsFirstIsls = newPaths.subFlowPaths.collect{ it.getInvolvedIsls().first()} as Set
         newPathSubFlowsFirstIsls != subFlowsFirstIsls
 
         and: "HA-flow passes validation"
@@ -170,7 +170,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(swT)
 
         def initialPaths = haFlow.retrievedAllEntityPaths()
-        def subFlowsFirstIsls = initialPaths.subFlowPaths.collect{ it.getInvolvedIsls(true).first()}.unique()
+        def subFlowsFirstIsls = initialPaths.subFlowPaths.collect{ it.getInvolvedIsls().first()}.unique()
         assert subFlowsFirstIsls.size() == 1, "Selected ISL is not common for both sub-flows (not shared switch)"
 
         and: "All ISL ports on the shared switch that are involved in the alternative HA-flow paths are down"

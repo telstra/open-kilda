@@ -38,7 +38,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
                 .build().create()
 
         def initialPath = haFlow.retrievedAllEntityPaths()
-        def involvedIsls = initialPath.getInvolvedIsls(true)
+        def involvedIsls = initialPath.getInvolvedIsls()
 
         when: "Make the current path less preferable than alternatives"
         pathHelper.updateIslsCost(involvedIsls, PathHelper.NOT_PREFERABLE_COST * 3)
@@ -77,7 +77,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
 
         def initialPath = haFlow.retrievedAllEntityPaths()
         def initialPathNodesView = initialPath.subFlowPaths.collect { it.path.forward.nodes.toPathNode() }
-        def initialInvolvedIsls = initialPath.getInvolvedIsls(true)
+        def initialInvolvedIsls = initialPath.getInvolvedIsls()
         String ep1FlowId = haFlow.subFlows.find { it.endpointSwitchId == swT.ep1.dpId }.haSubFlowId
         String ep2FlowId = haFlow.subFlows.find { it.endpointSwitchId == swT.ep2.dpId }.haSubFlowId
         def initialInvolvedSwitchIds = initialInvolvedIsls.collect { [it.srcSwitch.dpId, it.dstSwitch.dpId] }.flatten().unique()
@@ -105,7 +105,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         then: "The HA-Flow is successfully rerouted and goes through the preferable path"
         rerouteResponse.rerouted
         def haFlowPathAfterReroute = haFlow.retrievedAllEntityPaths()
-        def actualIslsAfterReroute = haFlowPathAfterReroute.getInvolvedIsls(true)
+        def actualIslsAfterReroute = haFlowPathAfterReroute.getInvolvedIsls()
 
         assertRerouteResponsePaths(haFlowPathAfterReroute, rerouteResponse)
 
@@ -141,7 +141,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
 
         def initialPath = haFlow.retrievedAllEntityPaths()
         def initialPathNodesView = initialPath.subFlowPaths.collect { it.path.forward.nodes.toPathNode() }
-        def initialInvolvedIsls = initialPath.getInvolvedIsls(true)
+        def initialInvolvedIsls = initialPath.getInvolvedIsls()
         def initialInvolvedSwitchIds = initialInvolvedIsls.collect { [it.srcSwitch.dpId, it.dstSwitch.dpId] }.flatten().unique()
 
         when: "Make the current path less preferable than alternatives"
@@ -166,7 +166,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         haFlow.waitForBeingInState(FlowState.UP)
 
         def haFlowPathAfterReroute = haFlow.retrievedAllEntityPaths()
-        def actualIslsAfterReroute = haFlowPathAfterReroute.getInvolvedIsls(true)
+        def actualIslsAfterReroute = haFlowPathAfterReroute.getInvolvedIsls()
 
         assertRerouteResponsePaths(haFlowPathAfterReroute, rerouteResponse)
         haFlowPathAfterReroute != initialPath
