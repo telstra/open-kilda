@@ -272,6 +272,7 @@ and at least 1 path must remain safe"
         and: "All alternative paths unavailable (bring ports down)"
         def altIsls = topology.getRelatedIsls(swPair.src) - pathHelper.getInvolvedIsls(mainPath).first() -
                 pathHelper.getInvolvedIsls(backupPath).first()
+        islHelper.breakIsls(altIsls)
 
         and: "A flow on the main path"
         def flow = flowHelperV2.randomFlow(swPair)
