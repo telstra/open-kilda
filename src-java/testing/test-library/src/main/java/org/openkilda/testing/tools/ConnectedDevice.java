@@ -47,8 +47,26 @@ public class ConnectedDevice implements AutoCloseable {
         examService.sendLldp(address, data);
     }
 
+    /**
+     * Sends generated lldpData and returns it to use for further verification.
+     */
+    public LldpData sendLldp() {
+        LldpData lldpData = LldpData.buildRandom();
+        sendLldp(lldpData);
+        return lldpData;
+    }
+
     public void sendArp(ArpData data) {
         examService.sendArp(address, data);
+    }
+
+    /**
+     * Sends generated arpData and returns it to use for further verification.
+     */
+    public ArpData sendArp() {
+        ArpData arpData = ArpData.buildRandom();
+        sendArp(arpData);
+        return arpData;
     }
 
     @Override

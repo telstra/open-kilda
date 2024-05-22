@@ -959,7 +959,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def flow = flowFactory.getRandom(switchPair)
 
         when: "Make the current path less preferable than alternatives"
-        def currentPath = flow.retrieveAllEntityPaths().flowPath.path.forward.nodes.toPathNode()
+        def currentPath = flow.retrieveAllEntityPaths().getPathNodes()
         def alternativePaths = switchPair.paths.findAll { it != currentPath }
         alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
 
@@ -971,7 +971,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         then: "Flow is rerouted"
         def newCurrentPath
         wait(rerouteDelay + WAIT_OFFSET) {
-            newCurrentPath = flow.retrieveAllEntityPaths().flowPath.path.forward.nodes.toPathNode()
+            newCurrentPath = flow.retrieveAllEntityPaths().getPathNodes()
             assert newCurrentPath != currentPath
         }
 
@@ -991,7 +991,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def flow = flowFactory.getRandom(switchPair)
 
         when: "Make the current path less preferable than alternatives"
-        def currentPath = flow.retrieveAllEntityPaths().flowPath.path.forward.nodes.toPathNode()
+        def currentPath = flow.retrieveAllEntityPaths().getPathNodes()
         def alternativePaths = switchPair.paths.findAll { it != currentPath }
         alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
 
@@ -1005,7 +1005,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay) {
-            assert flow.retrieveAllEntityPaths().flowPath.path.forward.nodes.toPathNode() == currentPath
+            assert flow.retrieveAllEntityPaths().getPathNodes() == currentPath
         }
 
         when: "Update the flow: vlanId on the dst endpoint"
@@ -1018,7 +1018,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay) {
-            assert flow.retrieveAllEntityPaths().flowPath.path.forward.nodes.toPathNode() == currentPath
+            assert flow.retrieveAllEntityPaths().getPathNodes() == currentPath
         }
 
         when: "Update the flow: port number and vlanId on the src/dst endpoints"
@@ -1036,7 +1036,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
-            assert updatedFlow.retrieveAllEntityPaths().flowPath.path.forward.nodes.toPathNode() == currentPath
+            assert updatedFlow.retrieveAllEntityPaths().getPathNodes() == currentPath
         }
 
         and: "Flow is valid"
