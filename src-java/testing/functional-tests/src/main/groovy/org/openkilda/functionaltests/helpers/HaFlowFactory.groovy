@@ -9,8 +9,6 @@ import org.openkilda.functionaltests.helpers.builder.HaFlowBuilder
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 

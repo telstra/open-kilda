@@ -81,9 +81,6 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
 
         and: "flowLatencyMonitoringReactions is enabled in featureToggle"
         and: "Disable s42 in featureToggle for generating flow-monitoring stats"
-        def initFeatureToggle = featureToggles.getFeatureToggles()
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {featureToggles.toggleMultipleFeatures(initFeatureToggle)})
         featureToggles.flowLatencyMonitoringReactions(true)
         featureToggles.server42FlowRtt(false)
 
@@ -139,8 +136,6 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
 
         and: "flowLatencyMonitoringReactions is disabled in featureToggle"
         and: "Disable s42 in featureToggle for generating flow-monitoring stats"
-        def initFeatureToggle = featureToggles.getFeatureToggles()
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.toggleMultipleFeatures(initFeatureToggle)})
         featureToggles.flowLatencyMonitoringReactions(false)
         featureToggles.server42FlowRtt(false)
 

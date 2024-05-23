@@ -36,8 +36,7 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         def flow = flowHelper.addFlow(flowRequest)
 
         when: "Set create_flow toggle to false"
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.createFlowEnabled(true)})
-        def disableFlowCreation = featureToggles.createFlowEnabled(false)
+        featureToggles.createFlowEnabled(false)
 
         and: "Try to create a new flow"
         flowHelper.addFlow(flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
@@ -58,9 +57,7 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         flowHelper.addFlow(flowRequest)
 
         when: "Set update_flow toggle to false"
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {featureToggles.updateFlowEnabled(true)})
-        def disableFlowUpdating = featureToggles.updateFlowEnabled(false)
+        featureToggles.updateFlowEnabled(false)
 
         and: "Try to update the flow"
         northbound.updateFlow(flowRequest.id, flowRequest.tap { it.description = it.description + "updated" })
@@ -79,9 +76,7 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         def flow = flowHelper.addFlow(flowRequest)
 
         when: "Set delete_flow toggle to false"
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE,
-                {featureToggles.deleteFlowEnabled(true)})
-        def disableFlowDeletion = featureToggles.deleteFlowEnabled(false)
+        featureToggles.deleteFlowEnabled(false)
 
         and: "Try to delete the flow"
         northbound.deleteFlow(flowRequest.id)

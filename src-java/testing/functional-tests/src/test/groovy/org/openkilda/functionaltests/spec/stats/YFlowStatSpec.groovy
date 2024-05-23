@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.stats
 
+import org.openkilda.functionaltests.model.cleanup.CleanupAfter
+
 import static groovyx.gpars.GParsPool.withPool
 import static groovyx.gpars.GParsPoolUtil.callAsync
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -61,7 +63,8 @@ class YFlowStatSpec extends HealthCheckSpecification {
             it.ep1 != it.ep2 && it.ep1 != it.shared && it.ep2 != it.shared &&
                     [it.shared, it.ep1, it.ep2].every { it.traffGens }
         } ?: assumeTrue(false, "No suiting switches found")
-        yFlow = yFlowFactory.getBuilder(switchTriplet).withBandwidth(10).build().waitForBeingInState(FlowState.UP)
+        yFlow = yFlowFactory.getBuilder(switchTriplet).withBandwidth(10).build()
+                .create(FlowState.UP, CleanupAfter.CLASS)
         def traffExam = traffExamProvider.get()
         def exam = yFlow.traffExam(traffExam, yFlow.maximumBandwidth * 10, traffgenRunDuration)
         Wrappers.wait(statsRouterRequestInterval * 4) {
@@ -110,10 +113,6 @@ class YFlowStatSpec extends HealthCheckSpecification {
                                FLOW_INGRESS_BITS,
                                FLOW_EGRESS_BITS],
                               [Direction.FORWARD, Direction.REVERSE]].combinations()
-    }
-
-    def cleanupSpec() {
-        yFlow && yFlow.delete()
     }
 
     def "workaround failure on first connect to kafka"() {

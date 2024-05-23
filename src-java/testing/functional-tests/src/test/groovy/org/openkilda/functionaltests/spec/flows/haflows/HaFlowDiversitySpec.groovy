@@ -154,8 +154,9 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         def haFlow1 = haFlowFactory.getRandom(swT)
 
         and: "Create a Y-Flow diverse with previously created HA-Flow"
-        def yFlow = yFlowFactory.getBuilder(swT, false).withDiverseFlow(haFlow1.haFlowId).build()
-        yFlow = yFlow.waitForBeingInState(FlowState.UP)
+        def yFlow = yFlowFactory
+                .getBuilder(swT, false).withDiverseFlow(haFlow1.haFlowId).build()
+                .create()
 
         and: "Create an additional HA-Flow diverse with Y-Flow that has another HA-Flow in diverse group"
         def haFlow2 = haFlowFactory.getBuilder(swT, false, haFlow1.occupiedEndpoints())
@@ -196,8 +197,5 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
                 assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty()}
             }
         }
-
-        cleanup:
-        yFlow && yFlow.delete()
     }
 }

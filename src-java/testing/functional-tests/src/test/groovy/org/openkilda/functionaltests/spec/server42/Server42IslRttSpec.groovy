@@ -583,7 +583,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     def changeIslRttToggle(boolean requiredState) {
         def originalState = featureToggles.getFeatureToggles().server42IslRtt
         if (originalState != requiredState) {
-            cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {featureToggles.server42IslRtt(originalState)})
             featureToggles.server42IslRtt(requiredState)
         }
         //not going to check rules on every switch in the system. sleep does the trick fine

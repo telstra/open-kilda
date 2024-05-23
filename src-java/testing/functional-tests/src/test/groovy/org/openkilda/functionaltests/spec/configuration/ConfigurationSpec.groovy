@@ -21,7 +21,6 @@ Kilda configuration is a special lever that allows to change default flow encaps
 This spec assumes that 'transit_vlan' is always default type
 """)
 @Isolated //kilda config updates
-
 class ConfigurationSpec extends HealthCheckSpecification {
     @Shared
     FlowEncapsulationType defaultEncapsulationType = FlowEncapsulationType.TRANSIT_VLAN

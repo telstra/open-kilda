@@ -42,12 +42,10 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def yFlow1 = yFlowFactory.getRandom(swT, false)
 
         def yFlow2 = yFlowFactory.getBuilder(swT, false, yFlow1.occupiedEndpoints())
-                .withDiverseFlow(yFlow1.yFlowId).build().waitForBeingInState(FlowState.UP)
+                .withDiverseFlow(yFlow1.yFlowId).build().create()
 
         def yFlow3 = yFlowFactory.getBuilder(swT, false, yFlow1.occupiedEndpoints() + yFlow2.occupiedEndpoints())
-                .withDiverseFlow(yFlow2.yFlowId).build().waitForBeingInState(FlowState.UP)
-        def yFlowsAreDeleted = false
-
+                .withDiverseFlow(yFlow2.yFlowId).build().create()
         then: "Y-Flow create response contains info about diverse yFlow"
         !yFlow1.diverseWithYFlows
         yFlow2.diverseWithYFlows.sort() == [yFlow1.yFlowId].sort()
@@ -80,16 +78,12 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         withPool {
             [yFlow1, yFlow2, yFlow3].each { yFlow -> yFlow.delete() }
         }
-        yFlowsAreDeleted = true
 
         then: "Y-Flows' histories contain 'diverseGroupId' information in 'delete' operation"
         verifyAll(flowHelper.getEarliestHistoryEntryByAction(yFlow1.subFlows[0].flowId,  FlowActionType.DELETE.value).dumps) {
             it.find { it.type == "stateBefore" }?.diverseGroupId
             !it.find { it.type == "stateAfter" }?.diverseGroupId
         }
-
-        cleanup:
-        !yFlowsAreDeleted && [yFlow1, yFlow2, yFlow3].each { yFlow -> yFlow && yFlow.delete() }
     }
 
     def "Able to update Y-Flow to became diverse with simple multiSwitch flow"() {
@@ -162,9 +156,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
         and: "Simple multi switch flow doesn't have the 'diverse_with' field"
         northboundV2.getFlow(flow.flowId).diverseWithYFlows.empty
-
-        cleanup:
-        yFlow && yFlow.delete()
     }
 
     def "Able to create Y-Flow with one switch sub flow and diverse with simple multiSwitch flow"() {
@@ -177,13 +168,12 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
         when: "Create a Y-Flow with one switch sub flow and diversity with simple flow"
         def swT = topologyHelper.getSwitchTriplet(switchPair.src.dpId, switchPair.src.dpId, switchPair.dst.dpId)
-        def yFlowCreatedResponse = yFlowFactory.getBuilder(swT, false).withDiverseFlow(flow.flowId).build()
-        def yFlow = yFlowCreatedResponse.waitForBeingInState(FlowState.UP)
+        def yFlow = yFlowFactory.getBuilder(swT, false).withDiverseFlow(flow.flowId).build().create()
 
         then: "Create response contains information about diverse flow"
-        yFlowCreatedResponse.diverseWithFlows == [flow.flowId] as Set
-        yFlowCreatedResponse.diverseWithYFlows.empty
-        yFlowCreatedResponse.diverseWithHaFlows.empty
+        yFlow.diverseWithFlows == [flow.flowId] as Set
+        yFlow.diverseWithYFlows.empty
+        yFlow.diverseWithHaFlows.empty
 
         and: "Y-Flow is diverse with Flow"
         yFlow.diverseWithFlows == [flow.flowId] as Set
@@ -200,9 +190,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
         and: "Simple Flow is valid"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        cleanup:
-        yFlow && yFlow.delete()
     }
 
     def "Able to get Y-Flow paths with correct overlapping segments stats"() {
@@ -220,10 +207,10 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def yFlow1 = yFlowFactory.getRandom(swT, false)
 
         def yFlow2 = yFlowFactory.getBuilder(swT, false, yFlow1.occupiedEndpoints())
-                .withDiverseFlow(yFlow1.yFlowId).build().waitForBeingInState(FlowState.UP)
+                .withDiverseFlow(yFlow1.yFlowId).build().create()
 
         def yFlow3 = yFlowFactory.getBuilder(swT, false, yFlow1.occupiedEndpoints() + yFlow2.occupiedEndpoints())
-                .withDiverseFlow(yFlow2.yFlowId).build().waitForBeingInState(FlowState.UP)
+                .withDiverseFlow(yFlow2.yFlowId).build().create()
 
         and: "Get flow path for all y-flows"
         FlowWithSubFlowsEntityPath yFlow1Paths, yFlow2Paths, yFlow3Paths
@@ -263,11 +250,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
             yFlow2Paths.subFlowPaths.first().path.diverseGroup.otherFlows*.id.sort() == getSubFlowsId([yFlow1, yFlow3])
             yFlow3Paths.subFlowPaths.first().path.diverseGroup.otherFlows*.id.sort() == getSubFlowsId([yFlow1, yFlow2])
         }
-
-        cleanup:
-        withPool {
-            [yFlow1, yFlow2, yFlow3].eachParallel { yFlow -> yFlow && yFlow.delete() }
-        }
     }
 
     @Tags([LOW_PRIORITY])
@@ -282,11 +264,11 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         and: "Create one-switch y-flows on shared and ep1 switches in the same diversity group"
         def swTAllAsSharedSw = topologyHelper.getSwitchTriplet(swT.shared.dpId, swT.shared.dpId, swT.shared.dpId)
         def yFlow2 = yFlowFactory.getBuilder(swTAllAsSharedSw, false, yFlow1.occupiedEndpoints())
-                .withDiverseFlow(yFlow1.yFlowId).build().waitForBeingInState(FlowState.UP)
+                .withDiverseFlow(yFlow1.yFlowId).build().create()
 
         def swTAllAsEp1 = topologyHelper.getSwitchTriplet(swT.ep1.dpId, swT.ep1.dpId, swT.ep1.dpId)
         def yFlow3 = yFlowFactory.getBuilder(swTAllAsEp1, false, yFlow1.occupiedEndpoints() + yFlow2.occupiedEndpoints())
-                .withDiverseFlow(yFlow1.yFlowId).build().waitForBeingInState(FlowState.UP)
+                .withDiverseFlow(yFlow1.yFlowId).build().create()
 
         and: "Get flow paths for all y-flows"
         FlowWithSubFlowsEntityPath yFlow1Paths, yFlow2Paths, yFlow3Paths
@@ -309,11 +291,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
             yFlow1Paths.subFlowPaths.first().path.diverseGroup.otherFlows*.id.sort() == getSubFlowsId([yFlow2, yFlow3])
             yFlow2Paths.subFlowPaths.first().path.diverseGroup.otherFlows*.id.sort() == getSubFlowsId([yFlow1, yFlow3])
             yFlow3Paths.subFlowPaths.first().path.diverseGroup.otherFlows*.id.sort() == getSubFlowsId([yFlow1, yFlow2])
-        }
-
-        cleanup:
-        withPool {
-            [yFlow1, yFlow2, yFlow3].eachParallel { yFlow -> yFlow && yFlow.delete() }
         }
     }
 
@@ -349,11 +326,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         verifyAll {
             yFlow1Paths.subFlowPaths.first().path.diverseGroup.otherFlows*.id.sort() == getSubFlowsId([yFlow2])
             yFlow2Paths.subFlowPaths.first().path.diverseGroup.otherFlows*.id.sort() == getSubFlowsId([yFlow1])
-        }
-
-        cleanup:
-        withPool {
-            [yFlow1, yFlow2].eachParallel { yFlow -> yFlow && yFlow.delete() }
         }
     }
 

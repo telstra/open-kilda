@@ -220,13 +220,10 @@ class PortHistorySpec extends HealthCheckSpecification {
 class PortHistoryIsolatedSpec extends HealthCheckSpecification {
     @Shared
     def antiflapDumpingInterval = 60
-    @Autowired @Shared
-    CleanupManager cleanupManager
 
     //isolation: global fl sync toggle is changed
     def "Port history is able to show ANTI_FLAP statistic"() {
         given: "floodlightRoutePeriodicSync is disabled"
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {featureToggles.floodlightRoutePeriodicSync(true)})
         featureToggles.floodlightRoutePeriodicSync(false)
 
         and: "A port in a stable state"
