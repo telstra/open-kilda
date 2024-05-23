@@ -71,7 +71,7 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
         "shared endpoint" | { HaFlowExtended flow -> flow.sharedEndpoint.switchId }
         "other endpoint"  | { HaFlowExtended flow -> flow.subFlows.shuffled().first().endpointSwitchId }
         "transit"         | { HaFlowExtended flow ->
-            (flow.retrievedAllEntityPaths().getInvolvedSwitches(true) - (flow.subFlows*.endpointSwitchId + flow.sharedEndpoint.switchId)).first()
+            (flow.retrievedAllEntityPaths().getInvolvedSwitches() - (flow.subFlows*.endpointSwitchId + flow.sharedEndpoint.switchId)).first()
         }
     }
 

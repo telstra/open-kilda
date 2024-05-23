@@ -69,7 +69,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         def flowRemoved = haFlow.delete()
 
         and: "And involved switches pass validation"
-        def involvedSwitchIds = haFlowPath.getInvolvedSwitches(true)
+        def involvedSwitchIds = haFlowPath.getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
 
         where:

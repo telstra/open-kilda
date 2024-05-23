@@ -1,31 +1,26 @@
 package org.openkilda.functionaltests.helpers.builder
 
-import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
-import org.openkilda.functionaltests.helpers.model.HaSubFlowExtended
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint
-
 import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
+import static org.openkilda.functionaltests.helpers.FlowNameGenerator.HA_FLOW
+import static org.openkilda.functionaltests.helpers.StringGenerator.generateDescription
 import static org.openkilda.functionaltests.helpers.SwitchHelper.getRandomAvailablePort
 
+import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
+import org.openkilda.functionaltests.helpers.model.HaSubFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.model.PathComputationStrategy
+import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
-import com.github.javafaker.Faker
 import groovy.util.logging.Slf4j
-
-import java.text.SimpleDateFormat
 
 @Slf4j
 class HaFlowBuilder {
     HaFlowExtended haFlowExtended
-
-    static def random = new Random()
-    static def faker = new Faker()
     private final SUBFLOW_SUFFIX_LIST = ["-a", "-b"]
 
 
@@ -39,7 +34,7 @@ class HaFlowBuilder {
                   CleanupManager cleanupManager,
                   boolean useTraffgenPorts = true,
                   List<SwitchPortVlan> busyEndpoints = []) {
-        this.haFlowExtended = new HaFlowExtended(generateFlowId(), northboundV2, topologyDefinition, cleanupManager)
+        this.haFlowExtended = new HaFlowExtended(HA_FLOW.generateId(), northboundV2, topologyDefinition, cleanupManager)
 
         this.haFlowExtended.sharedEndpoint = HaFlowSharedEndpoint.builder()
                 .switchId(swT.shared.dpId)
@@ -164,15 +159,5 @@ class HaFlowBuilder {
     }
     HaFlowExtended build() {
         return this.haFlowExtended
-    }
-
-    private String generateDescription() {
-        def methods = ["asYouLikeItQuote", "kingRichardIIIQuote", "romeoAndJulietQuote", "hamletQuote"]
-        sprintf("autotest HA-Flow: %s", faker.shakespeare()."${methods[random.nextInt(methods.size())]}"())
-    }
-
-    private static String generateFlowId() {
-        return new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US).format(new Date()) + "_" +
-                faker.food().ingredient().toLowerCase().replaceAll(/\W/, "") + faker.number().digits(4) +  "_haflow"
     }
 }

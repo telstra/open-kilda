@@ -3,7 +3,8 @@ package org.openkilda.functionaltests.helpers.model
 enum FlowEncapsulationType {
 
     TRANSIT_VLAN("transit_vlan"),
-    VXLAN("vxlan")
+    VXLAN("vxlan"),
+    FAKE("fake")
 
     private final String encapsulationType
 

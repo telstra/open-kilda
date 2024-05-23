@@ -2,6 +2,8 @@ package org.openkilda.functionaltests.helpers.builder
 
 import static org.openkilda.functionaltests.helpers.FlowHelperV2.availableVlanList
 import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
+import static org.openkilda.functionaltests.helpers.FlowNameGenerator.Y_FLOW
+import static org.openkilda.functionaltests.helpers.StringGenerator.generateDescription
 import static org.openkilda.functionaltests.helpers.SwitchHelper.getRandomAvailablePort
 import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.TRANSIT_VLAN
 import static org.openkilda.model.PathComputationStrategy.COST
@@ -22,8 +24,6 @@ import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import com.github.javafaker.Faker
 import groovy.transform.ToString
 import groovy.util.logging.Slf4j
-
-import java.text.SimpleDateFormat
 
 @Slf4j
 @ToString(includeNames = true, excludes = 'northbound, northboundV2, topologyDefinition')
@@ -85,7 +85,7 @@ class YFlowBuilder {
                 ep
             }
         }
-        String flowId = generateFlowId()
+        String flowId = Y_FLOW.generateId()
         subFlows.first().flowId = "S1." + flowId
         subFlows.last().flowId = "S2." + flowId
         this.yFlowRequest = YFlowCreatePayload.builder()
@@ -233,15 +233,5 @@ class YFlowBuilder {
         log.debug("Adding Y-Flow")
         def yFlow = northboundV2.addYFlow(yFlowRequest)
         new YFlowExtended(yFlow, northbound, northboundV2, topologyDefinition)
-    }
-
-    private String generateDescription() {
-        def methods = ["asYouLikeItQuote", "kingRichardIIIQuote", "romeoAndJulietQuote", "hamletQuote"]
-        sprintf("autotest Y-Flow: %s", faker.shakespeare()."${methods[random.nextInt(methods.size())]}"())
-    }
-
-    private String generateFlowId() {
-        return new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US).format(new Date()) + "_" +
-                faker.food().ingredient().toLowerCase().replaceAll(/\W/, "") + faker.number().digits(4) + "_yflow"
     }
 }

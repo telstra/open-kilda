@@ -50,7 +50,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         updatedHaFlow.hasTheSamePropertiesAs(haFlow)
 
         and: "And involved switches pass validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)).isEmpty()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlow.retrievedAllEntityPaths().getInvolvedSwitches()).isEmpty()
 
         and: "HA-Flow pass validation"
         haFlow.validate().asExpected
@@ -117,7 +117,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         updatedHaFlow.hasTheSamePropertiesAs(haFlow)
 
         and: "And involved switches pass validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)).isEmpty()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlow.retrievedAllEntityPaths().getInvolvedSwitches()).isEmpty()
 
         and: "HA-Flow pass validation"
         haFlow.validate().asExpected
@@ -141,7 +141,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         and: "And involved switches pass validation"
         Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
             assert switchHelper.validateAndCollectFoundDiscrepancies(
-                    haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)).isEmpty()
+                    haFlow.retrievedAllEntityPaths().getInvolvedSwitches()).isEmpty()
         }
 
         and: "HA-Flow pass validation"
@@ -261,7 +261,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         new HaFlowNotUpdatedExpectedError(data.errorDescription).matches(exc)
 
         and: "And involved switches pass validation"
-        def involvedSwitchIds = haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)
+        def involvedSwitchIds = haFlow.retrievedAllEntityPaths().getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
 
         and: "HA-Flow pass validation"
@@ -319,7 +319,7 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
         new HaFlowNotUpdatedExpectedError(data.errorDescrPattern).matches(exc)
 
         and: "And involved switches pass validation"
-        def involvedSwitchIds = haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)
+        def involvedSwitchIds = haFlow.retrievedAllEntityPaths().getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
 
         and: "HA-Flow pass validation"

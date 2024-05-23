@@ -126,7 +126,7 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         haFlow.retrievedAllEntityPaths() == initialHaFlowPaths
 
         and: "Missing HA-Flow rules are installed (existing ones are reinstalled) on UP involved switches"
-        def upInvolvedSwitches = initialHaFlowPaths.getInvolvedSwitches(true) - [downSwitch.dpId]
+        def upInvolvedSwitches = initialHaFlowPaths.getInvolvedSwitches() - [downSwitch.dpId]
         withPool {
             upInvolvedSwitches.eachParallel { SwitchId swId ->
                 Wrappers.wait(RULES_INSTALLATION_TIME) {
