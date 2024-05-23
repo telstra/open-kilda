@@ -25,6 +25,8 @@ import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
 import java.text.SimpleDateFormat
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
@@ -378,5 +380,12 @@ class FlowHelper {
                             faker.shakespeare().hamletQuote()]
         def r = new Random()
         "autotest flow: ${descpription[r.nextInt(descpription.size())]}"
+    }
+
+    static Long convertStringTimestampIsoToLong(String timestampIso) {
+        def parsedRerouteActionStart = ZonedDateTime.parse(
+                timestampIso, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+        def timestampMillis = parsedRerouteActionStart.toInstant().toEpochMilli()
+        return timestampMillis
     }
 }
