@@ -1,4 +1,4 @@
-# Copyright 2017 Telstra Open Source
+# Copyright 2024 Telstra Open Source
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -16,12 +16,12 @@
 ARG base_image=kilda/base-ubuntu
 FROM ${base_image}
 
-ENV PACKAGE apache-zookeeper-3.9.0
+ENV PACKAGE apache-zookeeper-3.9.1
 
 WORKDIR /tmp/
 
-RUN    wget -q https://archive.apache.org/dist/zookeeper/zookeeper-3.9.0/$PACKAGE-bin.tar.gz \
-    && wget -q https://archive.apache.org/dist/zookeeper/zookeeper-3.9.0/$PACKAGE-bin.tar.gz.sha512 \
+RUN wget -q https://archive.apache.org/dist/zookeeper/zookeeper-3.9.1/$PACKAGE-bin.tar.gz \
+    && wget -q https://archive.apache.org/dist/zookeeper/zookeeper-3.9.1/$PACKAGE-bin.tar.gz.sha512 \
     && sha512sum -c $PACKAGE-bin.tar.gz.sha512 \
     && tar -xzf $PACKAGE-bin.tar.gz --directory /opt/ \
     && ln -s /opt/$PACKAGE-bin /opt/zookeeper \
