@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.helpers.model
 
-
+import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import groovy.transform.Canonical
@@ -15,13 +15,13 @@ class FlowPathModel {
     PathModel path
     PathModel protectedPath
 
-    List<Isl> getCommonIslsWithProtected(boolean isForward = true) {
-        isForward ? path.forward.getInvolvedIsls().intersect(protectedPath.forward.getInvolvedIsls()) :
+    List<Isl> getCommonIslsWithProtected(Direction direction = Direction.FORWARD) {
+        direction == Direction.FORWARD ? path.forward.getInvolvedIsls().intersect(protectedPath.forward.getInvolvedIsls()) :
                 path.reverse.getInvolvedIsls().intersect(protectedPath.reverse.getInvolvedIsls())
     }
 
-    List<Isl> getInvolvedIsls(boolean isForward = true) {
-        isForward ? (path.forward.getInvolvedIsls() + protectedPath?.forward?.getInvolvedIsls()).findAll() :
+    List<Isl> getInvolvedIsls(Direction direction = Direction.FORWARD) {
+        direction == Direction.FORWARD ? (path.forward.getInvolvedIsls() + protectedPath?.forward?.getInvolvedIsls()).findAll() :
                 (path.reverse.getInvolvedIsls() + protectedPath?.reverse?.getInvolvedIsls()).findAll()
     }
 

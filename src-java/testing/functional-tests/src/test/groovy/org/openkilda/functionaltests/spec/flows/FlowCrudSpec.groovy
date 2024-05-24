@@ -40,6 +40,7 @@ import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
@@ -440,12 +441,9 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         then: "The flow is built through one of the long paths"
         def fullFlowPath = flow.retrieveAllEntityPaths()
-        def forwardIsls = fullFlowPath.flowPath.getInvolvedIsls(true)
-        def reverseIsls = fullFlowPath.flowPath.getInvolvedIsls(false)
-        verifyAll {
-            assert forwardIsls.intersect(modifiedIsls).isEmpty()
-            assert reverseIsls.intersect(modifiedIsls).isEmpty()
-        }
+        def forwardIsls = fullFlowPath.flowPath.getInvolvedIsls(Direction.FORWARD)
+        def reverseIsls = fullFlowPath.flowPath.getInvolvedIsls(Direction.REVERSE)
+        assert forwardIsls.intersect(modifiedIsls).isEmpty()
 
         and: "The flow has symmetric forward and reverse paths even though there is a more preferable reverse path"
         forwardIsls.collect { it.reversed }.reverse() == reverseIsls

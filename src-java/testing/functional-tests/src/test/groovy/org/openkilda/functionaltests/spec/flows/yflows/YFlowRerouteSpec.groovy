@@ -17,6 +17,7 @@ import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowActionType
 import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult
@@ -221,11 +222,11 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         assert !yFlowPathBeforeReroute.sharedPath.path.isPathAbsent()
 
         and: "The required ISLs cost has been updated to make manual reroute available"
-        def islsSubFlow1 = (yFlowPathBeforeReroute.subFlowPaths.first().getInvolvedIsls(true)
-                + yFlowPathBeforeReroute.subFlowPaths.first().getInvolvedIsls(false)).unique()
+        def islsSubFlow1 = (yFlowPathBeforeReroute.subFlowPaths.first().getInvolvedIsls(Direction.FORWARD)
+                + yFlowPathBeforeReroute.subFlowPaths.first().getInvolvedIsls(Direction.REVERSE)).unique()
 
-        def islsSubFlow2 = (yFlowPathBeforeReroute.subFlowPaths.last().getInvolvedIsls(true)
-                + yFlowPathBeforeReroute.subFlowPaths.last().getInvolvedIsls(false)).unique()
+        def islsSubFlow2 = (yFlowPathBeforeReroute.subFlowPaths.last().getInvolvedIsls(Direction.FORWARD)
+                + yFlowPathBeforeReroute.subFlowPaths.last().getInvolvedIsls(Direction.REVERSE)).unique()
 
         assert islsSubFlow1 != islsSubFlow2, "Y-Flow path doesn't allow us to the check this case as subFlows have the same ISLs"
 
