@@ -51,10 +51,12 @@ import org.kohsuke.args4j.CmdLineException;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -155,8 +157,8 @@ public abstract class AbstractStormTest {
 
         makeConfigFile(overlay, CONFIG_NAME);
 
-        server = new TestUtils.KafkaTestFixture(
-                makeUnboundConfig(ZookeeperConfig.class), makeUnboundConfig(KafkaConfig.class));
+        server = new TestUtils.KafkaTestFixture(Files.createTempDirectory(UUID.randomUUID().toString()).toFile(),
+                    makeUnboundConfig(ZookeeperConfig.class), makeUnboundConfig(KafkaConfig.class));
         server.start();
 
         log.info("Zookeeper and Kafka started.");
