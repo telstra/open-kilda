@@ -18,7 +18,6 @@ package org.openkilda.wfm;
 import org.openkilda.wfm.config.KafkaConfig;
 import org.openkilda.wfm.config.ZookeeperConfig;
 
-import com.google.common.io.Files;
 import kafka.server.KafkaServer;
 import org.apache.curator.test.TestingServer;
 import org.apache.kafka.common.utils.Time;
@@ -49,15 +48,16 @@ public final class TestUtils {
     }
 
     public static class KafkaTestFixture {
-        public TestingServer zk;
-        public KafkaServer kafka;
-        public File tempDir = Files.createTempDir();
-        private ZookeeperConfig zooKeeperConfig;
-        private KafkaConfig kafkaConfig;
+        private TestingServer zk;
+        private KafkaServer kafka;
+        private final File tempDir;
+        private final ZookeeperConfig zooKeeperConfig;
+        private final KafkaConfig kafkaConfig;
 
-        public KafkaTestFixture(ZookeeperConfig zooKeeperConfig, KafkaConfig kafkaConfig) {
+        public KafkaTestFixture(File tempDir, ZookeeperConfig zooKeeperConfig, KafkaConfig kafkaConfig) {
             this.zooKeeperConfig = zooKeeperConfig;
             this.kafkaConfig = kafkaConfig;
+            this.tempDir = tempDir;
         }
 
         public void start() throws Exception {
