@@ -2,14 +2,17 @@ package org.openkilda.functionaltests.spec.grpc
 
 import org.openkilda.functionaltests.error.LogicalPortNotCreatedExpectedError
 import org.openkilda.functionaltests.error.LogicalPortNotFoundExpectedError
-
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.grpc.speaker.model.LogicalPortDto
 import org.openkilda.messaging.model.grpc.LogicalPortType
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
+import spock.lang.Shared
+
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 
 @Narrative("""This test suite checks the CRUD actions on a logical port.
 Logical ports are defined by associating a single physical port to them to define
@@ -19,6 +22,8 @@ a list of BFD ports to them to create a LAG for fast-failover for BFD sessions.
 
 NOTE: The GRPC implementation supports the LAG type only and it is set by default.""")
 class LogicalPortSpec extends GrpcBaseSpecification {
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     def "Able to create/read/delete logicalport on the #sw.hwSwString switch"() {
         when: "Create logical port"
@@ -33,6 +38,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
 
         def switchLogicalPort = 1100 + switchPort
         def request = new LogicalPortDto(LogicalPortType.BFD, [switchPort], switchLogicalPort)
+        cleanupManager.addAction(OTHER, {grpc.deleteSwitchLogicalPort(sw.address, switchLogicalPort)})
         def responseAfterCreating = grpc.createLogicalPort(sw.address, request)
         assert responseAfterCreating.logicalPortNumber == switchLogicalPort
 
@@ -58,12 +64,6 @@ class LogicalPortSpec extends GrpcBaseSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         new LogicalPortNotFoundExpectedError()
-        Boolean testIsCompleted = true
-
-        cleanup: "Remove created port"
-        if (!testIsCompleted) {
-            grpc.deleteSwitchLogicalPort(sw.address, switchLogicalPort)
-        }
 
         where:
         sw << getNoviflowSwitches()
@@ -83,6 +83,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
         then: "Human readable error is returned."
         def exc = thrown(HttpClientErrorException)
         new LogicalPortNotCreatedExpectedError(data.errorMessage, ~/.*/).matches(exc)
+
         where:
         [data, sw] << [
                 [

@@ -1,22 +1,24 @@
 package org.openkilda.functionaltests.spec.grpc
 
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.testing.ConstantsGrpc.DEFAULT_LOG_MESSAGES_STATE
-import static org.openkilda.testing.ConstantsGrpc.DEFAULT_LOG_OF_MESSAGES_STATE
-import static org.openkilda.testing.ConstantsGrpc.REMOTE_LOG_IP
-import static org.openkilda.testing.ConstantsGrpc.REMOTE_LOG_PORT
-
 import org.openkilda.functionaltests.error.LogServerNotSetExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.grpc.speaker.model.LogMessagesDto
 import org.openkilda.grpc.speaker.model.LogOferrorsDto
 import org.openkilda.grpc.speaker.model.RemoteLogServerDto
 import org.openkilda.messaging.model.grpc.OnOffState
-
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
+import spock.lang.Shared
+
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
+import static org.openkilda.testing.ConstantsGrpc.DEFAULT_LOG_MESSAGES_STATE
+import static org.openkilda.testing.ConstantsGrpc.REMOTE_LOG_IP
+import static org.openkilda.testing.ConstantsGrpc.REMOTE_LOG_PORT
 
 @Narrative("""This test suite checks that we are able to enable/disable:
  - log messages;
@@ -27,9 +29,13 @@ class LogSpec extends GrpcBaseSpecification {
     String defaultRemoteLogServerIp
     @Value('${grpc.remote.log.server.port}')
     Integer defaultRemoteLogServerPort
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     def "Able to enable 'log messages' on the #sw.hwSwString switch"() {
         when: "Try to turn on 'log messages'"
+        cleanupManager.addAction(OTHER,
+                {grpc.enableLogMessagesOnSwitch(sw.address, new LogMessagesDto(DEFAULT_LOG_MESSAGES_STATE))})
         def responseAfterTurningOn = grpc.enableLogMessagesOnSwitch(sw.address, new LogMessagesDto(OnOffState.ON))
 
         then: "The 'log messages' is turned on"
@@ -42,15 +48,14 @@ class LogSpec extends GrpcBaseSpecification {
         then: "The 'log messages' is turned off"
         responseAfterTurningOff.enabled == OnOffState.OFF
 
-        cleanup: "Restore default state"
-        grpc.enableLogMessagesOnSwitch(sw.address, new LogMessagesDto(DEFAULT_LOG_MESSAGES_STATE))
-
         where:
         sw << getNoviflowSwitches()
     }
 
     def "Able to enable 'OF log messages' on #sw.hwSwString"() {
         when: "Try to turn on 'OF log messages'"
+        cleanupManager.addAction(OTHER,
+                {grpc.enableLogMessagesOnSwitch(sw.address, new LogMessagesDto(DEFAULT_LOG_MESSAGES_STATE))})
         def responseAfterTurningOn = grpc.enableLogOfErrorsOnSwitch(sw.address,
                 new LogOferrorsDto(OnOffState.ON))
 
@@ -64,15 +69,14 @@ class LogSpec extends GrpcBaseSpecification {
         then: "The 'OF log messages' is turned off"
         responseAfterTurningOff.enabled == OnOffState.OFF
 
-        cleanup: "Restore default state"
-        grpc.enableLogOfErrorsOnSwitch(sw.address, new LogOferrorsDto(DEFAULT_LOG_OF_MESSAGES_STATE))
-
         where:
         sw << getNoviflowSwitches()
     }
 
     def "Able to manipulate(CRUD) with a remote log server on #sw.hwSwString"() {
         when: "Remove current remote log server configuration"
+        cleanupManager.addAction(OTHER, {grpc.setRemoteLogServerForSwitch(sw.address,
+                new RemoteLogServerDto(defaultRemoteLogServerIp, defaultRemoteLogServerPort))})
         def response = grpc.deleteRemoteLogServerForSwitch(sw.address)
 
         then: "Current remote log server configuration is deleted"
@@ -94,10 +98,6 @@ class LogSpec extends GrpcBaseSpecification {
         response3.ipAddress == REMOTE_LOG_IP
         response3.port == REMOTE_LOG_PORT
 
-        cleanup: "Restore original configuration"
-        grpc.setRemoteLogServerForSwitch(sw.address,
-                new RemoteLogServerDto(defaultRemoteLogServerIp, defaultRemoteLogServerPort))
-
         where:
         sw << getNoviflowSwitches()
     }
@@ -112,6 +112,7 @@ on #sw.hwSwString"() {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         new LogServerNotSetExpectedError(data.errorMessage).matches(exc)
+
         where:
         [data, sw] << [
                 [

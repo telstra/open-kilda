@@ -127,6 +127,17 @@ public class FermaHaFlowRepository extends FermaGenericRepository<HaFlow, HaFlow
     }
 
     @Override
+    public Collection<HaFlow> findBySharedEndpointSwitchId(SwitchId switchId) {
+        return framedGraph().traverse(g -> g.V()
+                        .hasLabel(HaFlowFrame.FRAME_LABEL)
+                        .has(HaFlowFrame.SHARED_ENDPOINT_SWITCH_ID_PROPERTY,
+                                SwitchIdConverter.INSTANCE.toGraphProperty(switchId)))
+                .toListExplicit(HaFlowFrame.class).stream()
+                .map(HaFlow::new)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public Collection<HaFlow> findInactive() {
         String downStatus = FlowStatusConverter.INSTANCE.toGraphProperty(FlowStatus.DOWN);
         String degradedStatus = FlowStatusConverter.INSTANCE.toGraphProperty(FlowStatus.DEGRADED);

@@ -1,25 +1,15 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.testing.Constants.DEFAULT_COST
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static spock.util.matcher.HamcrestSupport.expect
-
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.See
@@ -27,12 +17,26 @@ import spock.lang.Shared
 
 import jakarta.inject.Provider
 
+import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
+import static org.openkilda.testing.Constants.DEFAULT_COST
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static spock.util.matcher.HamcrestSupport.expect
+
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/reroute")
 @Narrative("Verify that on-demand reroute operations are performed accurately.")
+
 class IntentionalRerouteSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
+    @Autowired
+    CleanupManager cleanupManager
 
     @Tags(ISL_PROPS_DB_RESET)
     def "Not able to reroute to a path with not enough bandwidth available"() {
@@ -59,7 +63,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
             def newBw = flow.maximumBandwidth - 1
             [thinIsl, thinIsl.reversed].each {
                 database.updateIslMaxBandwidth(it, newBw)
-                database.updateIslAvailableBandwidth(it, newBw)
+                islHelper.setAvailableBandwidth(it, newBw)
             }
             thinIsl
         }
@@ -71,14 +75,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
         !rerouteResponse.rerouted
         rerouteResponse.path.nodes == currentPathNodesV2
-
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
-
-        cleanup: "Remove the flow, restore the bandwidth on ISLs, reset costs"
-        changedIsls.each {
-            database.resetIslBandwidth(it)
-            database.resetIslBandwidth(it.reversed)
-        }
     }
 
     @Tags(ISL_PROPS_DB_RESET)
@@ -104,7 +101,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         }
         [thinIsl, thinIsl.reversed].each {
             database.updateIslMaxBandwidth(it, flow.maximumBandwidth)
-            database.updateIslAvailableBandwidth(it, flow.maximumBandwidth)
+            islHelper.setAvailableBandwidth(it, flow.maximumBandwidth)
         }
 
         and: "Init a reroute of the flow"
@@ -126,9 +123,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
 
         and: "'Thin' ISL has 0 available bandwidth left"
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
-
-        cleanup: "Remove the flow, restore bandwidths on ISLs, reset costs"
-        thinIsl && [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
     }
 
     /**
@@ -156,6 +150,8 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
         assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == longestPath
         //now make another long path more preferable, for reroute to rebuild the rules on other switches in the future
+        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
+                {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
         northbound.updateLinkProps((changedIsls + changedIsls*.reversed)
                 .collect { islUtils.toLinkProps(it, [cost: DEFAULT_COST.toString()]) })
         def potentialNewPath = allPaths.findAll { it != longestPath }.max { it.size() }
@@ -217,7 +213,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
             }
             [thinIsl, thinIsl.reversed].each {
                 database.updateIslMaxBandwidth(it, newBw)
-                database.updateIslAvailableBandwidth(it, newBw)
+                islHelper.setAvailableBandwidth(it, newBw)
             }
             thinIsl
         }
@@ -241,12 +237,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
             islUtils.getIslInfo(allLinks, it).each {
                 assert it.get().availableBandwidth == newBw
             }
-        }
-
-        cleanup: "Remove the flow, restore the bandwidth on ISLs, reset costs"
-        changedIsls.each {
-            database.resetIslBandwidth(it)
-            database.resetIslBandwidth(it.reversed)
         }
     }
 
@@ -316,7 +306,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
             def newBw = flow.maximumBandwidth - 1
             [thinIsl, thinIsl.reversed].each {
                 database.updateIslMaxBandwidth(it, newBw)
-                database.updateIslAvailableBandwidth(it, newBw)
+                islHelper.setAvailableBandwidth(it, newBw)
             }
             thinIsl
         }
@@ -333,10 +323,6 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         PathHelper.convert(northbound.getFlowPath(flow.id)) == currentPath
 
         cleanup: "Remove the flow, restore the bandwidth on ISLs, reset costs"
-        changedIsls.each {
-            database.resetIslBandwidth(it)
-            database.resetIslBandwidth(it.reversed)
-        }
     }
 
     @Tags([LOW_PRIORITY, ISL_PROPS_DB_RESET])
@@ -361,7 +347,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         }
         [thinIsl, thinIsl.reversed].each {
             database.updateIslMaxBandwidth(it, flow.maximumBandwidth)
-            database.updateIslAvailableBandwidth(it, flow.maximumBandwidth)
+            islHelper.setAvailableBandwidth(it, flow.maximumBandwidth)
         }
 
         and: "Init a reroute of the flow"
@@ -382,13 +368,5 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         and: "'Thin' ISL has 0 available bandwidth left"
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
-
-        cleanup: "Remove the flow, restore bandwidths on ISLs, reset costs"
-        thinIsl && [thinIsl, thinIsl.reversed].each { database.resetIslBandwidth(it) }
-    }
-
-    def cleanup() {
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        database.resetCosts(topology.isls)
     }
 }

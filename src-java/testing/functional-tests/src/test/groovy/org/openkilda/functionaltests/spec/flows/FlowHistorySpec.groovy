@@ -1,29 +1,10 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-
-import org.openkilda.functionaltests.error.InvalidRequestParametersExpectedError
-
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ONLY_IN_DB
-import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
-
-import org.openkilda.functionaltests.error.HistoryMaxCountExpectedError
-
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_SUCCESS
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
-import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
+import com.github.javafaker.Faker
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.HistoryMaxCountExpectedError
+import org.openkilda.functionaltests.error.InvalidRequestParametersExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
@@ -35,9 +16,6 @@ import org.openkilda.model.SwitchFeature
 import org.openkilda.model.history.FlowEvent
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
-import com.github.javafaker.Faker
-import groovy.util.logging.Slf4j
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
@@ -46,9 +24,27 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ONLY_IN_DB
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_SUCCESS
+import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+
 @Narrative("""Verify that history records are created for the create/update actions.
 History record is created in case the create/update action is completed successfully.""")
 @Slf4j
+
 class FlowHistorySpec extends HealthCheckSpecification {
     @Shared
     Long specStartTime
@@ -378,11 +374,6 @@ class FlowHistorySpec extends HealthCheckSpecification {
             assert flowHistory.payload[0].action == "Flow rerouting operation has been started."
             assert flowHistory.payload[1].action == "ValidateFlowAction failed: Flow's $flow.flowId src switch is not active"
             assert flowHistory.payload[2].action == REROUTE_FAIL
-        }
-
-        cleanup:
-        if (!swIsActive) {
-            switchHelper.reviveSwitch(srcSwitch, blockData, true)
         }
     }
 

@@ -17,6 +17,7 @@ import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowActionType
 import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult
@@ -33,6 +34,18 @@ import spock.lang.Narrative
 import spock.lang.Shared
 
 import jakarta.inject.Provider
+
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS_Y
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
+import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Slf4j
 @Narrative("Verify reroute operations on y-flows.")
@@ -59,7 +72,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
 
         def yFlow = yFlowFactory.getBuilder(swT).withEp1QnQ().withEp2QnQ().withSharedEpQnQ()
-                .build().waitForBeingInState(FlowState.UP)
+                .build().create()
 
         def paths = yFlow.retrieveAllEntityPaths()
         def islToFail = paths.subFlowPaths.first().getInvolvedIsls().first()
@@ -126,11 +139,6 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
             assert stats.get(FLOW_RAW_BYTES, subflow.getEndpoint().getSwitchId(), mainForwardCookie).hasNonZeroValues()
             assert stats.get(FLOW_RAW_BYTES, yFlow.getSharedEndpoint().getSwitchId(), mainReverseCookie).hasNonZeroValues()
         }
-
-        cleanup:
-        yFlow && yFlow.delete()
-        islHelper.restoreIsl(islToFail)
-        database.resetCosts(topology.isls)
     }
 
     @Tags([LOW_PRIORITY])
@@ -153,9 +161,6 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
             yFlow.retrieveDetails().status == FlowState.UP
             yFlowPathAfterReroute == yFlowPathBeforeReroute
         }
-
-        cleanup:
-        yFlow && yFlow.delete()
     }
 
     @Tags([LOW_PRIORITY])
@@ -198,10 +203,6 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
             yFlowPathAfterReroute.subFlowPaths.last().path.forward != yFlowPathBeforeReroute.subFlowPaths.last().path.forward
             yFlowPathAfterReroute.subFlowPaths.last().path.reverse != yFlowPathBeforeReroute.subFlowPaths.last().path.reverse
         }
-
-        cleanup:
-        northbound.deleteLinkProps(northbound.getLinkProps(sharedPathIslBeforeReroute + directSwTripletIsls))
-        yFlow && yFlow.delete()
     }
 
     @Tags([LOW_PRIORITY])
@@ -221,11 +222,11 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         assert !yFlowPathBeforeReroute.sharedPath.path.isPathAbsent()
 
         and: "The required ISLs cost has been updated to make manual reroute available"
-        def islsSubFlow1 = (yFlowPathBeforeReroute.subFlowPaths.first().getInvolvedIsls(true)
-                + yFlowPathBeforeReroute.subFlowPaths.first().getInvolvedIsls(false)).unique()
+        def islsSubFlow1 = (yFlowPathBeforeReroute.subFlowPaths.first().getInvolvedIsls(Direction.FORWARD)
+                + yFlowPathBeforeReroute.subFlowPaths.first().getInvolvedIsls(Direction.REVERSE)).unique()
 
-        def islsSubFlow2 = (yFlowPathBeforeReroute.subFlowPaths.last().getInvolvedIsls(true)
-                + yFlowPathBeforeReroute.subFlowPaths.last().getInvolvedIsls(false)).unique()
+        def islsSubFlow2 = (yFlowPathBeforeReroute.subFlowPaths.last().getInvolvedIsls(Direction.FORWARD)
+                + yFlowPathBeforeReroute.subFlowPaths.last().getInvolvedIsls(Direction.REVERSE)).unique()
 
         assert islsSubFlow1 != islsSubFlow2, "Y-Flow path doesn't allow us to the check this case as subFlows have the same ISLs"
 
@@ -259,10 +260,6 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
             yFlowPathAfterReroute.subFlowPaths.find { it.flowId != subFlowId }.path.forward == yFlowPathBeforeReroute.subFlowPaths.find { it.flowId != subFlowId }.path.forward
             yFlowPathAfterReroute.subFlowPaths.find { it.flowId != subFlowId }.path.reverse == yFlowPathBeforeReroute.subFlowPaths.find { it.flowId != subFlowId }.path.reverse
         }
-
-        cleanup:
-        northbound.deleteLinkProps(northbound.getLinkProps(islsToModify + directSwTripletIsls))
-        yFlow && yFlow.delete()
     }
 
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
@@ -298,10 +295,5 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
             yFlow.retrieveDetails().status == FlowState.DEGRADED
             yFlowPathAfterReroute == yFlowPathBeforeReroute
         }
-
-        cleanup:
-        islHelper.restoreIsls(broughtDownIsls)
-        yFlow.waitForBeingInState(FlowState.UP)
-        yFlow && yFlow.delete()
     }
 }

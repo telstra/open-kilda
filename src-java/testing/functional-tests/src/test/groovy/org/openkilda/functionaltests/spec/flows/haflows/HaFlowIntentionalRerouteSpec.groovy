@@ -1,27 +1,25 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
-import static org.openkilda.messaging.payload.flow.FlowEncapsulationType.*
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
-import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
+
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
+import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.TRANSIT_VLAN
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Narrative("Verify that on-demand HA-Flow reroute operations are performed accurately.")
 @Tags([HA_FLOW])
@@ -37,17 +35,17 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
         assumeTrue(swT != null, "No suiting switches found")
         def haFlow = haFlowFactory.getBuilder(swT).withBandwidth(10000)
-                .build().waitForBeingInState(FlowState.UP)
+                .build().create()
 
         def initialPath = haFlow.retrievedAllEntityPaths()
-        def involvedIsls = initialPath.getInvolvedIsls(true)
+        def involvedIsls = initialPath.getInvolvedIsls()
 
         when: "Make the current path less preferable than alternatives"
         pathHelper.updateIslsCost(involvedIsls, PathHelper.NOT_PREFERABLE_COST * 3)
 
         and: "Make all alternative paths to have not enough bandwidth to handle the HA-Flow"
         def alternativePaths = getAlternativesPaths(initialPath, (swT.pathsEp1 + swT.pathsEp2))
-        def changedIsls = setBandwidthForAlternativesPaths(involvedIsls, alternativePaths, haFlow.maximumBandwidth - 1)
+        setBandwidthForAlternativesPaths(involvedIsls, alternativePaths, haFlow.maximumBandwidth - 1)
 
         and: "Init a reroute to a more preferable path"
         def rerouteResponse = haFlow.reroute()
@@ -67,15 +65,6 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
 
         and: "HA-Flow pass validation"
         haFlow.validate().asExpected
-
-        cleanup: "Remove the HA-Flow, restore the bandwidth on ISLs, reset costs"
-        haFlow && haFlow.delete()
-        withPool {
-            changedIsls.eachParallel {
-                database.resetIslBandwidth(it)
-                database.resetIslBandwidth(it.reversed)
-            }
-        }
     }
 
     @Tags(ISL_PROPS_DB_RESET)
@@ -84,13 +73,13 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
         assumeTrue(swT != null, "No suiting switches found")
         def haFlow = haFlowFactory.getBuilder(swT).withEncapsulationType(TRANSIT_VLAN)
-                .withBandwidth(10000).build().waitForBeingInState(FlowState.UP)
+                .withBandwidth(10000).build().create()
 
         def initialPath = haFlow.retrievedAllEntityPaths()
         def initialPathNodesView = initialPath.subFlowPaths.collect { it.path.forward.nodes.toPathNode() }
-        def initialInvolvedIsls = initialPath.getInvolvedIsls(true)
-        String ep1FlowId = haFlow.subFlows.find { it.endpoint.switchId == swT.ep1.dpId }.flowId
-        String ep2FlowId = haFlow.subFlows.find { it.endpoint.switchId == swT.ep2.dpId }.flowId
+        def initialInvolvedIsls = initialPath.getInvolvedIsls()
+        String ep1FlowId = haFlow.subFlows.find { it.endpointSwitchId == swT.ep1.dpId }.haSubFlowId
+        String ep2FlowId = haFlow.subFlows.find { it.endpointSwitchId == swT.ep2.dpId }.haSubFlowId
         def initialInvolvedSwitchIds = initialInvolvedIsls.collect { [it.srcSwitch.dpId, it.dstSwitch.dpId] }.flatten().unique()
 
         when: "Make one of the alternative paths to be the most preferable among all others"
@@ -116,7 +105,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         then: "The HA-Flow is successfully rerouted and goes through the preferable path"
         rerouteResponse.rerouted
         def haFlowPathAfterReroute = haFlow.retrievedAllEntityPaths()
-        def actualIslsAfterReroute = haFlowPathAfterReroute.getInvolvedIsls(true)
+        def actualIslsAfterReroute = haFlowPathAfterReroute.getInvolvedIsls()
 
         assertRerouteResponsePaths(haFlowPathAfterReroute, rerouteResponse)
 
@@ -139,29 +128,20 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             thinIsl.each { assert islUtils.getIslInfo(it).get().availableBandwidth == 0 }
         }
-
-        cleanup: "Remove the HA-Flow, restore bandwidths on ISLs, reset costs"
-        haFlow && haFlow.delete()
-        withPool {
-            thinIsl.eachParallel {
-                database.resetIslBandwidth(it)
-                database.resetIslBandwidth(it.reversed)
-            }
-        }
     }
 
     @Tags(ISL_PROPS_DB_RESET)
     def "Able to reroute to a path with not enough bandwidth available in case ignoreBandwidth=true"() {
-        given: "A HA-Flow with alternate paths available"
+        given: "an HA-Flow with alternate paths available"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
         assumeTrue(swT != null, "No suiting switches found")
         def haFlow = haFlowFactory.getBuilder(swT).withEncapsulationType(TRANSIT_VLAN)
                 .withBandwidth(10000).withIgnoreBandwidth(true)
-                .build().waitForBeingInState(FlowState.UP)
+                .build().create()
 
         def initialPath = haFlow.retrievedAllEntityPaths()
         def initialPathNodesView = initialPath.subFlowPaths.collect { it.path.forward.nodes.toPathNode() }
-        def initialInvolvedIsls = initialPath.getInvolvedIsls(true)
+        def initialInvolvedIsls = initialPath.getInvolvedIsls()
         def initialInvolvedSwitchIds = initialInvolvedIsls.collect { [it.srcSwitch.dpId, it.dstSwitch.dpId] }.flatten().unique()
 
         when: "Make the current path less preferable than alternatives"
@@ -186,7 +166,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         haFlow.waitForBeingInState(FlowState.UP)
 
         def haFlowPathAfterReroute = haFlow.retrievedAllEntityPaths()
-        def actualIslsAfterReroute = haFlowPathAfterReroute.getInvolvedIsls(true)
+        def actualIslsAfterReroute = haFlowPathAfterReroute.getInvolvedIsls()
 
         assertRerouteResponsePaths(haFlowPathAfterReroute, rerouteResponse)
         haFlowPathAfterReroute != initialPath
@@ -205,15 +185,6 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
                 islUtils.getIslInfo(allLinks, it).each {
                     assert it.get().availableBandwidth == newBw
                 }
-            }
-        }
-
-        cleanup: "Remove the HA-flow, restore the bandwidth on ISLs, reset costs"
-        haFlow && haFlow.delete()
-        withPool {
-            changedIsls.eachParallel {
-                database.resetIslBandwidth(it)
-                database.resetIslBandwidth(it.reversed)
             }
         }
     }
@@ -245,16 +216,11 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         withPool {
             changedIsls.eachParallel { Isl thinIsl ->
                 [thinIsl, thinIsl.reversed].each {
+                    islHelper.setAvailableBandwidth(it, newBandwidth)
                     database.updateIslMaxBandwidth(it, newBandwidth)
-                    database.updateIslAvailableBandwidth(it, newBandwidth)
                 }
             }
         }
         changedIsls
-    }
-
-    def cleanup() {
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        database.resetCosts(topology.isls)
     }
 }

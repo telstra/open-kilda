@@ -1,25 +1,24 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.hamcrest.Matchers.containsInAnyOrder
-import static org.junit.Assert.assertThat
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.model.SwitchFeature
 import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
 import spock.lang.Narrative
+
+import static org.hamcrest.Matchers.containsInAnyOrder
+import static org.junit.Assert.assertThat
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 
 @Narrative("""This test suite checks the switch validate and rule validate features regarding default rules.
 System should be able to detect missing, misconfigured, proper and excess default rules.
 The real-life usecase is that we should properly detect and distinguish 'duplicate' default rules with the same cookie
 but different match/priority/etc.
 """)
+
 class DefaultRulesValidationSpec extends HealthCheckSpecification {
     //Tests for 'missing' default rules are in `DefaultRulesSpec`
 
@@ -33,7 +32,7 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
             Map swProps, Switch sw, String propsDescr) {
         given: "Clean switch without customer flows and with the given switchProps"
         def originalProps = switchHelper.getCachedSwProps(sw.dpId)
-        northbound.updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap({
+        switchHelper.updateSwitchProperties(sw, originalProps.jacksonCopy().tap({
             it.switchLldp = swProps.switchLldp
             it.switchArp = swProps.switchArp
         }))
@@ -54,9 +53,6 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
             rules.excess.empty
             assertThat sw.toString(), rules.proper*.cookie, containsInAnyOrder(sw.defaultCookies.toArray())
         }
-
-        cleanup: "Restore original switch props"
-        switchHelper.updateSwitchProperties(sw, originalProps)
 
         where: "Run for all combinations of unique switches and switch modes"
         [swProps, sw] <<

@@ -1,24 +1,22 @@
 package org.openkilda.functionaltests.spec.flows
 
-import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_RULE
 import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
+import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
@@ -27,12 +25,10 @@ import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v1.flows.PingOutput.PingOutputBuilder
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
-import spock.lang.Unroll
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-ping")
 @Narrative("""
@@ -40,14 +36,14 @@ This spec tests all the functionality related to flow pings.
 Flow ping feature sends a 'ping' packet at the one end of the flow, expecting that this packet will 
 be delivered at the other end. 'Pings' the flow in both directions(forward and reverse).
 """)
+
 class FlowPingSpec extends HealthCheckSpecification {
 
     @Value('${flow.ping.interval}')
     int pingInterval
 
-    @Unroll("Able to ping a flow with vlan between switches #swPair.toString()")
     @Tags([TOPOLOGY_DEPENDENT])
-    def "Able to ping a flow with vlan"(Switch srcSwitch, Switch dstSwitch) {
+    def "Able to ping a flow with vlan between #switchPairDescription"(Switch srcSwitch, Switch dstSwitch) {
         given: "A flow with random vlan"
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flow.encapsulationType=  FlowEncapsulationType.TRANSIT_VLAN
@@ -85,10 +81,9 @@ class FlowPingSpec extends HealthCheckSpecification {
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
-        swPair = new SwitchPair(src: srcSwitch, dst: dstSwitch, paths: [])
+        switchPairDescription = "src[$srcSwitch.description $srcSwitch.ofVersion]-dst[$dstSwitch.description $dstSwitch.ofVersion]"
     }
 
-    @Unroll("Able to ping a flow with vxlan between switches #swPair.toString()")
     @Tags([TOPOLOGY_DEPENDENT])
     def "Able to ping a flow with vxlan"() {
         given: "A flow with random vxlan"
@@ -123,9 +118,8 @@ class FlowPingSpec extends HealthCheckSpecification {
         }
     }
 
-    @Unroll("Able to ping a flow with no vlan between switches #swPair.toString()")
     @Tags([TOPOLOGY_DEPENDENT])
-    def "Able to ping a flow with no vlan"(Switch srcSwitch, Switch dstSwitch) {
+    def "Able to ping a flow with no vlan between #switchPairDescription"(Switch srcSwitch, Switch dstSwitch) {
         given: "A flow with no vlan"
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
         flow.source.vlanId = 0
@@ -146,12 +140,12 @@ class FlowPingSpec extends HealthCheckSpecification {
 
         where:
         [srcSwitch, dstSwitch] << ofSwitchCombinations
-        swPair = new SwitchPair(src: srcSwitch, dst: dstSwitch, paths: [])
+        switchPairDescription = "src[$srcSwitch.description $srcSwitch.ofVersion]-dst[$dstSwitch.description $dstSwitch.ofVersion]"
+
     }
 
-    @Unroll("Flow ping can detect a broken #description")
     @IterationTag(tags = [SMOKE], iterationNameRegex = /forward path/)
-    def "Flow ping can detect a broken path for a vlan flow"() {
+    def "Flow ping can detect a broken path(#description) for a vlan flow"() {
         given: "A flow with at least 1 a-switch link"
         def switches = topology.activeSwitches.findAll { !it.centec && it.ofVersion != "OF_12" }
         List<List<PathNode>> allPaths = []
@@ -187,11 +181,6 @@ class FlowPingSpec extends HealthCheckSpecification {
 
         cleanup: "Restore rules, costs and remove the flow"
         rulesToRemove && lockKeeper.addFlows(rulesToRemove)
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(islToBreak).get().state == IslChangeType.DISCOVERED
-        }
-        database.resetCosts(topology.isls)
 
         where:
         data << [
@@ -290,7 +279,7 @@ class FlowPingSpec extends HealthCheckSpecification {
             !new Cookie(it.cookie).serviceFlag
         }*.cookie
         rulesToDelete.each { cookie ->
-            northbound.deleteSwitchRules(intermediateSwId, cookie)
+            switchHelper.deleteSwitchRules(intermediateSwId, cookie)
         }
 
         and: "Ping the flow"

@@ -40,10 +40,12 @@ import org.openkilda.rulemanager.factory.generator.flow.TransitYRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.VlanStatsRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.haflow.EgressHaRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.haflow.IngressHaRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.haflow.SharedYServer42IngressForwardHaRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.haflow.TransitHaRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.haflow.YPointForwardEgressHaRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.haflow.YPointForwardIngressHaRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.haflow.YPointForwardTransitHaRuleGenerator;
+import org.openkilda.rulemanager.factory.generator.flow.haflow.YPointServer42HaFlowRttTransitRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopIngressRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.loop.FlowLoopTransitRuleGenerator;
 import org.openkilda.rulemanager.factory.generator.flow.mirror.EgressMirrorRuleGenerator;
@@ -90,6 +92,39 @@ public class FlowRulesGeneratorFactory {
                 .config(config)
                 .flowPath(flowPath)
                 .flow(flow)
+                .encapsulation(encapsulation)
+                .overlappingIngressAdapters(overlappingIngressAdapters)
+                .switchProperties(switchProperties)
+                .build();
+    }
+
+    /**
+     * Get shared Y point server42 ingress rule generator for HA flow.
+     */
+    public RuleGenerator getSharedYServer42IngressHaRuleGenerator(
+            FlowPath flowPath, HaFlow haFlow, FlowTransitEncapsulation encapsulation,
+            SwitchProperties switchProperties, Set<FlowSideAdapter> overlappingIngressAdapters) {
+        return SharedYServer42IngressForwardHaRuleGenerator.builder()
+                .config(config)
+                .flowPath(flowPath)
+                .haFlow(haFlow)
+                .encapsulation(encapsulation)
+                .overlappingIngressAdapters(overlappingIngressAdapters)
+                .switchProperties(switchProperties)
+                .build();
+    }
+
+    /**
+     * Get ingress Server42 rule generator for HA flow.
+     */
+    public RuleGenerator getServer42IngressHaRuleGenerator(
+            FlowPath flowPath, HaFlow haFlow, FlowTransitEncapsulation encapsulation,
+            SwitchProperties switchProperties, Set<FlowSideAdapter> overlappingIngressAdapters) {
+
+        return Server42IngressRuleGenerator.builder()
+                .config(config)
+                .flowPath(flowPath)
+                .haFlow(haFlow)
                 .encapsulation(encapsulation)
                 .overlappingIngressAdapters(overlappingIngressAdapters)
                 .switchProperties(switchProperties)
@@ -344,6 +379,20 @@ public class FlowRulesGeneratorFactory {
                 .subPaths(subPaths)
                 .encapsulation(encapsulation)
                 .inPort(inPort)
+                .build();
+    }
+
+    /**
+     * Get server42 flow rtt ha flow transit rule generator.
+     */
+    public RuleGenerator getServer42FlowRttHaFlowTransitRuleGenerator(
+            List<FlowPath> subPaths, FlowTransitEncapsulation encapsulation, int inPort,
+            Map<PathId, Integer> outPorts) {
+        return YPointServer42HaFlowRttTransitRuleGenerator.builder()
+                .subPaths(subPaths)
+                .encapsulation(encapsulation)
+                .inPort(inPort)
+                .outPorts(outPorts)
                 .build();
     }
 

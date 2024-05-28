@@ -1,12 +1,19 @@
 package org.openkilda.functionaltests.helpers.model
 
+import org.openkilda.functionaltests.model.cleanup.CleanupAfter
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.northbound.dto.v2.yflows.SubFlowUpdatePayload
+import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload
+import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpoint
 
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_YFLOW
+import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.yflows.SubFlow
 import org.openkilda.northbound.dto.v2.yflows.YFlow
@@ -15,7 +22,6 @@ import org.openkilda.northbound.dto.v2.yflows.YFlowPaths
 import org.openkilda.northbound.dto.v2.yflows.YFlowPingPayload
 import org.openkilda.northbound.dto.v2.yflows.YFlowPingResult
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult
-import org.openkilda.northbound.dto.v2.yflows.YFlowSharedEndpoint
 import org.openkilda.northbound.dto.v2.yflows.YFlowSyncResult
 import org.openkilda.northbound.dto.v2.yflows.YFlowUpdatePayload
 import org.openkilda.northbound.dto.v2.yflows.YFlowValidationResult
@@ -42,10 +48,10 @@ import groovy.transform.builder.Builder
 import groovy.util.logging.Slf4j
 
 @Slf4j
-@EqualsAndHashCode(excludes = 'northbound, northboundV2, topologyDefinition')
+@EqualsAndHashCode(excludes = 'northbound, northboundV2, topologyDefinition, cleanupManager')
 @Builder
 @AutoClone
-@ToString(includeNames = true, excludes = 'northbound, northboundV2, topologyDefinition')
+@ToString(includeNames = true, excludes = 'northbound, northboundV2, topologyDefinition, cleanupManager')
 class YFlowExtended {
 
     String yFlowId
@@ -54,7 +60,7 @@ class YFlowExtended {
     YFlowSharedEndpoint sharedEndpoint
 
     long maximumBandwidth
-    String pathComputationStrategy
+    PathComputationStrategy pathComputationStrategy
     FlowEncapsulationType encapsulationType
     Long maxLatency
     Long maxLatencyTier2
@@ -89,13 +95,31 @@ class YFlowExtended {
 
     @JsonIgnore
     TopologyDefinition topologyDefinition
+    @JsonIgnore
+    CleanupManager cleanupManager
 
-    YFlowExtended(YFlow yFlow, NorthboundService northbound, NorthboundServiceV2 northboundV2, TopologyDefinition topologyDefinition) {
+    YFlowExtended(String yFlowId,
+                  NorthboundService northbound,
+                  NorthboundServiceV2 northboundV2,
+                  TopologyDefinition topologyDefinition,
+                  CleanupManager cleanupManager) {
+        this.yFlowId = yFlowId
+        this.northbound = northbound
+        this.northboundV2 = northboundV2
+        this.topologyDefinition = topologyDefinition
+        this.cleanupManager = cleanupManager
+    }
+
+    YFlowExtended(YFlow yFlow,
+                  NorthboundService northbound,
+                  NorthboundServiceV2 northboundV2,
+                  TopologyDefinition topologyDefinition,
+                  CleanupManager cleanupManager) {
         this.yFlowId = yFlow.YFlowId
         this.status = FlowState.getByValue(yFlow.status)
 
         this.maximumBandwidth = yFlow.maximumBandwidth
-        this.pathComputationStrategy = yFlow.pathComputationStrategy
+        this.pathComputationStrategy = PathComputationStrategy.valueOf(yFlow.pathComputationStrategy.toUpperCase())
         this.encapsulationType = FlowEncapsulationType.getByValue(yFlow.encapsulationType)
         this.maxLatency = yFlow.maxLatency
         this.maxLatencyTier2 = yFlow.maxLatencyTier2
@@ -123,6 +147,49 @@ class YFlowExtended {
         this.northbound = northbound
         this.northboundV2 = northboundV2
         this.topologyDefinition = topologyDefinition
+        this.cleanupManager = cleanupManager
+    }
+
+    void setPathComputationStrategy(PathComputationStrategy strategy) {
+        this.pathComputationStrategy = strategy
+    }
+
+    void setPathComputationStrategy(String strategy) {
+        this.pathComputationStrategy = PathComputationStrategy.valueOf(strategy.toUpperCase())
+    }
+
+    YFlowExtended create(FlowState expectedState = FlowState.UP, CleanupAfter cleanupAfter = TEST) {
+        cleanupManager.addAction(DELETE_YFLOW, { delete() }, cleanupAfter)
+        northboundV2.addYFlow(YFlowCreatePayload.builder()
+                .yFlowId(this.yFlowId)
+                .maximumBandwidth(this.maximumBandwidth)
+                .pathComputationStrategy(this.pathComputationStrategy.toString())
+                .encapsulationType(this.encapsulationType.toString())
+                .maxLatency(this.maxLatency)
+                .maxLatencyTier2(this.maxLatencyTier2)
+                .ignoreBandwidth(this.ignoreBandwidth)
+                .periodicPings(this.periodicPings)
+                .pinned(this.pinned)
+                .priority(this.priority)
+                .strictBandwidth(this.strictBandwidth)
+                .description(this.description)
+                .allocateProtectedPath(this.allocateProtectedPath)
+                .sharedEndpoint(this.sharedEndpoint)
+                .subFlows(this.subFlows.collect { subFlow ->
+                    SubFlowUpdatePayload.builder()
+                            .flowId(subFlow.flowId)
+                            .endpoint(subFlow.endpoint)
+                            .sharedEndpoint(subFlow.sharedEndpoint)
+                            .description(subFlow.description)
+                            .build()
+                })
+        /*A dirty hack to not have 'diverse_flow_id' field in the object (it presents only in create request).
+        So we keep one string value added by HaFlowBuilder in 'diverseWithFlows' field, but it's overwritten
+        when we create/update Y-Flow (based on values in server response which are more interesting)*/
+                .diverseFlowId(diverseWithFlows ? diverseWithFlows.first() : null)
+                .build())
+        return waitForBeingInState(expectedState)
+
     }
 
     FlowWithSubFlowsEntityPath retrieveAllEntityPaths() {
@@ -157,7 +224,7 @@ class YFlowExtended {
     YFlowExtended sendPartialUpdateRequest(YFlowPatchPayload updateRequest) {
         log.debug("Send update request Y-Flow '${yFlowId}'(partial update)")
         def yFlow = northboundV2.partialUpdateYFlow(yFlowId, updateRequest)
-        new YFlowExtended(yFlow, northbound, northboundV2, topologyDefinition)
+        new YFlowExtended(yFlow, northbound, northboundV2, topologyDefinition, cleanupManager)
     }
 
     YFlowExtended partialUpdate(YFlowPatchPayload updateRequest, FlowState flowState = FlowState.UP) {
@@ -169,7 +236,7 @@ class YFlowExtended {
     YFlowExtended sendUpdateRequest(YFlowUpdatePayload updateRequest) {
         log.debug("Send update request Y-Flow '${yFlowId}'")
         def yFlow = northboundV2.updateYFlow(yFlowId, updateRequest)
-        new YFlowExtended(yFlow, northbound, northboundV2, topologyDefinition)
+        new YFlowExtended(yFlow, northbound, northboundV2, topologyDefinition, cleanupManager)
     }
 
     YFlowExtended update(YFlowUpdatePayload updateRequest, FlowState flowState = FlowState.UP) {
@@ -181,13 +248,13 @@ class YFlowExtended {
     YFlowExtended retrieveDetails() {
         log.debug("Get Y-Flow '${yFlowId}' details")
         def yFlow = northboundV2.getYFlow(yFlowId)
-        return  yFlow ? new YFlowExtended(yFlow, northbound, northboundV2, topologyDefinition) : null
+        return  yFlow ? new YFlowExtended(yFlow, northbound, northboundV2, topologyDefinition, cleanupManager) : null
     }
 
     YFlowExtended swap() {
         log.debug("Swap Y-Flow '${yFlowId}'")
         def yFlow = northboundV2.swapYFlowPaths(yFlowId)
-        new YFlowExtended(yFlow, northbound, northboundV2, topologyDefinition)
+        new YFlowExtended(yFlow, northbound, northboundV2, topologyDefinition, cleanupManager)
     }
 
     YFlowValidationResult validate() {
@@ -257,19 +324,21 @@ class YFlowExtended {
      * Deleting Y-Flow and waits when the flow disappears from the flow list.
      */
     YFlow delete() {
-        Wrappers.wait(WAIT_OFFSET * 2) {
-            assert retrieveDetails()?.status != FlowState.IN_PROGRESS
+        if (yFlowId in northboundV2.getAllYFlows()*.getYFlowId()) {
+            Wrappers.wait(WAIT_OFFSET * 2) {
+                assert retrieveDetails()?.status != FlowState.IN_PROGRESS
+            }
+            log.debug("Deleting Y-Flow '$yFlowId'")
+            def response = northboundV2.deleteYFlow(yFlowId)
+            Wrappers.wait(FLOW_CRUD_TIMEOUT) {
+                assert !retrieveDetails()
+                assert retrieveFlowHistory().getEntriesByType(YFlowActionType.DELETE).first()
+                        .payload.last().action == YFlowActionType.DELETE.payloadLastAction
+            }
+            // https://github.com/telstra/open-kilda/issues/3411
+            northbound.synchronizeSwitch(response.sharedEndpoint.switchId, true)
+            return response
         }
-        log.debug("Deleting Y-Flow '$yFlowId'")
-        def response = northboundV2.deleteYFlow(yFlowId)
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-            assert !retrieveDetails()
-            assert retrieveFlowHistory().getEntriesByType(YFlowActionType.DELETE).first()
-                    .payload.last().action == YFlowActionType.DELETE.payloadLastAction
-        }
-        // https://github.com/telstra/open-kilda/issues/3411
-        northbound.synchronizeSwitch(response.sharedEndpoint.switchId, true)
-        return response
     }
 
     /**
@@ -288,7 +357,7 @@ class YFlowExtended {
         List<Vlan> srcVlanIds2 = ImmutableList.of(new Vlan(subFlow2.getSharedEndpoint().getVlanId()),
                 new Vlan(subFlow2.getSharedEndpoint().getInnerVlanId()))
         List<Vlan> dstVlanIds1 = ImmutableList.of(new Vlan(subFlow1.getEndpoint().getVlanId()),
-                new Vlan(subFlow1.getEndpoint().getInnerVlanId()));
+                new Vlan(subFlow1.getEndpoint().getInnerVlanId()))
         List<Vlan> dstVlanIds2 = ImmutableList.of(new Vlan(subFlow2.getEndpoint().getVlanId()),
                 new Vlan(subFlow2.getEndpoint().getInnerVlanId()))
 

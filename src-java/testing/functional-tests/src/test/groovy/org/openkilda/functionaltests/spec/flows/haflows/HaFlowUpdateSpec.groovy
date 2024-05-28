@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.model.Switch
 
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 
@@ -19,6 +21,9 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 @Slf4j
 @Narrative("Verify update and partial update operations on HA-Flows.")
 @Tags([HA_FLOW])
@@ -28,7 +33,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
     @Autowired
     HaFlowFactory haFlowFactory
 
-    def "User can update #data.descr of a HA-Flow"() {
+    def "User can update #data.descr of an HA-Flow"() {
         given: "Existing HA-Flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlow = haFlowFactory.getRandom(swT)
@@ -39,18 +44,16 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         when: "Update the HA-Flow"
         def updateResponse = haFlow.sendUpdateRequest(update)
         def updatedHaFlow = haFlow.waitForBeingInState(FlowState.UP)
+
         then: "Requested updates are reflected in the response and in 'get' API"
         updateResponse.hasTheSamePropertiesAs(haFlow)
         updatedHaFlow.hasTheSamePropertiesAs(haFlow)
 
         and: "And involved switches pass validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)).isEmpty()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlow.retrievedAllEntityPaths().getInvolvedSwitches()).isEmpty()
 
         and: "HA-Flow pass validation"
         haFlow.validate().asExpected
-
-        cleanup:
-        haFlow && haFlow.delete()
 
         where: data << [
                 [
@@ -61,8 +64,8 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                             payload.sharedEndpoint.portNumber = allowedSharedPorts[0]
                             payload.subFlows.each {
                                 def allowedPorts = topology.getAllowedPortsForSwitch(topology.find(
-                                        it.endpoint.switchId)) - it.endpoint.portNumber
-                                it.endpoint.portNumber = allowedPorts[0]
+                                        it.endpointSwitchId)) - it.endpointPort
+                                it.endpointPort = allowedPorts[0]
                             }
                         }
                 ],
@@ -71,18 +74,18 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                         updateClosure: { HaFlowExtended payload ->
                             def newSwT = topologyHelper.getSwitchTriplets(true).find {
                                 it.shared.dpId != payload.sharedEndpoint.switchId &&
-                                        it.ep1.dpId != payload.subFlows[0].endpoint.switchId &&
-                                        it.ep2.dpId != payload.subFlows[1].endpoint.switchId &&
+                                        it.ep1.dpId != payload.subFlows[0].endpointSwitchId &&
+                                        it.ep2.dpId != payload.subFlows[1].endpointSwitchId &&
                                         it.ep1 != it.ep2
                             }
                             payload.sharedEndpoint.switchId = newSwT.shared.dpId
-                            payload.subFlows[0].endpoint.switchId = newSwT.ep1.dpId
-                            payload.subFlows[1].endpoint.switchId = newSwT.ep2.dpId
+                            payload.subFlows[0].endpointSwitchId = newSwT.ep1.dpId
+                            payload.subFlows[1].endpointSwitchId = newSwT.ep2.dpId
                             payload.sharedEndpoint.portNumber = topology
                                     .getAllowedPortsForSwitch(topology.find(newSwT.shared.dpId))[-1]
-                            payload.subFlows[0].endpoint.portNumber = topology
+                            payload.subFlows[0].endpointPort = topology
                                     .getAllowedPortsForSwitch(topology.find(newSwT.ep1.dpId))[-1]
-                            payload.subFlows[1].endpoint.portNumber = topology
+                            payload.subFlows[1].endpointPort = topology
                                     .getAllowedPortsForSwitch(topology.find(newSwT.ep2.dpId))[-1]
                         }
                 ],
@@ -101,8 +104,8 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(switchTriplet)
 
         haFlow.setDescription("new description")
-        def endPoint = haFlow.subFlows.first().endpoint
-        endPoint.setPortNumber(topology.getAllowedPortsForSwitch(topology.find(endPoint.getSwitchId())).first())
+        def subflow = haFlow.subFlows.first()
+        subflow.endpointPort = topology.getAllowedPortsForSwitch(topology.find(subflow.endpointSwitchId)).first()
 
         when: "Update the HA-Flow"
         def update = haFlow.convertToUpdateRequest()
@@ -114,16 +117,13 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         updatedHaFlow.hasTheSamePropertiesAs(haFlow)
 
         and: "And involved switches pass validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)).isEmpty()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlow.retrievedAllEntityPaths().getInvolvedSwitches()).isEmpty()
 
         and: "HA-Flow pass validation"
         haFlow.validate().asExpected
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 
-    def "User can partially update #data.descr of a HA-Flow"() {
+    def "User can partially update #data.descr of an HA-Flow"() {
         given: "Existing HA-Flow"
         def swT = topologyHelper.switchTriplets.find { it.ep1 != it.ep2 }
         def haFlow = haFlowFactory.getRandom(swT)
@@ -139,13 +139,13 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         updatedHaFlow.hasTheSamePropertiesAs(haFlow)
 
         and: "And involved switches pass validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)).isEmpty()
+        Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
+            assert switchHelper.validateAndCollectFoundDiscrepancies(
+                    haFlow.retrievedAllEntityPaths().getInvolvedSwitches()).isEmpty()
+        }
 
         and: "HA-Flow pass validation"
         haFlow.validate().asExpected
-
-        cleanup:
-        haFlow && haFlow.delete()
 
         //buildPatchRequest in addition to providing a patch payload should also updated the haFlow object
         //in order to reflect the expect result after update
@@ -163,14 +163,14 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                             def subFlows = []
                             payload.subFlows.each {
                                 def allowedPorts = topology.getAllowedPortsForSwitch(topology.find(
-                                        it.endpoint.switchId)) - it.endpoint.portNumber
+                                        it.endpointSwitchId)) - it.endpointPort
                                 subFlows << HaSubFlowPatchPayload.builder()
                                         .endpoint(HaFlowPatchEndpoint.builder()
                                                 .portNumber(allowedPorts[0])
                                                 .build())
-                                        .flowId(it.flowId)
+                                        .flowId(it.haSubFlowId)
                                         .build()
-                                it.endpoint.portNumber = allowedPorts[0]
+                                it.endpointPort = allowedPorts[0]
                             }
                             patchBuilder.subFlows(subFlows)
                             return patchBuilder.build()
@@ -180,15 +180,15 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                         descr: "sub flow vlan on only one sub flow",
                         buildPatchRequest: { HaFlowExtended payload ->
                             def subFlow = payload.subFlows[0]
-                            def newVlan = subFlow.endpoint.vlanId + 1
+                            def newVlan = subFlow.endpointVlan + 1
                             def patchBuilder = HaFlowPatchPayload.builder()
                                     .subFlows([HaSubFlowPatchPayload.builder()
-                                                       .flowId(subFlow.flowId)
+                                                       .flowId(subFlow.haSubFlowId)
                                                        .endpoint(HaFlowPatchEndpoint.builder()
                                                                .vlanId(newVlan)
                                                                .build())
                                                        .build()])
-                            subFlow.endpoint.vlanId = newVlan
+                            subFlow.endpointVlan = newVlan
                             return patchBuilder.build()
                         }
                 ],
@@ -197,21 +197,21 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                         buildPatchRequest: { HaFlowExtended payload ->
                             def newSwT = topologyHelper.getSwitchTriplets(true).find {
                                 it.shared.dpId != payload.sharedEndpoint.switchId &&
-                                        it.ep1.dpId != payload.subFlows[0].endpoint.switchId &&
-                                        it.ep2.dpId != payload.subFlows[1].endpoint.switchId &&
+                                        it.ep1.dpId != payload.subFlows[0].endpointSwitchId &&
+                                        it.ep2.dpId != payload.subFlows[1].endpointSwitchId &&
                                         it.ep1 != it.ep2
                             }
                             payload.sharedEndpoint.switchId = newSwT.shared.dpId
-                            payload.subFlows[0].endpoint.switchId = newSwT.ep1.dpId
-                            payload.subFlows[1].endpoint.switchId = newSwT.ep2.dpId
+                            payload.subFlows[0].endpointSwitchId = newSwT.ep1.dpId
+                            payload.subFlows[1].endpointSwitchId = newSwT.ep2.dpId
                             def port1 = topology
                                     .getAllowedPortsForSwitch(topology.find(newSwT.ep1.dpId))[-1]
                             def port2 = topology
                                     .getAllowedPortsForSwitch(topology.find(newSwT.ep1.dpId))[-1]
                             def portS = topology
                                     .getAllowedPortsForSwitch(topology.find(newSwT.shared.dpId))[-1]
-                            payload.subFlows[0].endpoint.portNumber = port1
-                            payload.subFlows[1].endpoint.portNumber = port2
+                            payload.subFlows[0].endpointPort = port1
+                            payload.subFlows[1].endpointPort = port2
                             payload.sharedEndpoint.portNumber = portS
 
                             return HaFlowPatchPayload.builder()
@@ -224,14 +224,14 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                                                                .switchId(newSwT.ep1.dpId)
                                                                .portNumber(port1)
                                                                .build())
-                                                       .flowId(payload.subFlows[0].flowId)
+                                                       .flowId(payload.subFlows[0].haSubFlowId)
                                                        .build(),
                                                HaSubFlowPatchPayload.builder()
                                                        .endpoint(HaFlowPatchEndpoint.builder()
                                                                .switchId(newSwT.ep2.dpId)
                                                                .portNumber(port2)
                                                                .build())
-                                                       .flowId(payload.subFlows[1].flowId)
+                                                       .flowId(payload.subFlows[1].haSubFlowId)
                                                        .build()])
                                     .build()
                         }
@@ -245,7 +245,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         ]
     }
 
-    def "User cannot update a HA-Flow #data.descr"() {
+    def "User cannot update an HA-Flow #data.descr"() {
         given: "Existing HA-Flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlow = haFlowFactory.getRandom(swT)
@@ -261,24 +261,21 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
         new HaFlowNotUpdatedExpectedError(data.errorDescription).matches(exc)
 
         and: "And involved switches pass validation"
-        def involvedSwitchIds = haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)
+        def involvedSwitchIds = haFlow.retrievedAllEntityPaths().getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
 
         and: "HA-Flow pass validation"
         haFlow.validate().asExpected
 
-        cleanup:
-        haFlow && haFlow.delete()
-
         where: data << [
                 [
                         descr: "with non-existent subflowId",
                         updateClosure: { HaFlowExtended payload ->
-                            payload.subFlows[0].flowId += "non-existent"
+                            payload.subFlows[0].haSubFlowId += "non-existent"
                             def allowedPorts = topology.getAllowedPortsForSwitch(topology.find(
-                                    payload.subFlows[0].endpoint.switchId)) - payload.subFlows[0].endpoint.portNumber -
-                                    payload.subFlows[1].endpoint.portNumber
-                            payload.subFlows[0].endpoint.portNumber = allowedPorts[0]
+                                    payload.subFlows[0].endpointSwitchId)) - payload.subFlows[0].endpointPort -
+                                    payload.subFlows[1].endpointPort
+                            payload.subFlows[0].endpointPort = allowedPorts[0]
                             setRandomVlans(payload) // to do not conflict with existing sub flows
                         },
                         errorDescription: ~/Invalid sub flow IDs: .*\. Valid sub flows IDs are: .*?/
@@ -286,15 +283,15 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                 [
                         descr: "with subflowId not specified",
                         updateClosure: { HaFlowExtended payload ->
-                            payload.subFlows[1].flowId = null
+                            payload.subFlows[1].haSubFlowId = null
                         },
                         errorDescription: ~/The sub-flow of .* has no sub-flow id provided/
                 ],
                 [
                         descr: "to one switch HA-Flow",
                         updateClosure: { HaFlowExtended payload ->
-                            payload.subFlows[0].endpoint.switchId = payload.getSharedEndpoint().switchId
-                            payload.subFlows[1].endpoint.switchId = payload.getSharedEndpoint().switchId
+                            payload.subFlows[0].endpointSwitchId = payload.getSharedEndpoint().switchId
+                            payload.subFlows[1].endpointSwitchId = payload.getSharedEndpoint().switchId
                         },
                         errorDescription: ~/The ha-flow.* ? is one switch flow\. \
 At least one of subflow endpoint switch id must differ from shared endpoint switch.* ?/
@@ -304,10 +301,10 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
 
     private void setRandomVlans(HaFlowExtended payload) {
         payload.sharedEndpoint.vlanId = flowHelperV2.randomVlan([payload.sharedEndpoint.vlanId])
-        payload.subFlows.forEach { it.endpoint.vlanId = flowHelperV2.randomVlan([it.endpoint.vlanId]) }
+        payload.subFlows.forEach { it.endpointVlan = flowHelperV2.randomVlan([it.endpointVlan]) }
     }
 
-    def "User cannot partial update a HA-Flow with #data.descr"() {
+    def "User cannot partial update an HA-Flow with #data.descr"() {
         given: "Existing HA-Flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlow = haFlowFactory.getRandom(swT)
@@ -322,14 +319,11 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
         new HaFlowNotUpdatedExpectedError(data.errorDescrPattern).matches(exc)
 
         and: "And involved switches pass validation"
-        def involvedSwitchIds = haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)
+        def involvedSwitchIds = haFlow.retrievedAllEntityPaths().getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
 
         and: "HA-Flow pass validation"
         haFlow.validate().asExpected
-
-        cleanup:
-        haFlow && haFlow.delete()
 
         where: data << [
                 [
@@ -343,7 +337,7 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
                                                        .flowId("non-existent-flowid")
                                                        .build(),
                                                HaSubFlowPatchPayload.builder()
-                                                       .flowId(payload.subFlows[1].flowId)
+                                                       .flowId(payload.subFlows[1].haSubFlowId)
                                                        .build()])
                                     .build()
                         },
@@ -352,21 +346,21 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
                 [
                         descr: "switch conflict in request",
                         buildPatchRequest: { HaFlowExtended payload ->
-                            def subFlow1 = payload.subFlows[0];
-                            def subFlow2 = payload.subFlows[1];
+                            def subFlow1 = payload.subFlows[0]
+                            def subFlow2 = payload.subFlows[1]
                             def endpoint = HaFlowPatchEndpoint.builder()
-                                    .switchId(subFlow1.endpoint.switchId)
-                                    .portNumber(subFlow1.endpoint.portNumber)
-                                    .vlanId(subFlow1.endpoint.vlanId + 1)
+                                    .switchId(subFlow1.endpointSwitchId)
+                                    .portNumber(subFlow1.endpointPort)
+                                    .vlanId(subFlow1.endpointVlan + 1)
                                     .innerVlanId(0)
-                                    .build();
+                                    .build()
                             return HaFlowPatchPayload.builder()
                                     .subFlows([HaSubFlowPatchPayload.builder()
-                                                       .flowId(subFlow1.flowId)
+                                                       .flowId(subFlow1.haSubFlowId)
                                                        .endpoint(endpoint)
                                                        .build(),
                                                HaSubFlowPatchPayload.builder()
-                                                       .flowId(subFlow2.flowId)
+                                                       .flowId(subFlow2.haSubFlowId)
                                                        .endpoint(endpoint)
                                                        .build()])
                                     .build()
@@ -376,17 +370,17 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
                 [
                         descr: "switch conflict after update",
                         buildPatchRequest: { HaFlowExtended payload ->
-                            def subFlow1 = payload.subFlows[0];
-                            def subFlow2 = payload.subFlows[1];
+                            def subFlow1 = payload.subFlows[0]
+                            def subFlow2 = payload.subFlows[1]
                             return HaFlowPatchPayload.builder()
                                     .subFlows([
                                             HaSubFlowPatchPayload.builder()
-                                                    .flowId(subFlow2.flowId)
+                                                    .flowId(subFlow2.haSubFlowId)
                                                     .endpoint(HaFlowPatchEndpoint.builder()
-                                                            .switchId(subFlow1.endpoint.switchId)
-                                                            .portNumber(subFlow1.endpoint.portNumber)
-                                                            .vlanId(subFlow1.endpoint.vlanId)
-                                                            .innerVlanId(subFlow1.endpoint.innerVlanId)
+                                                            .switchId(subFlow1.endpointSwitchId)
+                                                            .portNumber(subFlow1.endpointPort)
+                                                            .vlanId(subFlow1.endpointVlan)
+                                                            .innerVlanId(subFlow1.endpointInnerVlan)
                                                             .build())
                                                     .build()])
                                     .build()
@@ -396,17 +390,17 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
                 [
                         descr: "different inner vlans of sub flows on one switch",
                         buildPatchRequest: { HaFlowExtended payload ->
-                            def subFlow1 = payload.subFlows[0];
-                            def subFlow2 = payload.subFlows[1];
+                            def subFlow1 = payload.subFlows[0]
+                            def subFlow2 = payload.subFlows[1]
                             return HaFlowPatchPayload.builder()
                                     .subFlows([
                                             HaSubFlowPatchPayload.builder()
-                                                    .flowId(subFlow2.flowId)
+                                                    .flowId(subFlow2.haSubFlowId)
                                                     .endpoint(HaFlowPatchEndpoint.builder()
-                                                            .switchId(subFlow1.endpoint.switchId)
-                                                            .portNumber(subFlow1.endpoint.portNumber)
-                                                            .vlanId(subFlow1.endpoint.vlanId)
-                                                            .innerVlanId(subFlow1.endpoint.innerVlanId + 1)
+                                                            .switchId(subFlow1.endpointSwitchId)
+                                                            .portNumber(subFlow1.endpointPort)
+                                                            .vlanId(subFlow1.endpointVlan)
+                                                            .innerVlanId(subFlow1.endpointInnerVlan + 1)
                                                             .build())
                                                     .build()])
                                     .build()

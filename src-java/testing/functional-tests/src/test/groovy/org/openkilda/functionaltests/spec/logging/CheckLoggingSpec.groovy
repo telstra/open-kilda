@@ -1,8 +1,6 @@
 package org.openkilda.functionaltests.spec.logging
 
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
-
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -10,13 +8,14 @@ import org.openkilda.messaging.error.MessageError
 import org.openkilda.testing.service.elastic.ElasticQueryBuilder
 import org.openkilda.testing.service.elastic.ElasticService
 import org.openkilda.testing.service.elastic.model.KildaTags
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
+
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
 @Slf4j
 @Tags([SMOKE])

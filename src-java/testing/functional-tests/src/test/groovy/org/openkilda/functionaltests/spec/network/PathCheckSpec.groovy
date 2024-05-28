@@ -2,10 +2,8 @@ package org.openkilda.functionaltests.spec.network
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.messaging.info.event.PathNode
-
 import spock.lang.See
 
 import static groovyx.gpars.GParsPool.withPool
@@ -16,6 +14,7 @@ import static org.openkilda.model.FlowEncapsulationType.VXLAN
 import static org.openkilda.model.PathComputationStrategy.COST
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/path-validation/path-validation.md")
+
 class PathCheckSpec extends HealthCheckSpecification {
 
     private static final String PCE_PATH_COMPUTATION_SUCCESS_MESSAGE = "The path has been computed successfully"
@@ -61,9 +60,6 @@ class PathCheckSpec extends HealthCheckSpecification {
                     pathHelper.getInvolvedIsls(path).size() * 2
             getPceResponse().contains("Failed to find path with requested bandwidth")
         }
-
-        cleanup:
-        switchHelper.updateSwitchProperties(srcSwitch, backupSwitchProperties)
     }
 
     @Tags(LOW_PRIORITY)
@@ -91,9 +87,6 @@ class PathCheckSpec extends HealthCheckSpecification {
             getPceResponse().contains(
                     "Latency limit: Requested path must have latency 2ms or lower, but best path has latency")
         }
-
-        cleanup:
-        pathHelper."remove ISL properties artifacts after manipulating paths weights"()
     }
 
     @Tags(LOW_PRIORITY)
@@ -123,9 +116,6 @@ class PathCheckSpec extends HealthCheckSpecification {
                     == commonISLs.size()
             getPceResponse() == PCE_PATH_COMPUTATION_SUCCESS_MESSAGE
         }
-
-        cleanup:
-        pathHelper."remove ISL properties artifacts after manipulating paths weights"()
     }
 
     @Tags(LOW_PRIORITY)

@@ -1,11 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
+import groovy.time.TimeCategory
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
@@ -15,9 +10,13 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
-import groovy.time.TimeCategory
 import spock.lang.Shared
+
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 class FlowSyncSpec extends HealthCheckSpecification {
 
@@ -35,7 +34,7 @@ class FlowSyncSpec extends HealthCheckSpecification {
 
         def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
         List<Long> rulesToDelete = getFlowRules(switchPair.src)*.cookie
-        rulesToDelete.each { northbound.deleteSwitchRules(switchPair.src.dpId, it) }
+        rulesToDelete.each { switchHelper.deleteSwitchRules(switchPair.src.dpId, it) }
         Wrappers.wait(RULES_DELETION_TIME) {
             assert getFlowRules(switchPair.src).size() == flowRulesCount - rulesToDelete.size()
         }

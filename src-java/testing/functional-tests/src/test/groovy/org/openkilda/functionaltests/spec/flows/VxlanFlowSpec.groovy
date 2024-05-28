@@ -1,21 +1,9 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.model.FlowEncapsulationType.VXLAN
-import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
@@ -33,7 +21,6 @@ import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -43,11 +30,23 @@ import spock.lang.Narrative
 import java.time.Instant
 import jakarta.inject.Provider
 
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.model.FlowEncapsulationType.VXLAN
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 @Narrative("""This spec checks basic functionality(simple flow(rules, ping, traffic, validate), pinned flow,
 flow with protected path, default flow) for a flow with VXLAN encapsulation.
 
 NOTE: A flow with the 'VXLAN' encapsulation is supported on a Noviflow switches.
 So, flow can be created on a Noviflow(src/dst/transit) switches only.""")
+
 class VxlanFlowSpec extends HealthCheckSpecification {
     static Logger logger = LoggerFactory.getLogger(VxlanFlowSpec.class)
 
@@ -377,7 +376,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
             [(it): switchHelper.getCachedSwProps(it.dpId)]
         }
         initProps.each { sw, swProp ->
-            SwitchHelper.updateSwitchProperties(sw, swProp.jacksonCopy().tap {
+            switchHelper.updateSwitchProperties(sw, swProp.jacksonCopy().tap {
                 it.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
             })
         }
@@ -385,7 +384,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         when: "Try to create a VXLAN flow"
         def flow = flowHelperV2.randomFlow(switchPair)
         flow.encapsulationType = VXLAN.toString()
-        def addedFlow = flowHelperV2.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         then: "Human readable error is returned"
         def createError = thrown(HttpClientErrorException)
@@ -397,7 +396,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         when: "Create a VLAN flow"
         flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN.toString()
-        addedFlow = flowHelperV2.addFlow(flow)
+        flowHelperV2.addFlow(flow)
 
         and: "Try updated its encap type to VXLAN"
         northboundV2.updateFlow(flow.flowId, flow.tap { it.encapsulationType = VXLAN.toString() })
@@ -409,12 +408,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         updateErrorDetails.errorMessage == "Could not update flow"
         createErrorDetails.errorDescription == getUnsupportedVxlanErrorDescription("source", switchPair.src.dpId,
                 [FlowEncapsulationType.TRANSIT_VLAN])
-
-
-        cleanup:
-        initProps.each { sw, swProps ->
-            SwitchHelper.updateSwitchProperties(sw, swProps)
-        }
     }
 
     @Tags(TOPOLOGY_DEPENDENT)
@@ -455,10 +448,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         then: "Flow is built through vxlan-enabled path, even though it is not the shortest"
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) != noVxlanPath
-
-        cleanup: "Restore all the changed sw props and remove the flow"
-        isVxlanEnabledOnNoVxlanSw && initNoVxlanSwProps && switchHelper.updateSwitchProperties(noVxlanSw, initNoVxlanSwProps)
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tags([LOW_PRIORITY, TOPOLOGY_DEPENDENT])
@@ -483,9 +472,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == getUnsupportedVxlanErrorDescription("destination", switchPair.dst.dpId,
                 dstSupportedEncapsulationTypes)
-
-        cleanup:
-        switchHelper.updateSwitchProperties(switchPair.dst, originDstSwProps)
     }
 
     def "System allows to create/update encapsulation type for a one-switch flow\

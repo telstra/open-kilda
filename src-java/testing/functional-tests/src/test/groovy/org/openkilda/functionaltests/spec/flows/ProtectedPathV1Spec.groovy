@@ -1,5 +1,23 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.tools.FlowTrafficExamBuilder
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
+import spock.lang.See
+import spock.lang.Shared
+
+import javax.inject.Provider
+import java.time.Instant
+
 import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
@@ -179,7 +197,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
 
         and: "Update all ISLs which can be used by protected path"
         def bandwidth = 100
-        isls[1..-1].each { database.updateIslAvailableBandwidth(it, 90) }
+        isls[1..-1].each { islHelper.setAvailableBandwidth(it, 90) }
 
         when: "Create flow with protected path"
         def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
@@ -194,9 +212,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == "Not enough bandwidth or no path found. " +
                 "Couldn't find non overlapping protected path"
-
-        cleanup:
-        isls.each { database.resetIslBandwidth(it) }
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -220,10 +235,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == "Not enough bandwidth or no path found." +
                 " Couldn't find non overlapping protected path"
-
-        cleanup:
-        islHelper.restoreIsls(broughtDownIsls)
-        database.resetCosts(topology.isls)
 
         where:
         flowDescription | bandwidth
@@ -493,10 +504,6 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval * 1.5 + WAIT_OFFSET) {
             assert northbound.getFlowStatus(flow.id).status == FlowState.UP
         }
-
-        cleanup: "Restore topology, delete flows and reset costs"
-        islHelper.restoreIsls(broughtDownIsls)
-        database.resetCosts(topology.isls)
     }
 
     def "System doesn't allow to enable the pinned flag on a protected flow"() {

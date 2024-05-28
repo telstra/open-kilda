@@ -1,9 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.messaging.error.MessageError
@@ -13,7 +9,6 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
-
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -21,9 +16,14 @@ import spock.lang.Shared
 
 import jakarta.inject.Provider
 
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+
 @Narrative("""System allows to create default port(vlan=0) and simple flow(vlan=<any number>) on the same port.
 Default flow has lower priority than simple flow.
 Also system allows to pass tagged traffic via default flow.""")
+
 class DefaultFlowSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
@@ -41,7 +41,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         assumeTrue([srcSwitch, dstSwitch, newDstSwitch].every { it.features.contains(SwitchFeature.MULTI_TABLE) },
  "MultiTable mode should be supported by the src and dst switches")
 
-        Map<SwitchId, SwitchPropertiesDto> initSwProps = [srcSwitch, dstSwitch, newDstSwitch].collectEntries {
+        [srcSwitch, dstSwitch, newDstSwitch].collectEntries {
             [(it): switchHelper.getCachedSwProps(it.dpId)]
         }
 
@@ -101,11 +101,6 @@ class DefaultFlowSpec extends HealthCheckSpecification {
                 direction.setResources(resources)
                 assert traffExam.waitExam(direction).hasTraffic()
             }
-        }
-
-        cleanup:
-        initSwProps.each { sw, swProps ->
-            switchHelper.updateSwitchProperties(sw, swProps)
         }
     }
 

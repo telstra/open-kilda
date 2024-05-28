@@ -1,20 +1,18 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
-
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
+
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 
 @Slf4j
 @Narrative("Verify operations with protected paths on Ha-Flows.")
@@ -34,7 +32,7 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
 
         def haFlowPaths = haFlow.retrievedAllEntityPaths()
         assert haFlowPaths.subFlowPaths.protectedPath.forward.isEmpty()
-        def switchesBeforeUpdate = haFlowPaths.getInvolvedSwitches(true)
+        def switchesBeforeUpdate = haFlowPaths.getInvolvedSwitches()
 
         when: "Update flow: enable protected path(allocateProtectedPath=true)"
         def updateRequest = haFlow.convertToUpdateRequest().tap { allocateProtectedPath = true}
@@ -61,11 +59,8 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
         haFlowValidation.getSubFlowValidationResults().size() == 4
 
         and: "All involved switches passes switch validation"
-        def switchesAfterUpdate = pathsAfterEnablingProtected.getInvolvedSwitches(true)
+        def switchesAfterUpdate = pathsAfterEnablingProtected.getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(switchesBeforeUpdate + switchesAfterUpdate).isEmpty()
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 
     def "Able to disable protected path on an HA-Flow via partial update"() {
@@ -73,11 +68,11 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(true)
-                .build().waitForBeingInState(FlowState.UP)
+                .build().create()
 
         def haFlowPaths = haFlow.retrievedAllEntityPaths()
         assert !haFlowPaths.subFlowPaths.protectedPath.forward.isEmpty()
-        def switchesBeforeUpdate = haFlowPaths.getInvolvedSwitches(true)
+        def switchesBeforeUpdate = haFlowPaths.getInvolvedSwitches()
 
         when: "Patch flow: disable protected path(allocateProtectedPath=false)"
         def updateResponse = haFlow.partialUpdate(HaFlowPatchPayload.builder().allocateProtectedPath(false).build())
@@ -99,21 +94,17 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
         haFlowValidation.getSubFlowValidationResults().size() == 2
 
         and: "All involved switches passes switch validation"
-        def switchesAfterUpdate = pathsAfterUpdate.getInvolvedSwitches(true)
+        def switchesAfterUpdate = pathsAfterUpdate.getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(switchesBeforeUpdate + switchesAfterUpdate).isEmpty()
-
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 
-    def "User can update #data.descr of a HA-Flow with protected path"() {
+    def "User can update #data.descr of an HA-Flow with protected path"() {
         given: "An HA-Flow with protected path"
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
 
         def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(true)
-                .build().waitForBeingInState(FlowState.UP)
+                .build().create()
         assert haFlow.allocateProtectedPath
 
         def haFlowPaths = haFlow.retrievedAllEntityPaths()
@@ -131,13 +122,10 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
         updatedHaFlow.hasTheSamePropertiesAs(haFlow)
 
         and: "And involved switches pass validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies( haFlow.retrievedAllEntityPaths().getInvolvedSwitches(true)).isEmpty()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies( haFlow.retrievedAllEntityPaths().getInvolvedSwitches()).isEmpty()
 
         and: "HA-Flow pass validation"
         haFlow.validate().asExpected
-
-        cleanup:
-        haFlow && haFlow.delete()
 
         where: data << [
                 [
@@ -148,8 +136,8 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
                             payload.sharedEndpoint.portNumber = allowedSharedPorts[0]
                             payload.subFlows.each {
                                 def allowedPorts = topology.getAllowedPortsForSwitch(topology.find(
-                                        it.endpoint.switchId)) - it.endpoint.portNumber
-                                it.endpoint.portNumber = allowedPorts[0]
+                                        it.endpointSwitchId)) - it.endpointPort
+                                it.endpointPort = allowedPorts[0]
                             }
                         }
                 ],
@@ -158,18 +146,18 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
                         updateClosure: { HaFlowExtended payload ->
                             def newSwT = topologyHelper.getSwitchTriplets(true).find {
                                 it.shared.dpId != payload.sharedEndpoint.switchId &&
-                                        it.ep1.dpId != payload.subFlows[0].endpoint.switchId &&
-                                        it.ep2.dpId != payload.subFlows[1].endpoint.switchId &&
+                                        it.ep1.dpId != payload.subFlows[0].endpointSwitchId &&
+                                        it.ep2.dpId != payload.subFlows[1].endpointSwitchId &&
                                         it.ep1 != it.ep2
                             }
                             payload.sharedEndpoint.switchId = newSwT.shared.dpId
-                            payload.subFlows[0].endpoint.switchId = newSwT.ep1.dpId
-                            payload.subFlows[1].endpoint.switchId = newSwT.ep2.dpId
+                            payload.subFlows[0].endpointSwitchId = newSwT.ep1.dpId
+                            payload.subFlows[1].endpointSwitchId = newSwT.ep2.dpId
                             payload.sharedEndpoint.portNumber = topology
                                     .getAllowedPortsForSwitch(topology.find(newSwT.shared.dpId))[-1]
-                            payload.subFlows[0].endpoint.portNumber = topology
+                            payload.subFlows[0].endpointPort = topology
                                     .getAllowedPortsForSwitch(topology.find(newSwT.ep1.dpId))[-1]
-                            payload.subFlows[1].endpoint.portNumber = topology
+                            payload.subFlows[1].endpointPort = topology
                                     .getAllowedPortsForSwitch(topology.find(newSwT.ep2.dpId))[-1]
                         }
                 ],

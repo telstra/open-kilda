@@ -1,20 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
-import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
-import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
-import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowEndpointsNotSwappedExpectedError
 import org.openkilda.functionaltests.extension.tags.IterationTag
@@ -23,8 +9,6 @@ import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowState
@@ -38,12 +22,27 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
 
 import jakarta.inject.Provider
+import spock.lang.Ignore
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 class SwapEndpointSpec extends HealthCheckSpecification {
 
@@ -519,9 +518,6 @@ switches"() {
         error.errorMessage == "Could not swap endpoints"
         error.errorDescription == "Flow ${flow2.id} not found"
         def isTestComplete = true
-
-        cleanup: "Delete the flow"
-        !isTestComplete && switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
     }
 
     @Tags(LOW_PRIORITY)
@@ -544,15 +540,6 @@ switches"() {
         def error = exc.responseBodyAsString.to(MessageError)
         error.errorMessage == "Could not swap endpoints"
         error.errorDescription.contains("Requested flow '$flow1.id' conflicts with existing flow '$flow3.id'.")
-        Boolean isTestCompleted = true
-
-        cleanup: "Delete flows"
-        if (!isTestCompleted) {
-            switchHelper.synchronizeAndCollectFixedDiscrepancies([data.flow1SwitchPair.src.dpId,
-                                                                  data.flow1SwitchPair.dst.dpId,
-                                                                  flow2SwitchPair.src.dpId,
-                                                                  data.flow2SwitchPair.dst.dpId])
-        }
 
         where:
         data << [{
@@ -662,15 +649,6 @@ switches"() {
         def error = exc.responseBodyAsString.to(MessageError)
         error.errorMessage == "Could not swap endpoints"
         error.errorDescription == "New requested endpoint for '$flow2.id' conflicts with existing endpoint for '$flow1.id'"
-        Boolean isTestCompleted = true
-
-        cleanup: "Delete flows"
-        if (!isTestCompleted) {
-            switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
-                                                                  flow1SwitchPair.dst.dpId,
-                                                                  flow2SwitchPair.src.dpId,
-                                                                  flow2SwitchPair.dst.dpId])
-        }
 
         where:
         data << [{
@@ -728,10 +706,6 @@ switches"() {
         def error = exc.responseBodyAsString.to(MessageError)
         error.errorMessage == "Could not swap endpoints"
         error.errorDescription == "The port $islPort on the switch '${swPair.src.dpId}' is occupied by an ISL (source endpoint collision)."
-        Boolean isTestCompleted = true
-
-        cleanup: "Delete flows"
-        !isTestCompleted && switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.toList()*.getDpId())
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -766,13 +740,11 @@ switches"() {
         and: "Update max bandwidth for the second flow's link so that it is equal to max bandwidth of the first flow"
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
         def flow2Isl = pathHelper.getInvolvedIsls(flow2Path)[0]
-        northbound.updateLinkMaxBandwidth(flow2Isl.srcSwitch.dpId, flow2Isl.srcPort, flow2Isl.dstSwitch.dpId,
-                flow2Isl.dstPort, flow1IslMaxBw)
+        islHelper.updateLinkMaxBandwidthUsingApi(flow2Isl, flow1IslMaxBw)
 
         and: "Break all alternative paths for the second flow"
         def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src) - flow2Isl - broughtDownIsls
         islHelper.breakIsls(flow2BroughtDownIsls)
-        broughtDownIsls += flow2BroughtDownIsls
 
         when: "Try to swap endpoints for two flows"
         def flow1Src = flow2.source
@@ -795,18 +767,6 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
-        def isSwitchValid = true
-
-        cleanup: "Restore topology and delete flows"
-        islHelper.restoreIsls(broughtDownIsls)
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        if (!isSwitchValid) {
-            switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
-                                                                  flow1SwitchPair.dst.dpId,
-                                                                  flow2SwitchPair.src.dpId,
-                                                                  flow2SwitchPair.dst.dpId])
-        }
-        database.resetCosts(topology.isls)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -840,13 +800,11 @@ switches"() {
         and: "Update max bandwidth for the second flow's link so that it is not enough bandwidth for the first flow"
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
         def flow2Isl = pathHelper.getInvolvedIsls(flow2Path)[0]
-        northbound.updateLinkMaxBandwidth(flow2Isl.srcSwitch.dpId, flow2Isl.srcPort, flow2Isl.dstSwitch.dpId,
-                flow2Isl.dstPort, flow1IslMaxBw - 1)
+        islHelper.updateLinkMaxBandwidthUsingApi(flow2Isl, flow1IslMaxBw - 1)
 
         and: "Break all alternative paths for the second flow"
         def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src) - flow2Isl - broughtDownIsls
         islHelper.breakIsls(flow2BroughtDownIsls)
-        broughtDownIsls += flow2BroughtDownIsls
 
         when: "Try to swap endpoints for two flows"
         def flow1Src = flow2.source
@@ -865,18 +823,6 @@ switches"() {
         def error = exc.responseBodyAsString.to(MessageError)
         error.errorMessage == "Could not swap endpoints"
         error.errorDescription.contains("Not enough bandwidth or no path found")
-        Boolean isTestCompleted = true
-
-        cleanup: "Restore topology and delete flows"
-        islHelper.restoreIsls(broughtDownIsls)
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        if (!isTestCompleted) {
-            switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
-                                                                  flow1SwitchPair.dst.dpId,
-                                                                  flow2SwitchPair.src.dpId,
-                                                                  flow2SwitchPair.dst.dpId])
-        }
-        database.resetCosts(topology.isls)
     }
 
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
@@ -910,13 +856,11 @@ switches"() {
         and: "Update max bandwidth for the second flow's link so that it is not enough bandwidth for the first flow"
         def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.id))
         def flow2Isl = pathHelper.getInvolvedIsls(flow2Path)[0]
-        northbound.updateLinkMaxBandwidth(flow2Isl.srcSwitch.dpId, flow2Isl.srcPort, flow2Isl.dstSwitch.dpId,
-                flow2Isl.dstPort, flow1IslMaxBw - 1)
+        islHelper.updateLinkMaxBandwidthUsingApi(flow2Isl, flow1IslMaxBw - 1)
 
         and: "Break all alternative paths for the second flow"
         def flow2BroughtDownIsls = topology.getRelatedIsls(flow2SwitchPair.src) - flow2Isl - broughtDownIsls
         islHelper.breakIsls(flow2BroughtDownIsls)
-        broughtDownIsls += flow2BroughtDownIsls
 
         when: "Try to swap endpoints for two flows"
         def flow1Src = flow2.source
@@ -939,21 +883,10 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
-        def isSwitchValid = true
-
-        cleanup: "Restore topology and delete flows"
-        islHelper.restoreIsls(broughtDownIsls)
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        if (!isSwitchValid) {
-            switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
-                                                                  flow1SwitchPair.dst.dpId,
-                                                                  flow2SwitchPair.src.dpId,
-                                                                  flow2SwitchPair.dst.dpId])
-        }
-        database.resetCosts(topology.isls)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
+    @Ignore("https://github.com/telstra/open-kilda/issues/5635")
     def "Unable to swap endpoints for two flows when one of them is inactive"() {
         setup: "Create two flows with different source and the same destination switches"
         def switchPairs = getSwitchPairs().all().neighbouring().getSwitchPairs().inject(null) { result, switchPair ->
@@ -991,17 +924,15 @@ switches"() {
         def exc = thrown(HttpServerErrorException)
         new FlowEndpointsNotSwappedExpectedError(~/Not enough bandwidth or no path found/).matches(exc)
 
-        and: "All involved switches are valid"
-        /** https://github.com/telstra/open-kilda/issues/3770
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndGetFixedEntries(involvedSwIds).isEmpty()
-        }
-        Boolean isTestCompleted = true **/
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwIds)
+        when: "Get actual data of flow1 and flow2"
+        def actualFlow1Details = northboundV2.getFlow(flow1.id)
+        def actualFlow2Details = northboundV2.getFlow(flow2.id)
 
-        cleanup: "Restore topology and delete flows"
-        islHelper.restoreIsls(broughtDownIsls)
-        database.resetCosts(topology.isls)
+        then: "Actual flow1, flow2 sources are different"
+        assert actualFlow1Details.source != actualFlow2Details.source
+
+        and: "All involved switches are valid"
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwIds).isEmpty()
     }
 
     @Tags(LOW_PRIORITY)
@@ -1027,15 +958,6 @@ switches"() {
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(flow1SwitchPair)
         validateSwitches(flow2SwitchPair)
-        def isSwitchValid = true
-
-        cleanup: "Delete flows"
-        if (!isSwitchValid) {
-            switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
-                                                                  flow1SwitchPair.dst.dpId,
-                                                                  flow2SwitchPair.src.dpId,
-                                                                  flow2SwitchPair.dst.dpId])
-        }
 
         where:
         data << [{
@@ -1138,14 +1060,6 @@ switches"() {
             direction.setResources(resources)
             assert traffExam.waitExam(direction).hasTraffic()
         }
-
-        cleanup: "Delete flows"
-        if (!isSwitchValid) {
-            switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
-                                                                  flow1SwitchPair.dst.dpId,
-                                                                  flow2SwitchPair.src.dpId,
-                                                                  flow2SwitchPair.dst.dpId])
-        }
     }
 
     @Tags(LOW_PRIORITY)
@@ -1172,10 +1086,6 @@ switches"() {
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(switchPair)
-        def isSwitchValid = true
-
-        cleanup: "Delete flows"
-        !isSwitchValid && switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
 
         where:
         data << [{
@@ -1227,10 +1137,6 @@ switches"() {
 
         and: "Switch validation doesn't show any missing/excess rules and meters"
         validateSwitches(switchPair)
-        def isSwitchValid = true
-
-        cleanup: "Delete flows"
-        !isSwitchValid && switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId())
 
         where:
         data << [{
@@ -1335,7 +1241,6 @@ switches"() {
         cleanup:
         if (blockData) {
             database.setSwitchStatus(swPair1.src.dpId, SwitchStatus.INACTIVE)
-            switchHelper.reviveSwitch(swPair1.src, blockData, true)
         }
     }
 
@@ -1414,14 +1319,6 @@ switches"() {
 
         and: "Counter on the flowLoop rules are increased"
         getFlowLoopRules(flow1SwitchPair.dst.dpId)*.packetCount.every { it > 0 }
-
-        cleanup: "Restore topology and delete flows"
-        if (!switchesAreValid) {
-            switchHelper.synchronizeAndCollectFixedDiscrepancies([flow1SwitchPair.src.dpId,
-                                                                  flow1SwitchPair.dst.dpId,
-                                                                  flow2SwitchPair.src.dpId,
-                                                                  flow2SwitchPair.dst.dpId])
-        }
     }
 
     void verifyEndpoints(response, FlowEndpointPayload flow1SrcExpected, FlowEndpointPayload flow1DstExpected,

@@ -1,7 +1,25 @@
 package org.openkilda.functionaltests.spec.xresilience
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import groovy.util.logging.Slf4j
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchStatus
+import org.openkilda.northbound.dto.v1.flows.PingInput
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Isolated
+import spock.lang.Shared
+
+import java.util.concurrent.TimeUnit
+
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
@@ -11,27 +29,11 @@ import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_ISL
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchStatus
-import org.openkilda.northbound.dto.v1.flows.PingInput
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
-
-import groovy.util.logging.Slf4j
-import spock.lang.Isolated
-import spock.lang.Shared
-
-import java.util.concurrent.TimeUnit
 
 @Slf4j
 class RetriesSpec extends HealthCheckSpecification {
@@ -115,9 +117,7 @@ and at least 1 path must remain safe"
             database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.INACTIVE)
             switchHelper.reviveSwitch(switchToBreak, blockData)
         }
-        islHelper.restoreIsl(islToBreak)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        database.resetCosts(topology.isls)
     }
 
     @Tags([SMOKE_SWITCHES, LOCKKEEPER, ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET, SWITCH_RECOVER_ON_FAIL])
@@ -207,7 +207,6 @@ and at least 1 path must remain safe"
             switchHelper.reviveSwitch(swToManipulate, blockData)
             switchHelper.synchronize(swToManipulate.dpId)
         }
-        islHelper.restoreIsls(altIsls)
         database.resetCosts(topology.isls)
 
         where:
@@ -273,6 +272,7 @@ and at least 1 path must remain safe"
         and: "All alternative paths unavailable (bring ports down)"
         def altIsls = topology.getRelatedIsls(swPair.src) - pathHelper.getInvolvedIsls(mainPath).first() -
                 pathHelper.getInvolvedIsls(backupPath).first()
+        islHelper.breakIsls(altIsls)
 
         and: "A flow on the main path"
         def flow = flowHelperV2.randomFlow(swPair)
@@ -333,7 +333,6 @@ and at least 1 path must remain safe"
             switchHelper.reviveSwitch(swToManipulate, blockData)
             switchHelper.synchronize(swToManipulate.dpId)
         }
-        islHelper.restoreIsls(altIsls)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
     }
@@ -344,6 +343,8 @@ and at least 1 path must remain safe"
 @Isolated
 class RetriesIsolatedSpec extends HealthCheckSpecification {
     @Shared int globalTimeout = 30 //global timeout for h&s operation
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     //isolation: requires no 'up' events in the system while flow is Down
     @Tags([ISL_RECOVER_ON_FAIL])
@@ -355,6 +356,8 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
 
         when: "Break current path to trigger a reroute"
         def islToBreak = pathHelper.getInvolvedIsls(flow.flowId).first()
+        cleanupManager.addAction(RESTORE_ISL, {islHelper.restoreIsl(islToBreak)})
+        cleanupManager.addAction(RESET_ISLS_COST,{database.resetCosts(topology.isls)})
         northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         and: "Connection to src switch is slow in order to simulate a global timeout on reroute operation"
@@ -385,7 +388,5 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
 
         cleanup:
         lockKeeper.cleanupTrafficShaperRules(swPair.src.regions)
-        islHelper.restoreIsl(islToBreak)
-        database.resetCosts(topology.isls)
     }
 }

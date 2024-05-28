@@ -1,32 +1,34 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_DEACTIVATED
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.PortBlinker
+import org.openkilda.functionaltests.model.cleanup.CleanupAfter
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.PortChangeType
-import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchFeature
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Isolated
 import spock.lang.Issue
 import spock.lang.Narrative
+import spock.lang.Shared
 
 import java.util.concurrent.TimeUnit
+
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_DEACTIVATED
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Slf4j
 @Narrative("""
@@ -40,6 +42,7 @@ change status from UP to DOWN only after 'antiflap.min' in case of a single-time
 """)
 @Issue("https://github.com/telstra/open-kilda/issues/1729")
 @Isolated //global 'fl sync' toggle is changed
+
 class PortAntiflapSpec extends HealthCheckSpecification {
 
     @Value('${antiflap.min}')
@@ -53,13 +56,11 @@ class PortAntiflapSpec extends HealthCheckSpecification {
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     def setupSpec() {
-        northbound.toggleFeature(FeatureTogglesDto.builder().floodlightRoutePeriodicSync(false).build())
-    }
-
-    def cleanupSpec() {
-        getNorthbound().toggleFeature(FeatureTogglesDto.builder().floodlightRoutePeriodicSync(true).build())
+        featureToggles.floodlightRoutePeriodicSync(false, CleanupAfter.CLASS)
     }
 
     @Tags(SMOKE)
@@ -125,9 +126,6 @@ timeout"() {
         Wrappers.wait(antiflapMin + 2) {
             islUtils.getIslInfo(isl).get().state == FAILED
         }
-
-        cleanup: "Bring port up"
-        islHelper.restoreIsl(isl)
     }
 
     /**
@@ -235,9 +233,6 @@ timeout"() {
             assert rv.state == DISCOVERED
             assert rv.actualState == DISCOVERED
         }
-
-        cleanup:
-        islHelper.restoreIsl(isl)
     }
 
     def cleanup() {

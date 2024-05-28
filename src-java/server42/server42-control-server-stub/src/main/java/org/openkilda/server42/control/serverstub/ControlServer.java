@@ -113,11 +113,11 @@ public class ControlServer extends Thread {
                                 ClearFlowsFilter filter = command.unpack(ClearFlowsFilter.class);
                                 List<FlowKey> keys = flows.values()
                                         .stream()
-                                        .filter(flow -> flow.getDstMac().equals(filter.getDstMac()))
+                                        .filter(flow -> flow.getSwitchId().equals(filter.getDstMac()))
                                         .map(FlowKey::fromFlow)
                                         .collect(Collectors.toList());
 
-                                flows.keySet().removeAll(keys);
+                                keys.forEach(flows.keySet()::remove);
                                 keys.forEach(statsServer::removeFlow);
                             } else {
                                 flows.clear();
@@ -130,7 +130,7 @@ public class ControlServer extends Thread {
                                 ListFlowsFilter filter = command.unpack(ListFlowsFilter.class);
                                 flows.values()
                                         .stream()
-                                        .filter(flow -> flow.getDstMac().equals(filter.getDstMac()))
+                                        .filter(flow -> flow.getSwitchId().equals(filter.getDstMac()))
                                         .forEach(flow -> builder.addResponse(Any.pack(flow)));
                             } else {
                                 for (Flow flow : flows.values()) {

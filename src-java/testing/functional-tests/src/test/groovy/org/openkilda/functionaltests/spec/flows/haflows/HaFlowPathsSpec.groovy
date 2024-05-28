@@ -4,7 +4,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 
 import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
-import org.openkilda.messaging.payload.flow.FlowState
 
 import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -45,7 +44,7 @@ class HaFlowPathsSpec extends HealthCheckSpecification {
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         HaFlowExtended haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(true)
-                .build().waitForBeingInState(FlowState.UP)
+                .build().create()
 
         when: "Request path for HA flow with protected path"
         def haFlowPaths = haFlow.retrievedAllEntityPaths()
@@ -55,8 +54,5 @@ class HaFlowPathsSpec extends HealthCheckSpecification {
         haFlowPaths.subFlowPaths.each {subFlowPath ->
             assert subFlowPath.getCommonIslsWithProtected().isEmpty()
         }
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 }

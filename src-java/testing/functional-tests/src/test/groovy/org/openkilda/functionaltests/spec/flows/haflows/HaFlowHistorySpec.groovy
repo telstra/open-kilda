@@ -49,9 +49,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
 
         and: "Flow history contains all flow properties in the 'state_after' dump section"
         historyRecord[0].verifyDumpSection(DumpType.STATE_AFTER, haFlow)
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 
     def "History records with links details are created during link #updateType operations and can be retrieved without timeline"() {
@@ -81,9 +78,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         and: "Flow history contains all flow properties in the 'state_after' dump section"
         updateHistoryRecord[0].verifyDumpSection(DumpType.STATE_AFTER, haFlowAfterUpdating)
 
-        cleanup:
-        haFlow && haFlow.delete()
-
         where:
         updateType                            | update
         HaFlowActionType.UPDATE               | { HaFlowExtended flow ->
@@ -109,7 +103,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
 
         when: "Delete HA-Flow"
-        def deletedFlow = haFlow.delete()
+        haFlow.delete()
         haFlow.waitForHistoryEvent(HaFlowActionType.DELETE)
 
         then: "Correct event appears in HA-Flow history and can be retrieved with specifying timeline"
@@ -123,9 +117,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         and: "Only 'state_before' dump section is present for deletion event"
         historyRecord[0].verifyDumpSection(DumpType.STATE_BEFORE, haFlow)
         historyRecord.dumps.flatten().size() == 1
-
-        cleanup:
-        haFlow && !deletedFlow && haFlow.delete()
     }
 
     @Tags(LOW_PRIORITY)
@@ -143,9 +134,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
             historyRecord.entries.size() == 1
             historyRecord.getEntriesByType(HaFlowActionType.CREATE)
         }
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 
     @Tags([LOW_PRIORITY, SWITCH_RECOVER_ON_FAIL])
@@ -156,7 +144,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
 
         when: "Deactivate the shared switch"
-        def blockData = switchHelper.knockoutSwitch(swT.shared, RW)
+        switchHelper.knockoutSwitch(swT.shared, RW)
 
         and: "Related ISLs are FAILED"
         def isls = topology.getRelatedIsls(swT.shared)
@@ -185,10 +173,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
 
         and: "Both retrieved history records are identical"
         historyRecordWithoutTimeline == historyRecordsWithTimeline
-
-        cleanup:
-        blockData && switchHelper.reviveSwitch(swT.shared, blockData, true)
-        haFlow && haFlow.delete()
     }
 
     @Tags(LOW_PRIORITY)
@@ -203,9 +187,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
 
         then: "Check HA-Flow history has no entries"
         assert haFlow.getHistory(timestampAfterCreate, System.currentTimeSeconds() + 1).entries.isEmpty()
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 
     @Tags(LOW_PRIORITY)
@@ -233,9 +214,6 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
 
         then: "Only flow-specific records are available"
         historyRecords.entries.size() == allHistoryRecordsWithoutFiltering.entries.size()
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 
     @Tags(LOW_PRIORITY)

@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.stats
 
+import org.openkilda.functionaltests.model.cleanup.CleanupAfter
+
 import static groovyx.gpars.GParsPool.withPool
 import static groovyx.gpars.GParsPoolUtil.callAsync
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -28,7 +30,6 @@ import org.openkilda.testing.service.traffexam.model.Exam
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
-import spock.lang.Unroll
 
 import jakarta.inject.Provider
 
@@ -62,7 +63,8 @@ class YFlowStatSpec extends HealthCheckSpecification {
             it.ep1 != it.ep2 && it.ep1 != it.shared && it.ep2 != it.shared &&
                     [it.shared, it.ep1, it.ep2].every { it.traffGens }
         } ?: assumeTrue(false, "No suiting switches found")
-        yFlow = yFlowFactory.getBuilder(switchTriplet).withBandwidth(10).build().waitForBeingInState(FlowState.UP)
+        yFlow = yFlowFactory.getBuilder(switchTriplet).withBandwidth(10).build()
+                .create(FlowState.UP, CleanupAfter.CLASS)
         def traffExam = traffExamProvider.get()
         def exam = yFlow.traffExam(traffExam, yFlow.maximumBandwidth * 10, traffgenRunDuration)
         Wrappers.wait(statsRouterRequestInterval * 4) {
@@ -81,7 +83,6 @@ class YFlowStatSpec extends HealthCheckSpecification {
         subflow2Stats = flowStats.of(yFlow.getSubFlows().get(1).getFlowId())
     }
 
-    @Unroll
     def "System is able to collect #stat meter stats and they grow monotonically"() {
         when: "Stats were collected"
         then: "#stat stats is available"
@@ -92,7 +93,6 @@ class YFlowStatSpec extends HealthCheckSpecification {
         stat << YFlowStatsMetric.getEnumConstants()
     }
 
-    @Unroll
     def "System is able to collect subflow #stat-#direction stats and they grow monotonically"() {
         when: "Stats were collected"
         then: "#stat stats is available"
@@ -113,10 +113,6 @@ class YFlowStatSpec extends HealthCheckSpecification {
                                FLOW_INGRESS_BITS,
                                FLOW_EGRESS_BITS],
                               [Direction.FORWARD, Direction.REVERSE]].combinations()
-    }
-
-    def cleanupSpec() {
-        yFlow && yFlow.delete()
     }
 
     def "workaround failure on first connect to kafka"() {
