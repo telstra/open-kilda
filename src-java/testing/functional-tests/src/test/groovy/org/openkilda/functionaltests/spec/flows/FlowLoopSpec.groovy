@@ -1,29 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
-import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
-import org.openkilda.functionaltests.error.flowloop.FlowLoopNotCreatedExpectedError
-import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.functionaltests.extension.tags.IterationTags
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
-import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Narrative
-import spock.lang.See
-import spock.lang.Shared
-
-import javax.inject.Provider
-
 import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
@@ -31,7 +7,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_SUCCESS
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
@@ -39,6 +14,34 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
+import org.openkilda.functionaltests.error.flowloop.FlowLoopNotCreatedExpectedError
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.IterationTags
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
+import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
+import org.openkilda.functionaltests.model.stats.Direction
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload
+import org.openkilda.testing.service.traffexam.TraffExamService
+
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
+import spock.lang.See
+import spock.lang.Shared
+
+import javax.inject.Provider
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-loop")
 @Narrative("""Flow loop feature designed for flow path testing. Loop provides additional flow rules on one of the 
@@ -48,8 +51,15 @@ Enabling flowLoop in flow history is registered as the 'update' operation.""")
 
 class FlowLoopSpec extends HealthCheckSpecification {
 
-    @Autowired @Shared
+    @Autowired
+    @Shared
     Provider<TraffExamService> traffExamProvider
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+    @Autowired
+    @Shared
+    SwitchRulesFactory switchRulesFactory
 
     @IterationTags([
             @IterationTag(tags = [SMOKE_SWITCHES, TOPOLOGY_DEPENDENT], iterationNameRegex = /protected/),
@@ -58,27 +68,22 @@ class FlowLoopSpec extends HealthCheckSpecification {
     ])
     def "Able to create flowLoop for a #data.flowDescription flow"() {
         given: "An active and valid  #data.flowDescription flow"
-        def switchPair = data.switchPair
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.tap(data.flowTap)
-        flowHelperV2.addFlow(flow)
+        SwitchPair switchPair = data.switchPair
+        FlowExtended flow = data.expectedFlowEntity(switchPair).create()
 
         when: "Create flowLoop on the src switch"
-        def flowLoopPayloadSrcSw = new FlowLoopPayload(switchPair.src.dpId)
-        def createResponse = northboundV2.createFlowLoop(flow.flowId, flowLoopPayloadSrcSw)
+        def createResponse = flow.createFlowLoop(switchPair.src.dpId)
 
         then: "Create flowLoop response contains flowId and src switchId"
         assert createResponse.flowId == flow.flowId
         assert createResponse.switchId == switchPair.src.dpId
 
         and: "Flow is UP and valid"
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
-        }
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "FlowLoop is really created on the src switch"
-        northbound.getFlow(flow.flowId).loopSwitchId == switchPair.src.dpId
+        flow.retrieveDetails().loopSwitchId == switchPair.src.dpId
 
         and: "FlowLoop rules are created on the src switch"
         def flowLoopRules // [forward, reverse]
@@ -96,8 +101,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         when: "Send traffic via flow in the forward direction"
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flow), 1000, 5)
+        def exam = flow.traffExam(traffExam, 1000, 5)
         exam.forward.setResources(traffExam.startExam(exam.forward))
 
         then: "Flow doesn't allow traffic, because it is grubbed by flowLoop rules"
@@ -109,7 +113,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         def flowInfo = database.getFlow(flow.flowId)
         def forwardCookie = flowInfo.forwardPath.cookie.value
         def reverseCookie = flowInfo.reversePath.cookie.value
-        def rulesOnSrcSw = northbound.getSwitchRules(switchPair.src.dpId).flowEntries
+        def rulesOnSrcSw = switchRulesFactory.get(switchPair.src.dpId).getRules()
         def forwardLoopPacketCount = rulesOnSrcSw.find { it.cookie in flowLoopRules[0].cookie }.packetCount
         forwardLoopPacketCount > 0
         //reverseLoopPacketCount localEnv = 0, stageEnv = 8
@@ -120,7 +124,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         rulesOnSrcSw.findAll { it.cookie in [forwardCookie, reverseCookie] }*.packetCount.every { it == 0 }
 
         and: "Counter on the simple(ingress/egress) flow rules on the dst switch is the same as reverseLoopPacketCount"
-        northbound.getSwitchRules(switchPair.dst.dpId).flowEntries.findAll {
+        switchRulesFactory.get(switchPair.dst.dpId).getRules().findAll {
             it.cookie in [forwardCookie, reverseCookie]
         }*.packetCount.every { it == reverseLoopPacketCount }
 
@@ -133,7 +137,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         sleep(1000)
 
         and: "Counter only on the reverse flowLoop rule is increased"
-        def rulesOnSrcSw_2 = northbound.getSwitchRules(switchPair.src.dpId).flowEntries
+        def rulesOnSrcSw_2 = switchRulesFactory.get(switchPair.src.dpId).getRules()
         def reverseLoopPacketCount_2 = rulesOnSrcSw_2.find { it.cookie in flowLoopRules[1].cookie }.packetCount
         reverseLoopPacketCount_2 > reverseLoopPacketCount
         rulesOnSrcSw_2.find { it.cookie in flowLoopRules[0].cookie }.packetCount == forwardLoopPacketCount
@@ -142,26 +146,24 @@ class FlowLoopSpec extends HealthCheckSpecification {
         rulesOnSrcSw_2.findAll { it.cookie in [forwardCookie, reverseCookie] }*.packetCount.every { it == 0 }
 
         and: "Counter on the simple(ingress/egress) flow rules is increased on the dst switch"
-        with(northbound.getSwitchRules(switchPair.dst.dpId).flowEntries) {
+        with(switchRulesFactory.get(switchPair.dst.dpId).getRules()) {
             it.findAll { it.cookie in [forwardCookie, reverseCookie] }*.packetCount.each {
                 assert it == reverseLoopPacketCount_2
             }
         }
 
         when: "Delete flowLoop"
-        def deleteResponse = northboundV2.deleteFlowLoop(flow.flowId)
+        def deleteResponse = flow.deleteFlowLoop()
 
         then: "The delete flowLoop response contains the flowId"
         deleteResponse.flowId == flow.flowId
 
         and: "FlowLoop is really deleted"
-        !northboundV2.getFlow(flow.flowId).loopSwitchId
+        !flow.retrieveDetails().loopSwitchId
 
         and: "Flow is UP and valid"
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
-        }
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        flow.waitForBeingInState(FlowState.UP)
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "FlowLoop rules are deleted from the src switch"
         Wrappers.wait(RULES_DELETION_TIME) {
@@ -182,44 +184,50 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         where:
         data << [[
-                         flowDescription: "pinned",
-                         switchPair     : switchPairs.all().withTraffgensOnBothEnds().random(),
-                         flowTap        : { FlowRequestV2 fl -> fl.pinned = true }
-                 ],
-                 [
-                         flowDescription: "default",
-                         switchPair     : switchPairs.all().withTraffgensOnBothEnds().random(),
-                         flowTap        : { FlowRequestV2 fl ->
-                             fl.source.vlanId = 0
-                             fl.destination.vlanId = 0
+                         flowDescription   : "pinned",
+                         switchPair        : switchPairs.all().withTraffgensOnBothEnds().random(),
+                         expectedFlowEntity: { SwitchPair swPair ->
+                             flowFactory.getBuilder(swPair).withPinned(true).build()
                          }
                  ],
                  [
-                         flowDescription: "protected",
-                         switchPair     : switchPairs.all()
+                         flowDescription   : "default",
+                         switchPair        : switchPairs.all().withTraffgensOnBothEnds().random(),
+                         expectedFlowEntity: { SwitchPair swPair ->
+                             flowFactory.getBuilder(swPair).withSourceVlan(0).withDestinationVlan(0).build()
+                         }
+                 ],
+                 [
+                         flowDescription   : "protected",
+                         switchPair        : switchPairs.all()
                                  .withTraffgensOnBothEnds()
                                  .withAtLeastNNonOverlappingPaths(2)
                                  .random(),
-                         flowTap        : { FlowRequestV2 fl -> fl.allocateProtectedPath = true }
+                         expectedFlowEntity: { SwitchPair swPair ->
+                             flowFactory.getBuilder(swPair).withProtectedPath(true).build()
+                         }
                  ],
                  [
-                         flowDescription: "vxlan",
-                         switchPair     : switchPairs.all()
+                         flowDescription   : "vxlan",
+                         switchPair        : switchPairs.all()
                                  .withTraffgensOnBothEnds()
                                  .withBothSwitchesVxLanEnabled()
                                  .random(),
-                         flowTap        : { FlowRequestV2 fl -> fl.encapsulationType = FlowEncapsulationType.VXLAN }
+                         expectedFlowEntity: { SwitchPair swPair ->
+                             flowFactory.getBuilder(swPair).withEncapsulationType(FlowEncapsulationType.VXLAN)
+                         }
                  ],
                  [
-                         flowDescription: "qinq",
-                         switchPair     : switchPairs.all()
+                         flowDescription   : "qinq",
+                         switchPair        : switchPairs.all()
                                  .withTraffgensOnBothEnds()
                                  .random(),
-                         flowTap        : { FlowRequestV2 fl ->
-                             fl.source.vlanId = 10
-                             fl.source.innerVlanId = 100
-                             fl.destination.vlanId = 20
-                             fl.destination.innerVlanId = 200
+                         expectedFlowEntity: { SwitchPair swPair ->
+                             flowFactory.getBuilder(swPair)
+                                     .withSourceVlan(10)
+                                     .withSourceInnerVlan(100)
+                                     .withDestinationVlan(20)
+                                     .withDestinationInnerVlan(200).build()
                          }
                  ]
         ]
@@ -229,16 +237,15 @@ class FlowLoopSpec extends HealthCheckSpecification {
     def "Able to delete a flow with created flowLoop on it"() {
         given: "A active multi switch flow"
         def switchPair = switchPairs.all().random()
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(switchPair)
 
         when: "Create flowLoop on the dst switch"
-        northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.dst.dpId))
+        flow.createFlowLoop(switchPair.dst.dpId)
 
         then: "FlowLoop is created on the dst switch"
-        def flowLoopOnSwitch = northboundV2.getFlowLoop(flow.flowId, switchPair.dst.dpId)
+        def flowLoopOnSwitch = flow.retrieveFlowLoop(switchPair.dst.dpId)
         flowLoopOnSwitch.size() == 1
-        with(flowLoopOnSwitch[0]) {
+        with(flowLoopOnSwitch.first()) {
             it.flowId == flow.flowId
             it.switchId == switchPair.dst.dpId
         }
@@ -250,13 +257,13 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "Flow history contains info about flowLoop"
         Wrappers.wait(WAIT_OFFSET / 2) {
-            def flowHistory = flowHelper.getLatestHistoryEntry(flow.flowId)
+            def flowHistory = flow.retrieveFlowHistory().entries.last()
             assert !flowHistory.dumps.find { it.type == "stateBefore" }.loopSwitchId
             assert flowHistory.dumps.find { it.type == "stateAfter" }.loopSwitchId == switchPair.dst.dpId
         }
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow.delete()
 
         then: "FlowLoop rules are deleted from the dst switch"
         Wrappers.wait(RULES_DELETION_TIME) {
@@ -275,35 +282,34 @@ class FlowLoopSpec extends HealthCheckSpecification {
                 .withTraffgensOnBothEnds()
                 .withAtLeastNNonOverlappingPaths(2)
                 .random()
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
-        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def flow = flowFactory.getRandom(switchPair)
+        def flowPath = flow.retrieveAllEntityPaths()
 
         and: "FlowLoop is created on the dst switch"
-        northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.dst.dpId))
-        def flowLoopOnSwitch = northboundV2.getFlowLoop(flow.flowId)
+        flow.createFlowLoop(switchPair.dst.dpId)
+        def flowLoopOnSwitch = flow.retrieveFlowLoop()
         assert flowLoopOnSwitch.size() == 1
-        with(flowLoopOnSwitch[0]) {
+        with(flowLoopOnSwitch.first()) {
             it.flowId == flow.flowId
             it.switchId == switchPair.dst.dpId
         }
 
         when: "Fail a flow ISL (bring switch port down)"
-        def islToFail = pathHelper.getInvolvedIsls(flowPath).last()
+        def islToFail = flowPath.flowPath.getInvolvedIsls().last()
         islHelper.breakIsl(islToFail)
 
         then: "The flow was rerouted"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
+            assert flow.retrieveDetails().status == FlowState.UP
+            assert flow.retrieveAllEntityPaths() != flowPath
         }
 
         and: "Flow is UP and valid"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "FlowLoop is still present on the dst switch"
-        northboundV2.getFlow(flow.flowId).loopSwitchId == switchPair.dst.dpId
+        flow.retrieveDetails().loopSwitchId == switchPair.dst.dpId
 
         and: "FlowLoop rules ar still present on the dst switch"
         getFlowLoopRules(switchPair.dst.dpId).size() == 2
@@ -313,9 +319,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         and: "Flow doesn't allow traffic, because it is grubbed by flowLoop rules"
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flow), 1000, 5)
-
+        def exam = flow.traffExam(traffExam, 1000, 5)
         withPool {
             [exam.forward, exam.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
@@ -330,9 +334,8 @@ class FlowLoopSpec extends HealthCheckSpecification {
         given: "An active flow with created flowLoop on the src switch"
         def switchPair = switchPairs.all().neighbouring().random()
         def sourceSwitchId = switchPair.getSrc().getDpId()
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
-        northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
+        def flow = flowFactory.getRandom(switchPair)
+        flow.createFlowLoop(switchPair.src.dpId)
         def flowLoopRules
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             flowLoopRules = getFlowLoopRules(switchPair.src.dpId)*.cookie
@@ -365,26 +368,20 @@ class FlowLoopSpec extends HealthCheckSpecification {
         given: "Two active switches"
         def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
         and: "Three multi switch flows"
-        def flow1 = flowHelperV2.randomFlow(switchPair)
-        flow1.allocateProtectedPath = true
-        flowHelperV2.addFlow(flow1)
-
-        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1])
-        flowHelperV2.addFlow(flow2)
-
-        def flow3 = flowHelperV2.randomFlow(switchPair, false, [flow1, flow2])
-        flowHelperV2.addFlow(flow3)
+        def flow1 = flowFactory.getBuilder(switchPair).withProtectedPath(true).build().create()
+        def flow2 = flowFactory.getRandom(switchPair, false, FlowState.UP, flow1.occupiedEndpoints())
+        def flow3 = flowFactory.getRandom(switchPair, false, FlowState.UP, flow1.occupiedEndpoints() + flow2.occupiedEndpoints())
 
         when: "Get all flowLoops from the src switch"
         then: "There is no flowLoop because it is not created yet"
         northboundV2.getFlowLoop(switchPair.src.dpId).empty
 
         when: "Create flowLoop for flow1 and flow2 on the src switch"
-        northboundV2.createFlowLoop(flow1.flowId, new FlowLoopPayload(switchPair.src.dpId))
-        northboundV2.createFlowLoop(flow2.flowId, new FlowLoopPayload(switchPair.src.dpId))
+        flow1.createFlowLoop(switchPair.src.dpId)
+        flow2.createFlowLoop(switchPair.src.dpId)
 
         and: "Create flowLoop for the flow3 on the dst switch"
-        northboundV2.createFlowLoop(flow3.flowId, new FlowLoopPayload(switchPair.dst.dpId))
+        flow3.createFlowLoop(switchPair.dst.dpId)
 
         and: "Get all flowLoops from the src switch"
         def flowLoopSrcSw = northboundV2.getFlowLoop(switchPair.src.dpId)
@@ -399,8 +396,8 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         then: "Only flow3 is in the response list from the dst switch"
         flowLoopDstSw.size() == 1
-        flowLoopDstSw[0].flowId == flow3.flowId
-        flowLoopDstSw[0].switchId == switchPair.dst.dpId
+        flowLoopDstSw.first().flowId == flow3.flowId
+        flowLoopDstSw.first().switchId == switchPair.dst.dpId
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -412,34 +409,32 @@ class FlowLoopSpec extends HealthCheckSpecification {
                 .random()
 
         and: "A protected unmetered flow with flowLoop on the src switch"
-        def flow = flowHelperV2.randomFlow(switchPair).tap {
-            maximumBandwidth = 0
-            ignoreBandwidth = true
-            allocateProtectedPath = true
-        }
-        flowHelperV2.addFlow(flow)
-        northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
-        Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert flowHelper.getLatestHistoryEntry(flow.flowId).payload.last().action == UPDATE_SUCCESS
-        }
+        def flow = flowFactory.getBuilder(switchPair)
+                .withBandwidth(0)
+                .withIgnoreBandwidth(true)
+                .withProtectedPath(true).build()
+                .create()
+
+        flow.createFlowLoop(switchPair.src.dpId)
+
+        flow.waitForHistoryEvent(FlowActionType.UPDATE)
+        assert flow.retrieveFlowStatus().status == FlowState.UP
 
         when: "Break ISL on the main path (bring port down) to init auto swap"
-        def flowPathInfo = northbound.getFlowPath(flow.flowId)
-        def currentPath = pathHelper.convert(flowPathInfo)
-        def currentProtectedPath = pathHelper.convert(flowPathInfo.protectedPath)
-        def islToBreak = pathHelper.getInvolvedIsls(currentPath)[0]
+        def flowPathInfo = flow.retrieveAllEntityPaths()
+        def initialProtectedPath = flowPathInfo.getPathNodes(Direction.FORWARD, true)
+        def islToBreak = flowPathInfo.flowPath.path.forward.getInvolvedIsls().first()
         islHelper.breakIsl(islToBreak)
 
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentProtectedPath
+            assert flow.retrieveFlowStatus().status == FlowState.UP
+            assert flow.validateAndCollectDiscrepancies().isEmpty()
+            assert flow.retrieveAllEntityPaths().getPathNodes(Direction.FORWARD, false) == initialProtectedPath
         }
 
         and: "FlowLoop is still present on the src switch"
-        northbound.getFlow(flow.flowId).loopSwitchId == switchPair.src.dpId
+        flow.retrieveDetails().loopSwitchId == switchPair.src.dpId
 
         and: "FlowLoop rules are still exist on the src switch"
         and: "The src switch is valid"
@@ -452,8 +447,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
 
         when: "Send traffic via flow"
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flow), 1000, 5)
+        def exam = flow.traffExam(traffExam, 1000, 5)
 
         then: "Flow doesn't allow traffic, because it is grubbed by flowLoop rules"
         withPool {
@@ -472,24 +466,23 @@ class FlowLoopSpec extends HealthCheckSpecification {
     def "Able to create flowLoop for a singleSwitch flow"() {
         given: "An active singleSwitch flow"
         def sw = topology.activeSwitches.first()
-        def flow = flowHelperV2.singleSwitchFlow(sw)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(sw, sw)
 
         when: "Create flowLoop on the sw switch"
-        def createResponse = northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(sw.dpId))
+        def createResponse = flow.createFlowLoop(sw.dpId)
 
         then: "Create flowLoop response contains flowId and src switchId"
         assert createResponse.flowId == flow.flowId
         assert createResponse.switchId == sw.dpId
 
         and: "Flow is UP and valid"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "FlowLoop is really created on the switch"
-        def flowLoopOnSwitch = northboundV2.getFlowLoop(flow.flowId)
+        def flowLoopOnSwitch = flow.retrieveFlowLoop()
         flowLoopOnSwitch.size() == 1
-        with(flowLoopOnSwitch[0]) {
+        with(flowLoopOnSwitch.first()) {
             it.flowId == flow.flowId
             it.switchId == sw.dpId
         }
@@ -501,12 +494,11 @@ class FlowLoopSpec extends HealthCheckSpecification {
             assert !switchHelper.validateAndCollectFoundDiscrepancies(sw.getDpId()).isPresent()
         }
 
-
         when: "Delete flowLoop"
-        northboundV2.deleteFlowLoop(flow.flowId)
+        flow.deleteFlowLoop()
 
         then: "FlowLoop is deleted"
-        !northboundV2.getFlow(flow.flowId).loopSwitchId
+        !flow.retrieveDetails().loopSwitchId
 
         and: "FlowLoop rules are deleted from the switch"
         Wrappers.wait(RULES_DELETION_TIME) {
@@ -514,8 +506,8 @@ class FlowLoopSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is UP and valid"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "The switch is valid"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.getDpId()).isPresent()
@@ -525,22 +517,21 @@ class FlowLoopSpec extends HealthCheckSpecification {
     def "Able to create flowLoop for a singleSwitchSinglePort flow"() {
         given: "An active singleSwitchSinglePort flow"
         def sw = topology.activeSwitches.first()
-        def flow = flowHelperV2.singleSwitchSinglePortFlow(sw)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(sw, sw).withSamePortOnSourceAndDestination().build().create()
 
         when: "Create flowLoop on the sw switch"
-        def createResponse = northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(sw.dpId))
+        def createResponse = flow.createFlowLoop(sw.dpId)
 
         then: "Create flowLoop response contains flowId and src switchId"
         assert createResponse.flowId == flow.flowId
         assert createResponse.switchId == sw.dpId
 
         and: "Flow is UP and valid"
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "FlowLoop is really created on the switch"
-        northbound.getFlow(flow.flowId).loopSwitchId == sw.dpId
+        flow.retrieveDetails().loopSwitchId == sw.dpId
 
         and: "FlowLoop rules are created"
         and: "The switch is valid"
@@ -550,7 +541,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.getDpId()).isPresent()
 
         when: "Delete the flow with created flowLoop"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow.delete()
 
         then: "FlowLoop rules are deleted from the switch"
         getFlowLoopRules(sw.dpId).empty
@@ -563,16 +554,16 @@ class FlowLoopSpec extends HealthCheckSpecification {
     def "Attempt to create the exact same flowLoop twice just reinstalls the rules"() {
         given: "An active multi switch flow with created flowLoop on the src switch"
         def switchPair = switchPairs.all().neighbouring().random()
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
-        northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        def flow = flowFactory.getRandom(switchPair)
+
+        flow.createFlowLoop(switchPair.src.dpId)
+        Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
 
         when: "Try to create flowLoop on the src switch again"
-        northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
+        flow.createFlowLoop(switchPair.src.dpId)
 
         then: "FlowLoop is still present for the src switch"
-        northboundV2.getFlow(flow.flowId).loopSwitchId == switchPair.src.dpId
+        flow.retrieveDetails().loopSwitchId == switchPair.src.dpId
 
         and: "The src/dst switches are valid"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -584,7 +575,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         getFlowLoopRules(switchPair.dst.dpId).empty
 
         when: "Delete the flow with created flowLoop"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow.delete()
 
         then: "FlowLoop rules are deleted"
         Wrappers.wait(RULES_DELETION_TIME) {
@@ -596,30 +587,29 @@ class FlowLoopSpec extends HealthCheckSpecification {
     def "Unable to create flowLoop when a switch is deactivated"() {
         given: "An active flow"
         def switchPair = switchPairs.all().neighbouring().random()
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(switchPair)
 
         and: "Deactivated the src switch"
-        def blockData = switchHelper.knockoutSwitch(switchPair.src, RW)
+        switchHelper.knockoutSwitch(switchPair.src, RW)
 
         when: "Try to create flowLoop on th src switch(deactivated)"
-        northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
+        flow.createFlowLoop(switchPair.src.dpId)
 
         then: "Human readable error is returned"
         def e = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError(~/Source switch $switchPair.src.dpId is not connected to the controller/).matches(e)
         and: "FlowLoop is not created"
-        !northbound.getFlow(flow.flowId).loopSwitchId
+        !flow.retrieveDetails().loopSwitchId
 
         when: "Try to create flowLoop on th dst switch(activated)"
-        northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.dst.dpId))
+        flow.createFlowLoop(switchPair.dst.dpId)
 
         then: "Human readable error is returned" //system can't update the flow when it is down
         def exc = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError(~/Source switch $switchPair.src.dpId is not connected to the controller/).matches(exc)
 
         then: "FlowLoop is not created"
-        !northbound.getFlow(flow.flowId).loopSwitchId
+        !flow.retrieveDetails().loopSwitchId
 
         and: "FlowLoop rules are not created on the dst switch"
         getFlowLoopRules(switchPair.dst.dpId).empty
@@ -629,12 +619,12 @@ class FlowLoopSpec extends HealthCheckSpecification {
     def "Unable to create flowLoop on the src switch when it is already created on the dst switch"() {
         given: "An active flow with created flowLoop on the src switch"
         def switchPair = switchPairs.all().neighbouring().random()
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
-        northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.src.dpId))
+        def flow = flowFactory.getRandom(switchPair)
+
+        flow.createFlowLoop(switchPair.src.dpId)
 
         when: "Try to create flowLoop on the dst switch"
-        northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(switchPair.dst.dpId))
+        flow.createFlowLoop(switchPair.dst.dpId)
 
         then: "FlowLoop is not created on the dst switch"
         def exc = thrown(HttpClientErrorException)
@@ -646,18 +636,18 @@ class FlowLoopSpec extends HealthCheckSpecification {
     def "Unable to create flowLoop on a transit switch"() {
         given: "An active multi switch flow with transit switch"
         def switchPair = switchPairs.all().nonNeighbouring().random()
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
-        def transitSwId = PathHelper.convert(northbound.getFlowPath(flow.flowId))[1].switchId
+        def flow = flowFactory.getRandom(switchPair)
+
+        def transitSwId = flow.retrieveAllEntityPaths().getInvolvedSwitches()[1]
 
         when: "Try to create flowLoop on the transit switch"
-        northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(transitSwId))
+        flow.createFlowLoop(transitSwId)
 
         then: "Human readable error is returned" //flowLoop is no allowed on a transit switch
         def exc = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError(~/Loop switch is not terminating in flow path/).matches(exc)
         then: "FlowLoop is not created"
-        !northbound.getFlow(flow.flowId).loopSwitchId
+        !flow.retrieveDetails().loopSwitchId
 
         and: "FlowLoop rules are not created on the transit switch"
         getFlowLoopRules(transitSwId).empty
@@ -684,24 +674,23 @@ class FlowLoopSpec extends HealthCheckSpecification {
     def "Unable to create flowLoop on a non existent switch"() {
         given: "An active multi switch flow"
         def swP = switchPairs.all().neighbouring().random()
-        def flow = flowHelperV2.randomFlow(swP)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(swP)
 
         when: "Try to create flowLoop on a non existent switch"
-        northboundV2.createFlowLoop(flow.flowId, new FlowLoopPayload(NON_EXISTENT_SWITCH_ID))
+        flow.createFlowLoop(NON_EXISTENT_SWITCH_ID)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         new FlowNotUpdatedExpectedError(~/Loop switch is not terminating in flow path/).matches(exc)
 
         and: "FlowLoop rules are not created for the flow"
-        !northboundV2.getFlow(flow.flowId).loopSwitchId
+        !flow.retrieveDetails().loopSwitchId
     }
 
     def getFlowLoopRules(SwitchId switchId) {
         def forwardLoopRule
         def reverseLoopRule
-        northbound.getSwitchRules(switchId).flowEntries.findAll {
+        switchRulesFactory.get(switchId).getRules().findAll {
             def hexCookie = Long.toHexString(it.cookie)
             if (hexCookie.startsWith("40080000")) {
                 forwardLoopRule = it

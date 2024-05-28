@@ -70,4 +70,9 @@ class FlowFactory {
                            List<SwitchPortVlan> busyEndpoints = []) {
         return getBuilder(srcSwitch, dstSwitch, useTraffgenPorts, busyEndpoints).build().createV1(expectedFlowState)
     }
+
+    FlowExtended getRandomV1(SwitchPair switchPair, boolean useTraffgenPorts = true, FlowState expectedFlowState = UP,
+                             List<SwitchPortVlan> busyEndpoints = []) {
+        return getBuilder(switchPair.src, switchPair.dst, useTraffgenPorts, busyEndpoints).build().createV1(expectedFlowState)
+    }
 }

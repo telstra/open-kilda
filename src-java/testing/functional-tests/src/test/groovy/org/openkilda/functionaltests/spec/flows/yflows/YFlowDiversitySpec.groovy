@@ -132,7 +132,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         assert involvedIslSubFlowAfterUpdate != involvedIslSimpleFlow
 
         and: "First sub flow history contains 'groupId' information"
-        verifyAll(flowHelper.getEarliestHistoryEntryByAction(subFlowId, FlowActionType.UPDATE_ACTION.value).dumps) {
+        verifyAll(flowHelper.getEarliestHistoryEntryByAction(subFlowId, FlowActionType.UPDATE.value).dumps) {
             !it.find { it.type == "stateBefore" }?.diverseGroupId
             it.find { it.type == "stateAfter" }?.diverseGroupId
         }

@@ -871,7 +871,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         updatedFlow.hasTheSamePropertiesAs(flowExpectedEntity)
 
         and: "Flow history shows actual info into stateBefore and stateAfter sections"
-        def flowHistoryEntry = updatedFlow.waitForHistoryEvent(FlowActionType.UPDATE_ACTION)
+        def flowHistoryEntry = updatedFlow.waitForHistoryEvent(FlowActionType.UPDATE)
         with(flowHistoryEntry.dumps.find { it.type == "stateBefore" }) {
             it.sourcePort == flow.source.portNumber
             it.sourceVlan == flow.source.vlanId
@@ -914,7 +914,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         updatedFlow.destination.switchId == newDstSwitch.dpId
 
         and: "Flow history shows actual info into stateBefore and stateAfter sections"
-        def flowHistory2 = updatedFlow.waitForHistoryEvent(FlowActionType.UPDATE_ACTION)
+        def flowHistory2 = updatedFlow.waitForHistoryEvent(FlowActionType.UPDATE)
         with(flowHistory2.dumps.find { it.type == "stateBefore" }) {
             it.destinationSwitch == dstSwitch.dpId.toString()
         }
@@ -1001,7 +1001,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         then: "Flow is really updated"
         updatedFlow.hasTheSamePropertiesAs(flowExpectedEntity)
-        flow.waitForHistoryEvent(FlowActionType.UPDATE_ACTION)
+        flow.waitForHistoryEvent(FlowActionType.UPDATE)
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay) {
@@ -1014,7 +1014,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         then: "Flow is really updated"
         updatedFlow.hasTheSamePropertiesAs(flowExpectedEntity)
-        flow.waitForHistoryEvent(FlowActionType.UPDATE_ACTION)
+        flow.waitForHistoryEvent(FlowActionType.UPDATE)
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay) {
