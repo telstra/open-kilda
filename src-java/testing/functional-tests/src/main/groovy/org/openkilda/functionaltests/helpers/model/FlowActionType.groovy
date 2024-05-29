@@ -7,7 +7,9 @@ enum FlowActionType {
     PARTIAL_UPDATE("Flow partial updating", "Flow was updated successfully"),
     PARTIAL_UPDATE_ONLY_IN_DB("Flow partial updating", "Flow PATCH operation has been executed without the consecutive update."),
     REROUTE("Flow rerouting", "Flow was rerouted successfully"),
-    REROUTE_FAILED("Flow rerouting", "Failed to reroute the flow")
+    REROUTE_FAILED("Flow rerouting", "Failed to reroute the flow"),
+    CREATE_MIRROR("Flow mirror point creating", "Flow mirror point was created successfully"),
+    DELETE_MIRROR("Flow mirror point deleting", "Flow mirror point was deleted successfully")
 
     final String value
     final String payloadLastAction

@@ -1,6 +1,8 @@
 package org.openkilda.functionaltests.helpers.model
 
 import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
+import static org.openkilda.functionaltests.helpers.FlowNameGenerator.FLOW
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_FLOW
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
@@ -23,6 +25,8 @@ import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowReroutePayload
 import org.openkilda.messaging.payload.flow.FlowResponsePayload
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.FlowPathDirection
+import org.openkilda.model.FlowPathStatus
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
@@ -33,6 +37,9 @@ import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload
 import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointsResponseV2
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2
@@ -103,7 +110,7 @@ class FlowExtended {
     Set<String> diverseWithYFlows
     Set<String> diverseWithHaFlows
 
-    List<MirrorPointStatus> mirrorPointStatus
+    List<MirrorPointStatus> mirrorPointStatuses
     String yFlowId
     FlowStatistics statistics
 
@@ -168,7 +175,7 @@ class FlowExtended {
         this.diverseWithYFlows = flow.diverseWithYFlows
         this.diverseWithHaFlows = flow.diverseWithHaFlows
 
-        this.mirrorPointStatus = flow.mirrorPointStatuses
+        this.mirrorPointStatuses = flow.mirrorPointStatuses
         this.yFlowId = flow.YFlowId
         this.statistics = flow.statistics
 
@@ -288,6 +295,49 @@ class FlowExtended {
                 .build()
     }
 
+    FlowMirrorPointPayload buildMirrorPointPayload(SwitchId sinkSwitchId,
+                                                   Integer sinkPortNumber,
+                                                   Integer sinkVlanId = randomVlan(),
+                                                   FlowPathDirection mirrorDirection = FlowPathDirection.FORWARD,
+                                                   SwitchId mirrorPointSwitchId = sinkSwitchId) {
+        FlowEndpointV2 sinkEndpoint = this.source.switchId == sinkSwitchId ? this.source.jacksonCopy() : this.destination.jacksonCopy()
+        sinkEndpoint.tap {
+            sinkEndpoint.portNumber = sinkPortNumber
+            sinkEndpoint.vlanId = sinkVlanId
+            sinkEndpoint.switchId = sinkSwitchId
+        }
+        FlowMirrorPointPayload.builder()
+                .mirrorPointId(FLOW.generateId())
+                .mirrorPointDirection(mirrorDirection.toString().toLowerCase())
+                .mirrorPointSwitchId(mirrorPointSwitchId)
+                .sinkEndpoint(sinkEndpoint)
+                .build()
+    }
+
+    FlowMirrorPointResponseV2 createMirrorPointWithPayload(FlowMirrorPointPayload mirrorPointPayload,
+                                                           boolean withWait=true) {
+        def response = northboundV2.createMirrorPoint(flowId, mirrorPointPayload)
+        if (withWait) {
+            wait(FLOW_CRUD_TIMEOUT) {
+                assert retrieveDetails().mirrorPointStatuses[0].status ==
+                        FlowPathStatus.ACTIVE.toString().toLowerCase()
+                assert !retrieveFlowHistory().getEntriesByType(FlowActionType.CREATE_MIRROR).isEmpty()
+            }
+        }
+        return response
+    }
+
+    FlowMirrorPointResponseV2 createMirrorPoint(SwitchId sinkSwitchId,
+                                                Integer sinkPortNumber,
+                                                Integer sinkVlanId = randomVlan(),
+                                                FlowPathDirection mirrorDirection = FlowPathDirection.FORWARD,
+                                                SwitchId mirrorPointSwitchId = sinkSwitchId,
+                                                boolean withWait=true) {
+        FlowMirrorPointPayload mirrorPointPayload = buildMirrorPointPayload(
+                sinkSwitchId, sinkPortNumber, sinkVlanId, mirrorDirection, mirrorPointSwitchId)
+        return createMirrorPointWithPayload(mirrorPointPayload, withWait)
+    }
+
     FlowEntityPath retrieveAllEntityPaths() {
         FlowPathPayload flowPath = northbound.getFlowPath(flowId)
         new FlowEntityPath(flowPath, topologyDefinition)
@@ -333,6 +383,16 @@ class FlowExtended {
         retrieveFlowHistoryStatus(null, null, maxCount)
     }
 
+    FlowMirrorPointsResponseV2 retrieveMirrorPoints() {
+        log.debug("Get Flow '$flowId' mirror points")
+        return northboundV2.getMirrorPoints(flowId)
+    }
+
+    FlowMirrorPointResponseV2 deleteMirrorPoint(String mirrorPointId) {
+        log.debug("Deleting mirror point '$mirrorPointId' of the flow '$flowId'")
+        northboundV2.deleteMirrorPoint(flowId, mirrorPointId)
+    }
+
     List<FlowValidationDto> validate() {
         log.debug("Validate Flow '$flowId'")
         northbound.validateFlow(flowId)
@@ -372,6 +432,10 @@ class FlowExtended {
     FlowExtended partialUpdate(FlowPatchV2 updateRequest, FlowState flowState = FlowState.UP) {
         northboundV2.partialUpdate(flowId, updateRequest)
         return waitForBeingInState(flowState)
+    }
+
+    FlowReroutePayload rerouteV1() {
+        return northbound.rerouteFlow(flowId)
     }
 
     /*
@@ -625,7 +689,7 @@ class FlowExtended {
         assertions.checkSucceeds { assert this.diverseWith == expectedFlowExtended.diverseWith }
         assertions.checkSucceeds { assert this.diverseWithYFlows == expectedFlowExtended.diverseWithYFlows }
         assertions.checkSucceeds { assert this.diverseWithHaFlows == expectedFlowExtended.diverseWithHaFlows }
-        assertions.checkSucceeds { assert this.mirrorPointStatus == expectedFlowExtended.mirrorPointStatus }
+        assertions.checkSucceeds { assert this.mirrorPointStatuses == expectedFlowExtended.mirrorPointStatuses }
         assertions.checkSucceeds { assert this.yFlowId == expectedFlowExtended.yFlowId}
         assertions.checkSucceeds { assert this.statistics == expectedFlowExtended.statistics }
 
