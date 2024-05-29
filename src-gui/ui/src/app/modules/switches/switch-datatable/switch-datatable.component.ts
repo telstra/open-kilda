@@ -257,15 +257,15 @@ export class SwitchDatatableComponent implements OnInit, OnChanges, OnDestroy, A
     }
 
     showSwitch(switchObj: Switch) {
-        const swId = switchObj.switch_id || switchObj["inventory_switch_detail"]?.["switch-id"];
+        const swId = switchObj.switch_id || switchObj['inventory_switch_detail']?.['switch-id'];
         const switchDetailsJSON = {
             'switch_id': swId,
-            'name': switchObj.name || switchObj["inventory_switch_detail"]?.name,
-            'common-name': switchObj["inventory_switch_detail"]?.['common-name'],
+            'name': switchObj.name || switchObj['inventory_switch_detail']?.name,
+            'common-name': switchObj['inventory_switch_detail']?.['common-name'],
             'address': switchObj.address,
             'hostname': switchObj.hostname,
-            'description': switchObj.description || switchObj["inventory_switch_detail"]?.["description"],
-            'state': switchObj.state || switchObj["inventory_switch_detail"]?.["status"]
+            'description': switchObj.description || switchObj['inventory_switch_detail']?.['description'],
+            'state': switchObj.state || switchObj['inventory_switch_detail']?.['status']
         };
         const switchDetailsKey = 'switchDetailsKey_' + swId;
         localStorage.setItem(switchDetailsKey, JSON.stringify(switchDetailsJSON));
@@ -346,5 +346,21 @@ export class SwitchDatatableComponent implements OnInit, OnChanges, OnDestroy, A
         }
 
         this.clipboardService.copyFromContent(copyData);
+    }
+
+    extractState(switchDetail: any): string {
+        return this.switchService.extractState(switchDetail);
+    }
+
+    hasDiscrepancy(switchDetail: any): boolean {
+        return this.switchService.hasDiscrepancy(switchDetail);
+    }
+
+    extractSwitchId(switchDetail: any): string {
+        return this.switchService.extractSwitchId(switchDetail);
+    }
+
+    isControllerSwitch(switchDetail: any): boolean {
+        return this.switchService.isControllerSwitch(switchDetail);
     }
 }

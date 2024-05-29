@@ -19,6 +19,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.openkilda.constants.IConstants;
+import org.openkilda.integration.exception.InvalidResponseException;
 import org.openkilda.integration.service.SwitchIntegrationService;
 import org.openkilda.integration.source.store.SwitchInventoryService;
 import org.openkilda.integration.source.store.dto.InventorySwitch;
@@ -35,7 +36,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -55,6 +55,7 @@ class SwitchServiceTest {
 
     private static final String SW_TEST_1 = "SW_TEST_1";
     private static final String SW_TEST_2 = "SW_TEST_2";
+    private static final String WRONG_SWITCH_ID = "WRONG_SWITCH_ID";
 
     @InjectMocks
     private SwitchService switchService;
@@ -72,10 +73,7 @@ class SwitchServiceTest {
         MockitoAnnotations.openMocks(this);
     }
 
-    /**
-     * Only switch in controller should be returned.
-     */
-    @Disabled
+
     @Test
     void switchDetailsOnlyForController() throws AccessDeniedException {
         when(switchIntegrationService.getSwitchesById(SW_TEST_1)).thenReturn(getSwitchInfo1(SW_TEST_1));
@@ -91,7 +89,6 @@ class SwitchServiceTest {
      * should be returned only one switch.
      */
     @Test
-    @Disabled
     void switchDetails() throws AccessDeniedException {
         when(switchIntegrationService.getSwitchesById(SW_TEST_1)).thenReturn(getSwitchInfo1(SW_TEST_1));
         when(userService.getLoggedInUserInfo()).thenReturn(getUserInfoWithPermission());
@@ -110,10 +107,34 @@ class SwitchServiceTest {
     }
 
     /**
+     * Get inventory switch by id with wrong switchId, northbound causing InvalidResponseException.
+     * But inventory switch exist.
+     */
+    @Test
+    void switchDetailsInvalidResponse() throws AccessDeniedException {
+        when(switchIntegrationService.getSwitchesById(WRONG_SWITCH_ID))
+                .thenThrow(InvalidResponseException.class);
+
+        when(userService.getLoggedInUserInfo()).thenReturn(getUserInfoWithPermission());
+        SwitchStoreConfigDto switchStoreConfig = mock(SwitchStoreConfigDto.class);
+        when(storeService.getSwitchStoreConfig()).thenReturn(switchStoreConfig);
+        Map<String, UrlDto> map = new HashMap<>();
+        map.put("someKey", new UrlDto());
+        when(storeService.getSwitchStoreConfig().getUrls()).thenReturn(map);
+        when(switchInventoryService.getSwitch(WRONG_SWITCH_ID))
+                .thenReturn(getInventorySwitch(WRONG_SWITCH_ID));
+
+        List<SwitchDetail> actual = switchService.getSwitchDetails(WRONG_SWITCH_ID, false);
+        Assertions.assertNotNull(actual);
+        Assertions.assertEquals(1, actual.size());
+        SwitchDetail expectedWithInventory = getSwitchDetail1(null, getInventorySwitch(WRONG_SWITCH_ID));
+        Assertions.assertEquals(expectedWithInventory, actual.get(0));
+    }
+
+    /**
      * SwitchId exist in controller, but does not exist in Inventory, should be returned only one switch.
      */
     @Test
-    @Disabled
     void switchDetailsEmptyInventory() throws AccessDeniedException {
         when(switchIntegrationService.getSwitchesById(SW_TEST_1)).thenReturn(getSwitchInfo1(SW_TEST_1));
         when(userService.getLoggedInUserInfo()).thenReturn(getUserInfoWithPermission());
@@ -135,7 +156,6 @@ class SwitchServiceTest {
      * One switch in controller and different switch in Inventory should be returned.
      */
     @Test
-    @Disabled
     void switchDetailsDifferentSwitches() throws AccessDeniedException {
         when(switchIntegrationService.getSwitches()).thenReturn(Collections.singletonList(getSwitchInfo1(SW_TEST_1)));
         when(userService.getLoggedInUserInfo()).thenReturn(getUserInfoWithPermission());
@@ -160,7 +180,6 @@ class SwitchServiceTest {
      * Only inventory switches exist.
      */
     @Test
-    @Disabled
     void switchDetailsOnlyInventoryExist() throws AccessDeniedException {
         when(switchIntegrationService.getSwitches()).thenReturn(Collections.emptyList());
         when(userService.getLoggedInUserInfo()).thenReturn(getUserInfoWithPermission());
@@ -184,7 +203,6 @@ class SwitchServiceTest {
      * No switches exist at all.
      */
     @Test
-    @Disabled
     void switchDetailsNoSwitchesExist() throws AccessDeniedException {
         when(switchIntegrationService.getSwitches()).thenReturn(Collections.emptyList());
         when(userService.getLoggedInUserInfo()).thenReturn(getUserInfoWithPermission());
@@ -203,26 +221,62 @@ class SwitchServiceTest {
         Assertions.assertEquals(expected, actual);
     }
 
+    /**
+     * SwitchDetails for all switches, controller false.
+     * One switch in controller and three switches in inventory exist, two of them with the same switchId.
+     * Should return 3 switches in total.
+     */
+    @Test
+    void switchDetailsWithOneConrollerAndDifferentInventory() throws AccessDeniedException {
+        when(switchIntegrationService.getSwitches()).thenReturn(Collections.singletonList(getSwitchInfo1(SW_TEST_2)));
+        when(userService.getLoggedInUserInfo()).thenReturn(getUserInfoWithPermission());
+        SwitchStoreConfigDto switchStoreConfig = mock(SwitchStoreConfigDto.class);
+        when(storeService.getSwitchStoreConfig()).thenReturn(switchStoreConfig);
+        Map<String, UrlDto> map = new HashMap<>();
+        map.put("someKey", new UrlDto());
+        when(storeService.getSwitchStoreConfig().getUrls()).thenReturn(map);
+        List<InventorySwitch> inventorySwitches = Lists.newArrayList();
+        inventorySwitches.add(getInventorySwitch(SW_TEST_1));
+        inventorySwitches.add(getInventorySwitch(SW_TEST_2));
+        inventorySwitches.add(getInventorySwitch(SW_TEST_2));
+        when(switchInventoryService.getSwitches()).thenReturn(inventorySwitches);
+
+        List<SwitchDetail> actual = switchService.getSwitchDetails(null, false);
+        Assertions.assertNotNull(actual);
+        Assertions.assertEquals(3, actual.size());
+
+        List<SwitchDetail> expected =
+                Lists.newArrayList(getSwitchDetail1(SW_TEST_2, getInventorySwitch(SW_TEST_2, true)),
+                        getSwitchDetailOnlyWithInventory(getInventorySwitch(SW_TEST_2, true)),
+                        getSwitchDetailOnlyWithInventory(getInventorySwitch(SW_TEST_1)));
+
+        Assertions.assertEquals(expected.get(0), actual.get(0));
+        Assertions.assertEquals(expected.get(1), actual.get(1));
+        Assertions.assertEquals(expected.get(2), actual.get(2));
+    }
+
 
     private SwitchDetail getSwitchDetail1(String switchId, InventorySwitch inventorySwitch) {
-        return SwitchDetail.builder()
-                .switchId(switchId)
-                .name(switchId)
-                .address("address")
-                .port("123")
-                .hostname("qwerty")
-                .description("qwerty")
-                .state("qwerty")
-                .underMaintenance(true)
-                .ofVersion("qwerty")
-                .manufacturer("qwerty")
-                .hardware("qwerty")
-                .software("qwerty")
-                .serialNumber("qwerty")
-                .pop("qwerty")
-                .location(getLocation1())
-                .inventorySwitchDetail(inventorySwitch)
-                .build();
+        SwitchDetail.SwitchDetailBuilder builder = SwitchDetail.builder();
+        if (switchId != null) {
+            builder.switchId(switchId)
+                    .name(switchId)
+                    .address("address")
+                    .port("123")
+                    .hostname("qwerty")
+                    .description("qwerty")
+                    .state("qwerty")
+                    .underMaintenance(true)
+                    .ofVersion("qwerty")
+                    .manufacturer("qwerty")
+                    .hardware("qwerty")
+                    .software("qwerty")
+                    .serialNumber("qwerty")
+                    .pop("qwerty")
+                    .location(getLocation1());
+        }
+        builder.inventorySwitchDetail(inventorySwitch);
+        return builder.build();
     }
 
     private SwitchDetail getSwitchDetailOnlyWithInventory(InventorySwitch inventorySwitch) {
@@ -259,7 +313,12 @@ class SwitchServiceTest {
         return location;
     }
 
+
     private InventorySwitch getInventorySwitch(String switchId) {
+        return getInventorySwitch(switchId, false);
+    }
+
+    private InventorySwitch getInventorySwitch(String switchId, boolean duplicate) {
         InventorySwitch inventorySwitch = new InventorySwitch();
         inventorySwitch.setUuid("randomUUID");
         inventorySwitch.setSwitchId(switchId);
@@ -283,6 +342,7 @@ class SwitchServiceTest {
         popLocation.setPopCode("POP123");
         inventorySwitch.setPopLocation(popLocation);
 
+        inventorySwitch.setHasDuplicate(duplicate);
         return inventorySwitch;
     }
 

@@ -19,50 +19,36 @@ import org.openkilda.integration.source.store.dto.InventorySwitch;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;
 
 import java.io.Serializable;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Builder
 @Data
 public class SwitchDetail implements Serializable {
 
     private static final long serialVersionUID = 6763064864461521069L;
-    @JsonProperty("switch_id")
     private String switchId;
-    @JsonProperty("name")
     private String name;
-    @JsonProperty("address")
     private String address;
-    @JsonProperty("port")
     private String port;
-    @JsonProperty("hostname")
     private String hostname;
-    @JsonProperty("description")
     private String description;
-    @JsonProperty("state")
     private String state;
-    @JsonProperty("under_maintenance")
     private boolean underMaintenance;
-    @JsonProperty("of_version")
     private String ofVersion;
-    @JsonProperty("manufacturer")
     private String manufacturer;
-    @JsonProperty("hardware")
     private String hardware;
-    @JsonProperty("software")
     private String software;
-    @JsonProperty("serial_number")
     private String serialNumber;
-    @JsonProperty("pop")
     private String pop;
-    @JsonProperty("location")
     private Location location;
-    @JsonProperty("inventory_switch_detail")
     private InventorySwitch inventorySwitchDetail;
 
 }
