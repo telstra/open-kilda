@@ -12,9 +12,7 @@ import {StoreSettingtService} from 'src/app/common/services/store-setting.servic
 import {FormBuilder, FormGroup} from '@angular/forms';
 import {NgbModal} from '@ng-bootstrap/ng-bootstrap';
 import {ModalconfirmationComponent} from 'src/app/common/components/modalconfirmation/modalconfirmation.component';
-import {
-    IslmaintenancemodalComponent
-} from 'src/app/common/components/islmaintenancemodal/islmaintenancemodal.component';
+import {IslmaintenancemodalComponent} from 'src/app/common/components/islmaintenancemodal/islmaintenancemodal.component';
 import {ModalComponent} from '../../../common/components/modal/modal.component';
 import {OtpComponent} from '../../../common/components/otp/otp.component';
 import {MessageObj} from 'src/app/common/constants/constants';
@@ -83,10 +81,9 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
         this.route.params.subscribe(params => {
             this.switchId = params['id'];
-            const filter = sessionStorage.getItem('switchFilterFlag');
             this.switchFlowFlag = filter;
             localStorage.removeItem('portLoaderEnabled');
-            this.getSwitchDetail(params['id'], filter);
+            this.getSwitchDetail(params['id'], 'inventory');
         });
 
         if (this.router.url.includes('/port')) {
@@ -119,11 +116,11 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     maskInventorySwitchId(switchType, e) {
         if (e.target.checked) {
-            this.switchDetail.inventory_switch_detail["switch-id"] = this.maskPipe.transform(this.switchDetail.inventory_switch_detail["switch-id"], 'legacy');
+            this.switchDetail.inventory_switch_detail['switch-id'] = this.maskPipe.transform(this.switchDetail.inventory_switch_detail['switch-id'], 'legacy');
         } else {
-            this.switchDetail.inventory_switch_detail["switch-id"] = this.maskPipe.transform(this.switchDetail.inventory_switch_detail["switch-id"], 'kilda');
+            this.switchDetail.inventory_switch_detail['switch-id'] = this.maskPipe.transform(this.switchDetail.inventory_switch_detail['switch-id'], 'kilda');
         }
-        this.clipBoardItems.inventorySourceSwitch = this.switchDetail.inventory_switch_detail["switch-id"];
+        this.clipBoardItems.inventorySourceSwitch = this.switchDetail.inventory_switch_detail['switch-id'];
     }
 
     deleteSwitch() {
@@ -182,7 +179,6 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit, OnDestroy {
         this.openedTab = tab;
         if (tab == 'flows') {
             if (this.switchFlows && this.switchFlows.length) {
-
             } else {
                 this.loadSwitchFlows(this.switchDetail.switch_id, true);
             }
@@ -194,7 +190,9 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     refreshSwitchFlows() {
-        this.loadSwitchFlows(this.switchDetail.switch_id, true);
+        if (this.isControllerSwitch()) {
+            this.loadSwitchFlows(this.switchDetail.switch_id, true);
+        }
     }
 
     loadSwitchFlows(switchId, loader) {
@@ -281,48 +279,32 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1';
                 let switchDetail = null;
                 let inventorySwitchDetail = null;
-                if (filter == 'controller') {
-                    const switchData = JSON.parse(localStorage.getItem('SWITCHES_LIST')) || {};
-                    const switchList = typeof (switchData.list_data) != 'undefined' ? switchData.list_data : [];
-                    if (switchList && switchList.length) {
-                        switchList.forEach(swDetail => {
-                            if (swDetail.switch_id == switchId) {
+
+                const switchData = JSON.parse(localStorage.getItem('SWITCHES_LIST_ALL')) || {};
+                const switchList = typeof (switchData.list_data) != 'undefined' ? switchData.list_data : [];
+                if (switchList && switchList.length) {
+                    switchList.forEach(swDetail => {
+                        if (swDetail.switch_id == switchId || swDetail?.inventory_switch_detail?.['switch-id'] == switchId) {
+                            if (swDetail.switch_id != null || switchDetail == null) {
                                 switchDetail = swDetail;
-                                inventorySwitchDetail = swDetail.inventory_switch_detail;
-                                return;
                             }
-                        });
-                    }
-                } else {
-                    const switchData = JSON.parse(localStorage.getItem('SWITCHES_LIST_ALL')) || {};
-                    const switchList = typeof (switchData.list_data) != 'undefined' ? switchData.list_data : [];
-                    if (switchList && switchList.length) {
-                        switchList.forEach(swDetail => {
-                            if (swDetail.switch_id == switchId) {
-                                switchDetail = swDetail;
-                                inventorySwitchDetail = swDetail.inventory_switch_detail;
-                                return;
-                            }
-                        });
-                    }
+                            inventorySwitchDetail = swDetail.inventory_switch_detail;
+                            return;
+                        }
+                    });
                 }
-                if (switchDetail && (switchDetail.switch_id || inventorySwitchDetail["switch-id"])) {
+
+                if (switchDetail && (switchDetail.switch_id || inventorySwitchDetail['switch-id'])) {
                     this.setSwitchDetails(switchDetail, inventorySwitchDetail);
                 } else {
                     this.switchService.getSwitchDetails(switchId, filter).subscribe((retrievedSwitchObject: any) => {
                             if (retrievedSwitchObject == null || retrievedSwitchObject.length == 0) {
-                                this.loaderService.hide();
-                                this.toastr.error(MessageObj.no_switch_found, 'Error');
-                                this.router.navigate([
-                                    '/switches'
-                                ]);
+                                this.handleEmptySwitchRes();
                             } else {
                                 this.setSwitchDetails(retrievedSwitchObject[0], retrievedSwitchObject[0].inventory_switch_detail);
                             }
                         }, err => {
-                            this.loaderService.hide();
-                            this.toastr.error(MessageObj.no_switch_found, 'Error');
-                            this.router.navigate(['/switches']);
+                        this.handleEmptySwitchRes();
                         }
                     );
                 }
@@ -330,6 +312,13 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit, OnDestroy {
         );
         const query = {_: new Date().getTime()};
         this.storeSwitchService.checkSwitchStoreDetails(query);
+    }
+
+    private handleEmptySwitchRes(message?: string) {
+        this.loaderService.hide();
+        const errorMessage = message ? `Error: ${message}` : 'Error';
+        this.toastr.error(MessageObj.no_switch_found, errorMessage);
+        this.router.navigate(['/switches']);
     }
 
 
@@ -446,6 +435,10 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     canEvacuate() {
         return this.commonService.hasPermission('sw_switch_maintenance') && !this.isInventorySwitch();
+    }
+
+    hasPermission(permissionName: string): boolean {
+        return this.commonService.hasPermission(permissionName);
     }
 
     evacuateSwitch(e) {

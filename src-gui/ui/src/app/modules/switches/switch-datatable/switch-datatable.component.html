@@ -91,10 +91,10 @@
     <tbody>
     <tr ngbTooltip="{{row.under_maintenance ? 'Under Maintenence' :''}}" placement="bottom" container="body"
         *ngFor="let row of data; let i = index" (click)="showSwitch(row)" class="flowDataRow"
-        [ngClass]="{'down-state': switchService.extractState(row) == 'DEACTIVATED' , 'up-state': switchService.extractState(row) == 'ACTIVATED', 'maintenance_switch': row.under_maintenance }"
-        [class.down-status]="switchService.hasDiscrepancy(row)">
-        <td class="divTableCell" title="{{checkValue(switchService.extractSwitchId(row))}}" [contextMenu]="copySwitchId">
-            {{ checkValue(switchService.extractSwitchId(row)) }}
+        [ngClass]="{'down-state': extractState(row) == 'DEACTIVATED' , 'up-state': extractState(row) == 'ACTIVATED', 'maintenance_switch': row.under_maintenance }"
+        [class.down-status]="hasDiscrepancy(row)">
+        <td class="divTableCell" title="{{checkValue(extractSwitchId(row))}}" [contextMenu]="copySwitchId">
+            {{ checkValue(extractSwitchId(row)) }}
             <context-menu #copySwitchId>
                 <ng-template contextMenuItem (execute)="copyToClip($event,'switch_id',i);">
                     Copy to Clipboard
@@ -102,9 +102,9 @@
             </context-menu>
         </td>
         <td class="divTableCell"
-            title="{{ ((switchService.isControllerSwitch(row) && switchService.extractState(row) == 'ACTIVATED') || (row['name']!==undefined) ) ? row['name'] : row['inventory_switch_detail']['common-name'] ? checkValue(row['inventory_switch_detail']['common-name']) : checkValue(row['name']) }}"
+            title="{{ ((isControllerSwitch(row) && extractState(row) == 'ACTIVATED') || (row['name']!==undefined) ) ? row['name'] : row['inventory_switch_detail']['common-name'] ? checkValue(row['inventory_switch_detail']['common-name']) : checkValue(row['name']) }}"
             [contextMenu]="copySwitchName">
-            {{ ((switchService.isControllerSwitch(row) && switchService.extractState(row) == 'ACTIVATED') || (row['name'] !== undefined)) ? checkValue(row['name']) : (row['inventory_switch_detail']['common-name']) ? checkValue(row['inventory_switch_detail']['common-name']) : checkValue(row['name']) }}
+            {{ ((isControllerSwitch(row) && extractState(row) == 'ACTIVATED') || (row['name'] !== undefined)) ? checkValue(row['name']) : (row['inventory_switch_detail']['common-name']) ? checkValue(row['inventory_switch_detail']['common-name']) : checkValue(row['name']) }}
             <context-menu #copySwitchName>
                 <ng-template contextMenuItem (execute)="copyToClip($event,'name',i);">
                     Copy to Clipboard
@@ -132,7 +132,7 @@
             {{ checkValue(row.description || row.inventory_switch_detail?.description) }}
         </td>
         <td class="divTableCell" title="{{checkValue(row.state)}}">
-            {{ checkValue(switchService.extractState(row)) }}
+            {{ checkValue(extractState(row)) }}
         </td>
         <td>{{ descrepancyString(row) }}</td>
     </tr>

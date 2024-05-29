@@ -64,6 +64,7 @@ import org.usermanagement.service.UserService;
 
 import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -118,32 +119,13 @@ public class SwitchService {
      */
     public List<SwitchDetail> getSwitchDetails(final String switchId, boolean controller)
             throws IntegrationException {
-        List<SwitchInfo> controllerSwitches;
-        //get switch controller info
-        if (StringUtils.isBlank(switchId)) {
-            controllerSwitches = Optional.ofNullable(switchIntegrationService.getSwitches()).orElse(new ArrayList<>());
-        } else {
-            SwitchInfo sw = switchIntegrationService.getSwitchesById(switchId);
-            controllerSwitches = sw == null ? new ArrayList<>() : Collections.singletonList(sw);
-        }
+        List<SwitchInfo> controllerSwitches = getControllerSwitches(switchId);
 
         if (controller) {
             return adaptToSwitchDetailsAndGet(controllerSwitches, null);
         }
 
-        //get switch inventory info
-        List<InventorySwitch> inventorySwitches = null;
-        try {
-            UserInfo userInfo = userService.getLoggedInUserInfo();
-            if (userInfo.getPermissions().contains(IConstants.Permission.SW_SWITCH_INVENTORY)
-                    && MapUtils.isNotEmpty(storeService.getSwitchStoreConfig().getUrls())) {
-                inventorySwitches = switchId == null
-                        ? switchInventoryService.getSwitches()
-                        : Collections.singletonList(switchInventoryService.getSwitch(switchId));
-            }
-        } catch (AccessDeniedException | StoreIntegrationException e) {
-            LOGGER.error("Error occurred while retrieving switches from store", e);
-        }
+        List<InventorySwitch> inventorySwitches = getInventorySwitches(switchId);
         return adaptToSwitchDetailsAndGet(controllerSwitches, inventorySwitches);
     }
 
@@ -175,18 +157,72 @@ public class SwitchService {
         return switchInfo;
     }
 
+    private List<SwitchInfo> getControllerSwitches(String switchId) {
+        List<SwitchInfo> controllerSwitches;
+        //get switch controller info
+        if (StringUtils.isBlank(switchId)) {
+            controllerSwitches = Optional.ofNullable(switchIntegrationService.getSwitches()).orElse(new ArrayList<>());
+        } else {
+            SwitchInfo sw = null;
+            try {
+                sw = switchIntegrationService.getSwitchesById(switchId);
+            } catch (InvalidResponseException e) {
+                LOGGER.error("Error occurred while retrieving switches from controller", e);
+            }
+            controllerSwitches = sw == null ? new ArrayList<>() : Collections.singletonList(sw);
+        }
+        return controllerSwitches;
+    }
+
+    private List<InventorySwitch> getInventorySwitches(String switchId) {
+        List<InventorySwitch> inventorySwitches = null;
+        try {
+            UserInfo userInfo = userService.getLoggedInUserInfo();
+            if (userInfo.getPermissions().contains(IConstants.Permission.SW_SWITCH_INVENTORY)
+                    && MapUtils.isNotEmpty(storeService.getSwitchStoreConfig().getUrls())) {
+                if (switchId == null) {
+                    inventorySwitches = switchInventoryService.getSwitches();
+                } else {
+                    InventorySwitch inventorySwitch = switchInventoryService.getSwitch(switchId);
+                    if (inventorySwitch != null && inventorySwitch.getSwitchId() != null) {
+                        inventorySwitches = Collections.singletonList(inventorySwitch);
+                    } else {
+                        inventorySwitches = Collections.emptyList();
+                    }
+                }
+            }
+        } catch (AccessDeniedException | StoreIntegrationException e) {
+            LOGGER.error("Error occurred while retrieving switches from store", e);
+            inventorySwitches = Collections.emptyList();
+        }
+        return inventorySwitches;
+    }
+
     private List<SwitchDetail> adaptToSwitchDetailsAndGet(List<SwitchInfo> controllerSwitches,
                                                           List<InventorySwitch> inventorySwitches) {
-        final Map<String, InventorySwitch> switchIdToInventorySwitchMap = new HashMap<>();
+        //inventory switches could contain switches with the same switchId.
+        final Map<String, List<InventorySwitch>> switchIdInUpperCaseToInventorySwitch = new HashMap<>();
+
         if (CollectionUtils.isNotEmpty(inventorySwitches)) {
             inventorySwitches = inventorySwitches.stream().filter(Objects::nonNull).collect(Collectors.toList());
-            switchIdToInventorySwitchMap.putAll(inventorySwitches.stream()
-                    .collect(Collectors.toMap(InventorySwitch::getSwitchId, invSwtch -> invSwtch)));
+            inventorySwitches.forEach(inventorySw -> {
+                String switchIdUpperCase = inventorySw.getSwitchId().toUpperCase();
+                if (switchIdInUpperCaseToInventorySwitch.containsKey(switchIdUpperCase)) {
+                    inventorySw.setHasDuplicate(true);
+                    switchIdInUpperCaseToInventorySwitch.get(switchIdUpperCase).get(0).setHasDuplicate(true);
+                    switchIdInUpperCaseToInventorySwitch.get(switchIdUpperCase).add(inventorySw);
+                } else {
+                    List<InventorySwitch> list = new ArrayList<>();
+                    list.add(inventorySw);
+                    switchIdInUpperCaseToInventorySwitch.put(switchIdUpperCase, list);
+                }
+            });
         }
 
         List<SwitchDetail> switchDetailsResult;
 
         switchDetailsResult = controllerSwitches.stream().map(contrlSw -> {
+            String switchIdUpperCase = contrlSw.getSwitchId().toUpperCase();
             SwitchDetail.SwitchDetailBuilder swDetailBuilder = SwitchDetail.builder()
                     .switchId(contrlSw.getSwitchId())
                     .name(contrlSw.getName())
@@ -204,18 +240,27 @@ public class SwitchService {
                     .pop(contrlSw.getPop())
                     .location(contrlSw.getLocation());
             //add inventory info if exists, null otherwise
-            swDetailBuilder.inventorySwitchDetail(switchIdToInventorySwitchMap.remove(contrlSw.getSwitchId()));
+            List<InventorySwitch> invSwitches = switchIdInUpperCaseToInventorySwitch.get(switchIdUpperCase);
+            if (CollectionUtils.isNotEmpty(invSwitches)) {
+                swDetailBuilder.inventorySwitchDetail(invSwitches.remove(invSwitches.size() - 1));
+                if (invSwitches.isEmpty()) {
+                    switchIdInUpperCaseToInventorySwitch.remove(switchIdUpperCase);
+                }
+            }
             return swDetailBuilder.build();
         }).collect(Collectors.toList());
 
         //add inventory switches that does not exist in controller list.
-        if (!switchIdToInventorySwitchMap.isEmpty()) {
-            switchDetailsResult.addAll(switchIdToInventorySwitchMap.values().stream().map(inventorySw ->
+        if (!switchIdInUpperCaseToInventorySwitch.isEmpty()) {
+            switchDetailsResult.addAll(switchIdInUpperCaseToInventorySwitch.values()
+                    .stream().flatMap(Collection::stream)
+                    .map(inventorySw ->
                             SwitchDetail.builder().inventorySwitchDetail(inventorySw).build())
                     .collect(Collectors.toList()));
         }
         return switchDetailsResult;
     }
+
 
     /**
      * Process inventory switch.
@@ -628,7 +673,8 @@ public class SwitchService {
         return switchIntegrationService.updateSwitchLocation(switchId, switchLocation);
     }
 
-    public LinkBfdProperties getLinkBfdProperties(String srcSwitch, String srcPort, String dstSwitch, String dstPort) {
+    public LinkBfdProperties getLinkBfdProperties(String srcSwitch, String srcPort, String dstSwitch, String
+            dstPort) {
         return switchIntegrationService.getLinkBfdProperties(srcSwitch, srcPort, dstSwitch, dstPort);
     }
 

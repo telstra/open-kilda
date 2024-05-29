@@ -98,7 +98,12 @@ public class SwitchController {
     /**
      * Gets the switches detail.
      *
-     * @return the switches detail
+     * @param switchId   an optional parameter specifying the ID of the switch for
+     *                   which details are to be retrieved. If not provided, details
+     *                   for all switches will be retrieved.
+     * @param controller an optional boolean parameter indicating if the details
+     *                   should include information related to the controller.
+     * @return a {@link List} of {@link SwitchDetail} objects containing the details of the switches.
      */
     @RequestMapping(value = "/details", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
@@ -113,8 +118,6 @@ public class SwitchController {
     /**
      * Save or update switch name.
      *
-     * @param switchId   the switch id
-     * @param switchName the switch name
      * @return the SwitchInfo
      */
     @RequestMapping(value = "/name/{switchId}", method = RequestMethod.PATCH)
@@ -132,10 +135,6 @@ public class SwitchController {
     /**
      * Gets the links detail.
      *
-     * @param srcSwitch the src switch
-     * @param srcPort   the src port
-     * @param dstSwitch the dst switch
-     * @param dstPort   the dst port
      * @return the links detail
      */
     @RequestMapping(value = "/links", method = RequestMethod.GET)
@@ -185,10 +184,6 @@ public class SwitchController {
     /**
      * Gets the link props.
      *
-     * @param srcSwitch the src switch
-     * @param srcPort   the src port
-     * @param dstSwitch the dst switch
-     * @param dstPort   the dst port
      * @return the link props
      */
     @RequestMapping(path = "/link/props", method = RequestMethod.GET)
@@ -204,10 +199,6 @@ public class SwitchController {
     /**
      * Updates the link max bandwidth.
      *
-     * @param srcSwitch the src switch
-     * @param srcPort   the src port
-     * @param dstSwitch the dst switch
-     * @param dstPort   the dst port
      * @return the link max bandwidth
      */
     @RequestMapping(path = "/link/bandwidth", method = RequestMethod.PATCH)
@@ -258,7 +249,6 @@ public class SwitchController {
     /**
      * Get Switch Rules.
      *
-     * @param switchId the switch id
      * @return the switch rules
      */
     @RequestMapping(path = "/{switchId}/rules", method = RequestMethod.GET)
@@ -272,9 +262,6 @@ public class SwitchController {
     /**
      * Configure switch port.
      *
-     * @param configuration the configuration
-     * @param switchId      the switch id
-     * @param port          the port
      * @return the configuredPort
      */
     @RequestMapping(path = "/{switchId}/{port}/config", method = RequestMethod.PUT)
@@ -290,8 +277,6 @@ public class SwitchController {
     /**
      * Gets Port flows.
      *
-     * @param switchId the switch id
-     * @param port     the port
      * @return the customers detail
      * @throws AccessDeniedException the access denied exception
      */
@@ -307,8 +292,7 @@ public class SwitchController {
     /**
      * Gets flows by ports.
      *
-     * @param switchId the switch id
-     * @param portIds  the ports list
+     * @param portIds the ports list
      * @return the customers detail
      */
     @RequestMapping(path = "/{switchId}/flows-by-port", method = RequestMethod.GET)
@@ -322,10 +306,6 @@ public class SwitchController {
     /**
      * Gets Isl flows.
      *
-     * @param srcSwitch the source switch
-     * @param srcPort   the source port
-     * @param dstSwitch the destination switch
-     * @param dstPort   the destination port
      * @return isl flows exists in the system.
      */
     @RequestMapping(value = "/links/flows", method = RequestMethod.GET)
@@ -353,8 +333,6 @@ public class SwitchController {
     /**
      * Switch under maintenance.
      *
-     * @param switchId   the switch id
-     * @param switchInfo the switch info
      * @return the SwitchInfo
      */
     @RequestMapping(value = "/under-maintenance/{switchId}", method = RequestMethod.POST)
@@ -370,8 +348,7 @@ public class SwitchController {
     /**
      * Delete Switch.
      *
-     * @param switchId the switch id
-     * @param force    the force delete
+     * @param force the force delete
      * @return the SwitchInfo
      */
     @RequestMapping(value = "/{switchId}", method = RequestMethod.DELETE)
@@ -414,8 +391,6 @@ public class SwitchController {
     /**
      * Updates switch location.
      *
-     * @param switchId       the switch id
-     * @param switchLocation the switch location
      * @return the SwitchInfo
      */
     @RequestMapping(path = "/location/{switchId}", method = RequestMethod.PATCH)
@@ -430,10 +405,6 @@ public class SwitchController {
     /**
      * Gets the link BFD properties.
      *
-     * @param srcSwitch the src switch
-     * @param srcPort   the src port
-     * @param dstSwitch the dst switch
-     * @param dstPort   the dst port
      * @return the link Bfd properties
      */
     @RequestMapping(value = "/links/bfd", method = RequestMethod.GET)
@@ -449,10 +420,6 @@ public class SwitchController {
     /**
      * Updates the link BFD properties.
      *
-     * @param srcSwitch the src switch
-     * @param srcPort   the src port
-     * @param dstSwitch the dst switch
-     * @param dstPort   the dst port
      * @return the link Bfd properties
      */
     @RequestMapping(value = "/links/bfd", method = RequestMethod.PUT)
@@ -471,11 +438,6 @@ public class SwitchController {
 
     /**
      * Delete link BFD.
-     *
-     * @param srcSwitch the src switch
-     * @param srcPort   the src port
-     * @param dstSwitch the dst switch
-     * @param dstPort   the dst port
      */
     @RequestMapping(value = "/links/bfd", method = RequestMethod.DELETE)
     @ResponseStatus(HttpStatus.OK)
@@ -493,7 +455,6 @@ public class SwitchController {
     /**
      * Creates switch logical port.
      *
-     * @param switchId          the switch id
      * @param switchLogicalPort the switch logical port
      * @return the SwitchLogicalPort
      */
@@ -511,7 +472,6 @@ public class SwitchController {
     /**
      * Deletes switch logical port.
      *
-     * @param switchId          the switch id
      * @param logicalPortNumber the switch logical port
      * @return the SwitchLogicalPort
      */
