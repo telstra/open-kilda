@@ -115,11 +115,17 @@ public class SwitchIntegrationService {
      * @return the switches
      */
     public List<SwitchInfo> getSwitches() {
+        LOGGER.info("SWITCH_DETAILS Calling the following URL for switches: {}",
+                applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_SWITCHES);
         HttpResponse response = restClientManager.invoke(
-                applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_SWITCHES, HttpMethod.GET, "", "",
-                applicationService.getAuthHeader());
+                applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl.GET_SWITCHES, HttpMethod.GET,
+                "", "", applicationService.getAuthHeader());
+        LOGGER.info("SWITCH_DETAILS Received response with code: {}", response.getStatusLine().getStatusCode());
+        LOGGER.info("SWITCH_DETAILS Checking is response is valid");
         if (RestClientManager.isValidResponse(response)) {
+            LOGGER.info("SWITCH_DETAILS Calling restClientManager getResponseList");
             List<SwitchInfo> switchesResponse = restClientManager.getResponseList(response, SwitchInfo.class);
+            LOGGER.info("SWITCH_DETAILS Calling getSwitchInfoSetName, switchesResponse: {}", switchesResponse);
             return getSwitchInfoSetName(switchesResponse);
         }
         return null;
@@ -161,14 +167,16 @@ public class SwitchIntegrationService {
      * @return the switch info set name
      */
     private List<SwitchInfo> getSwitchInfoSetName(final List<SwitchInfo> switches) {
-
+        LOGGER.info("SWITCH_DETAILS into getSwitchInfoSetName");
         if (switches != null && !StringUtils.isEmpty(switches)) {
+            LOGGER.info("SWITCH_DETAILS calling getSwitchNames()");
             Map<String, String> csNames = getSwitchNames();
             for (SwitchInfo switchInfo : switches) {
                 switchInfo.setName(customSwitchName(csNames, switchInfo.getSwitchId()));
                 switchInfo.setControllerSwitch(true);
             }
         }
+        LOGGER.info("SWITCH_DETAILS getSwitchInfoSetName success");
         return switches;
     }
 
@@ -178,17 +186,25 @@ public class SwitchIntegrationService {
      * @return the switch names
      */
     public Map<String, String> getSwitchNames() {
+        LOGGER.info("SWITCH_DETAILS inside getSwitchNames, STORAGE_TYPE_FOR_SWITCH_NAME: {}, ",
+                IConstants.STORAGE_TYPE_FOR_SWITCH_NAME);
         Map<String, String> csNames = new HashMap<String, String>();
         if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == null) {
+            LOGGER.info("SWITCH_DETAILS getting settings for SWITCH_NAME_STORAGE_TYPE");
             String value = applicationSettingService.getApplicationSetting(ApplicationSetting.SWITCH_NAME_STORAGE_TYPE);
+            LOGGER.info("SWITCH_DETAILS The setting is: {}", value);
             IConstants.STORAGE_TYPE_FOR_SWITCH_NAME = StorageType.get(value);
+            LOGGER.info("SWITCH_DETAILS The STORAGE_TYPE_FOR_SWITCH_NAME is: {}",
+                    IConstants.STORAGE_TYPE_FOR_SWITCH_NAME);
         }
 
         if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == StorageType.FILE_STORAGE) {
+            LOGGER.info("SWITCH_DETAILS calling getCustomSwitchNameFromFile");
             csNames = getCustomSwitchNameFromFile();
         } else if (IConstants.STORAGE_TYPE_FOR_SWITCH_NAME == StorageType.DATABASE_STORAGE) {
             csNames = getCustomSwitchNameFromDatabase();
         }
+        LOGGER.info("SWITCH_DETAILS getSwitchNames success");
         return csNames;
     }
 
@@ -297,22 +313,31 @@ public class SwitchIntegrationService {
      */
     @SuppressWarnings("unchecked")
     public Map<String, String> getCustomSwitchNameFromFile() {
+        LOGGER.info("SWITCH_DETAILS inside getCustomSwitchNameFromFile");
         Map<String, String> csNames = new HashMap<String, String>();
 
         InputStream inputStream = null;
         String data = null;
         try {
+            LOGGER.info("SWITCH_DETAILS Preparing URL resource with the following path: {}",
+                    applicationProperties.getSwitchDataFilePath());
             inputStream = new URL(applicationProperties.getSwitchDataFilePath()).openStream();
+            LOGGER.info("SWITCH_DETAILS Resource created for the following path: {}",
+                    applicationProperties.getSwitchDataFilePath());
             if (inputStream != null) {
                 data = IoUtil.toString(inputStream);
-
+                LOGGER.info("SWITCH_DETAILS Received the following data from resource: {}", data);
                 if (data != null && !StringUtils.isEmpty(data)) {
                     csNames = JsonUtil.toObject(data, HashMap.class);
                 }
             }
         } catch (IOException e) {
+            LOGGER.info("SWITCH_DETAILS got the error for the resource: {}",
+                    applicationProperties.getSwitchDataFilePath());
             LOGGER.warn("Error occurred while getting switch name from file", e);
         }
+        LOGGER.info("SWITCH_DETAILS getCustomSwitchNameFromFile success, resource {}",
+                applicationProperties.getSwitchDataFilePath());
         return csNames;
 
     }

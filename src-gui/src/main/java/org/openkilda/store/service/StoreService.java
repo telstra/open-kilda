@@ -35,7 +35,6 @@ import org.openkilda.utility.CollectionUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -54,7 +53,7 @@ import java.util.Map.Entry;
 public class StoreService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StoreService.class);
-    
+
     @Autowired
     private LinkStoreRequestUrlsRepository linkStoreRequestUrlsRepository;
 
@@ -87,7 +86,6 @@ public class StoreService {
      * Save or update link store config.
      *
      * @param linkStoreConfigDto the link store config dto
-
      * @return the link store config dto
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
@@ -149,9 +147,7 @@ public class StoreService {
      * Gets the url.
      *
      * @param storeType the store type
-
-     * @param url the url
-
+     * @param url       the url
      * @return the url
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
@@ -190,7 +186,6 @@ public class StoreService {
      * Save or update switch store config.
      *
      * @param switchStoreConfigDto he link store config dto
-
      * @return the switch store config dto
      */
     @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
@@ -261,12 +256,13 @@ public class StoreService {
                     UrlConverter.toUrlDto(switchStoreRequestUrlsEntity.getUrlEntity()));
         }
         switchStoreConfigDto.setUrls(urls);
+        LOGGER.info("SWITCH_DETAILS  switchStoreConfig received successfully: {}", switchStoreConfigDto);
         return switchStoreConfigDto;
     }
 
     /**
      * Save or update store type entity.
-     * 
+     *
      * @param storeType the storeType
      */
     private void saveOrUpdateStoreTypeEntity(String storeType) {

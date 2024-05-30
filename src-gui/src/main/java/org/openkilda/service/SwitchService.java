@@ -53,7 +53,8 @@ import org.openkilda.utility.StringUtil;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -81,7 +82,7 @@ import java.util.stream.Collectors;
 @Service
 public class SwitchService {
 
-    private static final Logger LOGGER = Logger.getLogger(SwitchService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchService.class);
 
     @Autowired
     private SwitchIntegrationService switchIntegrationService;
@@ -121,8 +122,10 @@ public class SwitchService {
         List<SwitchInfo> controllerSwitches;
         //get switch controller info
         if (StringUtils.isBlank(switchId)) {
+            LOGGER.info("SWITCH_DETAILS SwitchService.getSwitchDetails, calling switchIntegrationService.getSwitches");
             controllerSwitches = Optional.ofNullable(switchIntegrationService.getSwitches()).orElse(new ArrayList<>());
         } else {
+            LOGGER.info("SWITCH_DETAILS SwitchService.getSwitchDetails, calling getSwitchesById");
             SwitchInfo sw = switchIntegrationService.getSwitchesById(switchId);
             controllerSwitches = sw == null ? new ArrayList<>() : Collections.singletonList(sw);
         }
@@ -134,12 +137,16 @@ public class SwitchService {
         //get switch inventory info
         List<InventorySwitch> inventorySwitches = null;
         try {
+            LOGGER.info("SWITCH_DETAILS userService.getLoggedInUserInfo()");
             UserInfo userInfo = userService.getLoggedInUserInfo();
+            LOGGER.info("SWITCH_DETAILS got userInfo: {}", userInfo);
             if (userInfo.getPermissions().contains(IConstants.Permission.SW_SWITCH_INVENTORY)
                     && MapUtils.isNotEmpty(storeService.getSwitchStoreConfig().getUrls())) {
+                LOGGER.info("SWITCH_DETAILS start get inventory switches from inventory service");
                 inventorySwitches = switchId == null
                         ? switchInventoryService.getSwitches()
                         : Collections.singletonList(switchInventoryService.getSwitch(switchId));
+                LOGGER.info("SWITCH_DETAILS, successfully received inventory switches: {}", inventorySwitches);
             }
         } catch (AccessDeniedException | StoreIntegrationException e) {
             LOGGER.error("Error occurred while retrieving switches from store", e);
@@ -177,15 +184,22 @@ public class SwitchService {
 
     private List<SwitchDetail> adaptToSwitchDetailsAndGet(List<SwitchInfo> controllerSwitches,
                                                           List<InventorySwitch> inventorySwitches) {
+        LOGGER.info("SWITCH_DETAILS SwitchService.adaptToSwitchDetailsAndGet() begin: controllerSw {}, inventory: {}",
+                controllerSwitches, inventorySwitches);
         final Map<String, InventorySwitch> switchIdToInventorySwitchMap = new HashMap<>();
         if (CollectionUtils.isNotEmpty(inventorySwitches)) {
             inventorySwitches = inventorySwitches.stream().filter(Objects::nonNull).collect(Collectors.toList());
+            LOGGER.info("SWITCH_DETAILS SwitchService.adaptToSwitchDetailsAndGet() "
+                    + "filling the map switchIdToInventorySwitchMap");
             switchIdToInventorySwitchMap.putAll(inventorySwitches.stream()
                     .collect(Collectors.toMap(InventorySwitch::getSwitchId, invSwtch -> invSwtch)));
+            LOGGER.info("SWITCH_DETAILS SwitchService.adaptToSwitchDetailsAndGet() filled the map"
+                    + " switchIdToInventorySwitchMap");
         }
 
         List<SwitchDetail> switchDetailsResult;
-
+        LOGGER.info("SWITCH_DETAILS SwitchService.adaptToSwitchDetailsAndGet() map controllerSwitches"
+                + " to switchDetails");
         switchDetailsResult = controllerSwitches.stream().map(contrlSw -> {
             SwitchDetail.SwitchDetailBuilder swDetailBuilder = SwitchDetail.builder()
                     .switchId(contrlSw.getSwitchId())
@@ -207,13 +221,14 @@ public class SwitchService {
             swDetailBuilder.inventorySwitchDetail(switchIdToInventorySwitchMap.remove(contrlSw.getSwitchId()));
             return swDetailBuilder.build();
         }).collect(Collectors.toList());
-
+        LOGGER.info("SWITCH_DETAILS SwitchService.adaptToSwitchDetailsAndGet() map finished. Add inventory switches");
         //add inventory switches that does not exist in controller list.
         if (!switchIdToInventorySwitchMap.isEmpty()) {
             switchDetailsResult.addAll(switchIdToInventorySwitchMap.values().stream().map(inventorySw ->
                             SwitchDetail.builder().inventorySwitchDetail(inventorySw).build())
                     .collect(Collectors.toList()));
         }
+        LOGGER.info("SWITCH_DETAILS SwitchService.adaptToSwitchDetailsAndGet() end. {}", switchDetailsResult);
         return switchDetailsResult;
     }
 

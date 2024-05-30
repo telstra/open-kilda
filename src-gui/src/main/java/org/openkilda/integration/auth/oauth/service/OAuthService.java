@@ -29,6 +29,8 @@ import org.openkilda.store.model.UrlDto;
 
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
@@ -38,9 +40,11 @@ import java.util.List;
 @Service
 public class OAuthService extends IAuthService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(OAuthService.class);
+
     @Autowired
     private RestClientManager restClientManager;
-    
+
     @Autowired
     private PrepareRequest prepareRequest;
 
@@ -55,20 +59,23 @@ public class OAuthService extends IAuthService {
             HttpResponse response = getHttpResponse(request, authDto);
             obj = restClientManager.getResponse(response, responseClass);
         } catch (RestCallFailedException e) {
-            e.printStackTrace();
+            LOGGER.error(e.getMessage());
         }
         return obj;
     }
 
     @Override
     public <T> List<T> getResponseList(UrlDto request, AuthConfigDto authDto, Class<T> responseClass) {
+        LOGGER.info("SWITCH_DETAILS OAuthService.getResponseList started");
         List<T> obj = null;
         try {
             HttpResponse response = getHttpResponse(request, authDto);
             obj = restClientManager.getResponseList(response, responseClass);
         } catch (RestCallFailedException e) {
-            e.printStackTrace();
+            LOGGER.info("SWITCH_DETAILS OAuthService.getResponseLis got some error");
+            LOGGER.error(e.getMessage());
         }
+        LOGGER.info("SWITCH_DETAILS OAuthService.getResponseList finished: {}", obj);
         return obj;
     }
 
@@ -100,7 +107,7 @@ public class OAuthService extends IAuthService {
 
             return restClientManager.invoke(apiRequestDto);
         } catch (RestCallFailedException | AuthenticationException e) {
-            e.printStackTrace();
+            LOGGER.error("There was an error while getting httpResponse", e);
         }
         return null;
     }
@@ -118,7 +125,7 @@ public class OAuthService extends IAuthService {
     }
 
     private Token generateToken(final String correlationId, final String url, final String userName,
-            final String password) throws AuthenticationException, RestCallFailedException {
+                                final String password) throws AuthenticationException, RestCallFailedException {
         String headers = HttpHeaders.CONTENT_TYPE + ":application/x-www-form-urlencoded";
         String payload = "grant_type=password&username=" + userName + "&password=" + password;
 

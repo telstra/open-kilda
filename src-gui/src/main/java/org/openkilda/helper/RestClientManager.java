@@ -82,7 +82,7 @@ public class RestClientManager {
 
     @Autowired
     private ObjectMapper mapper;
-    
+
     @Autowired
     private ServerContext serverContext;
 
@@ -99,7 +99,7 @@ public class RestClientManager {
     public HttpResponse invoke(final String apiUrl, final HttpMethod httpMethod, final String payload,
             final String contentType, final String basicAuth) {
         HttpResponse httpResponse = null;
-        try { 
+        try {
             RequestContext requestContext = serverContext.getRequestContext();
 
             HttpClient client = HttpClients.createDefault();
@@ -123,7 +123,7 @@ public class RestClientManager {
                 httpUriRequest = new HttpGet(apiUrl);
             }
 
-            if (!HttpMethod.POST.equals(httpMethod) && !HttpMethod.PUT.equals(httpMethod) 
+            if (!HttpMethod.POST.equals(httpMethod) && !HttpMethod.PUT.equals(httpMethod)
                     &&  !HttpMethod.PATCH.equals(httpMethod)  && !HttpMethod.DELETE.equals(httpMethod)) {
                 // Setting Required Headers
                 if (!StringUtil.isNullOrEmpty(basicAuth)) {
@@ -132,7 +132,7 @@ public class RestClientManager {
                     httpUriRequest.setHeader(IAuthConstants.Header.CORRELATION_ID, requestContext.getCorrelationId());
                 }
             }
-            if (HttpMethod.POST.equals(httpMethod) || HttpMethod.PUT.equals(httpMethod) 
+            if (HttpMethod.POST.equals(httpMethod) || HttpMethod.PUT.equals(httpMethod)
                      || HttpMethod.PATCH.equals(httpMethod)) {
                 LOGGER.info("[invoke] Executing POST/ PUT request : httpEntityEnclosingRequest : "
                          + httpEntityEnclosingRequest + " : payload : " + payload);
@@ -151,13 +151,13 @@ public class RestClientManager {
                         + httpEntityEnclosingRequest + " : payload : " + payload);
                 // Setting DELETE related headers
                 httpEntityEnclosingRequest.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
-                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.EXTRA_AUTH, 
+                httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.EXTRA_AUTH,
                         String.valueOf(System.currentTimeMillis()));
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.AUTHORIZATION, basicAuth);
                 httpEntityEnclosingRequest.setHeader(IAuthConstants.Header.CORRELATION_ID,
                         requestContext.getCorrelationId());
                 // Setting request payload
-                
+
                 httpEntityEnclosingRequest.setEntity(new StringEntity(payload));
                 httpResponse = client.execute(httpEntityEnclosingRequest);
                 LOGGER.debug("[invoke] Call executed successfully");
@@ -179,7 +179,7 @@ public class RestClientManager {
      * @param apiRequestDto the api request dto
      * @return the http response
      */
-    
+
     public HttpResponse invoke(final ApiRequestDto apiRequestDto) {
         HttpResponse httpResponse = null;
 
@@ -276,7 +276,7 @@ public class RestClientManager {
         }
         return headersMap;
     }
-    
+
     /**
      * Gets the response list.
      *
@@ -375,19 +375,24 @@ public class RestClientManager {
      */
     public static boolean isValidResponse(final HttpResponse response) {
         LOGGER.debug("[isValidResponse] Response Code " + response.getStatusLine().getStatusCode());
+        LOGGER.info("SWITCH_DETAILS  Response Code {}", response.getStatusLine().getStatusCode());
         boolean isValid = response.getStatusLine().getStatusCode() >= HttpStatus.OK.value()
                 && response.getStatusLine().getStatusCode() < HttpStatus.MULTIPLE_CHOICES.value()
                 && response.getEntity() != null;
         if (isValid) {
+            LOGGER.info("SWITCH_DETAILS  Response is valid {}", response.getStatusLine().getStatusCode());
             return true;
         } else {
             try {
+                LOGGER.info("SWITCH_DETAILS  Response is not valid {}", response.getStatusLine().getStatusCode());
                 String content = IoUtil.toString(response.getEntity().getContent());
-                LOGGER.warn("Found invalid Response. Status Code: " + response.getStatusLine().getStatusCode()
-                        + ", content: " + content);
+                LOGGER.info("SWITCH_DETAILS Found invalid Response. Status Code: {}, content {}",
+                        response.getStatusLine().getStatusCode(), content);
+                LOGGER.info("SWITCH_DETAILS throwing an exception");
                 throw new InvalidResponseException(response.getStatusLine().getStatusCode(), content);
             } catch (IOException exception) {
-                LOGGER.warn("Error occurred while vaildating response", exception);
+                LOGGER.info("SWITCH_DETAILS Error occurred while validating response. Throwing INTERNAL_ERROR",
+                        exception);
                 throw new InvalidResponseException(HttpError.INTERNAL_ERROR.getCode(),
                         HttpError.INTERNAL_ERROR.getMessage());
             }

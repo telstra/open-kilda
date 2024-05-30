@@ -30,7 +30,6 @@ import org.openkilda.store.service.StoreService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -41,7 +40,7 @@ import java.util.Map;
 @Service
 public class SwitchInventoryService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(FlowStoreService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchInventoryService.class);
 
     @Autowired
     private StoreService storeService;
@@ -55,12 +54,17 @@ public class SwitchInventoryService {
      * @return the switches with params
      */
     public List<InventorySwitch> getSwitches() {
+        LOGGER.info("SWITCH_DETAILS start SwitchInventoryService.getSwitches");
         try {
             UrlDto urlDto = storeService.getUrl(StoreType.SWITCH_STORE, Url.GET_ALL_SWITCHES);
+            LOGGER.info("SWITCH_DETAILS got urlDTO: {}", urlDto);
             AuthConfigDto authDto = authService.getAuth(StoreType.SWITCH_STORE);
+            LOGGER.info("SWITCH_DETAILS got authDto: {}", authDto);
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
+            LOGGER.info("SWITCH_DETAILS got authService: {}", authService);
             return authService.getResponseList(urlDto, authDto, InventorySwitch.class);
         } catch (Exception e) {
+            LOGGER.info("SWITCH_DETAILS got error trying to get inventory switches", e);
             LOGGER.error("Error occurred while retriving switches", e);
             throw new StoreIntegrationException(e);
         }

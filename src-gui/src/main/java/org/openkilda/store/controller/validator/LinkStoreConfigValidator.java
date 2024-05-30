@@ -42,14 +42,14 @@ import java.util.Map.Entry;
 @Component
 public class LinkStoreConfigValidator {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(OauthTwoConfigValidator.class);
-    
+    private static final Logger LOGGER = LoggerFactory.getLogger(LinkStoreConfigValidator.class);
+
     @Autowired
     private MessageUtils messageUtil;
-    
+
     @Autowired
     private OauthConfigRepository oauthConfigRepository;
-    
+
 
     /**
      * Validate.

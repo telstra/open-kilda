@@ -41,6 +41,8 @@ import org.openkilda.model.SwitchProperty;
 import org.openkilda.service.SwitchService;
 import org.openkilda.utility.StringUtil;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -67,6 +69,8 @@ import java.util.List;
 @RestController
 @RequestMapping(value = "/api/switch")
 public class SwitchController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchController.class);
 
     @Autowired
     private SwitchService serviceSwitch;
@@ -103,8 +107,7 @@ public class SwitchController {
      *                   for all switches will be retrieved.
      * @param controller an optional boolean parameter indicating if the details
      *                   should include information related to the controller.
-     * @return a {@link List} of {@link SwitchDetail} objects containing the details
-     * of the switches.
+     * @return a {@link List} of {@link SwitchDetail} objects containing the detail of the switches.
      */
     @RequestMapping(value = "/details", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
@@ -112,6 +115,8 @@ public class SwitchController {
     public @ResponseBody List<SwitchDetail> getSwitchDetails(
             @RequestParam(value = "switchId", required = false) final String switchId,
             @RequestParam(value = "controller", required = false) final boolean controller) {
+        LOGGER.info("SWITCH_DETAILS Call for getSwitchDetails: args switchId: {}, controller: {}",
+                switchId, controller);
         return serviceSwitch.getSwitchDetails(switchId, controller);
     }
 
