@@ -57,9 +57,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         and: "All related switches have no discrepancies"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches.unique()).isEmpty()
 
-        cleanup:
-        yFlow && yFlow.delete()
-
         where: data << [
                 [
                         descr: "shared port and subflow ports",
@@ -129,16 +126,13 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
         and: "All related switches have no discrepancies"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches.unique()).isEmpty()
-
-        cleanup:
-        yFlow && yFlow.delete()
     }
 
     def "User can partially update fields of one-switch y-flow"() {
         given: "Existing one-switch y-flow"
         def swT = topologyHelper.getSwitchTriplets(false, true).find(SwitchTriplet.ONE_SWITCH_FLOW)
         def yFlow = yFlowFactory.getBuilder(swT, false)
-                .withMaxLatency(50).withMaxLatencyTier2(100).build().waitForBeingInState(FlowState.UP)
+                .withMaxLatency(50).withMaxLatencyTier2(100).build().create()
 
         def patch = YFlowPatchPayload.builder()
                 .maximumBandwidth(yFlow.maximumBandwidth * 2)
@@ -175,9 +169,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
         and: "All related switches have no discrepancies"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(swT.shared.dpId).isPresent()
-
-        cleanup:
-        yFlow && yFlow.delete()
     }
 
     def "User can partially update #data.descr of a y-flow"() {
@@ -203,9 +194,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
         and: "All related switches have no discrepancies"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches.unique()).isEmpty()
-
-        cleanup:
-        yFlow && yFlow.delete()
 
         //buildPatchRequest in addition to providing a patch payload should also updated the yFlow object
         //in order to reflect the expect result after update
@@ -305,8 +293,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
         data.expectedError.matches(exc)
-        cleanup:
-        yFlow && yFlow.delete()
 
         where: data << [
                 [
@@ -366,8 +352,6 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
         new YFlowNotUpdatedExpectedError(data.errorMessage, data.errorDescrPattern).matches(exc)
-        cleanup:
-        yFlow && yFlow.delete()
 
         where: data << [
                 [

@@ -34,7 +34,7 @@ class YFlowPingSpec extends HealthCheckSpecification {
     def "Able to turn on periodic pings on a y-flow"() {
         when: "Create a y-flow with periodic pings turned on"
         def swT = topologyHelper.switchTriplets.first()
-        def yFlow = yFlowFactory.getBuilder(swT).withPeriodicPings(true).build().waitForBeingInState(FlowState.UP)
+        def yFlow = yFlowFactory.getBuilder(swT).withPeriodicPings(true).build().create()
 
         then: "Periodic pings is really enabled"
         yFlow.periodicPings
@@ -52,9 +52,6 @@ class YFlowPingSpec extends HealthCheckSpecification {
             sharedPacketCountNow > sharedSwitchPacketCount && ep1PacketCountNow > ep1SwitchPacketCount &&
                     ep2PacketCountNow > ep2SwitchPacketCount
         }
-
-        cleanup:
-        yFlow && yFlow.delete()
     }
 
     @Tags([LOW_PRIORITY])
@@ -89,9 +86,6 @@ class YFlowPingSpec extends HealthCheckSpecification {
 
         then: "y-flow ping is not successful, but one of subflows ping is successful"
         response == expectedResponse
-
-        cleanup:
-        yFlow && yFlow.delete()
     }
 
     def getPacketCountOfVlanPingRule(SwitchId switchId) {

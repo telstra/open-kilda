@@ -45,7 +45,7 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         assumeTrue(swT != null, "Can't find required switch triplet")
 
         def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(data.protectedPath)
-                .build().waitForBeingInState(FlowState.UP)
+                .build().create()
         def initialHaFlowPaths = haFlow.retrievedAllEntityPaths()
 
         def switchToManipulate = swT.shared
@@ -88,10 +88,6 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
             }
         }
 
-        cleanup: "Delete the HA-Flow"
-        haFlow && haFlow.delete()
-        switchToManipulate && switchHelper.synchronize(switchToManipulate.getDpId())
-
         where: data << [
                 [protectedPath: false],
                 [protectedPath: true]
@@ -107,11 +103,11 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         assumeTrue(swT != null, "Can't find required switch triplet")
 
         def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(data.protectedPath)
-                .build().waitForBeingInState(FlowState.UP)
+                .build().create()
         def initialHaFlowPaths = haFlow.retrievedAllEntityPaths()
 
         def downSwitch = swT.shared
-        def blockData = switchHelper.knockoutSwitch(downSwitch, RW)
+        switchHelper.knockoutSwitch(downSwitch, RW)
         haFlow.waitForBeingInState(FlowState.DOWN, rerouteDelay + FLOW_CRUD_TIMEOUT + WAIT_OFFSET)
 
         when: "Synchronize the HA-Flow"
@@ -130,7 +126,7 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         haFlow.retrievedAllEntityPaths() == initialHaFlowPaths
 
         and: "Missing HA-Flow rules are installed (existing ones are reinstalled) on UP involved switches"
-        def upInvolvedSwitches = initialHaFlowPaths.getInvolvedSwitches(true) - [downSwitch.dpId]
+        def upInvolvedSwitches = initialHaFlowPaths.getInvolvedSwitches() - [downSwitch.dpId]
         withPool {
             upInvolvedSwitches.eachParallel { SwitchId swId ->
                 Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -138,13 +134,6 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
                 }
             }
         }
-
-        cleanup: "Delete the HA-Flow"
-        downSwitch && blockData && switchHelper.reviveSwitch(downSwitch, blockData, true)
-        haFlow && Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert haFlow.retrieveDetails().status != FlowState.IN_PROGRESS
-        }
-        haFlow && haFlow.delete()
 
         where: data << [
                 [protectedPath: false],

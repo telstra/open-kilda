@@ -1,24 +1,15 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.ArpData
 import org.openkilda.testing.service.traffexam.model.LldpData
 import org.openkilda.testing.tools.ConnectedDevice
-
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Shared
@@ -26,10 +17,22 @@ import spock.lang.Shared
 import java.util.concurrent.TimeUnit
 import jakarta.inject.Provider
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_SWITCH_PROPERTIES
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+
 class SwitchDeleteSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     def "Unable to delete a nonexistent switch"() {
         when: "Try to delete a nonexistent switch"
@@ -69,9 +72,6 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         exc.rawStatusCode == 400
         exc.responseBodyAsString.matches(".*Switch '$sw.dpId' has ${swIsls.size() * 2} active links\\. " +
                 "Unplug and remove them first.*")
-
-        cleanup: "Activate the switch back"
-        switchHelper.reviveSwitch(sw, blockData, true)
     }
 
     @Tags(SWITCH_RECOVER_ON_FAIL)
@@ -79,10 +79,8 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         given: "An inactive switch with ISLs"
         def sw = topology.getActiveSwitches()[0]
         def swIsls = topology.getRelatedIsls(sw)
-        // deactivate all active ISLs on switch
         islHelper.breakIsls(swIsls)
-        // deactivate switch
-        def blockData = switchHelper.knockoutSwitch(sw, RW, false)
+        switchHelper.knockoutSwitch(sw, RW, false)
 
         when: "Try to delete the switch"
         northbound.deleteSwitch(sw.dpId, false)
@@ -92,11 +90,6 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         exc.rawStatusCode == 400
         exc.responseBodyAsString.matches(".*Switch '$sw.dpId' has ${swIsls.size() * 2} inactive links\\. " +
                 "Remove them first.*")
-
-        cleanup: "Activate the switch back and reset costs"
-        switchHelper.reviveSwitch(sw, blockData, false)
-        islHelper.restoreIsls(swIsls)
-        database.resetCosts(topology.isls)
     }
 
     @Tags(SWITCH_RECOVER_ON_FAIL)
@@ -107,7 +100,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         when: "Deactivate the switch"
         def swToDeactivate = topology.switches.find { it.dpId == flow.source.switchId }
-        def blockData = switchHelper.knockoutSwitch(swToDeactivate, RW)
+        switchHelper.knockoutSwitch(swToDeactivate, RW)
 
         and: "Try to delete the switch"
         northbound.deleteSwitch(flow.source.switchId, false)
@@ -116,9 +109,6 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
         exc.responseBodyAsString.matches(".*Switch '${flow.source.switchId}' has 1 assigned flows: \\[${flow.flowId}\\].*")
-
-        cleanup: "Activate the switch back and remove the flow"
-        switchHelper.reviveSwitch(swToDeactivate, blockData)
 
         where:
         flowType        | flow
@@ -138,20 +128,15 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         // delete all ISLs on switch
         swIsls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
         // deactivate switch
-        def blockData = switchHelper.knockoutSwitch(sw, RW)
+        switchHelper.knockoutSwitch(sw, RW)
 
         when: "Try to delete the switch"
+        cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {switchHelper.updateSwitchProperties(sw, initSwProps)})
         def response = northbound.deleteSwitch(sw.dpId, false)
 
         then: "The switch is actually deleted"
         response.deleted
         Wrappers.wait(WAIT_OFFSET) { assert !northbound.allSwitches.any { it.switchId == sw.dpId } }
-
-        cleanup: "Activate the switch back, restore ISLs and reset costs"
-        switchHelper.reviveSwitch(sw, blockData)
-        initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
-        islHelper.restoreIsls(swIsls)
-        database.resetCosts(topology.isls)
     }
 
     @Tags(SWITCH_RECOVER_ON_FAIL)
@@ -174,6 +159,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         // send LLDP and ARP packets
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
+        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(sw.dpId), [777]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
@@ -194,21 +180,15 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         // delete all ISLs on switch
         swIsls.each { northbound.deleteLink(islUtils.toLinkParameters(it)) }
         // deactivate switch
-        def blockData = switchHelper.knockoutSwitch(sw, RW)
+        switchHelper.knockoutSwitch(sw, RW)
 
         when: "Try to delete the switch"
+        cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {switchHelper.updateSwitchProperties(sw, initSwProps)})
         def response = northbound.deleteSwitch(sw.dpId, false)
 
         then: "The switch is actually deleted"
         response.deleted
         Wrappers.wait(WAIT_OFFSET) { assert !northbound.allSwitches.any { it.switchId == sw.dpId } }
-
-        cleanup: "Activate the switch back, restore ISLs, delete connected devices and reset costs"
-        switchHelper.reviveSwitch(sw, blockData)
-        islHelper.restoreIsls(swIsls)
-        initSwProps && switchHelper.updateSwitchProperties(sw, initSwProps)
-        database.resetCosts(topology.isls)
-        lldpData && database.removeConnectedDevices(sw.dpId)
     }
 
     def "Able to delete an active switch with active ISLs if using force delete"() {

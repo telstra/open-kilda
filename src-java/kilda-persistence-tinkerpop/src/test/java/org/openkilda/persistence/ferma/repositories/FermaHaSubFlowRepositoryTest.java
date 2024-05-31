@@ -137,6 +137,20 @@ public class FermaHaSubFlowRepositoryTest extends InMemoryGraphBasedTest {
         assertFalse(haSubFlowRepository.exists(SUB_FLOW_ID_3));
     }
 
+    @Test
+    public void findByEndpointSwitchId() {
+        HaSubFlow sub1 = createSubFlow(SUB_FLOW_ID_1, switch1, PORT_1, VLAN_1, INNER_VLAN_1, DESCRIPTION_1);
+        HaSubFlow sub2 = createSubFlow(SUB_FLOW_ID_2, switch2, PORT_2, VLAN_2, INNER_VLAN_2, DESCRIPTION_2);
+        haFlow.setHaSubFlows(Sets.newHashSet(sub1, sub2));
+
+        Collection<HaSubFlow> subFlows = haSubFlowRepository.findByEndpointSwitchId(SWITCH_ID_1);
+
+        assertEquals(1, subFlows.size());
+        assertSubFlow(SUB_FLOW_ID_1, SWITCH_ID_1, PORT_1, VLAN_1, INNER_VLAN_1, haFlow, subFlows.iterator().next(),
+                DESCRIPTION_1);
+    }
+
+
     private void assertSubFlow(
             String subFlowId, SwitchId switchId, int port, int vlan, int innerVLan, HaFlow haFlow,
             HaSubFlow actualSubFlow, String description) {

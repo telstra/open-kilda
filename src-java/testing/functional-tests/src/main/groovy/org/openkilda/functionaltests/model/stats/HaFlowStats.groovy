@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.model.stats
 
+import org.openkilda.functionaltests.helpers.model.HaSubFlowExtended
+import org.openkilda.model.FlowEndpoint
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.BaseFlowEndpointV2
 import org.openkilda.northbound.dto.v2.haflows.HaFlowSharedEndpoint
@@ -37,11 +39,11 @@ class HaFlowStats extends AbstractStats {
         })
     }
 
-    StatsResult get(HaFlowStatsMetric metric, Direction direction, BaseFlowEndpointV2 endpoint) {
+    StatsResult get(HaFlowStatsMetric metric, Direction direction, HaSubFlowExtended subflow) {
         return this.getBySwitchAndPort(metric,
                 direction,
-                endpoint.getSwitchId(),
-                endpoint.getPortNumber())
+                subflow.endpointSwitchId,
+                subflow.endpointPort)
     }
 
     StatsResult get(HaFlowStatsMetric metric, Direction direction, HaFlowSharedEndpoint endpoint) {

@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -40,12 +39,12 @@ import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
-import spock.lang.Unroll
 
 import java.math.RoundingMode
 
 @Narrative("""The test suite checks if traffic meters, including default, are set and deleted in a correct way.
 Note that many tests are bind to meter implementations of certain hardware manufacturers.""")
+
 class MetersSpec extends HealthCheckSpecification {
     static DISCO_PKT_RATE = 200 // Number of packets per second for the default flows
     static DISCO_PKT_SIZE = 250 // Default size of the discovery packet
@@ -401,8 +400,7 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
     }
 
     @Tags([HARDWARE, TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
-    @Unroll("Flow burst should be correctly set on Centec switches in case of #flowRate kbps flow bandwidth")
-    def "Flow burst is correctly set on Centec switches"() {
+    def "Flow burst should be correctly set on Centec switches in case of #flowRate kbps flow bandwidth"() {
         setup: "A single-switch flow with #flowRate kbps bandwidth is created on OpenFlow 1.3 compatible Centec switch"
         def switches = getCentecSwitches()
         assumeTrue(switches as boolean, "Unable to find required switches in topology")

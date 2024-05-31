@@ -734,17 +734,25 @@ public class RuleManagerImpl implements RuleManager {
         int yPointInPort = getShortestSubPath(subPaths).getSegments().get(lastCommonSegmentId).getDestPort();
         HaFlow haFlow = adapter.getHaFlow(haPath.getHaPathId());
 
-        RuleGenerator generator;
-        if (subPaths.get(0).getDestSwitchId().equals(subPaths.get(1).getDestSwitchId())
-                && subPaths.get(0).getDestSwitchId().equals(haPath.getYPointSwitchId())) {
-            generator = flowRulesFactory.getYPointForwardEgressHaRuleGenerator(
-                    haFlow, haPath, subPaths, encapsulation, yPointInPort);
+        List<RuleGenerator> generators = new ArrayList<>();
+        if (bothEndpointAreTheSameAndAreYPoint(haPath)) {
+            generators.add(flowRulesFactory.getYPointForwardEgressHaRuleGenerator(
+                    haFlow, haPath, subPaths, encapsulation, yPointInPort));
         } else {
             Map<PathId, Integer> outPorts = getHaYPointOutPorts(lastCommonSegmentId, subPaths);
-            generator = flowRulesFactory.getYPointForwardTransitHaRuleGenerator(
-                    haFlow, haPath, subPaths, encapsulation, yPointInPort, outPorts);
+            generators.add(flowRulesFactory.getYPointForwardTransitHaRuleGenerator(
+                    haFlow, haPath, subPaths, encapsulation, yPointInPort, outPorts));
+            generators.add(flowRulesFactory.getServer42FlowRttHaFlowTransitRuleGenerator(
+                    subPaths, encapsulation, yPointInPort, outPorts));
         }
-        return generateCommands(generator, haPath.getYPointSwitchId(), ignoreUnknownSwitches, adapter);
+
+        return generateCommands(generators, haPath.getYPointSwitchId(), ignoreUnknownSwitches, adapter);
+    }
+
+    private boolean bothEndpointAreTheSameAndAreYPoint(HaFlowPath haPath) {
+        List<FlowPath> subPaths = haPath.getSubPaths();
+        return subPaths.get(0).getDestSwitchId().equals(subPaths.get(1).getDestSwitchId())
+                && subPaths.get(0).getDestSwitchId().equals(haPath.getYPointSwitchId());
     }
 
     private List<SpeakerData> buildForwardIngressHaRules(
@@ -757,9 +765,8 @@ public class RuleManagerImpl implements RuleManager {
         }
 
         if (haPath.getSharedSwitchId().equals(haPath.getYPointSwitchId())) {
-            RuleGenerator generator = flowRulesFactory.getYPointForwardIngressHaRuleGenerator(
-                    haFlow, haPath, haPath.getSubPaths(), encapsulation, overlappingAdapters);
-            return generateCommands(generator, haPath.getSharedSwitchId(), ignoreUnknownSwitches, adapter);
+            return buildHaIngressRulesYPointEqualsSharedPoint(
+                    haFlow, haPath, encapsulation, overlappingAdapters, ignoreUnknownSwitches, adapter);
 
         } else {
             FlowPath randomSubPath = haPath.getSubPaths().get(0);
@@ -775,7 +782,30 @@ public class RuleManagerImpl implements RuleManager {
         RuleGenerator generator = flowRulesFactory.getIngressHaRuleGenerator(
                 haFlow, subPath, meterId, encapsulation, sharedPath, overlappingAdapters,
                 externalMeterCommandUuid, generateMeterCommand);
-        return generateCommands(generator, subPath.getSrcSwitchId(), ignoreUnknownSwitches, adapter);
+        List<SpeakerData> commands = generateCommands(generator, subPath.getSrcSwitchId(), ignoreUnknownSwitches,
+                adapter);
+
+        RuleGenerator server42Generator = flowRulesFactory.getServer42IngressHaRuleGenerator(subPath, haFlow,
+                encapsulation, adapter.getSwitchProperties(subPath.getSrcSwitchId()), overlappingAdapters);
+
+        commands.addAll(generateCommands(server42Generator, subPath.getSrcSwitchId(), ignoreUnknownSwitches, adapter));
+        return commands;
+    }
+
+    private List<SpeakerData> buildHaIngressRulesYPointEqualsSharedPoint(
+            HaFlow haFlow, HaFlowPath haPath, FlowTransitEncapsulation encapsulation,
+            Set<FlowSideAdapter> overlappingAdapters, boolean ignoreUnknownSwitches, DataAdapter adapter) {
+
+        RuleGenerator generator = flowRulesFactory.getYPointForwardIngressHaRuleGenerator(
+                haFlow, haPath, haPath.getSubPaths(), encapsulation, overlappingAdapters);
+
+        RuleGenerator server42Generator = flowRulesFactory.getSharedYServer42IngressHaRuleGenerator(
+                haPath.getSubPaths().get(0), haFlow, encapsulation,
+                adapter.getSwitchProperties(haPath.getSharedSwitchId()), overlappingAdapters);
+
+
+        return generateCommands(Lists.newArrayList(generator, server42Generator), haPath.getSharedSwitchId(),
+                ignoreUnknownSwitches, adapter);
     }
 
     private List<SpeakerData> buildHaEgressRules(
@@ -1020,6 +1050,14 @@ public class RuleManagerImpl implements RuleManager {
             }
         }
         return result;
+    }
+
+    private List<SpeakerData> generateCommands(
+            List<RuleGenerator> generators, SwitchId switchId, boolean ignoreUnknownSwitch, DataAdapter adapter) {
+        return generators.stream()
+                .map(generator -> generateCommands(generator, switchId, ignoreUnknownSwitch, adapter))
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
     }
 
     private List<SpeakerData> generateCommands(

@@ -21,8 +21,8 @@ import java.util.Set;
 
 public interface IFlowCarrier {
 
-    void notifyActivateFlowMonitoring(String id, SwitchId switchId, Integer port, Integer vlan, Integer innerVlan,
-                                      boolean isForward);
+    void notifyActivateFlowMonitoring(String id, SwitchId dstSwitchId, SwitchId switchId, Integer port, Integer vlan,
+                                      Integer innerVlan, boolean isForward);
 
     void notifyDeactivateFlowMonitoring(SwitchId switchId, String flowId, boolean isForward);
 

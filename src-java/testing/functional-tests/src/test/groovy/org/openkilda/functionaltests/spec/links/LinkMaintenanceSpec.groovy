@@ -1,19 +1,16 @@
 package org.openkilda.functionaltests.spec.links
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.payload.flow.FlowState
+
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.flow.FlowState
 
 class LinkMaintenanceSpec extends HealthCheckSpecification {
 
@@ -23,8 +20,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         def isl = topology.islsForActiveSwitches.first()
 
         when: "Set maintenance mode for the link"
-        def response = northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, true, false))
-        def linkIsUnderMaintenance = true
+        def response = islHelper.setLinkMaintenance(isl, true, false)
 
         then: "Maintenance flag for forward and reverse ISLs is really set"
         response.each { assert it.underMaintenance }
@@ -35,7 +31,6 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
 
         when: "Unset maintenance mode from the link"
         response = northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, false, false))
-        linkIsUnderMaintenance = false
 
         then: "Maintenance flag for forward and reverse ISLs is really unset"
         response.each { assert !it.underMaintenance }
@@ -43,9 +38,6 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         and: "Cost for ISLs is changed to the default value"
         database.getIslCost(isl) == DEFAULT_COST
         database.getIslCost(isl.reversed) == DEFAULT_COST
-
-        cleanup:
-        linkIsUnderMaintenance && northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, false, false))
     }
 
     def "Flows can be evacuated (rerouted) from a particular link when setting maintenance mode for it"() {
@@ -65,7 +57,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
 
         when: "Set maintenance mode without flows evacuation flag for the first link involved in flow paths"
         def isl = pathHelper.getInvolvedIsls(flow1Path).first()
-        northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, true, false))
+        islHelper.setLinkMaintenance(isl, true, false)
 
         then: "Flows are not evacuated (rerouted) and have the same paths"
         PathHelper.convert(northbound.getFlowPath(flow1.flowId)) == flow1Path
@@ -89,9 +81,6 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         and: "Link under maintenance is not involved in new flow paths"
         !(isl in pathHelper.getInvolvedIsls(flow1PathUpdated))
         !(isl in pathHelper.getInvolvedIsls(flow2PathUpdated))
-
-        cleanup: "Delete flows and unset maintenance mode"
-        isl && northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, false, false))
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -113,11 +102,14 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         and: "Make only one alternative path available for both flows"
         def flow1ActualIsl = pathHelper.getInvolvedIsls(flow1Path).first()
         def altIsls = topology.getRelatedIsls(switchPair.src) - flow1ActualIsl
-        islHelper.breakIsls(altIsls[1..-1])
+        /* altIsls can have only 1 element (the only one alt ISL).
+        In this case it will be set under maintenance mode, and breaking the other
+        alternative ISLs will be skipped: "altIsls - altIsls.first()" will be empty. */
+        islHelper.breakIsls(altIsls - altIsls.first())
 
         and: "Set maintenance mode for the first link involved in alternative path"
         def islUnderMaintenance = altIsls.first()
-        northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(islUnderMaintenance, true, false))
+        islHelper.setLinkMaintenance(islUnderMaintenance, true, false)
 
         when: "Force flows to reroute by bringing port down on the source switch"
         islHelper.breakIsl(flow1ActualIsl)
@@ -135,11 +127,5 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
             assert islUnderMaintenance in pathHelper.getInvolvedIsls(flow1PathUpdated)
             assert islUnderMaintenance in pathHelper.getInvolvedIsls(flow2PathUpdated)
         }
-
-        cleanup: "Restore topology, delete flows, unset maintenance mode and reset costs"
-        islUnderMaintenance && northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(
-                islUnderMaintenance, false, false))
-        islHelper.restoreIsls(altIsls + flow1ActualIsl)
-        database.resetCosts(topology.isls)
     }
 }

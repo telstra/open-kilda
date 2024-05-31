@@ -1,18 +1,16 @@
 package org.openkilda.functionaltests.helpers.model
 
+import groovy.transform.Canonical
+import groovy.transform.ToString
 import org.openkilda.messaging.payload.history.HaSubFlowPayload
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.SwitchId
 import org.openkilda.model.history.DumpType
-import org.openkilda.northbound.dto.v2.flows.BaseFlowEndpointV2
 import org.openkilda.testing.service.northbound.model.HaFlowActionType
 import org.openkilda.testing.service.northbound.model.HaFlowDumpPayload
 import org.openkilda.testing.service.northbound.model.HaFlowHistoryEntry
 import org.openkilda.testing.service.northbound.model.HaFlowHistoryPayload
 import org.openkilda.testing.tools.SoftAssertionsWrapper
-
-import groovy.transform.Canonical
-import groovy.transform.ToString
 
 import java.time.Instant
 
@@ -67,14 +65,20 @@ class HaFlowHistoryEventExtension {
         assertions.checkSucceeds { assert dumps[0].sharedOuterVlan == haFlow.sharedEndpoint.vlanId }
         assertions.checkSucceeds { assert dumps[0].sharedPort == haFlow.sharedEndpoint.portNumber }
         assertions.checkSucceeds { assert dumps[0].sharedInnerVlan == haFlow.sharedEndpoint.innerVlanId }
-        assertions.checkSucceeds { assert getSubFlowsEndpoints(dumps[0].haSubFlows).sort() == haFlow.subFlows.endpoint.sort() }
+        assertions.checkSucceeds { assert getSubFlowsEndpoints(dumps[0].haSubFlows).sort() == haFlow.subFlows.sort() }
         assertions.verify()
     }
 
-    List<BaseFlowEndpointV2> getSubFlowsEndpoints(List<HaSubFlowPayload> dumpSubFlowsDetails) {
+    static private List<HaSubFlowExtended> getSubFlowsEndpoints(List<HaSubFlowPayload> dumpSubFlowsDetails) {
         dumpSubFlowsDetails.collect { it ->
-            new BaseFlowEndpointV2(switchId: new SwitchId(it.endpointSwitchId), portNumber: it.endpointPort,
-                    vlanId: it.endpointVlan, innerVlanId: it.endpointInnerVlan)
+            HaSubFlowExtended.builder()
+            .haSubFlowId(it.haSubFlowId)
+            .status(it.status)
+            .endpointSwitchId(new SwitchId(it.endpointSwitchId))
+            .endpointPort(it.endpointPort)
+            .endpointVlan(it.endpointVlan)
+            .endpointInnerVlan(it.endpointInnerVlan)
+                    .build()
         }
     }
 }

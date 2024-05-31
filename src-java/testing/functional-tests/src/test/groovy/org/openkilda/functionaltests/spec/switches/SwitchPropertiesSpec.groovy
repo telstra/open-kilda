@@ -1,7 +1,15 @@
 package org.openkilda.functionaltests.spec.switches
 
+import groovy.transform.AutoClone
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotFoundExpectedError
 import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotUpdatedExpectedError
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.SwitchFeature
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
 
 import java.util.regex.Pattern
 
@@ -11,21 +19,11 @@ import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDEN
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.SwitchHelper
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.SwitchFeature
-import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
-
-import groovy.transform.AutoClone
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Narrative
-
 @Narrative("""Switch properties are created automatically once switch is connected to the controller
 and deleted once switch is deleted.
 Properties can be read/updated via API '/api/v1/switches/:switch-id/properties'.
 Main purpose of that is to understand which feature is supported by a switch(encapsulation type, multi table)""")
+
 class SwitchPropertiesSpec extends HealthCheckSpecification {
 
     @Tags([TOPOLOGY_DEPENDENT, SMOKE_SWITCHES])
@@ -51,7 +49,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
             supportedTransitEncapsulation = newTransitEncapsulation
             multiTable = true
         }
-        def updateSwPropertiesResponse = SwitchHelper.updateSwitchProperties(sw, switchProperties)
+        def updateSwPropertiesResponse = switchHelper.updateSwitchProperties(sw, switchProperties)
 
         then: "Correct response is returned"
         updateSwPropertiesResponse.supportedTransitEncapsulation.sort() == newTransitEncapsulation
@@ -65,9 +63,6 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         with(northboundV2.getAllSwitchProperties().switchProperties.find { it.switchId == sw.dpId }){
             supportedTransitEncapsulation.sort() == newTransitEncapsulation
         }
-
-        cleanup: "Restore init switch properties on the switch"
-        sw && SwitchHelper.updateSwitchProperties(sw, initSwitchProperties)
     }
 
     def "Informative error is returned when trying to get/update switch properties with non-existing id"() {
@@ -89,7 +84,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         new SwitchPropertiesNotFoundExpectedError(NON_EXISTENT_SWITCH_ID, ~/Failed to update switch properties./).matches(exc)    }
 
-    def "Informative error is returned when trying to update switch properties with incorrect information"() {
+    def "Informative error is returned when trying to update switch properties with incorrect information(#invalidType)"() {
         given: "A switch"
         def sw = topology.activeSwitches.first()
 
@@ -101,14 +96,15 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         expectedError.matches(exc)
+
         where:
-        supportedTransitEncapsulation | expectedError
-        ["test"]                      | new SwitchPropertiesNotUpdatedExpectedError("Unable to parse request payload",
-                ~/No enum constant org.openkilda.messaging.payload.flow.FlowEncapsulationType.TEST/)
-        []                            | new SwitchPropertiesNotUpdatedExpectedError(
-                "Supported transit encapsulations should not be null or empty")
-        null                          | new SwitchPropertiesNotUpdatedExpectedError(
-                "Supported transit encapsulations should not be null or empty")
+        invalidType    | supportedTransitEncapsulation | expectedError
+        "invalid type" | ["test"]                      | new SwitchPropertiesNotUpdatedExpectedError("Unable to parse request payload",
+                                                        ~/No enum constant org.openkilda.messaging.payload.flow.FlowEncapsulationType.TEST/)
+        "empty list"   | []                            | new SwitchPropertiesNotUpdatedExpectedError(
+                                                         "Supported transit encapsulations should not be null or empty")
+        "null"         | null                          | new SwitchPropertiesNotUpdatedExpectedError(
+                                                         "Supported transit encapsulations should not be null or empty")
     }
 
     def "Error is returned when trying to #data.desc"() {
@@ -130,6 +126,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         def exc = thrown(HttpClientErrorException)
         new SwitchPropertiesNotUpdatedExpectedError(String.format(data.error, sw.dpId),
         data.description ?: SwitchPropertiesNotUpdatedExpectedError.getDescriptionPattern()).matches(exc)
+
         where:
         data << [
                 new PropertiesData(desc: "enable server42_flow_rtt property without server42_port property",

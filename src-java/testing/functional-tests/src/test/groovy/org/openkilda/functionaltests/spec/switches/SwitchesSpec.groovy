@@ -1,36 +1,37 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-
-import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
-import spock.lang.Shared
-
-import static groovyx.gpars.GParsPool.withPool
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
-import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
-import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Shared
+
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
+import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_SWITCH_PROPERTIES
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 class SwitchesSpec extends HealthCheckSpecification {
     @Shared
     SwitchNotFoundExpectedError switchNotFoundExpectedError = new SwitchNotFoundExpectedError(
             "Switch $NON_EXISTENT_SWITCH_ID not found", ~/Switch $NON_EXISTENT_SWITCH_ID not found/)
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     def "System is able to return a list of all switches"() {
         expect: "System can return list of all switches"
@@ -163,10 +164,6 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         then: "The created flows are in the response list"
         getSwitchFlowsResponse6*.id.sort() == [protectedFlow.flowId, singleFlow.flowId, defaultFlow.flowId].sort()
-
-        cleanup: "Delete the flows"
-        islHelper.restoreIsls(switchIsls)
-        database.resetCosts(topology.isls)
     }
 
     def "Informative error is returned when requesting all flows going through non-existing switch"() {
@@ -192,16 +189,13 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         when: "Deactivate the src switch"
         def switchToDisconnect = topology.switches.find { it.dpId == switchPair.src.dpId }
-        def blockData = switchHelper.knockoutSwitch(switchToDisconnect, RW)
+        switchHelper.knockoutSwitch(switchToDisconnect, RW)
 
         and: "Get all flows going through the deactivated src switch"
         def switchFlowsResponseSrcSwitch = northbound.getSwitchFlows(switchPair.src.dpId)
 
         then: "The created flows are in the response list from the deactivated src switch"
         switchFlowsResponseSrcSwitch*.id.sort() == [simpleFlow.flowId, singleFlow.flowId].sort()
-
-        cleanup: "Revive the src switch and delete the flows"
-        blockData && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 
     @Tags(LOW_PRIORITY)
@@ -235,7 +229,7 @@ class SwitchesSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "System returns human readable error when deleting switch rules on non-existing switch"() {
         when: "Delete switch rules on non-existing switch"
-        northbound.deleteSwitchRules(NON_EXISTENT_SWITCH_ID, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
+        switchHelper.deleteSwitchRules(NON_EXISTENT_SWITCH_ID, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
 
         then: "Not Found error is returned"
         def e = thrown(HttpClientErrorException)
@@ -309,6 +303,13 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         when: "Request a switch partial update for a #data.field field"
         SwitchPatchDto updateRequest = [location: [(data.field): data.newValue]] as SwitchPatchDto
+        cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {northboundV2.partialSwitchUpdate(sw.dpId, [location: [
+                latitude: initConf.location.latitude ?: 0,
+                longitude: initConf.location.longitude ?: 0,
+                city: initConf.location.city ?: "",
+                country: initConf.location.country ?: "",
+                street: initConf.location.street ?: ""
+        ]] as SwitchPatchDto)})
         def response = northboundV2.partialSwitchUpdate(sw.dpId, updateRequest)
 
         then: "Update response reflects the changes"
@@ -316,15 +317,6 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         and: "Changes actually took place"
         northbound.getSwitch(sw.dpId).location."$data.field" == data.newValue
-
-        cleanup:
-        northboundV2.partialSwitchUpdate(sw.dpId, [location: [
-                latitude: initConf.location.latitude ?: 0,
-                longitude: initConf.location.longitude ?: 0,
-                city: initConf.location.city ?: "",
-                country: initConf.location.country ?: "",
-                street: initConf.location.street ?: ""
-        ]] as SwitchPatchDto)
 
         where:
         data << [
@@ -358,6 +350,8 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         when: "Request a switch partial update for a 'pop' field"
         def newPopValue = "test_POP"
+        cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES,
+                {northboundV2.partialSwitchUpdate(sw.dpId, new SwitchPatchDto().tap { it.pop = initConf.pop ?: "" })})
         def response = northboundV2.partialSwitchUpdate(sw.dpId, new SwitchPatchDto().tap { it.pop = newPopValue })
 
         then: "Update response reflects the changes"
@@ -365,8 +359,5 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         and: "Changes actually took place"
         northbound.getSwitch(sw.dpId).pop == newPopValue
-
-        cleanup:
-        northboundV2.partialSwitchUpdate(sw.dpId, new SwitchPatchDto().tap { it.pop = initConf.pop ?: "" })
     }
 }

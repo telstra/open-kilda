@@ -22,9 +22,9 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
-import spock.lang.Unroll
 
 @Narrative("Verifies feature to retrieve list of flows passing the switch grouped by port number. Details: #5015")
+
 class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     @Shared
     YFlowExtended yFlow
@@ -72,7 +72,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
             ![switchPair.getSrc(), switchPair.getDst()].contains(it)
         }
 
-        yFlow = yFlowFactory.getRandom(switchTriplet)
+        yFlow = yFlowFactory.getRandom(switchTriplet, true, [], CLASS)
         yFlowSubFlow1Id = yFlow.subFlows.first().flowId
         yFlowSubFlow2Id = yFlow.subFlows.last().flowId
     }
@@ -93,7 +93,6 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         }
     }
 
-    @Unroll
     def "System allows to get a flow that #switchRole switch"() {
         given: "Flow that #switchRole switch"
         when: "Get all flows going through the switch"
@@ -110,7 +109,6 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         "ends on"       | switchPair.getDst()
     }
 
-    @Unroll
     def "System allows to get a flow which protected path that goes through switch"() {
         given: "Flow which protected path goes through switch"
         when: "Get all flows going through the switch"
@@ -167,6 +165,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         def swT = topologyHelper.getSwitchTriplet(switchProtectedPathGoesThrough.dpId,
                 switchProtectedPathGoesThrough.dpId, switchProtectedPathGoesThrough.dpId)
         def yFlow = yFlowFactory.getRandom(swT, false)
+
         when: "Request flows on switch"
         def flows = switchHelper.getFlowsV2(switchProtectedPathGoesThrough, [])
 
@@ -174,11 +173,5 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         flows.flowsByPort.collectMany { it.value }*.flowId
                 .containsAll(yFlow.subFlows*.flowId)
 
-        cleanup:
-        yFlow && yFlow.delete()
-    }
-
-    def cleanupSpec() {
-       yFlow.delete()
     }
 }

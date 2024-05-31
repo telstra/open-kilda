@@ -10,7 +10,6 @@ import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Unroll
 
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -81,7 +80,6 @@ class PathsSpec extends HealthCheckSpecification {
     }
 
     @Tags(LOW_PRIORITY)
-    @Unroll
     def "Unable to get paths for #problemDescription"() {
         when: "Try to get paths between #problemDescription"
         switchPair(topology.getSwitches().first(), northbound).getPathsFromApi()
@@ -141,15 +139,9 @@ class PathsSpec extends HealthCheckSpecification {
         errorDetails.errorMessage == "Switch $switchPair.src.dpId doesn't support $VXLAN " +
                 "encapsulation type. Choose one of the supported encapsulation types $encapsTypesWithoutVxlan or " +
                 "update switch properties and add needed encapsulation type."
-
-        cleanup:
-        initProps.each { sw, swProps ->
-            switchHelper.updateSwitchProperties(sw, swProps)
-        }
     }
 
     @Tags(LOW_PRIORITY)
-    @Unroll
     def "Protected path is #isIncludedString included into path list if #isIncludedString requested"() {
         given: "Two switches with potential protected path"
         def switchPair = switchPairs.all()

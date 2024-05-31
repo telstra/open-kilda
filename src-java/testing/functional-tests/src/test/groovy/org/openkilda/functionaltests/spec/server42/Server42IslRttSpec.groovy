@@ -11,6 +11,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_SWITCH_PROPERTIES
 import static org.openkilda.functionaltests.model.stats.IslStatsMetric.ISL_RTT
 import static org.openkilda.functionaltests.model.stats.Origin.SERVER_42
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
@@ -25,6 +26,7 @@ import static spock.util.matcher.HamcrestSupport.expect
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.IslStats
 import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
 import org.openkilda.messaging.model.system.FeatureTogglesDto
@@ -42,15 +44,17 @@ import spock.lang.Ignore
 import spock.lang.Isolated
 import spock.lang.ResourceLock
 import spock.lang.Shared
-import spock.lang.Unroll
 
 @Slf4j
 @ResourceLock(S42_TOGGLE)
 @Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
+
 class Server42IslRttSpec extends HealthCheckSpecification {
     @Shared
     @Autowired
     IslStats islStats
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     @Shared
     @Value('${latency.update.interval}')
@@ -60,8 +64,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     int statsWaitSeconds = 4
 
     @Tags([LOW_PRIORITY])
-    @Unroll
-    def "ISL RTT stats are available only if both global and switch toggles are 'on'"() {
+    def "ISL RTT stats are available only if both global and switch toggles are ON (featureToggle: #featureToggle && switchToggle: #switchToggle => statsAvailable: #statsAvailable)"() {
         given: "An active ISL with both switches having server42"
         def server42switchesDpIds = topology.getActiveServer42Switches()*.dpId
         def isl = topology.islsForActiveSwitches.find {
@@ -70,12 +73,10 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         assumeTrue(isl != null, "Was not able to find an ISL with a server42 connected")
 
         when: "server42IslRtt feature toggle is set #featureToggle"
-        def islRttFeatureStartState = changeIslRttToggle(featureToggle)
+        changeIslRttToggle(featureToggle)
 
         and: "server42IslRtt is set #switchToggle on src and dst switches"
-        def initialSwitchRtt = [isl.srcSwitch, isl.dstSwitch].collectEntries {
-            [it, changeIslRttSwitch(it, switchToggle)]
-        }
+        [isl.srcSwitch, isl.dstSwitch].each {changeIslRttSwitch(it, switchToggle)}
         def checkpointTime = new Date()
 
         then: "ISL RTT forward stats are #testLabel available"
@@ -86,9 +87,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
 
         and: "ISL RTT reverse stats are #testLabel available"
         checkIslRttStats(isl.reversed, checkpointTime, statsAvailable)
-
-        cleanup: "Revert system to original state"
-        revertToOrigin(islRttFeatureStartState, initialSwitchRtt)
 
         where:
         featureToggle | switchToggle | statsAvailable | testLabel
@@ -112,13 +110,10 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         assumeTrue(isl != null, "Was not able to find an ISL with both endpoints on the same server42")
 
         when: "server42IslRtt feature toggle is set to true"
-        def islRttFeatureStartState = changeIslRttToggle(true)
+        changeIslRttToggle(true)
 
         and: "server42IslRtt is enabled on src and dst switches"
-        def initialSwitchRtt = [isl.srcSwitch, isl.dstSwitch].collectEntries {
-            [it, changeIslRttSwitch(it, true)]
-        }
-
+        [isl.srcSwitch, isl.dstSwitch].each {changeIslRttSwitch(it, true)}
         def checkpointTime = new Date()
         withPool {
             wait(RULES_INSTALLATION_TIME) {
@@ -138,9 +133,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
             verifyLatencyValueIsCorrect(isl)
             verifyLatencyValueIsCorrect(isl.reversed)
         }
-
-        cleanup: "Revert system to original state"
-        revertToOrigin(islRttFeatureStartState, initialSwitchRtt)
     }
 
     @Tags([LOW_PRIORITY])
@@ -168,12 +160,10 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         def checkpointTime = new Date()
 
         when: "server42IslRtt feature toggle is set to true"
-        def islRttFeatureStartState = changeIslRttToggle(true)
+        changeIslRttToggle(true)
 
         and: "server42IslRtt is enabled on src and dst switches"
-        def initialSwitchRtt = [isl.srcSwitch, isl.dstSwitch, notConnectedIsl.srcSwitch].collectEntries {
-            [it, changeIslRttSwitch(it, true)]
-        }
+        [isl.srcSwitch, isl.dstSwitch, notConnectedIsl.srcSwitch].each {changeIslRttSwitch(it, true) }
 
         then: "ISL RTT rules are not deleted on the src switch for the moved link"
         and: "ISL RTT rules are not installed for the new link because it is the same as moved(portNumber)"
@@ -224,7 +214,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
                 .isEmpty()
 
         cleanup:
-        revertToOrigin(islRttFeatureStartState, initialSwitchRtt)
         if (!originIslIsUp) {
             islUtils.replug(newIsl, true, isl, false, true)
             islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
@@ -236,7 +225,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
                 assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
             }
         }
-        database.resetCosts(topology.isls)
     }
 
     @Tags([HARDWARE])
@@ -261,12 +249,10 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         def islRvIsBroken = true
 
         when: "server42IslRtt feature toggle is set to true"
-        def islRttFeatureStartState = changeIslRttToggle(true)
+        changeIslRttToggle(true)
 
         and: "server42IslRtt is enabled on src and dst switches"
-        def initialSwitchRtt = [isl.srcSwitch, isl.dstSwitch].collectEntries {
-            [it, changeIslRttSwitch(it, true)]
-        }
+        [isl.srcSwitch, isl.dstSwitch].each {changeIslRttSwitch(it, true)}
 
         then: "No ISL RTT stats in both directions because reverse direction is broken"
         def checkpointTime = new Date()
@@ -294,7 +280,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        revertToOrigin(islRttFeatureStartState, initialSwitchRtt)
         if (islRvIsBroken) {
             lockKeeper.addFlows([isl.aswitch.reversed])
             wait(discoveryInterval + WAIT_OFFSET) {
@@ -315,7 +300,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         assumeTrue(sw.asBoolean(), "Wasn't able to find a WB switch connected to server42")
 
         when: "server42IslRtt feature toggle is set to false"
-        def islRttFeatureStartState = changeIslRttToggle(false)
+        changeIslRttToggle(false)
 
         and: "server42IslRtt is disabled on the switch"
         def originSwProps = switchHelper.getCachedSwProps(sw.dpId)
@@ -423,10 +408,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
                     .ignoring("durationSeconds")
                     .ignoring("durationNanoSeconds"))
         }
-
-        cleanup:
-        originSwProps && northbound.updateSwitchProperties(sw.dpId, originSwProps)
-        changeIslRttToggle(islRttFeatureStartState)
     }
 
     @Tags([LOW_PRIORITY])
@@ -437,16 +418,14 @@ class Server42IslRttSpec extends HealthCheckSpecification {
             it.srcSwitch.dpId in server42switchesDpIds && it.dstSwitch.dpId in server42switchesDpIds
         }
         assumeTrue(isl != null, "Was not able to find an ISL with a server42 connected")
-        northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, true, false))
-        northbound.setSwitchMaintenance(isl.dstSwitch.dpId, true, false)
+        islHelper.setLinkMaintenance(isl, true, false)
+        switchHelper.setSwitchMaintenance(isl.dstSwitch.dpId, true, false)
 
         when: "server42IslRtt feature toggle is turned on"
-        def islRttFeatureStartState = changeIslRttToggle(true)
+        changeIslRttToggle(true)
 
         and: "Enable server42IslRtt on the src and dst switches"
-        def initialSwitchRtt = [isl.srcSwitch, isl.dstSwitch].collectEntries {
-            [it, changeIslRttSwitch(it, true)]
-        }
+        [isl.srcSwitch, isl.dstSwitch].each {changeIslRttSwitch(it, true) }
         withPool {
             [isl.srcSwitch, isl.dstSwitch].eachParallel { Switch sw ->
                 wait(RULES_INSTALLATION_TIME) { checkIslRttRules(sw.dpId, true) }
@@ -459,13 +438,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
             checkIslRttStats(isl, checkpointTime, true)
             checkIslRttStats(isl.reversed, checkpointTime, true)
         }
-
-        cleanup:
-        if (isl) {
-            northbound.setLinkMaintenance(islUtils.toLinkUnderMaintenance(isl, false, false))
-            northbound.setSwitchMaintenance(isl.dstSwitch.dpId, false, false)
-        }
-        revertToOrigin(islRttFeatureStartState, initialSwitchRtt)
     }
 
     @Tags([HARDWARE, SWITCH_RECOVER_ON_FAIL])
@@ -480,12 +452,10 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         assumeTrue(isl != null, "Was not able to find an ISL with a server42 connected")
 
         when: "server42IslRtt feature toggle is turned on"
-        def islRttFeatureStartState = changeIslRttToggle(true)
+        changeIslRttToggle(true)
 
         and: "server42IslRtt is enabled on src and dst switches"
-        def initialSwitchRtt = [isl.srcSwitch, isl.dstSwitch].collectEntries {
-            [it, changeIslRttSwitch(it, true)]
-        }
+        [isl.srcSwitch, isl.dstSwitch].each {changeIslRttSwitch(it, true) }
         withPool {
             [isl.srcSwitch, isl.dstSwitch].eachParallel { Switch sw ->
                 wait(RULES_INSTALLATION_TIME) { checkIslRttRules(sw.dpId, true) }
@@ -514,7 +484,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         when: "Connect back the src switch"
         switchHelper.reviveSwitch(isl.srcSwitch, blockData, true)
         checkpointTime = new Date()
-        def swIsConnected = true
 
         then: "ISL Rtt rules still exist on the src switch"
         checkIslRttRules(isl.srcSwitch.dpId, true)
@@ -527,11 +496,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
             checkIslRttStats(isl, checkpointTime, true)
             checkIslRttStats(isl.reversed, checkpointTime, true)
         }
-
-        cleanup:
-        isl && blockData && !swIsConnected && switchHelper.reviveSwitch(isl.srcSwitch, blockData, true)
-        revertToOrigin(islRttFeatureStartState, initialSwitchRtt)
-        database.resetCosts(topology.isls)
     }
 
     @Tags([HARDWARE])
@@ -542,10 +506,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
             it.srcSwitch.dpId in server42switchesDpIds && it.dstSwitch.dpId in server42switchesDpIds
         }
         assumeTrue(isl != null, "Was not able to find an ISL with a server42 connected")
-        def islRttFeatureStartState = changeIslRttToggle(true)
-        def initialSwitchRtt = [isl.srcSwitch, isl.dstSwitch].collectEntries {
-            [it, changeIslRttSwitch(it, true)]
-        }
+        changeIslRttToggle(true)
+        [isl.srcSwitch, isl.dstSwitch].each {changeIslRttSwitch(it, true) }
         wait(RULES_INSTALLATION_TIME) { checkIslRttRules(isl.srcSwitch.dpId, true) }
 
         when: "Delete ISL Rtt rules on the src switch"
@@ -554,7 +516,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
                     (new Cookie(it.cookie).getType() in [CookieType.SERVER_42_ISL_RTT_INPUT])
         }
         withPool {
-            rulesToDelete.eachParallel { northbound.deleteSwitchRules(isl.srcSwitch.dpId, it.cookie) }
+            rulesToDelete.eachParallel { switchHelper.deleteSwitchRules(isl.srcSwitch.dpId, it.cookie) }
         }
 
         then: "Rules are really deleted"
@@ -597,9 +559,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
             checkIslRttStats(isl, checkpointTime, true)
             checkIslRttStats(isl.reversed, checkpointTime, true)
         }
-
-        cleanup: "Revert system to original state"
-        revertToOrigin(islRttFeatureStartState, initialSwitchRtt)
     }
 
     def changeIslRttSwitch(Switch sw, boolean islRttEnabled) {
@@ -609,6 +568,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     def changeIslRttSwitch(Switch sw, String requiredState) {
         def originalProps = northbound.getSwitchProperties(sw.dpId)
         if (originalProps.server42IslRtt != requiredState) {
+            cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {northbound.updateSwitchProperties(sw.dpId, originalProps)})
             northbound.updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap {
                 server42IslRtt = requiredState
                 def props = sw.prop ?: SwitchHelper.dummyServer42Props
@@ -621,9 +581,9 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     }
 
     def changeIslRttToggle(boolean requiredState) {
-        def originalState = northbound.featureToggles.server42IslRtt
+        def originalState = featureToggles.getFeatureToggles().server42IslRtt
         if (originalState != requiredState) {
-            northbound.toggleFeature(FeatureTogglesDto.builder().server42IslRtt(requiredState).build())
+            featureToggles.server42IslRtt(requiredState)
         }
         //not going to check rules on every switch in the system. sleep does the trick fine
         sleep(3000)

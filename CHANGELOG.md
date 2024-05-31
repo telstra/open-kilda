@@ -1,8 +1,41 @@
 # Changelog
 
+## v1.158.0 (23/04/2024)
+
+### Features:
+-  [#5353](https://github.com/telstra/open-kilda/pull/5353) 5208 add ha flow support into server42
+
+
+### Improvements:
+-  [#5481](https://github.com/telstra/open-kilda/pull/5481) [TEST]: 5208: Server42 RTT: HaFlow [**tests**]
+-  [#5522](https://github.com/telstra/open-kilda/pull/5522) remove opentsdb and hbase (Issue: [#4925](https://github.com/telstra/open-kilda/issues/4925))
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.157.0...v1.158.0).
+
+---
+
+## v1.157.0 (17/04/2024)
+
+### Bug Fixes:
+-  [#5632](https://github.com/telstra/open-kilda/pull/5632) GUI hotfix.  [**gui**]
+-  [#5627](https://github.com/telstra/open-kilda/pull/5627) fix switch synchronization when discrepancy doesn't include cookie (Issue: [#5626](https://github.com/telstra/open-kilda/issues/5626))
+
+### Improvements:
+-  [#5570](https://github.com/telstra/open-kilda/pull/5570) 5560: [TEST]: Add automatic cleanup in functional test (Issue: [#5560](https://github.com/telstra/open-kilda/issues/5560)) [**tests**]
+-  [#5605](https://github.com/telstra/open-kilda/pull/5605) add git configuration with hook
+-  [#5542](https://github.com/telstra/open-kilda/pull/5542) [TEST]: Storm topology restarting: Topology readiness HC(ISLs, switches) [**tests**]
+-  [#5610](https://github.com/telstra/open-kilda/pull/5610) 5560: [TEST]: Add methods to break/restore ISLs in test (Issues: [#5560](https://github.com/telstra/open-kilda/issues/5560) [#5608](https://github.com/telstra/open-kilda/issues/5608)) [**tests**]
+-  [#5611](https://github.com/telstra/open-kilda/pull/5611) [TEST]: Y-Flow: Adding a new approach for Y-Flow interaction [**tests**]
+-  [#5587](https://github.com/telstra/open-kilda/pull/5587) [TEST]: Improvement: Path Check: Flaky test [**tests**]
+-  [#5621](https://github.com/telstra/open-kilda/pull/5621) [TEST]: HA-Flow: Factory [**tests**]
+-  [#5592](https://github.com/telstra/open-kilda/pull/5592) [TEST]: Improvement: FL: Adding switch recovering logic [**tests**]
+-  [#5629](https://github.com/telstra/open-kilda/pull/5629) [TEST]: 5390: Flaky: Flow monitoring [**tests**]
+
+---
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.156.0...v1.157.0).
 ## v1.156.0 (26/02/2024)
-
-
 
 ### Improvements:
 -  [#5584](https://github.com/telstra/open-kilda/pull/5584) Remove "draft" tag from HA-flow API in swagger. (Issue: [#5061](https://github.com/telstra/open-kilda/issues/5061))

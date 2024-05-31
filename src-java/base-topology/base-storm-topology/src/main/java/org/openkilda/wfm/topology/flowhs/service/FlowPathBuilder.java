@@ -16,7 +16,7 @@
 package org.openkilda.wfm.topology.flowhs.service;
 
 import static java.lang.String.format;
-import static org.openkilda.model.cookie.FlowSegmentCookie.FlowSubType.HA_SUB_FLOW_TYPES;
+import static org.openkilda.model.cookie.FlowSubType.HA_SUB_FLOW_TYPES;
 
 import org.openkilda.model.Flow;
 import org.openkilda.model.FlowPath;
@@ -29,7 +29,7 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.cookie.FlowSegmentCookie;
-import org.openkilda.model.cookie.FlowSegmentCookie.FlowSubType;
+import org.openkilda.model.cookie.FlowSubType;
 import org.openkilda.pce.HaPath;
 import org.openkilda.pce.Path;
 import org.openkilda.pce.Path.Segment;

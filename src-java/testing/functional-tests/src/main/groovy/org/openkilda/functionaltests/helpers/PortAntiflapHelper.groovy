@@ -1,16 +1,21 @@
 package org.openkilda.functionaltests.helpers
 
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.helpers.model.PortHistoryEvent
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.model.SwitchId
+import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
-
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
+
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.PORT_UP
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
+import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 /**
  * This class helps to avoid getting into anti-flap system when manipulating switch ports. It remembers time a certain
@@ -22,6 +27,12 @@ class PortAntiflapHelper {
     NorthboundService northbound
     @Autowired @Qualifier("islandNbV2")
     NorthboundServiceV2 northboundV2
+    @Autowired
+    CleanupManager cleanupManager
+    @Autowired
+    Database database
+    @Autowired
+    TopologyDefinition topology
 
     @Value('${antiflap.min}')
     int antiflapMin
@@ -42,7 +53,21 @@ class PortAntiflapHelper {
         northbound.portUp(swId, portNo)
     }
 
-    def portDown(SwitchId swId, int portNo) {
+    def safePortUp(SwitchId swId, int portNo) {
+        if (northbound.getPort(swId, portNo).getState().first() != "LIVE") {
+            portUp(swId, portNo)
+        }
+        Wrappers.wait(WAIT_OFFSET) {
+            assert northbound.getActiveLinks().findAll {
+                it.getSource().getSwitchId() == swId && it.getSource().getPortNo() == portNo ||
+                        it.getDestination().getSwitchId() == swId && it.getDestination().getPortNo() == portNo
+            }.size() == 2
+        }
+    }
+
+    def portDown(SwitchId swId, int portNo, cleanupAfter = TEST) {
+        cleanupManager.addAction(PORT_UP, {safePortUp(swId, portNo)}, cleanupAfter)
+        cleanupManager.addAction(RESET_ISLS_COST, {database.resetCosts(topology.isls)})
         def response = northbound.portDown(swId, portNo)
         sleep(antiflapMin * 1000)
         history.put(new Tuple2(swId, portNo), System.currentTimeMillis())

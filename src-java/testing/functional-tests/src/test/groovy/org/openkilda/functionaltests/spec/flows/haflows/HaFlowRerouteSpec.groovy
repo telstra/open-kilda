@@ -1,6 +1,19 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import static groovyx.gpars.GParsPool.withPool
+import groovy.util.logging.Slf4j
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.model.stats.HaFlowStats
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.FlowStatus
+import org.openkilda.model.history.DumpType
+import org.openkilda.testing.service.northbound.model.HaFlowActionType
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Narrative
+import spock.lang.Shared
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
@@ -10,8 +23,6 @@ import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.HaFlowStatsMetric.HA_FLOW_RAW_BITS
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -57,7 +68,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(swT)
 
         def initialPaths = haFlow.retrievedAllEntityPaths()
-        def islToFail = initialPaths.subFlowPaths.first().getInvolvedIsls(true).first()
+        def islToFail = initialPaths.subFlowPaths.first().getInvolvedIsls().first()
 
         when: "Fail an HA-flow ISL (bring switch port down)"
         islHelper.breakIsl(islToFail)
@@ -66,7 +77,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def newPaths = null
         wait(rerouteDelay + WAIT_OFFSET) {
             def haFlowDetails = haFlow.retrieveDetails()
-            assert haFlowDetails.status == FlowState.UP && haFlowDetails.subFlows.every { it.status == FlowState.UP.toString() }
+            assert haFlowDetails.status == FlowState.UP && haFlowDetails.subFlows.every { it.status == FlowStatus.UP }
             newPaths = haFlow.retrievedAllEntityPaths()
             assert newPaths != initialPaths
         }
@@ -95,7 +106,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         haFlow.validate().asExpected
 
         and: "All involved switches pass switch validation"
-        def allInvolvedSwitchIds = initialPaths.getInvolvedSwitches(true) + newPaths.getInvolvedSwitches(true)
+        def allInvolvedSwitchIds = initialPaths.getInvolvedSwitches() + newPaths.getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
 
         and: "Traffic passes through HA-Flow"
@@ -109,17 +120,12 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
             wait(STATS_LOGGING_TIMEOUT) {
                 assert haFlowStats.of(haFlow.haFlowId).get(HA_FLOW_RAW_BITS,
                         REVERSE,
-                        haFlow.getSubFlows().shuffled().first().getEndpoint()).hasNonZeroValuesAfter(timeAfterRerouting)
+                        haFlow.getSubFlows().shuffled().first()).hasNonZeroValuesAfter(timeAfterRerouting)
                 assert haFlowStats.of(haFlow.haFlowId).get(HA_FLOW_RAW_BITS,
                         FORWARD,
                         haFlow.getSharedEndpoint()).hasNonZeroValuesAfter(timeAfterRerouting)
             }
         }
-
-        cleanup:
-        haFlow && haFlow.delete()
-        islHelper.restoreIsl(islToFail)
-        database.resetCosts(topology.isls)
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
@@ -130,7 +136,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(swT)
 
         def initialPaths = haFlow.retrievedAllEntityPaths()
-        def subFlowsFirstIsls = initialPaths.subFlowPaths.collect{ it.getInvolvedIsls(true).first()} as Set
+        def subFlowsFirstIsls = initialPaths.subFlowPaths.collect{ it.getInvolvedIsls().first()} as Set
         assert subFlowsFirstIsls.size() == 1, "Selected ISL is not common for both sub-flows (not shared switch)"
 
         when: "Bring all ports down on the shared switch that are involved in the current and alternative paths"
@@ -155,25 +161,21 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         wait(rerouteDelay + discoveryInterval + WAIT_OFFSET) {
             def haFlowDetails = haFlow.retrieveDetails()
             assert haFlowDetails.status == FlowState.UP &&
-                    haFlowDetails.subFlows.every { it.status == FlowState.UP.toString() }
+                    haFlowDetails.subFlows.every { it.status == FlowStatus.UP }
             newPaths = haFlow.retrievedAllEntityPaths()
             assert newPaths != initialPaths
         }
 
         and: "The first (shared) subFlow's ISl  has been chnaged due to the ha-Flow reroute"
-        def newPathSubFlowsFirstIsls = newPaths.subFlowPaths.collect{ it.getInvolvedIsls(true).first()} as Set
+        def newPathSubFlowsFirstIsls = newPaths.subFlowPaths.collect{ it.getInvolvedIsls().first()} as Set
         newPathSubFlowsFirstIsls != subFlowsFirstIsls
 
         and: "HA-flow passes validation"
         haFlow.validate().asExpected
 
         and: "All involved switches pass switch validation"
-        def allInvolvedSwitchIds = initialPaths.getInvolvedSwitches(true)+ newPaths.getInvolvedSwitches(true)
+        def allInvolvedSwitchIds = initialPaths.getInvolvedSwitches()+ newPaths.getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
-
-        cleanup: "Bring port involved in the original path up and delete the HA-flow"
-        haFlow && haFlow.delete()
-        islHelper.restoreIsls(alternativeIsls + subFlowsFirstIsls)
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
@@ -184,7 +186,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(swT)
 
         def initialPaths = haFlow.retrievedAllEntityPaths()
-        def subFlowsFirstIsls = initialPaths.subFlowPaths.collect{ it.getInvolvedIsls(true).first()}.unique()
+        def subFlowsFirstIsls = initialPaths.subFlowPaths.collect{ it.getInvolvedIsls().first()}.unique()
         assert subFlowsFirstIsls.size() == 1, "Selected ISL is not common for both sub-flows (not shared switch)"
 
         and: "All ISL ports on the shared switch that are involved in the alternative HA-flow paths are down"
@@ -208,20 +210,6 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches pass switch validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(initialPaths.getInvolvedSwitches(true)).isEmpty()
-
-        cleanup: "Bring port involved in the original path up and delete the HA-flow"
-        haFlow && haFlow.delete()
-        islHelper.restoreIsls(alternativeIsls + subFlowsFirstIsls.first())
-    }
-
-    private boolean waitForIslsFail(List<Isl> islsToFail) {
-        wait(WAIT_OFFSET) {
-            withPool {
-                islsToFail.each {
-                    assert northbound.getLink(it).state == FAILED
-                }
-            }
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(initialPaths.getInvolvedSwitches()).isEmpty()
     }
 }

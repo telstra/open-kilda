@@ -20,6 +20,7 @@ message Flow {
     uint32 udp_src_port = 8;
     int32 hash_code = 9;
     int64 inner_tunnel_id = 10;
+    string switch_id = 11;
 }
 
 message AddFlow {

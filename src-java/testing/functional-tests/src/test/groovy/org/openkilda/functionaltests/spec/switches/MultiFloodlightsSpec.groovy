@@ -1,20 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-
-import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
-
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.SwitchChangeType.ACTIVATED
-import static org.openkilda.messaging.info.event.SwitchChangeType.DEACTIVATED
-import static org.openkilda.testing.Constants.DUMMY_SW_IP_1
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.LoopTask
@@ -28,12 +15,24 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.SwitchChangeType.ACTIVATED
+import static org.openkilda.messaging.info.event.SwitchChangeType.DEACTIVATED
+import static org.openkilda.testing.Constants.DUMMY_SW_IP_1
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+
 @Narrative("""
 Every switch can be connected to multiple floodlights. Floodlight can be either 'read-only'(stats floodlights)
 or 'read-write'(management floodlights). System chooses one 'master' fl between all RW fls.
 All switch floodlights can be checked via 'GET /api/v2/switches/{switchId}/connections'
 """)
 @Isolated
+
 class MultiFloodlightsSpec extends HealthCheckSpecification {
     @Shared ExecutorService executor = Executors.newFixedThreadPool(2)
 

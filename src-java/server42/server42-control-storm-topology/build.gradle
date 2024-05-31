@@ -33,8 +33,11 @@ dependencies {
     testAnnotationProcessor("org.mapstruct:mapstruct-processor")
 
     testImplementation(project(path: ":base-storm-topology", configuration: "testArtifacts"))
-    testImplementation("org.hamcrest:hamcrest-library")
-    testImplementation("org.mockito:mockito-junit-jupiter")
+    testImplementation 'org.hamcrest:hamcrest-library'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
+    testRuntimeOnly 'org.apache.curator:curator-test'
 
     compileOnly("org.projectlombok:lombok")
     testCompileOnly("org.projectlombok:lombok")
@@ -60,4 +63,8 @@ shadowJar {
 
 artifacts {
     archives shadowJar
+}
+
+test {
+    useJUnitPlatform()
 }
