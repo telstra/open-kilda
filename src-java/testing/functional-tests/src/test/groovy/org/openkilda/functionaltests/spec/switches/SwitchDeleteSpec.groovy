@@ -62,7 +62,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         given: "An inactive switch with ISLs"
         def sw = topology.getActiveSwitches()[0]
         def swIsls = topology.getRelatedIsls(sw)
-        def blockData = switchHelper.knockoutSwitch(sw, RW)
+        switchHelper.knockoutSwitch(sw, RW)
 
         when: "Try to delete the switch"
         northbound.deleteSwitch(sw.dpId, false)

@@ -26,6 +26,8 @@ import spock.lang.Shared
 
 import javax.inject.Provider
 
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 @Narrative("Verify path swap operations on HA-flows.")
 @Tags([HA_FLOW])
 class HaFlowPathSwapSpec extends HealthCheckSpecification {
@@ -75,7 +77,9 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
 
         and: "All involved switches pass switch validation"
         def involvedSwitches = haFlowPathInfoAfter.getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
+        Wrappers.wait(WAIT_OFFSET) {
+            assert switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
+        }
 
         and: "Traffic passes through HA-Flow"
         if (swT.isHaTraffExamAvailable()) {

@@ -72,17 +72,6 @@ class ChaosSpec extends HealthCheckSpecification {
 
         and: "All switches are valid"
         switchHelper.validate(topology.activeSwitches*.dpId).isEmpty()
-
-        cleanup:
-        // Wait for meters deletion from all OF_13 switches since it impacts other tests.
-        Wrappers.wait(WAIT_OFFSET * 2 + flowsAmount * RULES_DELETION_TIME) {
-            topology.activeSwitches.findAll { it.ofVersion == "OF_13" }.each {
-                assert northbound.getAllMeters(it.dpId).meterEntries.findAll {
-                    it.meterId > MAX_SYSTEM_RULE_METER_ID
-                }.empty
-            }
-        }
-        database.resetCosts(topology.isls)
     }
 
     def bothDirectionsHaveSamePath(FlowPathPayload path) {

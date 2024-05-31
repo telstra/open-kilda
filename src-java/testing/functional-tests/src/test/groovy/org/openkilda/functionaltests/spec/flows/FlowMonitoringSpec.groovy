@@ -54,8 +54,6 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
     Integer flowSlaCheckIntervalSeconds
     @Shared
     def flowLatencySlaTimeoutSeconds = 30 //kilda_flow_latency_sla_timeout_seconds: 30
-    @Autowired @Shared
-    CleanupManager cleanupManager
 
     def setupSpec() {
         //setup: Two active switches with two diverse paths
@@ -103,10 +101,8 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         String srcInterfaceName = isl.srcSwitch.name + "-" + isl.srcPort
         String dstInterfaceName = isl.dstSwitch.name + "-" + isl.dstPort
         def newLatency = (flow.maxLatency + (flow.maxLatency * flowLatencySlaThresholdPercent)).toInteger()
-        cleanupManager.addAction(CLEAN_LINK_DELAY, {lockKeeper.cleanupLinkDelay(srcInterfaceName)})
-        cleanupManager.addAction(CLEAN_LINK_DELAY, {lockKeeper.cleanupLinkDelay(dstInterfaceName)})
-        lockKeeper.setLinkDelay(srcInterfaceName, newLatency)
-        lockKeeper.setLinkDelay(dstInterfaceName, newLatency)
+        islHelper.setDelay(srcInterfaceName, newLatency)
+        islHelper.setDelay(dstInterfaceName, newLatency)
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
             verifyLatencyInTsdb(flow.flowId, newLatency)
         }
@@ -157,10 +153,8 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         String srcInterfaceName = isl.srcSwitch.name + "-" + isl.srcPort
         String dstInterfaceName = isl.dstSwitch.name + "-" + isl.dstPort
         def newLatency = (flow.maxLatency + (flow.maxLatency * flowLatencySlaThresholdPercent)).toInteger()
-        cleanupManager.addAction(CLEAN_LINK_DELAY, {lockKeeper.cleanupLinkDelay(srcInterfaceName)})
-        cleanupManager.addAction(CLEAN_LINK_DELAY, {lockKeeper.cleanupLinkDelay(dstInterfaceName)})
-        lockKeeper.setLinkDelay(srcInterfaceName, newLatency)
-        lockKeeper.setLinkDelay(dstInterfaceName, newLatency)
+        islHelper.setDelay(srcInterfaceName, newLatency)
+        islHelper.setDelay(dstInterfaceName, newLatency)
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
             verifyLatencyInTsdb(flow.flowId, newLatency)
         }

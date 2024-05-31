@@ -11,7 +11,6 @@ import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.Flow
 import org.openkilda.model.FlowEncapsulationType
@@ -21,7 +20,6 @@ import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.ConnectedDeviceDto
 import org.openkilda.northbound.dto.v1.flows.PingInput
-import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDeviceDto
@@ -29,7 +27,6 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.ArpData
 import org.openkilda.testing.service.traffexam.model.LldpData
-import org.openkilda.testing.tools.ConnectedDevice
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -44,7 +41,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.model.MeterId.createMeterIdForDefaultRule
 import static org.openkilda.model.SwitchFeature.KILDA_OVS_PUSH_POP_MATCH_VXLAN
 import static org.openkilda.model.cookie.Cookie.LLDP_INGRESS_COOKIE
@@ -67,8 +63,6 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
-    @Autowired @Shared
-    CleanupManager cleanupManager
 
     @Tags([TOPOLOGY_DEPENDENT])
     @IterationTags([
@@ -109,7 +103,7 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
         def dstArpData = ArpData.buildRandom()
         [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
             endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId), [endpoint.vlanId]).withCloseable {
+                switchHelper.addConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId), [endpoint.vlanId]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
                 }
@@ -215,7 +209,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def tgService = traffExamProvider.get()
         [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
             endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId), [endpoint.vlanId]).withCloseable {
+                switchHelper.addConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId), [endpoint.vlanId]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
                 }
@@ -256,14 +250,13 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def sw = topology.activeTraffGens*.switchConnected.first()
 
         def flow = flowHelperV2.singleSwitchFlow(sw)
-        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(flow.source.switchId)})
         flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
         flowHelperV2.addFlow(flow)
 
         when: "Device connects to src endpoint and send lldp and arp packets"
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
-        new ConnectedDevice(traffExamProvider.get(), topology.getActiveTraffGen(sw.dpId), [flow.source.vlanId]).withCloseable {
+        switchHelper.addConnectedDevice(traffExamProvider.get(), topology.getActiveTraffGen(sw.dpId), [flow.source.vlanId]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
         }
@@ -318,7 +311,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def tgService = traffExamProvider.get()
         [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
             endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.switchId), [endpoint.vlanId]).withCloseable {
+                switchHelper.addConnectedDevice(tgService, topology.getTraffGen(endpoint.switchId), [endpoint.vlanId]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
                 }
@@ -353,9 +346,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flowHelperV2.addFlow(flow)
 
         and: "A connected device"
-        def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.source.switchId),
+        def device = switchHelper.addConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.source.switchId),
                 [flow.source.vlanId])
-        cleanupManager.addAction(OTHER, {device.close()})
 
         when: "Device sends lldp packet"
         def lldpData = LldpData.buildRandom()
@@ -389,9 +381,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flowHelperV2.addFlow(flow)
 
         and: "A connected device"
-        def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.source.switchId),
+        def device = switchHelper.addConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.source.switchId),
                 [flow.source.vlanId])
-        cleanupManager.addAction(OTHER, {device.close()})
 
         when: "Device sends ARP packet"
         def arpData = ArpData.buildRandom()
@@ -425,9 +416,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flowHelperV2.addFlow(flow)
 
         and: "A connected device"
-        def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.destination.switchId),
+        def device = switchHelper.addConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.destination.switchId),
                 [flow.destination.vlanId])
-        cleanupManager.addAction(OTHER, {device.close()})
 
         when: "Two completely different lldp packets are sent"
         def lldpData1 = LldpData.buildRandom()
@@ -469,9 +459,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         flowHelperV2.addFlow(flow)
 
         and: "A connected device"
-        def device = new ConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.destination.switchId),
+        def device = switchHelper.addConnectedDevice(traffExamProvider.get(), topology.getTraffGen(flow.destination.switchId),
                 [flow.destination.vlanId])
-        cleanupManager.addAction(OTHER, {device.close()})
 
         when: "Two completely different ARP packets are sent"
         def arpData1 = ArpData.buildRandom()
@@ -519,8 +508,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
         def deviceVlan = 666
-        def device = new ConnectedDevice(traffExamProvider.get(), tg, [deviceVlan])
-        cleanupManager.addAction(OTHER, {device.close()})
+        def device = switchHelper.addConnectedDevice(traffExamProvider.get(), tg, [deviceVlan])
         device.sendLldp(lldpData)
         device.sendArp(arpData)
 
@@ -532,7 +520,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         when: "Flow is created on a target switch with devices feature 'on'"
         def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
-        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         def flow = flowHelperV2.randomFlow(sw, dst).tap {
             it.source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
             it.source.vlanId = deviceVlan
@@ -586,7 +573,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Flow is created on a target switch with devices feature 'off'"
         def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
-        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         def flow = flowHelperV2.randomFlow(sw, dst).tap {
             it.source.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
         }
@@ -595,7 +581,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         when: "Devices send lldp and arp packets into a flow port"
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
-        new ConnectedDevice(traffExamProvider.get(), tg, [flow.source.vlanId]).withCloseable {
+        switchHelper.addConnectedDevice(traffExamProvider.get(), tg, [flow.source.vlanId]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
         }
@@ -639,8 +625,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
         def vlan = 123
-        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
-        new ConnectedDevice(traffExamProvider.get(), tg, [vlan]).withCloseable {
+        switchHelper.addConnectedDevice(traffExamProvider.get(), tg, [vlan]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
         }
@@ -669,7 +654,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         })
 
         and: "A single-sw flow with devices feature 'on'"
-        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         def flow = flowHelperV2.randomFlow(sw, sw).tap {
             it.source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
         }
@@ -687,7 +671,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         when: "Devices send lldp and arp packets into a flow port with flow vlan"
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
-        new ConnectedDevice(traffExamProvider.get(), tg, [flow.source.vlanId]).withCloseable {
+        switchHelper.addConnectedDevice(traffExamProvider.get(), tg, [flow.source.vlanId]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
         }
@@ -723,7 +707,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def lldpData2 = LldpData.buildRandom()
         def arpData2 = ArpData.buildRandom()
         def vlan = flow.source.vlanId - 1
-        new ConnectedDevice(traffExamProvider.get(), tg, [vlan]).withCloseable {
+        switchHelper.addConnectedDevice(traffExamProvider.get(), tg, [vlan]).withCloseable {
             it.sendLldp(lldpData2)
             it.sendArp(arpData2)
         }
@@ -766,7 +750,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def lldpData3 = LldpData.buildRandom()
         def arpData3 = ArpData.buildRandom()
         def vlans = [vlan - 1, vlan - 2]
-        new ConnectedDevice(traffExamProvider.get(), tg, vlans).withCloseable {
+        switchHelper.addConnectedDevice(traffExamProvider.get(), tg, vlans).withCloseable {
             it.sendLldp(lldpData3)
             it.sendArp(arpData3)
         }
@@ -832,7 +816,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def tgService = traffExamProvider.get()
         [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
             endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getTraffGen(endpoint.switchId),
+                switchHelper.addConnectedDevice(tgService, topology.getTraffGen(endpoint.switchId),
                         [endpoint.vlanId ?: nonDefaultVlan]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
@@ -900,7 +884,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "A QinQ flow with enabled connected devices"
         def tgService = traffExamProvider.get()
-        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(swP.src.dpId)})
         def flow = flowHelperV2.randomFlow(swP)
         flow.source.vlanId = vlanId
         flow.source.innerVlanId = innerVlanId
@@ -926,7 +909,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def dstArpData = ArpData.buildRandom()
         [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
             endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId),
+                switchHelper.addConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId),
                         [endpoint.vlanId, endpoint.innerVlanId]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
@@ -998,7 +981,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def dstArpData = ArpData.buildRandom()
         [[flow.source, srcLldpData, srcArpData], [flow.destination, dstLldpData, dstArpData]].each {
             endpoint, lldpData, arpData ->
-                new ConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId), [outerVlan]).withCloseable {
+                switchHelper.addConnectedDevice(tgService, topology.getActiveTraffGen(endpoint.switchId), [outerVlan]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
                 }
@@ -1026,8 +1009,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def sw = topology.activeTraffGens*.switchConnected.first()
         assumeTrue(sw.asBoolean(), "Wasn't able to find switch connected to traffGen")
-
-        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         def flow = flowHelperV2.singleSwitchFlow(sw)
         flow.source.detectConnectedDevices.lldp = true
         flow.source.detectConnectedDevices.arp = true
@@ -1039,7 +1020,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         when: "Device connects to src endpoint and send lldp and arp packets"
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
-        new ConnectedDevice(traffExamProvider.get(), topology.getActiveTraffGen(sw.dpId),
+        switchHelper.addConnectedDevice(traffExamProvider.get(), topology.getActiveTraffGen(sw.dpId),
                 [flow.source.vlanId, flow.source.innerVlanId]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
@@ -1085,8 +1066,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         assumeTrue(topology.activeTraffGens.size() > 0, "Require at least 1 switch with connected traffgen")
         def sw = topology.activeTraffGens*.switchConnected.first()
         assumeTrue(sw.asBoolean(), "Wasn't able to find switch connected to traffGen")
-
-        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         def flow1 = flowHelperV2.singleSwitchFlow(sw, true)
         flow1.source.detectConnectedDevices.lldp = true
         flow1.source.detectConnectedDevices.arp = true
@@ -1106,7 +1085,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         when: "Device connects to src endpoint and send lldp and arp packets for flow1 only"
         def lldpData = LldpData.buildRandom()
         def arpData = ArpData.buildRandom()
-        new ConnectedDevice(traffExamProvider.get(), topology.getActiveTraffGen(sw.dpId),
+        switchHelper.addConnectedDevice(traffExamProvider.get(), topology.getActiveTraffGen(sw.dpId),
                 [flow1.source.vlanId, flow1.source.innerVlanId]).withCloseable {
             it.sendLldp(lldpData)
             it.sendArp(arpData)
@@ -1165,7 +1144,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         })
 
         and: "Flow is created on a target switch with devices feature 'off'"
-        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         def dst = topology.activeSwitches.find { it.dpId != sw.dpId }
         def flow = flowHelperV2.randomFlow(sw, dst)
         flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(false, false)
@@ -1223,7 +1201,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def dstArpData = ArpData.buildRandom()
         [[flow.source, srcLldpData, srcArpData, tg], [flow.destination, dstLldpData, dstArpData, dstTg]].each {
             endpoint, lldpData, arpData, traffGen ->
-                new ConnectedDevice(tgService, traffGen, [outerVlan]).withCloseable {
+                switchHelper.addConnectedDevice(tgService, traffGen, [outerVlan]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
                 }
@@ -1237,10 +1215,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
                 !(it.ports.arp.empty)
             }
         }
-
-        cleanup: "Delete the flow and restore initial switch properties"
-        initialPropsSource && restoreSwitchProperties(sw.dpId, initialPropsSource)
-        database.removeConnectedDevices(sw.dpId)
     }
 
     def "System stops receiving statistics if config is changed to 'off'"() {
@@ -1256,7 +1230,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         })
 
         and: "Flow is created on a target switch with devices feature 'off'"
-        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(sw.dpId)})
         def dstTg = topology.activeTraffGens.find{it != tg && it.getSwitchConnected().getDpId() != sw.getDpId()}
         def dst = dstTg.getSwitchConnected()
         def flow = flowHelperV2.randomFlow(sw, dst)
@@ -1278,7 +1251,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         def dstArpData = ArpData.buildRandom()
         [[flow.source, srcLldpData, srcArpData, tg], [flow.destination, dstLldpData, dstArpData, dstTg]].each {
             endpoint, lldpData, arpData, traffGen ->
-                new ConnectedDevice(tgService, traffGen, [outerVlan]).withCloseable {
+                switchHelper.addConnectedDevice(tgService, traffGen, [outerVlan]).withCloseable {
                     it.sendLldp(lldpData)
                     it.sendArp(arpData)
                 }
@@ -1311,8 +1284,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
             flow = flowHelperV2.randomFlow(switchPair)
             flow.allocateProtectedPath = protectedFlow
         }
-        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(flow.source.switchId)})
-        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(flow.destination.switchId)})
         flow.source.detectConnectedDevices = new DetectConnectedDevicesV2(srcEnabled, srcEnabled)
         flow.destination.detectConnectedDevices = new DetectConnectedDevicesV2(dstEnabled, dstEnabled)
         return flow
@@ -1329,11 +1300,6 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     private FlowRequestV2 getFlowWithConnectedDevices(ConnectedDeviceTestData testData) {
         getFlowWithConnectedDevices(testData.protectedFlow, testData.oneSwitch, testData.srcEnabled,
                 testData.dstEnabled, testData.switchPair)
-    }
-
-    private void restoreSwitchProperties(SwitchId switchId, SwitchPropertiesDto initialProperties) {
-        Switch sw = topology.switches.find { it.dpId == switchId }
-        switchHelper.updateSwitchProperties(sw, initialProperties)
     }
 
     /**

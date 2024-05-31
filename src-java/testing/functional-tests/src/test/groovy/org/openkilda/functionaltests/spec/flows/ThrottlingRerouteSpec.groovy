@@ -169,14 +169,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
             }
             assert flowPathsClone.empty
         }
-
-        cleanup:
-        stop = true
-        starter.join()
-        rerouteTriggers.each { it.join() } //each thread revives ISL after itself
-        Wrappers.wait(WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)

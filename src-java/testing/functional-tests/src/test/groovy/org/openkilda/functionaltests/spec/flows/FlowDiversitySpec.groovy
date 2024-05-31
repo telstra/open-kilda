@@ -3,7 +3,6 @@ package org.openkilda.functionaltests.spec.flows
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
@@ -20,7 +19,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_ACTION
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/pce-diverse-flows")
 @Narrative("""
@@ -44,9 +42,6 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
     @Value('${diversity.switch.cost}')
     int diversitySwitchCost
-
-    @Autowired @Shared
-    CleanupManager cleanupManager
 
     @Tags(SMOKE)
     def "Able to create diverse flows"() {
@@ -247,9 +242,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
             int difference = flow1PathCost - altPathCost
             def firstAltPathIsl = pathHelper.getInvolvedIsls(altPath)[0]
             int firstAltPathIslCost = database.getIslCost(firstAltPathIsl)
-            cleanupManager.addAction(DELETE_ISLS_PROPERTIES, {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
-            northbound.updateLinkProps([islUtils.toLinkProps(firstAltPathIsl,
-                    ["cost": (firstAltPathIslCost + Math.abs(difference) + 1).toString()])])
+            pathHelper.updateIslsCost([firstAltPathIsl], (firstAltPathIslCost + Math.abs(difference) + 1))
         }
 
         when: "Create the second flow with diversity enabled"

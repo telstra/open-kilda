@@ -27,9 +27,6 @@ BFD toggle is tested in BfdSpec*/
 @Tags([SMOKE, LOW_PRIORITY])
 @Isolated
 class FeatureTogglesSpec extends HealthCheckSpecification {
-    @Autowired @Shared
-    CleanupManager cleanupManager
-
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"
         def flowRequest = flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1])
@@ -44,6 +41,7 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
         new FlowForbiddenToCreateExpectedError(~/Flow create feature is disabled/).matches(e)
+
         and: "Update of previously existing flow is still possible"
         flowHelper.updateFlow(flow.id, flowRequest.tap { it.description = it.description + "updated" })
 
@@ -84,6 +82,7 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
         new FlowForbiddenToDeleteExpectedError(~/Flow delete feature is disabled/).matches(e)
+
         and: "Creating new flow is still possible"
         def newFlow = flowHelper.addFlow(flowHelper.randomFlow(topology.activeSwitches[0], topology.activeSwitches[1]))
 
@@ -91,7 +90,7 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         flowHelper.updateFlow(flowRequest.id, flowRequest.tap { it.description = it.description + "updated" })
 
         when: "Set delete_flow toggle back to true"
-        def enableFlowDeletion = featureToggles.deleteFlowEnabled(true)
+        featureToggles.deleteFlowEnabled(true)
 
         then: "Able to delete flows"
         flowHelper.deleteFlow(flow.id)

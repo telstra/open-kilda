@@ -109,16 +109,11 @@ class ContentionSpec extends BaseSpecification {
 
         and: "Related switches have no rule discrepancies"
         Wrappers.wait(WAIT_OFFSET) {
-            switchHelper.validateAndCollectFoundDiscrepancies(relatedSwitches*.getDpId()).isEmpty()
+            assert switchHelper.validateAndCollectFoundDiscrepancies(relatedSwitches*.getDpId()).isEmpty()
         }
-        def switchesOk = true
 
         and: "Flow is healthy"
         northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        cleanup: "remove flow and reset costs"
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        !switchesOk && switchHelper.synchronizeAndCollectFixedDiscrepancies(relatedSwitches*.getDpId())
 
         where: removeExcess << [
                 false,

@@ -1,6 +1,8 @@
 package org.openkilda.functionaltests
 
 import org.openkilda.functionaltests.helpers.IslHelper
+import org.openkilda.functionaltests.helpers.model.ASwitchFlows
+import org.openkilda.functionaltests.helpers.model.ASwitchPorts
 import org.openkilda.functionaltests.helpers.model.KildaConfiguration
 import org.openkilda.functionaltests.helpers.model.FeatureToggles
 import org.openkilda.functionaltests.helpers.model.SwitchPairs
@@ -79,6 +81,10 @@ class BaseSpecification extends Specification {
     SwitchPairs switchPairs
     @Autowired @Shared
     IslHelper islHelper
+    @Autowired @Shared
+    ASwitchFlows aSwitchFlows
+    @Autowired @Shared
+    ASwitchPorts aSwitchPorts
 
     @Value('${spring.profiles.active}') @Shared
     String profile

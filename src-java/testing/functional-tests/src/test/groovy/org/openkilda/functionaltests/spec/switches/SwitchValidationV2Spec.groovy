@@ -837,8 +837,6 @@ misconfigured"
     def "Able to validate and sync a missing 'connected device' #data.descr rule"() {
         given: "A flow with enabled connected devices"
         def swPair = switchPairs.all().random()
-        Map<Switch, SwitchPropertiesDto> initialProps = [swPair.src, swPair.dst]
-                .collectEntries { [(it): switchHelper.getCachedSwProps(it.dpId)] }
         def flow = flowHelper.randomFlow(swPair)
         flow.destination.detectConnectedDevices = new DetectConnectedDevicesPayload(true, true)
         flowHelper.addFlow(flow)
@@ -875,17 +873,12 @@ misconfigured"
         }
 
         when: "Delete the flow"
-        def deleteFlow = flowHelper.deleteFlow(flow.id)
+        flowHelper.deleteFlow(flow.id)
 
         then: "Switch validation is empty"
         verifyAll(switchHelper.validate(flow.destination.datapath)) {
             it.verifyRuleSectionsAreEmpty()
             it.verifyMeterSectionsAreEmpty()
-        }
-
-        cleanup:
-        initialProps.each {
-            switchHelper.updateSwitchProperties(it.key, it.value)
         }
 
         where:

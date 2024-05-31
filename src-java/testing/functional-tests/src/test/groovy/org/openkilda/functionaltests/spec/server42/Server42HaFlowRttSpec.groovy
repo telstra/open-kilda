@@ -1,12 +1,9 @@
 package org.openkilda.functionaltests.spec.server42
 
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
-
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.VXLAN
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
@@ -43,8 +40,6 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     SwitchRulesFactory switchRulesFactory
-    @Autowired
-    CleanupManager cleanupManager
 
     @Tags(TOPOLOGY_DEPENDENT)
     def "Create an Ha-Flow (#description) with server42 Rtt feature and check datapoints in tsdb"() {

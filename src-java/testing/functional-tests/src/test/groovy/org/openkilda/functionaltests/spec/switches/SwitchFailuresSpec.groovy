@@ -53,8 +53,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         def untilIslShouldFail = { timeSwitchesBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
         and: "ISL between those switches looses connection"
-        lockKeeper.removeFlows([isl.aswitch])
-        def aSwRuleIsDeleted = true
+        aSwitchFlows.removeFlows([isl.aswitch])
 
         and: "Switches go back up"
         lockKeeper.reviveSwitch(isl.srcSwitch, srcBlockData)
@@ -79,12 +78,6 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
                         it.taskId =~ (/.+ : retry #1 ignore_bw true/)
                     }?.payload?.last()?.action == REROUTE_FAIL)
         }
-
-        cleanup:
-        aSwRuleIsDeleted && lockKeeper.addFlows([isl.aswitch])
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/3398")
@@ -94,7 +87,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(swPair))
 
         when: "Current path breaks and reroute starts"
-        lockKeeper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(3000))
+        switchHelper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(3000))
         def islToBreak = pathHelper.getInvolvedIsls(northbound.getFlowPath(flow.flowId)).first()
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
@@ -116,9 +109,6 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
         and: "Flow validation is OK"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-
-        cleanup:
-        lockKeeper.cleanupTrafficShaperRules(swPair.dst.regions)
     }
 
     def "System can handle situation when switch reconnects while flow is being created"() {

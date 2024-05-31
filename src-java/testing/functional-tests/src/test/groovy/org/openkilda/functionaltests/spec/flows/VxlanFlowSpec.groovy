@@ -59,6 +59,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     def "System allows to create/update encapsulation type for a flow\
 [#data.encapsulationCreate.toString() -> #data.encapsulationUpdate.toString(), #swPair.hwSwString()]"(Map data, SwitchPair swPair) {
         when: "Create a flow with #encapsulationCreate.toString() encapsulation type"
+        sleep(10000) //subsequent test fails due to traffexam. Was not able to track down the reason
         def flow = flowHelperV2.randomFlow(swPair)
         flow.encapsulationType = data.encapsulationCreate
         flowHelperV2.addFlow(flow)
@@ -183,9 +184,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                 }.every {it.hasTraffic()}, northbound.getSwitchRules(swPair.getSrc().getDpId())
             }
         }
-
-        cleanup: "Delete the flow"
-        sleep(10000) //subsequent test fails due to traffexam. Was not able to track down the reason
 
         where:
         [data, swPair] << ([

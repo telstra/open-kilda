@@ -137,13 +137,10 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
                         .vlanId(flowHelperV2.randomVlan())
                         .build())
                 .build()
-        northboundV2.createMirrorPoint(flowId, mirrorEndpoint)
+        switchHelper.addMirrorPoint(flowId, mirrorEndpoint)
 
         then: "Mirror sink endpoint port is not listed in the ports list"
         switchHelper.getFlowsV2(switchUnderTest, [freePort]).getFlowsByPort().isEmpty()
-
-        cleanup:
-        Wrappers.wait(RULES_INSTALLATION_TIME) {northboundV2.deleteMirrorPoint(flowId, mirrorEndpoint.getMirrorPointId())}
     }
 
     @Tags([LOW_PRIORITY])

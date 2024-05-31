@@ -120,9 +120,6 @@ class StormLcmSpec extends HealthCheckSpecification {
                 .collectMany { [it.source.vlanId, it.destination.vlanId] })[0]
         flowHelperV2.updateFlow(flowToUpdate.flowId, flowToUpdate.tap { it.source.vlanId = unusedVlan })
         northbound.validateFlow(flowToUpdate.flowId).each { direction -> assert direction.asExpected }
-
-        cleanup: "Cleanup: remove flows"
-        flows.each { flowHelperV2.deleteFlow(it.flowId) }
     }
 
     @Ignore
