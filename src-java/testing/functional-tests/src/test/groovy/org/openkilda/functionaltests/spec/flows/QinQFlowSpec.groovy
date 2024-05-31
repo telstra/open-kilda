@@ -23,7 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.Assertions.assertThat
@@ -288,7 +288,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
                  [10, 20, 0, 0]],
                 getUniqueSwitchPairs(switchPairs.singleSwitch().getSwitchPairs())
         ].combinations().collect { it.flatten() }
-        trafficDisclaimer = swPair.src.traffGens.size > 1 ? "" : " !WARN: No traffic check!"
+        trafficDisclaimer = swPair.src.traffGens.size() > 1 ? "" : " !WARN: No traffic check!"
     }
 
     def "System doesn't allow to create a QinQ flow with incorrect innerVlanIds\

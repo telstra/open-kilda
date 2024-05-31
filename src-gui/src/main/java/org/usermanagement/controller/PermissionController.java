@@ -18,6 +18,7 @@ package org.usermanagement.controller;
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -27,14 +28,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
 import org.usermanagement.model.Permission;
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.PermissionService;
 
 import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
 
 /**
  * The Class PermissionController.
@@ -55,7 +53,7 @@ public class PermissionController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.POST)
-    @Permissions(values = { IConstants.Permission.UM_PERMISSION_ADD })
+    @Permissions(values = {IConstants.Permission.UM_PERMISSION_ADD})
     public Permission createPermission(@RequestBody final Permission permission) {
         Permission permissionResponse = permissionService.createPermission(permission);
         return permissionResponse;
@@ -69,7 +67,7 @@ public class PermissionController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(method = RequestMethod.GET)
-    @Permissions(values = { IConstants.Permission.MENU_USER_MANAGEMENT })
+    @Permissions(values = {IConstants.Permission.MENU_USER_MANAGEMENT})
     public List<Permission> getPermissionList(final HttpServletRequest request) {
         UserInfo userInfo = (UserInfo) request.getSession().getAttribute(IConstants.SESSION_OBJECT);
         return permissionService.getAllPermission(userInfo.getUserId());
@@ -83,7 +81,7 @@ public class PermissionController {
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{permission_id}", method = RequestMethod.GET)
-    @Permissions(values = { IConstants.Permission.MENU_USER_MANAGEMENT })
+    @Permissions(values = {IConstants.Permission.MENU_USER_MANAGEMENT})
     public Permission getPermissionById(@PathVariable("permission_id") final Long permissionId) {
         return permissionService.getPermissionById(permissionId);
     }
@@ -95,7 +93,7 @@ public class PermissionController {
      */
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @RequestMapping(value = "/{permission_id}", method = RequestMethod.DELETE)
-    @Permissions(values = { IConstants.Permission.UM_PERMISSION_DELETE })
+    @Permissions(values = {IConstants.Permission.UM_PERMISSION_DELETE})
     public void deletePermissionById(@PathVariable("permission_id") final Long permissionId) {
         permissionService.deletePermissionById(permissionId);
     }
@@ -104,14 +102,14 @@ public class PermissionController {
      * Update permission.
      *
      * @param permissionId the permission id
-     * @param permission the permission
+     * @param permission   the permission
      * @return the permission
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{permission_id}", method = RequestMethod.PUT)
-    @Permissions(values = { IConstants.Permission.UM_PERMISSION_EDIT })
+    @Permissions(values = {IConstants.Permission.UM_PERMISSION_EDIT})
     public Permission updatePermission(@PathVariable("permission_id") final Long permissionId,
-            @RequestBody final Permission permission) {
+                                       @RequestBody final Permission permission) {
         return permissionService.updatePermission(permissionId, permission);
     }
 }

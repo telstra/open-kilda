@@ -26,6 +26,8 @@ import org.openkilda.server42.stats.messaging.Statistics.IslLatencyPacket;
 import org.openkilda.server42.stats.messaging.Statistics.LatencyPacketBucket;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,9 +37,6 @@ import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Socket;
 import zmq.ZError;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 
 @Service
 @Slf4j

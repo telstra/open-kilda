@@ -17,6 +17,7 @@ import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
+import static groovyx.gpars.GParsExecutorsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -125,9 +126,11 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         when: "Start creating a flow between switches and lose connection to src before rules are set"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.attemptToAddFlow(flow)
-        sleep(50)
-        def blockData = lockKeeper.knockoutSwitch(srcSwitch, RW)
+        def blockData = withPool {
+            [{flowHelperV2.attemptToAddFlow(flow)},
+             {sleep(50); lockKeeper.knockoutSwitch(srcSwitch, RW)}]
+                    .collectParallel{it()}
+        }.last()
         cleanupManager.addAction(REVIVE_SWITCH, {switchHelper.reviveSwitch(srcSwitch, blockData)})
 
         then: "Flow eventually goes DOWN"
@@ -155,6 +158,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         then: "Error is returned, explaining that this is impossible for DOWN flows"
         def e = thrown(HttpClientErrorException)
         new FlowNotValidatedExpectedError(~/Could not validate flow: Flow $flow.flowId is in DOWN state/).matches(e)
+
         when: "Switch returns back UP"
         switchHelper.reviveSwitch(srcSwitch, blockData)
         def swIsOnline = true

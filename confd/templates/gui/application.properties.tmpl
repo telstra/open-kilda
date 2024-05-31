@@ -4,6 +4,15 @@
 #Tomcat Configurations
 server.port={{ getv "/kilda_gui_port" }}
 server.contextPath=/openkilda
+server.servlet.contextPath=/openkilda
+server.servlet.register-default-servlet=true
+server.servlet.jsp.init-parameters.compilerSourceVM=1.8
+server.servlet.jsp.init-parameters.compilerTargetVM=1.8
+server.servlet.jsp.class-name=org.apache.jasper.servlet.JspServlet
+
+spring.mvc.view.prefix= /META-INF/jsp/
+spring.mvc.view.suffix= .jsp
+spring.mvc.log-resolved-exception=true
 
 #SSL Configurations
 server.ssl.enabled = true
@@ -69,9 +78,6 @@ spring.velocity.enabled = false
 
 log.duration=7
 error.code.prefix=100
-
-spring.mvc.view.prefix= /META-INF/jsp/
-spring.mvc.view.suffix= .jsp
 
 status.cron.time=43200000
 

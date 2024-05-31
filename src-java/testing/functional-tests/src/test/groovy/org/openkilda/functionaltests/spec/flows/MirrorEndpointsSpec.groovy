@@ -41,8 +41,8 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.See
 import spock.lang.Shared
 
-import javax.inject.Provider
 import java.util.regex.Pattern
+import jakarta.inject.Provider
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeFalse

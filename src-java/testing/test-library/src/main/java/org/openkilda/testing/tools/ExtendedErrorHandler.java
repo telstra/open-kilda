@@ -27,7 +27,7 @@ import java.io.IOException;
 
 public class ExtendedErrorHandler extends DefaultResponseErrorHandler {
 
-    private ObjectMapper mapper = new ObjectMapper()
+    private final ObjectMapper mapper = new ObjectMapper()
             .enable(SerializationFeature.INDENT_OUTPUT);
 
     /**
@@ -47,7 +47,7 @@ public class ExtendedErrorHandler extends DefaultResponseErrorHandler {
                     + prettyJson(s.getResponseBodyAsString()), s.getResponseHeaders(), s.getResponseBodyAsByteArray(),
                     this.getCharset(response));
         } catch (UnknownHttpStatusCodeException u) {
-            throw new UnknownHttpStatusCodeException(u.getRawStatusCode(), u.getStatusText() + "\n"
+            throw new UnknownHttpStatusCodeException(u.getStatusCode().value(), u.getStatusText() + "\n"
                     + prettyJson(u.getResponseBodyAsString()), u.getResponseHeaders(), u.getResponseBodyAsByteArray(),
                     this.getCharset(response));
         }

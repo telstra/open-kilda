@@ -18,10 +18,9 @@ package org.openkilda.test;
 import org.openkilda.util.IConstantsTest;
 import org.openkilda.utility.IoUtil;
 
-import org.apache.log4j.Logger;
-
-import org.junit.Assert;
-import org.junit.Test;
+import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -39,16 +38,15 @@ import java.util.List;
  *
  * @author Gaurav Chugh
  */
+@Slf4j
 public class BaseTest {
-
-    private static final Logger LOGGER = Logger.getLogger(BaseTest.class);
 
     /**
      * Execute kilda files.
      */
     @Test
     public void executeKildaFiles() {
-        LOGGER.info("Inside method executeKildaFiles");
+        log.info("Inside method executeKildaFiles");
         File f = new File(IConstantsTest.FILE_PATH);
         List<String> urlList = new ArrayList<String>();
         String readLine = "";
@@ -58,7 +56,7 @@ public class BaseTest {
                 urlList.add(readLine);
             }
         } catch (Exception e) {
-            LOGGER.error("exception occurred Inside method executeKildaFiles", e);
+            log.error("exception occurred Inside method executeKildaFiles", e);
         }
 
         for (String url : urlList) {
@@ -68,40 +66,33 @@ public class BaseTest {
 
                 if (url.contains(".css")) {
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.CSS_PATH + fileName);
-                    Assert.assertTrue(true);
                 }
                 if (url.contains(".js")) {
                     if (fileName.contains(IConstantsTest.JQUERY_FILE)) {
                         fileName = IConstantsTest.JQUERY_MIN_FILE;
                     }
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.JAVASCRIPT_PATH + fileName);
-                    Assert.assertTrue(true);
                 }
                 if (url.contains("ttf") || url.contains("woff2") || url.contains("woff")) {
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.FONTS_PATH + fileName);
-                    Assert.assertTrue(true);
                 }
                 if (url.contains("Roboto")) {
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.CSS_PATH + "roboto.css");
-                    Assert.assertTrue(true);
                 }
-
             } catch (Exception e) {
-                LOGGER.error("exception occurred Inside method executeKildaFiles.", e);
-                Assert.assertTrue(false);
+                log.error("exception occurred Inside method executeKildaFiles.", e);
+                Assertions.fail();
             }
         }
-        LOGGER.info("executeKildaFiles has been successfully executed");
+        log.info("executeKildaFiles has been successfully executed");
 
     }
 
     /**
      * Download files.
      *
-     * @param urlStr
-     *            the url str
-     * @param file
-     *            the file
+     * @param urlStr the url str
+     * @param file   the file
      */
     private void downloadFiles(final String urlStr, final String file) {
         if (file.contains(IConstantsTest.FONTS_PATH)) {
@@ -128,7 +119,7 @@ public class BaseTest {
             return;
         }
 
-        LOGGER.info("Downloading file " + file);
+        log.info("Downloading file " + file);
         URL url = null;
         FileOutputStream fileOutputStream = null;
         BufferedInputStream bufferedInputStream = null;
@@ -145,13 +136,13 @@ public class BaseTest {
             }
 
         } catch (MalformedURLException malformedUrlException) {
-            LOGGER.error("Error occurred during accessing file url" + urlStr + " : exception : "
+            log.error("Error occurred during accessing file url" + urlStr + " : exception : "
                     + malformedUrlException.getMessage());
         } catch (IOException ioException) {
-            LOGGER.error(
+            log.error(
                     "Error occurred during downloading file " + file + " : exception : " + ioException.getMessage());
         } catch (Exception exception) {
-            LOGGER.error(
+            log.error(
                     "Error occurred during downloading file " + file + " : exception : " + exception.getMessage());
         } finally {
             IoUtil.close(fileOutputStream);

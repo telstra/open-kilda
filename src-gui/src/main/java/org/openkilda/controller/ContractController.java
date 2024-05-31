@@ -20,8 +20,7 @@ import org.openkilda.log.ActivityLogger;
 import org.openkilda.log.constants.ActivityType;
 import org.openkilda.service.ContractService;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -34,11 +33,10 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import java.nio.file.AccessDeniedException;
 import java.util.List;
 
+@Slf4j
 @Controller
 @RequestMapping(value = "/api/contracts")
 public class ContractController {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(ContractController.class);
 
     @Autowired
     private ContractService contractService;
@@ -56,7 +54,7 @@ public class ContractController {
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody List<Contract> getAllContracts(
             @PathVariable(name = "linkId", required = false) String linkId) throws AccessDeniedException {
-        LOGGER.info("Get all contracts. Flow id: '" + linkId + "'");
+        log.info("Get all contracts. Flow id: '" + linkId + "'");
         return contractService.getContracts(linkId);
     }
 
@@ -68,7 +66,7 @@ public class ContractController {
     @ResponseBody
     public boolean deleteContract(@PathVariable(name = "flowId", required = false) String flowId,
             @PathVariable(name = "contractid", required = false) String contractid) {
-        LOGGER.info("Delete contract. Flow id: '" + flowId + "' Contractid id: '" + contractid + "'");
+        log.info("Delete contract. Flow id: '" + flowId + "' Contractid id: '" + contractid + "'");
         activityLogger.log(ActivityType.DELETE_CONTRACT, "flowid:" + flowId + ",\ncontractid:" + contractid);
         return contractService.deleteContract(flowId, contractid);
     }

@@ -21,22 +21,23 @@ import org.openkilda.persistence.hibernate.converters.SwitchIdConverter;
 import org.openkilda.persistence.hibernate.entities.EntityBase;
 import org.openkilda.persistence.hibernate.entities.JsonPayloadBase;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Delegate;
-import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
-import javax.persistence.Column;
-import javax.persistence.Convert;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
 
 @Getter
 @Setter
@@ -44,12 +45,8 @@ import javax.persistence.Table;
 @Table(name = "port_event")
 public class HibernatePortEvent extends EntityBase implements PortEventData {
     @Id
-    @GeneratedValue(generator = "UUID")
-    @GenericGenerator(
-            name = "UUID",
-            strategy = "org.hibernate.id.UUIDGenerator"
-    )
-    @Type(type = "uuid-char")
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "id", columnDefinition = "string(36)")
     private UUID recordId;
 
@@ -69,7 +66,7 @@ public class HibernatePortEvent extends EntityBase implements PortEventData {
     protected Instant eventTime;
 
     @Delegate
-    @Type(type = "json")
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "unstructured", columnDefinition = "json")
     private PortEventUnstructured unstructured;
 

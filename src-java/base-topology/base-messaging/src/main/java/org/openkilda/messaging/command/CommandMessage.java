@@ -30,6 +30,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import lombok.Data;
 
 /**
  * Class represents command message.
@@ -41,7 +42,15 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
         PAYLOAD,
         TIMESTAMP,
         CORRELATION_ID})
+@Data
 public class CommandMessage extends Message {
+
+    /**
+     * Required by kryo serializer.
+     */
+    public CommandMessage() {
+    }
+
     /**
      * Serialization version number constant.
      */

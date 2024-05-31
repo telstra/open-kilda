@@ -22,6 +22,6 @@ import lombok.Value;
 
 @Value
 @EqualsAndHashCode(callSuper = false)
-public class AliveRequest  extends CommandData {
+public class AliveRequest extends CommandData {
 
 }

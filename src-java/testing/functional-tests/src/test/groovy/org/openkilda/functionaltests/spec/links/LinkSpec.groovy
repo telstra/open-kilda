@@ -304,7 +304,8 @@ class LinkSpec extends HealthCheckSpecification {
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage.contains("parameter '$item' is not present")
+        exc.responseBodyAsString.to(MessageError)
+                .errorMessage.contains("parameter '$item' for method parameter type")
 
         where:
         srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item
@@ -452,7 +453,9 @@ class LinkSpec extends HealthCheckSpecification {
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage.contains("parameter '$item' is not present")
+        //Required request parameter '$item' for method parameter type
+        exc.responseBodyAsString.to(MessageError).errorMessage
+                .contains("Required request parameter '$item' for method parameter type")
 
         where:
         srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item
@@ -647,7 +650,8 @@ class LinkSpec extends HealthCheckSpecification {
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
         exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage.contains("parameter '$item' is not present")
+        exc.responseBodyAsString.to(MessageError).errorMessage
+                .contains("Required request parameter '$item' for method parameter type")
 
         where:
         srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item

@@ -20,8 +20,7 @@ import org.openkilda.log.constants.ActivityType;
 import org.openkilda.model.YFlowRerouteResult;
 import org.openkilda.service.YFlowService;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,11 +30,10 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
 @RequestMapping(value = "/api/y-flows")
 public class YFlowController extends BaseController {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(YFlowController.class);
 
     @Autowired
     private YFlowService yFlowService;
@@ -54,7 +52,7 @@ public class YFlowController extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody YFlowRerouteResult rerouteFlow(@PathVariable final String yFlowId) {
         activityLogger.log(ActivityType.FLOW_REROUTE, yFlowId);
-        LOGGER.info("Reroute y-flow. Y-Flow id: '" + yFlowId + "'");
+        log.info("Reroute y-flow. Y-Flow id: '" + yFlowId + "'");
         return yFlowService.rerouteFlow(yFlowId);
     }
 }

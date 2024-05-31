@@ -74,6 +74,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition;
 import org.openkilda.testing.service.northbound.model.HaFlowHistoryEntry;
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult;
 
+import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -95,7 +96,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.annotation.Nullable;
 
 @Service
 @Slf4j
@@ -111,20 +111,20 @@ public class NorthboundServiceV2Impl implements NorthboundServiceV2 {
     @Override
     public FlowResponseV2 getFlow(String flowId) {
         return restTemplate.exchange("/api/v2/flows/{flow_id}", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), FlowResponseV2.class, flowId).getBody();
+                new HttpEntity<>(buildHeadersWithCorrelationId()), FlowResponseV2.class, flowId).getBody();
     }
 
     @Override
     public List<FlowResponseV2> getAllFlows() {
         FlowResponseV2[] flows = restTemplate.exchange("/api/v2/flows", HttpMethod.GET,
-                new HttpEntity(buildHeadersWithCorrelationId()), FlowResponseV2[].class).getBody();
+                new HttpEntity<>(buildHeadersWithCorrelationId()), FlowResponseV2[].class).getBody();
         return Arrays.asList(flows);
     }
 
     @Override
     public FlowIdStatusPayload getFlowStatus(String flowId) {
         try {
-            return restTemplate.exchange("/api/v2/flows/status/{flow_id}", HttpMethod.GET, new HttpEntity(
+            return restTemplate.exchange("/api/v2/flows/status/{flow_id}", HttpMethod.GET, new HttpEntity<>(
                     buildHeadersWithCorrelationId()), FlowIdStatusPayload.class, flowId).getBody();
         } catch (HttpClientErrorException ex) {
             if (ex.getStatusCode() != HttpStatus.NOT_FOUND) {

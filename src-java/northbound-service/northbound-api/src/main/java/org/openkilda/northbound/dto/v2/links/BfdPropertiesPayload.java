@@ -17,7 +17,7 @@ package org.openkilda.northbound.dto.v2.links;
 
 import org.openkilda.northbound.dto.NorthboundPayload;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Data;

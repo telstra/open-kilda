@@ -14,8 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
 
-import javax.inject.Provider
-
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
@@ -27,6 +25,24 @@ import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.HaFlowStatsMetric.HA_FLOW_RAW_BITS
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.model.HaFlowExtended
+import org.openkilda.functionaltests.model.stats.HaFlowStats
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.history.DumpType
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.service.northbound.model.HaFlowActionType
+import org.openkilda.testing.service.traffexam.TraffExamService
+
+import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Narrative
+import spock.lang.Shared
+
+import jakarta.inject.Provider
 
 @Slf4j
 @Narrative("Verify reroute operations on HA-flows.")

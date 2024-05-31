@@ -1,5 +1,18 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_ACTIVATED
+import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_DEACTIVATED
+import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_PERIODIC_STATS
+import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.PORT_DOWN
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -10,26 +23,13 @@ import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
+
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Isolated
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
-
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_ACTIVATED
-import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_DEACTIVATED
-import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_PERIODIC_STATS
-import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.PORT_DOWN
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
-import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 @See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/port-FSM.png",
         "https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/AF-FSM.png"])
@@ -250,7 +250,7 @@ class PortHistoryIsolatedSpec extends HealthCheckSpecification {
 
         then: "Antiflap statistic is available in port history"
         Wrappers.wait(WAIT_OFFSET + antiflapCooldown) {
-            new SoftAssertions().with {
+            new SoftAssertionsWrapper().with {
                 def history = northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort,
                         timestampBefore, System.currentTimeMillis())
                 checkSucceeds { assert history*.event

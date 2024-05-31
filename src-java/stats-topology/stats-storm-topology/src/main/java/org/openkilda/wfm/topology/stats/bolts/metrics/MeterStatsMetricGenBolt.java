@@ -25,10 +25,9 @@ import org.openkilda.wfm.topology.stats.model.MeterStatsAndDescriptor;
 import org.openkilda.wfm.topology.stats.model.SwitchMeterStats;
 import org.openkilda.wfm.topology.stats.service.MeterStatsHandler;
 
+import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.tuple.Tuple;
-
-import javax.annotation.Nullable;
 
 @Slf4j
 public class MeterStatsMetricGenBolt extends MetricGenBolt {

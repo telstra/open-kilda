@@ -16,14 +16,18 @@
 
 package org.openkilda.server42.control.messaging.flowrtt;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 
 @Value
-@EqualsAndHashCode(callSuper = true)
 @Builder
+@EqualsAndHashCode(callSuper = true)
+@JsonDeserialize(builder = ClearFlows.ClearFlowsBuilder.class)
 public class ClearFlows extends Message {
+    @JsonProperty("headers")
     Headers headers;
 }

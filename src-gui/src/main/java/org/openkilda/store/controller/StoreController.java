@@ -27,8 +27,7 @@ import org.openkilda.store.model.SwitchStoreConfigDto;
 import org.openkilda.store.model.UrlDto;
 import org.openkilda.store.service.StoreService;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -44,12 +43,10 @@ import java.util.Map.Entry;
 /**
  * The Class StoreController.
  */
-
+@Slf4j
 @Controller
 @RequestMapping(value = "/api/store")
 public class StoreController {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(StoreController.class);
 
     @Autowired
     private ActivityLogger activityLogger;
@@ -82,7 +79,7 @@ public class StoreController {
     @RequestMapping(value = "/link-store-config", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody LinkStoreConfigDto getLinkStoreConfig() {
-        LOGGER.info("Get link store config");
+        log.info("Get link store config");
         return storeService.getLinkStoreConfig();
     }
 
@@ -97,7 +94,7 @@ public class StoreController {
     @Permissions(values = { IConstants.Permission.STORE_SETTING })
     public @ResponseBody LinkStoreConfigDto saveOrUpdateLinkStoreConfig(
             @RequestBody LinkStoreConfigDto linkStoreConfigDto) {
-        LOGGER.info("Save or update link store configuration. linkStoreConfigDto: " + linkStoreConfigDto);
+        log.info("Save or update link store configuration. linkStoreConfigDto: " + linkStoreConfigDto);
         StringBuilder key = new StringBuilder();
         for (Entry<String, UrlDto> urlEntrySet : linkStoreConfigDto.getUrls().entrySet()) {
             key = (key.length() > 0) ? key.append("\n," + urlEntrySet.getKey()) : key.append(urlEntrySet.getKey());
@@ -117,7 +114,7 @@ public class StoreController {
     @Permissions(values = { IConstants.Permission.STORE_SETTING })
     @ResponseBody
     public boolean deleteLinkStoreConfig() {
-        LOGGER.info("Delete link store configuration");
+        log.info("Delete link store configuration");
         activityLogger.log(ActivityType.DELETE_LINK_STORE_CONFIG);
         return storeService.deleteLinkStoreConfig();
     }
@@ -133,7 +130,7 @@ public class StoreController {
     @Permissions(values = { IConstants.Permission.STORE_SETTING })
     public @ResponseBody SwitchStoreConfigDto saveOrUpdateSwitchStoreConfig(
             @RequestBody SwitchStoreConfigDto switchStoreConfigDto) {
-        LOGGER.info("Save or update switch store configuration. switchStoreConfigDto: " + switchStoreConfigDto);
+        log.info("Save or update switch store configuration. switchStoreConfigDto: " + switchStoreConfigDto);
         StringBuilder key = new StringBuilder();
         for (Entry<String, UrlDto> urlEntrySet : switchStoreConfigDto.getUrls().entrySet()) {
             key = (key.length() > 0) ? key.append("\n," + urlEntrySet.getKey()) : key.append(urlEntrySet.getKey());
@@ -153,7 +150,7 @@ public class StoreController {
     @Permissions(values = { IConstants.Permission.STORE_SETTING })
     @ResponseBody
     public boolean deleteSwitchStoreConfig() {
-        LOGGER.info("Delete link store configuration.");
+        log.info("Delete link store configuration.");
         activityLogger.log(ActivityType.DELETE_SWITCH_STORE_CONFIG);
         return storeService.deleteSwitchStoreConfig();
     }
@@ -166,7 +163,7 @@ public class StoreController {
     @RequestMapping(value = "/switch-store-config", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody SwitchStoreConfigDto getSwitchStoreConfig() {
-        LOGGER.info("Get switch store config");
+        log.info("Get switch store config");
         return storeService.getSwitchStoreConfig();
     }
 }

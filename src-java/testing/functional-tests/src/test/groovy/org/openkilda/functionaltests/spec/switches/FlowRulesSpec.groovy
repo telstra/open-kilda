@@ -23,7 +23,7 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
@@ -42,7 +42,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static spock.util.matcher.HamcrestSupport.expect
 
-@Narrative("""Verify how Kilda behaves with switch rules (either flow rules or default rules) under different 
+@Narrative("""Verify how Kilda behaves with switch rules (either flow rules or default rules) under different
 circumstances: e.g. persisting rules on newly connected switch, installing default rules on new switch etc.""")
 
 class FlowRulesSpec extends HealthCheckSpecification {

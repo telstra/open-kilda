@@ -24,8 +24,7 @@ import org.openkilda.store.model.SwitchStoreConfigDto;
 import org.openkilda.store.model.UrlDto;
 import org.openkilda.utility.CollectionUtil;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -40,12 +39,10 @@ import java.util.Map.Entry;
 /**
  * The Class SwitchStoreConfigValidator.
  */
-
+@Slf4j
 @Component
 public class SwitchStoreConfigValidator {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SwitchStoreConfigValidator.class);
-    
     @Autowired
     private MessageUtils messageUtil;
 
@@ -62,22 +59,22 @@ public class SwitchStoreConfigValidator {
         List<OauthConfigEntity> oauthConfigEntityList = oauthConfigRepository
                 .findByAuthType_authTypeId(AuthType.OAUTH_TWO.getAuthTypeEntity().getAuthTypeId());
         if (CollectionUtil.isEmpty(oauthConfigEntityList)) {
-            LOGGER.warn(messageUtil.getStoreMustConfigured());
+            log.warn(messageUtil.getStoreMustConfigured());
             throw new RequestValidationException(messageUtil.getStoreMustConfigured());
         }
         List<String> urls = StoreUrl.getUrlName(StoreType.SWITCH_STORE.getCode());
 
         for (Entry<String, UrlDto> urlEntrySet : switchStoreConfigDto.getUrls().entrySet()) {
             if (!urls.contains(urlEntrySet.getKey())) {
-                LOGGER.warn("Validation fail for switch store configuration. Error: "
+                log.warn("Validation fail for switch store configuration. Error: "
                         + messageUtil.getAttributeNotvalid(urlEntrySet.getKey()));
                 throw new RequestValidationException(messageUtil.getAttributeNotvalid(urlEntrySet.getKey()));
             } else if (ValidatorUtil.isNull(urlEntrySet.getValue().getUrl())) {
-                LOGGER.warn("Validation fail for switch store configuration. Error: "
+                log.warn("Validation fail for switch store configuration. Error: "
                         + messageUtil.getAttributeNotNull("url of " + urlEntrySet.getKey()));
                 throw new RequestValidationException(messageUtil.getAttributeNotNull(urlEntrySet.getKey()));
             } else if (ValidatorUtil.isNull(urlEntrySet.getValue().getMethodType())) {
-                LOGGER.warn("Validation fail for switch store configuration. Error: "
+                log.warn("Validation fail for switch store configuration. Error: "
                         + messageUtil.getAttributeNotNull("method-type of " + urlEntrySet.getKey()));
                 throw new RequestValidationException(
                         messageUtil.getAttributeNotNull("method-type of " + urlEntrySet.getKey()));

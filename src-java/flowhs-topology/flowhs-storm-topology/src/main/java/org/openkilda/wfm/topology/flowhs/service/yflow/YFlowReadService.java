@@ -43,9 +43,9 @@ import org.openkilda.wfm.share.mappers.FlowPathMapper;
 import org.openkilda.wfm.share.service.IntersectionComputer;
 import org.openkilda.wfm.topology.flowhs.mapper.YFlowMapper;
 
+import dev.failsafe.RetryPolicy;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.RetryPolicy;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -80,13 +80,14 @@ public class YFlowReadService {
     }
 
     private <T> RetryPolicy<T> getReadOperationRetryPolicy() {
-        return new RetryPolicy<T>()
+        return RetryPolicy.<T>builder()
                 .handle(PersistenceException.class)
                 .withDelay(readOperationRetryDelay)
                 .withMaxRetries(readOperationRetriesLimit)
                 .onRetry(e -> log.debug("Failure in transaction. Retrying #{}...", e.getAttemptCount(),
-                        e.getLastFailure()))
-                .onRetriesExceeded(e -> log.error("Failure in transaction. No more retries", e.getFailure()));
+                        e.getLastException()))
+                .onRetriesExceeded(e -> log.error("Failure in transaction. No more retries", e.getException()))
+                .build();
     }
 
     /**

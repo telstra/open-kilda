@@ -18,7 +18,7 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY

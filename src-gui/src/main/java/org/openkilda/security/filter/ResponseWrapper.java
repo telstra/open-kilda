@@ -15,22 +15,21 @@
 
 package org.openkilda.security.filter;
 
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponseWrapper;
+
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.UUID;
 
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpServletResponseWrapper;
-
 /**
  * ResponseWrapper class is a wrapper of {@link HttpServletResponseWrapper} class. This will update
  * the response output stream to custom output stream, whose responsibility is to maintain a copy of
  * output stream in parallel to read the data any time without affecting the actual response data.
- * 
- * @author Gaurav Chugh
  *
+ * @author Gaurav Chugh
  */
 public class ResponseWrapper extends HttpServletResponseWrapper {
 
@@ -46,8 +45,8 @@ public class ResponseWrapper extends HttpServletResponseWrapper {
 
     /*
      * (non-Javadoc)
-     * 
-     * @see javax.servlet.ServletResponseWrapper#getOutputStream()
+     *
+     * @see jakarta.servlet.ServletResponseWrapper#getOutputStream()
      */
     @Override
     public ServletOutputStream getOutputStream() throws IOException {
@@ -64,8 +63,8 @@ public class ResponseWrapper extends HttpServletResponseWrapper {
 
     /*
      * (non-Javadoc)
-     * 
-     * @see javax.servlet.ServletResponseWrapper#getWriter()
+     *
+     * @see jakarta.servlet.ServletResponseWrapper#getWriter()
      */
     @Override
     public PrintWriter getWriter() throws IOException {
@@ -85,8 +84,8 @@ public class ResponseWrapper extends HttpServletResponseWrapper {
 
     /*
      * (non-Javadoc)
-     * 
-     * @see javax.servlet.ServletResponseWrapper#flushBuffer()
+     *
+     * @see jakarta.servlet.ServletResponseWrapper#flushBuffer()
      */
     @Override
     public void flushBuffer() throws IOException {
@@ -99,7 +98,7 @@ public class ResponseWrapper extends HttpServletResponseWrapper {
 
     /**
      * Returns the data available in the stream.
-     * 
+     *
      * @return byte[] having data available inside the stream.
      */
     public byte[] getData() {
@@ -111,7 +110,7 @@ public class ResponseWrapper extends HttpServletResponseWrapper {
 
     /**
      * Return the id of the request.
-     * 
+     *
      * @return id.
      */
     public UUID getId() {

@@ -24,12 +24,14 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
  * Class represents high level view of every message used by any service.
  */
 @EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
 public class Message extends BaseMessage {
     /**
      * Serialization version number constant.

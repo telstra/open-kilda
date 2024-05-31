@@ -25,8 +25,9 @@ import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
+
+import jakarta.inject.Provider
 import spock.lang.Ignore
-import javax.inject.Provider
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 

@@ -38,6 +38,8 @@ import org.apache.kafka.common.errors.InterruptException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -54,7 +56,7 @@ public class Consumer implements Runnable, ZooKeeperEventObserver {
     private final RecordHandler.Factory handlerFactory;
     private final KafkaConsumerSetup kafkaSetup;
     private final long commitInterval;
-    private final long pollTimeout;
+    private final Duration pollTimeout;
 
     private final KafkaUtilityService kafkaUtilityService;
 
@@ -66,15 +68,15 @@ public class Consumer implements Runnable, ZooKeeperEventObserver {
 
     public Consumer(FloodlightModuleContext moduleContext, ExecutorService handlersPool,
                     KafkaConsumerSetup kafkaSetup, Factory handlerFactory,
-                    long commitInterval, long pollTimeout) {
+                    long commitInterval, long pollTimeoutMillis) {
         this.handlersPool = requireNonNull(handlersPool);
         this.handlerFactory = requireNonNull(handlerFactory);
         this.kafkaSetup = kafkaSetup;
 
         checkArgument(commitInterval > 0, "commitInterval must be positive");
         this.commitInterval = commitInterval;
-        checkArgument(pollTimeout > 0, "pollTimeout must be positive");
-        this.pollTimeout = pollTimeout;
+        checkArgument(pollTimeoutMillis > 0, "pollTimeout must be positive");
+        this.pollTimeout = Duration.of(pollTimeoutMillis, ChronoUnit.MILLIS);
 
         kafkaUtilityService = moduleContext.getServiceImpl(KafkaUtilityService.class);
 

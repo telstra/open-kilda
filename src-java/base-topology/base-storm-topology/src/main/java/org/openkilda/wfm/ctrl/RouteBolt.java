@@ -44,6 +44,13 @@ public class RouteBolt extends BaseRichBolt implements IKildaBolt {
         endpointMapping = new HashMap<>();
     }
 
+    /**
+     * Registers the bolt ID in the endpoint mapping.
+     * TODO unused, investigate if this could be removed.
+     * @param boltId a bolt ID
+     * @return a topology's stream name
+     * @throws StreamNameCollisionException when endpoint mapping is already associated with this bolt ID.
+     */
     public String registerEndpoint(String boltId) throws StreamNameCollisionException {
         if (endpointMapping.containsKey(boltId)) {
             throw new StreamNameCollisionException();

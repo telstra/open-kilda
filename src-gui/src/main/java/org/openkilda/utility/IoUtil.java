@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2024 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -78,14 +78,12 @@ public final class IoUtil {
      */
     public static boolean chkStringIsNotEmpty(String value) {
         if (value != null) {
-            Predicate<String> predicates = s -> {
-                return value.trim().length() > 0;
-            };
+            Predicate<String> predicates = s -> value.trim().length() > 0;
             return predicates.test(value);
         }
         return false;
     }
-    
+
     /**
      * Switch code to switch id.
      *

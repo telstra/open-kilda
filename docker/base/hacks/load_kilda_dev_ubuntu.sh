@@ -87,5 +87,4 @@ echo ##########################
 sudo apt-get update
 sudo apt-get install -y apt-utils python python-pip tox
 sudo pip install --upgrade pip
-sudo     pip install docker-compose
 

@@ -15,7 +15,7 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
@@ -235,7 +235,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         def allLinks = northbound.getAllLinks()
         changedIsls.each {
             islUtils.getIslInfo(allLinks, it).each {
-                assert it.value.availableBandwidth == newBw
+                assert it.get().availableBandwidth == newBw
             }
         }
     }

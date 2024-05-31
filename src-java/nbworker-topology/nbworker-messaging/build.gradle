@@ -1,23 +1,21 @@
 plugins {
-    id 'java-library'
+    id "java-library"
 }
 
-description = 'NB Worker Messaging'
+description = "NB Worker Messaging"
 dependencies {
-    api project(':base-messaging')
-    implementation project(':blue-green')
+    api(project(":base-messaging"))
+    implementation(project(":blue-green"))
+    implementation("com.fasterxml.jackson.core:jackson-core")
+    implementation("com.fasterxml.jackson.core:jackson-annotations")
+    implementation("com.fasterxml.jackson.core:jackson-databind")
 
-    testImplementation project(path: ':base-messaging', configuration: 'testArtifacts')
+    testImplementation(project(path: ":base-messaging", configuration: "testArtifacts"))
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine")
 
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations'
-    implementation('com.fasterxml.jackson.core:jackson-databind')
-
-    testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
-
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
 }
 
 test {

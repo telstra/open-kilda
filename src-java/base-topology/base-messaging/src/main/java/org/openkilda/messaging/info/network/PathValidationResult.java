@@ -17,7 +17,7 @@ package org.openkilda.messaging.info.network;
 
 import org.openkilda.messaging.info.InfoData;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -29,7 +29,7 @@ import java.util.List;
 @Value
 @Builder
 @EqualsAndHashCode(callSuper = false)
-@JsonNaming(value = PropertyNamingStrategy.SnakeCaseStrategy.class)
+@JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class PathValidationResult extends InfoData {
     Boolean isValid;
 

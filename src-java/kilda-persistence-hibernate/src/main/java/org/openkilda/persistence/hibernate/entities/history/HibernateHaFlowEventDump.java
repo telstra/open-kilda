@@ -25,19 +25,19 @@ import org.openkilda.model.history.HaFlowEventDump.HaSubFlowDumpWrapper;
 import org.openkilda.persistence.hibernate.entities.EntityBase;
 import org.openkilda.persistence.hibernate.entities.JsonPayloadBase;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Delegate;
-import org.hibernate.annotations.Type;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -53,7 +53,7 @@ public class HibernateHaFlowEventDump extends EntityBase implements HaFlowEventD
     private HibernateHaFlowEvent haFlowEvent;
 
     @Column(name = "event_dump_json", columnDefinition = "json")
-    @Type(type = "json")
+    @JdbcTypeCode(SqlTypes.JSON)
     @Delegate
     private HibernateHaFlowEventDumpWrapper eventDumpWrapper = new HibernateHaFlowEventDumpWrapper();
 

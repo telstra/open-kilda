@@ -39,11 +39,11 @@ help:
 up:
 	# NB: just specifying the minimal set .. taking advantage of embedded dependencies to bring
 	#     up the remaining containers
-	docker-compose up -d mininet floodlight storm-supervisor \
+	docker compose up -d mininet floodlight storm-supervisor \
 	topology-engine kibana
 
 down:
-	docker-compose down
+	docker compose down
 
 clean:
 	${MAKE} clean-test
@@ -65,12 +65,12 @@ stop:
 login-storm:
 	@echo ""
 	@echo "NB: For Logs, look at /opt/storm/logs/[workers-artifacts]"
-	docker-compose exec storm-supervisor "/bin/bash"
+	docker compose exec storm-supervisor "/bin/bash"
 
 login-mininet:
 	@echo ""
 	@echo "NB: For examples, look at /app/examples or /usr/share/doc/mininet/examples"
-	docker-compose exec mininet "/bin/bash"
+	docker compose exec mininet "/bin/bash"
 
 
 

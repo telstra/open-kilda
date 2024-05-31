@@ -28,13 +28,13 @@ import org.openkilda.wfm.topology.stats.service.FlowEndpointStatsEntryHandler;
 import org.openkilda.wfm.topology.stats.service.TimeSeriesMeterEmitter;
 
 import com.google.common.collect.Maps;
+import jakarta.annotation.Nullable;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.storm.tuple.Tuple;
 
 import java.util.List;
 import java.util.Map;
-import javax.annotation.Nullable;
 
 
 /**

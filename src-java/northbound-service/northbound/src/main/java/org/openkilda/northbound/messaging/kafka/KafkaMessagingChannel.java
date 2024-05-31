@@ -26,7 +26,7 @@ import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.messaging.exception.MessageNotSentException;
 
-import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.PostConstruct;
 import org.apache.commons.collections4.map.PassiveExpiringMap;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -35,10 +35,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
-import org.springframework.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +45,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
 
 /**
  * Implementation of {@link MessagingChannel} for kafka.
@@ -97,11 +94,12 @@ public class KafkaMessagingChannel implements MessagingChannel {
         CompletableFuture<InfoData> future = new CompletableFuture<>();
         pendingRequests.put(message.getCorrelationId(), future);
 
-        ListenableFuture<SendResult<String, Message>> futureResult = messageProducer.send(topic, message);
-        futureResult.addCallback(
-                success -> { },
-                error -> future.completeExceptionally(new MessageNotSentException(error.getMessage()))
-        );
+        CompletableFuture<SendResult<String, Message>> futureResult = messageProducer.send(topic, message);
+        futureResult.whenComplete((success, error) -> {
+            if (error != null) {
+                future.completeExceptionally(new MessageNotSentException(error.getMessage()));
+            }
+        });
 
         return future.whenComplete((response, error) -> pendingRequests.remove(message.getCorrelationId()));
     }
@@ -117,11 +115,12 @@ public class KafkaMessagingChannel implements MessagingChannel {
         messagesChains.put(message.getCorrelationId(), new ArrayList<>());
         chunkedMessageIdsPerRequest.put(message.getCorrelationId(), new HashSet<>());
 
-        ListenableFuture<SendResult<String, Message>> futureResult = messageProducer.send(topic, message);
-        futureResult.addCallback(
-                sentResult -> { },
-                error -> future.completeExceptionally(new MessageNotSentException(error.getMessage()))
-        );
+        CompletableFuture<SendResult<String, Message>> futureResult = messageProducer.send(topic, message);
+        futureResult.whenComplete((sentResult, error) -> {
+            if (error != null) {
+                future.completeExceptionally(new MessageNotSentException(error.getMessage()));
+            }
+        });
 
         return future.whenComplete((response, error) -> {
             pendingChunkedRequests.remove(message.getCorrelationId());
@@ -252,13 +251,11 @@ public class KafkaMessagingChannel implements MessagingChannel {
         return message instanceof ChunkedInfoMessage && pendingChunkedRequests.containsKey(message.getCorrelationId());
     }
 
-    @VisibleForTesting
-    Map<String, CompletableFuture<InfoData>> getPendingRequests() {
-        return new HashMap<>(pendingRequests);
+    public boolean isPendingRequestsEmpty() {
+        return pendingRequests.isEmpty();
     }
 
-    @VisibleForTesting
-    Map<String, CompletableFuture<List<InfoData>>> getPendingChunkedRequests() {
-        return new HashMap<>(pendingChunkedRequests);
+    public boolean isPendingChunkedRequestsEmpty() {
+        return pendingChunkedRequests.isEmpty();
     }
 }

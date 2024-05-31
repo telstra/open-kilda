@@ -27,6 +27,8 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.WakeupException;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -72,13 +74,14 @@ public class TestKafkaConsumer extends Thread {
         consumer.subscribe(Collections.singletonList(topic));
         try {
             while (true) {
-                ConsumerRecords<String, String> records = consumer.poll(KAFKA_CONSUMER_POLL_TIMEOUT);
+                ConsumerRecords<String, String> records =
+                        consumer.poll(Duration.of(KAFKA_CONSUMER_POLL_TIMEOUT, ChronoUnit.MILLIS));
                 for (ConsumerRecord<String, String> record : records) {
                     if (checkDestination(record.value())) {
                         this.records.offer(record, CONSUMER_QUEUE_OFFER_TIMEOUT, TimeUnit.MILLISECONDS);
                         consumer.commitSync();
-                        System.out.println(String.format("Received message with destination %s: %s",
-                                destination, record.value()));
+                        System.out.printf("Received message with destination %s: %s%n",
+                                destination, record.value());
                     }
                 }
             }
@@ -180,7 +183,7 @@ public class TestKafkaConsumer extends Thread {
                 }
             }
         } catch (IOException exception) {
-            System.out.println(String.format("Can not deserialize %s with destination %s ", recordValue, destination));
+            System.out.printf("Can not deserialize %s with destination %s %n", recordValue, destination);
             exception.printStackTrace();
         }
         return result;

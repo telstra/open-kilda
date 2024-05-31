@@ -19,55 +19,53 @@ import org.openkilda.northbound.utils.ExecutionTimeInterceptor;
 import org.openkilda.northbound.utils.ExtraAuthInterceptor;
 import org.openkilda.northbound.utils.async.CompletableFutureReturnValueHandler;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler;
 import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
+import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.DefaultServletHandlerConfigurer;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
-import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.time.Clock;
-import java.util.ArrayList;
 import java.util.List;
-import javax.annotation.PostConstruct;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 /**
  * The Web Application configuration.
  */
 @Configuration
 @EnableWebMvc
+@EnableAsync
 @PropertySource({"classpath:northbound.properties"})
-public class WebConfig extends WebMvcConfigurerAdapter {
+public class WebConfig implements WebMvcConfigurer {
 
     @Value("${web.request.asyncTimeout}")
     private Long asyncTimeout;
 
-    @Autowired
-    private RequestMappingHandlerAdapter requestMappingHandlerAdapter;
-
-    /**
-     * Adds instance of {@link CompletableFutureReturnValueHandler} to the list of value handlers and put it on the
-     * first place (thus we override default handler for completable future
-     * {@link org.springframework.web.servlet.mvc.method.annotation.CompletionStageReturnValueHandler}).
-     */
-    @PostConstruct
-    public void init() {
+    @Override
+    public void addReturnValueHandlers(List<HandlerMethodReturnValueHandler> handlers) {
         CompletableFutureReturnValueHandler futureHandler = new CompletableFutureReturnValueHandler();
-        List<HandlerMethodReturnValueHandler> defaultHandlers =
-                new ArrayList<>(requestMappingHandlerAdapter.getReturnValueHandlers());
-        defaultHandlers.add(0, futureHandler);
+        handlers.add(0, futureHandler);
+    }
 
-        requestMappingHandlerAdapter.setReturnValueHandlers(defaultHandlers);
-        requestMappingHandlerAdapter.setAsyncRequestTimeout(asyncTimeout);
+    @Override
+    public void configureAsyncSupport(AsyncSupportConfigurer configurer) {
+        configurer.setDefaultTimeout(asyncTimeout);
+    }
+
+    @Bean
+    public Executor getExecutor() {
+        return new SimpleAsyncTaskExecutor("async-");
     }
 
     @Override
@@ -88,19 +86,6 @@ public class WebConfig extends WebMvcConfigurerAdapter {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(timeExecutionInterceptor());
         registry.addInterceptor(extraAuthInterceptor());
-    }
-
-    /**
-     * Swagger UI resources.
-     *
-     * @param registry resource registry
-     */
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/swagger-ui.html")
-                .addResourceLocations("classpath:/META-INF/resources/");
-        registry.addResourceHandler("/webjars/**")
-                .addResourceLocations("classpath:/META-INF/resources/webjars/");
     }
 
     /**
@@ -125,6 +110,6 @@ public class WebConfig extends WebMvcConfigurerAdapter {
 
     @Bean
     public TaskScheduler taskScheduler() {
-        return new ConcurrentTaskScheduler();
+        return new ConcurrentTaskScheduler(Executors.newSingleThreadScheduledExecutor());
     }
 }

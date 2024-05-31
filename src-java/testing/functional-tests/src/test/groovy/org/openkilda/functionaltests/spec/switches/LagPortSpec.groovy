@@ -28,7 +28,7 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -435,7 +435,7 @@ occupied by other LAG group\(s\)./).matches(exc)
         given: "Switch and two ports"
         def sw = getTopology().getActiveSwitches().get(0)
         def testPorts = topology.getAllowedPortsForSwitch(sw).take(2)
-        assert testPorts.size > 1
+        assert testPorts.size() > 1
 
         when: "Create LAG port with duplicated port numbers"
         def switchPortToCreate = testPorts.get(0)
@@ -861,7 +861,7 @@ occupied by other LAG group\(s\)./).matches(exc)
         given: "Flows on a LAG port with switch ports"
         def switchPair = switchPairs.all().random()
         def testPorts = topology.getAllowedPortsForSwitch(switchPair.src).takeRight(2).sort()
-        assert testPorts.size > 1
+        assert testPorts.size() > 1
         def maximumBandwidth = testPorts.sum { northbound.getPort(switchPair.src.dpId, it).currentSpeed }
         def lagPort = switchHelper.createLagLogicalPort(switchPair.src.dpId, testPorts as Set).logicalPortNumber
         def flow = flowHelperV2.randomFlow(switchPair).tap {

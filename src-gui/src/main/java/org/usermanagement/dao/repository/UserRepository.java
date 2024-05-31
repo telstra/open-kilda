@@ -44,11 +44,11 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      * @param activeFlag the active flag
      * @return the list
      */
-    List<UserEntity> findByActiveFlag(Boolean activeFlag);
+    List<UserEntity> findByActiveFlag(String activeFlag);
 
     /**
      * Find byUserId.
-     * 
+     *
      * @param userId the user id
      * @return UserEntity
      */
@@ -61,7 +61,7 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
      * @return the sets the
      */
     Set<UserEntity> findByRoles_roleId(Long roleId);
-    
+
     /**
      * Find by user id in.
      *

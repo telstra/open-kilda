@@ -24,8 +24,7 @@ import org.openkilda.store.model.AuthTypeDto;
 import org.openkilda.store.model.OauthTwoConfigDto;
 import org.openkilda.store.service.AuthService;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
@@ -40,13 +39,11 @@ import java.util.List;
 /**
  * The Class AuthController.
  */
-
+@Slf4j
 @Controller
 @RequestMapping(value = "/api/auth")
 public class AuthController {
-    
-    private static final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
-    
+
     @Autowired
     private ActivityLogger activityLogger;
     
@@ -75,7 +72,7 @@ public class AuthController {
     @RequestMapping(value = "/oauth-two-config", method = RequestMethod.GET)
     @ResponseStatus(HttpStatus.OK)
     public @ResponseBody OauthTwoConfigDto getOauthTwoConfig() {
-        LOGGER.info("Get oauth two configuration");
+        log.info("Get oauth two configuration");
         return authService.getOauthConfig();
     }
     
@@ -90,7 +87,7 @@ public class AuthController {
     @Permissions(values = { IConstants.Permission.STORE_SETTING })
     public @ResponseBody OauthTwoConfigDto saveOrUpdateOauthTwoConfig(
             @RequestBody OauthTwoConfigDto oauthTwoConfigDto) {
-        LOGGER.info("Save or update store Urls. linkStoreConfigDto: " + oauthTwoConfigDto.toString());
+        log.info("Save or update store Urls. linkStoreConfigDto: " + oauthTwoConfigDto.toString());
         activityLogger.log(ActivityType.UPDATE_OAUTH_CONFIG, oauthTwoConfigDto.getUsername());
         oauthTwoConfigValidator.validate(oauthTwoConfigDto);
         return authService.saveOrUpdateOauthConfig(oauthTwoConfigDto);

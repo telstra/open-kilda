@@ -36,7 +36,6 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
-import javax.inject.Provider
 import java.time.Instant
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -57,9 +56,47 @@ import static org.openkilda.model.cookie.CookieBase.CookieType.ARP_INPUT_CUSTOME
 import static org.openkilda.model.cookie.CookieBase.CookieType.LLDP_INPUT_CUSTOMER_TYPE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.IterationTags
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.Flow
+import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.MeterId
+import org.openkilda.model.SwitchFeature
+import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.northbound.dto.v1.flows.ConnectedDeviceDto
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
+import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDeviceDto
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.service.traffexam.model.ArpData
+import org.openkilda.testing.service.traffexam.model.LldpData
+import org.openkilda.testing.tools.ConnectedDevice
+
+import com.github.javafaker.Faker
+import groovy.transform.AutoClone
+import groovy.transform.Memoized
+import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
+import spock.lang.See
+import spock.lang.Shared
+
+import java.time.Instant
+import jakarta.inject.Provider
+
 @Slf4j
 @Narrative("""
-Verify ability to detect connected devices per flow endpoint (src/dst). 
+Verify ability to detect connected devices per flow endpoint (src/dst).
 Verify allocated Connected Devices resources and installed rules.""")
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/connected-devices-lldp")
 

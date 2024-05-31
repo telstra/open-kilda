@@ -23,7 +23,7 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE

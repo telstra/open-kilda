@@ -25,7 +25,7 @@ import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.IslUtils
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 import org.openkilda.testing.tools.TopologyPool
 
 import groovy.util.logging.Slf4j
@@ -226,7 +226,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     }
 
     Closure linksBandwidthAndSpeedMatch = { TopologyDefinition topologyDefinition ->
-        def speedBwAssertions = new SoftAssertions()
+        def speedBwAssertions = new SoftAssertionsWrapper()
         def links = northbound.getAllLinks().findAll { it.source.switchId in topologyDefinition.activeSwitches.dpId }
         speedBwAssertions.checkSucceeds { assert links.findAll { it.availableBandwidth != it.speed }.empty }
         speedBwAssertions.verify()
@@ -237,7 +237,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     }
 
     Closure allSwitchesConnectedToExpectedRegion = { TopologyDefinition topologyDefinition ->
-        def regionVerifications = new SoftAssertions()
+        def regionVerifications = new SoftAssertionsWrapper()
         commonFloodlights.forEach { fl ->
             def expectedSwitchIds = topologyDefinition.activeSwitches.findAll { fl.region in it.regions }*.dpId
             if (!expectedSwitchIds.empty) {
@@ -250,7 +250,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     }
 
     Closure switchesConfigurationIsCorrect = { TopologyDefinition topologyDefinition ->
-        def switchConfigVerification = new SoftAssertions()
+        def switchConfigVerification = new SoftAssertionsWrapper()
         withPool {
             topologyDefinition.activeSwitches.eachParallel { sw ->
                 switchConfigVerification.checkSucceeds {

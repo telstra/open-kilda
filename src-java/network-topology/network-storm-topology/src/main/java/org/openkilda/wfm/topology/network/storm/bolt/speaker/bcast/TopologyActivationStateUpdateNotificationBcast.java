@@ -15,8 +15,16 @@
 
 package org.openkilda.wfm.topology.network.storm.bolt.speaker.bcast;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.FieldSerializer;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+@EqualsAndHashCode(callSuper = true)
+@DefaultSerializer(FieldSerializer.class)
+@Data
 public class TopologyActivationStateUpdateNotificationBcast extends SpeakerBcast {
-    private final boolean isActive;
+    private boolean isActive;
 
     public TopologyActivationStateUpdateNotificationBcast(boolean isActive) {
         this.isActive = isActive;

@@ -27,8 +27,8 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 
-import javax.inject.Provider
 import java.time.Instant
+import jakarta.inject.Provider
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
