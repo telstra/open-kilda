@@ -116,15 +116,24 @@ and at least 1 path must remain safe"
     @Tags([SMOKE_SWITCHES, LOCKKEEPER, ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET, SWITCH_RECOVER_ON_FAIL])
     def "System tries to retry rule installation during #data.description if previous one is failed"(){
         given: "Two active neighboring switches with two diverse paths at least"
-        def swPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
+        def swPair = switchPairs.all().neighbouring()
+                .withAtLeastNNonOverlappingPaths(2)
+                .withExactlyNIslsBetweenSwitches(1)
+                .random()
         def allPaths = swPair.getPaths()
         List<PathNode> mainPath = allPaths.min { it.size() }
         //find path with more than two switches
-        List<PathNode> protectedPath = allPaths.findAll { it != mainPath && it.size() != 2 }.min { it.size() }
+        def filteredPaths = allPaths.findAll { it != mainPath && it.size() != 2 }
+        def minSize = filteredPaths*.size().min()
+        // find all possible protected paths with minimal size and pick the first one
+        def possibleProtectedPaths = filteredPaths.findAll { it.size() == minSize }
+        List<PathNode> protectedPath = possibleProtectedPaths.first()
 
         and: "All alternative paths unavailable (bring ports down)"
-        def altIsls = topology.getRelatedIsls(swPair.src) - pathHelper.getInvolvedIsls(mainPath).first() -
-                pathHelper.getInvolvedIsls(protectedPath).first()
+        def involvedIsls = pathHelper.getInvolvedIsls(mainPath) + pathHelper.getInvolvedIsls(protectedPath)
+        def altIsls = possibleProtectedPaths.collectMany { pathHelper.getInvolvedIsls(it)
+                .findAll { !(it in involvedIsls || it.reversed in involvedIsls) } }
+                .unique { a, b -> (a == b || a == b.reversed) ? 0 : 1 }
         islHelper.breakIsls(altIsls)
 
         and: "A protected flow"
