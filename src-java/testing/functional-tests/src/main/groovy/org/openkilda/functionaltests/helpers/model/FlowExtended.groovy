@@ -1,14 +1,19 @@
 package org.openkilda.functionaltests.helpers.model
 
+import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_FLOW
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
+import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
+import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
+import static org.openkilda.testing.Constants.TRANSIT_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
@@ -312,6 +317,10 @@ class FlowExtended {
     FlowHistory retrieveFlowHistory(Long timeFrom = null , Long timeTo = null) {
         log.debug("Get Flow '$flowId' history details")
         new FlowHistory(northbound.getFlowHistory(flowId, timeFrom, timeTo))
+    }
+
+    int retrieveHistoryEventsNumber() {
+        retrieveFlowHistory().getEventsNumber()
     }
 
     List<FlowHistoryStatus> retrieveFlowHistoryStatus(Long timeFrom = null, Long timeTo = null, Integer maxCount = null) {
@@ -646,6 +655,66 @@ class FlowExtended {
         assertions.checkSucceeds { assert this.destination.detectConnectedDevices.arp == expectedFlowExtended.destination.detectConnectedDevices.arp }
 
         assertions.verify()
+    }
+
+    void verifyRulesForProtectedFlowOnSwitches(HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules) {
+
+        def flowDBInfo = retrieveDetailsFromDB()
+        long mainForwardCookie = flowDBInfo.forwardPath.cookie.value
+        long mainReverseCookie = flowDBInfo.reversePath.cookie.value
+        long protectedForwardCookie = flowDBInfo.protectedForwardPath.cookie.value
+        long protectedReverseCookie = flowDBInfo.protectedReversePath.cookie.value
+        assert protectedForwardCookie && protectedReverseCookie, "Flow doesn't have protected path(no protected path cookies in DB)"
+
+        def rulesOnSrcSwitch = flowInvolvedSwitchesWithRules.get(this.source.switchId)
+        assert rulesOnSrcSwitch.find { it.cookie == mainForwardCookie }.tableId == INGRESS_RULE_MULTI_TABLE_ID
+        assert rulesOnSrcSwitch.find { it.cookie == mainReverseCookie }.tableId == EGRESS_RULE_MULTI_TABLE_ID
+        assert rulesOnSrcSwitch.find { it.cookie == protectedReverseCookie }.tableId == EGRESS_RULE_MULTI_TABLE_ID
+        assert !rulesOnSrcSwitch*.cookie.contains(protectedForwardCookie)
+
+        def rulesOnDstSwitch = flowInvolvedSwitchesWithRules.get(this.destination.switchId)
+        assert rulesOnDstSwitch.find { it.cookie == mainForwardCookie }.tableId == EGRESS_RULE_MULTI_TABLE_ID
+        assert rulesOnDstSwitch.find { it.cookie == mainReverseCookie }.tableId == INGRESS_RULE_MULTI_TABLE_ID
+        assert rulesOnDstSwitch.find { it.cookie == protectedForwardCookie }.tableId == EGRESS_RULE_MULTI_TABLE_ID
+        assert !rulesOnDstSwitch*.cookie.contains(protectedReverseCookie)
+
+        def flowPathInfo = retrieveAllEntityPaths()
+        List<SwitchId> mainFlowSwitches = flowPathInfo.flowPath.path.forward.getInvolvedSwitches()
+        List<SwitchId> mainFlowTransitSwitches = flowPathInfo.flowPath.path.forward.getTransitInvolvedSwitches()
+
+        List<SwitchId> protectedFlowSwitches = flowPathInfo.flowPath.protectedPath.forward.getInvolvedSwitches()
+        List<SwitchId> protectedFlowTransitSwitches = flowPathInfo.flowPath.protectedPath.forward.getTransitInvolvedSwitches()
+
+        def commonSwitches = mainFlowSwitches.intersect(protectedFlowSwitches)
+        def commonTransitSwitches = mainFlowTransitSwitches.intersect(protectedFlowTransitSwitches)
+
+        def uniqueTransitSwitchesMainPath = mainFlowTransitSwitches.findAll { !commonSwitches.contains(it) }
+        def uniqueTransitSwitchesProtectedPath = protectedFlowTransitSwitches.findAll { !commonSwitches.contains(it) }
+
+        def transitTableId = TRANSIT_RULE_MULTI_TABLE_ID
+        withPool {
+            flowInvolvedSwitchesWithRules.findAll { it.getKey() in commonTransitSwitches }.each { rulesPerSwitch ->
+                assert rulesPerSwitch.getValue().find { it.cookie == mainForwardCookie }?.tableId == transitTableId
+                assert rulesPerSwitch.getValue().find { it.cookie == mainReverseCookie }?.tableId == transitTableId
+                assert rulesPerSwitch.getValue().find { it.cookie == protectedForwardCookie }?.tableId == transitTableId
+                assert rulesPerSwitch.getValue().find { it.cookie == protectedReverseCookie }?.tableId == transitTableId
+            }
+        }
+        //this loop checks rules on unique transit nodes
+        withPool {
+            flowInvolvedSwitchesWithRules.findAll { it.getKey() in uniqueTransitSwitchesProtectedPath }
+                    .each { rulesPerSwitch ->
+                        assert rulesPerSwitch.getValue().find { it.cookie == protectedForwardCookie }?.tableId == transitTableId
+                        assert rulesPerSwitch.getValue().find { it.cookie == protectedReverseCookie }?.tableId == transitTableId
+                    }
+        }
+        //this loop checks rules on unique main nodes
+        withPool {
+            flowInvolvedSwitchesWithRules.findAll { it.getKey() in uniqueTransitSwitchesMainPath }.each { rulesPerSwitch ->
+                assert rulesPerSwitch.getValue().find { it.cookie == mainForwardCookie }?.tableId == transitTableId
+                assert rulesPerSwitch.getValue().find { it.cookie == mainReverseCookie }?.tableId == transitTableId
+            }
+        }
     }
 }
 

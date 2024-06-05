@@ -12,4 +12,8 @@ class FlowEndpointsNotSwappedExpectedError extends AbstractExpectedError{
     FlowEndpointsNotSwappedExpectedError(Pattern descriptionPattern) {
         super(statusCode, message, descriptionPattern)
     }
+
+    FlowEndpointsNotSwappedExpectedError(HttpStatus statusCode, Pattern descriptionPattern) {
+        super(statusCode, message, descriptionPattern)
+    }
 }

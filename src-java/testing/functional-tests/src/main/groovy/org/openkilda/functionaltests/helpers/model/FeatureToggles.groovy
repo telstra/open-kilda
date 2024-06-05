@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers.model
 
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
+
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.model.system.FeatureTogglesDto
@@ -7,6 +9,7 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
 import javax.annotation.PostConstruct
@@ -16,6 +19,7 @@ import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
 
 @Slf4j
 @Component
+@Scope(SCOPE_PROTOTYPE)
 class FeatureToggles {
 
     @Autowired @Qualifier("islandNb")
