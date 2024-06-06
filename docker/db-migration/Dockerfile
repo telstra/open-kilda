@@ -1,4 +1,4 @@
-# Copyright 2020 Telstra Open Source
+# Copyright 2024 Telstra Open Source
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -36,11 +36,12 @@ USER liquibase
 
 # Latest Liquibase Release Version
 ARG LIQUIBASE_VERSION=3.5.5
+COPY --chown=liquibase:liquibase lib/liquibase-${LIQUIBASE_VERSION}.tar.g[z] liquibase-${LIQUIBASE_VERSION}.tar.gz
 
 # Download, verify, extract
 ARG LB_SHA256=da0df7f6ea7694fb62b1448c3c734644d8d49795ff9bb7417db18bb1da5ff2c6
 RUN set -x \
-  && wget -O liquibase-${LIQUIBASE_VERSION}.tar.gz "https://github.com/liquibase/liquibase/releases/download/liquibase-parent-${LIQUIBASE_VERSION}/liquibase-${LIQUIBASE_VERSION}-bin.tar.gz" \
+  && wget -N -O liquibase-${LIQUIBASE_VERSION}.tar.gz "https://github.com/liquibase/liquibase/releases/download/liquibase-parent-${LIQUIBASE_VERSION}/liquibase-${LIQUIBASE_VERSION}-bin.tar.gz" \
   && echo "$LB_SHA256  liquibase-${LIQUIBASE_VERSION}.tar.gz" | sha256sum -c - \
   && tar -xzf liquibase-${LIQUIBASE_VERSION}.tar.gz \
   && rm liquibase-${LIQUIBASE_VERSION}.tar.gz
@@ -49,6 +50,7 @@ RUN set -x \
 RUN GNUPGHOME="$(mktemp -d)"
 
 # Download JDBC libraries and plugins
+COPY --chown=liquibase:liquibase lib/* /liquibase/lib/
 
 RUN set -x \
   && mkdir -p /liquibase/lib/ \
