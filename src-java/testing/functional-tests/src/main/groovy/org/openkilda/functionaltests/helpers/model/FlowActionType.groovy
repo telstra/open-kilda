@@ -4,7 +4,9 @@ enum FlowActionType {
     CREATE("Flow creating", "Flow was created successfully"),
     DELETE("Flow deleting", "Flow was deleted successfully"),
     UPDATE_ACTION("Flow updating", "Flow was updated successfully"),
-    REROUTE("Flow rerouting", "Flow was rerouted successfully")
+    REROUTE("Flow rerouting", "Flow was rerouted successfully"),
+    REROUTE_FAILED("Flow rerouting", "Failed to reroute the flow")
+
 
     final String value
     final String payloadLastAction

@@ -873,9 +873,13 @@ class SwitchHelper {
         }
     }
 
-    def shapeSwitchesTraffic(List<Switch> switches, TrafficControlData tcData) {
+    void shapeSwitchesTraffic(List<Switch> switches, TrafficControlData tcData) {
         cleanupManager.addAction(OTHER, {lockKeeper.cleanupTrafficShaperRules(switches*.regions.flatten())})
         lockKeeper.shapeSwitchesTraffic(switches, tcData)
+    }
+
+    void cleanupTrafficShaperRules(List<Switch> switches) {
+        lockKeeper.cleanupTrafficShaperRules(switches*.regions.flatten())
     }
 
     def addConnectedDevice(TraffExamService examService, TraffGen tg, List<Integer> vlanId) {
