@@ -16,6 +16,7 @@ import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowStatistics
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
@@ -32,10 +33,11 @@ class FlowBuilder {
                 NorthboundServiceV2 northboundV2,
                 TopologyDefinition topologyDefinition,
                 CleanupManager cleanupManager,
+                Database database,
                 boolean useTraffgenPorts = true,
                 List<SwitchPortVlan> busyEndpoints = []) {
 
-        this.flowExtended = new FlowExtended(FLOW.generateId(), northbound, northboundV2, topologyDefinition, cleanupManager)
+        this.flowExtended = new FlowExtended(FLOW.generateId(), northbound, northboundV2, topologyDefinition, cleanupManager, database)
 
         this.flowExtended.source = FlowEndpointV2.builder()
                 .switchId(srcSwitch.dpId)
@@ -186,6 +188,21 @@ class FlowBuilder {
 
     FlowBuilder withDetectedDevicesOnDst(boolean lldp, boolean arp) {
         this.flowExtended.destination.detectConnectedDevices = new DetectConnectedDevicesV2(lldp, arp)
+        return this
+    }
+
+    FlowBuilder withDetectedDevicesOnSrc(boolean lldp, boolean arp) {
+        this.flowExtended.source.detectConnectedDevices = new DetectConnectedDevicesV2(lldp, arp)
+        return this
+    }
+
+    FlowBuilder withAffinityFlow(String flowId) {
+        this.flowExtended.affinityWith = flowId
+        return this
+    }
+
+    FlowBuilder withDiverseFlow(String flowId) {
+        this.flowExtended.diverseWith = [flowId]
         return this
     }
 }

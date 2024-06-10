@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.helpers.model
 
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_FLOW
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -16,6 +17,7 @@ import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowResponsePayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
 import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -24,12 +26,14 @@ import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
 import org.openkilda.northbound.dto.v2.flows.FlowStatistics
 import org.openkilda.northbound.dto.v2.flows.MirrorPointStatus
 import org.openkilda.northbound.dto.v2.flows.PathStatus
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -39,6 +43,7 @@ import org.openkilda.testing.service.traffexam.model.FlowBidirectionalExam
 import org.openkilda.testing.service.traffexam.model.Host
 import org.openkilda.testing.service.traffexam.model.TimeLimit
 import org.openkilda.testing.service.traffexam.model.Vlan
+import org.openkilda.testing.tools.ConnectedDevice
 import org.openkilda.testing.tools.SoftAssertions
 
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -105,17 +110,21 @@ class FlowExtended {
     @JsonIgnore
     CleanupManager cleanupManager
 
+    @JsonIgnore
+    Database database
+
     FlowExtended(String flowId, NorthboundService northbound, NorthboundServiceV2 northboundV2,
-                 TopologyDefinition topologyDefinition, CleanupManager cleanupManager) {
+                 TopologyDefinition topologyDefinition, CleanupManager cleanupManager, Database database) {
         this.flowId = flowId
         this.northbound = northbound
         this.northboundV2 = northboundV2
         this.topologyDefinition = topologyDefinition
         this.cleanupManager = cleanupManager
+        this.database = database
     }
 
     FlowExtended(FlowResponseV2 flow, NorthboundService northbound, NorthboundServiceV2 northboundV2,
-                 TopologyDefinition topologyDefinition, CleanupManager cleanupManager) {
+                 TopologyDefinition topologyDefinition, CleanupManager cleanupManager, Database database) {
         this.flowId = flow.flowId
         this.status = FlowState.getByValue(flow.status)
         this.statusDetails = flow.statusDetails
@@ -158,10 +167,11 @@ class FlowExtended {
         this.northboundV2 = northboundV2
         this.topologyDefinition = topologyDefinition
         this.cleanupManager = cleanupManager
+        this.database = database
     }
 
     FlowExtended(FlowPayload flow, NorthboundService northbound, NorthboundServiceV2 northboundV2,
-                 TopologyDefinition topologyDefinition, CleanupManager cleanupManager) {
+                 TopologyDefinition topologyDefinition, CleanupManager cleanupManager, Database database) {
         this.flowId = flow.id
         this.status = FlowState.getByValue(flow.status)
         this.source = convertEndpointToV2(flow.source)
@@ -184,6 +194,7 @@ class FlowExtended {
         this.northboundV2 = northboundV2
         this.topologyDefinition = topologyDefinition
         this.cleanupManager = cleanupManager
+        this.database = database
 
         if(flow instanceof FlowResponsePayload) {
             this.diverseWith == flow.diverseWith
@@ -229,7 +240,7 @@ class FlowExtended {
                 .build()
         cleanupManager.addAction(DELETE_FLOW, { delete() }, cleanupAfter)
         def flow = northboundV2.addFlow(flowRequest)
-        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager)
+        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
     }
 
     FlowExtended createV1(FlowState expectedState = FlowState.UP, CleanupAfter cleanupAfter = TEST) {
@@ -243,7 +254,7 @@ class FlowExtended {
         def flowRequest = convertToFlowPayload()
         cleanupManager.addAction(DELETE_FLOW, { delete() }, cleanupAfter)
         def flow = northbound.addFlow(flowRequest)
-        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager)
+        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
     }
 
     static FlowEndpointV2 convertEndpointToV2(FlowEndpointPayload endpointToConvert) {
@@ -276,13 +287,17 @@ class FlowExtended {
     def retrieveDetails() {
         log.debug("Get Flow '$flowId' details")
         def flow = northboundV2.getFlow(flowId)
-        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager)
+        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
+    }
+
+    def retrieveDetailsFromDB() {
+        database.getFlow(flowId)
     }
 
     def retrieveDetailsV1() {
         log.debug("Get Flow '$flowId' details")
         def flow = northbound.getFlow(flowId)
-        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager)
+        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
     }
 
     FlowIdStatusPayload retrieveFlowStatus() {
@@ -298,6 +313,10 @@ class FlowExtended {
     List<FlowValidationDto> validate() {
         log.debug("Validate Flow '$flowId'")
         northbound.validateFlow(flowId)
+    }
+
+    FlowRerouteResponseV2 reroute() {
+        northboundV2.rerouteFlow(flowId)
     }
 
     Map<FlowDirection, PathDiscrepancyDto> validateAndCollectDiscrepancies() {
@@ -354,6 +373,14 @@ class FlowExtended {
             assert flowDetails.status == flowState
         }
         return flowDetails
+    }
+
+    /*
+    This method swaps the main path with the protected path
+     */
+    FlowExtended swapFlowPath() {
+        def flow = northbound.swapFlowPath(flowId)
+        new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
     }
 
     FlowRequestV2 convertToUpdate() {
@@ -424,6 +451,14 @@ class FlowExtended {
      */
     FlowPayload sendDeleteRequestV1() {
         northbound.deleteFlow(flowId)
+    }
+
+    /**
+     * This method gets info about connected devices to flow src and dst switches
+     * @param since can be used to get details about connected devices starting from a specific time
+     */
+    FlowConnectedDevicesResponse retrieveConnectedDevices(String since = null) {
+        northbound.getFlowConnectedDevices(flowId, since)
     }
 
     List<SwitchPortVlan> occupiedEndpoints() {
@@ -502,6 +537,23 @@ class FlowExtended {
         return new FlowBidirectionalExam(forward, reverse)
     }
 
+    ConnectedDevice sourceConnectedDeviceExam(TraffExamService tgService, List<Integer> vlanIds = null) {
+        vlanIds ? buildConnectedDeviceExam(tgService, this.source, vlanIds) : buildConnectedDeviceExam(tgService, this.source)
+    }
+
+    ConnectedDevice destinationConnectedDeviceExam(TraffExamService tgService, List<Integer> vlanIds = null) {
+        vlanIds ? buildConnectedDeviceExam(tgService, this.destination, vlanIds) : buildConnectedDeviceExam(tgService, this.destination)
+    }
+
+    ConnectedDevice buildConnectedDeviceExam(TraffExamService tgService, FlowEndpointV2 endpoint,
+                                             List<Integer> vlanIds = [endpoint?.vlanId, endpoint?.innerVlanId]) {
+        Optional<TraffGen> tg = Optional.ofNullable(topologyDefinition.getTraffGen(endpoint.switchId, endpoint.portNumber))
+        cleanupManager.addAction(OTHER, { database.removeConnectedDevices(tg.get().getSwitchConnected().dpId) })
+        def device = new ConnectedDevice(tgService, tg.get(), vlanIds)
+        cleanupManager.addAction(OTHER, { device.close() })
+        return device
+    }
+
     void hasTheSamePropertiesAs(FlowExtended expectedFlowExtended) {
         SoftAssertions assertions = new SoftAssertions()
         assertions.checkSucceeds { assert this.flowId == expectedFlowExtended.flowId }
@@ -541,6 +593,18 @@ class FlowExtended {
         assertions.checkSucceeds { assert this.destination.vlanId == expectedFlowExtended.destination.vlanId }
         assertions.checkSucceeds { assert this.destination.innerVlanId == expectedFlowExtended.destination.innerVlanId }
         assertions.checkSucceeds { assert this.destination.detectConnectedDevices == expectedFlowExtended.destination.detectConnectedDevices }
+
+        assertions.verify()
+    }
+
+    void hasTheSameDetectedDevicesAs(FlowExtended expectedFlowExtended) {
+        SoftAssertions assertions = new SoftAssertions()
+
+        assertions.checkSucceeds { assert this.source.detectConnectedDevices.lldp == expectedFlowExtended.source.detectConnectedDevices.lldp }
+        assertions.checkSucceeds { assert this.source.detectConnectedDevices.arp == expectedFlowExtended.source.detectConnectedDevices.arp }
+
+        assertions.checkSucceeds { assert this.destination.detectConnectedDevices.lldp == expectedFlowExtended.destination.detectConnectedDevices.lldp }
+        assertions.checkSucceeds { assert this.destination.detectConnectedDevices.arp == expectedFlowExtended.destination.detectConnectedDevices.arp }
 
         assertions.verify()
     }
