@@ -22,6 +22,7 @@ class FlowEntityPath {
 
     FlowEntityPath(FlowPathPayload flowPathPayload, TopologyDefinition topologyDefinition) {
         this.flowPath = new FlowPathModel(
+                flowId: flowPathPayload.id,
                 path: new PathModel(
                         forward: new Path(flowPathPayload.forwardPath, topologyDefinition),
                         reverse: new Path(flowPathPayload.reversePath, topologyDefinition),

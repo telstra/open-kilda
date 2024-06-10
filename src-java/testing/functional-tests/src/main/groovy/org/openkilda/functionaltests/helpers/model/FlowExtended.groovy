@@ -10,10 +10,12 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
+import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.messaging.payload.flow.FlowReroutePayload
 import org.openkilda.messaging.payload.flow.FlowResponsePayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
@@ -24,6 +26,8 @@ import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v1.flows.PingOutput
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload
+import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2
@@ -197,7 +201,7 @@ class FlowExtended {
         this.database = database
 
         if(flow instanceof FlowResponsePayload) {
-            this.diverseWith == flow.diverseWith
+            this.diverseWith = flow.diverseWith
             this.statusDetails = !flow.flowStatusDetails ? null : PathStatus.builder()
                     .mainPath(flow.flowStatusDetails.mainFlowPathStatus)
                     .protectedPath(flow.flowStatusDetails.protectedFlowPathStatus).build()
@@ -244,7 +248,7 @@ class FlowExtended {
     }
 
     FlowExtended createV1(FlowState expectedState = FlowState.UP, CleanupAfter cleanupAfter = TEST) {
-        def flowRequest = convertToFlowPayload()
+        def flowRequest = convertToFlowCreatePayload()
         cleanupManager.addAction(DELETE_FLOW, { delete() }, cleanupAfter)
         northbound.addFlow(flowRequest)
         waitForBeingInState(expectedState)
@@ -305,9 +309,19 @@ class FlowExtended {
         return northboundV2.getFlowStatus(flowId)
     }
 
-    FlowHistory retrieveFlowHistory() {
+    FlowHistory retrieveFlowHistory(Long timeFrom = null , Long timeTo = null) {
         log.debug("Get Flow '$flowId' history details")
-        new FlowHistory(northbound.getFlowHistory(flowId))
+        new FlowHistory(northbound.getFlowHistory(flowId, timeFrom, timeTo))
+    }
+
+    List<FlowHistoryStatus> retrieveFlowHistoryStatus(Long timeFrom = null, Long timeTo = null, Integer maxCount = null) {
+        northboundV2.getFlowHistoryStatuses(flowId, timeFrom, timeTo, maxCount).historyStatuses.collect {
+            new FlowHistoryStatus(it.timestamp, it.statusBecome)
+        }
+    }
+
+    List<FlowHistoryStatus> retrieveFlowHistoryStatus(Integer maxCount) {
+        retrieveFlowHistoryStatus(null, null, maxCount)
     }
 
     List<FlowValidationDto> validate() {
@@ -327,6 +341,9 @@ class FlowExtended {
                 .collectEntries { [(FlowDirection.getByDirection(it.direction)): it.discrepancies] }
     }
 
+    FlowReroutePayload sync() {
+        northbound.synchronizeFlow(flowId)
+    }
 
     PingOutput ping(PingInput pingInput = new PingInput()) {
         log.debug("Ping Flow '$flowId'")
@@ -381,6 +398,18 @@ class FlowExtended {
     FlowExtended swapFlowPath() {
         def flow = northbound.swapFlowPath(flowId)
         new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
+    }
+
+    FlowLoopResponse createFlowLoop(SwitchId switchId) {
+        northboundV2.createFlowLoop(flowId, new FlowLoopPayload(switchId))
+    }
+
+    List<FlowLoopResponse> retrieveFlowLoop(SwitchId switchId = null) {
+        northboundV2.getFlowLoop(flowId, switchId)
+    }
+
+    FlowLoopResponse deleteFlowLoop() {
+        northboundV2.deleteFlowLoop(flowId)
     }
 
     FlowRequestV2 convertToUpdate() {
@@ -482,6 +511,16 @@ class FlowExtended {
                 .encapsulationType(encapsulationType ? encapsulationType.toString() : null)
                 .pathComputationStrategy(pathComputationStrategy ? pathComputationStrategy.toString() : null)
                 .build()
+    }
+
+    FlowCreatePayload convertToFlowCreatePayload() {
+        new FlowCreatePayload(
+                flowId, convertEndpointToV1(source), convertEndpointToV1(destination), maximumBandwidth, ignoreBandwidth,
+                periodicPings, allocateProtectedPath, description, null, null,
+                (diverseWith ? diverseWith.first() : null), null, maxLatency, priority, pinned,
+                (encapsulationType ? encapsulationType.toString() : null),
+                (pathComputationStrategy ? pathComputationStrategy.toString() : null)
+        )
     }
 
     String retrieveAnyDiverseFlow() {
