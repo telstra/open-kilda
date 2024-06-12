@@ -308,7 +308,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         switchHelper.waitForS42SwRulesSetup()
 
         def server42Switch = switchPair.src
-        [server42Switch, switchPair.dst].collectEntries { sw -> switchHelper.setServer42FlowRttForSwitch(sw, true) }
+        [server42Switch, switchPair.dst].each { sw -> switchHelper.setServer42FlowRttForSwitch(sw, true) }
 
         and: "A flow on the given switch pair"
         def flow = flowHelperV2.randomFlow(switchPair)

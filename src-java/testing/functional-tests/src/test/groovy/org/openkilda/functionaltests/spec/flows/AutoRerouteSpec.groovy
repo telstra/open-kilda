@@ -377,14 +377,14 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         allFlowPaths.findAll { it != flowPath }.each { pathHelper.makePathMorePreferable(it, flowPath) }
 
         when: "Bring the flow port down on the source switch"
-        northbound.portDown(flow.source.switchId, flow.source.portNumber)
+        antiflap.portDown(flow.source.switchId, flow.source.portNumber)
 
         then: "The flow is not rerouted"
         TimeUnit.SECONDS.sleep(rerouteDelay)
         PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
 
         when: "Bring the flow port down on the destination switch"
-        northbound.portDown(flow.destination.switchId, flow.destination.portNumber)
+        antiflap.portDown(flow.destination.switchId, flow.destination.portNumber)
 
         then: "The flow is not rerouted"
         TimeUnit.SECONDS.sleep(rerouteDelay)
@@ -405,23 +405,14 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         when: "Deactivate the src switch"
         def swToDeactivate = switchPair.src
-        def blockData = lockKeeper.knockoutSwitch(swToDeactivate, RW)
         // it takes more time to DEACTIVATE a switch via the 'knockoutSwitch' method on the stage env
-        wait(WAIT_OFFSET * 4) {
-            assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.DEACTIVATED
-        }
+        def blockData = switchHelper.knockoutSwitch(swToDeactivate, RW, false, WAIT_OFFSET * 4)
 
         then: "Flow is UP"
         northbound.getFlowStatus(flow.flowId).status == FlowState.UP
 
         when: "Activate the src switch"
-        lockKeeper.reviveSwitch(swToDeactivate, blockData)
-        wait(WAIT_OFFSET) {
-            assert northbound.getSwitch(swToDeactivate.dpId).state == SwitchChangeType.ACTIVATED
-            assert northbound.getAllLinks().findAll {
-                it.state == IslChangeType.DISCOVERED
-            }.size() == topology.islsForActiveSwitches.size() * 2
-        }
+        switchHelper.reviveSwitch(swToDeactivate, blockData, true)
 
         then: "System doesn't try to reroute the flow on the switchUp event because flow is already in UP state"
         timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
