@@ -25,7 +25,11 @@ class PortBlinker extends Thread {
     Date timeStarted
     Date timeStopped
 
-    PortBlinker(Properties producerProps, String topic, Switch sw, int port, long interval) {
+    PortBlinker(Properties producerProps,
+                String topic,
+                Switch sw,
+                int port,
+                long interval) {
         super()
         this.producer = new KafkaProducer(producerProps)
         this.topic = topic

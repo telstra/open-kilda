@@ -1,31 +1,29 @@
 package org.openkilda.functionaltests.spec.flows
 
-import org.openkilda.functionaltests.model.stats.FlowStats
-import org.springframework.beans.factory.annotation.Autowired
-
-import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.FLOW_MON_TOGGLE
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.CLEAN_LINK_DELAY
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
-import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
 import static org.openkilda.functionaltests.model.stats.Origin.FLOW_MONITORING
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.functionaltests.model.cleanup.CleanupAfter
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.model.system.FeatureTogglesDto
-import org.openkilda.model.PathComputationStrategy
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Isolated
 import spock.lang.ResourceLock
@@ -42,8 +40,12 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
     List<Isl> mainIsls, alternativeIsls, islsToBreak
     @Shared
     SwitchPair switchPair
-    @Autowired @Shared
+    @Autowired
+    @Shared
     FlowStats flowStats
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     /** System tries to reroute a flow in case latency on a path is (flowLatency + flowLatency * 0.05);
      * NOTE: There is some possible latency calculation error in virtual lab(ovs/linux) after applying 'tc' command
@@ -69,7 +71,7 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         islsToBreak = switchPair.paths.findAll { !paths.contains(it) }
                 .collect { pathHelper.getInvolvedIsls(it).find { !isls.contains(it) && !isls.contains(it.reversed) } }
                 .unique { [it, it.reversed].sort() }
-        islHelper.breakIsls(islsToBreak)
+        islHelper.breakIsls(islsToBreak, CleanupAfter.CLASS)
     }
 
     @ResourceLock(S42_TOGGLE)
@@ -80,33 +82,27 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
 
         and: "flowLatencyMonitoringReactions is enabled in featureToggle"
         and: "Disable s42 in featureToggle for generating flow-monitoring stats"
-        def initFeatureToggle = northbound.getFeatureToggles()
-        northbound.toggleFeature(FeatureTogglesDto.builder()
-                .flowLatencyMonitoringReactions(true)
-                .server42FlowRtt(false)
-                .build())
+        featureToggles.flowLatencyMonitoringReactions(true)
+        featureToggles.server42FlowRtt(false)
 
         and : "A flow with max_latency 210"
-        def flow = flowHelperV2.randomFlow(switchPair).tap {
-            maxLatency = 210
-            pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
-        }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair).withMaxLatency(210)
+                .withPathComputationStrategy(PathComputationStrategy.MAX_LATENCY).build().create()
+
         //wait for generating some flow-monitoring stats
-        wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET * 2) {
-            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
+        wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET * 3) {
+            assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
 
-        def path = northbound.getFlowPath(flow.flowId)
-        pathHelper.convert(path) == mainPath
+        assert flow.retrieveAllEntityPaths().getPathNodes() == mainPath
 
         when: "Main path does not satisfy SLA(update isl latency via db)"
         def isl = pathHelper.getInvolvedIsls(mainPath).first()
         String srcInterfaceName = isl.srcSwitch.name + "-" + isl.srcPort
         String dstInterfaceName = isl.dstSwitch.name + "-" + isl.dstPort
         def newLatency = (flow.maxLatency + (flow.maxLatency * flowLatencySlaThresholdPercent)).toInteger()
-        lockKeeper.setLinkDelay(srcInterfaceName, newLatency)
-        lockKeeper.setLinkDelay(dstInterfaceName, newLatency)
+        islHelper.setDelay(srcInterfaceName, newLatency)
+        islHelper.setDelay(dstInterfaceName, newLatency)
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
             verifyLatencyInTsdb(flow.flowId, newLatency)
         }
@@ -119,17 +115,13 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
          * and then reroute the flow.
          */
         wait(flowSlaCheckIntervalSeconds * 2 + flowLatencySlaTimeoutSeconds + WAIT_OFFSET) {
-            def history = flowHelper.getLatestHistoryEntry(flow.flowId)
+            def history = flow.retrieveFlowHistory().entries.last()
             // Flow sync or flow reroute with reason "Flow latency become unhealthy"
             assert history.getAction() == "Flow paths sync"
                 || (history.details.contains("healthy") &&
-                    (history.payload.last().action in [REROUTE_SUCCESS,REROUTE_FAIL])) //just check 'reroute'
+                    (history.payload.last().action in [FlowActionType.REROUTE.payloadLastAction,
+                                                       FlowActionType.REROUTE_FAILED.payloadLastAction])) //just check 'reroute'
         }
-
-        cleanup:
-        srcInterfaceName && lockKeeper.cleanupLinkDelay(srcInterfaceName)
-        dstInterfaceName && lockKeeper.cleanupLinkDelay(dstInterfaceName)
-        initFeatureToggle && northbound.toggleFeature(initFeatureToggle)
     }
 
     @ResourceLock(S42_TOGGLE)
@@ -141,47 +133,38 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
 
         and: "flowLatencyMonitoringReactions is disabled in featureToggle"
         and: "Disable s42 in featureToggle for generating flow-monitoring stats"
-        def initFeatureToggle = northbound.getFeatureToggles()
-        northbound.toggleFeature(FeatureTogglesDto.builder()
-                .flowLatencyMonitoringReactions(false)
-                .server42FlowRtt(false)
-                .build())
+        featureToggles.flowLatencyMonitoringReactions(false)
+        featureToggles.server42FlowRtt(false)
 
         and : "A flow with max_latency 210"
-        def createFlowTime = new Date()
-        def flow = flowHelperV2.randomFlow(switchPair).tap {
-            maxLatency = 210
-            pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
-        }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair)
+                .withMaxLatency(210)
+                .withPathComputationStrategy(PathComputationStrategy.MAX_LATENCY).build()
+                .create()
+
         //wait for generating some flow-monitoring stats
-        wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
-            assert flowStats.of(flow.getFlowId()).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
+        wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET * 3) {
+            assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
-        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
+        assert flow.retrieveAllEntityPaths().getPathNodes() == mainPath
 
         when: "Main path does not satisfy SLA(update isl latency via db)"
         def isl = pathHelper.getInvolvedIsls(mainPath).first()
         String srcInterfaceName = isl.srcSwitch.name + "-" + isl.srcPort
         String dstInterfaceName = isl.dstSwitch.name + "-" + isl.dstPort
         def newLatency = (flow.maxLatency + (flow.maxLatency * flowLatencySlaThresholdPercent)).toInteger()
-        lockKeeper.setLinkDelay(srcInterfaceName, newLatency)
-        lockKeeper.setLinkDelay(dstInterfaceName, newLatency)
+        islHelper.setDelay(srcInterfaceName, newLatency)
+        islHelper.setDelay(dstInterfaceName, newLatency)
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET) {
             verifyLatencyInTsdb(flow.flowId, newLatency)
         }
 
         then: "Flow is not rerouted because flowLatencyMonitoringReactions is disabled in featureToggle"
         sleep((flowSlaCheckIntervalSeconds * 2 + flowLatencySlaTimeoutSeconds) * 1000)
-        flowHelper.getHistoryEntriesByAction(flow.flowId, REROUTE_ACTION).isEmpty()
+        !flow.retrieveFlowHistory().getEntriesByType(FlowActionType.REROUTE)
 
         and: "Flow path is not changed"
-        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
-
-        cleanup:
-        srcInterfaceName && lockKeeper.cleanupLinkDelay(srcInterfaceName)
-        dstInterfaceName && lockKeeper.cleanupLinkDelay(dstInterfaceName)
-        initFeatureToggle && northbound.toggleFeature(initFeatureToggle)
+        flow.retrieveAllEntityPaths().getPathNodes() == mainPath
     }
 
     def setLatencyForPaths(int mainPathLatency, int alternativePathLatency) {
@@ -204,10 +187,5 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         def nanoMultiplier = 1000000
         def expectedNs = expectedMs * nanoMultiplier
         assert Math.abs(expectedNs - actual) <= expectedNs * 0.3, flowStatsResult //less than 0.3 is unstable on jenkins
-    }
-
-    def cleanupSpec() {
-        islHelper.restoreIsls(islsToBreak)
-        getDatabase().resetCosts(getTopology().isls)
     }
 }

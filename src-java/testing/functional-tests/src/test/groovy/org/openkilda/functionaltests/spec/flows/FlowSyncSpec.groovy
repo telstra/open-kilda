@@ -8,51 +8,59 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.time.TimeCategory
+import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Shared
 
 class FlowSyncSpec extends HealthCheckSpecification {
 
     @Shared
     int flowRulesCount = 2
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+    @Autowired
+    @Shared
+    SwitchRulesFactory switchRulesFactory
 
     @Tags([SMOKE_SWITCHES, SMOKE])
     def "Able to synchronize a flow (install missing flow rules, reinstall existing) without rerouting"() {
         given: "An intermediate-switch flow with deleted rules on src switch"
         def switchPair = switchPairs.all().nonNeighbouring().random()
 
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
-        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def flow = flowFactory.getRandom(switchPair)
+        def flowPath = flow.retrieveAllEntityPaths()
 
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
-        List<Long> rulesToDelete = getFlowRules(switchPair.src)*.cookie
-        rulesToDelete.each { northbound.deleteSwitchRules(switchPair.src.dpId, it) }
+        def involvedSwitches = flowPath.getInvolvedSwitches()
+        List<Long> rulesToDelete = getFlowRules(switchPair.src.dpId)*.cookie
+        rulesToDelete.each { switchHelper.deleteSwitchRules(switchPair.src.dpId, it) }
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert getFlowRules(switchPair.src).size() == flowRulesCount - rulesToDelete.size()
+            assert getFlowRules(switchPair.src.dpId).size() == flowRulesCount - rulesToDelete.size()
         }
+        assert  !flow.validateAndCollectDiscrepancies().isEmpty()
 
         when: "Synchronize the flow"
         def syncTime = new Date()
-        def rerouteResponse = northbound.synchronizeFlow(flow.flowId)
-        Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+        def rerouteResponse = flow.sync()
+        Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
 
         then: "The flow is not rerouted"
         int seqId = 0
 
         !rerouteResponse.rerouted
-        rerouteResponse.path.path == flowPath
+        rerouteResponse.path.path == flowPath.getPathNodes()
         rerouteResponse.path.path.each { assert it.seqId == seqId++ }
 
-        PathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
+        flow.retrieveAllEntityPaths() == flowPath
 
         and: "Missing flow rules are installed (existing ones are reinstalled) on all switches"
         involvedSwitches.each { sw ->
@@ -66,11 +74,11 @@ class FlowSyncSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is valid"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
     }
 
-    List<FlowEntry> getFlowRules(Switch sw) {
-        northbound.getSwitchRules(sw.dpId).flowEntries.findAll { def cookie = new Cookie(it.cookie)
+    List<FlowEntry> getFlowRules(SwitchId swId) {
+        switchRulesFactory.get(swId).getRules().findAll { def cookie = new Cookie(it.cookie)
             cookie.type == CookieType.SERVICE_OR_FLOW_SEGMENT && !cookie.serviceFlag
         }.sort()
     }

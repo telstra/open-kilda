@@ -1,13 +1,36 @@
 package org.openkilda.functionaltests.helpers
 
+import com.github.javafaker.Faker
+import groovy.util.logging.Slf4j
+import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
+import org.openkilda.messaging.payload.flow.FlowCreatePayload
+import org.openkilda.messaging.payload.flow.FlowEndpointPayload
+import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.messaging.payload.history.FlowHistoryEntry
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.database.Database
+import org.openkilda.testing.service.northbound.NorthboundService
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.context.annotation.Scope
+import org.springframework.stereotype.Component
+
+import java.text.SimpleDateFormat
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_FLOW
 import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
@@ -15,27 +38,6 @@ import static org.openkilda.testing.Constants.TRANSIT_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
-import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
-import org.openkilda.messaging.payload.flow.FlowCreatePayload
-import org.openkilda.messaging.payload.flow.FlowEndpointPayload
-import org.openkilda.messaging.payload.flow.FlowPayload
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
-import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
-import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.database.Database
-import org.openkilda.testing.service.northbound.NorthboundService
-
-import com.github.javafaker.Faker
-import groovy.util.logging.Slf4j
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.context.annotation.Scope
-import org.springframework.stereotype.Component
-
-import java.text.SimpleDateFormat
 /**
  * Holds utility methods for manipulating flows.
  */
@@ -138,7 +140,7 @@ class FlowHelper {
     FlowPayload addFlow(FlowPayload flow) {
         log.debug("Adding flow '${flow.id}'")
         def flowId = flow.getId()
-        cleanupManager.addAction({flowHelperV2.safeDeleteFlow(flowId)}, CleanupAfter.TEST)
+        cleanupManager.addAction(DELETE_FLOW, {flowHelperV2.safeDeleteFlow(flowId)}, CleanupAfter.TEST)
         def response = northbound.addFlow(flow)
         Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         return response
@@ -149,7 +151,7 @@ class FlowHelper {
      */
     FlowPayload attemptToAddFlow(FlowCreatePayload flow) {
         def flowId = flow.getId()
-        cleanupManager.addAction({flowHelperV2.safeDeleteFlow(flowId)}, CleanupAfter.TEST)
+        cleanupManager.addAction(DELETE_FLOW, {flowHelperV2.safeDeleteFlow(flowId)}, CleanupAfter.TEST)
         return northbound.addFlow(flow)
     }
 
@@ -378,5 +380,12 @@ class FlowHelper {
                             faker.shakespeare().hamletQuote()]
         def r = new Random()
         "autotest flow: ${descpription[r.nextInt(descpription.size())]}"
+    }
+
+    static Long convertStringTimestampIsoToLong(String timestampIso) {
+        def parsedRerouteActionStart = ZonedDateTime.parse(
+                timestampIso, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+        def timestampMillis = parsedRerouteActionStart.toInstant().toEpochMilli()
+        return timestampMillis
     }
 }

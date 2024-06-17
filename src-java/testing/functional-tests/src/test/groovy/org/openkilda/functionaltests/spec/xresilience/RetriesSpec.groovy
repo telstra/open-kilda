@@ -1,23 +1,26 @@
 package org.openkilda.functionaltests.spec.xresilience
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PATH_SWAP_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_ISL
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchStatus
@@ -28,6 +31,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 
 import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Isolated
 import spock.lang.Shared
 
@@ -109,29 +113,29 @@ and at least 1 path must remain safe"
         def switchesToVerify = [mainPath, failoverPath, currentPath].collectMany { pathHelper.getInvolvedSwitches(it) }.unique()
                 .findAll { it != switchToBreak }
         switchHelper.validateAndCollectFoundDiscrepancies(switchesToVerify*.getDpId()).isEmpty()
-
-        cleanup:
-        if(blockData) {
-            database.setSwitchStatus(switchToBreak.dpId, SwitchStatus.INACTIVE)
-            switchHelper.reviveSwitch(switchToBreak, blockData)
-        }
-        islHelper.restoreIsl(islToBreak)
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        database.resetCosts(topology.isls)
     }
 
     @Tags([SMOKE_SWITCHES, LOCKKEEPER, ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET, SWITCH_RECOVER_ON_FAIL])
     def "System tries to retry rule installation during #data.description if previous one is failed"(){
         given: "Two active neighboring switches with two diverse paths at least"
-        def swPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
+        def swPair = switchPairs.all().neighbouring()
+                .withAtLeastNNonOverlappingPaths(2)
+                .withExactlyNIslsBetweenSwitches(1)
+                .random()
         def allPaths = swPair.getPaths()
         List<PathNode> mainPath = allPaths.min { it.size() }
         //find path with more than two switches
-        List<PathNode> protectedPath = allPaths.findAll { it != mainPath && it.size() != 2 }.min { it.size() }
+        def filteredPaths = allPaths.findAll { it != mainPath && it.size() != 2 }
+        def minSize = filteredPaths*.size().min()
+        // find all possible protected paths with minimal size and pick the first one
+        def possibleProtectedPaths = filteredPaths.findAll { it.size() == minSize }
+        List<PathNode> protectedPath = possibleProtectedPaths.first()
 
         and: "All alternative paths unavailable (bring ports down)"
-        def altIsls = topology.getRelatedIsls(swPair.src) - pathHelper.getInvolvedIsls(mainPath).first() -
-                pathHelper.getInvolvedIsls(protectedPath).first()
+        def involvedIsls = pathHelper.getInvolvedIsls(mainPath) + pathHelper.getInvolvedIsls(protectedPath)
+        def altIsls = possibleProtectedPaths.collectMany { pathHelper.getInvolvedIsls(it)
+                .findAll { !(it in involvedIsls || it.reversed in involvedIsls) } }
+                .unique { a, b -> (a == b || a == b.reversed) ? 0 : 1 }
         islHelper.breakIsls(altIsls)
 
         and: "A protected flow"
@@ -207,7 +211,6 @@ and at least 1 path must remain safe"
             switchHelper.reviveSwitch(swToManipulate, blockData)
             switchHelper.synchronize(swToManipulate.dpId)
         }
-        islHelper.restoreIsls(altIsls)
         database.resetCosts(topology.isls)
 
         where:
@@ -241,11 +244,11 @@ and at least 1 path must remain safe"
         flowHelperV2.addFlow(flow)
 
         when: "Send delete request for the flow"
-        lockKeeper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(1000))
+        switchHelper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(1000))
         northboundV2.deleteFlow(flow.flowId)
 
         and: "One of the related switches does not respond"
-        def blockData = switchHelper.knockoutSwitch(swPair.src, RW)
+        switchHelper.knockoutSwitch(swPair.src, RW)
 
         then: "Flow history shows failed delete rule retry attempts but flow deletion is successful at the end"
         wait(WAIT_OFFSET) {
@@ -255,10 +258,6 @@ and at least 1 path must remain safe"
             assert history.last().action == DELETE_SUCCESS
         }
         !northboundV2.getFlowStatus(flow.flowId)
-
-        cleanup:
-        lockKeeper.cleanupTrafficShaperRules(swPair.src.regions)
-        switchHelper.reviveSwitch(swPair.src, blockData, true)
     }
 
     @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET, SWITCH_RECOVER_ON_FAIL])
@@ -273,6 +272,7 @@ and at least 1 path must remain safe"
         and: "All alternative paths unavailable (bring ports down)"
         def altIsls = topology.getRelatedIsls(swPair.src) - pathHelper.getInvolvedIsls(mainPath).first() -
                 pathHelper.getInvolvedIsls(backupPath).first()
+        islHelper.breakIsls(altIsls)
 
         and: "A flow on the main path"
         def flow = flowHelperV2.randomFlow(swPair)
@@ -333,7 +333,6 @@ and at least 1 path must remain safe"
             switchHelper.reviveSwitch(swToManipulate, blockData)
             switchHelper.synchronize(swToManipulate.dpId)
         }
-        islHelper.restoreIsls(altIsls)
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         database.resetCosts(topology.isls)
     }
@@ -343,49 +342,60 @@ and at least 1 path must remain safe"
 @Slf4j
 @Isolated
 class RetriesIsolatedSpec extends HealthCheckSpecification {
-    @Shared int globalTimeout = 30 //global timeout for h&s operation
+    @Shared int globalTimeout = 45 //global timeout for reroute operation
+    @Autowired @Shared
+    CleanupManager cleanupManager
+
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     //isolation: requires no 'up' events in the system while flow is Down
     @Tags([ISL_RECOVER_ON_FAIL])
     def "System does not retry after global timeout for reroute operation"() {
         given: "A flow with ability to reroute"
-        def swPair = switchPairs.all().withAtLeastNPaths(2).random()
-        def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow)
+        def swPair = switchPairs.all().nonNeighbouring().random()
+        def allFlowPaths = swPair.paths
+        def preferableIsls = pathHelper.getInvolvedIsls(allFlowPaths.find{ it.size() >= 10 })
+        pathHelper.updateIslsCost(preferableIsls, 1)
+
+        def flow = flowFactory.getRandom(swPair)
 
         when: "Break current path to trigger a reroute"
         def islToBreak = pathHelper.getInvolvedIsls(flow.flowId).first()
+        cleanupManager.addAction(RESTORE_ISL, {islHelper.restoreIsl(islToBreak)})
+        cleanupManager.addAction(RESET_ISLS_COST,{database.resetCosts(topology.isls)})
         northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         and: "Connection to src switch is slow in order to simulate a global timeout on reroute operation"
-        lockKeeper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(5000))
+        switchHelper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(9000))
 
         then: "After global timeout expect flow reroute to fail and flow to become DOWN"
         TimeUnit.SECONDS.sleep(globalTimeout)
         int eventsAmount
         wait(globalTimeout + WAIT_OFFSET, 1) { //long wait, may be doing some revert actions after global t/o
-            def history = northbound.getFlowHistory(flow.flowId)
-            def lastEvent = history.last().payload
-            assert lastEvent.find { it.action == sprintf('Global timeout reached for reroute operation on flow "%s"', flow.flowId) }
-            assert lastEvent.last().action == REROUTE_FAIL
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            eventsAmount = history.size()
+            def history = flow.retrieveFlowHistory()
+            def rerouteEvent = history.getEntriesByType(FlowActionType.REROUTE).first()
+            assert rerouteEvent.payload.find { it.action == sprintf('Global timeout reached for reroute operation on flow "%s"', flow.flowId) }
+            assert rerouteEvent.payload.last().action == FlowActionType.REROUTE_FAILED.payloadLastAction
+            assert flow.retrieveFlowStatus().status == FlowState.DOWN
+            eventsAmount = history.entries.size()
         }
 
         and: "Flow remains down and no new history events appear for the next 3 seconds (no retry happens)"
         timedLoop(3) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert flowHelper.getHistorySize(flow.flowId) == eventsAmount
+            assert flow.retrieveFlowStatus().status == FlowState.DOWN
+            assert flow.retrieveFlowHistory().entries.size() == eventsAmount
         }
 
         and: "Src/dst switches are valid"
+        switchHelper.cleanupTrafficShaperRules([swPair.src])
+        boolean isTrafficShaperRulesCleanedUp = true
         wait(WAIT_OFFSET * 2) { //due to instability
             switchHelper.validateAndCollectFoundDiscrepancies([flow.source.switchId, flow.destination.switchId]).isEmpty()
         }
 
         cleanup:
-        lockKeeper.cleanupTrafficShaperRules(swPair.src.regions)
-        islHelper.restoreIsl(islToBreak)
-        database.resetCosts(topology.isls)
+        !isTrafficShaperRulesCleanedUp && switchHelper.cleanupTrafficShaperRules([swPair.src])
     }
 }

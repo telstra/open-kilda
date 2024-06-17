@@ -18,7 +18,6 @@ import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowActionType
 import org.openkilda.functionaltests.helpers.model.YFlowFactory
-import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -51,7 +50,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         when: "Create a Y-Flow of certain configuration"
         def allLinksBefore = northbound.getAllLinks()
-        def yFlow = yFlowBuilder.build().waitForBeingInState(FlowState.UP, FLOW_CRUD_TIMEOUT)
+        def yFlow = yFlowBuilder.build().create()
 
         then: "Y-Flow has been created successfully"
         yFlow.yPoint
@@ -160,7 +159,6 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         when: "Delete the y-flow"
         yFlow.delete()
-        def flowRemoved = true
 
         then: "Y-Flow and related sub-flows are removed"
         verifyAll(northboundV2.getAllFlows()) { allRegularFlows ->
@@ -178,10 +176,9 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches pass switch validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
-
-        cleanup:
-        yFlow && !flowRemoved && yFlow.delete()
+        Wrappers.wait(WAIT_OFFSET) {
+            switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
+        }
 
         where:
         //Not all cases may be covered. Uncovered cases will be shown as a 'skipped' test
@@ -197,20 +194,17 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         assumeTrue(data.yFlowBuilder != null, "This case cannot be covered on given topology: $data.descr")
 
         when: "Try creating a Y-Flow with one endpoint being in conflict with the other one"
-        def yFlow = yFlowBuilder.build()
+        yFlowBuilder.build().create()
 
         then: "Error is received, describing the problem"
         def exc = thrown(HttpClientErrorException)
         new YFlowNotCreatedExpectedError(data.errorPattern(yFlowBuilder)).matches(exc)
 
         and: "'Get' Y-Flows doesn't return the flow"
-        assert !northboundV2.getYFlow(yFlowBuilder.yFlowRequest.YFlowId)
+        assert !northboundV2.getYFlow(yFlowBuilder.yFlow.yFlowId)
 
         and: "'Get' flows doesn't return the sub-flows"
-        !(yFlowBuilder.yFlowRequest.YFlowId in northboundV2.getAllFlows().YFlowId)
-
-        cleanup:
-        yFlow && !exc && yFlow.delete()
+        !(yFlowBuilder.yFlow.yFlowId in northboundV2.getAllFlows().YFlowId)
 
         where: "Use different types of conflicts"
         data << [
@@ -219,8 +213,8 @@ class YFlowCreateSpec extends HealthCheckSpecification {
                         yFlowBuilder: yFlowFactory.getBuilder(topologyHelper.switchTriplets[0]).withSameSharedEndpointsVlan(),
                         errorPattern: { YFlowBuilder flow ->
                             ~/The sub-flows .* and .* have shared endpoint conflict: \
-SubFlowSharedEndpointEncapsulation\(vlanId=${flow.yFlowRequest.subFlows.first().sharedEndpoint.vlanId}, innerVlanId=0\) \/ \
-SubFlowSharedEndpointEncapsulation\(vlanId=${flow.yFlowRequest.subFlows.last().sharedEndpoint.vlanId}, innerVlanId=0\)/
+SubFlowSharedEndpointEncapsulation\(vlanId=${flow.yFlow.subFlows.first().sharedEndpoint.vlanId}, innerVlanId=0\) \/ \
+SubFlowSharedEndpointEncapsulation\(vlanId=${flow.yFlow.subFlows.last().sharedEndpoint.vlanId}, innerVlanId=0\)/
                         }
                 ],
                 [
@@ -238,8 +232,8 @@ SubFlowSharedEndpointEncapsulation\(vlanId=0, innerVlanId=0\)/
                                 .withEp1VlanSameAsEp2Vlan(),
                         errorPattern: { YFlowBuilder flow ->
                             ~/The sub-flows .*? and .*? have endpoint conflict: \
-switchId="${flow.yFlowRequest.subFlows.first().endpoint.switchId}" port=${flow.yFlowRequest.subFlows.first().endpoint.portNumber} vlanId=${flow.yFlowRequest.subFlows.first().endpoint.vlanId} \/ \
-switchId="${flow.yFlowRequest.subFlows.last().endpoint.switchId}" port=${flow.yFlowRequest.subFlows.last().endpoint.portNumber} vlanId=${flow.yFlowRequest.subFlows.last().endpoint.vlanId}/
+switchId="${flow.yFlow.subFlows.first().endpoint.switchId}" port=${flow.yFlow.subFlows.first().endpoint.portNumber} vlanId=${flow.yFlow.subFlows.first().endpoint.vlanId} \/ \
+switchId="${flow.yFlow.subFlows.last().endpoint.switchId}" port=${flow.yFlow.subFlows.last().endpoint.portNumber} vlanId=${flow.yFlow.subFlows.last().endpoint.vlanId}/
                         }
                 ],
                 [
@@ -248,8 +242,8 @@ switchId="${flow.yFlowRequest.subFlows.last().endpoint.switchId}" port=${flow.yF
                                 .withEp1AndEp2Vlan(0, 0),
                         errorPattern: { YFlowBuilder flow ->
                             ~/The sub-flows .*? and .*? have endpoint conflict: \
-switchId="${flow.yFlowRequest.subFlows.first().endpoint.switchId}" port=${flow.yFlowRequest.subFlows.first().endpoint.portNumber} \/ \
-switchId="${flow.yFlowRequest.subFlows.first().endpoint.switchId}" port=${flow.yFlowRequest.subFlows.last().endpoint.portNumber}/
+switchId="${flow.yFlow.subFlows.first().endpoint.switchId}" port=${flow.yFlow.subFlows.first().endpoint.portNumber} \/ \
+switchId="${flow.yFlow.subFlows.first().endpoint.switchId}" port=${flow.yFlow.subFlows.last().endpoint.portNumber}/
                         }
                 ],
                 [
@@ -258,24 +252,24 @@ switchId="${flow.yFlowRequest.subFlows.first().endpoint.switchId}" port=${flow.y
                                 .withEp2QnqAsEp1Vlan(),
                         errorPattern: { YFlowBuilder flow ->
                             ~/The sub-flows .*? and .*? have endpoint conflict: \
-switchId="${flow.yFlowRequest.subFlows.first().endpoint.switchId}" port=${flow.yFlowRequest.subFlows.first().endpoint.portNumber} vlanId=${flow.yFlowRequest.subFlows.first().endpoint.vlanId} \/ \
-switchId="${flow.yFlowRequest.subFlows.last().endpoint.switchId}" port=${flow.yFlowRequest.subFlows.last().endpoint.portNumber} vlanId=${flow.yFlowRequest.subFlows.first().endpoint.vlanId}/
+switchId="${flow.yFlow.subFlows.first().endpoint.switchId}" port=${flow.yFlow.subFlows.first().endpoint.portNumber} vlanId=${flow.yFlow.subFlows.first().endpoint.vlanId} \/ \
+switchId="${flow.yFlow.subFlows.last().endpoint.switchId}" port=${flow.yFlow.subFlows.last().endpoint.portNumber} vlanId=${flow.yFlow.subFlows.first().endpoint.vlanId}/
                         }
                 ],
                 [
                         descr       : "ep1 on ISL port",
                         yFlowBuilder: yFlowFactory.getBuilder(topologyHelper.switchTriplets[0]).withEp1OnISLPort(),
                         errorPattern: { YFlowBuilder flow ->
-                            ~/The port ${flow.yFlowRequest.subFlows.first().endpoint.portNumber} on the \
-switch '${flow.yFlowRequest.subFlows.first().endpoint.switchId}' is occupied by an ISL \(destination endpoint collision\)./
+                            ~/The port ${flow.yFlow.subFlows.first().endpoint.portNumber} on the \
+switch '${flow.yFlow.subFlows.first().endpoint.switchId}' is occupied by an ISL \(destination endpoint collision\)./
                         }
                 ],
                 [
                         descr       : "shared endpoint on ISL port",
                         yFlowBuilder: yFlowFactory.getBuilder(topologyHelper.switchTriplets[0]).withSharedEpOnISLPort(),
                         errorPattern: { YFlowBuilder flow ->
-                            ~/The port ${flow.yFlowRequest.sharedEndpoint.portNumber} on the \
-switch '${flow.yFlowRequest.sharedEndpoint.switchId}' is occupied by an ISL \(source endpoint collision\)./
+                            ~/The port ${flow.yFlow.sharedEndpoint.portNumber} on the \
+switch '${flow.yFlow.sharedEndpoint.switchId}' is occupied by an ISL \(source endpoint collision\)./
                         }
                 ],
                 [
@@ -288,8 +282,8 @@ switch '${flow.yFlowRequest.sharedEndpoint.switchId}' is occupied by an ISL \(so
                             return null
                         }(),
                         errorPattern: { YFlowBuilder flow ->
-                            ~/Server 42 port in the switch properties for switch '${flow.yFlowRequest.subFlows.last().endpoint.switchId}'\
- is set to '${flow.yFlowRequest.subFlows.last().endpoint.portNumber}'. It is not possible to create or update an endpoint with these parameters./
+                            ~/Server 42 port in the switch properties for switch '${flow.yFlow.subFlows.last().endpoint.switchId}'\
+ is set to '${flow.yFlow.subFlows.last().endpoint.portNumber}'. It is not possible to create or update an endpoint with these parameters./
                         }
                 ],
                 [
@@ -302,8 +296,8 @@ switch '${flow.yFlowRequest.sharedEndpoint.switchId}' is occupied by an ISL \(so
                             return null
                         }(),
                         errorPattern: { YFlowBuilder flow ->
-                            ~/Server 42 port in the switch properties for switch '${flow.yFlowRequest.sharedEndpoint.switchId}'\
- is set to '${flow.yFlowRequest.sharedEndpoint.portNumber}'. It is not possible to create or update an endpoint with these parameters./
+                            ~/Server 42 port in the switch properties for switch '${flow.yFlow.sharedEndpoint.switchId}'\
+ is set to '${flow.yFlow.sharedEndpoint.portNumber}'. It is not possible to create or update an endpoint with these parameters./
                         }
                 ],
                 [
@@ -326,15 +320,15 @@ switch '${flow.yFlowRequest.sharedEndpoint.switchId}' is occupied by an ISL \(so
     def "System forbids to create a Y-Flow with conflict: subflow1 vlans are [0,X] and subflow2 vlans are [X,0] on shared endpoint"() {
         when: "Try creating a Y-Flow with one endpoint being in conflict with the other one"
         def flowParams = yFlowFactory.getBuilder(topologyHelper.switchTriplets[0]).withSubFlow1SharedEpQnqAsSubFlow2SharedEpVlan()
-        def yFlow = flowParams.build()
+        def yFlow = flowParams.build().create()
 
         then: "Error is received, describing the problem"
         def exc = thrown(HttpClientErrorException)
         new YFlowNotCreatedWithConflictExpectedError(~/FlowValidateAction failed: \
 Requested flow '.*?' conflicts with existing flow '.*?'. Details: requested flow '.*?' \
-source: switchId="${flowParams.yFlowRequest.sharedEndpoint.switchId}" port=${flowParams.yFlowRequest.sharedEndpoint.portNumber} vlanId=${flowParams.yFlowRequest.subFlows.last().sharedEndpoint.innerVlanId}, \
+source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams.yFlow.sharedEndpoint.portNumber} vlanId=${flowParams.yFlow.subFlows.last().sharedEndpoint.innerVlanId}, \
 existing flow '.*?' \
-source: switchId="${flowParams.yFlowRequest.sharedEndpoint.switchId}" port=${flowParams.yFlowRequest.sharedEndpoint.portNumber} vlanId=${flowParams.yFlowRequest.subFlows.first().sharedEndpoint.vlanId}/)
+source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams.yFlow.sharedEndpoint.portNumber} vlanId=${flowParams.yFlow.subFlows.first().sharedEndpoint.vlanId}/)
                 .matches(exc)
         and: "'Get' y-flows doesn't return the flow"
         Wrappers.wait(WAIT_OFFSET) { //even on error system briefly creates an 'in progress' flow
@@ -347,14 +341,6 @@ source: switchId="${flowParams.yFlowRequest.sharedEndpoint.switchId}" port=${flo
                 assert it.YFlowId != yFlow.yFlowId
             }
         }
-
-        cleanup:
-        yFlow && !exc && yFlow.delete()
-        Wrappers.wait(WAIT_OFFSET) {
-            /*Sometimes test is too fast, so one of subflows stays in 'In Progress' at this stage.
-            Let's wait for it to be removed */
-            northboundV2.getAllFlows().find { it.getStatus() == FlowState.IN_PROGRESS.toString() } == null
-        }
     }
 
     @Tags([HARDWARE])
@@ -362,12 +348,12 @@ source: switchId="${flowParams.yFlowRequest.sharedEndpoint.switchId}" port=${flo
         given: "A LAG port"
         def swT = topologyHelper.switchTriplets.find { it.shared.features.contains(SwitchFeature.LAG) }
         assumeTrue(swT != null, "Unable to find a switch that supports LAG")
-        def portsArray = topology.getAllowedPortsForSwitch(swT.shared)[-2, -1]
+        def portsArray = topology.getAllowedPortsForSwitch(swT.shared)[-2, -1] as Set
         def payload = new LagPortRequest(portNumbers: portsArray)
-        def lagPort = northboundV2.createLagLogicalPort(swT.shared.dpId, payload).logicalPortNumber
+        def lagPort = switchHelper.createLagLogicalPort(swT.shared.dpId, portsArray).logicalPortNumber
 
         when: "Try creating a Y-Flow with shared endpoint port being inside LAG"
-        def yFlow = yFlowFactory.getBuilder(swT).withSharedEpPort(portsArray[0]).build()
+        def yFlow = yFlowFactory.getBuilder(swT).withSharedEpPort(portsArray[0]).build().create()
 
         then: "Error is received, describing the problem"
         def exc = thrown(HttpClientErrorException)
@@ -384,10 +370,6 @@ source: switchId="${flowParams.yFlowRequest.sharedEndpoint.switchId}" port=${flo
                 assert it.YFlowId != yFlow.yFlowId
             }
         }
-
-        cleanup:
-        yFlow && !exc && yFlow.delete()
-        lagPort && northboundV2.deleteLagLogicalPort(swT.shared.dpId, lagPort)
     }
 
     @Tags([LOW_PRIORITY])
@@ -410,15 +392,11 @@ source: switchId="${flowParams.yFlowRequest.sharedEndpoint.switchId}" port=${flo
         assumeTrue(switchTriplet != null, "No suiting switches found.")
 
         when: "Y-Flow plan for them with bandwidth equal to ISL bandwidth"
-        def yFlowRequest = yFlowFactory.getBuilder(switchTriplet, false)
-                .withBandwidth(slowestLinkOnTheWest.getMaxBandwidth())
+        def yFlow = yFlowFactory.getBuilder(switchTriplet, false)
+                .withBandwidth(slowestLinkOnTheWest.getMaxBandwidth()).build()
 
         then: "Y-Flow is created and UP"
-        def yFlow = yFlowRequest.build()
-        yFlow.waitForBeingInState(FlowState.UP)
-
-        cleanup:
-        yFlow && yFlow.delete()
+        yFlow.create()
     }
 
     /**

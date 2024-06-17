@@ -1,43 +1,37 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-
-import org.openkilda.functionaltests.error.InvalidRequestParametersExpectedError
-
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ONLY_IN_DB
-import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
-
-import org.openkilda.functionaltests.error.HistoryMaxCountExpectedError
-
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_SUCCESS
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.helpers.model.FlowStatusHistoryEvent.DELETED
+import static org.openkilda.functionaltests.helpers.model.FlowStatusHistoryEvent.UP
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.HistoryMaxCountExpectedError
+import org.openkilda.functionaltests.error.InvalidRequestParametersExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
+import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.FlowHistory
+import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.messaging.payload.history.FlowHistoryEntry
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.history.FlowEvent
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.tools.SoftAssertions
 
 import com.github.javafaker.Faker
 import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
@@ -49,6 +43,7 @@ import java.util.concurrent.TimeUnit
 @Narrative("""Verify that history records are created for the create/update actions.
 History record is created in case the create/update action is completed successfully.""")
 @Slf4j
+
 class FlowHistorySpec extends HealthCheckSpecification {
     @Shared
     Long specStartTime
@@ -57,6 +52,9 @@ class FlowHistorySpec extends HealthCheckSpecification {
     String flowWithHistory
     @Shared
     List<FlowHistoryEntry> bigHistory
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     def setupSpec() {
         specStartTime = System.currentTimeSeconds()
@@ -82,26 +80,27 @@ class FlowHistorySpec extends HealthCheckSpecification {
     def "History records are created for the create/update actions using custom timeline"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
+        def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
         //set non default values
-        flow.ignoreBandwidth = true
-        flow.periodicPings = true
-        flow.allocateProtectedPath = true
-        flow.source.innerVlanId = flow.destination.vlanId
-        flow.destination.innerVlanId = flow.source.vlanId
-        flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
-        flow.pathComputationStrategy = PathComputationStrategy.LATENCY
-        flow.maxLatency = 12345678
-        flowHelperV2.addFlow(flow)
+                .withIgnoreBandwidth(true)
+                .withPeriodicPing(true)
+                .withProtectedPath(true)
+                .withEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .withPathComputationStrategy(PathComputationStrategy.LATENCY)
+                .withMaxLatency(12345678).build().tap {
+            it.source.innerVlanId = it.destination.vlanId
+            it.destination.innerVlanId = it.source.vlanId
+        }.create()
 
         then: "History record is created"
         Long timestampAfterCreate = System.currentTimeSeconds()
-        def flowHistory = northbound.getFlowHistory(flow.flowId, specStartTime, timestampAfterCreate)
-        assert flowHistory.size() == 1
-        checkHistoryCreateAction(flowHistory[0], flow.flowId)
+        flow.waitForHistoryEvent(FlowActionType.CREATE)
+        def flowHistory = flow.retrieveFlowHistory(specStartTime, timestampAfterCreate)
+        assert flowHistory.entries.size() == 1
+        checkHistoryCommonStuff(flowHistory, flow.flowId, FlowActionType.CREATE)
 
         and: "Flow history contains all flow properties in the dump section"
-        with(flowHistory[0].dumps[0]) { dump ->
+        with(flowHistory.getEntriesByType(FlowActionType.CREATE).first().dumps[0]) { dump ->
             dump.type == "stateAfter"
             dump.bandwidth == flow.maximumBandwidth
             dump.ignoreBandwidth == flow.ignoreBandwidth
@@ -120,9 +119,9 @@ class FlowHistorySpec extends HealthCheckSpecification {
             dump.sourceInnerVlan == flow.source.innerVlanId
             dump.destinationInnerVlan == flow.destination.innerVlanId
             dump.allocateProtectedPath == flow.allocateProtectedPath
-            dump.encapsulationType.toString() == flow.encapsulationType
+            dump.encapsulationType.toString() == flow.encapsulationType.toString().toUpperCase()
             dump.pinned == flow.pinned
-            dump.pathComputationStrategy.toString() == flow.pathComputationStrategy
+            dump.pathComputationStrategy.toString() == flow.pathComputationStrategy.toString().toUpperCase()
             dump.periodicPings == flow.periodicPings
             dump.maxLatency == flow.maxLatency * 1000000
             //groupId is tested in FlowDiversityV2Spec
@@ -130,7 +129,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
         }
 
         when: "Update the created flow"
-        def updatedFlow = flow.jacksonCopy().tap {
+        def expectedFlowEntity = flow.deepCopy().tap {
             it.maximumBandwidth = flow.maximumBandwidth + 1
             it.maxLatency = flow.maxLatency + 1
             it.pinned = !flow.pinned
@@ -139,17 +138,19 @@ class FlowHistorySpec extends HealthCheckSpecification {
             it.source.vlanId = flow.source.vlanId + 1
             it.destination.vlanId = flow.destination.vlanId + 1
             it.ignoreBandwidth = !it.ignoreBandwidth
-            it.pathComputationStrategy = PathComputationStrategy.COST.toString()
+            it.pathComputationStrategy = PathComputationStrategy.COST
             it.description = it.description + "updated"
         }
-        flowHelperV2.updateFlow(flow.flowId, updatedFlow)
+        def updatedFlow = flow.update(expectedFlowEntity)
 
         then: "History record is created after updating the flow"
+        flow.waitForHistoryEvent(FlowActionType.UPDATE)
         Long timestampAfterUpdate = System.currentTimeSeconds()
-        def flowHistory1 = northbound.getFlowHistory(flow.flowId, specStartTime, timestampAfterUpdate)
-        assert flowHistory1.size() == 2
-        checkHistoryUpdateAction(flowHistory1[1], flow.flowId)
-        with (flowHistory1.last().dumps.find { it.type == "stateBefore" }) {
+        def flowHistory1 = updatedFlow.retrieveFlowHistory(specStartTime, timestampAfterUpdate)
+        assert flowHistory1.entries.size() == 2
+        checkHistoryCommonStuff(flowHistory1, flow.flowId, FlowActionType.UPDATE)
+
+        with (flowHistory1.getEntriesByType(FlowActionType.UPDATE).first().dumps.find { it.type == "stateBefore" }) {
             it.bandwidth == flow.maximumBandwidth
             it.maxLatency == flow.maxLatency * 1000000
             it.pinned == flow.pinned
@@ -157,9 +158,9 @@ class FlowHistorySpec extends HealthCheckSpecification {
             it.sourceVlan == flow.source.vlanId
             it.destinationVlan == flow.destination.vlanId
             it.ignoreBandwidth == flow.ignoreBandwidth
-            it.pathComputationStrategy.toString() == flow.pathComputationStrategy
+            it.pathComputationStrategy.toString() == flow.pathComputationStrategy.toString().toUpperCase()
         }
-        with (flowHistory1.last().dumps.find { it.type == "stateAfter" }) {
+        with (flowHistory1.getEntriesByType(FlowActionType.UPDATE).first().dumps.find { it.type == "stateAfter" }) {
             it.bandwidth == updatedFlow.maximumBandwidth
             it.maxLatency == updatedFlow.maxLatency * 1000000
             it.pinned == updatedFlow.pinned
@@ -167,78 +168,82 @@ class FlowHistorySpec extends HealthCheckSpecification {
             it.sourceVlan == updatedFlow.source.vlanId
             it.destinationVlan == updatedFlow.destination.vlanId
             it.ignoreBandwidth == updatedFlow.ignoreBandwidth
-            it.pathComputationStrategy.toString() == updatedFlow.pathComputationStrategy
+            it.pathComputationStrategy.toString() == updatedFlow.pathComputationStrategy.toString().toUpperCase()
         }
 
         while((System.currentTimeSeconds() - timestampAfterUpdate) < 1) {
-            TimeUnit.MILLISECONDS.sleep(100);
+            TimeUnit.MILLISECONDS.sleep(100)
         }
 
         when: "Delete the updated flow"
-       flowHelperV2.deleteFlow(flow.flowId)
+        updatedFlow.delete()
 
         then: "History is still available for the deleted flow"
-        def flowHistory3 = northbound.getFlowHistory(flow.flowId, specStartTime, timestampAfterUpdate)
-        assert flowHistory3.size() == 2
-        checkHistoryDeleteAction(flowHistory3, flow.flowId)
+        flow.waitForHistoryEvent(FlowActionType.DELETE)
+        def flowHistory3 = updatedFlow.retrieveFlowHistory(specStartTime)
+        assert flowHistory3.entries.size() == 3
+        checkHistoryCommonStuff(flowHistory3, flow.flowId, FlowActionType.CREATE)
+        checkHistoryCommonStuff(flowHistory3, flow.flowId, FlowActionType.UPDATE)
+        checkHistoryCommonStuff(flowHistory3, flow.flowId, FlowActionType.DELETE)
 
         and: "Flow history statuses returns all flow statuses for the whole life cycle"
         //create, update, delete
-        northboundV2.getFlowHistoryStatuses(flow.flowId).historyStatuses*.statusBecome == ["UP", "UP", "DELETED"]
+        updatedFlow.retrieveFlowHistoryStatus()*.statusBecome == [UP, UP, DELETED]
         //check custom timeLine and the 'count' option
-        northboundV2.getFlowHistoryStatuses(flow.flowId, specStartTime, timestampAfterUpdate)
-                .historyStatuses*.statusBecome == ["UP", "UP"]
-        northboundV2.getFlowHistoryStatuses(flow.flowId, 1).historyStatuses*.statusBecome == ["DELETED"]
+        updatedFlow.retrieveFlowHistoryStatus(specStartTime, timestampAfterUpdate)*.statusBecome == [UP, UP]
+        updatedFlow.retrieveFlowHistoryStatus(1)*.statusBecome == [DELETED]
     }
 
     def "History records are created for the create/update actions using default timeline"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(srcSwitch, dstSwitch)
 
         then: "History record is created"
-        def flowHistory = northbound.getFlowHistory(flow.flowId)
-        assert flowHistory.size() == 1
-        checkHistoryCreateAction(flowHistory[0], flow.flowId)
+        flow.waitForHistoryEvent(FlowActionType.CREATE)
+        def flowHistory = flow.retrieveFlowHistory()
+        assert flowHistory.entries.size() == 1
+        checkHistoryCommonStuff(flowHistory, flow.flowId, FlowActionType.CREATE)
 
         when: "Update the created flow"
-        flowHelperV2.updateFlow(flow.flowId, flow.tap { it.description = it.description + "updated" })
+        flow.update(flow.tap {it.description = it.description + "updated" })
 
         then: "History record is created after updating the flow"
-        def flowHistory1 = northbound.getFlowHistory(flow.flowId)
-        assert flowHistory1.size() == 2
-        checkHistoryUpdateAction(flowHistory1[1], flow.flowId)
+        flow.waitForHistoryEvent(FlowActionType.UPDATE)
+        def flowHistory1 = flow.retrieveFlowHistory()
+        assert flowHistory1.entries.size() == 2
+        checkHistoryCommonStuff(flowHistory1, flow.flowId, FlowActionType.UPDATE)
 
         when: "Delete the updated flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow.delete()
 
         then: "History is still available for the deleted flow"
-        def flowHistory3 = northbound.getFlowHistory(flow.flowId)
-        assert flowHistory3.size() == 3
-        checkHistoryDeleteAction(flowHistory3, flow.flowId)
+        flow.waitForHistoryEvent(FlowActionType.DELETE)
+        def flowHistory3 = flow.retrieveFlowHistory()
+        assert flowHistory3.entries.size() == 3
+        checkHistoryCommonStuff(flowHistory3, flow.flowId, FlowActionType.CREATE)
+        checkHistoryCommonStuff(flowHistory3, flow.flowId, FlowActionType.UPDATE)
+        checkHistoryCommonStuff(flowHistory3, flow.flowId, FlowActionType.DELETE)
     }
 
     def "History records are created for the partial update actions #partialUpdateType"() {
         given: "Flow has been created"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-                .tap { it.pathComputationStrategy = PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH })
+        def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
+                .withPathComputationStrategy(PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH).build()
+                .create()
 
         when: "Update the created flow"
-        def updatedFlow = partialUpdate(flow.flowId)
+        def updatedFlow = partialUpdate(flow)
 
         then: "History record is created after partial flow update"
-        def flowHistory = northbound.getFlowHistory(flow.flowId)
-        verifyAll {
-            flowHistory.size() == 2
-            flowHistory.last().action == PARTIAL_UPDATE_ACTION
-            flowHistory.last().payload.last().action == historyAction
-        }
-        checkHistoryCommonStuff(flowHistory.last(), flow.flowId)
+        flow.waitForHistoryEvent(historyAction)
+        def flowHistory = flow.retrieveFlowHistory()
+        flowHistory.entries.size() == 2
+        checkHistoryCommonStuff(flowHistory, flow.flowId, historyAction)
 
         and: "History records are with correct flow details in the dump section"
-        verifyAll(flowHistory.last().dumps.find { it.type == "stateBefore" }) {
+        verifyAll(flowHistory.getEntriesByType(historyAction).last().dumps.find { it.type == "stateBefore" }) {
             it.bandwidth == flow.maximumBandwidth
             it.priority == flow.priority
             it.pinned == flow.pinned
@@ -246,13 +251,13 @@ class FlowHistorySpec extends HealthCheckSpecification {
             it.sourceVlan == flow.source.vlanId
             it.destinationVlan == flow.destination.vlanId
             it.ignoreBandwidth == flow.ignoreBandwidth
-            it.pathComputationStrategy == PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH
+            it.pathComputationStrategy.toString() == PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH.toString().toUpperCase()
 //          https://github.com/telstra/open-kilda/issues/5373 (full update: IN_PROGRESS)
 //           it.forwardStatus == "ACTIVE"
 //           it.reverseStatus == "ACTIVE"
         }
 
-        verifyAll(flowHistory.last().dumps.find { it.type == "stateAfter" }) {
+        verifyAll(flowHistory.getEntriesByType(historyAction).last().dumps.find { it.type == "stateAfter" }) {
             it.bandwidth == updatedFlow.maximumBandwidth
             it.priority == updatedFlow.priority
             it.pinned == updatedFlow.pinned
@@ -260,19 +265,19 @@ class FlowHistorySpec extends HealthCheckSpecification {
             it.sourceVlan == updatedFlow.source.vlanId
             it.destinationVlan == updatedFlow.destination.vlanId
             it.ignoreBandwidth == updatedFlow.ignoreBandwidth
-            it.pathComputationStrategy == PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH
+            it.pathComputationStrategy.toString() == PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH.toString().toUpperCase()
 //            https://github.com/telstra/open-kilda/issues/5373 (full update: IN_PROGRESS)
 //            it.forwardStatus == "ACTIVE"
 //            it.reverseStatus == "ACTIVE"
         }
 
         where:
-        partialUpdateType                | historyAction             | partialUpdate
-        "without the consecutive update" | PARTIAL_UPDATE_ONLY_IN_DB |
-                { String flowId -> flowHelperV2.partialUpdate(flowId, new FlowPatchV2().tap { priority = 1 }, false) }
+        partialUpdateType                | historyAction                            | partialUpdate
+        "without the consecutive update" | FlowActionType.PARTIAL_UPDATE_ONLY_IN_DB |
+                { FlowExtended flowExtended -> flowExtended.partialUpdate(new FlowPatchV2().tap { priority = 1 }) }
 
-        "with the consecutive update"    | UPDATE_SUCCESS            |
-                { String flowId -> flowHelperV2.partialUpdate(flowId, new FlowPatchV2().tap { maximumBandwidth = 12345 }, true) }
+        "with the consecutive update"    | FlowActionType.PARTIAL_UPDATE            |
+                { FlowExtended flowExtended -> flowExtended.partialUpdate(new FlowPatchV2().tap { maximumBandwidth = 12345 }) }
     }
 
     @Tags(LOW_PRIORITY)
@@ -350,12 +355,10 @@ class FlowHistorySpec extends HealthCheckSpecification {
             dstSwitch = isl.dstSwitch
             [isl.srcSwitch, isl.dstSwitch].any { !it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
         } ?: assumeTrue(false, "Wasn't able to find a suitable link")
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(srcSwitch, dstSwitch)
 
         when: "Deactivate the src switch"
-        def blockData = switchHelper.knockoutSwitch(srcSwitch, RW)
-        def swIsActive = false
+        switchHelper.knockoutSwitch(srcSwitch, RW)
 
         and: "Related ISLs are FAILED"
         def isls = topology.getRelatedIsls(srcSwitch)
@@ -365,24 +368,15 @@ class FlowHistorySpec extends HealthCheckSpecification {
         }
 
         then: "Flow goes DOWN"
-        Wrappers.wait(WAIT_OFFSET) {
-            def flowInfo = northboundV2.getFlow(flow.flowId)
-            assert flowInfo.status == FlowState.DOWN.toString()
-            //https://github.com/telstra/open-kilda/issues/4126
-//            assert flowInfo.statusInfo == "ValidateFlowAction failed: Flow's $flow.flowId src switch is not active"
-        }
+        flow.waitForBeingInState(FlowState.DOWN)
+//        https://github.com/telstra/open-kilda/issues/4126
+//        assert flow.retrieveDetails().statusInfo == "ValidateFlowAction failed: Flow's $flow.flowId src switch is not active"
 
         and: "The root cause('Switch is not active') is registered in flow history"
-        Wrappers.wait(WAIT_OFFSET) {
-            def flowHistory = flowHelper.getEarliestHistoryEntryByAction(flow.flowId, REROUTE_ACTION)
-            assert flowHistory.payload[0].action == "Flow rerouting operation has been started."
-            assert flowHistory.payload[1].action == "ValidateFlowAction failed: Flow's $flow.flowId src switch is not active"
-            assert flowHistory.payload[2].action == REROUTE_FAIL
-        }
-
-        cleanup:
-        if (!swIsActive) {
-            switchHelper.reviveSwitch(srcSwitch, blockData, true)
+        def failedRerouteEvent = flow.waitForHistoryEvent(FlowActionType.REROUTE_FAILED)
+        verifyAll {
+            assert failedRerouteEvent.payload[0].action == "Flow rerouting operation has been started."
+            assert failedRerouteEvent.payload[1].action == "ValidateFlowAction failed: Flow's $flow.flowId src switch is not active"
         }
     }
 
@@ -390,31 +384,25 @@ class FlowHistorySpec extends HealthCheckSpecification {
     def "History records are created for the create/update actions using custom timeline [v1 api]"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flowHelper.addFlow(flow)
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-            assert northbound.getFlowHistory(flow.id).last().payload.last().action == CREATE_SUCCESS
-        }
+        def flow = flowFactory.getRandomV1(srcSwitch, dstSwitch)
+        flow.waitForHistoryEvent(FlowActionType.CREATE)
 
         then: "History record is created"
         Long timestampAfterCreate = System.currentTimeSeconds()
-        verifyAll(northbound.getFlowHistory(flow.id, specStartTime, timestampAfterCreate)) { flowH ->
-            flowH.size() == 1
-            checkHistoryCreateAction(flowH[0], flow.id)
+        verifyAll(flow.retrieveFlowHistory(specStartTime, timestampAfterCreate)) { flowH ->
+            flowH.entries.size() == 1
+            checkHistoryCommonStuff(flowH, flow.flowId, FlowActionType.CREATE)
         }
 
         when: "Update the created flow"
-        def flowInfo = northbound.getFlow(flow.id)
-        flowHelper.updateFlow(flowInfo.id, flowInfo.tap { it.description = it.description + "updated" })
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-            assert northbound.getFlowHistory(flow.id).last().payload.last().action == UPDATE_SUCCESS
-        }
+        flow.updateV1(flow.tap {it.description = it.description + "updated" })
+        flow.waitForHistoryEvent(FlowActionType.UPDATE)
 
         then: "History record is created after updating the flow"
         Long timestampAfterUpdate = System.currentTimeSeconds()
-        verifyAll(northbound.getFlowHistory(flow.id, specStartTime, timestampAfterUpdate)){ flowH ->
-            flowH.size() == 2
-            checkHistoryUpdateAction(flowH[1], flow.id)
+        verifyAll(flow.retrieveFlowHistory(specStartTime, timestampAfterUpdate)){ flowH ->
+            flowH.entries.size() == 2
+            checkHistoryCommonStuff(flowH, flow.flowId, FlowActionType.UPDATE)
         }
 
         while((System.currentTimeSeconds() - timestampAfterUpdate) < 1) {
@@ -422,37 +410,20 @@ class FlowHistorySpec extends HealthCheckSpecification {
         }
 
         when: "Delete the updated flow"
-        flowHelper.deleteFlow(flow.id)
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-            assert northbound.getFlowHistory(flow.id).last().payload.last().action == DELETE_SUCCESS
-        }
+        flow.deleteV1()
+        flow.waitForHistoryEvent(FlowActionType.DELETE)
 
         then: "History is still available for the deleted flow"
-        northbound.getFlowHistory(flow.id, specStartTime, timestampAfterUpdate).size() == 2
+        flow.retrieveFlowHistory(specStartTime, timestampAfterUpdate).entries.size() == 2
     }
 
-    void checkHistoryCreateAction(FlowHistoryEntry flowHistory, String flowId) {
-        assert flowHistory.action == CREATE_ACTION
-        assert flowHistory.payload.action[-1] == CREATE_SUCCESS
-        checkHistoryCommonStuff(flowHistory, flowId)
-    }
-
-    void checkHistoryUpdateAction(FlowHistoryEntry flowHistory, String flowId) {
-        assert flowHistory.action == UPDATE_ACTION
-        assert flowHistory.payload.action[-1] == UPDATE_SUCCESS
-        checkHistoryCommonStuff(flowHistory, flowId)
-    }
-
-    void checkHistoryCommonStuff(FlowHistoryEntry flowHistory, String flowId) {
-        assert flowHistory.flowId == flowId
-        assert flowHistory.taskId
-        assert flowHistory.payload.timestampIso
-    }
-
-    /** We pass latest timestamp when changes were done.
-     * Just for getting all records from history */
-    void checkHistoryDeleteAction(List<FlowHistoryEntry> flowHistory, String flowId) {
-        checkHistoryCreateAction(flowHistory[0], flowId)
-        checkHistoryUpdateAction(flowHistory[1], flowId)
+    void checkHistoryCommonStuff(FlowHistory flowHistory, String flowId, FlowActionType actionType) {
+        SoftAssertions softAssertions = new SoftAssertions()
+        def historyEvent = flowHistory.getEntriesByType(actionType).first()
+        softAssertions.checkSucceeds { assert historyEvent.payload.action[-1] == actionType.payloadLastAction }
+        softAssertions.checkSucceeds { assert historyEvent.flowId == flowId }
+        softAssertions.checkSucceeds { assert historyEvent.taskId }
+        softAssertions.checkSucceeds { assert historyEvent.payload.timestampIso }
+        softAssertions.verify()
     }
 }

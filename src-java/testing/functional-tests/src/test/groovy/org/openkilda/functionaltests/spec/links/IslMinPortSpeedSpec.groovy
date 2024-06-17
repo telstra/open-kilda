@@ -1,18 +1,16 @@
 package org.openkilda.functionaltests.spec.links
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.MOVED
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-
 import spock.lang.Narrative
+
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Narrative("""Minimal port speed value is chosen for ISL capacity.
 Sometimes an ISL have different port speed on its edges.
@@ -37,7 +35,7 @@ class IslMinPortSpeedSpec extends HealthCheckSpecification {
         def newDstPort = northbound.getPort(newDst.srcSwitch.dpId, newDst.srcPort)
 
         when: "Replug one end of the connected link to the destination switch(isl.srcSwitchId -> newDst.srcSwitchId)"
-        def newIsl = islUtils.replug(isl, false, newDst, true, false)
+        def newIsl = islHelper.replugDestination(isl, newDst, true, false)
 
         Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
             [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
@@ -47,16 +45,6 @@ class IslMinPortSpeedSpec extends HealthCheckSpecification {
         then: "Max bandwidth of new ISL is equal to the minimal port speed"
         Wrappers.wait(WAIT_OFFSET) {
             islUtils.getIslInfo(newIsl).get().maxBandwidth == [port.maxSpeed, newDstPort.maxSpeed].min()
-        }
-
-        cleanup: "Replug the link back and delete the moved ISL"
-        if (newIsl){
-            islUtils.replug(newIsl, true, isl, false, false)
-            islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
-            islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
-            northbound.deleteLink(islUtils.toLinkParameters(newIsl))
-            Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
-            database.resetCosts(topology.isls)
         }
     }
 }

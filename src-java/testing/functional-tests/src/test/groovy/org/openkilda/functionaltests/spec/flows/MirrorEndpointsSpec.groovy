@@ -1,17 +1,8 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static org.junit.jupiter.api.Assumptions.assumeFalse
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static spock.util.matcher.HamcrestSupport.expect
-
+import groovy.transform.AutoClone
+import groovy.transform.Memoized
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.AbstractExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
@@ -23,6 +14,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.FlowHistoryConstants
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.rule.FlowEntry
@@ -32,7 +24,6 @@ import org.openkilda.model.FlowPathDirection
 import org.openkilda.model.FlowPathStatus
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.FlowSegmentCookie
-import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload
@@ -45,21 +36,30 @@ import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.FlowBidirectionalExam
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.openkilda.testing.tools.TraffgenStats
-
-import groovy.transform.AutoClone
-import groovy.transform.Memoized
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.See
 import spock.lang.Shared
-import spock.lang.Unroll
 
-import java.util.regex.Pattern
 import javax.inject.Provider
+import java.util.regex.Pattern
+
+import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.junit.jupiter.api.Assumptions.assumeFalse
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static spock.util.matcher.HamcrestSupport.expect
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-traffic-mirroring")
+
 class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     @Autowired
@@ -68,6 +68,8 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
     FlowStats flowStats
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     def setupSpec() {
         deleteAnyFlowsLeftoversIssue5480()
@@ -147,6 +149,9 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         when: "Traffic briefly runs through the flow"
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = mirrorTg ? new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId]) : null
+        if (mirrorPortStats) {
+            cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
+        }
         def rxPacketsBefore = mirrorPortStats?.get()?.rxPackets
         if (!trafficDisclaimer) {
             verifyTraffic(traffExam, flow, mirrorDirection)
@@ -214,9 +219,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         then: "Src switch pass validation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
 
-        cleanup:
-        mirrorPortStats && mirrorPortStats.close()
-
         where:
         [swPair, mirrorDirection] << [getUniqueSwitchPairs({ it.src.traffGens && it.dst.traffGens }),
                                       [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]].combinations()
@@ -265,14 +267,14 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         and: "Flow passes main traffic"
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId])
+        if (mirrorPortStats) {
+            cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
+        }
         def rxPacketsBefore = mirrorPortStats.get().rxPackets
         verifyTraffic(traffExam, flow, mirrorDirection)
 
         and: "Flow passes mirrored traffic"
         mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
-
-        cleanup:
-        mirrorPortStats && mirrorPortStats.close()
 
         where:
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
@@ -307,15 +309,15 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         and: "Flow passes traffic on main path as well as to the mirror (if possible to check)"
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = mirrorTg ? new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId]) : null
+        if (mirrorPortStats) {
+            cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
+        }
         def rxPacketsBefore = mirrorPortStats?.get()?.rxPackets
         verifyTraffic(traffExam, flow, mirrorDirection)
         //https://github.com/telstra/open-kilda/issues/5420
         if (mirrorTg && !swPair.src.isWb5164()) {
             assert mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
         }
-
-        cleanup:
-        mirrorPortStats && mirrorPortStats.close()
 
         where:
         [swPair, mirrorDirection] << [getUniqueVxlanSwitchPairs(true),
@@ -590,12 +592,12 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         and: "Flow passes traffic on main path as well as to the mirror"
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId])
+        if (mirrorPortStats) {
+            cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
+        }
         def rxPacketsBefore = mirrorPortStats.get().rxPackets
         verifyTraffic(traffExam, flow, mirrorDirection)
         mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
-
-        cleanup:
-        mirrorPortStats && mirrorPortStats.close()
 
         where:
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
@@ -633,12 +635,12 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         and: "Traffic examination reports packets on mirror point"
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId])
+        if (mirrorPortStats) {
+            cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
+        }
         def rxPacketsBefore = mirrorPortStats.get().rxPackets
         verifyTraffic(traffExam, flow, mirrorDirection)
         mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
-
-        cleanup:
-        mirrorPortStats && mirrorPortStats.close()
 
         where:
         mirrorDirection << [FlowPathDirection.REVERSE, FlowPathDirection.FORWARD]
@@ -672,9 +674,6 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def error = thrown(HttpClientErrorException)
         new FlowMirrorPointNotCreatedExpectedError(~/${data.errorDesc(involvedSwitches)}/).matches(error)
 
-        cleanup:
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-
         where:
         data << [
                 [
@@ -705,8 +704,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     }
 
     @Tags([LOW_PRIORITY])
-    @Unroll("#testData.testName, #testData.mirrorPoint.mirrorPointDirection")
-    def "Test possible error scenarios during mirror point creation"(MirrorErrorTestData testData) {
+    def "Test possible error scenarios during mirror point creation: [#testData.testName, #testData.mirrorPoint.mirrorPointDirection]"(MirrorErrorTestData testData) {
         given: "A flow"
         def flow = testData.flow
         flowHelperV2.addFlow(flow)
@@ -929,7 +927,7 @@ flow mirror point cannot be created this flow/).matches(error)
 
         when: "Try to enable connected devices for switch where mirror is created"
         def originalProps = switchHelper.getCachedSwProps(swPair.src.dpId)
-        northbound.updateSwitchProperties(swPair.src.dpId, originalProps.jacksonCopy().tap {
+        switchHelper.updateSwitchProperties(swPair.src, originalProps.jacksonCopy().tap {
             it.switchArp = true
             it.switchLldp = true
         })
@@ -938,9 +936,6 @@ flow mirror point cannot be created this flow/).matches(error)
         def error = thrown(HttpClientErrorException)
         new SwitchPropertiesNotUpdatedExpectedError("Flow mirror point is created on the switch $swPair.src.dpId, " +
                 "switchLldp or switchArp can not be set to true.").matches(error)
-
-        cleanup:
-        !error && originalProps && restoreSwitchProperties(swPair.src.dpId, originalProps)
     }
 
     @Tags([LOW_PRIORITY])
@@ -948,7 +943,7 @@ flow mirror point cannot be created this flow/).matches(error)
         given: "A switch with enabled connected devices"
         def swPair = switchPairs.all().random()
         def originalProps = switchHelper.getCachedSwProps(swPair.src.dpId)
-        northbound.updateSwitchProperties(swPair.src.dpId, originalProps.jacksonCopy().tap {
+        switchHelper.updateSwitchProperties(swPair.src, originalProps.jacksonCopy().tap {
             it.switchArp = true
             it.switchLldp = true
         })
@@ -972,9 +967,6 @@ flow mirror point cannot be created this flow/).matches(error)
         def error = thrown(HttpClientErrorException)
         new FlowMirrorPointNotCreatedExpectedError(~/Connected devices feature is active on the switch $swPair.src.dpId\
 , flow mirror point cannot be created on this switch./).matches(error)
-
-        cleanup:
-        restoreSwitchProperties(swPair.src.dpId, originalProps)
     }
 
     @Tags([LOW_PRIORITY])
@@ -1067,11 +1059,6 @@ with existing flow mirror point \'$existingMirror.mirrorPointId\'./
         direction == FlowPathDirection.FORWARD ? biExam.forward : biExam.reverse
     }
 
-    private void restoreSwitchProperties(SwitchId switchId, SwitchPropertiesDto initialProperties) {
-        Switch sw = topology.switches.find { it.dpId == switchId }
-        switchHelper.updateSwitchProperties(sw, initialProperties)
-    }
-
     private void verifyTraffic(TraffExamService traffExam, FlowRequestV2 flow, FlowPathDirection mirrorDirection) {
         FlowBidirectionalExam biExam = new FlowTrafficExamBuilder(topology, traffExam)
                 .buildBidirectionalExam(flowHelperV2.toV1(flow), 300, 1)
@@ -1081,11 +1068,6 @@ with existing flow mirror point \'$existingMirror.mirrorPointId\'./
             resources = traffExam.startExam(it)
             assert traffExam.waitExam(it).hasTraffic()
         }
-    }
-
-    @Memoized
-    def initialSwPropsCache(SwitchId switchId) {
-        return switchHelper.getCachedSwProps(switchId)
     }
 
     /**

@@ -56,10 +56,12 @@ System can start to use protected path in two case:
 A flow has the status degraded in case when the main path is up and the protected path is down.
 
 Main and protected paths can't use the same link.""")
+
 class ProtectedPathSpec extends HealthCheckSpecification {
 
     @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
+
 
     @Tags(LOW_PRIORITY)
     def "Able to create a flow with protected path when maximumBandwidth=#bandwidth, vlan=#vlanId"() {
@@ -359,11 +361,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Path of the flow is not changed"
         flows.each { assert pathHelper.convert(northbound.getFlowPath(it.flowId)) == currentProtectedPath }
 
-        cleanup: "Revert system to original state"
-        islHelper.restoreIsl(islToBreak)
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        database.resetCosts(topology.isls)
-
         where:
         flowDescription | bandwidth
         "a metered"     | 1000
@@ -373,13 +370,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
     @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute(no bw)"() {
         given: "Two switches with 2 diverse paths at least"
-        //def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
-        //https://github.com/telstra/open-kilda/issues/5608
-        def switchesWhere5608IsReproducible = topology.activeSwitches.findAll {it.dpId.toString().endsWith("08")
-        ||it.dpId.toString().endsWith("09")}
-        def switchPair = switchPairs.all()
-                .excludeSwitches(switchesWhere5608IsReproducible)
-                .withAtLeastNNonOverlappingPaths(2).random()
+        def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair).tap { allocateProtectedPath = true }
@@ -387,12 +378,17 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def path = northbound.getFlowPath(flow.flowId)
 
         and: "Other paths have not enough bandwidth to host the flow in case of reroute"
-        def otherIsls = switchPair.paths.findAll { it != pathHelper.convert(path.protectedPath) &&
-                it != pathHelper.convert(path) }.collectMany { pathHelper.getInvolvedIsls(it) }
+        def originalMainPath = pathHelper.convert(path)
+        def originalProtectedPath = pathHelper.convert(path.protectedPath)
+        def usedIsls = pathHelper.getInvolvedIsls(originalMainPath) +
+                pathHelper.getInvolvedIsls(originalProtectedPath)
+        def otherIsls = switchPair.paths.findAll { it != originalMainPath &&
+                it != originalProtectedPath }.collectMany { pathHelper.getInvolvedIsls(it) }
+                .findAll { !usedIsls.contains(it) && !usedIsls.contains(it.reversed) }
                 .unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
         otherIsls.collectMany{[it, it.reversed]}.each {
             database.updateIslMaxBandwidth(it, flow.maximumBandwidth - 1)
-            database.updateIslAvailableBandwidth(it, flow.maximumBandwidth - 1)
+            islHelper.setAvailableBandwidth(it, flow.maximumBandwidth - 1)
         }
 
         and: "Main flow path breaks"
@@ -407,9 +403,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 status == FlowState.DEGRADED.toString()
                 flowStatusDetails.mainFlowPathStatus == "Up"
                 flowStatusDetails.protectedFlowPathStatus == "Down"
-                statusInfo =~ ~/Not enough bandwidth or no path found. Switch \
-(${switchPair.getSrc().getDpId()}|${switchPair.getDst().getDpId()}) doesn't have links with enough bandwidth, \
-Failed to find path with requested bandwidth=$flow.maximumBandwidth/
+                statusInfo == StatusInfo.OVERLAPPING_PROTECTED_PATH
             }
         }
 
@@ -426,24 +420,12 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
                 flowStatusDetails.protectedFlowPathStatus == "Up"
             }
         }
-
-        cleanup:
-        islHelper.restoreIsl(mainIsl)
-        otherIsls && otherIsls.collectMany{[it, it.reversed]}.each { database.resetIslBandwidth(it) }
-        database.resetCosts(topology.isls)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Flow swaps to protected path when main path gets broken, becomes DEGRADED if protected path is unable to reroute(no path)"() {
         given: "Two switches with 2 diverse paths at least"
-        //def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
-        //https://github.com/telstra/open-kilda/issues/5608
-        def switchesWhere5608IsReproducible = topology.activeSwitches.findAll {it.dpId.toString().endsWith("08")
-                ||it.dpId.toString().endsWith("09")}
-        def switchPair = switchPairs.all()
-                .excludeSwitches(switchesWhere5608IsReproducible)
-                .withAtLeastNNonOverlappingPaths(2).random()
-
+        def switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(switchPair).tap { allocateProtectedPath = true }
@@ -456,7 +438,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         def usedIsls = pathHelper.getInvolvedIsls(originalMainPath) + pathHelper.getInvolvedIsls(originalProtectedPath)
         def otherIsls = switchPair.paths.findAll { it != originalMainPath &&
                 it != originalProtectedPath }.collectMany { pathHelper.getInvolvedIsls(it) }
-                .findAll {!usedIsls.contains(it) }
+                .findAll { !usedIsls.contains(it) && !usedIsls.contains(it.reversed) }
                 .unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
         islHelper.breakIsls(otherIsls)
 
@@ -490,10 +472,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
                 flowStatusDetails.protectedFlowPathStatus == "Up"
             }
         }
-
-        cleanup:
-        islHelper.restoreIsls(otherIsls + mainIsl)
-        database.resetCosts(topology.isls)
     }
 
     def "System reroutes #flowDescription flow to more preferable path and ignores protected path when reroute\
@@ -540,9 +518,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         newCurrentProtectedPath != currentPath
         newCurrentProtectedPath != currentProtectedPath
         Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
-
-        cleanup: "Revert system to original state"
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         where:
         flowDescription | bandwidth
@@ -602,11 +577,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         then: "Path of the flow is not changed"
         pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentProtectedPath
 
-        cleanup: "Revert system to original state"
-        islHelper.restoreIsl(islToBreak)
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        database.resetCosts(topology.isls)
-
         where:
         flowDescription | bandwidth
         "a metered"     | 1000
@@ -646,7 +616,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
 
         and: "Update all ISLs which can be used by protected path"
         def bandwidth = 100
-        isls[1..-1].each { database.updateIslAvailableBandwidth(it, 90) }
+        isls[1..-1].each { islHelper.setAvailableBandwidth(it, 90) }
 
         when: "Create flow without protected path"
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
@@ -666,9 +636,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
             mainFlowPathStatus == "Up"
             protectedFlowPathStatus == "Down"
         }
-
-        cleanup: "Delete the flow and restore available bandwidth"
-        isls.each { database.resetIslBandwidth(it) }
     }
 
     @Tags(ISL_PROPS_DB_RESET)
@@ -679,7 +646,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
 
         and: "Update all ISLs which can be used by protected path"
         def bandwidth = 100
-        isls[1..-1].each { database.updateIslAvailableBandwidth(it, 90) }
+        isls[1..-1].each { islHelper.setAvailableBandwidth(it, 90) }
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
@@ -695,9 +662,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         def flowInfo = database.getFlow(flow.flowId)
         database.getTransitVlans(flowInfo.forwardPathId, flowInfo.reversePathId).size() == 1
         database.getTransitVlans(flowInfo.protectedForwardPathId, flowInfo.protectedReversePathId).size() == 1
-
-        cleanup: "Delete the flow and restore available bandwidth"
-        isls.each { database.resetIslBandwidth(it) }
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -775,10 +739,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
 
         then: "Path is not recalculated again"
         pathHelper.convert(northbound.getFlowPath(flow.flowId).protectedPath) == newProtectedPath
-
-        cleanup: "Revert system to original state"
-        islHelper.restoreIsl(islToBreakProtectedPath)
-        database.resetCosts(topology.isls)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -810,10 +770,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
             flowStatusDetails.mainFlowPathStatus == "Up"
             flowStatusDetails.protectedFlowPathStatus == "Down"
         }
-
-        cleanup: "Restore topology, delete flows and reset costs"
-        islHelper.restoreIsls(broughtDownIsls)
-        database.resetCosts(topology.isls)
 
         where:
         flowDescription | bandwidth
@@ -867,10 +823,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
             }
         }
 
-        cleanup: "Restore topology, delete flow and reset costs"
-        islHelper.restoreIsls(islsToBreak)
-        database.resetCosts(topology.isls)
-
         where:
         flowDescription | bandwidth
         "A metered"     | 1000
@@ -913,11 +865,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
                 }
             }
         }
-
-        cleanup:
-        islHelper.restoreIsls([mainPathIsl, protectedPathIsl])
-        database.resetCosts(topology.isls)
-
     }
 
     def "System reuses current protected path when can't find new non overlapping protected path while intentional\
@@ -971,9 +918,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
                 statusDetails.protectedPath == "Up"
             }
         }
-
-        cleanup: "Revert system to original state"
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -1005,12 +949,12 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
 
         and: "Src, dst and transit switches belongs to different POPs(src:1, dst:4, tr1/tr2:2, tr3:3)"
         // tr1/tr2 for the main path and tr3 for the protected path
-        northboundV2.partialSwitchUpdate(swPair.src.dpId, new SwitchPatchDto().tap { it.pop = "1" })
+        switchHelper.partialUpdate(swPair.src.dpId, new SwitchPatchDto().tap { it.pop = "1" })
         [involvedSwP1[1], involvedSwP2[1]].each { swId ->
-            northboundV2.partialSwitchUpdate(swId, new SwitchPatchDto().tap { it.pop = "2" })
+            switchHelper.partialUpdate(swId, new SwitchPatchDto().tap { it.pop = "2" })
         }
-        northboundV2.partialSwitchUpdate(swPair.dst.dpId, new SwitchPatchDto().tap { it.pop = "4" })
-        northboundV2.partialSwitchUpdate(involvedSwProtected[1], new SwitchPatchDto().tap { it.pop = "3" })
+        switchHelper.partialUpdate(swPair.dst.dpId, new SwitchPatchDto().tap { it.pop = "4" })
+        switchHelper.partialUpdate(involvedSwProtected[1], new SwitchPatchDto().tap { it.pop = "3" })
 
         and: "Path which contains tr3 is non preferable"
         /** There is not possibility to use the 'makePathNotPreferable' method,
@@ -1039,9 +983,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
                 pathHelper.getInvolvedIsls(protectedPath).size()).toInteger()
         log.debug("newCost: $newIslCost")
 
-        islsToUpdate.unique().each { isl ->
-            northbound.updateLinkProps([islUtils.toLinkProps(isl, ["cost": newIslCost.toString()])])
-        }
+        pathHelper.updateIslsCost(islsToUpdate, newIslCost)
 
         and: "All alternative paths unavailable (bring ports down on the source switch)"
         List<Isl> broughtDownIsls = topology.getRelatedIsls(swPair.src) -
@@ -1078,16 +1020,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
 
         and: "Protected path is built through the non preferable path(tr3)"
         pathHelper.getInvolvedSwitches(pathHelper.convert(flowPaths.protectedPath))*.dpId == involvedSwProtected
-
-        cleanup:
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        islHelper.restoreIsls(broughtDownIsls)
-        withPool {
-            (involvedSwP1 + involvedSwP2 + involvedSwProtected).unique().eachParallel { swId ->
-                northboundV2.partialSwitchUpdate(swId, new SwitchPatchDto().tap { it.pop = "" })
-            }
-        }
-        database.resetCosts(topology.isls)
     }
 
     @Tags(LOW_PRIORITY)
@@ -1132,7 +1064,7 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
 
         and: "Update all ISLs which can be used by protected path"
         def bandwidth = 100
-        isls[1..-1].each { database.updateIslAvailableBandwidth(it, 90) }
+        isls[1..-1].each { islHelper.setAvailableBandwidth(it, 90) }
 
         when: "Create flow with protected path"
         def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
@@ -1147,9 +1079,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         errorDetails.errorMessage == "Could not create flow"
         errorDetails.errorDescription == "Not enough bandwidth or no path found. " +
                 "Couldn't find non overlapping protected path"
-
-        cleanup: "Restore available bandwidth"
-        isls.each { database.resetIslBandwidth(it) }
     }
 
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
@@ -1241,10 +1170,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         Wrappers.wait(discoveryInterval * 1.5 + WAIT_OFFSET) {
             assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
         }
-
-        cleanup: "Restore topology, delete flows and reset costs"
-        islHelper.restoreIsls(broughtDownIsls)
-        database.resetCosts(topology.isls)
     }
 
     @Tags(LOW_PRIORITY)
@@ -1308,10 +1233,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         errorDetails.errorDescription == "Not enough bandwidth or no path found." +
                 " Couldn't find non overlapping protected path"
 
-        cleanup: "Restore topology, delete flows and reset costs"
-        islHelper.restoreIsls(broughtDownIsls)
-        database.resetCosts(topology.isls)
-
         where:
         flowDescription | bandwidth
         "a metered"     | 1000
@@ -1363,11 +1284,6 @@ Failed to find path with requested bandwidth=$flow.maximumBandwidth/
         def newFlowPathInfo = northbound.getFlowPath(flow.flowId)
         pathHelper.convert(newFlowPathInfo) == currentPath
         pathHelper.convert(newFlowPathInfo.protectedPath) == alternativePath
-
-        cleanup: "Restore topology, delete flow and reset costs"
-        islHelper.restoreIsls(broughtDownIsls + protectedIslToBreak)
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        database.resetCosts(topology.isls)
     }
 
     @Tags(LOW_PRIORITY)

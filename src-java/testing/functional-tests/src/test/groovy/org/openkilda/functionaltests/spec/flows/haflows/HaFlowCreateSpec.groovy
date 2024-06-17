@@ -1,10 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
-
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.haflow.HaFlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.haflow.HaFlowNotCreatedWithConflictExpectedError
@@ -12,16 +8,18 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.builder.HaFlowBuilder
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
-import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.service.traffexam.TraffExamService
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 
 import javax.inject.Provider
+
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.model.SwitchTriplet.ONE_SWITCH_FLOW
 
 @Slf4j
 @Narrative("Verify create operations on HA-Flows.")
@@ -40,17 +38,14 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         assumeTrue(swT != null, "These cases cannot be covered on given topology: $coveredCases")
 
         when: "Create an HA-Flow of certain configuration"
-        def haFlow = haFlowBuilder.build()
+        def haFlow = haFlowBuilder.build().create()
         def haFlowPath = haFlow.retrievedAllEntityPaths()
 
         def subFlowsPaths = haFlowPath.subFlowPaths.collect { it.path.forward.nodes.toPathNode() }
         boolean isOneSubFlowEndpointYPoint = subFlowsPaths.first().size() > subFlowsPaths.last().size() ?
                 subFlowsPaths.first().containsAll(subFlowsPaths.last()) : subFlowsPaths.last().containsAll(subFlowsPaths.first())
 
-        then: "HA-Flow is created and has UP status"
-        haFlow.waitForBeingInState(FlowState.UP, FLOW_CRUD_TIMEOUT)
-
-        and: "Traffic passes through HA-Flow"
+        then: "Traffic passes through HA-Flow"
         if (swT.isHaTraffExamAvailable()) {
             assert haFlow.traffExam(traffExamProvider.get()).run().hasTraffic()
         }
@@ -74,11 +69,8 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         def flowRemoved = haFlow.delete()
 
         and: "And involved switches pass validation"
-        def involvedSwitchIds = haFlowPath.getInvolvedSwitches(true)
+        def involvedSwitchIds = haFlowPath.getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
-
-        cleanup:
-        haFlow && !flowRemoved && haFlow.delete()
 
         where:
         //Not all cases may be covered. Uncovered cases will be shown as a 'skipped' test
@@ -89,27 +81,21 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         trafficDisclaimer = swT && swT.isHaTraffExamAvailable() ? " and pass traffic" : " [!NO TRAFFIC CHECK!]"
     }
 
-    def "User cannot create a HA-Flow with existent ha_flow_id"() {
+    def "User cannot create an HA-Flow with existent ha_flow_id"() {
         given: "Existing HA-Flow"
         def swT = topologyHelper.switchTriplets[0]
         def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Try to create the same HA-Flow"
-        def haFlowInvalidRequest = haFlowFactory.getBuilder(swT, false, haFlow.occupiedEndpoints())
-                .tap { it.haFlowRequest.haFlowId = haFlow.haFlowId }
-        def invalidHaFlow = haFlowInvalidRequest.build()
+        haFlowFactory.getBuilder(swT, false, haFlow.occupiedEndpoints())
+                .withHaFlowId(haFlow.haFlowId).build().create()
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
         new HaFlowNotCreatedWithConflictExpectedError(~/HA-flow ${haFlow.getHaFlowId()} already exists/).matches(exc)
-
-        cleanup:
-        haFlow && haFlow.delete()
-        invalidHaFlow && invalidHaFlow.delete()
-
     }
 
-    def "User cannot create a HA-Flow with equal A-B endpoints and different inner vlans at these endpoints"() {
+    def "User cannot create an HA-Flow with equal A-B endpoints and different inner vlans at these endpoints"() {
         given: "A switch triplet with equal A-B endpoint switches"
         def swT = topologyHelper.switchTriplets[0]
         def iShapedSwitchTriplet = new SwitchTriplet(swT.shared, swT.ep1, swT.ep1, swT.pathsEp1, swT.pathsEp1)
@@ -118,39 +104,27 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         def haFlowInvalidRequest = haFlowFactory.getBuilder(iShapedSwitchTriplet)
                 .withEp1Vlan(1).withEp1QnQ(2)
                 .withEp2Vlan(3).withEp2QnQ(4)
-        def haFlow = haFlowInvalidRequest.build()
+        .build()
+        haFlowInvalidRequest.create()
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
         new HaFlowNotCreatedExpectedError(~/To have ability to use double vlan tagging for both sub flow \
 destination endpoints which are placed on one switch .*? you must set equal inner vlan for both endpoints. \
-Current inner vlans: ${haFlowInvalidRequest.haFlowRequest.subFlows[0].endpoint.innerVlanId} \
-and ${haFlowInvalidRequest.haFlowRequest.subFlows[1].endpoint.innerVlanId}./).matches(exc)
-
-        cleanup:
-        haFlow && haFlow.delete()
+Current inner vlans: ${haFlowInvalidRequest.subFlows[0].endpointInnerVlan} \
+and ${haFlowInvalidRequest.subFlows[1].endpointInnerVlan}./).matches(exc)
     }
 
     def "User cannot create a one switch HA-Flow"() {
         given: "A switch"
-        def swT = topologyHelper.switchTriplets[0]
-        def sw = swT.shared.dpId
+        def swT = topologyHelper.getSwitchTriplets(false, true).find(ONE_SWITCH_FLOW)
 
         when: "Try to create one switch HA-Flow"
-        def haFlowInvalidRequest = haFlowFactory.getBuilder(swT)
-                .tap {
-                    it.haFlowRequest.sharedEndpoint.switchId = sw
-                    it.haFlowRequest.subFlows.first().endpoint.switchId = sw
-                    it.haFlowRequest.subFlows.last().endpoint.switchId = sw
-                }
-        def haFlow = haFlowInvalidRequest.build()
+        haFlowFactory.getBuilder(swT).build().create()
 
         then: "Error is received"
         def exc = thrown(HttpClientErrorException)
         new HaFlowNotCreatedExpectedError(~/The ha-flow .*? is one switch flow/).matches(exc)
-
-        cleanup:
-        haFlow && haFlow.delete()
     }
 
     /**

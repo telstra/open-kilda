@@ -1,5 +1,22 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.PortHistoryEvent
+import org.openkilda.functionaltests.model.cleanup.CleanupActionType
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse
+import org.openkilda.testing.tools.SoftAssertions
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Isolated
+import spock.lang.Narrative
+import spock.lang.See
+import spock.lang.Shared
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -9,35 +26,22 @@ import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_
 import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_DEACTIVATED
 import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_PERIODIC_STATS
 import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.PORT_DOWN
-import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.PORT_UP
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.PortHistoryEvent
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.model.system.FeatureTogglesDto
-import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v2.switches.PortHistoryResponse
-import org.openkilda.testing.tools.SoftAssertions
-
-import spock.lang.Isolated
-import spock.lang.Narrative
-import spock.lang.See
-import spock.lang.Shared
-
 @See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/port-FSM.png",
         "https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/AF-FSM.png"])
 @Narrative("Verify that port history is created for the port up/down actions.")
+
 class PortHistorySpec extends HealthCheckSpecification {
     @Shared
     //confd/templates/wfm/topology.properties.tmpl => port.antiflap.stats.dumping.interval.seconds = 60
     //it means how often the 'ANTI_FLAP_PERIODIC_STATS' is logged in port history
     def antiflapDumpingInterval = 60
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     @IterationTag(tags = [SMOKE, SMOKE_SWITCHES, ISL_RECOVER_ON_FAIL], iterationNameRegex = /direct/)
     def "Port history are created for the port down/up actions when link is #islDescription"() {
@@ -67,8 +71,8 @@ class PortHistorySpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) {
             with(northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, System.currentTimeMillis())) {
                 it.size() == 4
-                checkPortHistory(it.find { it.event == PORT_UP.toString() },
-                        isl.srcSwitch.dpId, isl.srcPort, PORT_UP)
+                checkPortHistory(it.find { it.event == PortHistoryEvent.PORT_UP.toString() },
+                        isl.srcSwitch.dpId, isl.srcPort, PortHistoryEvent.PORT_UP)
                 def deactivateEvent = it.find { it.event == ANTI_FLAP_DEACTIVATED.toString() }
                 checkPortHistory(deactivateEvent, isl.srcSwitch.dpId, isl.srcPort,
                         ANTI_FLAP_DEACTIVATED)
@@ -83,8 +87,8 @@ class PortHistorySpec extends HealthCheckSpecification {
             with(northboundV2.getPortHistory(isl.dstSwitch.dpId, isl.dstPort, timestampBefore, System.currentTimeMillis())) {
                 it.size() == historySizeOnDstSw
                 if (historySizeOnDstSw as boolean) {
-                    checkPortHistory(it.find { it.event == PORT_UP.toString() },
-                            isl.dstSwitch.dpId, isl.dstPort, PORT_UP)
+                    checkPortHistory(it.find { it.event == PortHistoryEvent.PORT_UP.toString() },
+                            isl.dstSwitch.dpId, isl.dstPort, PortHistoryEvent.PORT_UP)
                     def deactivateEvent = it.find { it.event == ANTI_FLAP_DEACTIVATED.toString() }
                     checkPortHistory(deactivateEvent, isl.dstSwitch.dpId, isl.dstPort,
                             ANTI_FLAP_DEACTIVATED)
@@ -97,9 +101,6 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         and: "Port history on the src switch is also available using default timeline"
         northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort).size() >= 4
-
-        cleanup:
-        islHelper.restoreIsl(isl)
 
         where:
         [islDescription, historySizeOnDstSw, isl] << [
@@ -129,9 +130,6 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         then: "Port history is NOT returned"
         portH.isEmpty()
-
-        cleanup:
-        islHelper.restoreIsl(isl)
     }
 
     def "Port history should not be returned in case port/switch have never existed"() {
@@ -156,14 +154,10 @@ class PortHistorySpec extends HealthCheckSpecification {
 
         and: "Deactivate the src switch"
         def switchToDisconnect = isl.srcSwitch
-        def blockData = switchHelper.knockoutSwitch(switchToDisconnect, RW)
+        switchHelper.knockoutSwitch(switchToDisconnect, RW)
 
         then: "Port history on the src switch is still available"
         northboundV2.getPortHistory(isl.srcSwitch.dpId, isl.srcPort, timestampBefore, timestampAfter).size() == 4
-
-        cleanup: "Revive the src switch"
-        islHelper.restoreIsl(isl)
-        switchToDisconnect && switchHelper.reviveSwitch(switchToDisconnect, blockData)
     }
 
     def "System shows antiflap statistic in the ANTI_FLAP_DEACTIVATED event when antiflap is deactivated\
@@ -178,6 +172,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         def timestampBefore = System.currentTimeMillis()
 
         when: "Execute port DOWN on the src switch for activating antiflap"
+        cleanupManager.addAction(CleanupActionType.PORT_UP, {northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)})
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
@@ -204,13 +199,6 @@ class PortHistorySpec extends HealthCheckSpecification {
                 antiflapStat.upCount == 1
             }
         }
-
-        cleanup: "revert system to original state"
-        islHelper.restoreIsl(isl)
-    }
-
-    def cleanup() {
-        database.resetCosts(topology.isls)
     }
 
     void checkPortHistory(PortHistoryResponse portHistory, SwitchId switchId, Integer port, PortHistoryEvent event) {
@@ -228,6 +216,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         "https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/AF-FSM.png"])
 @Narrative("Verify that port history is created for the port up/down actions.")
 @Isolated
+
 class PortHistoryIsolatedSpec extends HealthCheckSpecification {
     @Shared
     def antiflapDumpingInterval = 60
@@ -235,9 +224,7 @@ class PortHistoryIsolatedSpec extends HealthCheckSpecification {
     //isolation: global fl sync toggle is changed
     def "Port history is able to show ANTI_FLAP statistic"() {
         given: "floodlightRoutePeriodicSync is disabled"
-        def updateToogles = northbound.toggleFeature(FeatureTogglesDto.builder()
-                .floodlightRoutePeriodicSync(false)
-                .build())
+        featureToggles.floodlightRoutePeriodicSync(false)
 
         and: "A port in a stable state"
         def isl = getTopology().islsForActiveSwitches.first()
@@ -284,12 +271,5 @@ class PortHistoryIsolatedSpec extends HealthCheckSpecification {
                 verify()
             }
         }
-
-        cleanup:
-       islHelper.restoreIsl(isl)
-        updateToogles && northbound.toggleFeature(FeatureTogglesDto.builder()
-                .floodlightRoutePeriodicSync(true)
-                .build())
-        database.resetCosts(topology.isls)
     }
 }

@@ -13,11 +13,16 @@ import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowFactory
 import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.payload.flow.FlowState
-
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
+
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Narrative("""Verify that missing yFlow rule is detected by switch/flow validations.
 And make sure that the yFlow rule can be installed by syncSw/syncYFlow endpoints.""")
@@ -38,7 +43,7 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         def sharedRules = northbound.getSwitchRules(swIdToManipulate).flowEntries.findAll {
             it.instructions.goToMeter == sharedMeter.value
         }
-        sharedRules.each { northbound.deleteSwitchRules(swIdToManipulate, it.cookie) }
+        sharedRules.each { switchHelper.deleteSwitchRules(swIdToManipulate, it.cookie) }
 
         then: "Y-Flow validate detects discrepancies"
         Wrappers.wait(RULES_DELETION_TIME) { assert !yFlow.validate().asExpected }
@@ -68,9 +73,6 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         and: "Switch passes validation"
         switchHelper.validate(swIdToManipulate).isAsExpected()
 
-        cleanup:
-        yFlow && yFlow.delete()
-
         where:
         data << [
                 [
@@ -96,7 +98,7 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         def subFl_2 = yFlow.subFlows[1]
         def swIdToManipulate = data.swT.ep1.dpId
         def cookieToDelete = database.getFlow(subFl_1.flowId).reversePath.cookie.value
-        northbound.deleteSwitchRules(swIdToManipulate, cookieToDelete)
+        switchHelper.deleteSwitchRules(swIdToManipulate, cookieToDelete)
 
         then: "Y-Flow is not valid"
         def validateYFlowInfo = yFlow.validate()
@@ -150,9 +152,6 @@ class YFlowValidationSpec extends HealthCheckSpecification {
 
         and: "Switches pass validation"
         switchHelper.validate(swIdToManipulate).isAsExpected()
-
-        cleanup:
-        yFlow && yFlow.delete()
 
         where:
         data << [

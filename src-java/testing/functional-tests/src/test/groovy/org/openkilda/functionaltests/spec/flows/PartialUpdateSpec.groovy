@@ -1,19 +1,12 @@
 package org.openkilda.functionaltests.spec.flows
 
+import com.fasterxml.jackson.annotation.JsonInclude.Include
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializationFeature
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithConflictExpectedError
-
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static org.assertj.core.api.Assertions.assertThat
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static spock.util.matcher.HamcrestSupport.expect
-
-import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -29,21 +22,26 @@ import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
-import com.fasterxml.jackson.annotation.JsonInclude.Include
-import com.fasterxml.jackson.databind.DeserializationFeature
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
-import spock.lang.Unroll
+
+import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.assertj.core.api.Assertions.assertThat
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static spock.util.matcher.HamcrestSupport.expect
 
 @Narrative("""
 Covers PATCH /api/v2/flows/:flowId and PATCH /api/v1/flows/:flowId
 This API allows to partially update a flow, i.e. update a flow without specifying a full flow payload. 
 Depending on changed fields flow will be either updated+rerouted or just have its values changed in database.
 """)
+
 class PartialUpdateSpec extends HealthCheckSpecification {
     def amountOfFlowRules = 2
 
@@ -333,9 +331,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_DELETION_TIME) {
             assert switchHelper.validateAndCollectFoundDiscrepancies([dstSwitch, newDstSwitch]*.dpId).isEmpty()
         }
-
-        cleanup:
-        switchHelper.synchronizeAndCollectFixedDiscrepancies([dstSwitch, newDstSwitch]*.dpId)
     }
 
     def "Able to update flow encapsulationType using partial update"() {
@@ -566,8 +561,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         ]
     }
 
-    @Unroll("Unable to partial update flow (#data.conflict)")
-    def "Unable to partial update flow when there are conflicting vlans"() {
+    def "Unable to partial update flow when there are conflicting vlans (#data.conflict)"() {
         given: "Two potential flows"
         def swPair = switchPairs.all().random()
         def flow1 = flowHelperV2.randomFlow(swPair, false)
@@ -700,8 +694,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         }
     }
 
-    @Unroll("Unable to partial update flow (maxLatency #maxLatencyAfter and maxLatencyTier2 #maxLatencyT2After)")
-    def "Unable to partial update flow with maxLatency incorrect value"() {
+    def "Unable to partial update flow with maxLatency incorrect value(#description)"() {
         given: "Two potential flows"
         def flow = flowHelperV2.randomFlow(switchPairs.all().random()).tap {
             maxLatency = maxLatencyBefore

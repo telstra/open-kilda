@@ -5,14 +5,12 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.messaging.error.MessageError
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.model.SwitchFeature
-import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
@@ -24,9 +22,13 @@ import javax.inject.Provider
 @Narrative("""System allows to create default port(vlan=0) and simple flow(vlan=<any number>) on the same port.
 Default flow has lower priority than simple flow.
 Also system allows to pass tagged traffic via default flow.""")
-class DefaultFlowSpec extends HealthCheckSpecification {
 
-    @Autowired @Shared
+class DefaultFlowSpec extends HealthCheckSpecification {
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+    @Autowired
+    @Shared
     Provider<TraffExamService> traffExamProvider
 
     @Tags([SMOKE_SWITCHES])
@@ -41,36 +43,34 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         assumeTrue([srcSwitch, dstSwitch, newDstSwitch].every { it.features.contains(SwitchFeature.MULTI_TABLE) },
  "MultiTable mode should be supported by the src and dst switches")
 
-        Map<SwitchId, SwitchPropertiesDto> initSwProps = [srcSwitch, dstSwitch, newDstSwitch].collectEntries {
+        [srcSwitch, dstSwitch, newDstSwitch].collectEntries {
             [(it): switchHelper.getCachedSwProps(it.dpId)]
         }
 
         def bandwidth = 1000
-        def vlanFlow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        vlanFlow.maximumBandwidth = bandwidth
-        flowHelperV2.addFlow(vlanFlow)
+        def vlanFlow = flowFactory.getBuilder(srcSwitch, dstSwitch)
+                .withBandwidth(bandwidth).build()
+                .create()
 
         and: "Create a default flow with the same srcSwitch and different dstSwitch"
-        def defaultFlow = flowHelperV2.randomFlow(srcSwitch, newDstSwitch)
-        defaultFlow.maximumBandwidth = bandwidth
-        defaultFlow.source.vlanId = 0
-        defaultFlow.destination.vlanId = 0
-        flowHelperV2.addFlow(defaultFlow)
+        def defaultFlow = flowFactory.getBuilder(srcSwitch, newDstSwitch)
+                .withBandwidth(bandwidth)
+                .withSourceVlan(0)
+                .withDestinationVlan(0).build()
+                .create()
 
         and: "Create a QinQ flow with the same src and dst switch"
-        def qinqFlow = flowHelperV2.randomFlow(srcSwitch, newDstSwitch)
-        qinqFlow.maximumBandwidth = bandwidth
-        qinqFlow.source.vlanId = vlanFlow.source.vlanId
-        qinqFlow.destination.vlanId = vlanFlow.destination.vlanId
-        qinqFlow.source.innerVlanId = vlanFlow.destination.vlanId
-        qinqFlow.destination.innerVlanId = vlanFlow.source.vlanId
-        flowHelperV2.addFlow(qinqFlow)
+        def qinqFlow = flowFactory.getBuilder(srcSwitch, newDstSwitch)
+                .withBandwidth(bandwidth)
+                .withSourceVlan(vlanFlow.source.vlanId)
+                .withDestinationVlan(vlanFlow.destination.vlanId)
+                .withSourceInnerVlan(vlanFlow.destination.vlanId)
+                .withDestinationInnerVlan(vlanFlow.source.vlanId).build()
+                .create()
 
         then: "System allows traffic on the vlan flow"
         def traffExam = traffExamProvider.get()
-        def examVlanFlow = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
-                flowHelperV2.toV1(vlanFlow), bandwidth, 5
-        )
+        def examVlanFlow = vlanFlow.traffExam(traffExam, bandwidth, 5)
         withPool {
             [examVlanFlow.forward, examVlanFlow.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
@@ -80,9 +80,7 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         }
 
         and: "System allows traffic on the default flow"
-        def examDefaultFlow = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
-                flowHelperV2.toV1(defaultFlow), bandwidth, 5
-        )
+        def examDefaultFlow = defaultFlow.traffExam(traffExam, bandwidth, 5)
         withPool {
             [examDefaultFlow.forward, examDefaultFlow.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
@@ -92,20 +90,13 @@ class DefaultFlowSpec extends HealthCheckSpecification {
         }
 
         and: "System allows traffic on the QinQ flow"
-        def examQinqFlow = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
-                flowHelperV2.toV1(qinqFlow), bandwidth, 5
-        )
+        def examQinqFlow = qinqFlow.traffExam(traffExam, bandwidth, 5)
         withPool {
             [examQinqFlow.forward, examQinqFlow.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
                 direction.setResources(resources)
                 assert traffExam.waitExam(direction).hasTraffic()
             }
-        }
-
-        cleanup:
-        initSwProps.each { sw, swProps ->
-            switchHelper.updateSwitchProperties(sw, swProps)
         }
     }
 
@@ -118,27 +109,29 @@ class DefaultFlowSpec extends HealthCheckSpecification {
 
         when: "Create a default flow"
         def (Switch srcSwitch, Switch dstSwitch) = allTraffGenSwitches
-        def defaultFlow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        defaultFlow.source.vlanId = 0
-        defaultFlow.destination.vlanId = 0
-        flowHelperV2.addFlow(defaultFlow)
+        def defaultFlow = flowFactory.getBuilder(srcSwitch, dstSwitch)
+                .withSourceVlan(0)
+                .withDestinationVlan(0).build()
+                .create()
 
-        // Issue #3472
-        //and: "Create a qinq flow"
-        //def qinqFlow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        //qinqFlow.source.vlanId = 10
-        //qinqFlow.source.innerVlanId = 200
-        //qinqFlow.destination.vlanId = 10
-        //qinqFlow.destination.innerVlanId = 300
-        //flowHelperV2.addFlow(qinqFlow)
+        /** Issue #3472 - the defect is still reproduced
+         * and: "Create a qinq flow"
+         * def qinqFlow = flowFactory.getBuilder(srcSwitch, dstSwitch)
+         * .withSourceVlan(10)
+         * .withSourceInnerVlan(200)
+         * .withDestinationVlan(10)
+         * .withDestinationInnerVlan(300).build()
+         * .create()
+         */
 
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flow.source.vlanId = 10
-        flow.destination.vlanId = 10
+        def flow = defaultFlow.deepCopy().tap {
+            it.source.vlanId = 10
+            it.destination.vlanId = 10
+        }
 
         then: "System allows tagged traffic on the default flow"
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flowHelperV2.toV1(flow), 1000, 3)
+        def exam = flow.traffExam(traffExam, 1000, 3)
         withPool {
             [exam.forward, exam.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
@@ -156,53 +149,53 @@ class DefaultFlowSpec extends HealthCheckSpecification {
 
         and: "A default flow"
         def (Switch srcSwitch, Switch dstSwitch) = allTraffGenSwitches
-        def defaultFlow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        defaultFlow.source.vlanId = 0
-        defaultFlow.destination.vlanId = 0
-        flowHelperV2.addFlow(defaultFlow)
+        def defaultFlow = flowFactory.getBuilder(srcSwitch, dstSwitch)
+                .withSourceVlan(0)
+                .withDestinationVlan(0).build()
+                .create()
 
         and: "A simple flow"
-        def simpleflow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        simpleflow.source.vlanId = 10
-        simpleflow.destination.vlanId = 10
-        flowHelperV2.addFlow(simpleflow)
+        flowFactory.getBuilder(srcSwitch, dstSwitch)
+                .withSourceVlan(10)
+                .withDestinationVlan(10).build()
+                .create()
 
         when: "Try to send traffic from simple flow into default flow and vice versa"
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flow.source.vlanId = 0
-        flow.destination.vlanId = 10
+        def flow = defaultFlow.deepCopy().tap {
+            it.source.vlanId = 0
+            it.destination.vlanId = 10
+        }
 
         then: "System doesn't allow to send traffic in these directions"
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(flowHelperV2.toV1(flow), 1000, 3)
-        [exam.forward, exam.reverse].each { direction ->
-            def resources = traffExam.startExam(direction)
-            direction.setResources(resources)
-            assert !traffExam.waitExam(direction).hasTraffic()
+        def exam = flow.traffExam(traffExam, 1000, 3)
+        withPool {
+            [exam.forward, exam.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert !traffExam.waitExam(direction).hasTraffic()
+            }
         }
     }
 
     def "Unable to create two default flow on the same port"() {
         when: "Create first default flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def defaultFlow1 = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        defaultFlow1.source.vlanId = 0
-        flowHelperV2.addFlow(defaultFlow1)
+        def defaultFlow1 = flowFactory.getBuilder(srcSwitch, dstSwitch)
+                .withSourceVlan(0).build()
+                .create()
 
         and: "Try to create second default flow on the same port"
-        def defaultFlow2 = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        defaultFlow2.source.vlanId = 0
-        defaultFlow2.source.portNumber = defaultFlow1.source.portNumber
-        flowHelperV2.addFlow(defaultFlow2)
+        def defaultFlow2 = flowFactory.getBuilder(srcSwitch, dstSwitch)
+                .withSourcePort(defaultFlow1.source.portNumber)
+                .withSourceVlan(0).build()
+        defaultFlow2.create()
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 409
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "Requested flow '$defaultFlow2.flowId' conflicts with existing flow \
-'$defaultFlow1.flowId'. Details: requested flow '$defaultFlow2.flowId' source: switchId=\"$defaultFlow2.source.switchId\" \
-port=$defaultFlow2.source.portNumber, existing flow '$defaultFlow1.flowId' \
-source: switchId=\"$defaultFlow1.source.switchId\" port=$defaultFlow1.source.portNumber"
+        new FlowNotCreatedWithConflictExpectedError(~/Requested flow '${defaultFlow2.flowId}' conflicts with existing flow \
+'${defaultFlow1.flowId}'. Details: requested flow '${defaultFlow2.flowId}' source: switchId="${defaultFlow2.source.switchId}" \
+port=${defaultFlow2.source.portNumber}, existing flow '${defaultFlow1.flowId}' \
+source: switchId="${defaultFlow1.source.switchId}" port=${defaultFlow1.source.portNumber}/).matches(exc)
     }
 }

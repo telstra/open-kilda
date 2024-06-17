@@ -1,6 +1,21 @@
 package org.openkilda.functionaltests.spec.switches
 
+import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotValidatedExpectedError
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Ignore
+import spock.lang.Narrative
+import spock.lang.Shared
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
@@ -9,29 +24,19 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.REVIVE_SWITCH
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
-
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Ignore
-import spock.lang.Narrative
 
 @Narrative("""
 This spec verifies different situations when Kilda switches suddenly disconnect from the controller.
 Note: For now it is only runnable on virtual env due to no ability to disconnect hardware switches
 """)
+
 class SwitchFailuresSpec extends HealthCheckSpecification {
+    @Autowired @Shared
+    CleanupManager cleanupManager
 
     @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER])
     def "ISL is still able to properly fail even if switches have reconnected"() {
@@ -42,20 +47,17 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         flowHelperV2.addFlow(flow)
 
         when: "Two neighbouring switches of the flow go down simultaneously"
-        def srcBlockData = lockKeeper.knockoutSwitch(isl.srcSwitch, RW)
+        def srcBlockData = switchHelper.knockoutSwitch(isl.srcSwitch, RW)
         def timeSwitchesBroke = System.currentTimeMillis()
-        def dstBlockData = lockKeeper.knockoutSwitch(isl.dstSwitch, RW)
-        def switchesAreOffline = true
+        def dstBlockData = switchHelper.knockoutSwitch(isl.dstSwitch, RW)
         def untilIslShouldFail = { timeSwitchesBroke + discoveryTimeout * 1000 - System.currentTimeMillis() }
 
         and: "ISL between those switches looses connection"
-        lockKeeper.removeFlows([isl.aswitch])
-        def aSwRuleIsDeleted = true
+        aSwitchFlows.removeFlows([isl.aswitch])
 
         and: "Switches go back up"
         lockKeeper.reviveSwitch(isl.srcSwitch, srcBlockData)
         lockKeeper.reviveSwitch(isl.dstSwitch, dstBlockData)
-        switchesAreOffline = false
 
         then: "ISL still remains up right before discovery timeout should end"
         sleep(untilIslShouldFail() - 2500)
@@ -76,16 +78,6 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
                         it.taskId =~ (/.+ : retry #1 ignore_bw true/)
                     }?.payload?.last()?.action == REROUTE_FAIL)
         }
-
-        cleanup:
-        if (switchesAreOffline) {
-            switchHelper.reviveSwitch(isl.srcSwitch, srcBlockData)
-            switchHelper.reviveSwitch(isl.dstSwitch, dstBlockData)
-        }
-        aSwRuleIsDeleted && lockKeeper.addFlows([isl.aswitch])
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
     }
 
     @Ignore("https://github.com/telstra/open-kilda/issues/3398")
@@ -95,7 +87,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(swPair))
 
         when: "Current path breaks and reroute starts"
-        lockKeeper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(3000))
+        switchHelper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(3000))
         def islToBreak = pathHelper.getInvolvedIsls(northbound.getFlowPath(flow.flowId)).first()
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
@@ -117,11 +109,6 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
         and: "Flow validation is OK"
         northbound.validateFlow(flow.flowId).each { assert it.asExpected }
-
-        cleanup:
-        lockKeeper.cleanupTrafficShaperRules(swPair.dst.regions)
-        islHelper.restoreIsl(islToBreak)
-        database.resetCosts(topology.isls)
     }
 
     def "System can handle situation when switch reconnects while flow is being created"() {
@@ -131,6 +118,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         flowHelperV2.attemptToAddFlow(flow)
         sleep(50)
         def blockData = lockKeeper.knockoutSwitch(srcSwitch, RW)
+        cleanupManager.addAction(REVIVE_SWITCH, {switchHelper.reviveSwitch(srcSwitch, blockData)})
 
         then: "Flow eventually goes DOWN"
         Wrappers.wait(WAIT_OFFSET) {
@@ -182,9 +170,6 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
         and: "Flow can be removed"
         flowHelper.deleteFlow(flow.flowId)
-
-        cleanup:
-        blockData && !swIsOnline && switchHelper.reviveSwitch(srcSwitch, blockData)
     }
 
 }

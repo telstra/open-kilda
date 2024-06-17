@@ -44,10 +44,10 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         def haFlow1 = haFlowFactory.getRandom(swT)
 
         def haFlow2 = haFlowFactory.getBuilder(swT, false, haFlow1.occupiedEndpoints())
-                .withDiverseFlow(haFlow1.haFlowId).build().waitForBeingInState(FlowState.UP)
+                .withDiverseFlow(haFlow1.haFlowId).build().create()
 
         def haFlow3 = haFlowFactory.getBuilder(swT, false, haFlow1.occupiedEndpoints() + haFlow1.occupiedEndpoints())
-                .withDiverseFlow(haFlow2.haFlowId).build().waitForBeingInState(FlowState.UP)
+                .withDiverseFlow(haFlow2.haFlowId).build().create()
 
         then: "HA-Flow create response contains info about diverse haFlow"
         !haFlow1.diverseWithHaFlows
@@ -79,9 +79,6 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
                 assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty() }
             }
         }
-
-        cleanup:
-        [haFlow1, haFlow2, haFlow3].findAll().each { haFlow -> haFlow.delete() }
     }
 
     def "Able to create HA-Flow diverse with regular flow that is already in diverse group with another HA-Flow"() {
@@ -103,7 +100,7 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
 
         and: "Create an additional HA-Flow diverse with simple flow that has another HA-Flow in diverse group"
         def haFlow2 = haFlowFactory.getBuilder(swT, false, haFlow1.occupiedEndpoints()).withDiverseFlow(flow.flowId)
-                .build().waitForBeingInState(FlowState.UP)
+                .build().create()
 
         then: "Create response contains correct info about diverse flows"
         !haFlow1.diverseWithHaFlows
@@ -140,9 +137,6 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
                 assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty()}
             }
         }
-
-        cleanup:
-        [haFlow1, haFlow2].each { haFlow -> haFlow && haFlow.delete() }
     }
 
     def "Able to create HA-Flow diverse with Y-Flow that is in diverse group with another HA-Flow"() {
@@ -160,12 +154,13 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         def haFlow1 = haFlowFactory.getRandom(swT)
 
         and: "Create a Y-Flow diverse with previously created HA-Flow"
-        def yFlow = yFlowFactory.getBuilder(swT, false).withDiverseFlow(haFlow1.haFlowId).build()
-        yFlow = yFlow.waitForBeingInState(FlowState.UP)
+        def yFlow = yFlowFactory
+                .getBuilder(swT, false).withDiverseFlow(haFlow1.haFlowId).build()
+                .create()
 
         and: "Create an additional HA-Flow diverse with Y-Flow that has another HA-Flow in diverse group"
         def haFlow2 = haFlowFactory.getBuilder(swT, false, haFlow1.occupiedEndpoints())
-                .withDiverseFlow(yFlow.yFlowId).build().waitForBeingInState(FlowState.UP)
+                .withDiverseFlow(yFlow.yFlowId).build().create()
 
         then: "The last HA-Flow create response contains info about diverse haFlow"
         !haFlow1.diverseWithHaFlows
@@ -202,9 +197,5 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
                 assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty()}
             }
         }
-
-        cleanup:
-        [haFlow1, haFlow2].each { haFlow -> haFlow && haFlow.delete() }
-        yFlow && yFlow.delete()
     }
 }

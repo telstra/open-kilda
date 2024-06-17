@@ -1,5 +1,21 @@
 package org.openkilda.functionaltests.spec.flows
 
+import groovy.util.logging.Slf4j
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.payload.flow.FlowPathPayload
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
+import spock.lang.Narrative
+
+import java.util.concurrent.TimeUnit
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -10,23 +26,6 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.payload.flow.FlowPathPayload
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
-import groovy.util.logging.Slf4j
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
-import spock.lang.Narrative
-
-import java.util.concurrent.TimeUnit
-
 @Narrative("""
 This test verifies that we do not perform a reroute as soon as we receive a reroute request (we talk only about
 automatic reroutes here; manual reroutes are still performed instantly). Instead, system waits for 'reroute.delay'
@@ -36,7 +35,7 @@ System should stop refreshing the timer if 'reroute.hardtimeout' is reached and 
 for each flowId).
 """)
 @Slf4j
-@Tags(VIRTUAL) //may be unstable on hardware. not tested
+@Tags([VIRTUAL]) //may be unstable on hardware. not tested
 class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
     @Value('${reroute.hardtimeout}')
@@ -49,7 +48,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         flows found*/
         def swPairs = switchPairs.all(false).neighbouring().getSwitchPairs()
 
-        assumeTrue(swPairs.size() > 3, "Topology is too small to run this test")
+        assumeTrue(swPairs.size() > 4, "Topology is too small to run this test")
         def flows = swPairs.take(5).collect { switchPair ->
             def flow = flowHelperV2.randomFlow(switchPair)
             flowHelperV2.addFlow(flow)
@@ -58,20 +57,30 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         def flowPaths = flows.collect { northbound.getFlowPath(it.flowId) }
 
         when: "All flows break one by one"
+        def timeBeforeBreak = new Date().time
         def brokenIsls = flowPaths.collect {
-            breakFlow(it)
+            breakFlow(it, false)
             //don't sleep here, since there is already an antiFlapMin delay between actual port downs
         }
+        def rerouteTriggersEnd = new Date().time
         /*At this point all reroute triggers have happened. Save this time in order to calculate when the actual
         reroutes will happen (time triggers stopped + reroute delay seconds)*/
-        def rerouteTriggersEnd = new Date()
-        def untilReroutesBegin = { rerouteTriggersEnd.time + rerouteDelay * 1000 - new Date().time }
 
         then: "The oldest broken flow is still not rerouted before rerouteDelay run out"
-        sleep(untilReroutesBegin() - (long) (rerouteDelay * 1000 * 0.5)) //check after 50% of rerouteDelay has passed
-        flowHelper.getLatestHistoryEntry(flows.first().flowId).action == "Flow creating" //reroute didn't start yet
+        Wrappers.wait(rerouteDelay * 3) {
+            assert flowHelper.getLatestHistoryEntry(flows.first().flowId).action == "Flow rerouting"
+            // wait till reroute starts
+        }
+        def rerouteTimestamp = flowHelper.getLatestHistoryEntry(flows.first().flowId).timestampIso
+        // check time diff between the time when reroute was triggered and the first action of reroute in history
+        def differenceInMillis = flowHelper.convertStringTimestampIsoToLong(rerouteTimestamp) - rerouteTriggersEnd
+        // reroute starts not earlier than the expected reroute delay
+        assert differenceInMillis > (rerouteDelay) * 1000
+        // reroute starts not later than 2 seconds later than the expected delay
+        assert differenceInMillis < (rerouteDelay + 2) * 1000
 
         and: "The oldest broken flow is rerouted when the rerouteDelay runs out"
+        def untilReroutesBegin = { rerouteTriggersEnd + rerouteDelay * 1000 - new Date().time }
         def waitTime = untilReroutesBegin() / 1000.0 + PATH_INSTALLATION_TIME * 2
         Wrappers.wait(waitTime) {
             //Flow should go DOWN or change path on reroute. In our case it doesn't matter which of these happen.
@@ -91,14 +100,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
                         (northbound.getFlowPath(flowPath.id) != flowPath &&
                                 northboundV2.getFlowStatus(flowPath.id).status == FlowState.UP)
             }
-        }
-
-        cleanup:
-        brokenIsls.each {
-            antiflap.portUp(it.srcSwitch.dpId, it.srcPort)
-        }
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
         }
     }
 
@@ -168,14 +169,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
             }
             assert flowPathsClone.empty
         }
-
-        cleanup:
-        stop = true
-        starter.join()
-        rerouteTriggers.each { it.join() } //each thread revives ISL after itself
-        Wrappers.wait(WAIT_OFFSET) {
-            northbound.getAllLinks().each { assert it.state != IslChangeType.FAILED }
-        }
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -200,14 +193,6 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
             switchHelper.validateAndCollectFoundDiscrepancies(
                     pathHelper.getInvolvedSwitches(PathHelper.convert(path))*.getDpId()).isEmpty()
         }
-
-        cleanup:
-        brokenIsl && antiflap.portUp(brokenIsl.srcSwitch.dpId, brokenIsl.srcPort)
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(brokenIsl).state == IslChangeType.DISCOVERED }
-    }
-
-    def cleanup() {
-        database.resetCosts(topology.isls)
     }
 
     /**
@@ -215,7 +200,7 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
      * @param flowpath path to break
      * @return ISL which 'src' was brought down in order to break the path
      */
-    Isl breakFlow(FlowPathPayload flowpath) {
+    Isl breakFlow(FlowPathPayload flowpath, boolean waitForBrokenIsl = true) {
         def sw = flowpath.forwardPath.first().switchId
         def port = flowpath.forwardPath.first().outputPort
         def brokenIsl = (topology.islsForActiveSwitches +
@@ -224,8 +209,10 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         }
         assert brokenIsl, "This should not be possible. Trying to switch port on ISL which is not present in config?"
         antiflap.portDown(sw, port)
-        Wrappers.wait(WAIT_OFFSET, 0) {
-            assert northbound.getLink(brokenIsl).state == IslChangeType.FAILED
+        if (waitForBrokenIsl) {
+            Wrappers.wait(WAIT_OFFSET, 0) {
+                assert northbound.getLink(brokenIsl).state == IslChangeType.FAILED
+            }
         }
         return brokenIsl
     }

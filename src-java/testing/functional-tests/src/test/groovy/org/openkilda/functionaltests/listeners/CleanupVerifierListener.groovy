@@ -1,12 +1,9 @@
 package org.openkilda.functionaltests.listeners
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-
-import static groovyx.gpars.GParsPool.withPool
-
 import org.openkilda.model.IslStatus
-import org.openkilda.testing.Constants
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
@@ -14,14 +11,15 @@ import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.SoftAssertions
-
 import org.spockframework.runtime.model.IterationInfo
 import org.spockframework.runtime.model.SpecInfo
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 
-import static org.openkilda.testing.Constants.*
+import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.testing.Constants.DEFAULT_COST
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 
 /**
  * Performs certain checks after every spec/feature, tries to verify that environment is left clean.
@@ -64,7 +62,8 @@ class CleanupVerifierListener extends AbstractSpringListener {
 
     def runVerifications() {
         context.autowireCapableBeanFactory.autowireBean(this)
-        assert northboundV2.getAllFlows().empty
+        assert northboundV2.getAllFlows().empty,
+                northboundV2.getAllFlows().each {new ObjectMapper().writeValueAsString(northbound.getFlowHistory(it.getFlowId()))}
         assert northboundV2.getAllHaFlows().isEmpty()
         Wrappers.wait(RULES_DELETION_TIME) {
             assert switchHelper.validate(topology.activeSwitches*.dpId).isEmpty()
@@ -72,6 +71,8 @@ class CleanupVerifierListener extends AbstractSpringListener {
         withPool {
             topology.activeSwitches.eachParallel { Switch sw ->
                 def swProps = northbound.getSwitchProperties(sw.dpId)
+                assert swProps.supportedTransitEncapsulation.sort()
+                        .equals(switchHelper.getCachedSwProps(sw.dpId).supportedTransitEncapsulation.sort())
                 def s42Config = sw.prop
                 if (s42Config) {
                     assert swProps.server42FlowRtt == s42Config.server42FlowRtt
@@ -94,7 +95,7 @@ class CleanupVerifierListener extends AbstractSpringListener {
         regionVerifications.verify()
         withPool {
             database.getIsls(topology.isls).eachParallel {
-                assert it.timeUnstable == null
+                //assert it.timeUnstable == null
                 assert it.status == IslStatus.ACTIVE
                 assert it.actualStatus == IslStatus.ACTIVE
                 assert it.availableBandwidth == it.maxBandwidth

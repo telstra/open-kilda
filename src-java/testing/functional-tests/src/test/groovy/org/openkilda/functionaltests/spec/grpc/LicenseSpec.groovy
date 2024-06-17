@@ -1,17 +1,13 @@
 package org.openkilda.functionaltests.spec.grpc
 
 import org.openkilda.functionaltests.error.WrongLicenseKeyExpectedError
-
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.grpc.speaker.model.LicenseDto
-import org.openkilda.messaging.error.MessageError
-
-import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
+
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 
 @Narrative("""NoviWare software license file is used to activate the basic and licensed features.
 If you want to test full functionality then you have to perform the following manual tests:
@@ -29,6 +25,7 @@ class LicenseSpec extends GrpcBaseSpecification {
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
         new WrongLicenseKeyExpectedError().matches(exc)
+
         where:
         sw << getNoviflowSwitches()
     }

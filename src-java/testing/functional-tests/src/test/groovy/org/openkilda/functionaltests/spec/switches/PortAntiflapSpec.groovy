@@ -1,32 +1,34 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_DEACTIVATED
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
+import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.thread.PortBlinker
+import org.openkilda.functionaltests.model.cleanup.CleanupAfter
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.PortChangeType
-import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchFeature
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-
-import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Isolated
 import spock.lang.Issue
 import spock.lang.Narrative
+import spock.lang.Shared
 
 import java.util.concurrent.TimeUnit
+
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.helpers.model.PortHistoryEvent.ANTI_FLAP_DEACTIVATED
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Slf4j
 @Narrative("""
@@ -40,6 +42,7 @@ change status from UP to DOWN only after 'antiflap.min' in case of a single-time
 """)
 @Issue("https://github.com/telstra/open-kilda/issues/1729")
 @Isolated //global 'fl sync' toggle is changed
+
 class PortAntiflapSpec extends HealthCheckSpecification {
 
     @Value('${antiflap.min}')
@@ -55,11 +58,7 @@ class PortAntiflapSpec extends HealthCheckSpecification {
     Properties producerProps
 
     def setupSpec() {
-        northbound.toggleFeature(FeatureTogglesDto.builder().floodlightRoutePeriodicSync(false).build())
-    }
-
-    def cleanupSpec() {
-        getNorthbound().toggleFeature(FeatureTogglesDto.builder().floodlightRoutePeriodicSync(true).build())
+        featureToggles.floodlightRoutePeriodicSync(false, CleanupAfter.CLASS)
     }
 
     @Tags(SMOKE)
@@ -71,7 +70,7 @@ timeout"() {
 
         when: "ISL port begins to blink"
         def interval = (long) (antiflapMin * 1000 / 2)
-        def blinker = new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, interval)
+        def blinker = islHelper.getPortBlinkerForSource(isl, interval)
         def untilWarmupEnds = { blinker.timeStarted.time + antiflapWarmup * 1000 - new Date().time }
         def untilCooldownEnds = { blinker.timeStopped.time + antiflapCooldown * 1000 - new Date().time }
         blinker.start()
@@ -100,15 +99,6 @@ timeout"() {
         Wrappers.wait(untilCooldownEnds() / 1000.0 + WAIT_OFFSET / 2 + discoveryInterval) {
             islUtils.getIslInfo(isl).get().state == DISCOVERED
         }
-        def linkIsUp = true
-
-        cleanup:
-        blinker?.isRunning() && blinker.stop(true)
-        if (isl && !linkIsUp) {
-            Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
-                islUtils.getIslInfo(isl).get().state == DISCOVERED
-            }
-        }
     }
 
     def "Port goes down in 'antiflap.min' seconds if no flapping occurs"() {
@@ -125,9 +115,6 @@ timeout"() {
         Wrappers.wait(antiflapMin + 2) {
             islUtils.getIslInfo(isl).get().state == FAILED
         }
-
-        cleanup: "Bring port up"
-        islHelper.restoreIsl(isl)
     }
 
     /**
@@ -140,7 +127,7 @@ timeout"() {
 
         when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in UP state"
         def isl = topology.islsForActiveSwitches[0]
-        def blinker = new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, 1)
+        def blinker = islHelper.getPortBlinkerForSource(isl, 1)
         blinker.start()
         TimeUnit.SECONDS.sleep(antiflapWarmup + 1)
         blinker.stop(true)
@@ -155,15 +142,6 @@ timeout"() {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == DISCOVERED
         }
-        def linkIsUp = true
-
-        cleanup:
-        blinker?.isRunning() && blinker.stop(true)
-        if (isl && !linkIsUp) {
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                assert islUtils.getIslInfo(isl).get().state == DISCOVERED
-            }
-        }
     }
 
     /**
@@ -176,7 +154,7 @@ timeout"() {
 
         when: "Port blinks rapidly for longer than 'antiflapWarmup' seconds, ending in DOWN state"
         def isl = topology.islsForActiveSwitches[0]
-        def blinker = new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, 1)
+        def blinker = islHelper.getPortBlinkerForSource(isl, 1)
         blinker.kafkaChangePort(PortChangeType.DOWN)
         blinker.start()
         TimeUnit.SECONDS.sleep(antiflapWarmup + 1)
@@ -193,9 +171,10 @@ timeout"() {
             TimeUnit.SECONDS.sleep(1)
         }
 
-        cleanup: "restore broken ISL"
-        new PortBlinker(producerProps, topoDiscoTopic, isl.srcSwitch, isl.srcPort, 0)
-                .kafkaChangePort(PortChangeType.UP)
+        when: "restore broken ISL"
+        islHelper.getPortBlinkerForSource(isl, 1).kafkaChangePort(PortChangeType.UP)
+
+        then: "ISL is restored"
         Wrappers.wait(WAIT_OFFSET) { islUtils.getIslInfo(isl).get().state == DISCOVERED }
     }
 
@@ -235,9 +214,6 @@ timeout"() {
             assert rv.state == DISCOVERED
             assert rv.actualState == DISCOVERED
         }
-
-        cleanup:
-        islHelper.restoreIsl(isl)
     }
 
     def cleanup() {
