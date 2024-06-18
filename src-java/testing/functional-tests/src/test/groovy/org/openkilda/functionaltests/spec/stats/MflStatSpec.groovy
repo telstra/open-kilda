@@ -1,5 +1,13 @@
 package org.openkilda.functionaltests.spec.stats
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RO
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -13,20 +21,13 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
+
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
 import javax.inject.Provider
-
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RO
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/fl-statistics")
 @Narrative("""Now we have two FL instances: Management and Statistics.
@@ -304,7 +305,7 @@ class MflStatSpec extends HealthCheckSpecification {
             assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections.size() == 4
         }
         regionToStay = findStatFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName.first()
-        blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
+        blockData = switchHelper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
         }

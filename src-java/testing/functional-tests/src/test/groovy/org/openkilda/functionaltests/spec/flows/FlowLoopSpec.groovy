@@ -214,7 +214,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
                                  .withBothSwitchesVxLanEnabled()
                                  .random(),
                          expectedFlowEntity: { SwitchPair swPair ->
-                             flowFactory.getBuilder(swPair).withEncapsulationType(FlowEncapsulationType.VXLAN)
+                             flowFactory.getBuilder(swPair).withEncapsulationType(FlowEncapsulationType.VXLAN).build()
                          }
                  ],
                  [

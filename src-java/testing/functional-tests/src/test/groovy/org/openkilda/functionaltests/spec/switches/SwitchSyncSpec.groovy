@@ -21,6 +21,7 @@ import org.openkilda.rulemanager.OfVersion
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Issue
 import spock.lang.See
 import spock.lang.Shared
 
@@ -152,6 +153,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         }
     }
 
+    @Issue("Noviflow WB5164 Only: https://github.com/telstra/open-kilda/issues/5638")
     def "Able to synchronize #switchKind switch (delete excess rules and meters)"() {
         given: "Flow with intermediate switches"
         def switchPair = switchPairs.all().nonNeighbouring().random()

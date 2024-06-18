@@ -604,15 +604,15 @@ class SwitchHelper {
      * @param sw switch which is going to be disconnected
      * @param waitForRelatedLinks make sure that all switch related ISLs are FAILED
      */
-    List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode, boolean waitForRelatedLinks) {
+    List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode, boolean waitForRelatedLinks, double timeout = WAIT_OFFSET) {
         def blockData = lockKeeper.knockoutSwitch(sw, mode)
-        cleanupManager.addAction(REVIVE_SWITCH, {reviveSwitch(sw, blockData, true)}, CleanupAfter.TEST)
-        Wrappers.wait(WAIT_OFFSET) {
+        cleanupManager.addAction(REVIVE_SWITCH, { reviveSwitch(sw, blockData, true) }, CleanupAfter.TEST)
+        Wrappers.wait(timeout) {
             assert northbound.get().getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
         }
         if (waitForRelatedLinks) {
             def swIsls = topology.get().getRelatedIsls(sw)
-            Wrappers.wait(discoveryTimeout + WAIT_OFFSET * 2) {
+            Wrappers.wait(discoveryTimeout + timeout * 2) {
                 def allIsls = northbound.get().getAllLinks()
                 swIsls.each { assert islUtils.getIslInfo(allIsls, it).get().state == IslChangeType.FAILED }
             }
@@ -623,6 +623,12 @@ class SwitchHelper {
 
     List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode) {
         knockoutSwitch(sw, mode, false)
+    }
+
+    List<FloodlightResourceAddress> knockoutSwitch(Switch sw, List<String> regions) {
+        def blockData = lockKeeper.knockoutSwitch(sw, regions)
+        cleanupManager.addAction(REVIVE_SWITCH, { reviveSwitch(sw, blockData, true) }, CleanupAfter.TEST)
+        return blockData
     }
 
     /**
