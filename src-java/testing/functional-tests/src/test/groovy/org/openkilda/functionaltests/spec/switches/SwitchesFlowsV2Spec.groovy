@@ -3,21 +3,20 @@ package org.openkilda.functionaltests.spec.switches
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.CLASS
 import static org.openkilda.messaging.payload.flow.FlowState.UP
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
 import org.openkilda.functionaltests.helpers.model.YFlowFactory
 import org.openkilda.model.FlowPathDirection
-import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
-import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowExtended
 
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
@@ -33,6 +32,8 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     @Shared
     String yFlowSubFlow2Id
     @Shared
+    FlowExtended flow
+    @Shared
     String flowId
     @Shared
     SwitchTriplet switchTriplet
@@ -41,6 +42,9 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     @Shared
     @Autowired
     YFlowFactory yFlowFactory
+    @Shared
+    @Autowired
+    FlowFactory flowFactory
     @Shared
     Switch switchFlowGoesThrough
     @Shared
@@ -63,14 +67,13 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         switchPair = switchPairs.all()
                 .includeSwitch(switchTriplet.getShared())
                 .includeSwitch(switchTriplet.getEp1()).random()
-        def flowDefinition = flowHelperV2.randomFlow(switchPair, false).tap { allocateProtectedPath = true }
-        flowId = flowHelperV2.addFlow(flowDefinition, UP, CLASS).getFlowId()
-        switchFlowGoesThrough = pathHelper.getInvolvedSwitches(flowId).find {
-            ![switchPair.getSrc(), switchPair.getDst()].contains(it)
-        }
-        switchProtectedPathGoesThrough = pathHelper.getInvolvedSwitchesForProtectedPath(flowId).find {
-            ![switchPair.getSrc(), switchPair.getDst()].contains(it)
-        }
+        flow = flowFactory.getBuilder(switchPair, false)
+                .withProtectedPath(true)
+                .build().create(UP, CLASS)
+        flowId = flow.flowId
+        def flowPathInfo = flow.retrieveAllEntityPaths()
+        switchFlowGoesThrough =  topology.activeSwitches.find { it.dpId == flowPathInfo.flowPath.path.forward.transitInvolvedSwitches.first() }
+        switchProtectedPathGoesThrough =  topology.activeSwitches.find { it.dpId == flowPathInfo.flowPath.protectedPath.forward.transitInvolvedSwitches.first() }
 
         yFlow = yFlowFactory.getRandom(switchTriplet, true, [], CLASS)
         yFlowSubFlow1Id = yFlow.subFlows.first().flowId
@@ -105,8 +108,8 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         where:
         switchRole      | switchUnderTest
         "flows through" | switchFlowGoesThrough
-        "starts from"   | switchPair.getSrc()
-        "ends on"       | switchPair.getDst()
+        "starts from"   | switchPair.src
+        "ends on"       | switchPair.dst
     }
 
     def "System allows to get a flow which protected path that goes through switch"() {
@@ -129,15 +132,10 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
                 - topology.getBusyPortsForSwitch(switchUnderTest)).first()
 
         when: "Create mirror point on switch with sink pointing to free port"
-        def mirrorEndpoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(FlowPathDirection.REVERSE.toString().toLowerCase())
-                .mirrorPointSwitchId(switchUnderTest.getDpId())
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(switchUnderTest.getDpId()).portNumber(freePort)
-                        .vlanId(flowHelperV2.randomVlan())
-                        .build())
-                .build()
-        switchHelper.addMirrorPoint(flowId, mirrorEndpoint)
+        def mirrorEndpoint = flow.createMirrorPoint(
+                switchUnderTest.getDpId(), freePort, randomVlan(),
+                FlowPathDirection.REVERSE
+        )
 
         then: "Mirror sink endpoint port is not listed in the ports list"
         switchHelper.getFlowsV2(switchUnderTest, [freePort]).getFlowsByPort().isEmpty()
