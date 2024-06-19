@@ -16,6 +16,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.rule.FlowEntry
+import org.openkilda.messaging.info.meter.FlowMeterEntries
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
@@ -230,7 +231,7 @@ class FlowExtended {
 
     FlowExtended create(FlowState expectedState = FlowState.UP, CleanupAfter cleanupAfter = TEST) {
         cleanupManager.addAction(DELETE_FLOW, { delete() }, cleanupAfter)
-        sendCreateRequest()
+        sendCreateRequest(cleanupAfter)
         waitForBeingInState(expectedState)
     }
 
@@ -461,6 +462,38 @@ class FlowExtended {
 
     }
 
+    void updateFlowBandwidthInDB(long newBandwidth) {
+        database.updateFlowBandwidth(flowId, newBandwidth)
+    }
+
+    void updateFlowMeterIdInDB(long newMeterId) {
+        database.updateFlowMeterId(flowId, newMeterId)
+    }
+
+    boolean isFlowAtSingleSwitch() {
+        return source.switchId == destination.switchId
+    }
+
+    def getFlowRulesCountBySwitch(FlowDirection direction, int involvedSwitchesCount, boolean isSwitchServer42) {
+        def flowEndpoint = direction == FlowDirection.FORWARD ? source : destination
+        def swProps = northbound.getSwitchProperties(flowEndpoint.switchId)
+        int count = involvedSwitchesCount - 1;
+
+        count += 1 // customer input rule
+        count += (flowEndpoint.vlanId != 0) ? 1 : 0 // pre ingress rule
+        count += 1 // multi table ingress rule
+
+        def server42 = isSwitchServer42 && !isFlowAtSingleSwitch()
+        if (server42) {
+            count += (flowEndpoint.vlanId != 0) ? 1 : 0 // shared server42 rule
+            count += 2 // ingress server42 rule and server42 input rule
+        }
+
+        count += (swProps.switchLldp || flowEndpoint.detectConnectedDevices.lldp) ? 1 : 0 // lldp rule
+        count += (swProps.switchArp || flowEndpoint.detectConnectedDevices.arp) ? 1 : 0 // arp rule
+        return count
+    }
+
     /*
     This method waits for specific history event about action completion
     Note that the last existing event by action type is checked
@@ -526,6 +559,10 @@ class FlowExtended {
         flowCopy.setDestination(destination.jacksonCopy())
         flowCopy.setStatistics(statistics.jacksonCopy())
         return flowCopy
+    }
+
+    FlowMeterEntries resetMeters() {
+        northbound.resetMeters(flowId)
     }
 
     /**

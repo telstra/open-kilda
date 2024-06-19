@@ -1,13 +1,24 @@
 package org.openkilda.functionaltests.spec.switches
 
-import com.google.common.collect.Sets
-import groovy.transform.Memoized
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.SYNCHRONIZE_SWITCH
+import static org.openkilda.functionaltests.spec.switches.MetersSpec.NOT_OVS_REGEX
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.tools.KafkaUtils.buildMessage
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.model.FlowDirectionType
@@ -21,6 +32,11 @@ import org.openkilda.rulemanager.MeterSpeakerData
 import org.openkilda.rulemanager.OfTable
 import org.openkilda.rulemanager.OfVersion
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+
+import com.google.common.collect.Sets
+import groovy.transform.Memoized
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
@@ -28,18 +44,6 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.SYNCHRONIZE_SWITCH
-import static org.openkilda.functionaltests.spec.switches.MetersSpec.NOT_OVS_REGEX
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
-import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-validate")
 @Narrative("""This test suite checks the switch validate feature on a single flow switch.
@@ -56,8 +60,12 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
-    @Autowired @Shared
+    @Autowired
+    @Shared
     CleanupManager cleanupManager
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     def setupSpec() {
         deleteAnyFlowsLeftoversIssue5480()
@@ -72,7 +80,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.first()
 
         when: "Create a flow"
-        def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchFlow(sw))
+        def flow = flowFactory.getRandom(sw, sw)
         def meterIds = getCreatedMeterIds(sw.dpId)
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
 
@@ -103,7 +111,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow.delete()
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -125,7 +133,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
         setup: "Select a #switchType switch and retrieve default meters"
-        def sw = switches.first()
+        def sw = switches.find { it.traffGens.size() > 1 }
+        assert sw != null : "Could not find a single switch with TraffGen ports > 1"
 
         when: "Create a flow"
         def amountOfMultiTableFlRules = 4 //2 SHARED_OF_FLOW, 2 MULTI_TABLE_INGRESS_RULES
@@ -134,7 +143,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def amountOfRules = amountOfSwRules + amountOfFlowRules + amountOfMultiTableFlRules
         def amountOfMeters = northbound.getAllMeters(sw.dpId).meterEntries.size()
         def amountOfFlowMeters = 2
-        def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchFlow(sw).tap { it.maximumBandwidth = 5000 })
+        def flow = flowFactory.getBuilder(sw, sw).withBandwidth(5000).build().create()
         def meterIds = getCreatedMeterIds(sw.dpId)
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
 
@@ -144,7 +153,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronize(sw.dpId)})
         /** at this point meters are set for given flow. Now update flow bandwidth directly via DB,
          it is done just for moving meters from the 'proper' section into the 'misconfigured'*/
-        database.updateFlowBandwidth(flow.flowId, newBandwidth)
+        flow.updateFlowBandwidthInDB(newBandwidth)
         //at this point existing meters do not correspond with the flow
 
         then: "Meters info is moved into the 'misconfigured' section"
@@ -174,10 +183,12 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.rules.proper.containsAll(createdCookies)
 
         and: "Flow validation shows discrepancies"
-        def flowValidateResponse = northbound.validateFlow(flow.flowId)
+        def flowValidateResponse = flow.validate()
+        // check isServer42 only for src switch because it is single switch pair, src equal to dst
+        def isSwitchServer42 = switchHelper.isServer42Supported(flow.source.switchId)
         def expectedRulesCount = [
-                flowHelperV2.getFlowRulesCountBySwitch(flow, true, 1),
-                flowHelperV2.getFlowRulesCountBySwitch(flow, false, 1)]
+                flow.getFlowRulesCountBySwitch(FlowDirection.FORWARD, 1, isSwitchServer42),
+                flow.getFlowRulesCountBySwitch(FlowDirection.REVERSE, 1, isSwitchServer42)]
         flowValidateResponse.eachWithIndex { direction, i ->
             assert direction.discrepancies.size() == 2
 
@@ -200,7 +211,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Reset meters for the flow"
-        northbound.resetMeters(flow.flowId)
+        flow.resetMeters()
 
         then: "Misconfigured meters are reinstalled according to the new bandwidth and moved into the 'proper' section"
         with(switchHelper.validateV1(sw.dpId)) {
@@ -209,13 +220,10 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow validation shows no discrepancies"
-        northbound.validateFlow(flow.flowId).each { direction ->
-            assert direction.discrepancies.empty
-            assert direction.asExpected
-        }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow.delete()
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -240,7 +248,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.first()
 
         when: "Create a flow"
-        def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchFlow(sw))
+        def flow = flowFactory.getRandom(sw, sw)
         def meterIds = getCreatedMeterIds(sw.dpId)
 
         and: "Remove created meter"
@@ -281,7 +289,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         syncResponse.meters.installed*.meterId.containsAll(meterIds)
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow.delete()
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -306,7 +314,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def sw = switches.first()
 
         when: "Create a flow"
-        def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchFlow(sw))
+        // No TraffGens because the Single switch flow is created at the same port, and no traffic is checked
+        def flow = flowFactory.getRandom(sw, sw, false)
         def metersIds = getCreatedMeterIds(sw.dpId)
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
 
@@ -320,7 +329,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         when: "Update meterId for created flow directly via db"
         long newMeterId = 100;
         cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronize(sw.dpId)})
-        database.updateFlowMeterId(flow.flowId, newMeterId)
+        flow.updateFlowMeterIdInDB(newMeterId)
 
         then: "Origin meters are moved into the 'excess' section"
         def switchValidateInfo = switchHelper.validateV1(sw.dpId)
@@ -347,7 +356,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         switchValidateInfo.verifyRuleSectionsAreEmpty(["missing", "excess"])
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow.delete()
 
         and: "Delete excess meters"
         metersIds.each { northbound.deleteMeter(sw.dpId, it) }
@@ -372,10 +381,11 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
         setup: "Select a #switchType switch and retrieve default meters"
-        def sw = switches.first()
+        def sw = switches.find { it.traffGens.size() > 1 }
+        assert sw != null : "Could not find a single switch with TraffGen ports > 1"
 
         when: "Create a flow"
-        def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchFlow(sw))
+        def flow = flowFactory.getRandom(sw, sw)
         def createdCookies = getCookiesWithMeter(sw.dpId)
         def createdHexCookies = createdCookies.collect { Long.toHexString(it) }
 
@@ -402,7 +412,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         syncResponse.rules.installed.containsAll(createdCookies)
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow.delete()
 
         then: "Check that the switch validate request returns empty sections"
         Wrappers.wait(WAIT_OFFSET) {
@@ -528,7 +538,8 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
     def "Able to validate and sync a #switchType switch having missing rules of single-port single-switch flow"() {
         assumeTrue(sw as boolean, "Unable to find $switchType switch in topology")
         given: "A single-port single-switch flow"
-        def flow = flowHelperV2.addFlow(flowHelperV2.singleSwitchSinglePortFlow(sw))
+        // No TraffGens because the Single switch flow is created at the same port, and no traffic is checked
+        def flow  = flowFactory.getRandom(sw, sw, false)
 
         when: "Remove flow rules from the switch, so that they become missing"
         switchHelper.deleteSwitchRules(sw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
@@ -553,7 +564,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow.delete()
 
         then: "Switch validation returns empty sections"
         with(switchHelper.validateV1(sw.dpId)) {

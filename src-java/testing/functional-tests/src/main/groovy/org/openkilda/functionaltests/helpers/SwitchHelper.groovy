@@ -904,4 +904,11 @@ class SwitchHelper {
         )
         return northboundV2.get().partialSwitchUpdate(switchId, updateDto)
     }
+
+    static boolean isServer42Supported(SwitchId switchId) {
+        def swProps = northbound.get().getSwitchProperties(switchId)
+        def featureToggles = northbound.get().getFeatureToggles()
+        def isServer42 = swProps.server42FlowRtt && featureToggles.server42FlowRtt
+        return isServer42
+    }
 }
