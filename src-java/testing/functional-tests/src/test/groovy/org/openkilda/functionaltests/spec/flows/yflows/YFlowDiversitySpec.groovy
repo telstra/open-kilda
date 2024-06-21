@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+
 import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -26,6 +28,9 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     YFlowFactory yFlowFactory
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     def "Able to create diverse Y-Flows"() {
         given: "Switches with three not overlapping paths at least"
@@ -99,8 +104,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def yFlow = yFlowFactory.getRandom(swT, false)
 
         and: "Simple multiSwitch flow on the same path as first sub-flow"
-        def flow = flowHelperV2.randomFlow(swT.shared, swT.ep1, false)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(swT.shared, swT.ep1, false)
         def subFlowId = yFlow.subFlows.first().flowId
         def involvedIslSubFlow = yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == subFlowId }.getInvolvedIsls()
         def involvedIslSimpleFlow = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.flowId)))
@@ -122,7 +126,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         }
 
         and: "Simple multi switch flow has the 'diverse_with' field"
-        with(northboundV2.getFlow(flow.flowId)) {
+        with(flow.retrieveDetails()) {
             it.diverseWithYFlows.sort() == [yFlow.yFlowId].sort()
             it.diverseWith.empty
         }
@@ -141,7 +145,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         assert yFlow.validate().asExpected
 
         and: "Simple flow is valid"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         when: "Partially update Y-Flow to become not diverse with simple multiSwitch flow"
         def patchRequest = YFlowPatchPayload.builder().diverseFlowId("").build()
@@ -155,7 +159,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         yFlow.diverseWithFlows.empty
 
         and: "Simple multi switch flow doesn't have the 'diverse_with' field"
-        northboundV2.getFlow(flow.flowId).diverseWithYFlows.empty
+        flow.retrieveDetails().diverseWithYFlows.empty
     }
 
     def "Able to create Y-Flow with one switch sub flow and diverse with simple multiSwitch flow"() {
@@ -163,8 +167,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "Simple multiSwitch flow"
-        def flow = flowHelperV2.randomFlow(switchPair.src, switchPair.dst, false)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(switchPair.src, switchPair.dst, false)
 
         when: "Create a Y-Flow with one switch sub flow and diversity with simple flow"
         def swT = topologyHelper.getSwitchTriplet(switchPair.src.dpId, switchPair.src.dpId, switchPair.dst.dpId)
@@ -179,7 +182,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         yFlow.diverseWithFlows == [flow.flowId] as Set
 
         and: "Flow is diverse with Y-Flow"
-        with(northboundV2.getFlow(flow.flowId)) {
+        with(flow.retrieveDetails()) {
             it.diverseWithYFlows == [yFlow.yFlowId] as Set
             it.diverseWith.empty
             it.diverseWithHaFlows.empty
@@ -189,7 +192,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         yFlow.validate().asExpected
 
         and: "Simple Flow is valid"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
     }
 
     def "Able to get Y-Flow paths with correct overlapping segments stats"() {

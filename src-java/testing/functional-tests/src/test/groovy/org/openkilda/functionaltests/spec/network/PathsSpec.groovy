@@ -3,12 +3,15 @@ package org.openkilda.functionaltests.spec.network
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundService
+
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
@@ -25,7 +28,13 @@ import static org.openkilda.testing.service.northbound.payloads.PathRequestParam
 import static org.springframework.http.HttpStatus.BAD_REQUEST
 import static org.springframework.http.HttpStatus.NOT_FOUND
 
+import spock.lang.Shared
+
 class PathsSpec extends HealthCheckSpecification {
+
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     @Tags(SMOKE)
     def "Get paths between not neighboring switches"() {
@@ -35,7 +44,7 @@ class PathsSpec extends HealthCheckSpecification {
                 .random()
 
         and: "Create a flow to reduce available bandwidth on some path between these two switches"
-        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair))
+        flowFactory.getRandom(switchPair)
 
         when: "Get paths between switches"
         def paths = switchPair.getPathsFromApi()
@@ -64,7 +73,7 @@ class PathsSpec extends HealthCheckSpecification {
                 .random()
 
         and: "Create a flow to reduce available bandwidth on some path between these two switches"
-        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair))
+        flowFactory.getRandom(switchPair)
 
         when: "Get paths between switches using the LATENCY strategy"
         def paths = switchPair.getPathsFromApi([(PATH_COMPUTATION_STRATEGY): LATENCY])
@@ -91,9 +100,9 @@ class PathsSpec extends HealthCheckSpecification {
         exc.statusCode == expectedStatus
 
         where:
-        problemDescription | switchPair |expectedStatus
-        "one switch"              | { Switch sw, NorthboundService nb -> SwitchPair.singleSwitchInstance(sw, nb)}| BAD_REQUEST
-        "non-existing switch" |{ Switch sw, NorthboundService nb -> SwitchPair.withNonExistingDstSwitch(sw, nb)} | NOT_FOUND
+        problemDescription    | switchPair                                                                         | expectedStatus
+        "one switch"          | { Switch sw, NorthboundService nb -> SwitchPair.singleSwitchInstance(sw, nb) }     | BAD_REQUEST
+        "non-existing switch" | { Switch sw, NorthboundService nb -> SwitchPair.withNonExistingDstSwitch(sw, nb) } | NOT_FOUND
     }
 
     def "Unable to get paths with max_latency strategy without max latency parameter"() {

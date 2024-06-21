@@ -1,23 +1,33 @@
 package org.openkilda.functionaltests.spec.network
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.model.Path
-import org.openkilda.messaging.info.event.PathNode
-import spock.lang.See
-
 import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN
 import static org.openkilda.model.FlowEncapsulationType.VXLAN
-import static org.openkilda.model.PathComputationStrategy.COST
+
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.Path
+import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
+import org.openkilda.functionaltests.model.stats.Direction
+import org.openkilda.messaging.info.event.PathNode
+
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.See
+import spock.lang.Shared
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/path-validation/path-validation.md")
 
 class PathCheckSpec extends HealthCheckSpecification {
 
     private static final String PCE_PATH_COMPUTATION_SUCCESS_MESSAGE = "The path has been computed successfully"
+
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+
     @Tags(SMOKE)
     def "No path validation errors for valid path without limitations"() {
         given: "Path for non-neighbouring switches"
@@ -74,11 +84,12 @@ class PathCheckSpec extends HealthCheckSpecification {
         withPool {
             switchPair.paths.findAll { it != path }.eachParallel { pathHelper.makePathMorePreferable(path, it) }
         }
-        def flow = flowHelperV2.addFlow(
-                flowHelperV2.randomFlow(switchPair, false).tap { it.pathComputationStrategy = COST })
+        def flow = flowFactory.getBuilder(switchPair, false)
+                .withPathComputationStrategy(PathComputationStrategy.COST).build()
+                .create()
 
         when: "Check the path (equal to the flow) if the computation strategy would be LATENCY and max_latency would be too low"
-        def pathCheckResult = pathHelper.getPathCheckResult(path, flow.getFlowId(), 1, 2)
+        def pathCheckResult = pathHelper.getPathCheckResult(path, flow.flowId, 1, 2)
 
         then: "Path check result returns latency validation errors (1 per tier1 and tier 2, per forward and revers paths)"
         verifyAll(pathCheckResult) {
@@ -93,26 +104,26 @@ class PathCheckSpec extends HealthCheckSpecification {
     def "Path intersection check errors are returned for each segment of existing flow"() {
         given: "Flow has been created successfully"
         def switchPair = switchPairs.all().nonNeighbouring().first()
-        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair, false))
-        def flowPathDetails = northbound.getFlowPath(flow.flowId)
+        def flow = flowFactory.getRandom(switchPair, false)
+        def flowPathDetails = flow.retrieveAllEntityPaths()
 
         and: "Path with intersected segment(s) for verification has been collected"
-        def flowForwardPath = pathHelper.getPathNodes(flowPathDetails.forwardPath)
+        def flowForwardPath = flowPathDetails.getPathNodes()
         //at least one common ISl
         def intersectingPath = switchPair.paths.findAll { it.size() > 4 && it.intersect(flowForwardPath).size() > 1 }.first()
 
         and: "Involved ISls have been collected"
-        def flowInvolvedISLs = new Path(flowPathDetails.forwardPath + flowPathDetails.reversePath, topology).getInvolvedIsls()
+        def flowInvolvedISLs = flowPathDetails.flowPath.getInvolvedIsls(Direction.FORWARD) + flowPathDetails.flowPath.getInvolvedIsls(Direction.REVERSE)
         def intersectedPathInvolvedISLs = new Path(pathHelper.convertToPathNodePayload(intersectingPath), topology).getInvolvedIsls()
         def commonISLs = flowInvolvedISLs.intersect(intersectedPathInvolvedISLs)
         assert !commonISLs.isEmpty(), "Path for verification has no intersected segment(s) with the flow."
 
         when: "Check if the potential path has intersections with existing one"
-        def pathCheckResult = pathHelper.getPathCheckResult(intersectingPath, flow.getFlowId())
+        def pathCheckResult = pathHelper.getPathCheckResult(intersectingPath, flow.flowId)
 
         then: "Path check reports expected amount of intersecting segments"
         verifyAll (pathCheckResult) {
-            getValidationMessages().findAll { it.contains("The following segment intersects with the flow ${flow.getFlowId()}") }.size()
+            getValidationMessages().findAll { it.contains("The following segment intersects with the flow ${flow.flowId}") }.size()
                     == commonISLs.size()
             getPceResponse() == PCE_PATH_COMPUTATION_SUCCESS_MESSAGE
         }
@@ -126,15 +137,16 @@ class PathCheckSpec extends HealthCheckSpecification {
                 .includeSwitch(firstSwitchPair.dst).random()
 
         and:"Two flows in one diverse group have been created"
-        def flow1 = flowHelperV2.addFlow(flowHelperV2.randomFlow(firstSwitchPair, false))
-        def flow2 = flowHelperV2.addFlow(flowHelperV2.randomFlow(secondSwitchPair, false)
-                .tap {it.diverseFlowId = flow1.flowId})
+        def flow1 = flowFactory.getRandom(firstSwitchPair, false)
+        def flow2 = flowFactory.getBuilder(secondSwitchPair, false)
+                .withDiverseFlow(flow1.flowId).build()
+                .create()
 
         and: "Paths for both flows have been collected"
-        def flow1Path = pathHelper.getPathNodes(northbound.getFlowPath(flow1.flowId).forwardPath)
+        def flow1Path = flow1.retrieveAllEntityPaths().getPathNodes()
         def flow2Path = flow2.source.switchId == flow1.destination.switchId ?
-                pathHelper.getPathNodes(northbound.getFlowPath(flow2.flowId).forwardPath) :
-                pathHelper.getPathNodes(northbound.getFlowPath(flow2.flowId).reversePath)
+                flow2.retrieveAllEntityPaths().getPathNodes(Direction.FORWARD) :
+                flow2.retrieveAllEntityPaths().getPathNodes(Direction.REVERSE)
 
         when: "Check potential path that has NO intersection with both flows from diverse group"
         LinkedList<PathNode> pathToCheck = switchPairs.all().neighbouring().excludePairs([firstSwitchPair, secondSwitchPair])

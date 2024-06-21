@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.stats
 
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowExtended
+
 import groovy.time.TimeCategory
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -59,7 +62,7 @@ class SimulateStatsSpec extends HealthCheckSpecification {
     @Shared
     FlowStats stats
     @Shared
-    FlowRequestV2 flow
+    FlowExtended flow
     @Shared
     KafkaProducer producer
     @Shared
@@ -70,12 +73,14 @@ class SimulateStatsSpec extends HealthCheckSpecification {
     final int tableId = 0
     @Shared
     Switch sw
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     @Override
     def setupSpec() {
         def (Switch src, Switch dst) = topology.activeSwitches
-        flow = flowHelperV2.randomFlow(src, dst)
-        flowHelperV2.addFlow(flow)
+        flow = flowFactory.getRandom(src, dst)
         def srcRules = northbound.getSwitchRules(src.dpId).flowEntries.findAll { !new Cookie(it.cookie).serviceFlag }
         producer = new KafkaProducer(producerProps)
         sw = topology.activeSwitches.first()
@@ -98,7 +103,7 @@ class SimulateStatsSpec extends HealthCheckSpecification {
         producer.send(new ProducerRecord(statsTopic, sw.dpId.toString(), buildMessage(data).toJson())).get()
         producer.flush()
         wait(statsRouterRequestInterval + WAIT_OFFSET) {
-            stats = flowStats.of(flow.getFlowId())
+            stats = flowStats.of(flow.flowId)
             assert stats.get(FLOW_RAW_PACKETS, inPort, outPort).hasValue(NOVI_MAX_PACKET_COUNT)
         }
 
