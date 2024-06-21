@@ -27,7 +27,9 @@ dependencies {
     implementation("io.micrometer:micrometer-core:1.10.6")
     implementation("io.micrometer:micrometer-registry-prometheus:1.10.6")
     implementation("org.zeromq:jeromq:0.4.3")
-    implementation("com.fasterxml.jackson.core:jackson-core")
+    implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.16.1")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-joda")
 
     implementation("org.springframework.boot:spring-boot-starter-web")

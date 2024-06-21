@@ -35,7 +35,7 @@ dependencies {
     implementation("org.zeromq:jeromq:0.4.3")
     implementation("org.apache.commons:commons-lang3")
 
-    implementation("com.fasterxml.jackson.core:jackson-core")
+    implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-joda")
 
     implementation("org.springframework.boot:spring-boot-starter-web")
