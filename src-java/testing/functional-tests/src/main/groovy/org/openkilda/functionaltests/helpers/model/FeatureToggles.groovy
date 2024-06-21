@@ -35,7 +35,7 @@ class FeatureToggles {
     }
 
     FeatureTogglesDto setFeatureToggles(FeatureTogglesDto featureTogglesDto, CleanupAfter cleanupAfter= TEST) {
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {northbound.toggleFeature(initialState)}, cleanupAfter)
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, { safeTogglesRecover() }, cleanupAfter)
         northbound.toggleFeature(featureTogglesDto)
     }
 
@@ -127,5 +127,12 @@ class FeatureToggles {
                 .flowLatencyMonitoringReactions(enabled)
                 .build()
         )
+    }
+
+    void safeTogglesRecover() {
+        FeatureTogglesDto currentState = getFeatureToggles()
+        if(currentState != initialState) {
+            northbound.toggleFeature(initialState)
+        }
     }
 }

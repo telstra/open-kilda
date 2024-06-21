@@ -540,7 +540,7 @@ class FlowExtended {
         def response = northboundV2.deleteFlow(flowId)
         wait(FLOW_CRUD_TIMEOUT) {
             assert !retrieveFlowStatus()
-            assert retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).first()
+            assert retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).last()
                     .payload.last().action == FlowActionType.DELETE.payloadLastAction
         }
         return response
@@ -558,7 +558,7 @@ class FlowExtended {
         def response = northbound.deleteFlow(flowId)
         wait(FLOW_CRUD_TIMEOUT) {
             assert !northbound.getFlowStatus(flowId)
-            assert retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).first()
+            assert retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).last()
                     .payload.last().action == FlowActionType.DELETE.payloadLastAction
         }
         return response
