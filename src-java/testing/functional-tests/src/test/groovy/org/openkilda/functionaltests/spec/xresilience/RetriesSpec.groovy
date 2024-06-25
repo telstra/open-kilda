@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.xresilience
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
@@ -351,7 +352,7 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
     FlowFactory flowFactory
 
     //isolation: requires no 'up' events in the system while flow is Down
-    @Tags([ISL_RECOVER_ON_FAIL])
+    @Tags([ISL_RECOVER_ON_FAIL, LOW_PRIORITY])
     def "System does not retry after global timeout for reroute operation"() {
         given: "A flow with ability to reroute"
         def swPair = switchPairs.all().nonNeighbouring().random()

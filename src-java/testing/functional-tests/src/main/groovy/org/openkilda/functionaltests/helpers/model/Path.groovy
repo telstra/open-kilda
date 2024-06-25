@@ -84,7 +84,12 @@ class Path {
     }
 
     List<SwitchId> getInvolvedSwitches() {
-        nodes.nodes.switchId
+        nodes.nodes.switchId.unique()
+    }
+
+    List<SwitchId> getTransitInvolvedSwitches() {
+        List<SwitchId> switches = getInvolvedSwitches()
+        switches.size() > 2 ? switches[1..-2] : []
     }
 
     OverlappingSegmentsStats overlappingSegmentStats(List<Path> comparedPath) {
