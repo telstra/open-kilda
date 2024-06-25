@@ -43,5 +43,6 @@ public class AddFlow extends Message {
     FlowDirection direction;
     @JsonProperty("port")
     Integer port;
+    @JsonProperty("dst_mac")
     String dstMac;
 }
