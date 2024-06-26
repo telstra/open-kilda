@@ -21,18 +21,32 @@ import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
 @Component
 @Scope(SCOPE_PROTOTYPE)
 class FeatureToggles {
+    private static FeatureTogglesDto initialState = FeatureTogglesDto.builder()
+    // all these params are specified during env set up
+            .createFlowEnabled(true)
+            .updateFlowEnabled(true)
+            .deleteFlowEnabled(true)
+            .flowsRerouteOnIslDiscoveryEnabled(true)
+            .useBfdForIslIntegrityCheck(true)
+            .floodlightRoutePeriodicSync(true)
+            .collectGrpcStats(true)
+            .server42FlowRtt(true)
+            .server42IslRtt(true)
+            .modifyYFlowEnabled(true)
+            .createHaFlowEnabled(true)
+            .modifyHaFlowEnabled(true)
+            .deleteHaFlowEnabled(true)
+            .syncSwitchOnConnect(true)
+    //the following toggles are disabled by default
+            .flowsRerouteUsingDefaultEncapType(false)
+            .flowLatencyMonitoringReactions(false)
+            .discoverNewIslsInUnderMaintenanceMode(false)
+            .build()
 
     @Autowired @Qualifier("islandNb")
     NorthboundService northbound
     @Autowired
     CleanupManager cleanupManager
-
-    FeatureTogglesDto initialState
-
-    @PostConstruct
-    void init() {
-        initialState = getFeatureToggles()
-    }
 
     FeatureTogglesDto setFeatureToggles(FeatureTogglesDto featureTogglesDto, CleanupAfter cleanupAfter= TEST) {
         cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, { safeTogglesRecover() }, cleanupAfter)
