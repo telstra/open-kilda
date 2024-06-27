@@ -13,7 +13,9 @@ dependencies {
     implementation("org.mapstruct:mapstruct-processor")
     annotationProcessor("org.mapstruct:mapstruct-processor")
 
-    compileOnly("com.fasterxml.jackson.core:jackson-annotations")
+    implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.16.1")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok-mapstruct-binding")

@@ -8,7 +8,7 @@ dependencies {
     implementation project(":rule-manager-api")
 
     implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
-    implementation("com.fasterxml.jackson.core:jackson-annotations:2.15.1")
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.16.1")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
     implementation("com.google.guava:guava")
     implementation("org.apache.commons:commons-lang3")

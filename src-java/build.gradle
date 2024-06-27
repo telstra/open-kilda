@@ -40,7 +40,7 @@ subprojects {
     }
 
     dependencies {
-        implementation(platform("com.fasterxml.jackson:jackson-bom:2.10.0"))
+        implementation(platform("com.fasterxml.jackson:jackson-bom:2.16.1"))
 
         constraints {
             compileOnly("org.projectlombok:lombok:1.18.26")
@@ -66,7 +66,7 @@ subprojects {
             implementation("args4j:args4j:2.33")
             implementation("com.fasterxml.uuid:java-uuid-generator:5.0.0")
             implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
-            implementation("com.fasterxml.jackson.core:jackson-annotations:2.15.1")
+            implementation("com.fasterxml.jackson.core:jackson-annotations:2.16.1")
             implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
 
             implementation("org.apache.kafka:kafka-clients:3.6.1")

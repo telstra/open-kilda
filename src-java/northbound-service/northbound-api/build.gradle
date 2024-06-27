@@ -8,9 +8,9 @@ dependencies {
     implementation(project(":base-messaging"))
     implementation(project(":kilda-model"))
 
-    implementation("com.fasterxml.jackson.core:jackson-annotations")
-    implementation("com.fasterxml.jackson.core:jackson-databind")
-    implementation("com.fasterxml.jackson.core:jackson-core")
+    implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.16.1")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
 
     implementation("jakarta.validation:jakarta.validation-api")
 
