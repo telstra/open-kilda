@@ -1,20 +1,5 @@
 package org.openkilda.functionaltests.spec.links
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.IslInfoData
-import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v1.links.LinkParametersDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.See
-
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
@@ -28,6 +13,27 @@ import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.InvalidRequestParametersExpectedError
+import org.openkilda.functionaltests.error.MissingServletRequestParameterException
+import org.openkilda.functionaltests.error.UnableToParseRequestArgumentsException
+import org.openkilda.functionaltests.error.link.LinkIsInIllegalStateExpectedError
+import org.openkilda.functionaltests.error.link.LinkNotFoundExpectedError
+import org.openkilda.functionaltests.error.link.LinkPropertiesNotUpdatedExpectedError
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.messaging.info.event.IslInfoData
+import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.links.LinkParametersDto
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.See
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery")
 
@@ -236,9 +242,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (404 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "There is no ISL between $srcSwId-$srcSwPort and $dstSwId-$dstSwPort."
+        new LinkNotFoundExpectedError("There is no ISL between $srcSwId-$srcSwPort and $dstSwId-$dstSwPort.").matches(exc)
 
         where:
         srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
@@ -254,14 +258,14 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage.contains("Invalid portId:")
+        new UnableToParseRequestArgumentsException("Invalid portId: ${invalidValue}",
+                ~/Can not parse arguments when create "get flows for link" request/).matches(exc)
 
         where:
-        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
-        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"
-        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item                  | invalidValue
+        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"            | -1
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"            | -2
+        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port" | -3
     }
 
     def "Unable to get flows without full specifying a particular link (#item is missing)"() {
@@ -270,15 +274,14 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage.contains("parameter '$item' is not present")
+        new MissingServletRequestParameterException("Required $itemType parameter \'$item\' is not present").matches(exc)
 
         where:
-        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item
-        null                    | null             | null                    | null      | "src_switch"
-        getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item         | itemType
+        null                    | null             | null                    | null      | "src_switch" | "SwitchId"
+        getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"   | "Integer"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch" | "SwitchId"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"   | "Integer"
     }
 
     def "Unable to delete a nonexistent link"() {
@@ -290,8 +293,8 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "Get 404 NotFound error"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.contains("ISL was not found")
+        new LinkNotFoundExpectedError("There is no ISL between $parameters.srcSwitch-$parameters.srcPort " +
+                "and $parameters.dstSwitch-$parameters.dstPort.").matches(exc)
     }
 
     def "Unable to delete an active link"() {
@@ -303,8 +306,9 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "Get 400 BadRequest error because the link is active"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.contains("ISL must NOT be in active state")
+        new LinkIsInIllegalStateExpectedError("Link with following parameters is in illegal state: " +
+                "source \'${isl.srcSwitch.dpId}_${isl.srcPort}\', destination \'${isl.dstSwitch.dpId}_${isl.dstPort}\'. " +
+                "ISL must NOT be in active state.").matches(exc)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -384,9 +388,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (404 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "There is no ISL between $srcSwId-$srcSwPort and $dstSwId-$dstSwPort."
+        new LinkNotFoundExpectedError("There is no ISL between $srcSwId-$srcSwPort and $dstSwId-$dstSwPort.").matches(exc)
 
         where:
         srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
@@ -402,14 +404,14 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage.contains("Invalid portId:")
+        new UnableToParseRequestArgumentsException("Invalid portId: ${invalidValue}",
+                ~/Can not parse arguments when create "reroute flows for link" request/).matches(exc)
 
         where:
-        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
-        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"
-        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item                  | invalidValue
+        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"            | -1
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"            | -2
+        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port" | -3
     }
 
     def "Unable to reroute flows without full specifying a particular link (#item is missing)"() {
@@ -418,15 +420,14 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage.contains("parameter '$item' is not present")
+        new MissingServletRequestParameterException("Required $itemType parameter \'$item\' is not present").matches(exc)
 
         where:
-        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item
-        null                    | null             | null                    | null      | "src_switch"
-        getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item         | itemType
+        null                    | null             | null                    | null      | "src_switch" | "SwitchId"
+        getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"   | "Integer"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch" | "SwitchId"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"   | "Integer"
     }
 
     def "Get links with specifying query parameters: #description"() {
@@ -473,14 +474,14 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage.contains("Invalid portId:")
+        new UnableToParseRequestArgumentsException("Invalid portId: ${invalidValue}",
+                ~/Can not parse arguments when create 'get links' request/).matches(exc)
 
         where:
-        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
-        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"
-        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item                  | invalidValue
+        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"            | -1
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"            | -2
+        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port" | -3
     }
 
     @Tags([SMOKE])
@@ -543,9 +544,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Can't create/update link props"
-        exc.responseBodyAsString.to(MessageError).errorDescription == "Not enough available bandwidth for operation"
+        new LinkPropertiesNotUpdatedExpectedError(~/Not enough available bandwidth for operation/).matches(exc)
 
         when: "Update max bandwidth to the value equal to max bandwidth of the created flow"
         northbound.updateLinkMaxBandwidth(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort,
@@ -597,14 +596,14 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage.matches("Invalid value of (source|destination) port")
+        new InvalidRequestParametersExpectedError("Invalid value of $invalidEndpoint port",
+                ~/Port number can't be negative/).matches(exc)
 
         where:
-        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
-        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"
-        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item                  | invalidEndpoint
+        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"            | "source"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"            | "destination"
+        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port" | "source"
     }
 
     def "Unable to update max bandwidth without full specifying a particular link (#item is missing)"() {
@@ -613,15 +612,14 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage.contains("parameter '$item' is not present")
+        new MissingServletRequestParameterException("Required $itemType parameter \'$item\' is not present").matches(exc)
 
         where:
-        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item
-        null                    | null             | null                    | null      | "src_switch"
-        getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item         | itemType
+        null                    | null             | null                    | null      | "src_switch" | "SwitchId"
+        getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"   | "Integer"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch" | "SwitchId"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"   | "Integer"
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -642,8 +640,9 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "Get 400 BadRequest error because the link with flow path"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.contains("This ISL is busy by flow paths.")
+        new LinkIsInIllegalStateExpectedError("Link with following parameters is in illegal state: " +
+                "source \'${isl.srcSwitch.dpId}_${isl.srcPort}\', destination \'${isl.dstSwitch.dpId}_${isl.dstPort}\'. " +
+                "This ISL is busy by flow paths.").matches(exc)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)

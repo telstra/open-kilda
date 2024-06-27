@@ -147,7 +147,6 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         new FlowNotValidatedExpectedError(~/Could not validate flow: Flow $flow.flowId is in DOWN state/).matches(e)
         when: "Switch returns back UP"
         switchHelper.reviveSwitch(srcSwitch, blockData)
-        def swIsOnline = true
 
         then: "Flow is still down, because ISLs had not enough time to fail, so no ISLs are discovered and no reroute happen"
         northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
