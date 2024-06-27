@@ -9,10 +9,9 @@ import java.util.regex.Pattern
 class SwitchNotFoundExpectedError extends AbstractExpectedError{
     final static HttpStatus statusCode = HttpStatus.NOT_FOUND
     final static String messagePattern = "Switch %s not found."
-    final static Pattern descriptionPattern = ~/Switch was not found./
 
     SwitchNotFoundExpectedError(SwitchId switchId) {
-        super(statusCode, String.format(messagePattern, switchId), descriptionPattern)
+        super(statusCode, String.format(messagePattern, switchId), ~/Switch was not found./)
     }
 
     SwitchNotFoundExpectedError(SwitchId switchId, Pattern descriptionPattern) {

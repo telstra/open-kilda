@@ -7,10 +7,9 @@ import java.util.regex.Pattern
 
 class YFlowNotUpdatedExpectedError extends AbstractExpectedError{
     final static HttpStatus statusCode = HttpStatus.BAD_REQUEST
-    final static String message = "Could not update y-flow"
 
     YFlowNotUpdatedExpectedError(Pattern descriptionPattern) {
-        super(statusCode, message, descriptionPattern)
+        super(statusCode, "Could not update y-flow", descriptionPattern)
     }
 
     YFlowNotUpdatedExpectedError(String message, Pattern descriptionPattern) {

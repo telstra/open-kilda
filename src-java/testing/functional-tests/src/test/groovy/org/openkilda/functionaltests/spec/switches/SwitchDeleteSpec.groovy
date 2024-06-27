@@ -1,6 +1,8 @@
 package org.openkilda.functionaltests.spec.switches
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.SwitchIsInIllegalStateExpectedError
+import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -40,7 +42,8 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         then: "Get 404 NotFound error"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
+        new SwitchNotFoundExpectedError("Could not delete switch '$NON_EXISTENT_SWITCH_ID': 'Switch $NON_EXISTENT_SWITCH_ID not found.'",
+                ~/Switch is not found./).matches(exc)
     }
 
     @Tags(SMOKE)
@@ -53,8 +56,9 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         then: "Get 400 BadRequest error because the switch must be deactivated first"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.contains("Switch '$switchId' is in 'Active' state")
+        new SwitchIsInIllegalStateExpectedError("Could not delete switch '$switchId': " +
+                "'Switch '$switchId' is in illegal state. " +
+                "Switch '$switchId' is in 'Active' state.'").matches(exc)
     }
 
     @Tags(SWITCH_RECOVER_ON_FAIL)
@@ -69,9 +73,9 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         then: "Get 400 BadRequest error because the switch has ISLs"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.matches(".*Switch '$sw.dpId' has ${swIsls.size() * 2} active links\\. " +
-                "Unplug and remove them first.*")
+        new SwitchIsInIllegalStateExpectedError("Could not delete switch '${sw.dpId}': " +
+                "'Switch '${sw.dpId}' is in illegal state. " +
+                "Switch '${sw.dpId}' has ${swIsls.size() * 2} active links. Unplug and remove them first.'").matches(exc)
     }
 
     @Tags(SWITCH_RECOVER_ON_FAIL)
@@ -87,9 +91,9 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         then: "Get 400 BadRequest error because the switch has ISLs"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.matches(".*Switch '$sw.dpId' has ${swIsls.size() * 2} inactive links\\. " +
-                "Remove them first.*")
+        new SwitchIsInIllegalStateExpectedError("Could not delete switch '${sw.dpId}': " +
+                "'Switch '${sw.dpId}' is in illegal state. " +
+                "Switch '${sw.dpId}' has ${swIsls.size() * 2} inactive links. Remove them first.'").matches(exc)
     }
 
     @Tags(SWITCH_RECOVER_ON_FAIL)
@@ -107,8 +111,9 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         then: "Got 400 BadRequest error because the switch has the flow assigned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.matches(".*Switch '${flow.source.switchId}' has 1 assigned flows: \\[${flow.flowId}\\].*")
+        new SwitchIsInIllegalStateExpectedError("Could not delete switch '${swToDeactivate.dpId}': " +
+                "'Switch '${swToDeactivate.dpId}' is in illegal state. " +
+                "Switch '${swToDeactivate.dpId}' has 1 assigned flows: [${flow.flowId}].'").matches(exc)
 
         where:
         flowType        | flow

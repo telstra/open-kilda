@@ -1,16 +1,5 @@
 package org.openkilda.functionaltests.spec.network
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.error.MessageError
-import org.openkilda.model.PathComputationStrategy
-import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.northbound.NorthboundService
-import org.springframework.web.client.HttpClientErrorException
-
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN
@@ -22,8 +11,18 @@ import static org.openkilda.testing.service.northbound.payloads.PathRequestParam
 import static org.openkilda.testing.service.northbound.payloads.PathRequestParameter.MAX_PATH_COUNT
 import static org.openkilda.testing.service.northbound.payloads.PathRequestParameter.PATH_COMPUTATION_STRATEGY
 import static org.openkilda.testing.service.northbound.payloads.PathRequestParameter.PROTECTED
-import static org.springframework.http.HttpStatus.BAD_REQUEST
-import static org.springframework.http.HttpStatus.NOT_FOUND
+
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.PathsNotReturnedExpectedError
+import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.model.PathComputationStrategy
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+
+import org.springframework.web.client.HttpClientErrorException
 
 class PathsSpec extends HealthCheckSpecification {
 
@@ -80,20 +79,28 @@ class PathsSpec extends HealthCheckSpecification {
     }
 
     @Tags(LOW_PRIORITY)
-    def "Unable to get paths for #problemDescription"() {
+    def "Unable to get paths for non-existing switch"() {
         when: "Try to get paths between #problemDescription"
-        switchPair(topology.getSwitches().first(), northbound).getPathsFromApi()
-
+        def switchPair = SwitchPair.withNonExistingDstSwitch(topology.getSwitches().first(), northbound)
+        switchPair.getPathsFromApi()
 
         then:
         "Get error because request is invalid"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == expectedStatus
+        new SwitchNotFoundExpectedError(switchPair.dst.dpId, ~/Switch not found./).matches(exc)
+    }
 
-        where:
-        problemDescription | switchPair |expectedStatus
-        "one switch"              | { Switch sw, NorthboundService nb -> SwitchPair.singleSwitchInstance(sw, nb)}| BAD_REQUEST
-        "non-existing switch" |{ Switch sw, NorthboundService nb -> SwitchPair.withNonExistingDstSwitch(sw, nb)} | NOT_FOUND
+    @Tags(LOW_PRIORITY)
+    def "Unable to get paths for one switch"() {
+        when: "Try to get paths between #problemDescription"
+        def switchPair = SwitchPair.singleSwitchInstance(topology.getSwitches().first(), northbound)
+        switchPair.getPathsFromApi()
+
+        then:
+        "Get error because request is invalid"
+        def exc = thrown(HttpClientErrorException)
+        new PathsNotReturnedExpectedError("Source and destination switch IDs are equal: '${switchPair.src.dpId}'", ~/Bad request./).matches(exc)
+
     }
 
     def "Unable to get paths with max_latency strategy without max latency parameter"() {
@@ -107,11 +114,8 @@ class PathsSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def error = thrown(HttpClientErrorException)
-        error.statusCode == BAD_REQUEST
-        def errorDetails = error.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Missed max_latency parameter."
-        errorDetails.errorDescription == "MAX_LATENCY path computation strategy requires non null max_latency " +
-                "parameter. If max_latency will be equal to 0 LATENCY strategy will be used instead of MAX_LATENCY."
+        new PathsNotReturnedExpectedError("Missed max_latency parameter.", ~/MAX_LATENCY path computation strategy requires non null max_latency \
+parameter. If max_latency will be equal to 0 LATENCY strategy will be used instead of MAX_LATENCY./).matches(error)
     }
 
     @Tags(LOW_PRIORITY)
@@ -134,11 +138,10 @@ class PathsSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.statusCode == BAD_REQUEST
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Switch $switchPair.src.dpId doesn't support $VXLAN " +
+        new PathsNotReturnedExpectedError("Switch $switchPair.src.dpId doesn't support $VXLAN " +
                 "encapsulation type. Choose one of the supported encapsulation types $encapsTypesWithoutVxlan or " +
-                "update switch properties and add needed encapsulation type."
+                "update switch properties and add needed encapsulation type.", ~/Bad request./).matches(exc)
+
     }
 
     @Tags(LOW_PRIORITY)

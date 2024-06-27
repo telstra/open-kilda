@@ -287,7 +287,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
-        new FlowNotFoundExpectedError(flow.getFlowId(), ~/Could not get connected devices for non existent flow/).matches(e)
+        new FlowNotFoundExpectedError("Flow ${flow.flowId} not found",
+                ~/Could not get connected devices for non existent flow/).matches(e)
     }
 
     def "Able to swap flow paths with connected devices (srcDevices=#srcEnabled, dstDevices=#dstEnabled)"() {

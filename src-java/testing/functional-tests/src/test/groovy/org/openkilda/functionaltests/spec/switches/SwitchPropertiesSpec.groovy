@@ -125,7 +125,7 @@ class SwitchPropertiesSpec extends HealthCheckSpecification {
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         new SwitchPropertiesNotUpdatedExpectedError(String.format(data.error, sw.dpId),
-        data.description ?: SwitchPropertiesNotUpdatedExpectedError.getDescriptionPattern()).matches(exc)
+                data.description ?: ~/Failed to update switch properties./).matches(exc)
 
         where:
         data << [

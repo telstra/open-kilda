@@ -8,10 +8,9 @@ import java.util.regex.Pattern
 
 class SwitchPropertiesNotUpdatedExpectedError extends AbstractExpectedError{
     final static HttpStatus statusCode = HttpStatus.BAD_REQUEST
-    final static Pattern descriptionPattern = ~/Failed to update switch properties./
 
     SwitchPropertiesNotUpdatedExpectedError(String message) {
-        super(statusCode, message, descriptionPattern)
+        super(statusCode, message, ~/Failed to update switch properties./)
     }
 
     SwitchPropertiesNotUpdatedExpectedError(String message, Pattern descriptionPattern) {
