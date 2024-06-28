@@ -77,6 +77,8 @@ class YFlowStatSpec extends HealthCheckSpecification {
             }
             statsHelper."force kilda to collect stats"()
             assert yFlowStats.of(yFlow.yFlowId).get(Y_FLOW_SHARED_BITS).getDataPoints().size() > 2
+            assert flowStats.of(yFlow.getSubFlows().get(0).getFlowId()).get(FLOW_INGRESS_BITS).getDataPoints().size() > 2
+            assert flowStats.of(yFlow.getSubFlows().get(1).getFlowId()).get(FLOW_INGRESS_BITS).getDataPoints().size() > 2
         }
         stats = yFlowStats.of(yFlow.yFlowId)
         subflow1Stats = flowStats.of(yFlow.getSubFlows().get(0).getFlowId())
