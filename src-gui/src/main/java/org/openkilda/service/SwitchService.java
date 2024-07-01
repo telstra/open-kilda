@@ -201,19 +201,20 @@ public class SwitchService {
     private List<SwitchDetail> adaptToSwitchDetailsAndGet(List<SwitchInfo> controllerSwitches,
                                                           List<InventorySwitch> inventorySwitches) {
         //inventory switches could contain switches with the same switchId.
-        final Map<String, List<InventorySwitch>> switchIdToInventorySwitch = new HashMap<>();
+        final Map<String, List<InventorySwitch>> switchIdInUpperCaseToInventorySwitch = new HashMap<>();
 
         if (CollectionUtils.isNotEmpty(inventorySwitches)) {
             inventorySwitches = inventorySwitches.stream().filter(Objects::nonNull).collect(Collectors.toList());
             inventorySwitches.forEach(inventorySw -> {
-                if (switchIdToInventorySwitch.containsKey(inventorySw.getSwitchId())) {
+                String switchIdUpperCase = inventorySw.getSwitchId().toUpperCase();
+                if (switchIdInUpperCaseToInventorySwitch.containsKey(switchIdUpperCase)) {
                     inventorySw.setHasDuplicate(true);
-                    switchIdToInventorySwitch.get(inventorySw.getSwitchId()).get(0).setHasDuplicate(true);
-                    switchIdToInventorySwitch.get(inventorySw.getSwitchId()).add(inventorySw);
+                    switchIdInUpperCaseToInventorySwitch.get(switchIdUpperCase).get(0).setHasDuplicate(true);
+                    switchIdInUpperCaseToInventorySwitch.get(switchIdUpperCase).add(inventorySw);
                 } else {
                     List<InventorySwitch> list = new ArrayList<>();
                     list.add(inventorySw);
-                    switchIdToInventorySwitch.put(inventorySw.getSwitchId(), list);
+                    switchIdInUpperCaseToInventorySwitch.put(switchIdUpperCase, list);
                 }
             });
         }
@@ -221,6 +222,7 @@ public class SwitchService {
         List<SwitchDetail> switchDetailsResult;
 
         switchDetailsResult = controllerSwitches.stream().map(contrlSw -> {
+            String switchIdUpperCase = contrlSw.getSwitchId().toUpperCase();
             SwitchDetail.SwitchDetailBuilder swDetailBuilder = SwitchDetail.builder()
                     .switchId(contrlSw.getSwitchId())
                     .name(contrlSw.getName())
@@ -238,19 +240,20 @@ public class SwitchService {
                     .pop(contrlSw.getPop())
                     .location(contrlSw.getLocation());
             //add inventory info if exists, null otherwise
-            List<InventorySwitch> invSwitches = switchIdToInventorySwitch.get(contrlSw.getSwitchId());
+            List<InventorySwitch> invSwitches = switchIdInUpperCaseToInventorySwitch.get(switchIdUpperCase);
             if (CollectionUtils.isNotEmpty(invSwitches)) {
                 swDetailBuilder.inventorySwitchDetail(invSwitches.remove(invSwitches.size() - 1));
                 if (invSwitches.isEmpty()) {
-                    switchIdToInventorySwitch.remove(contrlSw.getSwitchId());
+                    switchIdInUpperCaseToInventorySwitch.remove(switchIdUpperCase);
                 }
             }
             return swDetailBuilder.build();
         }).collect(Collectors.toList());
 
         //add inventory switches that does not exist in controller list.
-        if (!switchIdToInventorySwitch.isEmpty()) {
-            switchDetailsResult.addAll(switchIdToInventorySwitch.values().stream().flatMap(Collection::stream)
+        if (!switchIdInUpperCaseToInventorySwitch.isEmpty()) {
+            switchDetailsResult.addAll(switchIdInUpperCaseToInventorySwitch.values()
+                    .stream().flatMap(Collection::stream)
                     .map(inventorySw ->
                             SwitchDetail.builder().inventorySwitchDetail(inventorySw).build())
                     .collect(Collectors.toList()));
