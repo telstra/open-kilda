@@ -1,7 +1,7 @@
 /logs/
 tmp/
 .deps/
-
+.angular/
 
 # Gradle specific	
 

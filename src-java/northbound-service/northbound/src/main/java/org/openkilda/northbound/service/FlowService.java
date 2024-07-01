@@ -17,6 +17,7 @@ package org.openkilda.northbound.service;
 
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
+import org.openkilda.messaging.payload.flow.FlowFlushReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
@@ -191,6 +192,14 @@ public interface FlowService extends FlowHistoryAware<FlowHistoryEntry> {
      * @return updated flow path information with the result whether or not path was changed.
      */
     CompletableFuture<FlowReroutePayload> rerouteFlow(final String flowId);
+
+    /**
+     * Flush rerouting when stuck in the progress queue.
+     *
+     * @param flowId id of flow to be flushed.
+     * @return updated flow path information.
+     */
+    CompletableFuture<FlowFlushReroutePayload> flushRerouteFlow(final String flowId);
 
     /**
      * Performs flow paths swapping for flow with protected path.
