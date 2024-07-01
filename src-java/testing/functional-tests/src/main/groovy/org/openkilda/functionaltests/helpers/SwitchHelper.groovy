@@ -175,6 +175,11 @@ class SwitchHelper {
     static int getRandomAvailablePort(Switch sw, TopologyDefinition topologyDefinition, boolean useTraffgenPorts = true, List<Integer> busyPort = []) {
         List<Integer> allowedPorts = topologyDefinition.getAllowedPortsForSwitch(sw)
         def availablePorts = allowedPorts - busyPort
+        if(!availablePorts) {
+            //as default flow is generated with vlan, we can reuse the same port if all available ports have been used
+            //this is a rare case for the situation when we need to create more than 20 flows in a row
+            availablePorts = allowedPorts
+        }
         def port = availablePorts[new Random().nextInt(availablePorts.size())]
         if (useTraffgenPorts) {
             List<Integer> tgPorts = sw.traffGens*.switchPort.findAll { availablePorts.contains(it) }
@@ -627,6 +632,12 @@ class SwitchHelper {
 
     List<FloodlightResourceAddress> knockoutSwitch(Switch sw, List<String> regions) {
         def blockData = lockKeeper.knockoutSwitch(sw, regions)
+        cleanupManager.addAction(REVIVE_SWITCH, { reviveSwitch(sw, blockData, true) }, CleanupAfter.TEST)
+        return blockData
+    }
+
+    List<FloodlightResourceAddress> knockoutSwitchFromStatsController(Switch sw){
+        def blockData = lockKeeper.knockoutSwitch(sw, FloodlightConnectMode.RO)
         cleanupManager.addAction(REVIVE_SWITCH, { reviveSwitch(sw, blockData, true) }, CleanupAfter.TEST)
         return blockData
     }

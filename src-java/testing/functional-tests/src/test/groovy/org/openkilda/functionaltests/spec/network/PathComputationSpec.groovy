@@ -1,22 +1,32 @@
 package org.openkilda.functionaltests.spec.network
 
+import static org.openkilda.functionaltests.helpers.model.PathComputationStrategy.*
+
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+
 import org.junit.jupiter.api.parallel.ResourceLock
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.ResourceLockConstants
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v1.flows.FlowPatchDto
 
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Shared
 
 @ResourceLock(ResourceLockConstants.DEFAULT_PATH_COMPUTATION)
 
 class PathComputationSpec extends HealthCheckSpecification {
 
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+
     def "Default path computation strategy is used when flow does not specify it"() {
         given: "Default path computation strategy is COST"
-        kildaConfiguration.updatePathComputationStrategy(PathComputationStrategy.COST)
+        kildaConfiguration.updatePathComputationStrategy(COST.toString())
 
         and: "Switch pair with two paths at least"
         def swPair = switchPairs.all().withAtLeastNPaths(2).random()
@@ -29,38 +39,40 @@ class PathComputationSpec extends HealthCheckSpecification {
         latencyIsls.each { islHelper.updateIslLatency(it, 1) }
 
         when: "Create flow without selecting path strategy"
-        def flow = flowHelperV2.randomFlow(swPair).tap { it.pathComputationStrategy = null }
-        def createResponse = flowHelperV2.addFlow(flow)
+        def flowCreateResponse = flowFactory.getBuilder(swPair)
+                .withPathComputationStrategy(null).build().sendCreateRequest()
+        def flow = flowCreateResponse.waitForBeingInState(FlowState.UP)
 
         then: "Flow is created with 'Cost' strategy (current default)"
-        createResponse.pathComputationStrategy == PathComputationStrategy.COST.toString().toLowerCase()
-        northboundV2.getFlow(flow.flowId).pathComputationStrategy == PathComputationStrategy.COST.toString().toLowerCase()
+        flowCreateResponse.pathComputationStrategy == COST
+        flow.pathComputationStrategy == COST
 
         and: "Flow is actually built on the path with the least cost"
-        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == costEffectivePath
+        flow.retrieveAllEntityPaths().getPathNodes() == costEffectivePath
 
         when: "Update default strategy to LATENCY"
-        kildaConfiguration.updatePathComputationStrategy(PathComputationStrategy.LATENCY)
+        kildaConfiguration.updatePathComputationStrategy(LATENCY.toString())
 
         then: "Existing flow remains with COST strategy and on the same path"
-        northboundV2.getFlow(flow.flowId).pathComputationStrategy == PathComputationStrategy.COST.toString().toLowerCase()
-        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == costEffectivePath
+        flow.retrieveDetails().pathComputationStrategy == COST
+        flow.retrieveAllEntityPaths().getPathNodes() == costEffectivePath
 
         and: "Manual reroute of the flow responds that flow is already on the best path"
-        !northboundV2.rerouteFlow(flow.flowId).rerouted
+        !flow.reroute().rerouted
 
         when: "Create a new flow without specifying path computation strategy"
-        def flow2 = flowHelperV2.randomFlow(swPair).tap { it.pathComputationStrategy = null }
+        def flow2 = flowFactory.getBuilder(swPair).withPathComputationStrategy(null).build()
         //re-set latencies in DB one more time in case they were recalculated automatically to higher values
         latencyIsls.each { database.updateIslLatency(it, 1) }
-        def createResponse2 = flowHelperV2.addFlow(flow2)
+        def createResponse2 = flow2.sendCreateRequest()
+        flow2 = flow2.waitForBeingInState(FlowState.UP)
 
         then: "New flow is created with 'Latency' strategy (current default)"
-        createResponse2.pathComputationStrategy == PathComputationStrategy.LATENCY.toString().toLowerCase()
-        northboundV2.getFlow(flow2.flowId).pathComputationStrategy == PathComputationStrategy.LATENCY.toString().toLowerCase()
+        createResponse2.pathComputationStrategy == LATENCY
+        flow2.pathComputationStrategy == LATENCY
 
         and: "New flow actually uses path with the least latency (ignoring cost)"
-        pathHelper.convert(northbound.getFlowPath(flow2.flowId)) == latencyEffectivePath
+        flow2.retrieveAllEntityPaths().getPathNodes() == latencyEffectivePath
     }
 
     def "Flow path computation strategy can be updated from LATENCY to COST"() {
@@ -75,19 +87,18 @@ class PathComputationSpec extends HealthCheckSpecification {
         latencyIsls.each { islHelper.updateIslLatency(it, 1) }
 
         when: "Create flow using Latency strategy"
-        def flow = flowHelperV2.randomFlow(swPair)
-                               .tap { it.pathComputationStrategy = PathComputationStrategy.LATENCY.toString() }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(swPair)
+                .withPathComputationStrategy(LATENCY).build()
+                .create()
 
         then: "Flow is built on the least-latency path"
-        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == latencyEffectivePath
+        flow.retrieveAllEntityPaths().getPathNodes() == latencyEffectivePath
 
         when: "Update flow path strategy to 'Cost'"
-        flowHelperV2.updateFlow(flow.flowId,
-                flow.tap { it.pathComputationStrategy = PathComputationStrategy.COST.toString() })
+        flow.update(flow.tap{ it.pathComputationStrategy = COST })
 
         then: "Flow path has changed to the least-cost path"
-        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == costEffectivePath
+        flow.retrieveAllEntityPaths().getPathNodes() == costEffectivePath
     }
 
     def "Target flow path computation strategy is not applied immediately in case flow was updated partially"() {
@@ -95,32 +106,29 @@ class PathComputationSpec extends HealthCheckSpecification {
         def swPair = switchPairs.all().withAtLeastNPaths(2).random()
 
         and: "A flow with cost strategy"
-        def latencyStrategy = PathComputationStrategy.LATENCY.toString().toLowerCase()
-        def costStrategy = PathComputationStrategy.COST.toString().toLowerCase()
-        def flow = flowHelperV2.randomFlow(swPair).tap { it.pathComputationStrategy = costStrategy }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(swPair)
+                .withPathComputationStrategy(COST).build()
+                .create()
 
         when: "Update path computation strategy(cost -> latency) via partialUpdate"
-        northbound.partialUpdate(flow.flowId, new FlowPatchDto().tap {
-            it.targetPathComputationStrategy = latencyStrategy
-        })
+        flow.partialUpdateV1(new FlowPatchDto().tap{ it.targetPathComputationStrategy = LATENCY.toString()})
 
         then: "Path computation strategy is not changed"
-        with(northbound.getFlow(flow.flowId)) {
-            pathComputationStrategy == costStrategy
-            targetPathComputationStrategy == latencyStrategy
+        with(flow.retrieveDetailsV1()) {
+            pathComputationStrategy ==  COST
+            targetPathComputationStrategy == LATENCY.toString().toLowerCase()
         }
 
         and: "Flow is valid"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         when: "Sync the flow"
-        northbound.synchronizeFlow(flow.flowId)
-        Wrappers.wait(WAIT_OFFSET / 2) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        flow.sync()
+        Wrappers.wait(WAIT_OFFSET / 2) { assert flow.retrieveFlowStatus().status == FlowState.UP }
 
         then: "Path computation strategy is updated and targetPathComputationStrategy is deleted"
-        with(northbound.getFlow(flow.flowId)) {
-            pathComputationStrategy == latencyStrategy
+        with(flow.retrieveDetails()) {
+            pathComputationStrategy == LATENCY
             !targetPathComputationStrategy
         }
     }
@@ -130,37 +138,36 @@ class PathComputationSpec extends HealthCheckSpecification {
         def swPair = switchPairs.all().withAtLeastNPaths(2).random()
 
         and: "A flow with cost strategy"
-        def latencyStrategy = PathComputationStrategy.LATENCY.toString().toLowerCase()
-        def costStrategy = PathComputationStrategy.COST.toString().toLowerCase()
-        def flow = flowHelperV2.randomFlow(swPair).tap { it.pathComputationStrategy = costStrategy }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(swPair)
+                .withPathComputationStrategy(COST).build()
+                .create()
 
         when: "Update path computation strategy(cost -> latency) via partialUpdate"
-        northbound.partialUpdate(flow.flowId, new FlowPatchDto().tap {
-            it.targetPathComputationStrategy = latencyStrategy
+        flow.partialUpdateV1(new FlowPatchDto().tap {
+            it.targetPathComputationStrategy = LATENCY.toString()
         })
 
         and: "Reroute the flow"
-        northboundV2.rerouteFlow(flow.flowId)
-        Wrappers.wait(WAIT_OFFSET / 2) { assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP }
+        flow.reroute()
+        Wrappers.wait(WAIT_OFFSET / 2) { assert flow.retrieveFlowStatus().status == FlowState.UP }
 
         then: "Path computation strategy is updated and targetPathComputationStrategy is deleted"
-        with(northbound.getFlow(flow.flowId)) {
-            pathComputationStrategy == latencyStrategy
+        with(flow.retrieveDetails()) {
+            pathComputationStrategy == LATENCY
             !targetPathComputationStrategy
         }
 
         when: "Update path computation strategy(latency -> cost) via partialUpdate"
-        northbound.partialUpdate(flow.flowId, new FlowPatchDto().tap {
-            it.targetPathComputationStrategy = costStrategy
+        flow.partialUpdateV1(new FlowPatchDto().tap {
+            it.targetPathComputationStrategy = COST.toString()
         })
 
         and: "Update the flow"
-        flowHelperV2.updateFlow(flow.flowId, flow.tap { it.pathComputationStrategy = null })
+        flow.update(flow.tap { it.pathComputationStrategy = null })
 
         then: "Path computation strategy is updated and targetPathComputationStrategy is deleted"
-        with(northbound.getFlow(flow.flowId)) {
-            pathComputationStrategy == costStrategy
+        with(flow.retrieveDetails()) {
+            pathComputationStrategy == COST
             !targetPathComputationStrategy
         }
     }

@@ -6,10 +6,10 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.YFlowFactory
-import org.openkilda.messaging.payload.flow.FlowState
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
@@ -27,6 +27,10 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
     @Shared
     @Autowired
     HaFlowFactory haFlowFactory
+
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     def "Able to create diverse HA-Flows"() {
         given: "Switches with three not overlapping paths at least"
@@ -94,12 +98,13 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         def haFlow1 = haFlowFactory.getRandom(swT)
 
         and: "Create a regular multiSwitch Flow diverse with previously created HA-Flow"
-        def flowRequest = flowHelperV2.randomFlow(swT.shared, swT.ep1, false)
-                .tap { diverseFlowId = haFlow1.getHaFlowId() }
-        def flow = flowHelperV2.addFlow(flowRequest)
+        def flow = flowFactory.getBuilder(swT.shared, swT.ep1, false)
+                .withDiverseFlow(haFlow1.haFlowId).build()
+                .create()
 
         and: "Create an additional HA-Flow diverse with simple flow that has another HA-Flow in diverse group"
-        def haFlow2 = haFlowFactory.getBuilder(swT, false, haFlow1.occupiedEndpoints()).withDiverseFlow(flow.flowId)
+        def haFlow2 = haFlowFactory.getBuilder(swT, false, haFlow1.occupiedEndpoints())
+                .withDiverseFlow(flow.flowId)
                 .build().create()
 
         then: "Create response contains correct info about diverse flows"
@@ -116,7 +121,7 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         when: "Get Flow and Ha-Flows details"
         def haFlow1Details = haFlow1.retrieveDetails()
         def haFlow2Details = haFlow2.retrieveDetails()
-        def regularFlowDetails = northboundV2.getFlow(flow.flowId)
+        def regularFlowDetails = flow.retrieveDetails()
 
         then: "All get Flow responses have correct diverse flow IDs"
         haFlow1Details.diverseWithHaFlows == [haFlow2.haFlowId] as Set

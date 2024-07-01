@@ -29,6 +29,7 @@ import org.openkilda.model.FlowPathDirection
 import org.openkilda.model.FlowPathStatus
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse
+import org.openkilda.northbound.dto.v1.flows.FlowPatchDto
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
 import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -438,6 +439,11 @@ class FlowExtended {
         return northbound.rerouteFlow(flowId)
     }
 
+    FlowExtended partialUpdateV1(FlowPatchDto updateRequest, FlowState flowState = FlowState.UP) {
+        northbound.partialUpdate(flowId, updateRequest)
+        return waitForBeingInState(flowState)
+    }
+
     /*
     This method waits for specific history event about action completion
     Note that the last existing event by action type is checked
@@ -517,7 +523,7 @@ class FlowExtended {
         def response = northboundV2.deleteFlow(flowId)
         wait(FLOW_CRUD_TIMEOUT) {
             assert !retrieveFlowStatus()
-            assert retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).first()
+            assert retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).last()
                     .payload.last().action == FlowActionType.DELETE.payloadLastAction
         }
         return response
@@ -535,7 +541,7 @@ class FlowExtended {
         def response = northbound.deleteFlow(flowId)
         wait(FLOW_CRUD_TIMEOUT) {
             assert !northbound.getFlowStatus(flowId)
-            assert retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).first()
+            assert retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).last()
                     .payload.last().action == FlowActionType.DELETE.payloadLastAction
         }
         return response

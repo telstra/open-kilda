@@ -341,7 +341,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         when: "Disconnect one of the switches not used by flow"
         def involvedSwitches = initialPath.getInvolvedSwitches()
         def switchToDisconnect = topology.getActiveSwitches().find { !involvedSwitches.contains(it) }
-        def blockData = lockKeeper.knockoutSwitch(switchToDisconnect, RW)
+        def blockData = switchHelper.knockoutSwitch(switchToDisconnect, RW)
 
         then: "The switch is really disconnected from the controller"
         wait(WAIT_OFFSET) { assert !(switchToDisconnect.dpId in northbound.getActiveSwitches()*.switchId) }
@@ -573,7 +573,7 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
     @Shared
     FlowFactory flowFactory
 
-    @Tags(ISL_RECOVER_ON_FAIL)
+    @Tags([ISL_RECOVER_ON_FAIL, SWITCH_RECOVER_ON_FAIL])
     def "Flow in 'Down' status is rerouted after switchUp event"() {
         given: "First switch pair with two parallel links and two available paths"
         assumeTrue(rerouteDelay * 2 < discoveryTimeout, "Reroute should be completed before link is FAILED")
@@ -630,10 +630,7 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
 
         when: "Disconnect the src switch of the first flow from the controller"
         def islToBreak = initialFirstFlowPath.flowPath.getInvolvedIsls().first()
-        def blockData = lockKeeper.knockoutSwitch(switchPair1.src, RW)
-        wait(discoveryTimeout + WAIT_OFFSET) {
-            assert northbound.getSwitch(switchPair1.src.dpId).state == SwitchChangeType.DEACTIVATED
-        }
+        def blockData = switchHelper.knockoutSwitch(switchPair1.src, RW)
 
         and: "Mark the switch as ACTIVE in db" // just to reproduce #3131
         database.setSwitchStatus(switchPair1.src.dpId, SwitchStatus.ACTIVE)
