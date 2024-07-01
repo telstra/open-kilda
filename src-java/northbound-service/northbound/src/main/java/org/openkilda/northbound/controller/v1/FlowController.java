@@ -245,6 +245,19 @@ public class FlowController extends BaseController {
     }
 
     /**
+     * Flush rerouting when stuck in the progress queue. For Internal Use
+     *
+     * @param flowId id of flow to be flushed.
+     * @return flow payload with updated path.
+     */
+    @ApiOperation(value = "Reroute flow", response = FlowReroutePayload.class)
+    @PatchMapping(path = "/{flow_id}/reroute")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowReroutePayload> flushRerouteFlow(@PathVariable("flow_id") String flowId) {
+        return flowService.flushRerouteFlow(flowId);
+    }
+
+    /**
      * Initiates flow paths swapping for flow with protected path.
      *
      * @param flowId id of flow to swap paths.

@@ -31,14 +31,17 @@ import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRequest.Type;
+import org.openkilda.messaging.command.flow.FlowRerouteFlushRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowSyncRequest;
 import org.openkilda.messaging.command.flow.FlowValidationRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
+import org.openkilda.messaging.info.event.PathInfoData;
 import org.openkilda.messaging.info.flow.FlowMirrorPointResponse;
 import org.openkilda.messaging.info.flow.FlowPingResponse;
+import org.openkilda.messaging.info.flow.FlowRerouteFlushResponse;
 import org.openkilda.messaging.info.flow.FlowRerouteResponse;
 import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowValidationResponse;
@@ -600,6 +603,20 @@ public class FlowServiceImpl implements FlowService {
                 .thenApply(FlowRerouteResponse.class::cast)
                 .thenApply(response ->
                         flowMapper.toReroutePayload(flowId, response.getPayload(), response.isRerouted()));
+    }
+
+    @Override
+    public CompletableFuture<FlowReroutePayload> flushRerouteFlow(String flowId) {
+        log.info("API request: Flush flow reroute: {}={}", FLOW_ID, flowId);
+
+        FlowRerouteFlushRequest payload = new FlowRerouteFlushRequest(flowId, "initiated via Northbound");
+        CommandMessage command = new CommandMessage(
+                payload, System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGet(rerouteTopic, command)
+                .thenApply(FlowRerouteFlushResponse.class::cast)
+                .thenApply(response ->
+                        flowMapper.toReroutePayload(flowId, new PathInfoData(), response.isFlushed()));
     }
 
     @Override

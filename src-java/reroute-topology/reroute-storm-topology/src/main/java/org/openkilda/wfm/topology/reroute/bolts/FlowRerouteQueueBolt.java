@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.reroute.bolts;
 
+import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_MANUAL_REROUTE_FLUSH_REQUEST_ID;
 import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_MANUAL_REROUTE_REQUEST_ID;
 import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_REROUTE_REQUEST_ID;
 import static org.openkilda.wfm.topology.reroute.bolts.TimeWindowBolt.STREAM_TIME_WINDOW_EVENT_ID;
@@ -85,6 +86,10 @@ public class FlowRerouteQueueBolt extends CoordinatedBolt implements IRerouteQue
             case STREAM_MANUAL_REROUTE_REQUEST_ID:
                 throttlingData = (FlowThrottlingData) tuple.getValueByField(RerouteBolt.THROTTLING_DATA_FIELD);
                 rerouteQueueService.processManualRequest(flowId, throttlingData);
+                break;
+            case STREAM_MANUAL_REROUTE_FLUSH_REQUEST_ID:
+                throttlingData = (FlowThrottlingData) tuple.getValueByField(RerouteBolt.THROTTLING_DATA_FIELD);
+                rerouteQueueService.processManualFlushRequest(flowId, throttlingData);
                 break;
             default:
                 unhandledInput(tuple);

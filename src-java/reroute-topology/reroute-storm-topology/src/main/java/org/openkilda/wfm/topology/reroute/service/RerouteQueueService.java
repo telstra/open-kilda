@@ -139,6 +139,17 @@ public class RerouteQueueService {
     }
 
     /**
+     * Process manual reroute flush request.
+     *
+     * @param flowId flow id
+     */
+    public void processManualFlushRequest(String flowId, FlowThrottlingData throttlingData) {
+        RerouteQueue rerouteQueue = getRerouteQueue(flowId);
+        log.info("Process manual Flush Request for flow: {}", flowId);
+        rerouteQueue.putToInProgress(null);
+    }
+
+    /**
      * Process reroute result. Check fail reason, decide if retry is needed and schedule it if yes.
      *
      * @param rerouteResultInfoData reroute result
