@@ -29,6 +29,7 @@ import org.openkilda.model.FlowPathDirection
 import org.openkilda.model.FlowPathStatus
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse
+import org.openkilda.northbound.dto.v1.flows.FlowPatchDto
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
 import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -419,8 +420,13 @@ class FlowExtended {
         northbound.pingFlow(flowId, pingInput)
     }
 
+    FlowExtended sendUpdateRequest(FlowExtended expectedEntity) {
+        def response = northboundV2.updateFlow(flowId, expectedEntity.convertToUpdate())
+        return new FlowExtended(response, northbound, northboundV2, topologyDefinition, cleanupManager, database)
+    }
+
     FlowExtended update(FlowExtended expectedEntity, FlowState flowState = FlowState.UP) {
-        northboundV2.updateFlow(flowId, expectedEntity.convertToUpdate())
+        sendUpdateRequest(expectedEntity)
         return waitForBeingInState(flowState)
     }
 
@@ -430,12 +436,29 @@ class FlowExtended {
     }
 
     FlowExtended partialUpdate(FlowPatchV2 updateRequest, FlowState flowState = FlowState.UP) {
-        northboundV2.partialUpdate(flowId, updateRequest)
+        sendPartialUpdateRequest(updateRequest)
         return waitForBeingInState(flowState)
     }
 
     FlowReroutePayload rerouteV1() {
         return northbound.rerouteFlow(flowId)
+    }
+
+    FlowExtended sendPartialUpdateRequest(FlowPatchV2 updateRequest) {
+        def response = northboundV2.partialUpdate(flowId, updateRequest)
+        return new FlowExtended(response, northbound, northboundV2, topologyDefinition, cleanupManager, database)
+
+    }
+
+    FlowExtended partialUpdateV1(FlowPatchDto updateRequest, FlowState flowState = FlowState.UP) {
+        sendPartialUpdateRequestV1(updateRequest)
+        return waitForBeingInState(flowState)
+    }
+
+    FlowExtended sendPartialUpdateRequestV1(FlowPatchDto updateRequest) {
+        def response = northbound.partialUpdate(flowId, updateRequest)
+        return new FlowExtended(response, northbound, northboundV2, topologyDefinition, cleanupManager, database)
+
     }
 
     /*
