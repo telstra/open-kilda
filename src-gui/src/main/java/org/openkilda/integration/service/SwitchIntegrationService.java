@@ -60,6 +60,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -135,6 +136,9 @@ public class SwitchIntegrationService {
                     applicationProperties.getNbBaseUrl()
                             + IConstants.NorthBoundUrl.GET_SWITCH.replace("{switch_id}", switchId),
                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
+            if (response.getStatusLine().getStatusCode() == HttpStatus.NOT_FOUND.value()) {
+                return null;
+            }
             if (RestClientManager.isValidResponse(response)) {
                 SwitchInfo switchInfo = restClientManager.getResponse(response, SwitchInfo.class);
                 if (switchInfo != null) {
@@ -879,11 +883,11 @@ public class SwitchIntegrationService {
         }
         return null;
     }
-    
+
     /**
      * Creates switch logical port.
      *
-     * @param switchId the switch id
+     * @param switchId          the switch id
      * @param switchLogicalPort the switch logical port
      * @return the SwitchLogicalPort
      */
@@ -891,8 +895,8 @@ public class SwitchIntegrationService {
         try {
             HttpResponse response = restClientManager.invoke(
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
-                    .SWITCH_LOGICAL_PORT.replace("{switch_id}", switchId), 
-                    HttpMethod.POST, objectMapper.writeValueAsString(switchLogicalPort), "application/json", 
+                            .SWITCH_LOGICAL_PORT.replace("{switch_id}", switchId),
+                    HttpMethod.POST, objectMapper.writeValueAsString(switchLogicalPort), "application/json",
                     applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponse(response, SwitchLogicalPort.class);
@@ -906,11 +910,11 @@ public class SwitchIntegrationService {
         }
         return null;
     }
-    
+
     /**
      * Deletes switch logical port.
      *
-     * @param switchId the switch id
+     * @param switchId          the switch id
      * @param logicalPortNumber the switch logical port number
      * @return the SwitchLogicalPort
      */
@@ -918,9 +922,9 @@ public class SwitchIntegrationService {
         try {
             HttpResponse response = restClientManager.invoke(
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
-                    .DELETE_SWITCH_LOGICAL_PORT.replace("{switch_id}", switchId)
-                    .replace("{logical_port_number}", logicalPortNumber), 
-                    HttpMethod.DELETE, "", "application/json", 
+                            .DELETE_SWITCH_LOGICAL_PORT.replace("{switch_id}", switchId)
+                            .replace("{logical_port_number}", logicalPortNumber),
+                    HttpMethod.DELETE, "", "application/json",
                     applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponse(response, SwitchLogicalPort.class);
@@ -931,7 +935,7 @@ public class SwitchIntegrationService {
         }
         return null;
     }
-    
+
     /**
      * Gets switch logical ports.
      *
@@ -942,8 +946,8 @@ public class SwitchIntegrationService {
         try {
             HttpResponse response = restClientManager.invoke(
                     applicationProperties.getNbBaseUrl() + IConstants.NorthBoundUrl
-                    .SWITCH_LOGICAL_PORT.replace("{switch_id}", switchId), 
-                    HttpMethod.GET, "", "application/json", 
+                            .SWITCH_LOGICAL_PORT.replace("{switch_id}", switchId),
+                    HttpMethod.GET, "", "application/json",
                     applicationService.getAuthHeader());
             if (RestClientManager.isValidResponse(response)) {
                 return restClientManager.getResponseList(response, SwitchLogicalPort.class);

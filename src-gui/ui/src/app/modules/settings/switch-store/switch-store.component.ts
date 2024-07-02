@@ -324,7 +324,7 @@ export class SwitchStoreComponent implements OnInit {
           setTimeout(function() {
             localStorage.removeItem('hasSwtStoreSetting');
             localStorage.removeItem('switchStoreSetting');
-            localStorage.removeItem('switchFilterFlag');
+            sessionStorage.removeItem('switchFilterFlag');
             location.reload();
           }, 500);
         }, (error) => {

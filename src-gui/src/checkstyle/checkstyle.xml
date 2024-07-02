@@ -232,7 +232,7 @@
             <property name="allowMissingReturnTag" value="true"/>
             <property name="minLineCount" value="2"/>
             <property name="allowedAnnotations"
-                      value="Override, Bean, Test, Given, When, Then, And, Before, After, BeforeClass, AfterClass"/>
+                      value="Override, Bean, Test, Given, When, Then, And, Before, BeforeEach, After, BeforeClass, AfterClass"/>
             <property name="allowThrowsTagsForSubclasses" value="true"/>
             <property name="tokens" value="METHOD_DEF,ANNOTATION_FIELD_DEF"/>
         </module>

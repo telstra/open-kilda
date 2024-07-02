@@ -28,7 +28,7 @@ import org.openkilda.constants.Direction;
 import org.openkilda.exception.InvalidRequestException;
 import org.openkilda.integration.service.StatsIntegrationService;
 import org.openkilda.integration.service.SwitchIntegrationService;
-import org.openkilda.integration.source.store.SwitchStoreService;
+import org.openkilda.integration.source.store.SwitchInventoryService;
 import org.openkilda.model.victoria.MetricValues;
 import org.openkilda.model.victoria.RangeQueryParams;
 import org.openkilda.model.victoria.Status;
@@ -61,14 +61,14 @@ class StatsServiceTest {
         statsIntegrationService = mock(StatsIntegrationService.class);
         SwitchIntegrationService switchIntegrationService = mock(SwitchIntegrationService.class);
         StoreService storeService = mock(StoreService.class);
-        SwitchStoreService switchStoreService = mock(SwitchStoreService.class);
+        SwitchInventoryService switchInventoryService = mock(SwitchInventoryService.class);
 
         ApplicationProperties applicationProperties = mock(ApplicationProperties.class);
         when(applicationProperties.getMetricPrefix()).thenReturn("kilda.");
 
         // Initialize the service to be tested with the mock dependency
         statsService = new StatsService(statsIntegrationService, switchIntegrationService,
-                storeService, switchStoreService, applicationProperties);
+                storeService, switchInventoryService, applicationProperties);
     }
 
     @Test

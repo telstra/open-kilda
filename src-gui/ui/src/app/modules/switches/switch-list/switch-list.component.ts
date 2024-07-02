@@ -30,7 +30,7 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
   hasStoreSetting = false;
   settingSubscriber = null;
   textSearch: any;
-  switchFilterFlag: string = localStorage.getItem('switchFilterFlag') || 'controller';
+  switchFilterFlag: string = sessionStorage.getItem('switchFilterFlag') || 'controller';
 
   constructor(
     private router: Router,
@@ -76,7 +76,7 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
         this.dataSet = switchList;
         if (this.switchFilterFlag == 'inventory') {
           this.dataSet = this.dataSet.filter((d) => {
-            return d['inventory-switch'];
+            return d['inventory_switch_detail'];
           });
         }
         setTimeout(() => {
@@ -100,8 +100,7 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
     }
     this.loadingData = true;
     this.loaderService.show(MessageObj.loading_switches);
-    const query = {controller: this.switchFilterFlag == 'controller', _: new Date().getTime(), storeConfigurationStatus: this.hasStoreSetting };
-    this.switchService.getSwitchList(query).subscribe(
+    this.switchService.getSwitchDetails(null,this.switchFilterFlag).subscribe(
       (data: any) => {
         const switchListData = JSON.stringify({'timeStamp': new Date().getTime(), 'list_data': data});
         if (this.switchFilterFlag == 'controller') {
@@ -117,7 +116,7 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
           this.dataSet = data;
           if (this.switchFilterFlag == 'inventory') {
             this.dataSet = this.dataSet.filter((d) => {
-              return d['inventory-switch'];
+              return d['inventory_switch_detail'];
             });
           }
         }
@@ -135,7 +134,7 @@ export class SwitchListComponent implements OnDestroy, OnInit, AfterViewInit {
   getStoreSwitchSettings() {
     const query = {_: new Date().getTime()};
     this.settingSubscriber = this.storeSwitchService.switchSettingReceiver.subscribe(setting => {
-      this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1' ? true : false;
+      this.hasStoreSetting = localStorage.getItem('hasSwtStoreSetting') == '1';
       this.loadSwitchList(this.switchFilterFlag);
     });
 
