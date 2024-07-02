@@ -1,37 +1,44 @@
 package org.openkilda.functionaltests.spec.switches
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.messaging.command.switches.InstallRulesAction
-import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Shared
-
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_SWITCH_PROPERTIES
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.functionaltests.model.stats.Direction
+import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.messaging.command.switches.InstallRulesAction
+import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
+
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Shared
+
+
 class SwitchesSpec extends HealthCheckSpecification {
     @Shared
     SwitchNotFoundExpectedError switchNotFoundExpectedError = new SwitchNotFoundExpectedError(
             "Switch $NON_EXISTENT_SWITCH_ID not found", ~/Switch $NON_EXISTENT_SWITCH_ID not found/)
-    @Autowired @Shared
+    @Autowired
+    @Shared
     CleanupManager cleanupManager
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     def "System is able to return a list of all switches"() {
         expect: "System can return list of all switches"
@@ -72,28 +79,25 @@ class SwitchesSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "A protected flow"
-        def protectedFlow = flowHelperV2.randomFlow(switchPair)
-        protectedFlow.allocateProtectedPath = true
-        flowHelperV2.addFlow(protectedFlow)
+        def protectedFlow = flowFactory.getBuilder(switchPair)
+                .withProtectedPath(true)
+                .build().create()
 
         and: "A single switch flow"
         def allowedPorts = topology.getAllowedPortsForSwitch(switchPair.src).findAll {
             it != protectedFlow.source.portNumber
         }
         def r = new Random()
-        def singleFlow = flowHelperV2.singleSwitchFlow(switchPair.src)
-        singleFlow.source.portNumber = allowedPorts[r.nextInt(allowedPorts.size())]
-        singleFlow.destination.portNumber = allowedPorts[r.nextInt(allowedPorts.size())]
-        flowHelperV2.addFlow(singleFlow)
+        def singleFlow = flowFactory.getBuilder(switchPair.src, switchPair.src)
+                .withSourcePort(allowedPorts[r.nextInt(allowedPorts.size())])
+                .withDestinationPort(allowedPorts[r.nextInt(allowedPorts.size())])
+                .build().create()
 
         when: "Get all flows going through the involved switches"
-        def flowPathInfo = northbound.getFlowPath(protectedFlow.flowId)
-        def mainPath = pathHelper.convert(flowPathInfo)
-        def protectedPath = pathHelper.convert(flowPathInfo.protectedPath)
-
-        def mainSwitches = pathHelper.getInvolvedSwitches(mainPath)*.dpId
-        def protectedSwitches = pathHelper.getInvolvedSwitches(protectedPath)*.dpId
-        def involvedSwitchIds = (mainSwitches + protectedSwitches).unique()
+        def flowPathInfo = protectedFlow.retrieveAllEntityPaths()
+        def mainPath = flowPathInfo.getPathNodes(Direction.FORWARD, false)
+        def protectedPath = flowPathInfo.getPathNodes(Direction.FORWARD, true)
+        def involvedSwitchIds = flowPathInfo.getInvolvedSwitches()
 
         then: "The created flows are in the response list from the src switch"
         def switchFlowsResponseSrcSwitch = northbound.getSwitchFlows(switchPair.src.dpId)
@@ -136,10 +140,10 @@ class SwitchesSpec extends HealthCheckSpecification {
         getSwitchFlowsResponse4[0].id == protectedFlow.flowId
 
         when: "Create default flow on the same switches"
-        def defaultFlow = flowHelperV2.randomFlow(switchPair)
-        defaultFlow.source.vlanId = 0
-        defaultFlow.destination.vlanId = 0
-        flowHelperV2.addFlow(defaultFlow)
+        def defaultFlow = flowFactory.getBuilder(switchPair)
+                .withSourceVlan(0)
+                .withDestinationVlan(0)
+                .build().create()
 
         and: "Get all flows going through the src switch"
         def getSwitchFlowsResponse5 = northbound.getSwitchFlows(switchPair.src.dpId)
@@ -154,11 +158,12 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         and: "Get all flows going through the src switch"
         Wrappers.wait(WAIT_OFFSET * 2) {
-            assert northboundV2.getFlowStatus(protectedFlow.flowId).status == FlowState.DOWN
-            assert flowHelper.getLatestHistoryEntry(protectedFlow.flowId).payload.find { it.action == REROUTE_FAIL }
-            assert northboundV2.getFlowStatus(defaultFlow.flowId).status == FlowState.DOWN
-            def defaultFlowHistory = flowHelper.getHistoryEntriesByAction(defaultFlow.flowId, REROUTE_ACTION)
-            assert defaultFlowHistory.last().payload.find { it.action == REROUTE_FAIL }
+            assert protectedFlow.retrieveFlowStatus().status == FlowState.DOWN
+            assert protectedFlow.retrieveFlowHistory().getEntriesByType(FlowActionType.REROUTE_FAILED).last()
+                    .payload.find { it.action == FlowActionType.REROUTE_FAILED.payloadLastAction }
+            assert defaultFlow.retrieveFlowStatus().status == FlowState.DOWN
+            assert defaultFlow.retrieveFlowHistory().getEntriesByType(FlowActionType.REROUTE_FAILED).last()
+                    .payload.find { it.action == FlowActionType.REROUTE_FAILED.payloadLastAction }
         }
         def getSwitchFlowsResponse6 = northbound.getSwitchFlows(switchPair.src.dpId)
 
@@ -180,12 +185,10 @@ class SwitchesSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().nonNeighbouring().random()
 
         and: "A simple flow"
-        def simpleFlow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(simpleFlow)
+        def simpleFlow = flowFactory.getRandom(switchPair)
 
         and: "A single switch flow"
-        def singleFlow = flowHelperV2.singleSwitchFlow(switchPair.src)
-        flowHelperV2.addFlow(singleFlow)
+        def singleFlow = flowFactory.getRandom(switchPair.src, switchPair.src)
 
         when: "Deactivate the src switch"
         def switchToDisconnect = topology.switches.find { it.dpId == switchPair.src.dpId }
