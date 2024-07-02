@@ -22,10 +22,10 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.MeterExpectedError
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.meter.MeterEntry
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.info.rule.SwitchFlowEntries
@@ -103,11 +103,12 @@ class MetersSpec extends HealthCheckSpecification {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
         when: "Try to delete meter with invalid ID"
-        northbound.deleteMeter(switches[0].dpId, meterId)
+        SwitchId swId = switches[0].dpId
+        northbound.deleteMeter(swId, meterId)
 
         then: "Got BadRequest because meter ID is invalid"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
+        new MeterExpectedError("Meter id must be positive.", ~/$swId/).matches(exc)
 
         where:
         meterId | switches              | switchType
@@ -603,8 +604,7 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Can't update meter: Flow '$flow.flowId' is unmetered"
+        new MeterExpectedError("Can't update meter: Flow '$flow.flowId' is unmetered", ~/Modify meters in FlowMeterModifyFsm/).matches(exc)
     }
 
     @Memoized

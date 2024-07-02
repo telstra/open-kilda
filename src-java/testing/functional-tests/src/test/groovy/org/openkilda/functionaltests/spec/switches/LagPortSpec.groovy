@@ -243,7 +243,6 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
         new LagNotDeletedExpectedError(~/Couldn\'t delete LAG port \'$lagPort\' from switch $switchPair.src.dpId \
 because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
     }
@@ -279,7 +278,7 @@ because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        new FlowNotCreatedExpectedError("Could not create flow", ~/Port $flow.source.portNumber \
+        new FlowNotCreatedExpectedError(~/Port $flow.source.portNumber \
 on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
 
     }

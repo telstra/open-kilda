@@ -1,21 +1,23 @@
 package org.openkilda.functionaltests.spec.logging
 
-import groovy.util.logging.Slf4j
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
+
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.testing.service.elastic.ElasticQueryBuilder
 import org.openkilda.testing.service.elastic.ElasticService
 import org.openkilda.testing.service.elastic.model.KildaTags
+
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
-
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
 @Slf4j
 @Tags([SMOKE])
@@ -53,8 +55,7 @@ class CheckLoggingSpec extends HealthCheckSpecification {
 
         then: "An error is received (404 code)"
         def switchExc = thrown(HttpClientErrorException)
-        switchExc.rawStatusCode == 404
-        switchExc.responseBodyAsString.to(MessageError).errorMessage.contains(switchErrorMsg)
+        new SwitchNotFoundExpectedError(NON_EXISTENT_SWITCH_ID).matches(switchExc)
 
         and: "Northbound should log these actions within 30 seconds"
         int timeout = 31
@@ -75,8 +76,7 @@ class CheckLoggingSpec extends HealthCheckSpecification {
 
         then: "An error is received (404 code)"
         def flowExc = thrown(HttpClientErrorException)
-        flowExc.rawStatusCode == 404
-        flowExc.responseBodyAsString.to(MessageError).errorMessage.contains(flowErrorMsg(flowId))
+        new FlowNotFoundExpectedError("Can not get flow: Flow ${flowId} not found", ~/Flow not found/).matches(flowExc)
 
         and: "Storm should log these actions within 30 seconds"
         int timeout = 31

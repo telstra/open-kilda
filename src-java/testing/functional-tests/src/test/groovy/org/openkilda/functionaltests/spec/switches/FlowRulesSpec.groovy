@@ -1,12 +1,14 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
@@ -435,8 +437,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         then: "An error is received (404 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch '$NON_EXISTENT_SWITCH_ID' not found"
+        new SwitchNotFoundExpectedError("Switch '${NON_EXISTENT_SWITCH_ID}' not found", ~/Error in switch validation/).matches(exc)
 
         where:
         action        | method
