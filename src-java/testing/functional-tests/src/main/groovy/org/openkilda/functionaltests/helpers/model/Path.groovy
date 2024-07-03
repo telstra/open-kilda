@@ -27,12 +27,12 @@ This class has to replace *PathHelper in future
 class Path {
     PathNodes nodes
     TopologyDefinition topologyDefinition
-    Long bandwidth;
-    Long latency;
-    Long latencyNs;
-    Long latencyMs;
-    Boolean isBackupPath;
-    Path protectedPath;
+    Long bandwidth
+    Long latency
+    Long latencyNs
+    Long latencyMs
+    Boolean isBackupPath
+    Path protectedPath
 
     Path(PathDto pathDto, TopologyDefinition topologyDefinition) {
         this.nodes = new PathNodes(pathDto.nodes)
@@ -62,7 +62,8 @@ class Path {
     }
 
     List<Isl> getInvolvedIsls() {
-        def isls = topologyDefinition.getIsls() + topologyDefinition.getIsls().collect { it.reversed }
+        def isls = (topologyDefinition.getIsls() + topologyDefinition.getIsls().collect { it.reversed })
+                .findAll { it.srcSwitch && it.dstSwitch }
         nodes.getNodes().collate(2, 1, false).collect { List<FlowPathV2.PathNodeV2> pathNodes ->
             isls.find {
                 it.srcSwitch.dpId == pathNodes[0].switchId &&
