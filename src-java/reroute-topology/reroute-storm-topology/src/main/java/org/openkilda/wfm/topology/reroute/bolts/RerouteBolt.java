@@ -173,10 +173,10 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
     }
 
     @Override
-    public void emitManualRerouteFlushCommand(String flowId, String reason, String correlationId) {
-        emitWithContext(STREAM_MANUAL_REROUTE_FLUSH_REQUEST_ID, getCurrentTuple(), new Values(flowId, correlationId));
-
-        log.info("Manual reroute flush command message sent for flow {}. Reason: {}", flowId, reason);
+    public void emitManualRerouteFlushCommand(String flowId, FlowThrottlingData flowThrottlingData) {
+        emitWithContext(STREAM_MANUAL_REROUTE_FLUSH_REQUEST_ID, getCurrentTuple(),
+                new Values(flowId, flowThrottlingData));
+        log.info("Manual reroute flush command message sent for flow {}.", flowId);
     }
 
     /**
