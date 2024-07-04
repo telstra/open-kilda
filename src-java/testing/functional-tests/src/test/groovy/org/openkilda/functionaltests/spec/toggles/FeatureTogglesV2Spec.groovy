@@ -52,8 +52,8 @@ class FeatureTogglesV2Spec extends HealthCheckSpecification {
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
-
         new FlowForbiddenToCreateExpectedError(~/Flow create feature is disabled/).matches(e)
+
         and: "Update of previously existing flow is still possible"
         flowHelperV2.updateFlow(flow.flowId, flowRequest.tap { it.description = it.description + "updated" })
 
