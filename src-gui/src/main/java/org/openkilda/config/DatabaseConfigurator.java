@@ -19,7 +19,7 @@ import org.openkilda.dao.entity.VersionEntity;
 import org.openkilda.dao.repository.VersionRepository;
 
 import com.ibatis.common.jdbc.ScriptRunner;
-
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
@@ -32,9 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-
 import java.math.BigInteger;
-
 import java.sql.Connection;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -42,7 +40,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.sql.DataSource;
@@ -52,21 +49,21 @@ public class DatabaseConfigurator {
 
     @PersistenceContext
     private EntityManager entityManager;
-    
+
     private static final Logger LOGGER = Logger.getLogger(DatabaseConfigurator.class);
-    
+
     private static final String SCRIPT_FILE_PREFIX = "import-script_";
     private static final String SCRIPT_FILE_SUFFIX = ".sql";
     private static final String SCRIPT_LOCATION = "db";
-    
-    private ResourceLoader resourceLoader;
 
-    private VersionRepository versionEntityRepository;
+    private final ResourceLoader resourceLoader;
 
-    private DataSource dataSource;
-    
+    private final VersionRepository versionEntityRepository;
+
+    private final DataSource dataSource;
+
     public DatabaseConfigurator(@Autowired final VersionRepository versionRepository, final DataSource dataSource,
-            final ResourceLoader resourceLoader, EntityManager em) {
+                                final ResourceLoader resourceLoader, EntityManager em) {
         this.versionEntityRepository = versionRepository;
         this.dataSource = dataSource;
         this.resourceLoader = resourceLoader;
@@ -81,16 +78,16 @@ public class DatabaseConfigurator {
 
     private void loadInitialData() {
         List<Long> versionNumberList = versionEntityRepository.findAllVersionNumber();
-        
-        if (versionNumberList.size() == 0) {
+
+        if (CollectionUtils.isEmpty(versionNumberList)) {
             try {
 
                 List<VersionEntity> list = new ArrayList<VersionEntity>();
                 List<Long> newVersionList = new ArrayList<Long>();
                 List<Object[]> results = entityManager.createNativeQuery("SELECT v.version_id ,"
                         + "v.version_deployment_date, v.version_number FROM version v").getResultList();
-               
-                for (Object[] perTestEntity :results) {
+
+                for (Object[] perTestEntity : results) {
                     VersionEntity versionEntity = new VersionEntity();
                     versionEntity.setVersionId(BigInteger.valueOf(Long.valueOf(
                             (perTestEntity[0].toString()))).longValue());
@@ -108,25 +105,25 @@ public class DatabaseConfigurator {
         }
         InputStream inputStream = null;
         try {
-            ClassLoader  loader = getClass().getClassLoader();
+            ClassLoader loader = getClass().getClassLoader();
             PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver(loader);
             Resource[] resources = resolver.getResources("classpath:" + SCRIPT_LOCATION + "/*");
             List<String> dbScripts = Arrays.stream(resources)
                     .map(Resource::getFilename)
                     .collect(Collectors.toList());
             ArrayList<Long> sortedList = new ArrayList<Long>();
-            for (String scriptFile :  dbScripts) {
+            for (String scriptFile : dbScripts) {
                 String scriptFileName = scriptFile.replaceFirst("[.][^.]+$", "");
                 String[] scriptNumber = scriptFileName.split("_");
                 Long scriptVersionNumber = Long.valueOf(scriptNumber[1]);
                 sortedList.add(scriptVersionNumber);
             }
             Collections.sort(sortedList);
-            for (Long scriptFileNumber :  sortedList) {
+            for (Long scriptFileNumber : sortedList) {
                 if (!versionNumberList.isEmpty()) {
                     if (!versionNumberList.contains(scriptFileNumber)) {
-                        inputStream = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/" 
-               + SCRIPT_FILE_PREFIX + scriptFileNumber + SCRIPT_FILE_SUFFIX).getInputStream();
+                        inputStream = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/"
+                                + SCRIPT_FILE_PREFIX + scriptFileNumber + SCRIPT_FILE_SUFFIX).getInputStream();
                         if (inputStream != null) {
                             runScript(inputStream);
                         } else {
@@ -134,8 +131,8 @@ public class DatabaseConfigurator {
                         }
                     }
                 } else {
-                    inputStream = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/" 
-                              + SCRIPT_FILE_PREFIX + scriptFileNumber + SCRIPT_FILE_SUFFIX).getInputStream();
+                    inputStream = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/"
+                            + SCRIPT_FILE_PREFIX + scriptFileNumber + SCRIPT_FILE_SUFFIX).getInputStream();
                     if (inputStream != null) {
                         runScript(inputStream);
                     } else {
