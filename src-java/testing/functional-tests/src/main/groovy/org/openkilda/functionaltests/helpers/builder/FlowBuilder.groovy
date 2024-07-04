@@ -46,6 +46,7 @@ class FlowBuilder {
                 .detectConnectedDevices(new DetectConnectedDevicesV2(false, false)).build()
 
         if (srcSwitch.dpId == dstSwitch.dpId) {
+            // For a SingleSwitch flow, selected switch should have >=2 traffGens
             busyEndpoints << new SwitchPortVlan(flowExtended.source.switchId, flowExtended.source.portNumber, flowExtended.source.vlanId)
         }
 
