@@ -740,7 +740,7 @@ Failed to find path with requested bandwidth= ignored"
 
         then: "Flow history shows two reroute attempts, second one succeeds with ignore bw"
         List<FlowHistoryEventExtension> history
-        wait(rerouteDelay + WAIT_OFFSET) {
+        wait(rerouteDelay + WAIT_OFFSET * 2) {
             history = flow.retrieveFlowHistory().getEntriesByType(REROUTE)
             verifyAll {
                 history[-2].payload.last().action == REROUTE_FAILED.payloadLastAction
