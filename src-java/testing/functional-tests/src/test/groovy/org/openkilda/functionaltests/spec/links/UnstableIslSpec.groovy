@@ -1,14 +1,5 @@
 package org.openkilda.functionaltests.spec.links
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.model.SwitchFeature
-import org.springframework.beans.factory.annotation.Value
-
-import java.time.Instant
-
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
@@ -17,7 +8,23 @@ import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.model.SwitchFeature
+
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+import spock.lang.Shared
+
+import java.time.Instant
+
 class UnstableIslSpec extends HealthCheckSpecification {
+
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     @Value('${pce.isl.cost.when.unstable}')
     int islUnstableCost
@@ -123,12 +130,11 @@ class UnstableIslSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(islToUpdate).cost == newCost.toInteger() }
 
         when: "Create a flow"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(switchPair)
 
         then: "Flow is created on the stable path(secondPath)"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) == secondPath
+            assert flow.retrieveAllEntityPaths().getPathNodes() == secondPath
         }
 
         when: "Mark first path as stable(update the 'time_unstable' field in db)"
@@ -137,14 +143,14 @@ class UnstableIslSpec extends HealthCheckSpecification {
 
         and: "Reroute the flow"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            with(northboundV2.rerouteFlow(flow.flowId)) {
+            with(flow.reroute()) {
                 it.rerouted
             }
         }
 
         then: "Flow is rerouted"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) == firstPath
+            assert flow.retrieveAllEntityPaths().getPathNodes() == firstPath
         }
     }
 }

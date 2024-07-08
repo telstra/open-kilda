@@ -9,7 +9,8 @@ enum FlowActionType {
     REROUTE("Flow rerouting", "Flow was rerouted successfully"),
     REROUTE_FAILED("Flow rerouting", "Failed to reroute the flow"),
     CREATE_MIRROR("Flow mirror point creating", "Flow mirror point was created successfully"),
-    DELETE_MIRROR("Flow mirror point deleting", "Flow mirror point was deleted successfully")
+    DELETE_MIRROR("Flow mirror point deleting", "Flow mirror point was deleted successfully"),
+    PATH_SWAP("Flow paths swap", "Flow was updated successfully")
 
     final String value
     final String payloadLastAction

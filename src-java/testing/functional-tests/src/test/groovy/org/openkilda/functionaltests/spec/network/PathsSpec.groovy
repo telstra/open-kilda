@@ -17,14 +17,21 @@ import org.openkilda.functionaltests.error.PathsNotReturnedExpectedError
 import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Shared
 
 class PathsSpec extends HealthCheckSpecification {
+
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     @Tags(SMOKE)
     def "Get paths between not neighboring switches"() {
@@ -34,7 +41,7 @@ class PathsSpec extends HealthCheckSpecification {
                 .random()
 
         and: "Create a flow to reduce available bandwidth on some path between these two switches"
-        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair))
+        flowFactory.getRandom(switchPair)
 
         when: "Get paths between switches"
         def paths = switchPair.getPathsFromApi()
@@ -63,7 +70,7 @@ class PathsSpec extends HealthCheckSpecification {
                 .random()
 
         and: "Create a flow to reduce available bandwidth on some path between these two switches"
-        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(switchPair))
+        flowFactory.getRandom(switchPair)
 
         when: "Get paths between switches using the LATENCY strategy"
         def paths = switchPair.getPathsFromApi([(PATH_COMPUTATION_STRATEGY): LATENCY])

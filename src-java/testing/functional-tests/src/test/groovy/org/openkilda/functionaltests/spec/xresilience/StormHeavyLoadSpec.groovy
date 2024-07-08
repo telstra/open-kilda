@@ -7,6 +7,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.messaging.Message
 import org.openkilda.messaging.info.InfoData
 import org.openkilda.messaging.info.InfoMessage
@@ -20,6 +21,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Shared
 
 @Slf4j
 class StormHeavyLoadSpec extends HealthCheckSpecification {
@@ -30,6 +32,10 @@ class StormHeavyLoadSpec extends HealthCheckSpecification {
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
+
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     def r = new Random()
 
@@ -62,10 +68,10 @@ class StormHeavyLoadSpec extends HealthCheckSpecification {
 
         then: "Still able to create and delete flows while Storm is swallowing the messages"
         def checkFlowCreation = {
-            def flow = flowHelper.randomFlow(topology.islsForActiveSwitches[1].srcSwitch,
-                    topology.islsForActiveSwitches[1].dstSwitch)
-            flowHelper.addFlow(flow)
-            flowHelper.deleteFlow(flow.id)
+            def flow = flowFactory.getBuilder(topology.islsForActiveSwitches[1].srcSwitch,
+                    topology.islsForActiveSwitches[1].dstSwitch).build()
+            flow.create()
+            flow.delete()
             sleep(500)
         }
         def endProducing = new Thread({ producers.each({ it.close() }) })

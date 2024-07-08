@@ -22,8 +22,10 @@ import org.openkilda.functionaltests.error.link.LinkIsInIllegalStateExpectedErro
 import org.openkilda.functionaltests.error.link.LinkNotFoundExpectedError
 import org.openkilda.functionaltests.error.link.LinkPropertiesNotUpdatedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
+import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
@@ -31,13 +33,21 @@ import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
+import org.springframework.beans.factory.annotation.Autowired
+
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.See
+import spock.lang.Shared
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery")
 
 class LinkSpec extends HealthCheckSpecification {
+
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
 
@@ -126,23 +136,26 @@ class LinkSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().nonNeighbouring().random()
 
         and: "Forward flow from source switch to destination switch"
-        def flow1 = flowHelperV2.randomFlow(switchPair).tap { it.pinned = true }
-        flowHelperV2.addFlow(flow1)
+        def flow1 = flowFactory.getBuilder(switchPair).withPinned(true).build().create()
+        List<SwitchPortVlan> busyEndpoints = flow1.occupiedEndpoints()
 
         and: "Reverse flow from destination switch to source switch"
-        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1]).tap { it.pinned = true }
-        flowHelperV2.addFlow(flow2)
+        def flow2 = flowFactory.getBuilder(switchPair, false, busyEndpoints)
+                .withPinned(true).build()
+                .create()
+        busyEndpoints.addAll(flow2.occupiedEndpoints())
 
         and: "Forward flow from source switch to some 'internal' switch"
-        def islToInternal = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow1.flowId))).first()
-        def flow3 = flowHelperV2.randomFlow(islToInternal.srcSwitch, islToInternal.dstSwitch, false, [flow1, flow2])
-                              .tap { it.pinned = true }
-        flowHelperV2.addFlow(flow3)
+        def islToInternal = flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls().first()
+        def flow3 = flowFactory.getBuilder(islToInternal.srcSwitch, islToInternal.dstSwitch, false, busyEndpoints)
+                .withPinned(true).build()
+                .create()
+        busyEndpoints.addAll(flow3.occupiedEndpoints())
 
         and: "Reverse flow from 'internal' switch to source switch"
-        def flow4 = flowHelperV2.randomFlow(islToInternal.dstSwitch, islToInternal.srcSwitch, false,
-                [flow1, flow2, flow3]).tap { it.pinned = true }
-        flowHelperV2.addFlow(flow4)
+        def flow4 = flowFactory.getBuilder(islToInternal.dstSwitch, islToInternal.srcSwitch, false, busyEndpoints)
+                .withPinned(true).build()
+                .create()
 
         when: "Get all flows going through the link from source switch to 'internal' switch"
         def linkFlows = northbound.getLinkFlows(islToInternal.srcSwitch.dpId, islToInternal.srcPort,
@@ -152,7 +165,7 @@ class LinkSpec extends HealthCheckSpecification {
         [flow1, flow2, flow3, flow4].each { assert it.flowId in linkFlows*.id }
 
         when: "Get all flows going through the link from some 'internal' switch to destination switch"
-        def islFromInternal = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow1.flowId))).last()
+        def islFromInternal = flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls().last()
         linkFlows = northbound.getLinkFlows(islFromInternal.srcSwitch.dpId, islFromInternal.srcPort,
                 islFromInternal.dstSwitch.dpId, islFromInternal.dstPort)
 
@@ -166,9 +179,9 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "All flows go to 'Down' status"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            [flow1, flow2, flow3, flow4].each {
-                assert northboundV2.getFlowStatus(it.flowId).status == FlowState.DOWN
-                def isls = pathHelper.getInvolvedIsls(northbound.getFlowPath(it.flowId))
+            [flow1, flow2, flow3, flow4].each { flow ->
+                assert flow.retrieveFlowStatus().status == FlowState.DOWN
+                def isls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
                 assert isls.contains(islToInternal) || isls.contains(islToInternal.reversed)
             }
 
@@ -194,7 +207,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "All flows go to 'Up' status"
         Wrappers.wait(rerouteDelay + PATH_INSTALLATION_TIME) {
-            [flow1, flow2, flow3, flow4].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
+            [flow1, flow2, flow3, flow4].each { flow -> assert flow.retrieveFlowStatus().status == FlowState.UP }
         }
     }
 
@@ -352,16 +365,14 @@ class LinkSpec extends HealthCheckSpecification {
         switchPair.paths[1..-1].each { pathHelper.makePathMorePreferable(switchPair.paths.first(), it) }
 
         and: "Create a couple of flows going through these switches"
-        def flow1 = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow1)
-        def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.flowId))
+        def flow1 = flowFactory.getRandom(switchPair)
+        def flow1Path = flow1.retrieveAllEntityPaths()
 
-        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1])
-        flowHelperV2.addFlow(flow2)
-        def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.flowId))
+        def flow2 = flowFactory.getRandom(switchPair, false, FlowState.UP, flow1.occupiedEndpoints())
+        def flow2Path = flow2.retrieveAllEntityPaths()
 
-        assert flow1Path == switchPair.paths.first()
-        assert flow2Path == switchPair.paths.first()
+        assert flow1Path.getPathNodes() == switchPair.paths.first()
+        assert flow2Path.getPathNodes() == switchPair.paths.first()
 
         and: "Delete link props from all links of alternative paths to allow rerouting flows"
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
@@ -370,15 +381,15 @@ class LinkSpec extends HealthCheckSpecification {
         switchPair.paths[1..-1].each { pathHelper.makePathMorePreferable(it, switchPair.paths.first()) }
 
         when: "Submit request for rerouting flows"
-        def isl = pathHelper.getInvolvedIsls(flow1Path).first()
+        def isl = flow1Path.flowPath.getInvolvedIsls().first()
         def response = northbound.rerouteLinkFlows(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flows are rerouted"
         response.containsAll([flow1, flow2]*.flowId)
         Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
-            [flow1, flow2].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
-            assert PathHelper.convert(northbound.getFlowPath(flow1.flowId)) != flow1Path
-            assert PathHelper.convert(northbound.getFlowPath(flow2.flowId)) != flow2Path
+            [flow1, flow2].each { flow -> assert flow.retrieveFlowStatus().status == FlowState.UP }
+            assert flow1.retrieveAllEntityPaths() != flow1Path
+            assert flow2.retrieveAllEntityPaths() != flow2Path
         }
     }
 
@@ -516,13 +527,13 @@ class LinkSpec extends HealthCheckSpecification {
 
         when: "Create a flow going through this ISL"
         def flowMaxBandwidth = 12345
-        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch).tap { it.maximumBandwidth = flowMaxBandwidth})
+        flowFactory.getBuilder(isl.srcSwitch, isl.dstSwitch).withBandwidth(flowMaxBandwidth).build().create()
 
         and: "Update max bandwidth for the link"
         def offset = 10000
         def newMaxBandwidth = initialMaxBandwidth - offset
-        northbound.updateLinkMaxBandwidth(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort,
-                newMaxBandwidth)
+        islHelper.updateLinkMaxBandwidthUsingApi(isl, newMaxBandwidth)
+
         def links = northbound.getActiveLinks()
         def linkProps = northbound.getLinkProps(topology.isls)
 
@@ -626,17 +637,13 @@ class LinkSpec extends HealthCheckSpecification {
     def "Unable to delete inactive link with flowPath"() {
         given: "An inactive link with flow on it"
         def switchPair = switchPairs.all().neighbouring().random()
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.pinned = true
-        flowHelperV2.addFlow(flow)
-        def flowPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def flow = flowFactory.getBuilder(switchPair).withPinned(true).build().create()
 
-        def isl = pathHelper.getInvolvedIsls(flowPath)[0]
+        def isl = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls().first()
         islHelper.breakIsl(isl)
 
         when: "Try to delete the link"
         northbound.deleteLink(islUtils.toLinkParameters(isl))
-        def linkIsActive = false
 
         then: "Get 400 BadRequest error because the link with flow path"
         def exc = thrown(HttpClientErrorException)
@@ -651,10 +658,9 @@ class LinkSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "An active link with flow on it"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
-        def flowPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
-        def isl = pathHelper.getInvolvedIsls(flowPath)[0]
+        def flow = flowFactory.getRandom(switchPair)
+        def flowPath = flow.retrieveAllEntityPaths()
+        def isl = flowPath.flowPath.getInvolvedIsls().first()
 
         when: "Delete the link using force"
         def response = islHelper.deleteIsl(isl, true)
@@ -665,11 +671,11 @@ class LinkSpec extends HealthCheckSpecification {
         !islUtils.getIslInfo(isl.reversed)
 
         and: "Flow is not rerouted and UP"
-        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
-        northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+        flow.retrieveAllEntityPaths() == flowPath
+        flow.retrieveFlowStatus().status == FlowState.UP
 
         and: "Flow is valid"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         when: "Removed link becomes active again (port brought DOWN/UP)"
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
