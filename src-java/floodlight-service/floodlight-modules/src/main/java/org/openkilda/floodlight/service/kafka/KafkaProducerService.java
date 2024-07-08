@@ -211,8 +211,8 @@ public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEve
             }
             service.failedSendMessageCounter++;
             logger.error(
-                    "Fail to send message(correlationId=\"{}\") in kafka topic={}: Message json: {}. {}.",
-                    correlationId, topic, messageJson, exception);
+                    "Fail to send message(correlationId=\"{}\") in kafka topic={}. Message json symbol length: {}.",
+                    correlationId, topic, messageJson.length(), exception);
         }
     }
 }
