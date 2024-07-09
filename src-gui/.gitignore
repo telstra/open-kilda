@@ -30,6 +30,7 @@ src/main/webapp/ui/*.js
 src/main/webapp/ui/*.js.map
 src/main/webapp/ui/*.js.LICENSE.txt
 ui/node_modules
+ui/.angular
 ui/package-lock.json
 src/main/webapp/ui/index.html
 src/main/webapp/ui/icon-*.*.png
@@ -51,6 +52,8 @@ src/main/webapp/ui/runtime.js.map
 src/main/webapp/ui/scripts.js
 src/main/webapp/ui/scripts.js.map
 src/main/webapp/ui/styles.js
+src/main/webapp/ui/styles.css
+src/main/webapp/ui/assets-images-*.png
 src/main/webapp/ui/styles.js.map
 src/main/webapp/ui/vendor.js
 src/main/webapp/ui/vendor.js.map

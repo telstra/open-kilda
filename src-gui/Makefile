@@ -18,6 +18,7 @@ build/libs/${APP}.war: .deps/node .deps/resources
 	[ -e src/main/webapp/lib/css/bootstrap.min.css ] || wget -O src/main/webapp/lib/css/bootstrap.min.css https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css
 	[ -e src/main/webapp/lib/javascript/bootstrap.min.js ] || wget -O src/main/webapp/lib/javascript/bootstrap.min.js https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js
 	[ -e src/main/webapp/lib/javascript/jquery-3.5.1.min.js ] || wget -O src/main/webapp/lib/javascript/jquery-3.5.1.min.js https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.js
+	[ -e src/main/webapp/lib/javascript/qrcode.min.js ] || wget -O src/main/webapp/lib/javascript/qrcode.min.js https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js
 
 .deps:
 	mkdir -p .deps

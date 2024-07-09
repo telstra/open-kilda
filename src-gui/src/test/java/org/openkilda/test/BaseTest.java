@@ -15,13 +15,15 @@
 
 package org.openkilda.test;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.openkilda.util.IConstantsTest;
 import org.openkilda.utility.IoUtil;
 
 import org.apache.log4j.Logger;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -39,6 +41,7 @@ import java.util.List;
  *
  * @author Gaurav Chugh
  */
+@ExtendWith(MockitoExtension.class)
 public class BaseTest {
 
     private static final Logger LOGGER = Logger.getLogger(BaseTest.class);
@@ -68,27 +71,27 @@ public class BaseTest {
 
                 if (url.contains(".css")) {
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.CSS_PATH + fileName);
-                    Assert.assertTrue(true);
+                    assertTrue(true);
                 }
                 if (url.contains(".js")) {
                     if (fileName.contains(IConstantsTest.JQUERY_FILE)) {
                         fileName = IConstantsTest.JQUERY_MIN_FILE;
                     }
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.JAVASCRIPT_PATH + fileName);
-                    Assert.assertTrue(true);
+                    assertTrue(true);
                 }
                 if (url.contains("ttf") || url.contains("woff2") || url.contains("woff")) {
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.FONTS_PATH + fileName);
-                    Assert.assertTrue(true);
+                    assertTrue(true);
                 }
                 if (url.contains("Roboto")) {
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.CSS_PATH + "roboto.css");
-                    Assert.assertTrue(true);
+                    assertTrue(true);
                 }
 
             } catch (Exception e) {
                 LOGGER.error("exception occurred Inside method executeKildaFiles.", e);
-                Assert.assertTrue(false);
+                assertTrue(false);
             }
         }
         LOGGER.info("executeKildaFiles has been successfully executed");
