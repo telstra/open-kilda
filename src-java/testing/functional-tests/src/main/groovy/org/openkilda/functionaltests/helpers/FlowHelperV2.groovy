@@ -1,39 +1,8 @@
 package org.openkilda.functionaltests.helpers
 
-import com.github.javafaker.Faker
-import groovy.util.logging.Slf4j
-import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
-import org.openkilda.messaging.payload.flow.FlowCreatePayload
-import org.openkilda.messaging.payload.flow.FlowEndpointPayload
-import org.openkilda.messaging.payload.flow.FlowPayload
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.FlowPathStatus
-import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
-import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
-import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload
-import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2
-import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
-import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
-import org.openkilda.testing.model.topology.TopologyDefinition
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.northbound.NorthboundService
-import org.openkilda.testing.service.northbound.NorthboundServiceV2
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.context.annotation.Scope
-import org.springframework.stereotype.Component
-
-import java.text.SimpleDateFormat
-
-import static FlowHistoryConstants.UPDATE_SUCCESS
-import static org.openkilda.functionaltests.helpers.FlowHelper.KILDA_ALLOWED_VLANS
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_MIRROR_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_SUCCESS
 import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.PARTIAL_UPDATE_ONLY_IN_DB
+import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_FLOW
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
 import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
@@ -41,6 +10,30 @@ import static org.openkilda.messaging.payload.flow.FlowState.UP
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
+
+import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
+import org.openkilda.messaging.payload.flow.FlowEndpointPayload
+import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
+import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
+import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.northbound.NorthboundService
+import org.openkilda.testing.service.northbound.NorthboundServiceV2
+
+import com.github.javafaker.Faker
+import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.context.annotation.Scope
+import org.springframework.stereotype.Component
+
+import java.text.SimpleDateFormat
 
 /**
  * Holds utility methods for manipulating flows supporting version 2 of API.
@@ -134,30 +127,6 @@ class FlowHelperV2 {
         } as FlowRequestV2
     }
 
-    FlowRequestV2 singleSwitchFlow(SwitchPair switchPair, boolean useTraffgenPorts = true,
-                                   List<FlowRequestV2> existingFlows = []) {
-        singleSwitchFlow(switchPair.src, useTraffgenPorts, existingFlows)
-    }
-
-    /**
-     * Creates a FlowPayload instance with random vlan and flow id suitable for a single-switch flow.
-     * The flow will be on the same port.
-     */
-    FlowRequestV2 singleSwitchSinglePortFlow(Switch sw) {
-        def srcEndpoint = getFlowEndpoint(sw, [])
-        def dstEndpoint = getFlowEndpoint(sw, []).tap { it.portNumber = srcEndpoint.portNumber }
-        if (srcEndpoint.vlanId == dstEndpoint.vlanId) { //ensure same vlan is not randomly picked
-            dstEndpoint.vlanId--
-        }
-        return FlowRequestV2.builder()
-                .flowId(generateFlowId())
-                .source(srcEndpoint)
-                .destination(dstEndpoint)
-                .maximumBandwidth(500)
-                .description(generateDescription())
-                .build()
-    }
-
     /**
      * Adds flow and waits for it to become in expected state ('Up' by default)
      */
@@ -175,21 +144,6 @@ class FlowHelperV2 {
         return response
     }
 
-    /**
-     * Adds flow and waits for it to become in expected state ('Up' by default)
-     */
-    FlowResponseV2 addFlow(FlowCreatePayload flow, FlowState expectedFlowState = UP) {
-        return addFlow(toV2(flow), expectedFlowState);
-    }
-
-    /**
-     * Sends flow create request but doesn't wait for flow to go up.
-     */
-    FlowResponseV2 attemptToAddFlow(FlowRequestV2 flow) {
-        def flowId = flow.getFlowId()
-        cleanupManager.addAction(DELETE_FLOW, {safeDeleteFlow(flowId)}, TEST)
-        return northboundV2.addFlow(flow)
-    }
 
     /**
      * Sends delete request for flow and waits for that flow to disappear from flows list
@@ -211,62 +165,9 @@ class FlowHelperV2 {
         }
     }
 
-    /**
-     * Updates flow and waits for it to become UP
-     */
-    FlowResponseV2 updateFlow(String flowId, FlowRequestV2 flow) {
-        log.debug("Updating flow '${flowId}'")
-        def response = northboundV2.updateFlow(flowId, flow)
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-            assert northboundV2.getFlowStatus(flowId).status == UP
-            assert northbound.getFlowHistory(flowId).last().payload.last().action == UPDATE_SUCCESS
-        }
-        return response
-    }
-
-    /**
-     * Updates flow and waits for it to become UP
-     */
-    FlowResponseV2 updateFlow(String flowId, FlowCreatePayload flow) {
-        return updateFlow(flowId, toV2(flow))
-    }
-
-    FlowResponseV2 partialUpdate(String flowId, FlowPatchV2 flow, boolean isUpdateConsecutive = true) {
-        log.debug("Updating flow '${flowId}'(partial update)")
-        String action = isUpdateConsecutive ? UPDATE_SUCCESS : PARTIAL_UPDATE_ONLY_IN_DB
-        def response = northboundV2.partialUpdate(flowId, flow)
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-            assert northboundV2.getFlowStatus(flowId).status == UP
-            assert northbound.getFlowHistory(flowId).last().payload.last().action == action
-        }
-        return response
-    }
-
-    FlowMirrorPointResponseV2 createMirrorPoint(String flowId, FlowMirrorPointPayload mirrorPoint) {
-        def response = northboundV2.createMirrorPoint(flowId, mirrorPoint)
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-            assert northboundV2.getFlow(flowId).mirrorPointStatuses[0].status ==
-                    FlowPathStatus.ACTIVE.toString().toLowerCase()
-            assert northbound.getFlowHistory(flowId).last().payload.last().action == CREATE_MIRROR_SUCCESS
-        }
-        return response
-    }
-
     String generateFlowId() {
         return new SimpleDateFormat("ddMMMHHmmss_SSS", Locale.US).format(new Date()) + "_" +
                 faker.food().ingredient().toLowerCase().replaceAll(/\W/, "") + faker.number().digits(4)
-    }
-
-    static int randomVlan() {
-        return randomVlan([])
-    }
-
-    static int randomVlan(List<Integer> exclusions) {
-        return (KILDA_ALLOWED_VLANS - exclusions).shuffled().first()
-    }
-
-    static List<Integer> availableVlanList(List<Integer> exclusions) {
-        return (KILDA_ALLOWED_VLANS - exclusions).shuffled()
     }
 
     /**
@@ -288,27 +189,8 @@ class FlowHelperV2 {
         } || existingFlows*.flowId.contains(newFlow.flowId)
     }
 
-    static FlowPayload toV1(FlowRequestV2 flow) {
-        FlowPayload.builder()
-                .id(flow.flowId)
-                .description(flow.description)
-                .maximumBandwidth(flow.maximumBandwidth)
-                .ignoreBandwidth(flow.ignoreBandwidth)
-                .allocateProtectedPath(flow.allocateProtectedPath)
-                .periodicPings(flow.periodicPings)
-                .encapsulationType(flow.encapsulationType)
-                .maxLatency(flow.maxLatency)
-                .pinned(flow.pinned)
-                .priority(flow.priority)
-                .source(toV1(flow.source))
-                .destination(toV1(flow.destination))
-                .build()
-    }
 
-    static FlowEndpointPayload toV1(FlowEndpointV2 ep) {
-        new FlowEndpointPayload(ep.switchId, ep.portNumber, ep.vlanId, ep.getInnerVlanId(),
-                new DetectConnectedDevicesPayload(false, false))
-    }
+
 
     static FlowRequestV2 toV2(FlowPayload flow) {
         FlowRequestV2.builder()
@@ -327,12 +209,6 @@ class FlowHelperV2 {
                 .build()
     }
 
-    static FlowRequestV2 toV2(FlowCreatePayload flow) {
-        def result = toV2((FlowPayload) flow);
-        result.setDiverseFlowId(flow.getDiverseFlowId());
-        return result;
-    }
-
     static FlowEndpointV2 toV2(FlowEndpointPayload ep) {
         FlowEndpointV2.builder()
                 .switchId(ep.getSwitchDpId())
@@ -344,58 +220,6 @@ class FlowHelperV2 {
 
     static DetectConnectedDevicesV2 toV2(DetectConnectedDevicesPayload payload) {
         new DetectConnectedDevicesV2(payload.lldp, payload.arp)
-    }
-
-    static FlowRequestV2 toRequest(FlowResponseV2 flow) {
-        return FlowRequestV2.builder()
-                .flowId(flow.flowId)
-                .source(flow.source)
-                .destination(flow.destination)
-                .maximumBandwidth(flow.maximumBandwidth)
-                .ignoreBandwidth(flow.ignoreBandwidth)
-                .periodicPings(flow.periodicPings)
-                .description(flow.description)
-                .maxLatency(flow.maxLatency)
-                .maxLatencyTier2(flow.maxLatencyTier2)
-                .priority(flow.priority)
-                .pinned(flow.pinned)
-                .allocateProtectedPath(flow.allocateProtectedPath)
-                .encapsulationType(flow.encapsulationType)
-                .pathComputationStrategy(flow.pathComputationStrategy)
-                .build()
-    }
-
-    int getFlowRulesCountBySwitch(FlowResponseV2 flow, boolean isForward, int involvedSwitchesCount) {
-        def endpoint = isForward ? flow.source : flow.destination
-        def swProps = northbound.getSwitchProperties(endpoint.getSwitchId())
-        def featureToggles = northbound.getFeatureToggles()
-        int count = involvedSwitchesCount-1;
-        def server42 = swProps.server42FlowRtt && featureToggles.server42FlowRtt
-                && flow.source.switchId != flow.destination.switchId
-
-
-        count++ // customer input rule
-
-        if (endpoint.vlanId != 0) {
-            count++; // pre ingress rule
-        }
-        count++ // multi table ingress rule
-
-        if (server42) {
-            if (endpoint.vlanId != 0) {
-                count++ //shared server42 rule
-            }
-            count++ // ingress server42 rule
-            count++ // server42 input rule
-        }
-
-        if (swProps.switchLldp || endpoint.detectConnectedDevices.lldp) {
-            count++  // lldp rule
-        }
-        if (swProps.switchArp || endpoint.detectConnectedDevices.arp) {
-            count++ // arp rule
-        }
-        return count
     }
 
     /**

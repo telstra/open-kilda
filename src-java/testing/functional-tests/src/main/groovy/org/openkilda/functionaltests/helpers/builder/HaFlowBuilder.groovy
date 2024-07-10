@@ -1,9 +1,9 @@
 package org.openkilda.functionaltests.helpers.builder
 
-import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
 import static org.openkilda.functionaltests.helpers.FlowNameGenerator.HA_FLOW
 import static org.openkilda.functionaltests.helpers.StringGenerator.generateDescription
 import static org.openkilda.functionaltests.helpers.SwitchHelper.getRandomAvailablePort
+import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
 
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended

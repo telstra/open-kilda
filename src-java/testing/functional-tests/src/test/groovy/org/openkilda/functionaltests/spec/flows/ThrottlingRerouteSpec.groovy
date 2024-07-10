@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -26,6 +27,7 @@ import spock.lang.Ignore
 import spock.lang.Narrative
 import spock.lang.Shared
 
+import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
 
 @Narrative("""
@@ -76,7 +78,8 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         }
         def rerouteTimestamp = flows.first().retrieveFlowHistory().entries.last().timestampIso
         // check time diff between the time when reroute was triggered and the first action of reroute in history
-        def differenceInMillis = flowHelper.convertStringTimestampIsoToLong(rerouteTimestamp) - rerouteTriggersEnd
+        def rerouteStarts = ZonedDateTime.parse(rerouteTimestamp, ISO_OFFSET_DATE_TIME).toInstant().toEpochMilli()
+        def differenceInMillis = rerouteStarts - rerouteTriggersEnd
         // reroute starts not earlier than the expected reroute delay
         assert differenceInMillis > (rerouteDelay) * 1000
         // reroute starts not later than 2 seconds later than the expected delay

@@ -1,7 +1,9 @@
 package org.openkilda.functionaltests.helpers
 
-import com.github.javafaker.Faker
-import groovy.util.logging.Slf4j
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_FLOW
+import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
+
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
@@ -10,33 +12,19 @@ import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.messaging.payload.flow.PathNodePayload
-import org.openkilda.messaging.payload.history.FlowHistoryEntry
-import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
-import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
+
+import com.github.javafaker.Faker
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
 import java.text.SimpleDateFormat
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
-
-import static groovyx.gpars.GParsPool.withPool
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_FLOW
-import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
-import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
-import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
-import static org.openkilda.testing.Constants.TRANSIT_RULE_MULTI_TABLE_ID
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 /**
  * Holds utility methods for manipulating flows.
@@ -115,25 +103,6 @@ class FlowHelper {
     }
 
     /**
-     * Creates a FlowPayload instance with random vlan and flow id suitable for a single-switch flow.
-     * The flow will be on the same port.
-     */
-    FlowPayload singleSwitchSinglePortFlow(Switch sw) {
-        def srcEndpoint = getFlowEndpoint(sw, [])
-        def dstEndpoint = getFlowEndpoint(sw, []).tap { it.portNumber = srcEndpoint.portNumber }
-        if (srcEndpoint.vlanId == dstEndpoint.vlanId) { //ensure same vlan is not randomly picked
-            dstEndpoint.vlanId--
-        }
-        return FlowPayload.builder()
-                .id(generateFlowId())
-                .source(srcEndpoint)
-                .destination(dstEndpoint)
-                .maximumBandwidth(500)
-                .description(generateDescription())
-                .build()
-    }
-
-    /**
      * Adds flow with checking flow status and rules on source and destination switches.
      * It is supposed if rules are installed on source and destination switches, the flow is completely created.
      */
@@ -144,76 +113,6 @@ class FlowHelper {
         def response = northbound.addFlow(flow)
         Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
         return response
-    }
-
-    /**
-     * Sends flow create request but doesn't wait for flow to go up.
-     */
-    FlowPayload attemptToAddFlow(FlowCreatePayload flow) {
-        def flowId = flow.getId()
-        cleanupManager.addAction(DELETE_FLOW, {flowHelperV2.safeDeleteFlow(flowId)}, CleanupAfter.TEST)
-        return northbound.addFlow(flow)
-    }
-
-
-    List<Integer> "get ports that flow uses on switch from path" (String flowId, SwitchId switchId) {
-        def response = northbound.getFlowPath(flowId)
-        def paths = response.forwardPath + response.reversePath + (response.protectedPath as PathNodePayload)
-        return paths.findAll{it != null && it.getSwitchId() == switchId}
-                .inject([].toSet()) {result, i -> result + [i.inputPort, i.outputPort]}.asList()
-    }
-
-    /**
-     * Deletes flow with checking rules on source and destination switches.
-     * It is supposed if rules absent on source and destination switches, the flow is completely deleted.
-     */
-    FlowPayload deleteFlow(String flowId) {
-        Wrappers.wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
-        log.debug("Deleting flow '$flowId'")
-        def response = northbound.deleteFlow(flowId)
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) {
-            assert !northbound.getFlowStatus(flowId)
-            assert northbound.getFlowHistory(flowId).find { it.payload.last().action == DELETE_SUCCESS }
-        }
-        return response
-    }
-
-    /**
-     * Updates flow with checking flow status and rules on source and destination switches.
-     * It is supposed if rules are installed on source and destination switches, the flow is completely updated.
-     */
-    FlowPayload updateFlow(String flowId, FlowPayload flow) {
-        log.debug("Updating flow '${flowId}'")
-        def response = northbound.updateFlow(flowId, flow)
-        Wrappers.wait(FLOW_CRUD_TIMEOUT) { assert northbound.getFlowStatus(flowId).status == FlowState.UP }
-        return response
-    }
-
-    /**
-     * Returns last (the freshest) flow history entry
-     * @param flowId
-     * @return
-     */
-    FlowHistoryEntry getLatestHistoryEntry(String flowId) {
-        return northbound.getFlowHistory(flowId).last()
-    }
-
-    /**
-     * Returns the number of entries in flow history
-     * @param flowId
-     * @return
-     */
-    int getHistorySize(String flowId) {
-        return northbound.getFlowHistory(flowId).size()
-    }
-
-    //TODO: Switch to enum for action
-    List<FlowHistoryEntry> getHistoryEntriesByAction(String flowId, String action) {
-        return northbound.getFlowHistory(flowId).findAll {it.getAction() == action}
-    }
-
-    FlowHistoryEntry getEarliestHistoryEntryByAction(String flowId, String action) {
-        return getHistoryEntriesByAction(flowId, action).first()
     }
 
     /**
@@ -235,103 +134,6 @@ class FlowHelper {
         } || existingFlows*.id.contains(newFlow.id)
     }
 
-    /**
-     * Converts a given FlowEndpointPayload object to FlowEndpointV2 object.
-     *
-     * @param endpoint FlowEndpointPayload object to convert
-     */
-    static FlowEndpointV2 toFlowEndpointV2(FlowEndpointPayload endpoint) {
-        new FlowEndpointV2(endpoint.datapath, endpoint.portNumber, endpoint.vlanId, (endpoint.innerVlanId ?: 0),
-                toFlowConnectedDevicesV2(endpoint.detectConnectedDevices))
-    }
-
-    static DetectConnectedDevicesV2 toFlowConnectedDevicesV2(DetectConnectedDevicesPayload payload) {
-        new DetectConnectedDevicesV2(payload.lldp, payload.arp)
-    }
-
-    /**
-     * Check that all needed rules are created for a flow with protected path.<br>
-     * Protected path creates the 'egress' rule only on the src and dst switches
-     * and creates 2 rules(input/output) on the transit switches.<br>
-     * if (switchId == src/dst): 2 rules for main flow path + 1 egress for protected path = 3<br>
-     * if (switchId != src/dst): 2 rules for main flow path + 2 rules for protected path = 4<br>
-     *
-     * @param flowId
-     */
-    void verifyRulesOnProtectedFlow(String flowId) {
-        def flowPathInfo = northbound.getFlowPath(flowId)
-        def mainFlowPath = flowPathInfo.forwardPath
-        def srcMainSwitch = mainFlowPath[0]
-        def dstMainSwitch = mainFlowPath[-1]
-        def mainFlowTransitSwitches = (mainFlowPath.size() > 2) ? mainFlowPath[1..-2] : []
-        def protectedFlowPath = flowPathInfo.protectedPath.forwardPath
-        def protectedFlowTransitSwitches = (protectedFlowPath.size() > 2) ? protectedFlowPath[1..-2] : []
-
-        def commonSwitches = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
-        def commonTransitSwitches = mainFlowTransitSwitches*.switchId.intersect(protectedFlowTransitSwitches*.switchId)
-
-        def flowInfo = db.getFlow(flowId)
-        def mainForwardCookie = flowInfo.forwardPath.cookie.value
-        def mainReverseCookie = flowInfo.reversePath.cookie.value
-        def protectedForwardCookie = flowInfo.protectedForwardPath.cookie.value
-        def protectedReverseCookie = flowInfo.protectedReversePath.cookie.value
-
-        def rulesOnSrcSwitch = northbound.getSwitchRules(srcMainSwitch.switchId).flowEntries
-        assert rulesOnSrcSwitch.find {
-            it.cookie == mainForwardCookie
-        }.tableId == INGRESS_RULE_MULTI_TABLE_ID
-        assert rulesOnSrcSwitch.find {
-            it.cookie == mainReverseCookie
-        }.tableId == EGRESS_RULE_MULTI_TABLE_ID
-        assert rulesOnSrcSwitch.find {
-            it.cookie == protectedReverseCookie
-        }.tableId == EGRESS_RULE_MULTI_TABLE_ID
-        assert !rulesOnSrcSwitch*.cookie.contains(protectedForwardCookie)
-
-        def rulesOnDstSwitch = northbound.getSwitchRules(dstMainSwitch.switchId).flowEntries
-        assert rulesOnDstSwitch.find {
-            it.cookie == mainForwardCookie
-        }.tableId == EGRESS_RULE_MULTI_TABLE_ID
-        assert rulesOnDstSwitch.find {
-            it.cookie == mainReverseCookie
-        }.tableId == INGRESS_RULE_MULTI_TABLE_ID
-        assert rulesOnDstSwitch.find {
-            it.cookie == protectedForwardCookie
-        }.tableId == EGRESS_RULE_MULTI_TABLE_ID
-        assert !rulesOnDstSwitch*.cookie.contains(protectedReverseCookie)
-
-        //this loop checks rules on common nodes(except src and dst switches)
-        withPool {
-            commonTransitSwitches.eachParallel { sw ->
-                def rules = northbound.getSwitchRules(sw).flowEntries
-                def transitTableId = TRANSIT_RULE_MULTI_TABLE_ID
-                assert rules.find { it.cookie == mainForwardCookie }.tableId == transitTableId
-                assert rules.find { it.cookie == mainReverseCookie }.tableId == transitTableId
-                assert rules.find { it.cookie == protectedForwardCookie }.tableId == transitTableId
-                assert rules.find { it.cookie == protectedReverseCookie }.tableId == transitTableId
-            }
-        }
-
-        //this loop checks rules on unique transit nodes
-        withPool {
-            protectedFlowTransitSwitches.findAll { !commonSwitches.contains(it.switchId) }.eachParallel { node ->
-                def rules = northbound.getSwitchRules(node.switchId).flowEntries
-                def transitTableId = TRANSIT_RULE_MULTI_TABLE_ID
-                assert rules.find { it.cookie == protectedForwardCookie }.tableId == transitTableId
-                assert rules.find { it.cookie == protectedReverseCookie }.tableId == transitTableId
-            }
-        }
-
-        //this loop checks rules on unique main nodes
-        withPool {
-            mainFlowTransitSwitches.findAll { !commonSwitches.contains(it.switchId) }.eachParallel { node ->
-                def rules = northbound.getSwitchRules(node.switchId).flowEntries
-                def transitTableId = TRANSIT_RULE_MULTI_TABLE_ID
-                assert rules.find { it.cookie == mainForwardCookie }.tableId == transitTableId
-                assert rules.find { it.cookie == mainReverseCookie }.tableId == transitTableId
-            }
-        }
-    }
 
     /**
      * Returns flow endpoint with randomly chosen vlan.
@@ -380,12 +182,5 @@ class FlowHelper {
                             faker.shakespeare().hamletQuote()]
         def r = new Random()
         "autotest flow: ${descpription[r.nextInt(descpription.size())]}"
-    }
-
-    static Long convertStringTimestampIsoToLong(String timestampIso) {
-        def parsedRerouteActionStart = ZonedDateTime.parse(
-                timestampIso, DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-        def timestampMillis = parsedRerouteActionStart.toInstant().toEpochMilli()
-        return timestampMillis
     }
 }
