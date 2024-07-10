@@ -46,6 +46,7 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Issue
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
@@ -1250,6 +1251,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
+    @Issue("https://github.com/telstra/open-kilda/issues/5699")
     @Tags(ISL_RECOVER_ON_FAIL)
     def "System doesn't reroute main flow path when protected path is broken and new alt path is available\
 (altPath is more preferable than mainPath)"() {
