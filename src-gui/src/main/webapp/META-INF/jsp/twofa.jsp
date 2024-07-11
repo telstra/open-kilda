@@ -6,6 +6,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
 <title>OPEN KILDA </title>
 <script src="<%=request.getContextPath()%>/lib/javascript/jquery-3.5.1.min.js"></script>
+<script src="<%=request.getContextPath()%>/lib/javascript/qrcode.min.js"></script>
 <link href="<%=request.getContextPath()%>/lib/css/bootstrap.min.css" rel="stylesheet"></link>
 <link href="<%=request.getContextPath()%>/ui/css/custom.css" rel="stylesheet"></link>
 <link href="<%=request.getContextPath()%>/ui/images/kilda.png" rel="shortcut icon" type="image/png"></link>
@@ -37,7 +38,7 @@
 		                        <p>Scan below code with the authenticator app on your mobile device and follow instructions to verify your identity.</p>
 		                      	 <div class="qr_scan_img">             
 		                            <div class="form-group text-center">                            
-		                             	<img alt="QrCode" id="qrCode" src="" />
+		                             	<div id="QrCode"></div>
 		                            </div>      
 		                            <div class="form-group">                            
 		                             	<label for="qr_code">(Code : <span id="qr_code_text"> </span> )</label>		                             	
@@ -78,10 +79,14 @@
 			var username= $('#uname').text();
 			var appName = $('#appName').text();
 			$('#qr_code_text').text(key);
-		    $('#qrCode').attr('src', 'https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=200x200&chld=M|0&cht=qr&' 
-		    		+ 'chl=' + encodeURIComponent('otpauth://totp/' + encodeURIComponent(appName) + ":" + username + '?secret=' + key + '&issuer=' + encodeURIComponent(appName)));
-		});
+            new QRCode(document.getElementById("QrCode"), {
+                text: 'otpauth://totp/' + encodeURIComponent(appName) + ":" + username + '?secret=' + key + '&issuer=' + encodeURIComponent(appName),
+                width: 200,
+                height: 200
+            });
 
+		});
+		
 		function focusNextInput(){
 			var container = document.getElementsByClassName("otp-container")[0];
 			var input = container.getElementsByTagName('input')[0];
