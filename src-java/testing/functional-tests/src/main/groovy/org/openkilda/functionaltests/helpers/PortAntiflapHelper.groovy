@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
+
 import org.openkilda.functionaltests.helpers.model.PortHistoryEvent
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.model.SwitchId
@@ -10,6 +12,7 @@ import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.PORT_UP
@@ -22,6 +25,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
  * port was brought down and forces sleep for required 'cooldown' amount of time when one wants to bring that port 'up'.
  */
 @Component
+@Scope(SCOPE_PROTOTYPE)
 class PortAntiflapHelper {
     @Autowired @Qualifier("islandNb")
     NorthboundService northbound
