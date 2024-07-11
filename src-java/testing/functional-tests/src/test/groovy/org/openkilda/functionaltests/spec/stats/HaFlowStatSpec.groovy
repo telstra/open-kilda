@@ -101,10 +101,10 @@ class HaFlowStatSpec extends HealthCheckSpecification {
 
         where:
         description  | direction | subFlow
-        "sub-flow-a" | FORWARD   | haFlow.subFlows.find { it.haSubFlowId.contains("haflow-a") }
-        "sub-flow-a" | REVERSE   | haFlow.subFlows.find { it.haSubFlowId.contains("haflow-a") }
-        "sub-flow-b" | FORWARD   | haFlow.subFlows.find { it.haSubFlowId.contains("haflow-b") }
-        "sub-flow-b" | REVERSE   | haFlow.subFlows.find { it.haSubFlowId.contains("haflow-b") }
+        "sub-flow-a" | FORWARD   | haFlow.subFlows.haSubFlowId.find { it.contains("ha-flow-a") }
+        "sub-flow-a" | REVERSE   | haFlow.subFlows.haSubFlowId.find { it.contains("ha-flow-a") }
+        "sub-flow-b" | FORWARD   | haFlow.subFlows.haSubFlowId.find { it.contains("ha-flow-b") }
+        "sub-flow-b" | REVERSE   | haFlow.subFlows.haSubFlowId.find { it.contains("ha-flow-b") }
     }
 }
 

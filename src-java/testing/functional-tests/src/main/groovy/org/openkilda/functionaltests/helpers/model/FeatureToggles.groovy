@@ -12,8 +12,6 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
-import javax.annotation.PostConstruct
-
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
 
