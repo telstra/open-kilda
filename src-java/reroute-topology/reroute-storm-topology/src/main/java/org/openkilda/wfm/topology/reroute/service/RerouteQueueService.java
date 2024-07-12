@@ -23,12 +23,14 @@ import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorType;
+import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.reroute.FlowType;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.messaging.info.reroute.error.FlowInProgressError;
 import org.openkilda.messaging.info.reroute.error.NoPathFoundError;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.messaging.info.reroute.error.SpeakerRequestError;
+import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.model.Flow;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.PathComputationStrategy;
@@ -136,6 +138,34 @@ public class RerouteQueueService {
             rerouteQueue.putToInProgress(throttlingData);
             sendRerouteRequest(flowId, throttlingData);
         }
+    }
+
+    /**
+     * Process manual reroute flush request.
+     *
+     * @param flowId flow id
+     */
+    public void processManualFlushRequest(String flowId, FlowThrottlingData throttlingData) {
+        log.info("Process manual Flush Request for flow: {}", flowId);
+        FlowInfo flowInfo = getFlowInfo(flowId, throttlingData.getFlowType());
+        if (!flowInfo.isPresent()) {
+            String description = format("Flow with ID %s not found in rerouting queue", flowId);
+            ErrorData errorData = new ErrorData(
+                    ErrorType.NOT_FOUND, format("Could not flush reroute %s", flowId), description);
+            carrier.emitFlowRerouteError(errorData);
+        }
+
+        FlowResponse flowData;
+        RerouteQueue rerouteQueue = getRerouteQueue(flowId);
+        if (rerouteQueue.hasInProgress()) {
+            rerouteQueue.putToInProgress(null);
+            flowData = new FlowResponse(FlowDto.builder()
+                    .statusInfo("Reroute has flushed").build());
+        } else {
+            flowData = new FlowResponse(FlowDto.builder()
+                    .statusInfo("Flow is not it rerouting process").build());
+        }
+        carrier.emitFlowRerouteInfo(flowData);
     }
 
     /**

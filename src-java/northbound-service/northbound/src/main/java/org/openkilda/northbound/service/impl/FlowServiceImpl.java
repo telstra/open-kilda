@@ -31,6 +31,7 @@ import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
 import org.openkilda.messaging.command.flow.FlowPingRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRequest.Type;
+import org.openkilda.messaging.command.flow.FlowRerouteFlushRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowSyncRequest;
 import org.openkilda.messaging.command.flow.FlowValidationRequest;
@@ -63,6 +64,7 @@ import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.payload.flow.DiverseGroupPayload;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
+import org.openkilda.messaging.payload.flow.FlowFlushReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath;
@@ -600,6 +602,20 @@ public class FlowServiceImpl implements FlowService {
                 .thenApply(FlowRerouteResponse.class::cast)
                 .thenApply(response ->
                         flowMapper.toReroutePayload(flowId, response.getPayload(), response.isRerouted()));
+    }
+
+    @Override
+    public CompletableFuture<FlowFlushReroutePayload> flushRerouteFlow(String flowId) {
+        log.info("API request: Flush flow reroute: {}={}", FLOW_ID, flowId);
+
+        FlowRerouteFlushRequest payload = new FlowRerouteFlushRequest(flowId, "initiated via Northbound");
+        CommandMessage command = new CommandMessage(
+                payload, System.currentTimeMillis(), RequestCorrelationId.getId());
+
+        return messagingChannel.sendAndGet(rerouteTopic, command)
+                .thenApply(FlowResponse.class::cast)
+                .thenApply(response ->
+                        flowMapper.toRerouteFlushPayload(flowId, response != null));
     }
 
     @Override
