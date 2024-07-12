@@ -230,7 +230,6 @@ class FlowExtended {
     }
 
     FlowExtended create(FlowState expectedState = FlowState.UP, CleanupAfter cleanupAfter = TEST) {
-        cleanupManager.addAction(DELETE_FLOW, { delete() }, cleanupAfter)
         sendCreateRequest(cleanupAfter)
         waitForBeingInState(expectedState)
     }

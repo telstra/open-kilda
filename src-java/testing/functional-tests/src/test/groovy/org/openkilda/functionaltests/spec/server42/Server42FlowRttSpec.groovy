@@ -163,93 +163,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         }
     }
 
-    def "Stats are available only if both global and switch toggles are 'on' on both endpoints"() {
-        /*This test runs the last (by alphabet) on jenkins, because if it runs before other test,
-        switchHelper.waitForS42SwRulesSetup() call in the next tests fails. No idea why.*/
-        given: "Two active switches with having server42"
-        def switchPair = switchPairs.all().withBothSwitchesConnectedToServer42().random()
-        def statsWaitSeconds = 4
-
-        and: "server42FlowRtt toggle is turned off"
-        featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(false)
-        switchHelper.waitForS42SwRulesSetup(false)
-
-        and: "server42FlowRtt is turned off on src and dst"
-        [switchPair.src, switchPair.dst].each{ sw -> switchHelper.setServer42FlowRttForSwitch(sw, false, false) }
-
-        and: "Flow for forward metric is created"
-        def flow = flowFactory.getRandom(switchPair)
-
-        and: "Reversed flow for backward metric is created"
-        def reversedFlow = flowFactory.getRandom(switchPair.reversed, false, FlowState.UP, flow.occupiedEndpoints())
-
-
-        expect: "Involved switches pass switch validation"
-        Wrappers.wait(RULES_INSTALLATION_TIME) { //wait for s42 rules
-            switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.retrieveAllEntityPaths().getInvolvedSwitches()).isEmpty()
-        }
-
-        when: "Wait for several seconds"
-        SECONDS.sleep(statsWaitSeconds)
-
-        then: "Expect no flow rtt stats for forward flow"
-        flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).isEmpty()
-
-        and: "Expect no flow rtt stats for reversed flow"
-        flowStats.of(reversedFlow.flowId).get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
-
-        when: "Enable global rtt toggle"
-        !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
-
-        and: "Wait for several seconds"
-        def checkpointTime = new Date().getTime()
-        SECONDS.sleep(statsWaitSeconds)
-
-        then: "Expect no flow rtt stats for forward flow"
-        flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).isEmpty()
-
-        and: "Expect no flow rtt stats for reversed flow"
-        flowStats.of(reversedFlow.flowId).get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
-
-        when: "Enable switch rtt toggle on src and dst"
-        switchHelper.setServer42FlowRttForSwitch(switchPair.src, true)
-        switchHelper.setServer42FlowRttForSwitch(switchPair.dst, true)
-        checkpointTime = new Date().getTime()
-
-        then: "Stats for forward and reverse flow are available"
-        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + SERVER42_STATS_LAG, 1) {
-            assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-            //https://github.com/telstra/open-kilda/issues/4678
-            //assert flowStats.of(flow.flowId).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-        }
-
-        when: "Disable switch rtt toggle on dst (still enabled on src)"
-        switchHelper.setServer42FlowRttForSwitch(switchPair.dst, false)
-        checkpointTime = new Date().getTime()
-
-        then: "Stats for forward and reverse flow are available"
-        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + SERVER42_STATS_LAG, 1) {
-            def stats = flowStats.of(flow.flowId)
-            assert stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-            //https://github.com/telstra/open-kilda/issues/4678
-            //assert stats.get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-        }
-
-        when: "Disable global toggle"
-        featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(false)
-
-        and: "Wait for several seconds"
-        SECONDS.sleep(statsWaitSeconds)
-        checkpointTime = new Date().getTime()
-
-        then: "Expect no flow rtt stats for forward flow"
-        !flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-
-        and: "Expect no flow rtt stats for reversed flow"
-        !flowStats.of(flow.flowId).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-    }
-
     @Tags([TOPOLOGY_DEPENDENT])
     def "Flow rtt stats are available if both endpoints are connected to the same server42, same pop"() {
         given: "Two active switches connected to the same server42 instance"
@@ -629,5 +542,92 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
             assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
             assert flowStats.of(flow.flowId).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValues()
         }
+    }
+
+    def "Stats are available only if both global and switch toggles are 'on' on both endpoints"() {
+        /*This test runs the last (by alphabet) on jenkins, because if it runs before other test,
+        switchHelper.waitForS42SwRulesSetup() call in the next tests fails. No idea why.*/
+        given: "Two active switches with having server42"
+        def switchPair = switchPairs.all().withBothSwitchesConnectedToServer42().random()
+        def statsWaitSeconds = 4
+
+        and: "server42FlowRtt toggle is turned off"
+        featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(false)
+        switchHelper.waitForS42SwRulesSetup(false)
+
+        and: "server42FlowRtt is turned off on src and dst"
+        [switchPair.src, switchPair.dst].each{ sw -> switchHelper.setServer42FlowRttForSwitch(sw, false, false) }
+
+        and: "Flow for forward metric is created"
+        def flow = flowFactory.getRandom(switchPair)
+
+        and: "Reversed flow for backward metric is created"
+        def reversedFlow = flowFactory.getRandom(switchPair.reversed, false, FlowState.UP, flow.occupiedEndpoints())
+
+
+        expect: "Involved switches pass switch validation"
+        Wrappers.wait(RULES_INSTALLATION_TIME) { //wait for s42 rules
+            switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.retrieveAllEntityPaths().getInvolvedSwitches()).isEmpty()
+        }
+
+        when: "Wait for several seconds"
+        SECONDS.sleep(statsWaitSeconds)
+
+        then: "Expect no flow rtt stats for forward flow"
+        flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).isEmpty()
+
+        and: "Expect no flow rtt stats for reversed flow"
+        flowStats.of(reversedFlow.flowId).get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
+
+        when: "Enable global rtt toggle"
+        !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
+        switchHelper.waitForS42SwRulesSetup()
+
+        and: "Wait for several seconds"
+        def checkpointTime = new Date().getTime()
+        SECONDS.sleep(statsWaitSeconds)
+
+        then: "Expect no flow rtt stats for forward flow"
+        flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).isEmpty()
+
+        and: "Expect no flow rtt stats for reversed flow"
+        flowStats.of(reversedFlow.flowId).get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
+
+        when: "Enable switch rtt toggle on src and dst"
+        switchHelper.setServer42FlowRttForSwitch(switchPair.src, true)
+        switchHelper.setServer42FlowRttForSwitch(switchPair.dst, true)
+        checkpointTime = new Date().getTime()
+
+        then: "Stats for forward and reverse flow are available"
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + SERVER42_STATS_LAG, 1) {
+            assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+            //https://github.com/telstra/open-kilda/issues/4678
+            //assert flowStats.of(flow.flowId).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+        }
+
+        when: "Disable switch rtt toggle on dst (still enabled on src)"
+        switchHelper.setServer42FlowRttForSwitch(switchPair.dst, false)
+        checkpointTime = new Date().getTime()
+
+        then: "Stats for forward and reverse flow are available"
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + SERVER42_STATS_LAG, 1) {
+            def stats = flowStats.of(flow.flowId)
+            assert stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+            //https://github.com/telstra/open-kilda/issues/4678
+            //assert stats.get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+        }
+
+        when: "Disable global toggle"
+        featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(false)
+
+        and: "Wait for several seconds"
+        SECONDS.sleep(statsWaitSeconds)
+        checkpointTime = new Date().getTime()
+
+        then: "Expect no flow rtt stats for forward flow"
+        !flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+
+        and: "Expect no flow rtt stats for reversed flow"
+        !flowStats.of(flow.flowId).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
     }
 }
