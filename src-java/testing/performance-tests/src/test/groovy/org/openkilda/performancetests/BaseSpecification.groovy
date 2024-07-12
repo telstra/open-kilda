@@ -1,15 +1,15 @@
 package org.openkilda.performancetests
 
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-
-import org.openkilda.functionaltests.helpers.FlowHelper
-import org.openkilda.functionaltests.helpers.FlowHelperV2
-import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.PortAntiflapHelper
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.messaging.model.system.KildaConfigurationDto
 import org.openkilda.performancetests.helpers.TopologyHelper
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.labservice.LabService
@@ -34,17 +34,14 @@ class BaseSpecification extends Specification {
     private static boolean healthCheckRan = false
 
     @Autowired
-    @Shared @Qualifier("islandNb")
+    @Shared @Qualifier("northboundServiceImpl")
     NorthboundService northbound
     @Autowired
-    @Shared @Qualifier("islandNbV2")
+    @Shared @Qualifier("northboundServiceV2Impl")
     NorthboundServiceV2 northboundV2
     @Autowired
     @Shared
     FloodlightsHelper flHelper
-    @Autowired
-    @Shared
-    FlowHelperV2 flowHelperV2
     @Autowired
     @Shared
     LabService labService
@@ -53,7 +50,7 @@ class BaseSpecification extends Specification {
     LockKeeperService lockKeeper
     @Autowired
     @Shared
-    FlowHelper flowHelper
+    FlowFactory flowFactory
     @Autowired
     @Shared
     @Qualifier("performance")
@@ -67,9 +64,6 @@ class BaseSpecification extends Specification {
     @Autowired
     @Shared
     PortAntiflapHelper antiflap
-    @Autowired
-    @Shared
-    PathHelper pathHelper
 
     @Value('${discovery.generic.interval}')
     int discoveryInterval
@@ -86,6 +80,10 @@ class BaseSpecification extends Specification {
     @Value('${perf.debug}')
     boolean debug
 
+    //CleanupManager is not called during perf-tests execution due to the implementation
+    //to use automatic cleanup the appropriate listeners should be added
+    static ThreadLocal<CleanupManager> threadLocalCleanupManager = new ThreadLocal<>()
+
     def setupSpec() {
         healthCheck()
         northbound.getAllFlows().each { northbound.deleteFlow(it.id) }
@@ -93,6 +91,10 @@ class BaseSpecification extends Specification {
             assert northbound.getAllFlows().empty
         }
         topoHelper.purgeTopology()
+        flowFactory.setNorthbound(northbound)
+        flowFactory.setNorthboundV2(northboundV2)
+        antiflap.setNorthbound(northbound)
+        antiflap.setNorthboundV2(northboundV2)
     }
 
     def healthCheck() {
@@ -124,5 +126,20 @@ class BaseSpecification extends Specification {
     def setup() {
         //setup with empty body in order to trigger a SETUP invocation, which is intercepted in several extensions
         //this can have implementation if required
+    }
+
+    Switch pickRandom(List<Switch> switches) {
+        switches[new Random().nextInt(switches.size())]
+    }
+
+    void deleteFlows( List<FlowExtended> flows) {
+        flows.each { it.sendDeleteRequest() }
+        def waitTime = northbound.getAllFlows().size()
+        if(waitTime < discoveryTimeout) {
+            waitTime = discoveryTimeout
+        }
+        Wrappers.wait(waitTime) {
+            northbound.getAllFlows().isEmpty()
+        }
     }
 }

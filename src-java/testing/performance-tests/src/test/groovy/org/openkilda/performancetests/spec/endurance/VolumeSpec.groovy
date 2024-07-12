@@ -1,10 +1,9 @@
-package org.openkilda.performancetests.spec
+package org.openkilda.performancetests.spec.endurance
 
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.performancetests.BaseSpecification
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import spock.lang.Shared
 
@@ -20,8 +19,7 @@ class VolumeSpec extends BaseSpecification {
     def "Able to validate a switch with a lot of flows on different ports"() {
         given: "A small topology"
         def topo = topoHelper.createRandomTopology(5, 15)
-        topoHelper.setTopology(topo)
-        flowHelperV2.setTopology(topo)
+        flowFactory.setTopology(topo)
 
         and: "A switch under test"
         def sw = topo.switches.first()
@@ -29,18 +27,18 @@ class VolumeSpec extends BaseSpecification {
         def allowedPorts = (1..200 + busyPorts.size()) - busyPorts //200 total
 
         when: "Create total 200 flows on a switch, each flow uses free non-isl port"
-        List<FlowRequestV2> flows = []
+        List<FlowExtended> flows = []
+        List<SwitchPortVlan> busyEndpoints = []
         allowedPorts.each { port ->
-            def flow = flowHelperV2.randomFlow(sw, pickRandom(topo.switches - sw), false, flows)
-            flow.allocateProtectedPath = r.nextBoolean()
-            flow.source.portNumber = port
-            northboundV2.addFlow(flow)
+            def flow = flowFactory.getBuilder(sw, pickRandom(topo.switches - sw), false, busyEndpoints)
+                    .withProtectedPath(r.nextBoolean()).withSourcePort(port).build().sendCreateRequest()
+            busyEndpoints.addAll(flow.occupiedEndpoints())
             flows << flow
         }
 
         then: "Each flow passes flow validation"
         Wrappers.wait(flows.size()) {
-            flows.forEach { northbound.validateFlow(it.flowId).each { assert it.asExpected } }
+            flows.forEach { assert it.validateAndCollectDiscrepancies().isEmpty() }
         }
 
         and: "Target switch passes switch validation"
@@ -50,16 +48,7 @@ class VolumeSpec extends BaseSpecification {
         }
 
         cleanup: "Remove all flows, delete topology"
-        flows.each { northbound.deleteFlow(it.flowId) }
-        Wrappers.wait(flows.size()) {
-            topo.switches.each {
-                assert northbound.getSwitchRules(it.dpId).flowEntries.findAll { !Cookie.isDefaultRule(it.cookie) }.empty
-            }
-        }
+        deleteFlows(flows)
         topoHelper.purgeTopology(topo)
-    }
-
-    Switch pickRandom(List<Switch> switches) {
-        switches[r.nextInt(switches.size())]
     }
 }

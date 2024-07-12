@@ -1,4 +1,4 @@
-package org.openkilda.performancetests.spec
+package org.openkilda.performancetests.spec.endurance
 
 import static org.hamcrest.CoreMatchers.equalTo
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
@@ -14,7 +14,6 @@ import org.openkilda.performancetests.model.CustomTopology
 import groovy.util.logging.Slf4j
 import org.junit.Assume
 import org.springframework.beans.factory.annotation.Value
-import spock.lang.Unroll
 
 @Slf4j
 class DiscoverySpec extends BaseSpecification {
