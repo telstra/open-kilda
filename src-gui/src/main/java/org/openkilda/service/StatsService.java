@@ -32,7 +32,7 @@ import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.integration.model.response.IslPath;
 import org.openkilda.integration.service.StatsIntegrationService;
 import org.openkilda.integration.service.SwitchIntegrationService;
-import org.openkilda.integration.source.store.SwitchStoreService;
+import org.openkilda.integration.source.store.SwitchInventoryService;
 import org.openkilda.integration.source.store.dto.Port;
 import org.openkilda.model.PortDiscrepancy;
 import org.openkilda.model.PortInfo;
@@ -76,7 +76,7 @@ public class StatsService {
 
     private final StoreService storeService;
 
-    private final SwitchStoreService switchStoreService;
+    private final SwitchInventoryService switchInventoryService;
 
 
     private final ApplicationProperties appProps;
@@ -84,12 +84,12 @@ public class StatsService {
     public StatsService(StatsIntegrationService statsIntegrationService,
                         SwitchIntegrationService switchIntegrationService,
                         StoreService storeService,
-                        SwitchStoreService switchStoreService,
+                        SwitchInventoryService switchInventoryService,
                         ApplicationProperties appProps) {
         this.statsIntegrationService = statsIntegrationService;
         this.switchIntegrationService = switchIntegrationService;
         this.storeService = storeService;
-        this.switchStoreService = switchStoreService;
+        this.switchInventoryService = switchInventoryService;
         this.appProps = appProps;
     }
 
@@ -206,7 +206,7 @@ public class StatsService {
         List<PortInfo> portStats = getSwitchPortStatsReport(victoriaDataList, switchId);
         if (!storeService.getSwitchStoreConfig().getUrls().isEmpty()) {
             try {
-                List<Port> inventoryPorts = switchStoreService
+                List<Port> inventoryPorts = switchInventoryService
                         .getSwitchPort(IoUtil.switchCodeToSwitchId(switchId));
                 processInventoryPorts(portStats, inventoryPorts);
             } catch (Exception ex) {

@@ -11,7 +11,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_SWITCH_PROPERTIES
 import static org.openkilda.functionaltests.model.stats.IslStatsMetric.ISL_RTT
 import static org.openkilda.functionaltests.model.stats.Origin.SERVER_42
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
@@ -26,10 +25,8 @@ import static spock.util.matcher.HamcrestSupport.expect
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.IslStats
 import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
-import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
@@ -53,9 +50,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     @Shared
     @Autowired
     IslStats islStats
-    @Autowired @Shared
-    CleanupManager cleanupManager
-
     @Shared
     @Value('${latency.update.interval}')
     Integer latencyUpdateInterval
@@ -152,7 +146,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         assumeTrue(notConnectedIsl.asBoolean(), "Wasn't able to find required non-connected a-switch link")
 
         and: "Replug one end of the connected link to the not connected one"
-        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, true)
+        def newIsl = islHelper.replugDestination(isl, notConnectedIsl, true, true)
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
         wait(discoveryExhaustedInterval + WAIT_OFFSET) {
             [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
@@ -212,19 +206,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         and: "All involved switches pass switch validation"
         switchHelper.synchronizeAndCollectFixedDiscrepancies([isl.srcSwitch.dpId, isl.dstSwitch.dpId, newIsl.dstSwitch.dpId])
                 .isEmpty()
-
-        cleanup:
-        if (!originIslIsUp) {
-            islUtils.replug(newIsl, true, isl, false, true)
-            islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
-        }
-        if (newIsl && !newIslIsRemoved) {
-            northbound.deleteLink(islUtils.toLinkParameters(newIsl))
-            wait(WAIT_OFFSET) {
-                assert !islUtils.getIslInfo(newIsl).isPresent()
-                assert !islUtils.getIslInfo(newIsl.reversed).isPresent()
-            }
-        }
     }
 
     @Tags([HARDWARE])
@@ -238,7 +219,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         assumeTrue(isl.asBoolean(), "Wasn't able to find required a-switch link")
 
 
-        lockKeeper.removeFlows([isl.aswitch.reversed])
+        aSwitchFlows.removeFlows([isl.aswitch.reversed])
         wait(discoveryTimeout + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == FAILED
@@ -246,7 +227,6 @@ class Server42IslRttSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(links, isl.reversed).get().state == FAILED
             assert islUtils.getIslInfo(links, isl.reversed).get().actualState == FAILED
         }
-        def islRvIsBroken = true
 
         when: "server42IslRtt feature toggle is set to true"
         changeIslRttToggle(true)
@@ -263,7 +243,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         }
 
         when: "Restore link in reverse direction"
-        lockKeeper.addFlows([isl.aswitch.reversed])
+        aSwitchFlows.addFlows([isl.aswitch.reversed])
         wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
@@ -271,24 +251,11 @@ class Server42IslRttSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
             assert islUtils.getIslInfo(links, isl.reversed).get().actualState == DISCOVERED
         }
-        islRvIsBroken = false
 
         then: "ISL RTT stats for ISL in forward/reverse directions are available"
         wait(islSyncWaitSeconds, 2) {
             checkIslRttStats(isl, checkpointTime, true)
             checkIslRttStats(isl.reversed, checkpointTime, true)
-        }
-
-        cleanup:
-        if (islRvIsBroken) {
-            lockKeeper.addFlows([isl.aswitch.reversed])
-            wait(discoveryInterval + WAIT_OFFSET) {
-                def links = northbound.getAllLinks()
-                assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
-                assert islUtils.getIslInfo(links, isl).get().actualState == DISCOVERED
-                assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
-                assert islUtils.getIslInfo(links, isl.reversed).get().actualState == DISCOVERED
-            }
         }
     }
 
@@ -568,8 +535,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     def changeIslRttSwitch(Switch sw, String requiredState) {
         def originalProps = northbound.getSwitchProperties(sw.dpId)
         if (originalProps.server42IslRtt != requiredState) {
-            cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {northbound.updateSwitchProperties(sw.dpId, originalProps)})
-            northbound.updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap {
+            switchHelper.updateSwitchProperties(sw, originalProps.jacksonCopy().tap {
                 server42IslRtt = requiredState
                 def props = sw.prop ?: SwitchHelper.dummyServer42Props
                 server42MacAddress = props.server42MacAddress

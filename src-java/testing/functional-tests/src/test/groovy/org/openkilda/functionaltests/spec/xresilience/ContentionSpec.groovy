@@ -5,26 +5,35 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.BaseSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 
 import groovyx.gpars.group.DefaultPGroup
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Ignore
 import spock.lang.Narrative
+import spock.lang.Shared
 
 @Narrative("""This spec is aimed to test different race conditions and system behavior in a concurrent
  environment (using v2 APIs)""")
 class ContentionSpec extends BaseSpecification {
 
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+
     def "Parallel flow creation requests with the same name creates only 1 flow"() {
         when: "Create the same flow in parallel multiple times"
         def flowsAmount = 20
         def group = new DefaultPGroup(flowsAmount)
-        def flow = flowHelperV2.randomFlow(switchPairs.all().nonNeighbouring().random())
+
+        def flow = flowFactory.getBuilder(switchPairs.all().nonNeighbouring().random()).build()
         def tasks = (1..flowsAmount).collect {
-            group.task { flowHelperV2.addFlow(flow) }
+            group.task { flow.create() }
         }
         tasks*.join()
 
@@ -46,16 +55,22 @@ class ContentionSpec extends BaseSpecification {
         when: "Create multiple flows on the same ISLs concurrently"
         def flowsAmount = 20
         def group = new DefaultPGroup(flowsAmount)
-        List<FlowRequestV2> flows = []
-        flowsAmount.times { flows << flowHelperV2.randomFlow(topologyHelper.notNeighboringSwitchPair, false, flows) }
+        List<FlowExtended> flows = []
+        List<SwitchPortVlan> busyEndpoints = []
+        flowsAmount.times {
+            def flowEntity = flowFactory.getBuilder(switchPairs.all().nonNeighbouring().random(), false, busyEndpoints).build()
+            busyEndpoints.addAll(flowEntity.occupiedEndpoints())
+            flows << flowEntity
+        }
+
         def createTasks = flows.collect { flow ->
-            group.task { flowHelperV2.addFlow(flow) }
+            group.task { flow.create()}
         }
         createTasks*.join()
         assert createTasks.findAll { it.isError() }.empty
-        def relatedIsls = pathHelper.getInvolvedIsls(northbound.getFlowPath(flows[0].flowId))
+        def relatedIsls = flows[0].retrieveAllEntityPaths().flowPath.getInvolvedIsls()
         //all flows use same isls
-        flows[1..-1].each { assert pathHelper.getInvolvedIsls(northbound.getFlowPath(it.flowId)) == relatedIsls }
+        flows[1..-1].each { assert it.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == relatedIsls }
 
         then: "Available bandwidth on related isls is reduced based on bandwidth of created flows"
         relatedIsls.each { isl ->
@@ -68,7 +83,7 @@ class ContentionSpec extends BaseSpecification {
 
         when: "Simultaneously remove all the flows"
         def deleteTasks = flows.collect { flow ->
-            group.task { flowHelperV2.deleteFlow(flow.flowId) }
+            group.task { flow.delete() }
         }
         deleteTasks*.get()
 
@@ -86,44 +101,39 @@ class ContentionSpec extends BaseSpecification {
     def "Reroute can be simultaneously performed with sync rules requests, removeExcess=#removeExcess"() {
         given: "A flow with reroute potential"
         def switches = switchPairs.all().nonNeighbouring().random()
-        def flow = flowHelperV2.randomFlow(switches)
-        flowHelperV2.addFlow(flow)
-        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
-        def newPath = switches.paths.find { it != currentPath }
+        def flow = flowFactory.getRandom(switches)
+
+        def flowPathInfo = flow.retrieveAllEntityPaths()
+        def mainPath = flowPathInfo.getPathNodes()
+        def newPath = switches.paths.find { it != mainPath }
         switches.paths.findAll { it != newPath }.each { pathHelper.makePathMorePreferable(newPath, it) }
-        def relatedSwitches = (pathHelper.getInvolvedSwitches(currentPath) +
-                pathHelper.getInvolvedSwitches(newPath)).unique()
+        def relatedSwitches = (flowPathInfo.getInvolvedSwitches() +
+                pathHelper.getInvolvedSwitches(newPath).dpId).unique()
 
         when: "Flow reroute is simultaneously requested together with sync rules requests for all related switches"
         withPool {
-            def rerouteTask = { northboundV2.rerouteFlow(flow.flowId) }
+            def rerouteTask = { flow.reroute() }
             rerouteTask.callAsync()
-            3.times { relatedSwitches.eachParallel { switchHelper.synchronize(it.dpId, removeExcess) } }
+            3.times { relatedSwitches.eachParallel { switchHelper.synchronize(it, removeExcess) } }
         }
 
         then: "Flow is Up and path has changed"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == newPath
+            assert flow.retrieveFlowStatus().status == FlowState.UP
+            assert flow.retrieveAllEntityPaths().getPathNodes() == newPath
         }
 
         and: "Related switches have no rule discrepancies"
         Wrappers.wait(WAIT_OFFSET) {
-            switchHelper.validateAndCollectFoundDiscrepancies(relatedSwitches*.getDpId()).isEmpty()
+            assert switchHelper.validateAndCollectFoundDiscrepancies(relatedSwitches).isEmpty()
         }
-        def switchesOk = true
 
         and: "Flow is healthy"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-
-        cleanup: "remove flow and reset costs"
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        !switchesOk && switchHelper.synchronizeAndCollectFixedDiscrepancies(relatedSwitches*.getDpId())
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         where: removeExcess << [
                 false,
 //                true https://github.com/telstra/open-kilda/issues/4214
         ]
     }
-
 }

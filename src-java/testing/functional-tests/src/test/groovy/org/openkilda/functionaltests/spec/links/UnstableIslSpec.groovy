@@ -1,35 +1,36 @@
 package org.openkilda.functionaltests.spec.links
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.model.SwitchFeature
+
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Shared
 
 import java.time.Instant
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
-import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
-import static org.openkilda.messaging.info.event.IslChangeType.FAILED
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-
 class UnstableIslSpec extends HealthCheckSpecification {
+
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     @Value('${pce.isl.cost.when.unstable}')
     int islUnstableCost
 
     @Value('${isl.unstable.timeout.sec}')
     int islUnstableTimeoutSec
-    @Autowired @Shared
-    CleanupManager cleanupManager
 
     def setupSpec() {
         database.resetCosts(topology.isls)  // reset cost on all links before tests
@@ -44,8 +45,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
 
         when: "Remove a-switch rules to break link between switches"
         def rulesToRemove = [isl.aswitch, isl.aswitch.reversed]
-        lockKeeper.removeFlows(rulesToRemove)
-        def isRulesRemoved = true
+        aSwitchFlows.removeFlows(rulesToRemove)
 
         then: "Status of forward and reverse ISLs becomes 'FAILED'"
         Wrappers.wait(discoveryTimeout * 1.5 + WAIT_OFFSET) {
@@ -58,26 +58,15 @@ class UnstableIslSpec extends HealthCheckSpecification {
         [isl, isl.reversed].each { assert database.getIslTimeUnstable(it) == null }
 
         when: "Add a-switch rules to restore connection"
-        lockKeeper.addFlows(rulesToRemove)
+        aSwitchFlows.addFlows(rulesToRemove)
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
             assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
         }
-        isRulesRemoved = false
 
         then: "Isl is not being 'unstable'"
         [isl, isl.reversed].each { assert database.getIslTimeUnstable(it) == null }
-
-        cleanup:
-        if (isl && isRulesRemoved) {
-            lockKeeper.addFlows(rulesToRemove)
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                def links = northbound.getAllLinks()
-                assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
-                assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
-            }
-        }
     }
 
     @Tags(SWITCH_RECOVER_ON_FAIL)
@@ -136,19 +125,16 @@ class UnstableIslSpec extends HealthCheckSpecification {
         def currentCostOfIsl = northbound.getLink(islToUpdate).cost
         def addition = (costOfUnstablePath - costOfStablePath) > 0 ? costOfUnstablePath - costOfStablePath - 1 :
                 costOfStablePath - costOfUnstablePath + 1
-        def newCost = (addition + currentCostOfIsl).toString()
-        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,
-                {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
-        northbound.updateLinkProps([islUtils.toLinkProps(islToUpdate, ["cost": newCost])])
+        def newCost = addition + currentCostOfIsl
+        pathHelper.updateIslsCost([islToUpdate], newCost)
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(islToUpdate).cost == newCost.toInteger() }
 
         when: "Create a flow"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(switchPair)
 
         then: "Flow is created on the stable path(secondPath)"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) == secondPath
+            assert flow.retrieveAllEntityPaths().getPathNodes() == secondPath
         }
 
         when: "Mark first path as stable(update the 'time_unstable' field in db)"
@@ -157,14 +143,14 @@ class UnstableIslSpec extends HealthCheckSpecification {
 
         and: "Reroute the flow"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            with(northboundV2.rerouteFlow(flow.flowId)) {
+            with(flow.reroute()) {
                 it.rerouted
             }
         }
 
         then: "Flow is rerouted"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) == firstPath
+            assert flow.retrieveAllEntityPaths().getPathNodes() == firstPath
         }
     }
 }

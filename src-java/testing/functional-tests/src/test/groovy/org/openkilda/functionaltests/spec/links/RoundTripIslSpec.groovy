@@ -3,16 +3,12 @@ package org.openkilda.functionaltests.spec.links
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.model.SwitchFeature
-import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.See
-import spock.lang.Shared
 
 import java.util.concurrent.TimeUnit
 
@@ -36,13 +32,11 @@ class RoundTripIslSpec extends HealthCheckSpecification {
     /*we need this variable because it takes more time to DEACTIVATE a switch
     via the 'knockoutSwitch' method on the stage env*/
     Integer customWaitOffset = WAIT_OFFSET * 4
-    @Autowired @Shared
-    CleanupManager cleanupManager
+
 
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Isl with round-trip properly changes status after port events(#descr)"() {
         given: "Round-trip ISL with a-switch"
-        def cleanupActions = []
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort &&
                 [it.srcSwitch, it.dstSwitch].every { it.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD) }
         }
@@ -53,9 +47,7 @@ class RoundTripIslSpec extends HealthCheckSpecification {
         islHelper.breakIsl(isl)
 
         and: "Port up event happens, but traffic goes only in one direction"
-        lockKeeper.removeFlows([isl.aswitch])
-        cleanupActions << { lockKeeper.addFlows([isl.aswitch]) }
-        cleanupActions.pop().call() //antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        aSwitchFlows.removeFlows([isl.aswitch])
 
         then: "ISL is not getting discovered"
         TimeUnit.SECONDS.sleep(discoveryInterval + 2)
@@ -63,7 +55,7 @@ class RoundTripIslSpec extends HealthCheckSpecification {
         northbound.getLink(isl.reversed).state == FAILED
 
         when: "Traffic starts to flow in both directions"
-        cleanupActions.pop().call() //lockKeeper.addFlows([isl.aswitch])
+        aSwitchFlows.addFlows([isl.aswitch])
 
         then: "ISL gets discovered"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -73,16 +65,6 @@ class RoundTripIslSpec extends HealthCheckSpecification {
             assert fw.actualState == DISCOVERED
             assert rv.state == DISCOVERED
             assert rv.actualState == DISCOVERED
-        }
-
-        cleanup:
-        cleanupActions.each { it() }
-        isl && Wrappers.wait(WAIT_OFFSET) {
-            def allLinks = northbound.getAllLinks()
-            assert islUtils.getIslInfo(allLinks, isl).get().state == DISCOVERED
-            assert islUtils.getIslInfo(allLinks, isl.reversed).get().state == DISCOVERED
-            assert islUtils.getIslInfo(allLinks, isl).get().roundTripStatus == DISCOVERED
-            assert islUtils.getIslInfo(allLinks, isl.reversed).get().roundTripStatus == DISCOVERED
         }
 
         where:
@@ -183,7 +165,6 @@ round trip latency rule is removed on the dst switch"() {
 
         when: "Delete ROUND_TRIP_LATENCY_RULE_COOKIE on the dst switch"
         switchHelper.deleteSwitchRules(dstSw.dpId, DeleteRulesAction.REMOVE_ROUND_TRIP_LATENCY)
-        def isRoundTripRuleDeleted = true
         Wrappers.wait(RULES_DELETION_TIME) {
             assert switchHelper.validateAndCollectFoundDiscrepancies(dstSw.dpId).get().rules.missing.size() == 1
         }
@@ -220,7 +201,6 @@ round trip latency rule is removed on the dst switch"() {
 
         when: "Install ROUND_TRIP_LATENCY_RULE_COOKIE on the dst switch"
         northbound.installSwitchRules(dstSw.dpId, InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY)
-        isRoundTripRuleDeleted = false
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             assert !switchHelper.validateAndCollectFoundDiscrepancies(dstSw.dpId).isPresent()
         }
@@ -230,9 +210,6 @@ round trip latency rule is removed on the dst switch"() {
             [roundTripIsl, roundTripIsl.reversed].each {
                 assert northbound.getLink(it).roundTripStatus == DISCOVERED }
         }
-
-        cleanup:
-        isRoundTripRuleDeleted && northbound.installSwitchRules(dstSw.dpId, InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY)
     }
 
     @Tags([SMOKE_SWITCHES])
@@ -244,9 +221,7 @@ round trip latency rule is removed on the dst switch"() {
         } ?: assumeTrue(false, "Wasn't able to find a suitable link")
 
         when: "Disable portDiscovery on the srcPort"
-        northboundV2.updatePortProperties(roundTripIsl.srcSwitch.dpId, roundTripIsl.srcPort,
-                new PortPropertiesDto(discoveryEnabled: false))
-        def portDiscoveryIsEnabledOnSrcPort = false
+        switchHelper.setPortDiscovery(roundTripIsl.srcSwitch.dpId, roundTripIsl.srcPort, false)
 
         then: "Isl is still DISCOVERED"
         Wrappers.wait(WAIT_OFFSET) {
@@ -260,9 +235,7 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Disable portDiscovery property on the dstPort"
-        northboundV2.updatePortProperties(roundTripIsl.dstSwitch.dpId, roundTripIsl.dstPort,
-                new PortPropertiesDto(discoveryEnabled: false))
-        def portDiscoveryIsEnabledOnDstPort = false
+        switchHelper.setPortDiscovery(roundTripIsl.dstSwitch.dpId, roundTripIsl.dstPort,false)
 
         then: "Status of the link is changed to FAILED"
         //don't need to wait discoveryTimeout, disablePortDiscovery(on src/dst sides) == portDown
@@ -277,12 +250,8 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Enable portDiscovery on the src/dst ports"
-        northboundV2.updatePortProperties(roundTripIsl.srcSwitch.dpId, roundTripIsl.srcPort,
-                new PortPropertiesDto(discoveryEnabled: true))
-        northboundV2.updatePortProperties(roundTripIsl.dstSwitch.dpId, roundTripIsl.dstPort,
-                new PortPropertiesDto(discoveryEnabled: true))
-        portDiscoveryIsEnabledOnSrcPort = true
-        portDiscoveryIsEnabledOnDstPort = true
+        switchHelper.setPortDiscovery(roundTripIsl.srcSwitch.dpId, roundTripIsl.srcPort, true)
+        switchHelper.setPortDiscovery(roundTripIsl.dstSwitch.dpId, roundTripIsl.dstPort, true)
 
         then: "ISL is rediscovered"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -293,16 +262,6 @@ round trip latency rule is removed on the dst switch"() {
             assert islInfoForward.actualState == DISCOVERED
             assert islInfoReverse.state == DISCOVERED
             assert islInfoReverse.actualState == DISCOVERED
-        }
-
-        cleanup:
-        !portDiscoveryIsEnabledOnSrcPort && northboundV2.updatePortProperties(roundTripIsl.srcSwitch.dpId,
-                roundTripIsl.srcPort, new PortPropertiesDto(discoveryEnabled: true))
-        !portDiscoveryIsEnabledOnDstPort && northboundV2.updatePortProperties(roundTripIsl.dstSwitch.dpId,
-                roundTripIsl.dstPort, new PortPropertiesDto(discoveryEnabled: true))
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert islUtils.getIslInfo(roundTripIsl).get().state == DISCOVERED
-            assert islUtils.getIslInfo(roundTripIsl.reversed).get().state == DISCOVERED
         }
     }
 
@@ -323,9 +282,7 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Disable portDiscovery on the srcPort"
-        northboundV2.updatePortProperties(roundTripIsl.srcSwitch.dpId, roundTripIsl.srcPort,
-                new PortPropertiesDto(discoveryEnabled: false))
-        def portDiscoveryIsEnabledOnSrcPort = false
+        switchHelper.setPortDiscovery(roundTripIsl.srcSwitch.dpId, roundTripIsl.srcPort, false)
 
         and: "Revive the ISL back (bring switch port up)"
         islHelper.restoreIsl(roundTripIsl)
@@ -335,9 +292,7 @@ round trip latency rule is removed on the dst switch"() {
 //        switchHelper.synchronizeAndGetFixedEntries([roundTripIsl.srcSwitch, roundTripIsl.dstSwitch]).isEmpty()
 
         when: "Disable portDiscovery on the dstPort"
-        northboundV2.updatePortProperties(roundTripIsl.dstSwitch.dpId, roundTripIsl.dstPort,
-                new PortPropertiesDto(discoveryEnabled: false))
-        def portDiscoveryIsEnabledOnDstPort = false
+        switchHelper.setPortDiscovery(roundTripIsl.dstSwitch.dpId, roundTripIsl.dstPort, false)
 
         then: "The ISL is failed"
         Wrappers.wait(WAIT_OFFSET) {
@@ -347,20 +302,12 @@ round trip latency rule is removed on the dst switch"() {
         }
 
         when: "Delete the ISL without the 'force' option"
-        northbound.deleteLink(islUtils.toLinkParameters(roundTripIsl))
+        islHelper.deleteIsl(roundTripIsl)
 
         then: "The ISL is deleted"
         Wrappers.wait(WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert !islUtils.getIslInfo(links, roundTripIsl).present
-        }
-
-        cleanup:
-        if (roundTripIsl) {
-            !portDiscoveryIsEnabledOnSrcPort && northboundV2.updatePortProperties(roundTripIsl.srcSwitch.dpId,
-                    roundTripIsl.srcPort, new PortPropertiesDto(discoveryEnabled: true))
-            !portDiscoveryIsEnabledOnDstPort && northboundV2.updatePortProperties(roundTripIsl.dstSwitch.dpId,
-                    roundTripIsl.dstPort, new PortPropertiesDto(discoveryEnabled: true))
         }
     }
 }

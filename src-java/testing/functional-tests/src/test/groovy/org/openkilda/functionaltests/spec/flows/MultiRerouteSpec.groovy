@@ -1,36 +1,47 @@
 package org.openkilda.functionaltests.spec.flows
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
-import org.openkilda.testing.tools.SoftAssertionsWrapper
-
-import java.util.concurrent.TimeUnit
-
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.testing.tools.SoftAssertionsWrapper
+
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Shared
+
+import java.util.concurrent.TimeUnit
+
+
 class MultiRerouteSpec extends HealthCheckSpecification {
+
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "Simultaneous reroute of multiple flows should not oversubscribe any ISLs"() {
         given: "Many flows on the same path, with alt paths available"
         def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(3).first()
-        List<FlowRequestV2> flows = []
+        List<FlowExtended> flows = []
         def currentPath = switchPair.paths.first()
         switchPair.paths.findAll { it != currentPath }.each { pathHelper.makePathMorePreferable(currentPath, it) }
         30.times {
-            def flow = flowHelperV2.randomFlow(switchPair, false, flows)
-            flow.maximumBandwidth = 10000
-            flowHelperV2.addFlow(flow)
+            // do not use busyEndpoints argument here since the flows are not full-port flows, all flows are tagged
+            def flow = flowFactory.getBuilder(switchPair, false)
+                    .withBandwidth(10000)
+                    .build().create()
             flows << flow
         }
         //ensure all flows are on the same path
         flows[1..-1].each {
-            assert pathHelper.convert(northbound.getFlowPath(it.flowId)) == currentPath
+            assert it.retrieveAllEntityPaths().getPathNodes() == currentPath
         }
 
         when: "Make another path more preferable"
@@ -67,10 +78,10 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         wait(WAIT_OFFSET * 3) {
             def assertions = new SoftAssertionsWrapper()
             flowsOnPrefPath = flows.findAll {
-                pathHelper.convert(northbound.getFlowPath(it.flowId)) == prefPath
+                it.retrieveAllEntityPaths().getPathNodes() == prefPath
             }
             flowsOnPrefPath.each { flow ->
-                assertions.checkSucceeds { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
+                assertions.checkSucceeds { assert flow.retrieveFlowStatus().status == FlowState.UP }
             }
             assertions.checkSucceeds { assert flowsOnPrefPath.size() == halfOfFlows.size() }
             assertions.verify()
@@ -81,8 +92,8 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         wait(WAIT_OFFSET * 2) {
             def assertions = new SoftAssertionsWrapper()
             restFlows.each { flow ->
-                assertions.checkSucceeds { assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
-                assertions.checkSucceeds { assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) != prefPath }
+                assertions.checkSucceeds { assert flow.retrieveFlowStatus().status == FlowState.UP }
+                assertions.checkSucceeds { assert flow.retrieveAllEntityPaths().getPathNodes() != prefPath }
             }
             assertions.verify()
         }

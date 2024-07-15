@@ -4,6 +4,7 @@ import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats
 import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2
+import org.openkilda.northbound.dto.v2.flows.FlowPathV2.PathNodeV2
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.northbound.payloads.PathDto
@@ -26,12 +27,12 @@ This class has to replace *PathHelper in future
 class Path {
     PathNodes nodes
     TopologyDefinition topologyDefinition
-    Long bandwidth;
-    Long latency;
-    Long latencyNs;
-    Long latencyMs;
-    Boolean isBackupPath;
-    Path protectedPath;
+    Long bandwidth
+    Long latency
+    Long latencyNs
+    Long latencyMs
+    Boolean isBackupPath
+    Path protectedPath
 
     Path(PathDto pathDto, TopologyDefinition topologyDefinition) {
         this.nodes = new PathNodes(pathDto.nodes)
@@ -61,7 +62,8 @@ class Path {
     }
 
     List<Isl> getInvolvedIsls() {
-        def isls = topologyDefinition.getIsls() + topologyDefinition.getIsls().collect { it.reversed }
+        def isls = (topologyDefinition.getIsls() + topologyDefinition.getIsls().collect { it.reversed })
+                .findAll { it.srcSwitch && it.dstSwitch }
         nodes.getNodes().collate(2, 1, false).collect { List<FlowPathV2.PathNodeV2> pathNodes ->
             isls.find {
                 it.srcSwitch.dpId == pathNodes[0].switchId &&
@@ -84,7 +86,12 @@ class Path {
     }
 
     List<SwitchId> getInvolvedSwitches() {
-        nodes.nodes.switchId
+        nodes.nodes.switchId.unique()
+    }
+
+    List<SwitchId> getTransitInvolvedSwitches() {
+        List<SwitchId> switches = getInvolvedSwitches()
+        switches.size() > 2 ? switches[1..-2] : []
     }
 
     OverlappingSegmentsStats overlappingSegmentStats(List<Path> comparedPath) {
@@ -98,5 +105,9 @@ class Path {
                 intersectingSwitchSize,
                 intersectingIslSize ? intersectingIslSize / basePathIsls.size() * 100 as int : 0,
                 intersectingSwitchSize / basePathSwitches.size() * 100 as int,)
+    }
+
+    List<PathNodeV2> retrieveNodes() {
+        nodes.getNodes()
     }
 }

@@ -63,18 +63,21 @@ public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEve
 
     @Override
     public void sendMessageAndTrack(String topic, Message message) {
-        produce(encode(topic, message), new SendStatusCallback(this, topic, message));
+        ProducerRecord<String, String> record = encode(topic, message);
+        produce(record, new SendStatusCallback(this, topic, message, record.value()));
     }
 
     @Override
     public void sendMessageAndTrack(String topic, String key, Message message) {
-        produce(encode(topic, key, message), new SendStatusCallback(this, topic, message));
+        ProducerRecord<String, String> record = encode(topic, key, message);
+        produce(record, new SendStatusCallback(this, topic, message, record.value()));
     }
 
     @Override
     public void sendMessageAndTrack(String topic, String key, AbstractMessage message) {
-        produce(encode(topic, key, message), new SendStatusCallback(this, topic,
-                message.getMessageContext().getCorrelationId()));
+        ProducerRecord<String, String> record = encode(topic, key, message);
+        produce(record, new SendStatusCallback(this, topic,
+                message.getMessageContext().getCorrelationId(), record.value()));
     }
 
     @Override
@@ -87,7 +90,8 @@ public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEve
     @Override
     public void sendMessageAndTrackWithZk(String topic, Message message) {
         if (active.get()) {
-            produce(encode(topic, message), new SendStatusCallback(this, topic, message));
+            ProducerRecord<String, String> record = encode(topic, message);
+            produce(record, new SendStatusCallback(this, topic, message, record.value()));
         } else {
             logger.debug("ZooKeeper signal is not START");
         }
@@ -96,7 +100,8 @@ public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEve
     @Override
     public void sendMessageAndTrackWithZk(String topic, String key, Message message) {
         if (active.get()) {
-            produce(encode(topic, key, message), new SendStatusCallback(this, topic, message));
+            ProducerRecord<String, String> record = encode(topic, key, message);
+            produce(record, new SendStatusCallback(this, topic, message, record.value()));
         } else {
             logger.debug("ZooKeeper signal is not START");
         }
@@ -170,19 +175,22 @@ public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEve
         private final String topic;
         private final String correlationId;
         private final Message message;
+        private final String messageJson;
 
-        SendStatusCallback(KafkaProducerService service, String topic, String correlationId) {
+        SendStatusCallback(KafkaProducerService service, String topic, String correlationId, String messageJson) {
             this.service = service;
             this.topic = topic;
             this.correlationId = correlationId;
             this.message = null;
+            this.messageJson = messageJson;
         }
 
-        SendStatusCallback(KafkaProducerService service, String topic, Message message) {
+        SendStatusCallback(KafkaProducerService service, String topic, Message message, String messageJson) {
             this.service = service;
             this.topic = topic;
             this.correlationId = message.getCorrelationId();
             this.message = message;
+            this.messageJson = messageJson;
         }
 
         @Override
@@ -203,8 +211,8 @@ public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEve
             }
             service.failedSendMessageCounter++;
             logger.error(
-                    "Fail to send message(correlationId=\"{}\") in kafka topic={}: {}",
-                    correlationId, topic, exception);
+                    "Fail to send message(correlationId=\"{}\") in kafka topic={}: Message json: {}. {}.",
+                    correlationId, topic, messageJson, exception);
         }
     }
 }

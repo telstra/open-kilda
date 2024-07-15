@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.reroute;
 import static org.openkilda.wfm.share.hubandspoke.CoordinatorBolt.FIELDS_KEY;
 import static org.openkilda.wfm.topology.reroute.bolts.FlowRerouteQueueBolt.STREAM_NORTHBOUND_ID;
 import static org.openkilda.wfm.topology.reroute.bolts.OperationQueueBolt.REROUTE_QUEUE_STREAM;
+import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_MANUAL_REROUTE_FLUSH_REQUEST_ID;
 import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_MANUAL_REROUTE_REQUEST_ID;
 import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_REROUTE_REQUEST_ID;
 import static org.openkilda.wfm.topology.reroute.bolts.TimeWindowBolt.STREAM_TIME_WINDOW_EVENT_ID;
@@ -126,8 +127,11 @@ public class RerouteTopology extends AbstractTopology<RerouteTopologyConfig> {
                 topologyConfig.getDefaultFlowPriority(),
                 topologyConfig.getMaxRetry(), rerouteTimeout);
         declareBolt(topologyBuilder, flowRerouteQueueBolt, FlowRerouteQueueBolt.BOLT_ID)
-                .fieldsGrouping(RerouteBolt.BOLT_ID, STREAM_REROUTE_REQUEST_ID, new Fields(RerouteBolt.FLOW_ID_FIELD))
+                .fieldsGrouping(RerouteBolt.BOLT_ID, STREAM_REROUTE_REQUEST_ID,
+                        new Fields(RerouteBolt.FLOW_ID_FIELD))
                 .fieldsGrouping(RerouteBolt.BOLT_ID, STREAM_MANUAL_REROUTE_REQUEST_ID,
+                        new Fields(RerouteBolt.FLOW_ID_FIELD))
+                .fieldsGrouping(RerouteBolt.BOLT_ID, STREAM_MANUAL_REROUTE_FLUSH_REQUEST_ID,
                         new Fields(RerouteBolt.FLOW_ID_FIELD))
                 .fieldsGrouping(OperationQueueBolt.BOLT_ID, REROUTE_QUEUE_STREAM,
                         new Fields(OperationQueueBolt.FLOW_ID_FIELD))

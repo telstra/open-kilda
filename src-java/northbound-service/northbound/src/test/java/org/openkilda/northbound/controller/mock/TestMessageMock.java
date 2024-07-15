@@ -27,6 +27,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
+import org.openkilda.messaging.command.flow.FlowRerouteFlushRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -47,6 +48,7 @@ import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.openkilda.messaging.payload.flow.FlowFlushReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -115,6 +117,9 @@ public class TestMessageMock implements MessagingChannel {
             .description(FLOW_ID)
             .status(FlowState.UP.getState())
             .build();
+
+    public static final FlowFlushReroutePayload FLOW_FLUSH_RESPONSE_PAYLOAD =
+            new FlowFlushReroutePayload(FLOW_ID, true);
 
     public static final SwapFlowPayload firstSwapFlow = SwapFlowPayload.builder()
             .flowId(FLOW_ID)
@@ -186,6 +191,8 @@ public class TestMessageMock implements MessagingChannel {
             result = completedFuture(switchRulesResponse);
         } else if (data instanceof SwapFlowEndpointRequest) {
             result = completedFuture(bulkFlowResponse);
+        } else if (data instanceof FlowRerouteFlushRequest) {
+            result = completedFuture(flowResponse);
         } else {
             return null;
         }

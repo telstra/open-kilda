@@ -21,6 +21,7 @@ import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
+import org.openkilda.messaging.payload.flow.FlowFlushReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
@@ -240,6 +241,19 @@ public class FlowController extends BaseController {
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<FlowReroutePayload> rerouteFlow(@PathVariable("flow_id") String flowId) {
         return flowService.rerouteFlow(flowId);
+    }
+
+    /**
+     * Flush rerouting when stuck in the progress queue. For Internal Use
+     *
+     * @param flowId id of flow to be flushed.
+     * @return flow payload with updated path.
+     */
+    @ApiOperation(value = "Reroute flow", response = FlowFlushReroutePayload.class)
+    @PatchMapping(path = "/{flow_id}/reroute/flush")
+    @ResponseStatus(HttpStatus.OK)
+    public CompletableFuture<FlowFlushReroutePayload> flushRerouteFlow(@PathVariable("flow_id") String flowId) {
+        return flowService.flushRerouteFlow(flowId);
     }
 
     /**

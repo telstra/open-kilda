@@ -1,29 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import com.google.common.collect.Sets
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.MeterId
-import org.openkilda.model.SwitchId
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
-import org.openkilda.rulemanager.FlowSpeakerData
-import org.openkilda.rulemanager.Instructions
-import org.openkilda.rulemanager.MeterFlag
-import org.openkilda.rulemanager.MeterSpeakerData
-import org.openkilda.rulemanager.OfVersion
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.See
-import spock.lang.Shared
-
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -40,6 +16,35 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
+import org.openkilda.model.MeterId
+import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.rulemanager.FlowSpeakerData
+import org.openkilda.rulemanager.Instructions
+import org.openkilda.rulemanager.MeterFlag
+import org.openkilda.rulemanager.MeterSpeakerData
+import org.openkilda.rulemanager.OfVersion
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+
+import com.google.common.collect.Sets
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
+import spock.lang.Issue
+import spock.lang.See
+import spock.lang.Shared
+
+
 @See(["https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/switch-sync",
         "https://github.com/telstra/open-kilda/blob/develop/docs/design/network-discovery/switch-FSM.png"])
 @Tags([SMOKE_SWITCHES])
@@ -51,8 +56,12 @@ class SwitchSyncSpec extends HealthCheckSpecification {
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
-    @Autowired @Shared
+    @Autowired
+    @Shared
     CleanupManager cleanupManager
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     def "Able to synchronize switch without any rule and meter discrepancies (removeExcess=#removeExcess)"() {
         given: "An active switch"
@@ -84,11 +93,11 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().nonNeighbouring().random()
 
         and: "Create an intermediate-switch flow"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(switchPair)
 
         and: "Drop all rules an meters from related switches (both default and non-default)"
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
+        List<Switch> involvedSwitches = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+                .collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique() as List<Switch>
         def involvedSwitchIds = involvedSwitches*.getDpId()
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
@@ -152,11 +161,11 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         }
     }
 
+    @Issue("Noviflow WB5164 Only: https://github.com/telstra/open-kilda/issues/5638")
     def "Able to synchronize #switchKind switch (delete excess rules and meters)"() {
         given: "Flow with intermediate switches"
         def switchPair = switchPairs.all().nonNeighbouring().random()
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(switchPair)
         def switchId = getSwitch(flow)
         def ofVersion = topology.getActiveSwitches().find{it.getDpId() == switchId}.getOfVersion()
         assert !switchHelper.synchronizeAndCollectFixedDiscrepancies(switchId).isPresent()
@@ -180,8 +189,8 @@ class SwitchSyncSpec extends HealthCheckSpecification {
                         .switchId(switchId)
                         .ofVersion(OfVersion.of(ofVersion))
                         .meterId(new MeterId(excessMeterId))
-                        .rate(flow.getMaximumBandwidth())
-                        .burst(flow.getMaximumBandwidth())
+                        .rate(flow.maximumBandwidth)
+                        .burst(flow.maximumBandwidth)
                         .flags(Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS))
                         .build()]).toJson())).get()
         Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -205,14 +214,12 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         }
 
         where:
-        switchKind | getSwitch | table
-        "source"   | { FlowRequestV2 flowRequestV2 -> flowRequestV2.getSource().getSwitchId()} | INPUT
-        "destination"| {FlowRequestV2 flowRequestV2 -> flowRequestV2.getDestination().getSwitchId()}| EGRESS
-        "transit"| {FlowRequestV2 flowRequestV2 ->
-            def allSwitches = pathHelper.getInvolvedSwitches(flowRequestV2.getFlowId()).collect {it.getDpId()}
-            def transitSwitches = allSwitches - [flowRequestV2.getDestination().getSwitchId(),
-                                                 flowRequestV2.getSource().getSwitchId()]
-            return transitSwitches.shuffled().first() }| TRANSIT
+        switchKind       | getSwitch                                                          | table
+        "source"         | { FlowExtended flowExtended -> flowExtended.source.switchId }      | INPUT
+        "destination"    | { FlowExtended flowExtended -> flowExtended.destination.switchId } | EGRESS
+        "transit"        | { FlowExtended flowExtended -> return flowExtended.retrieveAllEntityPaths()
+                .flowPath.path.forward.getTransitInvolvedSwitches().shuffled().first()
+        }                                                                                     | TRANSIT
     }
 
     def "Able to synchronize switch with 'vxlan' rule(install missing rules and meters)"() {
@@ -220,13 +227,14 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().nonNeighbouring().withBothSwitchesVxLanEnabled().random()
 
         and: "Create a flow with vxlan encapsulation"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.encapsulationType = FlowEncapsulationType.VXLAN
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair)
+                .withEncapsulationType(FlowEncapsulationType.VXLAN)
+                .build().create()
 
         and: "Reproduce situation when switches have missing rules and meters"
-        def flowInfoFromDb = database.getFlow(flow.flowId)
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
+        def flowInfoFromDb = flow.retrieveDetailsFromDB()
+        List<Switch> involvedSwitches = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+                .collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique() as List<Switch>
         def involvedSwitchIds = involvedSwitches*.getDpId()
         def transitSwitchIds = involvedSwitches[1..-2]*.dpId
         def cookiesMap = involvedSwitches.collectEntries { sw ->
@@ -248,11 +256,11 @@ class SwitchSyncSpec extends HealthCheckSpecification {
                 def swProps = switchHelper.getCachedSwProps(it.dpId)
                 def switchIdInSrcOrDst = (it.dpId in [switchPair.src.dpId, switchPair.dst.dpId])
                 def defaultAmountOfFlowRules = 2 // ingress + egress
-                def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
-                if (swProps.server42FlowRtt) {
-                    if ((flow.destination.getSwitchId() == it.dpId && flow.destination.vlanId) || (
-                            flow.source.getSwitchId() == it.dpId && flow.source.vlanId))
-                        amountOfServer42Rules += 1
+                def amountOfServer42Rules = 0
+                if(swProps.server42FlowRtt && it.dpId in [switchPair.src.dpId, switchPair.dst.dpId]) {
+                    amountOfServer42Rules +=1
+                    it.dpId == switchPair.src.dpId && flow.source.vlanId && ++amountOfServer42Rules
+                    it.dpId == switchPair.dst.dpId && flow.destination.vlanId && ++amountOfServer42Rules
                 }
                 def rulesCount = defaultAmountOfFlowRules + amountOfServer42Rules +
                         (switchIdInSrcOrDst ? 1 : 0)
@@ -357,8 +365,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
     def "Able to synchronize misconfigured flow meter"() {
         given: "An active switch with flow on it"
         def sw = topology.activeSwitches.first()
-        def flow = flowHelperV2.singleSwitchFlow(sw)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(sw, sw)
 
         when: "Update flow's meter"
         def flowMeterIdToManipulate = northbound.getAllMeters(sw.dpId).meterEntries.find {
@@ -369,10 +376,10 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         lockKeeper.updateBurstSizeAndRate(sw, flowMeterIdToManipulate.meterId, newBurstSize, newRate)
 
         then: "Flow is not valid"
-        def responseValidateFlow = northbound.validateFlow(flow.flowId).findAll { !it.discrepancies.empty }*.discrepancies
-        assert responseValidateFlow.size() == 1
-        def meterRateDiscrepancies = responseValidateFlow[0].find { it.field.toString() == "meterRate" }
-        def meterBurstSizeDiscrepancies = responseValidateFlow[0].find { it.field.toString() == "meterBurstSize" }
+        def flowDiscrepancies = flow.validateAndCollectDiscrepancies().values()
+        assert flowDiscrepancies.size() == 1
+        def meterRateDiscrepancies = flowDiscrepancies[0].find { it.field.toString() == "meterRate" }
+        def meterBurstSizeDiscrepancies = flowDiscrepancies[0].find { it.field.toString() == "meterBurstSize" }
         meterRateDiscrepancies.actualValue == newRate.toString()
         meterRateDiscrepancies.expectedValue == flowMeterIdToManipulate.rate.toString()
         meterBurstSizeDiscrepancies.actualValue == newBurstSize.toString()
@@ -405,6 +412,6 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is valid"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
     }
 }

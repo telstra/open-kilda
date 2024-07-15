@@ -1,26 +1,24 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static groovyx.gpars.GParsExecutorsPool.withPool
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.helpers.SwitchHelper.getRandomAvailablePort
+import static org.openkilda.messaging.payload.flow.FlowState.UP
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.messaging.payload.flow.FlowPathPayload
-import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.helpers.model.FlowEntityPath
+import org.openkilda.functionaltests.helpers.model.Path
+
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
-
-import static groovyx.gpars.GParsExecutorsPool.withPool
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.UPDATE_ACTION
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/pce-diverse-flows")
 @Narrative("""
@@ -45,8 +43,9 @@ class FlowDiversitySpec extends HealthCheckSpecification {
     @Value('${diversity.switch.cost}')
     int diversitySwitchCost
 
-    @Autowired @Shared
-    CleanupManager cleanupManager
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     @Tags(SMOKE)
     def "Able to create diverse flows"() {
@@ -54,45 +53,52 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(3).random()
 
         when: "Create three flows with diversity enabled"
-        def flow1 = flowHelperV2.randomFlow(switchPair, false)
-        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.flowId }
-        def flow3 = flowHelperV2.randomFlow(switchPair, false, [flow1, flow2]).tap { it.diverseFlowId = flow2.flowId }
-        Map<SwitchId, FlowResponseV2> responseMap = [flow1, flow2, flow3].collectEntries{ [(it.flowId): flowHelperV2.addFlow(it)] }
+        def flow1 = flowFactory.getBuilder(switchPair, false).build()
+                .sendCreateRequest()
+
+        def flow2 = flowFactory.getBuilder(switchPair, false, flow1.occupiedEndpoints())
+                .withDiverseFlow(flow1.flowId).build()
+                .sendCreateRequest()
+
+        def flow3 = flowFactory.getBuilder(switchPair, false, (flow1.occupiedEndpoints() + flow2.occupiedEndpoints()))
+                .withDiverseFlow(flow2.flowId).build()
+                .sendCreateRequest()
 
         then: "Flow create response contains information about diverse flow"
-        !responseMap[flow1.flowId].diverseWith
-        responseMap[flow2.flowId].diverseWith.sort() == [flow1.flowId]
-        responseMap[flow3.flowId].diverseWith.sort() == [flow1.flowId, flow2.flowId].sort()
+        !flow1.diverseWith
+        flow2.diverseWith.sort() == [flow1.flowId]
+        flow3.diverseWith.sort() == [flow1.flowId, flow2.flowId].sort()
+        [flow1, flow2, flow3].each { flow -> flow.waitForBeingInState(UP) }
 
         and: "All flows have diverse flow IDs in response"
-        northboundV2.getFlow(flow1.flowId).diverseWith.sort() == [flow2.flowId, flow3.flowId].sort()
-        northboundV2.getFlow(flow2.flowId).diverseWith.sort() == [flow1.flowId, flow3.flowId].sort()
-        northboundV2.getFlow(flow3.flowId).diverseWith.sort() == [flow1.flowId, flow2.flowId].sort()
+        flow1.retrieveDetails().diverseWith.sort() == [flow2.flowId, flow3.flowId].sort()
+        flow2.retrieveDetails().diverseWith.sort() == [flow1.flowId, flow3.flowId].sort()
+        flow3.retrieveDetails().diverseWith.sort() == [flow1.flowId, flow2.flowId].sort()
 
         and: "All flows have different paths"
-        def allInvolvedIsls = [flow1, flow2, flow3].collectMany {
-            pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(it.flowId)))
+        def allInvolvedIsls = [flow1, flow2, flow3].collectMany { flow ->
+           flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
         and: "Flows' histories contain 'diverseGroupId' information"
-        [flow2, flow3].each {//flow1 had no diversity at the time of creation
-            assert flowHelper.getEarliestHistoryEntryByAction(it.flowId, CREATE_ACTION).dumps
+        [flow2, flow3].each { flow ->//flow1 had no diversity at the time of creation
+            assert flow.retrieveFlowHistory().getEntriesByType(FlowActionType.CREATE).first().dumps
                     .find { it.type == "stateAfter" }?.diverseGroupId
         }
 
         when: "Delete flows"
-        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
+        [flow1, flow2, flow3].each {flow -> flow.delete() }
 
         then: "Flows' histories contain 'diverseGroupId' information in 'delete' operation"
-        [flow1, flow2].each {
-            verifyAll(flowHelper.getEarliestHistoryEntryByAction(it.flowId, DELETE_ACTION).dumps) {
+        [flow1, flow2].each {flow ->
+            verifyAll(flow.retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).first().dumps) {
                 it.find { it.type == "stateBefore" }?.diverseGroupId
                 !it.find { it.type == "stateAfter" }?.diverseGroupId
             }
         }
         //except flow3, because after deletion of flow1/flow2 flow3 is no longer in the diversity group
-        verifyAll(flowHelper.getEarliestHistoryEntryByAction(flow3.flowId, DELETE_ACTION).dumps) {
+        verifyAll(flow3.retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).first().dumps) {
             !it.find { it.type == "stateBefore" }?.diverseGroupId
             !it.find { it.type == "stateAfter" }?.diverseGroupId
         }
@@ -103,47 +109,47 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(3).random()
 
         and: "Create three flows"
-        def flow1 = flowHelperV2.randomFlow(switchPair, false)
-        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1])
-        def flow3 = flowHelperV2.randomFlow(switchPair, false, [flow1, flow2])
-        [flow1, flow2, flow3].each { flowHelperV2.addFlow(it) }
+        def flow1 = flowFactory.getRandom(switchPair, false)
+        def flow2 = flowFactory.getRandom(switchPair, false, UP, flow1.occupiedEndpoints())
+        def flow3 = flowFactory.getRandom(switchPair, false, UP, (flow1.occupiedEndpoints() + flow2.occupiedEndpoints()))
 
-        def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect {
-            PathHelper.convert(northbound.getFlowPath(it.flowId))
+        def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect {flow ->
+            flow.retrieveAllEntityPaths()
         }
-        assert [flow1Path, flow2Path, flow3Path].toSet().size() == 1
+        assert [flow1Path.getPathNodes(), flow2Path.getPathNodes(), flow3Path.getPathNodes()].toSet().size() == 1
 
         when: "Update the second flow to become diverse"
-        FlowResponseV2 updateResponse = flowHelperV2.updateFlow(flow2.flowId,
-                                                                flow2.tap { it.diverseFlowId = flow1.flowId })
+        def updatedFlow2 = flow2.update(flow2.deepCopy().tap { it.diverseWith = [flow1.flowId]})
 
         and: "Second flow's history contains 'groupId' information"
-        verifyAll(flowHelper.getEarliestHistoryEntryByAction(flow2.flowId, UPDATE_ACTION).dumps) {
-            !it.find { it.type == "stateBefore" }?.diverseGroupId
-            it.find { it.type == "stateAfter" }?.diverseGroupId
+        def historyEvent = updatedFlow2.waitForHistoryEvent(FlowActionType.UPDATE)
+        verifyAll {
+            !historyEvent.dumps.find { it.type == "stateBefore" }?.diverseGroupId
+            historyEvent.dumps.find { it.type == "stateAfter" }?.diverseGroupId
         }
 
         then: "Update response contains information about diverse flow"
-        updateResponse.diverseWith.sort() == [flow1.flowId]
+        updatedFlow2.diverseWith.sort() == [flow1.flowId]
 
         and: "The flow became diverse and changed the path"
-        def flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.flowId))
-        flow2PathUpdated != flow2Path
+        def flow2PathUpdated = updatedFlow2.retrieveAllEntityPaths()
+        flow2PathUpdated.getPathNodes() != flow2Path.getPathNodes()
 
         and: "All flows except last one have the 'diverse_with' field"
-        northboundV2.getFlow(flow1.flowId).diverseWith == [flow2.flowId].toSet()
-        northboundV2.getFlow(flow2.flowId).diverseWith == [flow1.flowId].toSet()
-        !northboundV2.getFlow(flow3.flowId).diverseWith
+        flow1.retrieveDetails().diverseWith == [flow2.flowId].toSet()
+        flow2.retrieveDetails().diverseWith == [flow1.flowId].toSet()
+        !flow3.retrieveDetails().diverseWith
 
         when: "Update the third flow to become diverse"
-        flowHelperV2.updateFlow(flow3.flowId, flow3.tap { it.diverseFlowId = flow2.flowId })
+        def updatedFlow3 = flow3.update(flow3.deepCopy().tap { it.diverseWith = [flow2.flowId]})
+        updatedFlow3.waitForHistoryEvent(FlowActionType.UPDATE)
 
         then: "The flow became diverse and all flows have different paths"
-        def flow3PathUpdated = PathHelper.convert(northbound.getFlowPath(flow3.flowId))
-        [flow1Path, flow2PathUpdated, flow3PathUpdated].toSet().size() == 3
+        def flow3PathUpdated = updatedFlow3.retrieveAllEntityPaths()
+        [flow1Path.getPathNodes(), flow2PathUpdated.getPathNodes(), flow3PathUpdated.getPathNodes()].toSet().size() == 3
 
-        def allInvolvedIsls = [flow1Path, flow2PathUpdated, flow3PathUpdated].collectMany {
-            pathHelper.getInvolvedIsls(it)
+        def allInvolvedIsls = [flow1Path, flow2PathUpdated, flow3PathUpdated].collectMany { path ->
+            path.flowPath.getInvolvedIsls()
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
     }
@@ -154,49 +160,54 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(3).random()
 
         and: "Create three flows with diversity enabled"
-        def flow1 = flowHelperV2.randomFlow(switchPair, false)
-        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.flowId }
-        def flow3 = flowHelperV2.randomFlow(switchPair, false, [flow1, flow2]).tap { it.diverseFlowId = flow2.flowId }
-        [flow1, flow2, flow3].each { flowHelperV2.addFlow(it) }
+        def flow1 = flowFactory.getRandom(switchPair, false)
+        def flow2 = flowFactory.getBuilder(switchPair, false, flow1.occupiedEndpoints())
+                .withDiverseFlow(flow1.flowId).build()
+                .create()
+        def flow3 = flowFactory.getBuilder(switchPair, false, (flow1.occupiedEndpoints() + flow2.occupiedEndpoints()))
+                .withDiverseFlow(flow2.flowId).build()
+                .create()
 
-        def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect {
-            PathHelper.convert(northbound.getFlowPath(it.flowId))
+        def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect {flow ->
+           flow.retrieveAllEntityPaths()
         }
-        def allInvolvedIsls = [flow1Path, flow2Path, flow3Path].collectMany { pathHelper.getInvolvedIsls(it) }
+        def allInvolvedIsls = [flow1Path, flow2Path, flow3Path].collectMany { path -> path.flowPath.getInvolvedIsls()}
         assert allInvolvedIsls.unique(false) == allInvolvedIsls
 
         and: "Flow1 path is the most preferable"
-        switchPair.paths.findAll { it != flow1Path }
-                .each { pathHelper.makePathMorePreferable(flow1Path, it) }
+        switchPair.paths.findAll { it != flow1Path.getPathNodes() }
+                .each { pathHelper.makePathMorePreferable(flow1Path.getPathNodes(), it) }
 
         when: "Update the second flow to become not diverse"
-        flowHelperV2.updateFlow(flow2.flowId, flow2.tap { it.diverseFlowId = "" })
+        flow2.update(flow2.deepCopy().tap { it.diverseWith = [""]})
+        flow2.waitForHistoryEvent(FlowActionType.UPDATE)
 
         then: "The flow became not diverse and rerouted to the more preferable path (path of the first flow)"
-        def flow2PathUpdated = PathHelper.convert(northbound.getFlowPath(flow2.flowId))
-        flow2PathUpdated != flow2Path
-        flow2PathUpdated == flow1Path
+        def flow2PathUpdated = flow2.retrieveAllEntityPaths()
+        flow2PathUpdated.getPathNodes() != flow2Path.getPathNodes()
+        flow2PathUpdated.getPathNodes() == flow1Path.getPathNodes()
 
         and: "The 'diverse_with' field is removed"
-        !northboundV2.getFlow(flow2.flowId).diverseWith
+        !flow2.retrieveDetails().diverseWith
 
         and: "The flow's history reflects the change of 'groupId' field"
-        verifyAll(flowHelper.getEarliestHistoryEntryByAction(flow2.flowId, UPDATE_ACTION).dumps) {
+        verifyAll(flow2.retrieveFlowHistory().getEntriesByType(FlowActionType.UPDATE).first().dumps) {
             //https://github.com/telstra/open-kilda/issues/3807
 //            it.find { it.type == "stateBefore" }.groupId
             !it.find { it.type == "stateAfter" }.diverseGroupId
         }
 
         when: "Update the third flow to become not diverse"
-        flowHelperV2.updateFlow(flow3.flowId, flow3.tap { it.diverseFlowId = "" })
+        flow3.update(flow3.deepCopy().tap { it.diverseWith = [""]})
+        flow3.waitForHistoryEvent(FlowActionType.UPDATE)
 
         then: "The flow became not diverse and rerouted to the more preferable path (path of the first flow)"
-        def flow3PathUpdated = PathHelper.convert(northbound.getFlowPath(flow3.flowId))
-        flow3PathUpdated != flow3Path
-        flow3PathUpdated == flow1Path
+        def flow3PathUpdated = flow3.retrieveAllEntityPaths()
+        flow3PathUpdated.getPathNodes() != flow3Path.getPathNodes()
+        flow3PathUpdated.getPathNodes() == flow1Path.getPathNodes()
 
         and: "The 'diverse_with' field is removed"
-        !northboundV2.getFlow(flow3.flowId).diverseWith
+        !flow3.retrieveDetails().diverseWith
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
@@ -205,9 +216,8 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "Create a flow going through these switches"
-        def flow1 = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow1)
-        def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.flowId))
+        def flow1 = flowFactory.getRandom(switchPair)
+        def flow1Path = flow1.retrieveAllEntityPaths().getPathNodes()
 
         and: "Make all alternative paths unavailable (bring ports down on the source switch)"
         def broughtDownIsls = topology.getRelatedIsls(switchPair.getSrc())
@@ -215,9 +225,10 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         islHelper.breakIsls(broughtDownIsls)
 
         when: "Create the second flow with diversity enabled"
-        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.flowId }
-        flowHelperV2.addFlow(flow2)
-        def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.flowId))
+        def flow2 = flowFactory.getBuilder(switchPair, false, flow1.occupiedEndpoints())
+                .withDiverseFlow(flow1.flowId).build()
+                .create()
+        def flow2Path = flow2.retrieveAllEntityPaths().getPathNodes()
 
         then: "The second flow is built through the same path as the first flow"
         flow2Path == flow1Path
@@ -233,43 +244,39 @@ class FlowDiversitySpec extends HealthCheckSpecification {
                 .random()
 
         and: "Create a flow going through these switches"
-        def flow1 = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow1)
-        def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.flowId))
+        def flow1 = flowFactory.getRandom(switchPair, false)
+        def flow1PathNodes = flow1.retrieveAllEntityPaths().getPathNodes()
 
         and: "Make each alternative path less preferable than the first flow path"
         def altPaths = switchPair.paths
-        altPaths.remove(flow1Path)
+        altPaths.remove(flow1PathNodes)
 
-        def flow1PathCost = pathHelper.getCost(flow1Path) + diversityIslCost + diversitySwitchCost * 2
+        def flow1PathCost = pathHelper.getCost(flow1PathNodes) + diversityIslCost + diversitySwitchCost * 2
         altPaths.each { altPath ->
             def altPathCost = pathHelper.getCost(altPath) + diversitySwitchCost * 2
             int difference = flow1PathCost - altPathCost
             def firstAltPathIsl = pathHelper.getInvolvedIsls(altPath)[0]
             int firstAltPathIslCost = database.getIslCost(firstAltPathIsl)
-            cleanupManager.addAction(DELETE_ISLS_PROPERTIES, {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
-            northbound.updateLinkProps([islUtils.toLinkProps(firstAltPathIsl,
-                    ["cost": (firstAltPathIslCost + Math.abs(difference) + 1).toString()])])
+            pathHelper.updateIslsCost([firstAltPathIsl], (firstAltPathIslCost + Math.abs(difference) + 1))
         }
 
         when: "Create the second flow with diversity enabled"
-        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.flowId }
-        flowHelperV2.addFlow(flow2)
-        def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.flowId))
+        def flow2 = flowFactory.getBuilder(switchPair, false, flow1.occupiedEndpoints())
+                .withDiverseFlow(flow1.flowId).build().create()
+        def flow2Path = flow2.retrieveAllEntityPaths()
 
         then: "The flow is built through the most preferable path (path of the first flow)"
-        flow2Path == flow1Path
+        flow2Path.getPathNodes() == flow1PathNodes
 
         when: "Create the third flow with diversity enabled"
-        def flow3 = flowHelperV2.randomFlow(switchPair, false, [flow1, flow2]).tap {
-            it.diverseFlowId = flow2.flowId
-        }
-        flowHelperV2.addFlow(flow3)
-        def flow3Path = PathHelper.convert(northbound.getFlowPath(flow3.flowId))
+        def flow3 = flowFactory.getBuilder(switchPair, false, (flow1.occupiedEndpoints() + flow2.occupiedEndpoints()))
+                .withDiverseFlow(flow2.flowId).build()
+                .create()
+        def flow3Path = flow3.retrieveAllEntityPaths()
 
         then: "The flow is built through one of alternative paths because they are preferable already"
-        def involvedIsls = [flow2Path, flow3Path].collectMany { pathHelper.getInvolvedIsls(it) }
-        flow3Path != flow2Path
+        def involvedIsls = [flow2Path, flow3Path].collectMany {path -> path.flowPath.getInvolvedIsls() }
+        flow3Path.getPathNodes() != flow2Path.getPathNodes()
         involvedIsls.unique(false) == involvedIsls
     }
 
@@ -278,15 +285,17 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(3).random()
 
         and: "Create three flows with diversity enabled"
-        def flow1 = flowHelperV2.randomFlow(switchPair, false)
-        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.flowId }
-        def flow3 = flowHelperV2.randomFlow(switchPair, false, [flow1, flow2]).tap { it.diverseFlowId = flow2.flowId }
-        [flow1, flow2, flow3].each { flowHelperV2.addFlow(it) }
+        def flow1 = flowFactory.getRandom(switchPair, false)
+        def flow2 = flowFactory.getBuilder(switchPair, false, flow1.occupiedEndpoints())
+                .withDiverseFlow(flow1.flowId).build().create()
+        def flow3 = flowFactory.getBuilder(switchPair, false, (flow1.occupiedEndpoints() + flow2.occupiedEndpoints()))
+                .withDiverseFlow(flow2.flowId).build()
+                .create()
 
         when: "Get flow path for all flows"
-        FlowPathPayload flow1Path, flow2Path, flow3Path
+        FlowEntityPath flow1Path, flow2Path, flow3Path
         withPool {
-            (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collectParallel { northbound.getFlowPath(it.flowId) }
+            (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collectParallel { flow -> flow.retrieveAllEntityPaths() }
         }
         then: "Flow path response for all flows has correct overlapping segments stats"
         verifySegmentsStats([flow1Path, flow2Path, flow3Path],
@@ -297,21 +306,22 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         given: "Two active not neighboring switches"
         def switchPair = switchPairs.all().nonNeighbouring().random()
         and: "Create a casual flow going through these switches"
-        def flow1 = flowHelperV2.randomFlow(switchPair, false)
-        flowHelperV2.addFlow(flow1)
+        def flow1 = flowFactory.getRandom(switchPair, false)
 
         and: "Create a single-switch with diversity enabled on the source switch of the first flow"
-        def flow2 = flowHelperV2.singleSwitchFlow(switchPair.src, false, [flow1]).tap { it.diverseFlowId = flow1.flowId }
-        flowHelperV2.addFlow(flow2)
+        def flow2 = flowFactory.getBuilder(switchPair.src, switchPair.src, false, flow1.occupiedEndpoints())
+                .withDiverseFlow(flow1.flowId).build()
+                .create()
 
         and: "Create a single-switch with diversity enabled on the destination switch of the first flow"
-        def flow3 = flowHelperV2.singleSwitchFlow(switchPair.dst, false, [flow1]).tap { it.diverseFlowId = flow2.flowId }
-        flowHelperV2.addFlow(flow3)
+        def flow3 = flowFactory.getBuilder(switchPair.dst, switchPair.dst, false, flow1.occupiedEndpoints())
+                .withDiverseFlow(flow2.flowId).build()
+                .create()
 
         when: "Get flow path for all flows"
-        FlowPathPayload flow1Path, flow2Path, flow3Path
+        FlowEntityPath flow1Path, flow2Path, flow3Path
         withPool {
-            (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collectParallel { northbound.getFlowPath(it.flowId) }
+            (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collectParallel { flow -> flow.retrieveAllEntityPaths() }
         }
 
         then: "Flow path response for all flows has correct overlapping segments stats"
@@ -329,25 +339,21 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def switches = topologyHelper.getSwitchTriplets().find {it.shared != it.ep1 && it.shared != it.ep2 && it.ep1 != it.ep2}
 
         and: "Create two flows starting from the same switch"
-        def flow1 = flowHelperV2.randomFlow(switches.shared, switches.ep1, false)
-        def flow2 = flowHelperV2.randomFlow(switches.shared, switches.ep2, false, [flow1])
-        withPool {
-            [flow1, flow2].eachParallel { flowHelperV2.addFlow(it) }
-        }
-        def flow1Path, flow2Path
-        withPool {
-            (flow1Path, flow2Path) = [flow1, flow2].collectParallel {
-                PathHelper.convert(northbound.getFlowPath(it.flowId))
-            }
-        }
+        def flow1 = flowFactory.getRandom(switches.shared, switches.ep1, false)
+        def flow2 = flowFactory.getRandom(switches.shared, switches.ep2, false, UP, flow1.occupiedEndpoints())
 
         when: "Update the second flow to become diverse and single-switch"
-        FlowResponseV2 updateResponse = flowHelperV2.updateFlow(flow2.flowId,
-                flow2.tap { it.diverseFlowId = flow1.flowId
-                it.destination = flowHelperV2.getFlowEndpoint(switches.shared, false)})
+       def updatedFlow2 = flow2.update(flow2.deepCopy().tap {
+            it.diverseWith = [flow1.flowId]
+            it.destination.switchId = switches.shared.dpId
+            it.destination.portNumber = getRandomAvailablePort(switches.shared, topologyDefinition, false,
+                    [flow1.source.portNumber, flow2.source.portNumber])
+        })
+        updatedFlow2.waitForHistoryEvent(FlowActionType.UPDATE)
 
         then: "Update response contains information about diverse flow"
-        updateResponse.diverseWith == [flow1.flowId] as Set
+        updatedFlow2.diverseWith == [flow1.flowId] as Set
+        updatedFlow2.source.switchId == updatedFlow2.destination.switchId
     }
 
     @Deprecated //there is a v2 version
@@ -357,34 +363,37 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(3).random()
 
         when: "Create three flows with diversity enabled"
-        def flow1 = flowHelper.randomFlow(switchPair, false)
-        def flow2 = flowHelper.randomFlow(switchPair, false, [flow1]).tap { it.diverseFlowId = flow1.id }
-        def flow3 = flowHelper.randomFlow(switchPair, false, [flow1, flow2]).tap { it.diverseFlowId = flow2.id }
-        [flow1, flow2, flow3].each { flowHelper.addFlow(it) }
+        def flow1 = flowFactory.getRandomV1(switchPair, false)
+        def flow2 = flowFactory.getBuilder(switchPair, false, flow1.occupiedEndpoints())
+                .withDiverseFlow(flow1.flowId).build()
+                .createV1()
+        def flow3 = flowFactory.getBuilder(switchPair, false, (flow1.occupiedEndpoints() + flow2.occupiedEndpoints()))
+                .withDiverseFlow(flow2.flowId).build()
+                .createV1()
 
         then: "All flows have diverse flow IDs in response"
-        northbound.getFlow(flow1.id).diverseWith.sort() == [flow2.id, flow3.id].sort()
-        northbound.getFlow(flow2.id).diverseWith.sort() == [flow1.id, flow3.id].sort()
-        northbound.getFlow(flow3.id).diverseWith.sort() == [flow1.id, flow2.id].sort()
+        flow1.retrieveDetailsV1().diverseWith.sort() == [flow2.flowId, flow3.flowId].sort()
+        flow2.retrieveDetailsV1().diverseWith.sort() == [flow1.flowId, flow3.flowId].sort()
+        flow3.retrieveDetailsV1().diverseWith.sort() == [flow1.flowId, flow2.flowId].sort()
 
         and: "All flows have different paths"
-        def allInvolvedIsls = [flow1, flow2, flow3].collectMany {
-            pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(it.id)))
+        def allInvolvedIsls = [flow1, flow2, flow3].collectMany {flow ->
+            flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
     }
 
-    void verifySegmentsStats(List<FlowPathPayload> flowPaths, Map expectedValuesMap) {
-        flowPaths.each { flow ->
-            with(flow.diverseGroupPayload) { diverseGroup ->
+    void verifySegmentsStats(List<FlowEntityPath> flowPaths, Map expectedValuesMap) {
+        flowPaths.flowPath.each { flow ->
+            with(flow.path.diverseGroup) { diverseGroup ->
                 verifyAll(diverseGroup.overlappingSegments) {
-                    it == expectedValuesMap["diverseGroup"][flow.id]
+                    it == expectedValuesMap["diverseGroup"][flow.flowId]
                 }
                 with(diverseGroup.otherFlows) { otherFlows ->
-                    assert (flowPaths*.id - flow.id).containsAll(otherFlows*.id)
+                    assert (flowPaths.flowPath*.flowId - flow.flowId).containsAll(otherFlows*.id)
                     otherFlows.each { otherFlow ->
                         verifyAll(otherFlow.segmentsStats) {
-                            it == expectedValuesMap["otherFlows"][flow.id][otherFlow.id]
+                            it == expectedValuesMap["otherFlows"][flow.flowId][otherFlow.id]
                         }
                     }
                 }
@@ -392,36 +401,34 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         }
     }
 
-    def expectedThreeFlowsPathIntersectionValuesMap(FlowPathPayload flow1Path,
-                                                    FlowPathPayload flow2Path,
-                                                    FlowPathPayload flow3Path) {
+    def expectedThreeFlowsPathIntersectionValuesMap(FlowEntityPath flow1Path,
+                                                    FlowEntityPath flow2Path,
+                                                    FlowEntityPath flow3Path) {
+        Path flow1ForwardPath, flow2ForwardPath, flow3ForwardPath
+        withPool {
+            (flow1ForwardPath, flow2ForwardPath, flow3ForwardPath) = [flow1Path, flow2Path, flow3Path]
+                    .collectParallel { it.flowPath.path.forward }
+        }
+
         return [
                 diverseGroup: [
-                        (flow1Path.id): pathHelper.getOverlappingSegmentStats(flow1Path.getForwardPath(),
-                                [flow2Path.getForwardPath(), flow3Path.getForwardPath()]),
-                        (flow2Path.id): pathHelper.getOverlappingSegmentStats(flow2Path.getForwardPath(),
-                                [flow1Path.getForwardPath(), flow3Path.getForwardPath()]),
-                        (flow3Path.id): pathHelper.getOverlappingSegmentStats(flow3Path.getForwardPath(),
-                                [flow1Path.getForwardPath(), flow2Path.getForwardPath()])
+                        (flow1Path.flowPath.flowId): flow1ForwardPath.overlappingSegmentStats([flow2ForwardPath, flow3ForwardPath]),
+                        (flow2Path.flowPath.flowId): flow2ForwardPath.overlappingSegmentStats([flow1ForwardPath, flow3ForwardPath]),
+                        (flow3Path.flowPath.flowId): flow3ForwardPath.overlappingSegmentStats([flow1ForwardPath, flow2ForwardPath])
                 ],
                 otherFlows  : [
-                        (flow1Path.id): [
-                                (flow2Path.id): pathHelper.getOverlappingSegmentStats(
-                                        flow1Path.getForwardPath(), [flow2Path.getForwardPath()]),
-                                (flow3Path.id): pathHelper.getOverlappingSegmentStats(
-                                        flow1Path.getForwardPath(), [flow3Path.getForwardPath()])
+                        (flow1Path.flowPath.flowId): [
+                                (flow2Path.flowPath.flowId): flow1ForwardPath.overlappingSegmentStats([flow2ForwardPath]),
+                                (flow3Path.flowPath.flowId): flow1ForwardPath.overlappingSegmentStats([flow3ForwardPath]),
                         ],
-                        (flow2Path.id): [
-                                (flow1Path.id): pathHelper.getOverlappingSegmentStats(
-                                        flow2Path.getForwardPath(), [flow1Path.getForwardPath()]),
-                                (flow3Path.id): pathHelper.getOverlappingSegmentStats(
-                                        flow2Path.getForwardPath(), [flow3Path.getForwardPath()])
+                        (flow2Path.flowPath.flowId): [
+                                (flow1Path.flowPath.flowId): flow2ForwardPath.overlappingSegmentStats([flow1ForwardPath]),
+
+                                (flow3Path.flowPath.flowId): flow2ForwardPath.overlappingSegmentStats([flow3ForwardPath]),
                         ],
-                        (flow3Path.id): [
-                                (flow1Path.id): pathHelper.getOverlappingSegmentStats(
-                                        flow3Path.getForwardPath(), [flow1Path.getForwardPath()]),
-                                (flow2Path.id): pathHelper.getOverlappingSegmentStats(
-                                        flow3Path.getForwardPath(), [flow2Path.getForwardPath()])
+                        (flow3Path.flowPath.flowId): [
+                                (flow1Path.flowPath.flowId): flow3ForwardPath.overlappingSegmentStats([flow1ForwardPath]),
+                                (flow2Path.flowPath.flowId): flow3ForwardPath.overlappingSegmentStats([flow2ForwardPath])
                         ]
                 ]
         ]

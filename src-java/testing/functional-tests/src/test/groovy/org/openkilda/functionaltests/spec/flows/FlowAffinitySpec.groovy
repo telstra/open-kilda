@@ -1,66 +1,70 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.testing.Constants.DEFAULT_COST
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.payload.flow.FlowState
+
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
-
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.CREATE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_ACTION
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
-import static org.openkilda.testing.Constants.DEFAULT_COST
-import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import spock.lang.Shared
 
 @Narrative("https://github.com/telstra/open-kilda/tree/develop/docs/design/solutions/pce-affinity-flows/")
 
 class FlowAffinitySpec extends HealthCheckSpecification {
     @Autowired
-    CleanupManager cleanupManager
+    @Shared
+    FlowFactory flowFactory
 
     def "Can create more than 2 affinity flows"() {
         when: "Create flow1"
         def swPair = switchPairs.all().random()
-        def flow1 = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow1)
+        def flow1 = flowFactory.getRandom(swPair)
 
         and: "Create flow2 with affinity to flow1"
-        def flow2 = flowHelperV2.randomFlow(swPair, false, [flow1]).tap { affinityFlowId = flow1.flowId }
-        flowHelperV2.addFlow(flow2)
+        def flow2 = flowFactory.getBuilder(swPair, false, flow1.occupiedEndpoints())
+                .withAffinityFlow(flow1.flowId ).build()
+                .create()
 
         and: "Create flow3 with affinity to flow2"
-        def flow3 = flowHelperV2.randomFlow(swPair, false, [flow1, flow2]).tap { affinityFlowId = flow2.flowId }
-        flowHelperV2.addFlow(flow3)
+        def flow3 = flowFactory.getBuilder(swPair, false, (flow1.occupiedEndpoints() + flow2.occupiedEndpoints()))
+                .withAffinityFlow(flow2.flowId).build()
+                .create()
 
         then: "All flows have affinity with flow1"
         //yes, even flow1 with flow1, by design
-        [flow1, flow2, flow3].each {
-            assert northboundV2.getFlow(it.flowId).affinityWith == flow1.flowId
+        [flow1, flow2, flow3].each {flow ->
+            assert flow.retrieveDetails().affinityWith == flow1.flowId
         }
 
         and: "Flows' histories contain 'affinityGroupId' information"
-        [flow2, flow3].each {//flow1 had no affinity at the time of creation
-            assert flowHelper.getEarliestHistoryEntryByAction(it.flowId, CREATE_ACTION).dumps
+        [flow2, flow3].each {flow -> //flow1 had no affinity at the time of creation
+            assert flow.retrieveFlowHistory().getEntriesByType(FlowActionType.CREATE).first().dumps
                     .find { it.type == "stateAfter" }?.affinityGroupId == flow1.flowId
         }
 
         when: "Delete flows"
-        [flow1, flow2, flow3].each { it && flowHelperV2.deleteFlow(it.flowId) }
+        [flow1, flow2, flow3].each { flow ->  flow.delete() }
 
         then: "Flow1 history contains 'affinityGroupId' information in 'delete' operation"
-        verifyAll(flowHelper.getEarliestHistoryEntryByAction(flow1.flowId, DELETE_ACTION).dumps) {
+        verifyAll(flow1.retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).first().dumps) {
             it.find { it.type == "stateBefore" }?.affinityGroupId
             !it.find { it.type == "stateAfter" }?.affinityGroupId
         }
 
         and: "Flow2 and flow3 histories does not have 'affinityGroupId' in 'delete' because it's gone after deletion of 'main' flow1"
-        [ flow2, flow3].each {
-            verifyAll(flowHelper.getEarliestHistoryEntryByAction(it.flowId, DELETE_ACTION).dumps) {
+        [ flow2, flow3].each {flow ->
+            verifyAll(flow.retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).first().dumps) {
                 !it.find { it.type == "stateBefore" }?.affinityGroupId
                 !it.find { it.type == "stateAfter" }?.affinityGroupId
             }
@@ -97,25 +101,26 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         } ?: assumeTrue(false, "No suiting switches/paths found")
 
         and: "Existing flow over one of the switch pairs"
-        def flow = flowHelperV2.randomFlow(swPair1)
         swPair1.paths.findAll { it != path1 }.each { pathHelper.makePathMorePreferable(path1, it) }
-        flowHelperV2.addFlow(flow)
-        assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == path1
+        def flow = flowFactory.getRandom(swPair1)
+        def path = flow.retrieveAllEntityPaths()
+        assert path.getPathNodes() == path1
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         and: "Potential affinity flow, which optimal path is diverse from the main flow, but it has a not optimal closer path"
-        def affinityFlow = flowHelperV2.randomFlow(swPair2, false, [flow]).tap { affinityFlowId = flow.flowId }
+        def affinityFlow = flowFactory.getBuilder(swPair2, false, flow.occupiedEndpoints())
+                .withAffinityFlow(flow.flowId).build()
         swPair2.paths.findAll { it != uncommonPath2 }.each { pathHelper.makePathMorePreferable(uncommonPath2, it) }
 
         when: "Build affinity flow"
-        flowHelperV2.addFlow(affinityFlow)
+        affinityFlow.create()
 
         then: "Most optimal, but 'uncommon' to the main flow path is NOT picked, but path with least uncommon ISLs is chosen"
-        def actualAffinityPath = pathHelper.convert(northbound.getFlowPath(affinityFlow.flowId))
+        def actualAffinityPath = affinityFlow.retrieveAllEntityPaths().getPathNodes()
         leastUncommonPaths2.any { actualAffinityPath == it }
 
         and: "Path remains the same when manual reroute is called"
-        !northboundV2.rerouteFlow(affinityFlow.flowId).rerouted
+        !affinityFlow.reroute().rerouted
     }
 
     def "Affinity flows can have no overlapping switches at all"() {
@@ -124,16 +129,16 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         def swPair2 = switchPairs.all().neighbouring().excludeSwitches([swPair1.src, swPair1.dst]).random()
 
         and: "First flow"
-        def flow = flowHelperV2.randomFlow(swPair1)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(swPair1)
 
         when: "Create affinity flow"
-        def affinityFlow = flowHelperV2.randomFlow(swPair2, false, [flow]).tap { affinityFlowId = flow.flowId }
-        flowHelperV2.addFlow(affinityFlow)
+        def affinityFlow = flowFactory.getBuilder(swPair2, false, flow.occupiedEndpoints())
+                .withAffinityFlow(flow.flowId).build()
+                .create()
 
-        then: "It's path has no overlapping segments with the first flow"
-        pathHelper.convert(northbound.getFlowPath(flow.flowId))
-                .intersect(pathHelper.convert(northbound.getFlowPath(affinityFlow.flowId))).empty
+        then: "Affinity flow path has no overlapping ISLs with the first flow"
+        assert affinityFlow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+                .intersect(flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()).isEmpty()
     }
 
     def "Affinity flow on the same endpoints #willOrNot take the same path if main path cost #exceedsOrNot affinity penalty"() {
@@ -141,23 +146,21 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         def swPair = switchPairs.all().neighbouring().withAtLeastNIslsBetweenNeighbouringSwitches(2).random()
 
         and: "First flow"
-        def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(swPair)
 
         and: "Isl which is taken by the main flow weighs more/less than the neighboring ISL, taking into account affinity penalty"
-        def isls = pathHelper.getInvolvedIsls(flow.flowId)
-        assert isls.size() == 1
-        def linkProps = [islUtils.toLinkProps(isls[0], ["cost": mainIslCost.toString()])]
-        cleanupManager.addAction(DELETE_ISLS_PROPERTIES, {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
-        northbound.updateLinkProps(linkProps)
+        def flowIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        assert flowIsls.size() == 1
+        pathHelper.updateIslsCost([flowIsls[0]], mainIslCost)
 
         when: "Create affinity flow on the same switch pair"
-        def affinityFlow = flowHelperV2.randomFlow(swPair, false, [flow]).tap { affinityFlowId = flow.flowId }
-        flowHelperV2.addFlow(affinityFlow)
+        def affinityFlow = flowFactory.getBuilder(swPair, false, flow.occupiedEndpoints())
+                .withAffinityFlow(flow.flowId).build()
+                .create()
+        def affinityFlowIsls = affinityFlow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
 
         then: "It takes/doesn't take the path of the main flow"
-        (pathHelper.convert(northbound.getFlowPath(flow.flowId)) ==
-                pathHelper.convert(northbound.getFlowPath(affinityFlow.flowId))) == expectSamePaths
+        (flowIsls.sort() == affinityFlowIsls.sort()) == expectSamePaths
 
         where:
         mainIslCost << [affinityIslCost + DEFAULT_COST, affinityIslCost + DEFAULT_COST + 1]
@@ -169,44 +172,58 @@ class FlowAffinitySpec extends HealthCheckSpecification {
     def "Cannot create affinity flow if target flow has affinity with diverse flow"() {
         given: "Existing flows with diversity"
         def swPair = switchPairs.all().random()
-        def flow1 = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow1)
-        def affinityFlow = flowHelperV2.randomFlow(swPair, false, [flow1]).tap { affinityFlowId = flow1.flowId }
-        flowHelperV2.addFlow(affinityFlow)
-        def expectedError =
-                new FlowNotCreatedExpectedError(~/Couldn't create diverse group with flow in the same affinity group/)
+        def flow1 = flowFactory.getRandom(swPair)
+
+        def busyEndpoints = flow1.occupiedEndpoints()
+        def affinityFlow = flowFactory.getBuilder(swPair, false, busyEndpoints)
+                .withAffinityFlow(flow1.flowId).build()
+                .create()
+        busyEndpoints.addAll(affinityFlow.occupiedEndpoints())
 
         when: "Create affinity flow on the same switch pair"
-        def affinityFlow2 = flowHelperV2.randomFlow(swPair, false, [flow1, affinityFlow]).tap { affinityFlowId = flow1.flowId; diverseFlowId = affinityFlow.flowId }
-        flowHelperV2.addFlow(affinityFlow2)
+        def affinityFlow2 = flowFactory.getBuilder(swPair, false, busyEndpoints)
+                .withAffinityFlow(flow1.flowId)
+                .withDiverseFlow(affinityFlow.flowId).build()
+        affinityFlow2.create()
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
-        expectedError.matches(e)
+        new FlowNotCreatedExpectedError(~/Couldn't create diverse group with flow in the same affinity group/).matches(e)
+
         when: "Create affinity flow on the same switch pair"
-        def affinityFlow3 = flowHelperV2.randomFlow(swPair, false, [flow1, affinityFlow]).tap { affinityFlowId = affinityFlow.flowId; diverseFlowId = flow1.flowId }
-        flowHelperV2.addFlow(affinityFlow3)
+        def affinityFlow3 = flowFactory.getBuilder(swPair, false, busyEndpoints)
+                .withAffinityFlow(affinityFlow.flowId)
+                .withDiverseFlow(flow1.flowId).build()
+        affinityFlow3.create()
 
         then: "Error is returned"
         def e2 = thrown(HttpClientErrorException)
-        expectedError.matches(e2)
+        new FlowNotCreatedExpectedError(~/Couldn't create diverse group with flow in the same affinity group/).matches(e2)
     }
 
     def "Cannot create affinity flow if target flow has another diverse group"() {
         given: "Existing flows with diversity"
         def swPair = switchPairs.all().random()
-        def flow1 = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow1)
-        def affinityFlow = flowHelperV2.randomFlow(swPair, false, [flow1]).tap { affinityFlowId = flow1.flowId }
-        flowHelperV2.addFlow(affinityFlow)
-        def diverseFlow = flowHelperV2.randomFlow(swPair, false, [flow1]).tap { diverseFlowId = flow1.flowId }
-        flowHelperV2.addFlow(diverseFlow)
-        def flow2 = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow2)
+        def flow1 = flowFactory.getRandom(swPair)
+        def busyEndpoints = flow1.occupiedEndpoints()
+        def affinityFlow = flowFactory.getBuilder(swPair, false, busyEndpoints)
+                .withAffinityFlow(flow1.flowId).build()
+                .create()
+        busyEndpoints.addAll(affinityFlow.occupiedEndpoints())
+
+        def diverseFlow = flowFactory.getBuilder(swPair, false, busyEndpoints)
+                .withDiverseFlow(flow1.flowId).build()
+                .create()
+        busyEndpoints.addAll(diverseFlow.occupiedEndpoints())
+
+        def flow2 = flowFactory.getRandom(swPair, false, FlowState.UP, busyEndpoints)
+        busyEndpoints.addAll(flow2.occupiedEndpoints())
 
         when: "Create an affinity flow that targets the diversity flow"
-        def affinityFlow2 = flowHelperV2.randomFlow(swPair, false, [flow1, diverseFlow]).tap { affinityFlowId = flow1.flowId; diverseFlowId = flow2.flowId }
-        flowHelperV2.addFlow(affinityFlow2)
+        def affinityFlow2 = flowFactory.getBuilder(swPair, false, busyEndpoints)
+                .withAffinityFlow(flow1.flowId)
+                .withDiverseFlow(flow2.flowId).build()
+        affinityFlow2.create()
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
@@ -217,35 +234,34 @@ class FlowAffinitySpec extends HealthCheckSpecification {
     def "Able to create an affinity flow with a 1-switch flow"() {
         given: "A one-switch flow"
         def sw = topology.activeSwitches[0]
-        def oneSwitchFlow = flowHelperV2.singleSwitchFlow(sw)
-        flowHelperV2.addFlow(oneSwitchFlow)
+        def oneSwitchFlow = flowFactory.getRandom(sw, sw)
 
         when: "Create an affinity flow targeting the one-switch flow"
         def swPair = switchPairs.all().includeSourceSwitch(sw).random()
-        def affinityFlow = flowHelperV2.randomFlow(swPair, false, [oneSwitchFlow]).tap { affinityFlowId = oneSwitchFlow.flowId }
-        flowHelperV2.addFlow(affinityFlow)
+        def affinityFlow = flowFactory.getBuilder(swPair, false, oneSwitchFlow.occupiedEndpoints())
+                .withAffinityFlow(oneSwitchFlow.flowId).build()
+                .create()
 
         then: "Both flows have affinity with flow1"
         //yes, even flow1 with flow1, by design
         withPool {
-            [oneSwitchFlow, affinityFlow].eachParallel {
-                assert northboundV2.getFlow(it.flowId).affinityWith == oneSwitchFlow.flowId
+            [oneSwitchFlow, affinityFlow].eachParallel { FlowExtended flow ->
+                assert flow.retrieveDetails().affinityWith == oneSwitchFlow.flowId
             }
         }
 
         and: "Affinity flow history contain 'affinityGroupId' information"
-            assert flowHelper.getEarliestHistoryEntryByAction(affinityFlow.flowId, CREATE_ACTION).dumps
+            assert affinityFlow.retrieveFlowHistory().getEntriesByType(FlowActionType.CREATE).first().dumps
                     .find { it.type == "stateAfter" }?.affinityGroupId == oneSwitchFlow.flowId
     }
 
     def "Error is returned if affinity_with references a non existing flow"() {
         when: "Create an affinity flow that targets non-existing flow"
         def swPair = switchPairs.all().random()
-        def flow = flowHelperV2.randomFlow(swPair).tap { diverseFlowId = NON_EXISTENT_FLOW_ID }
-        flowHelperV2.addFlow(flow)
-
+        flowFactory.getBuilder(swPair).withAffinityFlow(NON_EXISTENT_FLOW_ID).build()
+                .create()
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
-        new FlowNotCreatedExpectedError(~/Failed to find diverse flow id $NON_EXISTENT_FLOW_ID/).matches(e)
+        new FlowNotCreatedExpectedError(~/Failed to find affinity flow id $NON_EXISTENT_FLOW_ID/).matches(e)
     }
 }

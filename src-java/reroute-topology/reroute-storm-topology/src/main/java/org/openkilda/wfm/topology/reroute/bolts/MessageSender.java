@@ -23,6 +23,8 @@ public interface MessageSender {
 
     void emitManualRerouteCommand(String flowId, FlowThrottlingData flowThrottlingData);
 
+    void emitManualRerouteFlushCommand(String flowId, FlowThrottlingData flowThrottlingData);
+
     void emitPathSwapCommand(String correlationId, String flowId, String reason);
 
     void emitYFlowPathSwapCommand(String correlationId, String yFlowId, String reason);

@@ -13,6 +13,7 @@ import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
@@ -37,6 +38,9 @@ class FlowFactory {
     @Autowired
     CleanupManager cleanupManager
 
+    @Autowired
+    Database database
+
     /*
    This method allows customization of the Flow with desired parameters for further creation
     */
@@ -45,7 +49,7 @@ class FlowFactory {
     }
 
     FlowBuilder getBuilder(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true, List<SwitchPortVlan> busyEndpoints = []) {
-        return new FlowBuilder(srcSwitch, dstSwitch, northbound, northboundV2, topology, cleanupManager, useTraffgenPorts, busyEndpoints)
+        return new FlowBuilder(srcSwitch, dstSwitch, northbound, northboundV2, topology, cleanupManager, database, useTraffgenPorts, busyEndpoints)
     }
 
     /*
@@ -65,5 +69,10 @@ class FlowFactory {
     FlowExtended getRandomV1(Switch srcSwitch, Switch dstSwitch, boolean useTraffgenPorts = true, FlowState expectedFlowState = UP,
                            List<SwitchPortVlan> busyEndpoints = []) {
         return getBuilder(srcSwitch, dstSwitch, useTraffgenPorts, busyEndpoints).build().createV1(expectedFlowState)
+    }
+
+    FlowExtended getRandomV1(SwitchPair switchPair, boolean useTraffgenPorts = true, FlowState expectedFlowState = UP,
+                             List<SwitchPortVlan> busyEndpoints = []) {
+        return getBuilder(switchPair.src, switchPair.dst, useTraffgenPorts, busyEndpoints).build().createV1(expectedFlowState)
     }
 }

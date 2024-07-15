@@ -14,14 +14,17 @@ import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELE
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_HAFLOW
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_LAG_LOGICAL_PORT
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_MIRROR
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_YFLOW
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.PORT_UP
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISL_AVAILABLE_BANDWIDTH
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISL_PARAMETERS
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_SWITCH_MAINTENANCE
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_A_SWITCH_FLOWS
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_ISL
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_KILDA_CONFIGURATION
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_PORT_PROPERTIES
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_SWITCH_PROPERTIES
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.REVIVE_SWITCH
@@ -86,7 +89,9 @@ class CleanupManager {
 
     private static List<Exception> runActionsByType(ConcurrentHashMap<CleanupActionType, List<Closure>> actions) {
         def exceptions = []
+        exceptions += runActionsSynchronously(firstElementOrEmptyList(actions[RESTORE_KILDA_CONFIGURATION]))
         exceptions += runActionsSynchronously(firstElementOrEmptyList(actions[RESTORE_FEATURE_TOGGLE]))
+        exceptions += runActionsSynchronously(actions[DELETE_MIRROR])
         exceptions += runActionsSynchronously(actions[DELETE_FLOW])
         exceptions += runActionsSynchronously(actions[DELETE_YFLOW])
         exceptions += runActionsAsynchronously(actions[REVIVE_SWITCH])
@@ -96,8 +101,9 @@ class CleanupManager {
         exceptions += runActionsSynchronously(actions[RESTORE_SWITCH_PROPERTIES].reverse())
         exceptions += runActionsAsynchronously(actions[RESTORE_PORT_PROPERTIES].reverse())
         exceptions += runActionsSynchronously(actions[DELETE_LAG_LOGICAL_PORT].reverse())
-        exceptions += runActionsAsynchronously(actions[RESTORE_ISL])
+        exceptions += runActionsSynchronously(actions[RESTORE_A_SWITCH_FLOWS].reverse())
         exceptions += runActionsAsynchronously(actions[PORT_UP])
+        exceptions += runActionsAsynchronously(actions[RESTORE_ISL])
         exceptions += runActionsAsynchronously(actions[CLEAN_LINK_DELAY])
         if (actions[RESET_ISLS_COST]) {
             exceptions += runActionsSynchronously([actions[RESET_ISLS_COST].first()])
@@ -107,7 +113,7 @@ class CleanupManager {
         }
         exceptions += runActionsSynchronously(actions[DELETE_HAFLOW])
         exceptions += runActionsAsynchronously(actions[SYNCHRONIZE_SWITCH])
-        exceptions += runActionsSynchronously(actions[RESET_ISL_AVAILABLE_BANDWIDTH])
+        exceptions += runActionsSynchronously(actions[RESET_ISL_PARAMETERS])
         exceptions += runActionsSynchronously(actions[OTHER])
         clearActionsList(actions)
         return exceptions

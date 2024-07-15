@@ -62,6 +62,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.http.HttpResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -130,6 +131,9 @@ public class SwitchIntegrationService {
                     applicationProperties.getNbBaseUrl()
                             + IConstants.NorthBoundUrl.GET_SWITCH.replace("{switch_id}", switchId),
                     HttpMethod.GET, "", "", applicationService.getAuthHeader());
+            if (response.getStatusLine().getStatusCode() == HttpStatus.NOT_FOUND.value()) {
+                return null;
+            }
             if (RestClientManager.isValidResponse(response)) {
                 SwitchInfo switchInfo = restClientManager.getResponse(response, SwitchInfo.class);
                 if (switchInfo != null) {

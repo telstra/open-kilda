@@ -1,12 +1,12 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.yflow.YFlowPathNotSwappedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowFactory
 import org.openkilda.functionaltests.model.stats.FlowStats
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -15,6 +15,7 @@ import org.openkilda.testing.service.traffexam.model.ExamReport
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
@@ -228,11 +229,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-
-        def errorDescription = exc.responseBodyAsString.to(MessageError).errorDescription
-        errorDescription == "Could not swap y-flow paths: sub-flow ${yFlow.subFlows[0].flowId} doesn't have a protected path" ||
-                errorDescription == "Could not swap y-flow paths: sub-flow ${yFlow.subFlows[1].flowId} doesn't have a protected path"
+        new YFlowPathNotSwappedExpectedError(HttpStatus.BAD_REQUEST,
+                ~/Could not swap y-flow paths: sub-flow S\d.${yFlow.yFlowId} doesn't have a protected path/).matches(exc)
     }
 
     @Tags(LOW_PRIORITY)
@@ -242,9 +240,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorDescription ==
-                "Y-flow $NON_EXISTENT_FLOW_ID not found"
+        new YFlowPathNotSwappedExpectedError(HttpStatus.NOT_FOUND, ~/Y-flow $NON_EXISTENT_FLOW_ID not found/).matches(exc)
     }
 
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
@@ -305,9 +301,9 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorDescription ==
-                "Could not swap y-flow paths: the protected path of sub-flow ${initialPath.subFlowPaths.first().flowId} is not in ACTIVE state, but in INACTIVE/INACTIVE (forward/reverse) state"
+        new YFlowPathNotSwappedExpectedError(HttpStatus.BAD_REQUEST,
+                ~/Could not swap y-flow paths: the protected path of sub-flow ${initialPath.subFlowPaths.first().flowId} \
+is not in ACTIVE state, but in INACTIVE\\/INACTIVE \(forward\\/reverse\) state/).matches(exc)
 
         when: "Restore port status"
         islHelper.restoreIsl(islToBreak)

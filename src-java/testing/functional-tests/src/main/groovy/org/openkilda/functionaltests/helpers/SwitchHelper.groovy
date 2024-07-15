@@ -20,11 +20,15 @@ import org.openkilda.northbound.dto.v1.switches.MeterInfoDto
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest
 import org.openkilda.northbound.dto.v2.switches.LagPortResponse
 import org.openkilda.northbound.dto.v2.switches.MeterInfoDtoV2
+import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
 import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2
 import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
+import org.openkilda.northbound.dto.v2.switches.SwitchLocationDtoV2
+import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.model.topology.TopologyDefinition.SwitchProperties
@@ -34,10 +38,13 @@ import org.openkilda.testing.service.floodlight.model.Floodlight
 import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress
+import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtendedResult
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.tools.ConnectedDevice
 import org.openkilda.testing.tools.IslUtils
 import org.openkilda.testing.tools.SoftAssertionsWrapper
 import org.springframework.beans.factory.annotation.Autowired
@@ -53,8 +60,10 @@ import static org.hamcrest.MatcherAssert.assertThat
 import static org.hamcrest.Matchers.hasItem
 import static org.hamcrest.Matchers.notNullValue
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_LAG_LOGICAL_PORT
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_MIRROR
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_SWITCH_MAINTENANCE
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_ISL
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_SWITCH_PROPERTIES
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.REVIVE_SWITCH
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.SYNCHRONIZE_SWITCH
@@ -166,6 +175,11 @@ class SwitchHelper {
     static int getRandomAvailablePort(Switch sw, TopologyDefinition topologyDefinition, boolean useTraffgenPorts = true, List<Integer> busyPort = []) {
         List<Integer> allowedPorts = topologyDefinition.getAllowedPortsForSwitch(sw)
         def availablePorts = allowedPorts - busyPort
+        if(!availablePorts) {
+            //as default flow is generated with vlan, we can reuse the same port if all available ports have been used
+            //this is a rare case for the situation when we need to create more than 20 flows in a row
+            availablePorts = allowedPorts
+        }
         def port = availablePorts[new Random().nextInt(availablePorts.size())]
         if (useTraffgenPorts) {
             List<Integer> tgPorts = sw.traffGens*.switchPort.findAll { availablePorts.contains(it) }
@@ -595,15 +609,15 @@ class SwitchHelper {
      * @param sw switch which is going to be disconnected
      * @param waitForRelatedLinks make sure that all switch related ISLs are FAILED
      */
-    List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode, boolean waitForRelatedLinks) {
+    List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode, boolean waitForRelatedLinks, double timeout = WAIT_OFFSET) {
         def blockData = lockKeeper.knockoutSwitch(sw, mode)
-        cleanupManager.addAction(REVIVE_SWITCH, {reviveSwitch(sw, blockData, true)}, CleanupAfter.TEST)
-        Wrappers.wait(WAIT_OFFSET) {
+        cleanupManager.addAction(REVIVE_SWITCH, { reviveSwitch(sw, blockData, true) }, CleanupAfter.TEST)
+        Wrappers.wait(timeout) {
             assert northbound.get().getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
         }
         if (waitForRelatedLinks) {
             def swIsls = topology.get().getRelatedIsls(sw)
-            Wrappers.wait(discoveryTimeout + WAIT_OFFSET * 2) {
+            Wrappers.wait(discoveryTimeout + timeout * 2) {
                 def allIsls = northbound.get().getAllLinks()
                 swIsls.each { assert islUtils.getIslInfo(allIsls, it).get().state == IslChangeType.FAILED }
             }
@@ -614,6 +628,18 @@ class SwitchHelper {
 
     List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode) {
         knockoutSwitch(sw, mode, false)
+    }
+
+    List<FloodlightResourceAddress> knockoutSwitch(Switch sw, List<String> regions) {
+        def blockData = lockKeeper.knockoutSwitch(sw, regions)
+        cleanupManager.addAction(REVIVE_SWITCH, { reviveSwitch(sw, blockData, true) }, CleanupAfter.TEST)
+        return blockData
+    }
+
+    List<FloodlightResourceAddress> knockoutSwitchFromStatsController(Switch sw){
+        def blockData = lockKeeper.knockoutSwitch(sw, FloodlightConnectMode.RO)
+        cleanupManager.addAction(REVIVE_SWITCH, { reviveSwitch(sw, blockData, true) }, CleanupAfter.TEST)
+        return blockData
     }
 
     /**
@@ -777,10 +803,33 @@ class SwitchHelper {
         northboundV2.get().createLagLogicalPort(swichtId, new LagPortRequest(portNumbers , lacpReply))
     }
 
+    def deleteSwitch(SwitchId switchId, Boolean force = false) {
+        return northbound.get().deleteSwitch(switchId, force)
+    }
+
+    def addMirrorPoint(String flowId, FlowMirrorPointPayload mirrorPointPayload) {
+        cleanupManager.addAction(DELETE_MIRROR, {safeDeleteMirrorPoint(flowId, mirrorPointPayload.mirrorPointId)})
+        return northboundV2.get().createMirrorPoint(flowId, mirrorPointPayload)
+    }
+
+    def safeDeleteMirrorPoint(String flowId, String mirrorPointId) {
+        if (mirrorPointId in northboundV2.get().getMirrorPoints(flowId).points*.mirrorPointId) {
+            return northboundV2.get().deleteMirrorPoint(flowId, mirrorPointId)
+        }
+    }
+
     def safeDeleteAllLogicalLagPorts(SwitchId swichtId) {
         return northboundV2.get().getLagLogicalPort(swichtId).each {
             northboundV2.get().deleteLagLogicalPort(swichtId, it.getLogicalPortNumber())
         }
+    }
+
+    def setPortDiscovery(SwitchId switchId, Integer port, boolean expectedStatus) {
+        if (!expectedStatus) {
+            cleanupManager.addAction(RESTORE_ISL, {setPortDiscovery(switchId, port, true)})
+        }
+        return northboundV2.get().updatePortProperties(switchId, port,
+                new PortPropertiesDto(discoveryEnabled: expectedStatus))
     }
 
     @Memoized
@@ -832,7 +881,7 @@ class SwitchHelper {
         List<SwitchPropertiesDto> switchDetails = northboundV2.get().getAllSwitchProperties().switchProperties
 
         withPool {
-            Wrappers.wait(RULES_INSTALLATION_TIME) {
+            Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
                 switchDetails.eachParallel { sw ->
                     def expectedRulesNumber = (isS42ToggleOn && sw.server42FlowRtt) ? getExpectedS42SwitchRulesBasedOnVxlanSupport(sw.switchId) : 0
                     assert getS42SwitchRules(sw.switchId).size() == expectedRulesNumber
@@ -841,29 +890,36 @@ class SwitchHelper {
         }
     }
 
-    static void verifyAbsenceOfServer42FlowRttRules(Set<Switch> switches) {
-        //make sure that s42 rules are deleted
-        withPool {
-            Wrappers.wait(RULES_INSTALLATION_TIME) {
-                switches.eachParallel { sw ->
-                    assert northbound.get().getSwitchRules(sw.dpId).flowEntries.findAll {
-                        new Cookie(it.cookie).getType() in [CookieType.SERVER_42_FLOW_RTT_INPUT,
-                                                            CookieType.SERVER_42_FLOW_RTT_INGRESS]
-                    }.empty
-                }
-            }
-        }
+    void shapeSwitchesTraffic(List<Switch> switches, TrafficControlData tcData) {
+        cleanupManager.addAction(OTHER, {lockKeeper.cleanupTrafficShaperRules(switches*.regions.flatten())})
+        lockKeeper.shapeSwitchesTraffic(switches, tcData)
     }
 
-    def revertToOriginSwitchSetup(def initialSwitchRttProps, boolean isS42ToggleOn = true) {
-        initialSwitchRttProps.each { sw, state -> setServer42FlowRttForSwitch(sw, state, isS42ToggleOn)  }
-        initialSwitchRttProps.keySet().each { Switch sw ->
-            Wrappers.wait(RULES_INSTALLATION_TIME) {
-                def actualCookies = northbound.get().getSwitchRules(sw.dpId).flowEntries*.cookie
-                actualCookies.removeAll(actualCookies.intersect(sw.defaultCookies))
-                assert actualCookies.isEmpty(), "Switch: ${sw.dpId}." +
-                        "\nDefault rules: \n${sw.defaultCookies} \nNon-default rules: \n${actualCookies}"
-            }
-        }
+    void cleanupTrafficShaperRules(List<Switch> switches) {
+        lockKeeper.cleanupTrafficShaperRules(switches*.regions.flatten())
+    }
+
+    def addConnectedDevice(TraffExamService examService, TraffGen tg, List<Integer> vlanId) {
+        cleanupManager.addAction(OTHER, {database.get().removeConnectedDevices(tg.getSwitchConnected().dpId)})
+        def device = new ConnectedDevice(examService, tg, vlanId)
+        cleanupManager.addAction(OTHER, {device.close()})
+        return device
+    }
+
+    def partialUpdate(SwitchId switchId, SwitchPatchDto updateDto) {
+        def initialSettings = northbound.get().getSwitch(switchId)
+        cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES,
+                {northboundV2.get().partialSwitchUpdate(switchId,
+                        new SwitchPatchDto(initialSettings.pop, initialSettings.location as SwitchLocationDtoV2))
+                }
+        )
+        return northboundV2.get().partialSwitchUpdate(switchId, updateDto)
+    }
+
+    static boolean isServer42Supported(SwitchId switchId) {
+        def swProps = northbound.get().getSwitchProperties(switchId)
+        def featureToggles = northbound.get().getFeatureToggles()
+        def isServer42 = swProps.server42FlowRtt && featureToggles.server42FlowRtt
+        return isServer42
     }
 }
