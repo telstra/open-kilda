@@ -20,12 +20,9 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
-import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchStatus
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -353,7 +350,8 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
     @Tags([ISL_RECOVER_ON_FAIL, LOW_PRIORITY])
     def "System does not retry after global timeout for reroute operation"() {
         given: "A flow with ability to reroute"
-        def swPair = switchPairs.all().nonNeighbouring().random()
+        def swPair = switchPairs.all().nonNeighbouring().switchPairs
+                .find { it.src.dpId.toString().contains("03") && it.dst.dpId.toString().contains("07")}
         def allFlowPaths = swPair.paths
         def preferableIsls = pathHelper.getInvolvedIsls(allFlowPaths.find{ it.size() >= 10 })
         pathHelper.updateIslsCost(preferableIsls, 1)
@@ -367,7 +365,7 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
         northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         and: "Connection to src switch is slow in order to simulate a global timeout on reroute operation"
-        switchHelper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(9000))
+        switchHelper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(9200))
 
         then: "After global timeout expect flow reroute to fail and flow to become DOWN"
         TimeUnit.SECONDS.sleep(globalTimeout)

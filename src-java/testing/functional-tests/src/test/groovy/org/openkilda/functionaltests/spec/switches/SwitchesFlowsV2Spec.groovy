@@ -157,8 +157,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "One-switch Y-Flow subflows are listed in flows list"() {
         given: "One switch Y-Flow"
-        def swT = topologyHelper.getSwitchTriplet(switchProtectedPathGoesThrough.dpId,
-                switchProtectedPathGoesThrough.dpId, switchProtectedPathGoesThrough.dpId)
+        def swT = topologyHelper.getSingleSwitchTriplet(switchProtectedPathGoesThrough.dpId)
         def yFlow = yFlowFactory.getRandom(swT, false)
 
         when: "Request flows on switch"
