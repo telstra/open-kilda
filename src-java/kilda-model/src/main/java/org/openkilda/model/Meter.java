@@ -30,6 +30,7 @@ public final class Meter implements Serializable {
     public static final int MIN_RATE_IN_KBPS = 64;
 
     private static final int METER_BURST_SIZE_EQUALS_DELTA = 1;
+    private static final int E_SWITCH_METER_RATE_EQUALS_DELTA = 1;
     private static final double E_SWITCH_METER_RATE_EQUALS_DELTA_COEFFICIENT = 0.01;
     private static final double E_SWITCH_METER_BURST_SIZE_EQUALS_DELTA_COEFFICIENT = 0.01;
 
@@ -117,10 +118,15 @@ public final class Meter implements Serializable {
         // E-switches have a bug when installing the rate and burst size.
         // Such switch sets the rate different from the rate that was sent to it.
         // Therefore, we compare actual and expected values ​​using the delta coefficient.
-        if (isESwitch) {
-            return Math.abs(actual - expected) <= expected * E_SWITCH_METER_RATE_EQUALS_DELTA_COEFFICIENT;
+        if (!isESwitch) {
+            return actual == expected;
         }
-        return actual == expected;
+        //this is a workaround for the bug in the E-switches when the rate is too small (less than 100 if delta
+        // coefficient is 0.01)
+        if (expected * E_SWITCH_METER_RATE_EQUALS_DELTA_COEFFICIENT < E_SWITCH_METER_RATE_EQUALS_DELTA) {
+            return Math.abs(actual - expected) <= E_SWITCH_METER_RATE_EQUALS_DELTA;
+        }
+        return Math.abs(actual - expected) <= expected * E_SWITCH_METER_RATE_EQUALS_DELTA_COEFFICIENT;
     }
 
     /**

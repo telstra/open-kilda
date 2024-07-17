@@ -304,6 +304,26 @@ public class ValidationServiceImplTest {
     }
 
     @Test
+    public void validateProperMetersSlightlyDifferentMeters() {
+        ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
+        MeterSpeakerData meter1 = buildFullMeterSpeakerCommandData(32, 64, 10500,
+                Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS));
+        MeterSpeakerData meter2 = buildFullMeterSpeakerCommandData(32, 65, 10500,
+                Sets.newHashSet(MeterFlag.KBPS, MeterFlag.BURST, MeterFlag.STATS));
+
+        ValidateMetersResultV2 response = validationService.validateMeters(SWITCH_ID_E,
+                singletonList(meter1),
+                singletonList(meter2),
+                true, false);
+
+        assertTrue(response.getMissingMeters().isEmpty());
+        assertTrue(response.getMisconfiguredMeters().isEmpty());
+        assertFalse(response.getProperMeters().isEmpty());
+        assertTrue(response.getExcessMeters().isEmpty());
+        assertTrue(response.isAsExpected());
+    }
+
+    @Test
     public void validateMetersMissingAndExcessMeters() {
         ValidationService validationService = new ValidationServiceImpl(persistenceManager().build(), ruleManager);
 
