@@ -23,7 +23,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -41,8 +40,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 import javax.sql.DataSource;
 
 @Slf4j
@@ -60,10 +57,6 @@ public class DatabaseConfigurator {
 
     private final VersionRepository versionEntityRepository;
 
-    private final DataSource dataSource;
-
-    public DatabaseConfigurator(VersionRepository versionRepository, final DataSource dataSource,
-                                final ResourceLoader resourceLoader, EntityManager em) {
     private final DataSource dataSource;
 
     public DatabaseConfigurator(@Autowired final VersionRepository versionRepository, final DataSource dataSource,

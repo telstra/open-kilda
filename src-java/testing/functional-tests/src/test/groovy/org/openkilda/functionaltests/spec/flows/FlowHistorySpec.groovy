@@ -27,7 +27,7 @@ import org.openkilda.model.SwitchFeature
 import org.openkilda.model.history.FlowEvent
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import com.github.javafaker.Faker
 import groovy.util.logging.Slf4j
@@ -418,7 +418,7 @@ class FlowHistorySpec extends HealthCheckSpecification {
     }
 
     void checkHistoryCommonStuff(FlowHistory flowHistory, String flowId, FlowActionType actionType) {
-        SoftAssertions softAssertions = new SoftAssertions()
+        SoftAssertionsWrapper softAssertions = new SoftAssertionsWrapper()
         def historyEvent = flowHistory.getEntriesByType(actionType).first()
         softAssertions.checkSucceeds { assert historyEvent.payload.action[-1] == actionType.payloadLastAction }
         softAssertions.checkSucceeds { assert historyEvent.flowId == flowId }

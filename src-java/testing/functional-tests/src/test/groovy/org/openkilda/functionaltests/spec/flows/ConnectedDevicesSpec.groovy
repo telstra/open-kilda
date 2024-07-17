@@ -46,7 +46,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.ArpData
 import org.openkilda.testing.service.traffexam.model.LldpData
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import com.github.javafaker.Faker
 import groovy.transform.AutoClone
@@ -1341,7 +1341,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     }
 
     private void validateLldpArpMeters(SwitchId switchId) {
-        SoftAssertions assertions = new SoftAssertions()
+        SoftAssertionsWrapper assertions = new SoftAssertionsWrapper()
         def validationResponse = switchHelper.validate(switchId)
         assertions.checkSucceeds { assert validationResponse.meters.asExpected }
         assertions.checkSucceeds { assert validationResponse.meters.proper.findAll { it.meterId == createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE).value }.size() == 1 }

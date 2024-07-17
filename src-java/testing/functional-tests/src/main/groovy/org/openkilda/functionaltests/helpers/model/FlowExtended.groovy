@@ -62,7 +62,6 @@ import org.openkilda.testing.service.traffexam.model.Host
 import org.openkilda.testing.service.traffexam.model.TimeLimit
 import org.openkilda.testing.service.traffexam.model.Vlan
 import org.openkilda.testing.tools.ConnectedDevice
-import org.openkilda.testing.tools.SoftAssertions
 import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -771,7 +770,7 @@ class FlowExtended {
     }
 
     void hasTheSameDetectedDevicesAs(FlowExtended expectedFlowExtended) {
-        SoftAssertions assertions = new SoftAssertions()
+        SoftAssertionsWrapper assertions = new SoftAssertionsWrapper()
 
         assertions.checkSucceeds { assert this.source.detectConnectedDevices.lldp == expectedFlowExtended.source.detectConnectedDevices.lldp }
         assertions.checkSucceeds { assert this.source.detectConnectedDevices.arp == expectedFlowExtended.source.detectConnectedDevices.arp }

@@ -30,7 +30,6 @@ import org.openkilda.model.SwitchInfo;
 import org.openkilda.store.model.SwitchStoreConfigDto;
 import org.openkilda.store.model.UrlDto;
 import org.openkilda.store.service.StoreService;
-import org.openkilda.test.MockitoExtension;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -41,6 +40,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
 
