@@ -52,6 +52,10 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
     final static List<String> upOrDegradedState = [FlowState.UP, FlowState.DEGRADED].collect{it.getState()}
     final static List<String> upOrDownState = [FlowState.UP, FlowState.DOWN].collect{it.getState()}
 
+    def setupSpec() {
+        upTraffGenPortsIfRequired()
+    }
+
     def "Able to swap main and protected paths manually"() {
         given: "A Y-Flow with protected paths"
         def swT = findSwitchTripletForYFlowWithProtectedPaths()

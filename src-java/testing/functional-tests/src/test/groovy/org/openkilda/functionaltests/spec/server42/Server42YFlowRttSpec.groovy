@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.server42
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
+import static org.openkilda.functionaltests.extension.env.EnvType.HARDWARE_ENV
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -71,6 +72,7 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
     SwitchTriplet switchTripletWithYPointOnSubFlowEnd
 
     def setupSpec() {
+        upS42PortsIfRequired()
         switchTripletWithYPointOnSharedEp = topologyHelper.findSwitchTripletWithSharedEpInTheMiddleOfTheChainServer42Support()
         switchTripletWithYPointOnSubFlowEnd = topologyHelper.findSwitchTripletWithSharedEpEp1Ep2InChainServer42Support()
     }
@@ -95,6 +97,11 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         assert isSharedEndpointYPoint ? yFlow.sharedEndpoint.switchId == yFlow.yPoint : yFlow.sharedEndpoint.switchId != yFlow.yPoint
 
         then: "Check if stats for FORWARD and REVERSE directions are available for the first sub-flow"
+        if (profile == HARDWARE_ENV.value) {
+            assert antiflap.isPortUp(swT.shared.dpId, swT.shared.prop.server42Port)
+            assert antiflap.isPortUp(swT.ep1.dpId, swT.ep1.prop.server42Port)
+            assert antiflap.isPortUp(swT.ep2.dpId, swT.ep2.prop.server42Port)
+        }
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + SERVER42_STATS_LAG, 1) {
             def subFlow1Stats = flowStats.of(yFlow.subFlows.first().flowId)
             assert subFlow1Stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
@@ -161,6 +168,11 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "Stats for both directions are available for the first sub-flow"
+        if (profile == HARDWARE_ENV.value) {
+            assert antiflap.isPortUp(swT.shared.dpId, swT.shared.prop.server42Port)
+            assert antiflap.isPortUp(swT.ep1.dpId, swT.ep1.prop.server42Port)
+            assert antiflap.isPortUp(swT.ep2.dpId, swT.ep2.prop.server42Port)
+        }
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             verifyAll(flowStats.of(yFlow.subFlows.first().flowId)) { subFlow1Stats ->
                 assert subFlow1Stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
@@ -217,7 +229,7 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         switchHelper.waitForS42SwRulesSetup(false)
 
         and: "server42FlowRtt is turned off on all switches"
-        def initialSwitchesProps = [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, false, false)] }
+        [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, false, false)] }
 
         when: "Create a Y-Flow"
         def yFlow = yFlowFactory.getRandom(swT)
@@ -484,6 +496,11 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         assert isSharedEndpointYPoint ? yFlow.sharedEndpoint.switchId == yFlow.yPoint : yFlow.sharedEndpoint.switchId != yFlow.yPoint
 
         and: "Stats for both directions are available for the first sub-flow"
+        if (profile == HARDWARE_ENV.value) {
+            assert antiflap.isPortUp(swT.shared.dpId, swT.shared.prop.server42Port)
+            assert antiflap.isPortUp(swT.ep1.dpId, swT.ep1.prop.server42Port)
+            assert antiflap.isPortUp(swT.ep2.dpId, swT.ep2.prop.server42Port)
+        }
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             verifyAll(flowStats.of(yFlow.subFlows.first().flowId)) { subFlow1Stats ->
                 assert subFlow1Stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
@@ -594,6 +611,11 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
 
         and: "Stats for both directions are available for the first sub-flow"
         def flowUpdateTime = new Date().getTime()
+        if (profile == HARDWARE_ENV.value) {
+            assert antiflap.isPortUp(swT.shared.dpId, swT.shared.prop.server42Port)
+            assert antiflap.isPortUp(swT.ep1.dpId, swT.ep1.prop.server42Port)
+            assert antiflap.isPortUp(swT.ep2.dpId, swT.ep2.prop.server42Port)
+        }
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             verifyAll(flowStats.of(yFlow.subFlows.first().flowId)) { subFlow1Stats ->
                 assert subFlow1Stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(flowUpdateTime)

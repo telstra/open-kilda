@@ -1,6 +1,8 @@
 package org.openkilda.functionaltests.extension.env
 
 import static groovyx.gpars.GParsExecutorsPool.withPool
+import static org.openkilda.functionaltests.extension.env.EnvType.HARDWARE_ENV
+import static org.openkilda.functionaltests.extension.env.EnvType.VIRTUAL_ENV
 import static org.openkilda.testing.Constants.SWITCHES_ACTIVATION_TIME
 import static org.openkilda.testing.Constants.TOPOLOGY_DISCOVERING_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -90,10 +92,10 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     @Override
     void notifyContextInitialized(ApplicationContext applicationContext) {
         applicationContext.autowireCapableBeanFactory.autowireBean(this)
-        if (profile == "virtual") {
+        if (profile == VIRTUAL_ENV.value) {
             isTopologyRebuildRequired ? buildVirtualEnvironment() : topology.setLabId(labService.getLabs().first().labId)
             log.info("Virtual topology is successfully created")
-        } else if (profile == "hardware") {
+        } else if (profile == HARDWARE_ENV.value) {
             labService.createHwLab(topology)
             log.info("Successfully redirected to hardware topology")
         } else {
@@ -263,7 +265,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     }
 
     boolean isHealthCheckRequired(String profile, Boolean enable, Boolean isTopologyRebuildRequired) {
-        return (profile == "hardware" && enable) || (profile == "virtual" && !isTopologyRebuildRequired && enable)
+        return (profile == HARDWARE_ENV.value && enable) || (profile == VIRTUAL_ENV.value && !isTopologyRebuildRequired && enable)
     }
 
     void verifyTopologyReadiness(TopologyDefinition topologyDefinition) {
@@ -272,8 +274,8 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
                 withPool {
                     [allSwitchesAreActive,
                      allLinksAreActive,
-                     profile == "hardware" || !isTopologyRebuildRequired ? noFlowsLeft : null,
-                     profile == "hardware" || !isTopologyRebuildRequired ? noLinkPropertiesLeft: null,
+                     profile == HARDWARE_ENV.value || !isTopologyRebuildRequired ? noFlowsLeft : null,
+                     profile == HARDWARE_ENV.value|| !isTopologyRebuildRequired ? noLinkPropertiesLeft: null,
                      linksBandwidthAndSpeedMatch,
                      noExcessRulesMeters,
                      allSwitchesConnectedToExpectedRegion,

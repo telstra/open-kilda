@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests
 
+import static org.openkilda.functionaltests.extension.env.EnvType.HARDWARE_ENV
+
 import org.openkilda.functionaltests.helpers.IslHelper
 import org.openkilda.functionaltests.helpers.model.ASwitchFlows
 import org.openkilda.functionaltests.helpers.model.ASwitchPorts
@@ -20,6 +22,8 @@ import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
@@ -136,6 +140,25 @@ class BaseSpecification extends Specification {
             withPool { northboundV2.getAllFlows().eachParallel { !it.YFlowId && northboundV2.deleteFlow(it.flowId) } }
             withPool { northboundV2.getAllYFlows().eachParallel { northboundV2.deleteYFlow(it.YFlowId) } }
             withPool { northboundV2.getAllHaFlows().eachParallel { northboundV2.deleteHaFlow(it.haFlowId) } }
+        }
+    }
+
+    void upTraffGenPortsIfRequired() {
+        topology.activeTraffGens.each { TraffGen traffGen ->
+            if (!antiflap.isPortUp(traffGen.switchConnected.dpId, traffGen.switchPort)) {
+                log.info "Switching ON traffGen port ${traffGen.switchPort} on switch ${traffGen.switchConnected.dpId} " +
+                        "for spec ${this.class.simpleName}"
+                antiflap.portUp(traffGen.switchConnected.dpId, traffGen.switchPort)
+            }
+        }
+    }
+
+    void upS42PortsIfRequired() {
+        profile == HARDWARE_ENV.value && topology.activeServer42Switches.each { Switch sw ->
+            if (!antiflap.isPortUp(sw.dpId, sw.prop.server42Port)) {
+                log.info "Switching ON s42 port ${sw.prop.server42Port} on switch ${sw.dpId} for spec ${this.class.simpleName}"
+                antiflap.portUp(sw.dpId, sw.prop.server42Port)
+            }
         }
     }
 }

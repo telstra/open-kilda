@@ -44,6 +44,10 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
+    def setupSpec() {
+        upTraffGenPortsIfRequired()
+    }
+
     def "Able to swap main and protected paths manually"() {
         given: "An HA-Flow with protected paths"
         def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()

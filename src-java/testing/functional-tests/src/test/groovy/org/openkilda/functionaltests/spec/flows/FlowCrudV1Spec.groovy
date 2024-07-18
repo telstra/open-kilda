@@ -8,7 +8,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.messaging.payload.flow.FlowState.UP
@@ -31,7 +30,6 @@ import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.model.MeterId
@@ -86,6 +84,10 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
     @Shared
     def getPortViolationError = { String endpoint, int port, SwitchId swId ->
         ~/The port $port on the switch \'$swId\' is occupied by an ISL \($endpoint endpoint collision\)./
+    }
+
+    def setupSpec() {
+        upTraffGenPortsIfRequired()
     }
 
     @Tags([TOPOLOGY_DEPENDENT])

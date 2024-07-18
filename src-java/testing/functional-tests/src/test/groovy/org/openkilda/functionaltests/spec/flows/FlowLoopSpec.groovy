@@ -61,6 +61,10 @@ class FlowLoopSpec extends HealthCheckSpecification {
     @Shared
     SwitchRulesFactory switchRulesFactory
 
+    def setupSpec() {
+        upTraffGenPortsIfRequired()
+    }
+
     @IterationTags([
             @IterationTag(tags = [SMOKE_SWITCHES, TOPOLOGY_DEPENDENT], iterationNameRegex = /protected/),
             //https://github.com/telstra/open-kilda/issues/4774

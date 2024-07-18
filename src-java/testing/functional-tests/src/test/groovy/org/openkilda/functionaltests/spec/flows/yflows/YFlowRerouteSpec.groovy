@@ -40,8 +40,6 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS_Y
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
@@ -58,6 +56,10 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
     @Autowired @Shared
     FlowStats flowStats
+
+    def setupSpec() {
+        upTraffGenPortsIfRequired()
+    }
 
     @Tags([TOPOLOGY_DEPENDENT, ISL_RECOVER_ON_FAIL])
     def "Valid y-flow can be rerouted"() {

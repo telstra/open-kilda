@@ -31,6 +31,10 @@ class DefaultFlowSpec extends HealthCheckSpecification {
     @Shared
     Provider<TraffExamService> traffExamProvider
 
+    def setupSpec() {
+        upTraffGenPortsIfRequired()
+    }
+
     @Tags([SMOKE_SWITCHES])
    def "Systems allows to pass traffic via default/vlan and qinq flow when they are on the same port"() {
         given: "At least 3 traffGen switches"

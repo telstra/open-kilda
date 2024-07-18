@@ -47,6 +47,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         statsRouterRequestInterval = 60, this test often fails on jenkins with this value
         the statsrouter.request.interval is increased up to 120 */
         statsRouterInterval = statsRouterRequestInterval * 2
+        upTraffGenPortsIfRequired()
     }
 
     def "System is able to collect stats after intentional swapping flow path to protected"() {

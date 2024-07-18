@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.extension.env
 
+import static org.openkilda.functionaltests.extension.env.EnvType.HARDWARE_ENV
+
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.model.SwitchFeature
 
@@ -27,7 +29,7 @@ class HardwareEnvCleanupExtension extends EnvCleanupExtension {
     @Override
     void notifyContextInitialized(ApplicationContext applicationContext) {
         applicationContext.autowireCapableBeanFactory.autowireBean(this)
-        if (profile == "hardware" && cleanup) {
+        if (profile == HARDWARE_ENV.value && cleanup) {
             log.warn("Cleanup mode is ON. Cleanup may be destructive and mask potential defects related to improper" +
                     " topology discovery, default rules setup on switch discovery, bandwidth discovery etc.")
             deleteAllFlows()

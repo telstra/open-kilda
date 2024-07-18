@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.logging
 
+import static org.openkilda.functionaltests.extension.env.EnvType.VIRTUAL_ENV
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 
@@ -39,7 +40,7 @@ class CheckLoggingSpec extends HealthCheckSpecification {
         def result = elastic.getLogs(new ElasticQueryBuilder().setTags(KildaTags.FLOODLIGHT)
                 .setLevel("INFO").setTimeRange(300).build())
 
-        if (profile == "virtual") { //due to different version of kibana
+        if (profile == VIRTUAL_ENV.value) { //due to different version of kibana
             assert result?.hits?.total > 0: "No logs could be found for Floodlight"
         } else {
             assert result?.hits?.total.value > 0: "No logs could be found for Floodlight"

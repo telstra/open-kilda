@@ -2,9 +2,9 @@ package org.openkilda.functionaltests.spec.server42
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
+import static org.openkilda.functionaltests.extension.env.EnvType.HARDWARE_ENV
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.VXLAN
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
@@ -46,6 +46,10 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
     @Shared
     SwitchRulesFactory switchRulesFactory
 
+    def setupSpec() {
+        upS42PortsIfRequired()
+    }
+
     @Tags(TOPOLOGY_DEPENDENT)
     def "Create an Ha-Flow (#description) with server42 Rtt feature and check datapoints in tsdb"() {
         given: "Three active switches with server42 connected"
@@ -65,6 +69,11 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
         HaFlowExtended haFlow = haFlowBuilder(swT).build().create()
 
         then: "Check if stats for FORWARD and REVERSE directions are available for the first sub-Flow"
+        if (profile == HARDWARE_ENV.value) {
+            assert antiflap.isPortUp(swT.shared.dpId, swT.shared.prop.server42Port)
+            assert antiflap.isPortUp(swT.ep1.dpId, swT.ep1.prop.server42Port)
+            assert antiflap.isPortUp(swT.ep2.dpId, swT.ep2.prop.server42Port)
+        }
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             def subFlow1Stats = flowStats.of(haFlow.subFlows.first().haSubFlowId)
             assert subFlow1Stats.get(FLOW_RTT, FORWARD, Origin.SERVER_42).hasNonZeroValues()
@@ -112,6 +121,11 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
         assert isHaFlowWithSharedPath ? northboundV2.getHaFlowPaths(haFlow.haFlowId).sharedPath.forward : !northboundV2.getHaFlowPaths(haFlow.haFlowId).sharedPath.forward
 
         and: "Verify server42 rtt stats are available for both sub-Flows in forward and reverse direction"
+        if (profile == HARDWARE_ENV.value) {
+            assert antiflap.isPortUp(swT.shared.dpId, swT.shared.prop.server42Port)
+            assert antiflap.isPortUp(swT.ep1.dpId, swT.ep1.prop.server42Port)
+            assert antiflap.isPortUp(swT.ep2.dpId, swT.ep2.prop.server42Port)
+        }
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             def subFlow1Stats = flowStats.of(haFlow.subFlows.first().haSubFlowId)
             assert subFlow1Stats.get(FLOW_RTT, FORWARD, Origin.SERVER_42).hasNonZeroValues()

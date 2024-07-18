@@ -15,6 +15,8 @@
 
 package org.openkilda.functionaltests.config
 
+import static org.openkilda.functionaltests.extension.env.EnvType.HARDWARE_ENV
+
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.tools.TopologyPool
@@ -49,7 +51,7 @@ class TopologyConfig {
 
     @Bean
     TopologyPool topologyPool() throws IOException {
-        if (profile == "hardware") {
+        if (profile == HARDWARE_ENV.value) {
             parallelTopologies = 1
         }
         return new TopologyPool((1..parallelTopologies).collect { buildTopologyDefinition(it - 1) })

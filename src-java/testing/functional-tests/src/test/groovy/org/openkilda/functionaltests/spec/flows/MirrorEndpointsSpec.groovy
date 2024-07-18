@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.env.EnvType.VIRTUAL_ENV
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -23,7 +24,6 @@ import org.openkilda.functionaltests.error.flowmirror.FlowMirrorPointNotCreatedE
 import org.openkilda.functionaltests.error.flowmirror.FlowMirrorPointNotCreatedWithConflictExpectedError
 import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotUpdatedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.FlowHistoryConstants
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType
@@ -85,6 +85,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
     def setupSpec() {
         deleteAnyFlowsLeftoversIssue5480()
+        upTraffGenPortsIfRequired()
     }
 
     @Tags([SMOKE, SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
@@ -92,7 +93,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         given: "A flow"
         assumeTrue(swPair as boolean, "Unable to find a switch pair")
         def flowEntity = flowFactory.getBuilder(swPair).withBandwidth(100000)
-        if (profile == 'virtual') {
+        if (profile == VIRTUAL_ENV.value) {
             // ovs switch doesn't support mirroring for the vxlan flows
             flowEntity.withEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
         }

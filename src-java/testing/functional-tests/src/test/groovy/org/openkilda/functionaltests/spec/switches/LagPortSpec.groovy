@@ -55,6 +55,10 @@ class LagPortSpec extends HealthCheckSpecification {
     @Shared
     Integer lagOffset = 2000
 
+    def setupSpec() {
+        upTraffGenPortsIfRequired()
+    }
+
     def "Able to CRUD LAG port with lacp_reply=#lacpReply on #sw.hwSwString"() {
         given: "A switch"
         def portsArrayCreate = topology.getAllowedPortsForSwitch(sw)[-2, -1] as Set<Integer>

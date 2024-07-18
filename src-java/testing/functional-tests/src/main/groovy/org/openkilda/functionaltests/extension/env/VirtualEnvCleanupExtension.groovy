@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.extension.env
 
+import static org.openkilda.functionaltests.extension.env.EnvType.VIRTUAL_ENV
+
 import groovy.util.logging.Slf4j
 import org.springframework.context.ApplicationContext
 
@@ -13,7 +15,7 @@ class VirtualEnvCleanupExtension extends EnvCleanupExtension {
     @Override
     void notifyContextInitialized(ApplicationContext applicationContext) {
         applicationContext.autowireCapableBeanFactory.autowireBean(this)
-        if (profile == "virtual") {
+        if (profile == VIRTUAL_ENV.value) {
             topology.switches.each { database.removeConnectedDevices(it.dpId) }
             def links = northbound.getAllLinks()
             deleteInactiveIsls(links)

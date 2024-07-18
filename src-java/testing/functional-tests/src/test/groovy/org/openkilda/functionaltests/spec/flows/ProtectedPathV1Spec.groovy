@@ -70,6 +70,10 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
 
     public static final Closure REQUIRED_COOKIE = { Long cookie ->  !new Cookie(cookie).serviceFlag && new Cookie(cookie).type == SERVICE_OR_FLOW_SEGMENT }
 
+    def setupSpec() {
+        upTraffGenPortsIfRequired()
+    }
+
     def "Able to create a flow with protected path when maximumBandwidth=#bandwidth, vlan=#vlanId"() {
         given: "Two active not neighboring switches with two diverse paths at least"
         def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()

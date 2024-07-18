@@ -84,6 +84,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         s42IsEnabledOnSrcSw = switchHelper.getCachedSwProps(srcSwitch.dpId).server42FlowRtt
         srcSwDefaultRules = northbound.getSwitchRules(srcSwitch.dpId).flowEntries
         dstSwDefaultRules = northbound.getSwitchRules(dstSwitch.dpId).flowEntries
+        upTraffGenPortsIfRequired()
     }
 
     @Tags([VIRTUAL, SMOKE, SWITCH_RECOVER_ON_FAIL])

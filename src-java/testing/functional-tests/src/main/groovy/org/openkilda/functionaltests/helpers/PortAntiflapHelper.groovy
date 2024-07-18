@@ -101,4 +101,8 @@ class PortAntiflapHelper {
             }
         }
     }
+
+    boolean isPortUp(SwitchId swId, int portNo){
+        northbound.getPort(swId, portNo).getState().first() == "LIVE"
+    }
 }

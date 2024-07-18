@@ -44,6 +44,10 @@ class YFlowCreateSpec extends HealthCheckSpecification {
     @Shared
     Provider<TraffExamService> traffExamProvider
 
+    def setupSpec() {
+        upTraffGenPortsIfRequired()
+    }
+
     @Tags([TOPOLOGY_DEPENDENT])
     def "Valid Y-Flow can be created#trafficDisclaimer, covered cases: #coveredCases"() {
         assumeTrue(swT != null, "These cases cannot be covered on given topology: $coveredCases")

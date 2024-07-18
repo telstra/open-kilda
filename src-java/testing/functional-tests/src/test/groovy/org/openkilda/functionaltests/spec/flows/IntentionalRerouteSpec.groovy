@@ -39,6 +39,10 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
     @Shared
     FlowFactory flowFactory
 
+    def setupSpec() {
+        upTraffGenPortsIfRequired()
+    }
+
     @Tags(ISL_PROPS_DB_RESET)
     def "Not able to reroute to a path with not enough bandwidth available"() {
         given: "A flow with alternate paths available"

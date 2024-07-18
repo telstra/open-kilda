@@ -58,6 +58,10 @@ class SwapEndpointSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
+    def setupSpec() {
+        upTraffGenPortsIfRequired()
+    }
+
     def "Able to swap endpoints(#data.description)"() {
         given: "Some flows in the system according to preconditions"
         flows.each { it.create() }

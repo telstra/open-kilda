@@ -21,7 +21,6 @@ import org.openkilda.northbound.dto.v2.switches.SwitchConnectionsResponse
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
 
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
@@ -47,6 +46,10 @@ class MflStatSpec extends HealthCheckSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider
+
+    def setupSpec() {
+        upTraffGenPortsIfRequired()
+    }
     //TODO: split these long tests into set of the smaller ones after https://github.com/telstra/open-kilda/pull/5256
     // is merged into development
     @Tags([LOW_PRIORITY])

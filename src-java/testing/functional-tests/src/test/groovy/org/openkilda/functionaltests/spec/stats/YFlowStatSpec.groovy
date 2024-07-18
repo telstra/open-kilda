@@ -59,6 +59,7 @@ class YFlowStatSpec extends HealthCheckSpecification {
     FlowStats flowStats
 
     def setupSpec() {
+        upTraffGenPortsIfRequired()
         def switchTriplet = topologyHelper.getSwitchTriplets(false, false).find {
             it.ep1 != it.ep2 && it.ep1 != it.shared && it.ep2 != it.shared &&
                     [it.shared, it.ep1, it.ep2].every { it.traffGens }

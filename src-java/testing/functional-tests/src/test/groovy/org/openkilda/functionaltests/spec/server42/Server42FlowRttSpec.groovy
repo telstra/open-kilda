@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.server42
 import static java.util.concurrent.TimeUnit.SECONDS
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
+import static org.openkilda.functionaltests.extension.env.EnvType.HARDWARE_ENV
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
@@ -77,10 +78,14 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
     @Shared
     SwitchRulesFactory switchRulesFactory
 
+    def setupSpec() {
+        upS42PortsIfRequired()
+    }
+
     @Tags(TOPOLOGY_DEPENDENT)
     @IterationTag(tags = [HARDWARE], iterationNameRegex = /(NS|WB)/)
     def "Create a #flowDescription flow with server42 Rtt feature and check datapoints in tsdb"() {
-        given: "Two active switches, src has server42 connected"
+        given: "Two active switches, both src and dst have server42 connected"
         SwitchPair switchPair = switchPairFilter(switchPairs.all().withBothSwitchesConnectedToServer42()).random()
 
         when: "Set server42FlowRtt toggle to true"
@@ -95,6 +100,9 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         FlowExtended flow = expectedFlowEntity(flowFactory.getBuilder(switchPair)).create()
 
         then: "Check if stats for forward are available"
+        if (profile == HARDWARE_ENV.value) {
+            assert antiflap.isPortUp(switchPair.src.dpId, switchPair.src.prop.server42Port)
+        }
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
         }
@@ -264,13 +272,18 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         when: "Create a flow"
         def checkpointTime = new Date()
         def flow = flowFactory.getRandom(switchPair)
+        def flowInvolvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
 
         then: "Involved switches pass switch validation"
         Wrappers.wait(RULES_INSTALLATION_TIME) {  //wait for s42 rules
-            switchHelper.validateAndCollectFoundDiscrepancies(flow.retrieveAllEntityPaths().getInvolvedSwitches()).isEmpty()
+            switchHelper.validateAndCollectFoundDiscrepancies(flowInvolvedSwitches).isEmpty()
         }
 
         and: "Stats for both directions are available"
+        if (profile == HARDWARE_ENV.value) {
+            assert antiflap.isPortUp(switchPair.src.dpId, switchPair.src.prop.server42Port)
+            assert antiflap.isPortUp(switchPair.dst.dpId, switchPair.dst.prop.server42Port)
+        }
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
             assert flowStats.of(flow.flowId).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValues()
@@ -286,7 +299,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         then: "Stats are available in forward direction"
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-
         }
 
         and: "Stats are not available in reverse direction"
@@ -307,6 +319,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         and: "A flow on the given switch pair"
         def flow = flowFactory.getRandom(switchPair)
 
+        if (profile == HARDWARE_ENV.value) {
+            assert antiflap.isPortUp(switchPair.src.dpId, switchPair.src.prop.server42Port)
+            assert antiflap.isPortUp(switchPair.dst.dpId, switchPair.dst.prop.server42Port)
+        }
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
             assert flowStats.of(flow.flowId).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValues()
@@ -498,6 +514,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def flowUpdateTime = new Date().getTime()
 
         then: "Check if stats for forward/reverse directions are available"
+        if (profile == HARDWARE_ENV.value) {
+            assert antiflap.isPortUp(switchPair.src.dpId, switchPair.src.prop.server42Port)
+            assert antiflap.isPortUp(switchPair.dst.dpId, switchPair.dst.prop.server42Port)
+        }
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET, 1) {
             assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(flowUpdateTime)
             assert flowStats.of(flow.flowId).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(flowUpdateTime)
@@ -552,7 +572,6 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         northbound.updateSwitchProperties(switchPair.src.dpId, originalSrcSwPros.jacksonCopy().tap {
             server42Port = newS42Port
         })
-        def swPropIsWrong = true
 
         then: "server42 rules on the switch are updated"
         def amountOfS42Rules = switchHelper.getExpectedS42SwitchRulesBasedOnVxlanSupport(switchPair.src.dpId)
@@ -572,6 +591,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def flow = flowFactory.getRandom(switchPair)
 
         then: "Flow rtt stats are not available due to incorrect s42 port on the src switch"
+        if (profile == HARDWARE_ENV.value) {
+            assert antiflap.isPortUp(switchPair.src.dpId, switchPair.src.prop.server42Port)
+            assert antiflap.isPortUp(switchPair.dst.dpId, switchPair.dst.prop.server42Port)
+        }
         Wrappers.timedLoop(STATS_FROM_SERVER42_LOGGING_TIMEOUT / 2) {
             assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).isEmpty()
             assert flowStats.of(flow.flowId).get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
@@ -625,6 +648,10 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
         def flow = flowFactory.getBuilder(switchPair).withSourcePort(lagPort).build().create()
 
         then: "Stats from server42 for forward/reverse directions are available"
+        if (profile == HARDWARE_ENV.value) {
+            assert antiflap.isPortUp(switchPair.src.dpId, switchPair.src.prop.server42Port)
+            assert antiflap.isPortUp(switchPair.dst.dpId, switchPair.dst.prop.server42Port)
+        }
         Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
             assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValues()
             assert flowStats.of(flow.flowId).get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValues()

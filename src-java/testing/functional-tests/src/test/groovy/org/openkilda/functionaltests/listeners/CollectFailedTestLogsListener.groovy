@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.listeners
 
+import static org.openkilda.functionaltests.extension.env.EnvType.VIRTUAL_ENV
+
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.spockframework.runtime.model.ErrorInfo
 import org.spockframework.runtime.model.IterationInfo
@@ -30,7 +32,7 @@ class CollectFailedTestLogsListener extends AbstractSpringListener{
 
     @Override
     void error(ErrorInfo error) {
-        if (!isFailedInPreTest(error) && profile == "virtual") {
+        if (!isFailedInPreTest(error) && profile == VIRTUAL_ENV.value) {
             def objectMapper = new ObjectMapper()
             def startTime = startTime.get(error.getMethod().getIteration().getDisplayName())
             def endTime = utcTimeNow()

@@ -52,6 +52,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
     @Shared
     SwitchRulesFactory switchRulesFactory
 
+    def setupSpec() {
+        upTraffGenPortsIfRequired()
+    }
+
     @Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
     def "System allows to manipulate with QinQ flow\
 [srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.hwSwString()]#trafficDisclaimer"() {

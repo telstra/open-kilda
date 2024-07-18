@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.grpc
 
+import static org.openkilda.functionaltests.extension.env.EnvType.VIRTUAL_ENV
+
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckBaseSpecification
@@ -41,7 +43,7 @@ class GrpcBaseSpecification extends HealthCheckBaseSpecification {
 
     @Memoized
     List<SwitchDto> getNoviflowSwitches() {
-        if (profile == "virtual") {
+        if (profile == VIRTUAL_ENV.value) {
             /* Create fake switch for running test using grpc-stub
             NOTE: The grpc-stub service covers positive test cases only */
             def grpcStubIp = new DockerHelper(dockerHost).getContainerIp(GRPC_STUB)

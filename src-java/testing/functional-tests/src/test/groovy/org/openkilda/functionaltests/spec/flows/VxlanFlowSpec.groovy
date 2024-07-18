@@ -58,6 +58,10 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     @Shared
     SwitchRulesFactory switchRulesFactory
 
+    def setupSpec() {
+        upTraffGenPortsIfRequired()
+    }
+
     @IterationTags([
             @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /TRANSIT_VLAN -> VXLAN/)
     ])

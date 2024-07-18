@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.grpc
 
+import static org.openkilda.functionaltests.extension.env.EnvType.VIRTUAL_ENV
+
 import org.openkilda.functionaltests.error.LogicalPortNotCreatedExpectedError
 import org.openkilda.functionaltests.error.LogicalPortNotFoundExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
@@ -28,7 +30,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
     def "Able to create/read/delete logicalport on the #sw.hwSwString switch"() {
         when: "Create logical port"
         def switchPort
-        if (profile == "virtual") {
+        if (profile == VIRTUAL_ENV.value) {
             switchPort = (Math.random()*100).toInteger()
         } else {
             switchPort = northbound.getPorts(sw.switchId).find {
