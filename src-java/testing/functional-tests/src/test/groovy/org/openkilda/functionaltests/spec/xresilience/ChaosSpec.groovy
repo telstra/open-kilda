@@ -1,30 +1,34 @@
 package org.openkilda.functionaltests.spec.xresilience
 
-import spock.lang.Ignore
-
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
+import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 
 import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
 import spock.lang.Narrative
+import spock.lang.Shared
 
 import java.util.concurrent.TimeUnit
 
 @Slf4j
 @Narrative("Test system behavior under different factors and events that randomly appear across the topology")
 class ChaosSpec extends HealthCheckSpecification {
+
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
@@ -37,10 +41,11 @@ class ChaosSpec extends HealthCheckSpecification {
     def "Nothing breaks when multiple flows get rerouted due to randomly failing ISLs"() {
         setup: "Create multiple random flows"
         def flowsAmount = topology.activeSwitches.size() * 10
-        List<FlowRequestV2> flows = []
+        List<FlowExtended> flows = []
+        List<SwitchPortVlan> busyEndpoints = []
         flowsAmount.times {
-            def flow = flowHelperV2.randomFlow(*topologyHelper.randomSwitchPair, false, flows)
-            flowHelperV2.addFlow(flow)
+            def flow = flowFactory.getRandom(switchPairs.all().random(), false, FlowState.UP, busyEndpoints)
+            busyEndpoints.addAll(flow.occupiedEndpoints())
             flows << flow
         }
 
@@ -64,35 +69,15 @@ class ChaosSpec extends HealthCheckSpecification {
 
         Wrappers.wait(PATH_INSTALLATION_TIME * 3 + flowsAmount) {
             flows.each { flow ->
-                assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-                northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-                bothDirectionsHaveSamePath(northbound.getFlowPath(flow.flowId))
+                assert flow.retrieveFlowStatus().status == FlowState.UP
+                assert flow.validateAndCollectDiscrepancies().isEmpty()
+                def flowPathInfo = flow.retrieveAllEntityPaths()
+                assert flowPathInfo.getPathNodes(Direction.FORWARD).reverse() == flowPathInfo.getPathNodes(Direction.REVERSE)
             }
         }
 
         and: "All switches are valid"
-        switchHelper.validate(topology.activeSwitches*.dpId).isEmpty()
-
-        cleanup:
-        // Wait for meters deletion from all OF_13 switches since it impacts other tests.
-        Wrappers.wait(WAIT_OFFSET * 2 + flowsAmount * RULES_DELETION_TIME) {
-            topology.activeSwitches.findAll { it.ofVersion == "OF_13" }.each {
-                assert northbound.getAllMeters(it.dpId).meterEntries.findAll {
-                    it.meterId > MAX_SYSTEM_RULE_METER_ID
-                }.empty
-            }
-        }
-        database.resetCosts(topology.isls)
-    }
-
-    def bothDirectionsHaveSamePath(FlowPathPayload path) {
-        [path.forwardPath, path.reversePath.reverse()].transpose().each { PathNodePayload forwardNode,
-                                                                          PathNodePayload reverseNode ->
-            def failureMessage = "Failed nodes: $forwardNode $reverseNode"
-            assert forwardNode.switchId == reverseNode.switchId, failureMessage
-            assert forwardNode.outputPort == reverseNode.inputPort, failureMessage
-            assert forwardNode.inputPort == reverseNode.outputPort, failureMessage
-        }
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(topology.activeSwitches*.dpId).isEmpty()
     }
 
     def blinkPort(SwitchId swId, int port) {

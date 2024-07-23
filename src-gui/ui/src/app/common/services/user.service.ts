@@ -33,8 +33,8 @@ const httpOptions = {
     }
 
     /** POST: add user to the server */
-    addUser(user: User): Observable<User[]> {
-        return this.http.post<User[]>(this.configUrl + '/user', user);
+    addUser(user: User): Observable<User> {
+        return this.http.post<User>(this.configUrl + '/user', user);
     }
 
     getUserById(id: number): Observable<User> {

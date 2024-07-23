@@ -1,7 +1,7 @@
 package org.openkilda.functionaltests.helpers.model
 
-import org.openkilda.functionaltests.model.cleanup.CleanupActionType
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.FlowMeter
@@ -9,7 +9,6 @@ import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto
-import org.openkilda.northbound.dto.v2.haflows.HaFlow
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 

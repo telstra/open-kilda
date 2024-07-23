@@ -11,6 +11,7 @@ import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.haflow.HaFlowPathNotSwappedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -20,11 +21,14 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.service.traffexam.TraffExamService
 
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 
 import jakarta.inject.Provider
+
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Narrative("Verify path swap operations on HA-flows.")
 @Tags([HA_FLOW])
@@ -75,7 +79,9 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
 
         and: "All involved switches pass switch validation"
         def involvedSwitches = haFlowPathInfoAfter.getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
+        Wrappers.wait(WAIT_OFFSET) {
+            assert switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
+        }
 
         and: "Traffic passes through HA-Flow"
         if (swT.isHaTraffExamAvailable()) {
@@ -108,10 +114,8 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-
-        def errorDescription = exc.responseBodyAsString.to(MessageError).errorDescription
-        errorDescription == "Could not swap paths: HA-flow ${haFlow.haFlowId} doesn't have protected path"
+        new HaFlowPathNotSwappedExpectedError(HttpStatus.BAD_REQUEST,
+                ~/Could not swap paths: HA-flow ${haFlow.haFlowId} doesn't have protected path/).matches(exc)
     }
 
     @Tags(LOW_PRIORITY)
@@ -121,8 +125,7 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorDescription ==
-                "Could not swap paths: HA-flow $NON_EXISTENT_FLOW_ID not found"
+        new HaFlowPathNotSwappedExpectedError(HttpStatus.NOT_FOUND,
+                ~/Could not swap paths: HA-flow $NON_EXISTENT_FLOW_ID not found/).matches(exc)
     }
 }

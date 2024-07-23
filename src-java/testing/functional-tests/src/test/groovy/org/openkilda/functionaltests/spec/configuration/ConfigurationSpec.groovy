@@ -3,8 +3,7 @@ package org.openkilda.functionaltests.spec.configuration
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.NonExistingEncapsulationTypeExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.messaging.model.system.KildaConfigurationDto
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.model.FlowEncapsulationType
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -14,7 +13,6 @@ import spock.lang.Narrative
 import spock.lang.Shared
 
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
 
 @Narrative("""
 Kilda configuration is a special lever that allows to change default flow encapsulation type while creating.
@@ -22,10 +20,13 @@ This spec assumes that 'transit_vlan' is always default type
 """)
 @Isolated //kilda config updates
 class ConfigurationSpec extends HealthCheckSpecification {
+
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+
     @Shared
     FlowEncapsulationType defaultEncapsulationType = FlowEncapsulationType.TRANSIT_VLAN
-    @Autowired @Shared
-    CleanupManager cleanupManager
 
 
     def "System takes into account default flow encapsulation type while creating a flow"() {
@@ -34,16 +35,15 @@ class ConfigurationSpec extends HealthCheckSpecification {
                 .neighbouring()
                 .withBothSwitchesVxLanEnabled()
                 .random()
-        def flow1 = flowHelperV2.randomFlow(switchPair)
-        flow1.encapsulationType = null
-        flowHelperV2.addFlow(flow1)
+        def flow1 = flowFactory.getBuilder(switchPair)
+                .withEncapsulationType(null).build()
+                .create()
 
         then: "Flow is created with current default encapsulation type(transit_vlan)"
-        northboundV2.getFlow(flow1.flowId).encapsulationType == defaultEncapsulationType.toString().toLowerCase()
+        flow1.retrieveDetails().encapsulationType.toString() == defaultEncapsulationType.toString().toLowerCase()
 
         when: "Update default flow encapsulation type"
         def newFlowEncapsulationType = FlowEncapsulationType.VXLAN
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {kildaConfiguration.updateFlowEncapsulationType(defaultEncapsulationType)})
         def updateResponse = kildaConfiguration.updateFlowEncapsulationType(newFlowEncapsulationType)
 
         then: "Correct response is returned"
@@ -53,19 +53,18 @@ class ConfigurationSpec extends HealthCheckSpecification {
         kildaConfiguration.getKildaConfiguration().flowEncapsulationType == newFlowEncapsulationType.toString().toLowerCase()
 
         when: "Create a flow without encapsulation type"
-        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1])
-        flow2.encapsulationType = null
-        flowHelperV2.addFlow(flow2)
+        def flow2 = flowFactory.getBuilder(switchPair, false, flow1.occupiedEndpoints())
+                .withEncapsulationType(null).build()
+                .create()
 
         then: "Flow is created with new default encapsulation type(vxlan)"
-        northboundV2.getFlow(flow2.flowId).encapsulationType == newFlowEncapsulationType.toString().toLowerCase()
+        flow2.retrieveDetails().encapsulationType.toString() == newFlowEncapsulationType.toString().toLowerCase()
     }
 
     @Tags(LOW_PRIORITY)
     def "System doesn't allow to update kilda configuration with wrong flow encapsulation type"() {
         when: "Try to set wrong flow encapsulation type"
         def incorrectValue = "TEST"
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {kildaConfiguration.updateFlowEncapsulationType(defaultEncapsulationType)})
         kildaConfiguration.updateFlowEncapsulationType(incorrectValue)
 
         then: "Human readable error is returned"

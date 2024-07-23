@@ -1,8 +1,17 @@
 package org.openkilda.functionaltests.spec.stats
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RO
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
@@ -13,20 +22,13 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.tools.FlowTrafficExamBuilder
+
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
 import jakarta.inject.Provider
-
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RO
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/fl-statistics")
 @Narrative("""Now we have two FL instances: Management and Statistics.
@@ -40,8 +42,11 @@ class MflStatSpec extends HealthCheckSpecification {
     FlowStats flowStats
 
     @Autowired
-    Provider<TraffExamService> traffExamProvider
+    @Shared
+    FlowFactory flowFactory
 
+    @Autowired
+    Provider<TraffExamService> traffExamProvider
     //TODO: split these long tests into set of the smaller ones after https://github.com/telstra/open-kilda/pull/5256
     // is merged into development
     @Tags([LOW_PRIORITY])
@@ -49,27 +54,26 @@ class MflStatSpec extends HealthCheckSpecification {
         given: "A flow"
         assumeTrue(topology.activeTraffGens.size() > 1, "Require at least 2 switches with connected traffgen")
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected
-        def flow = flowHelper.randomFlow(srcSwitch, dstSwitch)
-        flow.maximumBandwidth = 100
-        flowHelper.addFlow(flow)
+        def flow = flowFactory.getBuilder(srcSwitch, dstSwitch).withBandwidth(100).build()
+                .createV1()
+
         def waitInterval = 10 //seconds
 
         when: "Generate traffic on the given flow"
         def startTime = new Date().getTime()
         def traffExam = traffExamProvider.get()
-        Exam exam = new FlowTrafficExamBuilder(topology, traffExam).buildExam(flow, (int) flow.maximumBandwidth, 5)
-                .tap{ udp = true }
+        Exam exam = flow.traffExam(traffExam, flow.maximumBandwidth, 5).forward.tap{ udp = true }
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
         statsHelper."force kilda to collect stats"()
 
         then: "Stat in TSDB is created"
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            flowStats.of(flow.getId()).get(FLOW_RAW_BYTES, srcSwitch.getDpId()).hasNonZeroValuesAfter(startTime)
+            flowStats.of(flow.flowId).get(FLOW_RAW_BYTES, srcSwitch.getDpId()).hasNonZeroValuesAfter(startTime)
         }
 
         when: "Leave src switch only with management controller and disconnect from stats"
-        def statsBlockData = lockKeeper.knockoutSwitch(srcSwitch, RO)
+        def statsBlockData = switchHelper.knockoutSwitchFromStatsController(srcSwitch)
         switchIsConnectedToFl(srcSwitch.dpId, true, false)
         def timeWhenSwitchWasDisconnectedFromFloodlight = new Date().getTime()
 
@@ -81,14 +85,14 @@ class MflStatSpec extends HealthCheckSpecification {
         def statFromMgmtController
         //first 60 seconds - trying to retrieve stats from management controller, next 60 seconds from stat controller
         Wrappers.wait(statsRouterRequestInterval * 2 + WAIT_OFFSET, waitInterval) {
-            flowStats.of(flow.getId()).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
+            flowStats.of(flow.flowId).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
                     .hasNonZeroValuesAfter(timeWhenSwitchWasDisconnectedFromFloodlight)
         }
 
         when: "Leave src switch only with stats controller and disconnect from management"
         lockKeeper.reviveSwitch(srcSwitch, statsBlockData)
         switchIsConnectedToFl(srcSwitch.dpId, true, true)
-        def mgmtBlockData = lockKeeper.knockoutSwitch(srcSwitch, RW)
+        def mgmtBlockData = switchHelper.knockoutSwitch(srcSwitch, RW)
         switchIsConnectedToFl(srcSwitch.dpId, false, true)
         def timeWhenSwitchWasDisconnectedFromManagement = new Date().getTime()
 
@@ -99,7 +103,7 @@ class MflStatSpec extends HealthCheckSpecification {
         then: "Stat on the src switch should be collected because statistic controller is set"
         def statFromStatsController
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            flowStats.of(flow.getId()).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
+            flowStats.of(flow.flowId).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
                     .hasNonZeroValuesAfter(timeWhenSwitchWasDisconnectedFromManagement)
         }
 
@@ -116,7 +120,7 @@ class MflStatSpec extends HealthCheckSpecification {
         then: "Stat on the src switch should not be collected because it is disconnected from controllers"
         def statAfterDeletingControllers
         Wrappers.timedLoop(statsRouterRequestInterval) {
-            assert !flowStats.of(flow.getId()).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
+            assert !flowStats.of(flow.flowId).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
                     .hasNonZeroValuesAfter(timeWhenSwitchWasDisconnectedFromBoth)
             sleep((waitInterval * 1000).toLong())
         }
@@ -132,7 +136,7 @@ class MflStatSpec extends HealthCheckSpecification {
 
         then: "Old statistic should be collected"
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            flowStats.of(flow.getId()).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
+            flowStats.of(flow.flowId).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
                     .hasNonZeroValuesAfter(startTime)
         }
     }
@@ -143,27 +147,26 @@ class MflStatSpec extends HealthCheckSpecification {
         given: "A flow"
         assumeTrue(topology.activeTraffGens.size() > 1, "Require at least 2 switches with connected traffgen")
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeTraffGens*.switchConnected
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flow.maximumBandwidth = 100
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
+                .withBandwidth(100).build()
+                .create()
 
         when: "Generate traffic on the given flow"
         def startTime = new Date().getTime()
         def traffExam = traffExamProvider.get()
-        Exam exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildExam(flowHelperV2.toV1(flow), (int) flow.maximumBandwidth, 5).tap { udp = true }
+        Exam exam = flow.traffExam(traffExam, flow.maximumBandwidth, 5).forward.tap { udp = true }
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
         then: "Stat in TSDB is created"
         def waitInterval = 10
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            flowStats.of(flow.getFlowId()).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
+            flowStats.of(flow.flowId).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
                     .hasNonZeroValuesAfter(startTime)
         }
 
         when: "Src switch is only left with management controller (no stats controller)"
-        def statsBlockData = lockKeeper.knockoutSwitch(srcSwitch, RO)
+        def statsBlockData = switchHelper.knockoutSwitchFromStatsController(srcSwitch)
         def needToRestoreConnectionToStats = true
         switchIsConnectedToFl(srcSwitch.dpId, true, false)
         def timeWhenSwitchWasDisconnectedFromFloodlight = new Date().getTime()
@@ -175,7 +178,7 @@ class MflStatSpec extends HealthCheckSpecification {
         then: "Stat on the src switch should be collected because management controller is still set"
         //first 60 seconds - trying to retrieve stats from management controller, next 60 seconds from stat controller
         Wrappers.wait(statsRouterRequestInterval * 2 + WAIT_OFFSET, waitInterval) {
-            flowStats.of(flow.getFlowId()).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
+            flowStats.of(flow.flowId).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
                     .hasNonZeroValuesAfter(timeWhenSwitchWasDisconnectedFromFloodlight)
         }
 
@@ -183,7 +186,7 @@ class MflStatSpec extends HealthCheckSpecification {
         lockKeeper.reviveSwitch(srcSwitch, statsBlockData)
         switchIsConnectedToFl(srcSwitch.dpId, true, true)
         needToRestoreConnectionToStats = false
-        def mgmtBlockData = lockKeeper.knockoutSwitch(srcSwitch, RW)
+        def mgmtBlockData = switchHelper.knockoutSwitch(srcSwitch, RW)
         def needToRestoreConnectionToManagement = true
         switchIsConnectedToFl(srcSwitch.dpId, false, true)
         def timeWhenSwitchWasDisconnectedFromManagement = new Date().getTime()
@@ -194,7 +197,7 @@ class MflStatSpec extends HealthCheckSpecification {
 
         then: "Stat on the src switch should be collected because statistic controller is set"
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            flowStats.of(flow.getFlowId()).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
+            flowStats.of(flow.flowId).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
                     .hasNonZeroValuesAfter(timeWhenSwitchWasDisconnectedFromManagement)
         }
 
@@ -212,7 +215,7 @@ class MflStatSpec extends HealthCheckSpecification {
         then: "Stat on the src switch should not be collected because it is disconnected from controllers"
         Wrappers.timedLoop(statsRouterRequestInterval) {
             sleep((waitInterval * 1000).toLong())
-            assert !flowStats.of(flow.getFlowId()).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
+            assert !flowStats.of(flow.flowId).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
                     .hasNonZeroValuesAfter(timeWhenSwitchWasDisconnectedFromBoth)
         }
 
@@ -225,23 +228,15 @@ class MflStatSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert srcSwitch.dpId in northbound.getActiveSwitches()*.switchId
             assert northbound.getAllLinks().findAll { it.state == IslChangeType.FAILED }.empty
-            assert northbound.getFlowStatus(flow.flowId).status != FlowState.DOWN
+            assert flow.retrieveFlowStatus().status != FlowState.DOWN
         }
 
         then: "Old statistic should be collected"
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            flowStats.of(flow.getFlowId()).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
+            flowStats.of(flow.flowId).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
                     .hasNonZeroValuesAfter(startTime)
 
         }
-
-        cleanup: "Cleanup: Delete the flow"
-        needToRestoreConnectionToManagement && lockKeeper.reviveSwitch(srcSwitch, mgmtBlockData)
-        needToRestoreConnectionToStats && lockKeeper.reviveSwitch(srcSwitch, statsBlockData)
-        Wrappers.wait(WAIT_OFFSET + rerouteDelay) {
-            assert northbound.getFlowStatus(flow.flowId).status == FlowState.UP
-        } // make sure that flow is UP after switchUP event
-
     }
 
     @Tags([TOPOLOGY_DEPENDENT])
@@ -252,13 +247,13 @@ class MflStatSpec extends HealthCheckSpecification {
             flHelper.filterRegionsByMode(it.regions, RO).size() == 2 }
         assumeTrue(srcSwitch != null, "This test requires a tg switch in 2 RW regions and 2 RO regions")
         def dstSwitch = topology.activeTraffGens*.switchConnected.find { it.dpId != srcSwitch.dpId }
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flow.maximumBandwidth = 100
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
+                .withBandwidth(100).build()
+                .create()
 
         when: "Src switch is only left with 1 management controller (no stats controllers)"
         def regionToStay = findMgmtFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName.first()
-        def blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
+        def blockData = switchHelper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
         Wrappers.wait(WAIT_OFFSET / 2) { with (northboundV2.getSwitchConnections(srcSwitch.dpId).connections) {
             it*.regionName == [regionToStay]
             it*.connectMode == [SwitchConnectMode.READ_WRITE.toString()]
@@ -267,10 +262,7 @@ class MflStatSpec extends HealthCheckSpecification {
         and: "Generate traffic on the given flow"
         def startTime = new Date().getTime()
         def traffExam = traffExamProvider.get()
-        Exam exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildExam(flowHelperV2.toV1(flow), (int) flow.maximumBandwidth, 5).tap {
-            udp = true
-        }
+        Exam exam = flow.traffExam(traffExam, flow.maximumBandwidth, 5).forward.tap { udp = true }
         exam.setResources(traffExam.startExam(exam))
         assert traffExam.waitExam(exam).hasTraffic()
 
@@ -278,7 +270,7 @@ class MflStatSpec extends HealthCheckSpecification {
         def waitInterval = 10
         //first 60 seconds - trying to retrieve stats from management controller, next 60 seconds from stat controller
         Wrappers.wait(statsRouterRequestInterval * 2 + WAIT_OFFSET, waitInterval) {
-            flowStats.of(flow.getFlowId()).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
+            flowStats.of(flow.flowId).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
                     .hasNonZeroValuesAfter(startTime)
         }
 
@@ -289,7 +281,7 @@ class MflStatSpec extends HealthCheckSpecification {
         }
         // '.first' in the line below, just for getting String instead of Array.
         regionToStay = (findMgmtFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName - regionToStay).first()
-        blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
+        blockData = switchHelper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
         }
@@ -302,7 +294,7 @@ class MflStatSpec extends HealthCheckSpecification {
         then: "Stat on the src switch should be collected (second RW switch available)"
         //first 60 seconds - trying to retrieve stats from management controller, next 60 seconds from stat controller
         Wrappers.wait(statsRouterRequestInterval * 2 + WAIT_OFFSET, waitInterval) {
-            flowStats.of(flow.getFlowId()).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
+            flowStats.of(flow.flowId).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
                     .hasNonZeroValuesAfter(timeWhenSwitchLeftWithoutStatsControllers)
         }
 
@@ -312,7 +304,7 @@ class MflStatSpec extends HealthCheckSpecification {
             assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections.size() == 4
         }
         regionToStay = findStatFls(northboundV2.getSwitchConnections(srcSwitch.dpId))*.regionName.first()
-        blockData = lockKeeper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
+        blockData = switchHelper.knockoutSwitch(srcSwitch, srcSwitch.regions - regionToStay)
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert northboundV2.getSwitchConnections(srcSwitch.dpId).connections*.regionName == [regionToStay]
         }
@@ -324,7 +316,7 @@ class MflStatSpec extends HealthCheckSpecification {
 
         then: "Stat on the src switch should be collected (first RO switch available)"
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            flowStats.of(flow.getFlowId()).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
+            flowStats.of(flow.flowId).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
                     .hasNonZeroValuesAfter(timeWhenSwitchLeftWithoutManagementControllers)
         }
 
@@ -346,7 +338,7 @@ class MflStatSpec extends HealthCheckSpecification {
 
         then: "Stat on the src switch should be collected (second RO switch available)"
         Wrappers.wait(statsRouterRequestInterval + WAIT_OFFSET, waitInterval) {
-            flowStats.of(flow.getFlowId()).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
+            flowStats.of(flow.flowId).get(FLOW_RAW_BYTES, srcSwitch.getDpId())
                     .hasNonZeroValuesAfter(timeWhenSwitchLeftWithForeginStatsController)
         }
     }

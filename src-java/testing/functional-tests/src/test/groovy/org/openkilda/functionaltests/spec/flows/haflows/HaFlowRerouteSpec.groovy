@@ -11,6 +11,7 @@ import org.openkilda.model.history.DumpType
 import org.openkilda.testing.service.northbound.model.HaFlowActionType
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Issue
 import spock.lang.Narrative
 import spock.lang.Shared
 
@@ -61,6 +62,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
     Provider<TraffExamService> traffExamProvider
 
     @Tags([TOPOLOGY_DEPENDENT, ISL_RECOVER_ON_FAIL])
+    @Issue("https://github.com/telstra/open-kilda/issues/5647 (hardware)")
     def "Valid HA-flow can be rerouted"() {
         given: "An HA-flow"
         def swT = topologyHelper.findSwitchTripletWithAlternativePaths()

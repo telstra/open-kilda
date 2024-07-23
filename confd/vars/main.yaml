@@ -109,6 +109,7 @@ kilda_reroute_throttling_delay_max: 8
 
 kilda_flow_create_hub_retries: 3
 kilda_flow_create_command_retries: 3
+kilda_flow_reroute_hub_timeout_seconds: 45
 
 kilda_diversity_isl_cost: 10000
 kilda_diversity_switch_cost: 1000

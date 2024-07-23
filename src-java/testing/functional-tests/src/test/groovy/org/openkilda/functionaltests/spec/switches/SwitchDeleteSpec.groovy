@@ -1,22 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.functionaltests.extension.tags.IterationTags
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.service.traffexam.model.ArpData
-import org.openkilda.testing.service.traffexam.model.LldpData
-import org.openkilda.testing.tools.ConnectedDevice
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Shared
-
-import java.util.concurrent.TimeUnit
-import jakarta.inject.Provider
-
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -27,12 +10,40 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.SwitchIsInIllegalStateExpectedError
+import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.IterationTags
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.service.traffexam.model.ArpData
+import org.openkilda.testing.service.traffexam.model.LldpData
+import org.openkilda.testing.tools.ConnectedDevice
+
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Shared
+
+import java.util.concurrent.TimeUnit
+import jakarta.inject.Provider
+
+
 class SwitchDeleteSpec extends HealthCheckSpecification {
 
-    @Autowired @Shared
+    @Autowired
+    @Shared
     Provider<TraffExamService> traffExamProvider
-    @Autowired @Shared
+    @Autowired
+    @Shared
     CleanupManager cleanupManager
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+
 
     def "Unable to delete a nonexistent switch"() {
         when: "Try to delete a nonexistent switch"
@@ -40,7 +51,8 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         then: "Get 404 NotFound error"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
+        new SwitchNotFoundExpectedError("Could not delete switch '$NON_EXISTENT_SWITCH_ID': 'Switch $NON_EXISTENT_SWITCH_ID not found.'",
+                ~/Switch is not found./).matches(exc)
     }
 
     @Tags(SMOKE)
@@ -53,8 +65,9 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         then: "Get 400 BadRequest error because the switch must be deactivated first"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.contains("Switch '$switchId' is in 'Active' state")
+        new SwitchIsInIllegalStateExpectedError("Could not delete switch '$switchId': " +
+                "'Switch '$switchId' is in illegal state. " +
+                "Switch '$switchId' is in 'Active' state.'").matches(exc)
     }
 
     @Tags(SWITCH_RECOVER_ON_FAIL)
@@ -62,16 +75,16 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         given: "An inactive switch with ISLs"
         def sw = topology.getActiveSwitches()[0]
         def swIsls = topology.getRelatedIsls(sw)
-        def blockData = switchHelper.knockoutSwitch(sw, RW)
+        switchHelper.knockoutSwitch(sw, RW)
 
         when: "Try to delete the switch"
         northbound.deleteSwitch(sw.dpId, false)
 
         then: "Get 400 BadRequest error because the switch has ISLs"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.matches(".*Switch '$sw.dpId' has ${swIsls.size() * 2} active links\\. " +
-                "Unplug and remove them first.*")
+        new SwitchIsInIllegalStateExpectedError("Could not delete switch '${sw.dpId}': " +
+                "'Switch '${sw.dpId}' is in illegal state. " +
+                "Switch '${sw.dpId}' has ${swIsls.size() * 2} active links. Unplug and remove them first.'").matches(exc)
     }
 
     @Tags(SWITCH_RECOVER_ON_FAIL)
@@ -87,16 +100,16 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         then: "Get 400 BadRequest error because the switch has ISLs"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.matches(".*Switch '$sw.dpId' has ${swIsls.size() * 2} inactive links\\. " +
-                "Remove them first.*")
+        new SwitchIsInIllegalStateExpectedError("Could not delete switch '${sw.dpId}': " +
+                "'Switch '${sw.dpId}' is in illegal state. " +
+                "Switch '${sw.dpId}' has ${swIsls.size() * 2} inactive links. Remove them first.'").matches(exc)
     }
 
     @Tags(SWITCH_RECOVER_ON_FAIL)
     @IterationTags([@IterationTag(tags = [LOW_PRIORITY], take = 1)])
     def "Unable to delete an inactive switch with a #flowType flow assigned"() {
         given: "A flow going through a switch"
-        flowHelperV2.addFlow(flow)
+        flow.create()
 
         when: "Deactivate the switch"
         def swToDeactivate = topology.switches.find { it.dpId == flow.source.switchId }
@@ -107,13 +120,14 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
 
         then: "Got 400 BadRequest error because the switch has the flow assigned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.matches(".*Switch '${flow.source.switchId}' has 1 assigned flows: \\[${flow.flowId}\\].*")
+        new SwitchIsInIllegalStateExpectedError("Could not delete switch '${swToDeactivate.dpId}': " +
+                "'Switch '${swToDeactivate.dpId}' is in illegal state. " +
+                "Switch '${swToDeactivate.dpId}' has 1 assigned flows: [${flow.flowId}].'").matches(exc)
 
         where:
         flowType        | flow
-        "single-switch" | getFlowHelperV2().singleSwitchFlow(getTopology().getActiveSwitches()[0])
-        "casual"        | getFlowHelperV2().randomFlow(*getTopology().getActiveSwitches()[0..1])
+        "single-switch" | flowFactory.getBuilder(switchPairs.singleSwitch().random()).build()
+        "casual"        | flowFactory.getBuilder(switchPairs.all().neighbouring().random()).build()
     }
 
     @Tags(SWITCH_RECOVER_ON_FAIL)

@@ -1,20 +1,5 @@
 package org.openkilda.functionaltests.spec.links
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.IslInfoData
-import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
-import org.openkilda.northbound.dto.v1.links.LinkParametersDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.See
-
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
@@ -29,9 +14,40 @@ import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.InvalidRequestParametersExpectedError
+import org.openkilda.functionaltests.error.MissingServletRequestParameterException
+import org.openkilda.functionaltests.error.UnableToParseRequestArgumentsException
+import org.openkilda.functionaltests.error.link.LinkIsInIllegalStateExpectedError
+import org.openkilda.functionaltests.error.link.LinkNotFoundExpectedError
+import org.openkilda.functionaltests.error.link.LinkPropertiesNotUpdatedExpectedError
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
+import org.openkilda.messaging.error.MessageError
+import org.openkilda.messaging.info.event.IslInfoData
+import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.links.LinkParametersDto
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+
+import org.springframework.beans.factory.annotation.Autowired
+
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.See
+import spock.lang.Shared
+
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery")
 
 class LinkSpec extends HealthCheckSpecification {
+
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+
     @Value('${antiflap.cooldown}')
     int antiflapCooldown
 
@@ -50,8 +66,7 @@ class LinkSpec extends HealthCheckSpecification {
         double waitTime = discoveryTimeout - interval
 
         when: "Remove a one-way flow on an a-switch for simulating lost connection(not port down)"
-        lockKeeper.removeFlows([isl.aswitch])
-        def linkFrIsBroken = true
+        aSwitchFlows.removeFlows([isl.aswitch])
 
         then: "Status of the link is not changed to FAILED until discoveryTimeout is exceeded"
         Wrappers.timedLoop(waitTime) {
@@ -79,8 +94,7 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         when: "Fail the other part of ISL"
-        lockKeeper.removeFlows([isl.aswitch.reversed])
-        def linkRvIsBroken = true
+        aSwitchFlows.removeFlows([isl.aswitch.reversed])
 
         then: "Status remains FAILED and actual status is changed to failed for both directions"
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
@@ -92,8 +106,7 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         when: "Add the removed flow rules for one direction"
-        lockKeeper.addFlows([isl.aswitch])
-        linkFrIsBroken = false
+        aSwitchFlows.addFlows([isl.aswitch])
 
         then: "The link remains FAILED, but actual status for one direction is DISCOVERED"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -105,8 +118,7 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         when: "Add the remaining missing rules on a-switch"
-        lockKeeper.addFlows([isl.aswitch.reversed])
-        linkRvIsBroken = false
+        aSwitchFlows.addFlows([isl.aswitch.reversed])
 
         then: "Link status and actual status both changed to DISCOVERED in both directions"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
@@ -116,20 +128,6 @@ class LinkSpec extends HealthCheckSpecification {
             assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
             assert islUtils.getIslInfo(links, isl.reversed).get().actualState == DISCOVERED
         }
-
-        cleanup:
-        if (linkFrIsBroken || linkRvIsBroken) {
-            linkFrIsBroken && lockKeeper.addFlows([isl.aswitch])
-            linkRvIsBroken && lockKeeper.addFlows([isl.aswitch.reversed])
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                def links = northbound.getAllLinks()
-                assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
-                assert islUtils.getIslInfo(links, isl).get().actualState == DISCOVERED
-                assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
-                assert islUtils.getIslInfo(links, isl.reversed).get().actualState == DISCOVERED
-            }
-        }
-        database.resetCosts(topology.isls)
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
@@ -138,23 +136,26 @@ class LinkSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().nonNeighbouring().random()
 
         and: "Forward flow from source switch to destination switch"
-        def flow1 = flowHelperV2.randomFlow(switchPair).tap { it.pinned = true }
-        flowHelperV2.addFlow(flow1)
+        def flow1 = flowFactory.getBuilder(switchPair).withPinned(true).build().create()
+        List<SwitchPortVlan> busyEndpoints = flow1.occupiedEndpoints()
 
         and: "Reverse flow from destination switch to source switch"
-        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1]).tap { it.pinned = true }
-        flowHelperV2.addFlow(flow2)
+        def flow2 = flowFactory.getBuilder(switchPair, false, busyEndpoints)
+                .withPinned(true).build()
+                .create()
+        busyEndpoints.addAll(flow2.occupiedEndpoints())
 
         and: "Forward flow from source switch to some 'internal' switch"
-        def islToInternal = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow1.flowId))).first()
-        def flow3 = flowHelperV2.randomFlow(islToInternal.srcSwitch, islToInternal.dstSwitch, false, [flow1, flow2])
-                              .tap { it.pinned = true }
-        flowHelperV2.addFlow(flow3)
+        def islToInternal = flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls().first()
+        def flow3 = flowFactory.getBuilder(islToInternal.srcSwitch, islToInternal.dstSwitch, false, busyEndpoints)
+                .withPinned(true).build()
+                .create()
+        busyEndpoints.addAll(flow3.occupiedEndpoints())
 
         and: "Reverse flow from 'internal' switch to source switch"
-        def flow4 = flowHelperV2.randomFlow(islToInternal.dstSwitch, islToInternal.srcSwitch, false,
-                [flow1, flow2, flow3]).tap { it.pinned = true }
-        flowHelperV2.addFlow(flow4)
+        def flow4 = flowFactory.getBuilder(islToInternal.dstSwitch, islToInternal.srcSwitch, false, busyEndpoints)
+                .withPinned(true).build()
+                .create()
 
         when: "Get all flows going through the link from source switch to 'internal' switch"
         def linkFlows = northbound.getLinkFlows(islToInternal.srcSwitch.dpId, islToInternal.srcPort,
@@ -164,7 +165,7 @@ class LinkSpec extends HealthCheckSpecification {
         [flow1, flow2, flow3, flow4].each { assert it.flowId in linkFlows*.id }
 
         when: "Get all flows going through the link from some 'internal' switch to destination switch"
-        def islFromInternal = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow1.flowId))).last()
+        def islFromInternal = flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls().last()
         linkFlows = northbound.getLinkFlows(islFromInternal.srcSwitch.dpId, islFromInternal.srcPort,
                 islFromInternal.dstSwitch.dpId, islFromInternal.dstPort)
 
@@ -178,9 +179,9 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "All flows go to 'Down' status"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            [flow1, flow2, flow3, flow4].each {
-                assert northboundV2.getFlowStatus(it.flowId).status == FlowState.DOWN
-                def isls = pathHelper.getInvolvedIsls(northbound.getFlowPath(it.flowId))
+            [flow1, flow2, flow3, flow4].each { flow ->
+                assert flow.retrieveFlowStatus().status == FlowState.DOWN
+                def isls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
                 assert isls.contains(islToInternal) || isls.contains(islToInternal.reversed)
             }
 
@@ -206,7 +207,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "All flows go to 'Up' status"
         Wrappers.wait(rerouteDelay + PATH_INSTALLATION_TIME) {
-            [flow1, flow2, flow3, flow4].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
+            [flow1, flow2, flow3, flow4].each { flow -> assert flow.retrieveFlowStatus().status == FlowState.UP }
         }
     }
 
@@ -215,16 +216,13 @@ class LinkSpec extends HealthCheckSpecification {
         when: "A switch disconnects"
         def isl = topology.islsForActiveSwitches.find { it.aswitch?.inPort && it.aswitch?.outPort }
         def blockData = switchHelper.knockoutSwitch(isl.srcSwitch, RW)
-        def swIsDown = true
 
         and: "One of its ports goes down"
         //Bring down port on a-switch, which will lead to a port down on the Kilda switch
-        lockKeeper.portsDown([isl.aswitch.inPort])
-        def portIsDown = true
+        aSwitchPorts.setDown([isl.aswitch.inPort])
 
         and: "The switch reconnects back with a port being down"
         switchHelper.reviveSwitch(isl.srcSwitch, blockData)
-        swIsDown = false
 
         then: "The related ISL immediately goes down"
         Wrappers.wait(WAIT_OFFSET) {
@@ -235,31 +233,19 @@ class LinkSpec extends HealthCheckSpecification {
 
         when: "The switch disconnects again"
         blockData = lockKeeper.knockoutSwitch(isl.srcSwitch, RW)
-        swIsDown = true
 
         and: "The DOWN port is brought back to UP state"
-        lockKeeper.portsUp([isl.aswitch.inPort])
-        portIsDown = false
+        aSwitchPorts.setUp([isl.aswitch.inPort])
 
         and: "The switch reconnects back with a port being up"
         lockKeeper.reviveSwitch(isl.srcSwitch, blockData)
         Wrappers.wait(WAIT_OFFSET) { northbound.getSwitch(isl.srcSwitch.dpId).state == SwitchChangeType.ACTIVATED }
-        swIsDown = false
 
         then: "The related ISL is discovered again"
         Wrappers.wait(WAIT_OFFSET + discoveryInterval + antiflapCooldown) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
             assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
-        }
-
-        cleanup:
-        if (portIsDown || swIsDown) {
-            swIsDown && lockKeeper.reviveSwitch(isl.srcSwitch, blockData)
-            portIsDown && lockKeeper.portsUp([isl.aswitch.inPort])
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                northbound.getAllLinks().every { it.state == DISCOVERED }
-            }
         }
     }
 
@@ -269,9 +255,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (404 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "There is no ISL between $srcSwId-$srcSwPort and $dstSwId-$dstSwPort."
+        new LinkNotFoundExpectedError("There is no ISL between $srcSwId-$srcSwPort and $dstSwId-$dstSwPort.").matches(exc)
 
         where:
         srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
@@ -287,14 +271,14 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage.contains("Invalid portId:")
+        new UnableToParseRequestArgumentsException("Invalid portId: ${invalidValue}",
+                ~/Can not parse arguments when create "get flows for link" request/).matches(exc)
 
         where:
-        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
-        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"
-        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item                  | invalidValue
+        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"            | -1
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"            | -2
+        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port" | -3
     }
 
     def "Unable to get flows without full specifying a particular link (#item is missing)"() {
@@ -303,16 +287,14 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError)
-                .errorMessage.contains("parameter '$item' for method parameter type")
+        new MissingServletRequestParameterException("Required $itemType parameter \'$item\' is not present").matches(exc)
 
         where:
-        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item
-        null                    | null             | null                    | null      | "src_switch"
-        getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item         | itemType
+        null                    | null             | null                    | null      | "src_switch" | "SwitchId"
+        getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"   | "Integer"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch" | "SwitchId"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"   | "Integer"
     }
 
     def "Unable to delete a nonexistent link"() {
@@ -324,8 +306,8 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "Get 404 NotFound error"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.contains("ISL was not found")
+        new LinkNotFoundExpectedError("There is no ISL between $parameters.srcSwitch-$parameters.srcPort " +
+                "and $parameters.dstSwitch-$parameters.dstPort.").matches(exc)
     }
 
     def "Unable to delete an active link"() {
@@ -337,8 +319,9 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "Get 400 BadRequest error because the link is active"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.contains("ISL must NOT be in active state")
+        new LinkIsInIllegalStateExpectedError("Link with following parameters is in illegal state: " +
+                "source \'${isl.srcSwitch.dpId}_${isl.srcPort}\', destination \'${isl.dstSwitch.dpId}_${isl.dstPort}\'. " +
+                "ISL must NOT be in active state.").matches(exc)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -382,16 +365,14 @@ class LinkSpec extends HealthCheckSpecification {
         switchPair.paths[1..-1].each { pathHelper.makePathMorePreferable(switchPair.paths.first(), it) }
 
         and: "Create a couple of flows going through these switches"
-        def flow1 = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow1)
-        def flow1Path = PathHelper.convert(northbound.getFlowPath(flow1.flowId))
+        def flow1 = flowFactory.getRandom(switchPair)
+        def flow1Path = flow1.retrieveAllEntityPaths()
 
-        def flow2 = flowHelperV2.randomFlow(switchPair, false, [flow1])
-        flowHelperV2.addFlow(flow2)
-        def flow2Path = PathHelper.convert(northbound.getFlowPath(flow2.flowId))
+        def flow2 = flowFactory.getRandom(switchPair, false, FlowState.UP, flow1.occupiedEndpoints())
+        def flow2Path = flow2.retrieveAllEntityPaths()
 
-        assert flow1Path == switchPair.paths.first()
-        assert flow2Path == switchPair.paths.first()
+        assert flow1Path.getPathNodes() == switchPair.paths.first()
+        assert flow2Path.getPathNodes() == switchPair.paths.first()
 
         and: "Delete link props from all links of alternative paths to allow rerouting flows"
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
@@ -400,15 +381,15 @@ class LinkSpec extends HealthCheckSpecification {
         switchPair.paths[1..-1].each { pathHelper.makePathMorePreferable(it, switchPair.paths.first()) }
 
         when: "Submit request for rerouting flows"
-        def isl = pathHelper.getInvolvedIsls(flow1Path).first()
+        def isl = flow1Path.flowPath.getInvolvedIsls().first()
         def response = northbound.rerouteLinkFlows(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flows are rerouted"
         response.containsAll([flow1, flow2]*.flowId)
         Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
-            [flow1, flow2].each { assert northboundV2.getFlowStatus(it.flowId).status == FlowState.UP }
-            assert PathHelper.convert(northbound.getFlowPath(flow1.flowId)) != flow1Path
-            assert PathHelper.convert(northbound.getFlowPath(flow2.flowId)) != flow2Path
+            [flow1, flow2].each { flow -> assert flow.retrieveFlowStatus().status == FlowState.UP }
+            assert flow1.retrieveAllEntityPaths() != flow1Path
+            assert flow2.retrieveAllEntityPaths() != flow2Path
         }
     }
 
@@ -418,9 +399,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (404 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage ==
-                "There is no ISL between $srcSwId-$srcSwPort and $dstSwId-$dstSwPort."
+        new LinkNotFoundExpectedError("There is no ISL between $srcSwId-$srcSwPort and $dstSwId-$dstSwPort.").matches(exc)
 
         where:
         srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
@@ -436,14 +415,14 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage.contains("Invalid portId:")
+        new UnableToParseRequestArgumentsException("Invalid portId: ${invalidValue}",
+                ~/Can not parse arguments when create "reroute flows for link" request/).matches(exc)
 
         where:
-        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
-        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"
-        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item                  | invalidValue
+        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"            | -1
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"            | -2
+        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port" | -3
     }
 
     def "Unable to reroute flows without full specifying a particular link (#item is missing)"() {
@@ -452,17 +431,14 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        //Required request parameter '$item' for method parameter type
-        exc.responseBodyAsString.to(MessageError).errorMessage
-                .contains("Required request parameter '$item' for method parameter type")
+        new MissingServletRequestParameterException("Required $itemType parameter \'$item\' is not present").matches(exc)
 
         where:
-        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item
-        null                    | null             | null                    | null      | "src_switch"
-        getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item         | itemType
+        null                    | null             | null                    | null      | "src_switch" | "SwitchId"
+        getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"   | "Integer"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch" | "SwitchId"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"   | "Integer"
     }
 
     def "Get links with specifying query parameters: #description"() {
@@ -509,14 +485,14 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage.contains("Invalid portId:")
+        new UnableToParseRequestArgumentsException("Invalid portId: ${invalidValue}",
+                ~/Can not parse arguments when create 'get links' request/).matches(exc)
 
         where:
-        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
-        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"
-        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item                  | invalidValue
+        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"            | -1
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"            | -2
+        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port" | -3
     }
 
     @Tags([SMOKE])
@@ -551,13 +527,13 @@ class LinkSpec extends HealthCheckSpecification {
 
         when: "Create a flow going through this ISL"
         def flowMaxBandwidth = 12345
-        def flow = flowHelperV2.addFlow(flowHelperV2.randomFlow(isl.srcSwitch, isl.dstSwitch).tap { it.maximumBandwidth = flowMaxBandwidth})
+        flowFactory.getBuilder(isl.srcSwitch, isl.dstSwitch).withBandwidth(flowMaxBandwidth).build().create()
 
         and: "Update max bandwidth for the link"
         def offset = 10000
         def newMaxBandwidth = initialMaxBandwidth - offset
-        northbound.updateLinkMaxBandwidth(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort,
-                newMaxBandwidth)
+        islHelper.updateLinkMaxBandwidthUsingApi(isl, newMaxBandwidth)
+
         def links = northbound.getActiveLinks()
         def linkProps = northbound.getLinkProps(topology.isls)
 
@@ -579,9 +555,7 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Can't create/update link props"
-        exc.responseBodyAsString.to(MessageError).errorDescription == "Not enough available bandwidth for operation"
+        new LinkPropertiesNotUpdatedExpectedError(~/Not enough available bandwidth for operation/).matches(exc)
 
         when: "Update max bandwidth to the value equal to max bandwidth of the created flow"
         northbound.updateLinkMaxBandwidth(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort,
@@ -633,14 +607,14 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage.matches("Invalid value of (source|destination) port")
+        new InvalidRequestParametersExpectedError("Invalid value of $invalidEndpoint port",
+                ~/Port number can't be negative/).matches(exc)
 
         where:
-        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item
-        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"
-        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort        | item                  | invalidEndpoint
+        getIsl().srcSwitch.dpId | -1               | getIsl().dstSwitch.dpId | getIsl().dstPort | "src_port"            | "source"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | -2               | "dst_port"            | "destination"
+        getIsl().srcSwitch.dpId | -3               | getIsl().dstSwitch.dpId | -4               | "src_port & dst_port" | "source"
     }
 
     def "Unable to update max bandwidth without full specifying a particular link (#item is missing)"() {
@@ -649,38 +623,33 @@ class LinkSpec extends HealthCheckSpecification {
 
         then: "An error is received (400 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.to(MessageError).errorMessage
-                .contains("Required request parameter '$item' for method parameter type")
+        new MissingServletRequestParameterException("Required $itemType parameter \'$item\' is not present").matches(exc)
 
         where:
-        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item
-        null                    | null             | null                    | null      | "src_switch"
-        getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch"
-        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"
+        srcSwId                 | srcSwPort        | dstSwId                 | dstSwPort | item         | itemType
+        null                    | null             | null                    | null      | "src_switch" | "SwitchId"
+        getIsl().srcSwitch.dpId | null             | null                    | null      | "src_port"   | "Integer"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | null                    | null      | "dst_switch" | "SwitchId"
+        getIsl().srcSwitch.dpId | getIsl().srcPort | getIsl().dstSwitch.dpId | null      | "dst_port"   | "Integer"
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Unable to delete inactive link with flowPath"() {
         given: "An inactive link with flow on it"
         def switchPair = switchPairs.all().neighbouring().random()
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.pinned = true
-        flowHelperV2.addFlow(flow)
-        def flowPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def flow = flowFactory.getBuilder(switchPair).withPinned(true).build().create()
 
-        def isl = pathHelper.getInvolvedIsls(flowPath)[0]
+        def isl = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls().first()
         islHelper.breakIsl(isl)
 
         when: "Try to delete the link"
         northbound.deleteLink(islUtils.toLinkParameters(isl))
-        def linkIsActive = false
 
         then: "Get 400 BadRequest error because the link with flow path"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        exc.responseBodyAsString.contains("This ISL is busy by flow paths.")
+        new LinkIsInIllegalStateExpectedError("Link with following parameters is in illegal state: " +
+                "source \'${isl.srcSwitch.dpId}_${isl.srcPort}\', destination \'${isl.dstSwitch.dpId}_${isl.dstPort}\'. " +
+                "This ISL is busy by flow paths.").matches(exc)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -689,14 +658,12 @@ class LinkSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "An active link with flow on it"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
-        def flowPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
-        def isl = pathHelper.getInvolvedIsls(flowPath)[0]
+        def flow = flowFactory.getRandom(switchPair)
+        def flowPath = flow.retrieveAllEntityPaths()
+        def isl = flowPath.flowPath.getInvolvedIsls().first()
 
         when: "Delete the link using force"
-        def response = northbound.deleteLink(islUtils.toLinkParameters(isl), true)
-        def linkIsDeleted = true
+        def response = islHelper.deleteIsl(isl, true)
 
         then: "The link is actually deleted"
         response.size() == 2
@@ -704,16 +671,15 @@ class LinkSpec extends HealthCheckSpecification {
         !islUtils.getIslInfo(isl.reversed)
 
         and: "Flow is not rerouted and UP"
-        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == flowPath
-        northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+        flow.retrieveAllEntityPaths() == flowPath
+        flow.retrieveFlowStatus().status == FlowState.UP
 
         and: "Flow is valid"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         when: "Removed link becomes active again (port brought DOWN/UP)"
         antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
         antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-        linkIsDeleted = false
 
         then: "The link is rediscovered in both directions"
         Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET*2) {
@@ -724,18 +690,6 @@ class LinkSpec extends HealthCheckSpecification {
 
         and: "Source and destination switches pass switch validation"
         switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.toList()*.getDpId()).isEmpty()
-
-        cleanup:
-        if (linkIsDeleted) {
-            antiflap.portDown(isl.srcSwitch.dpId, isl.srcPort)
-            antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                def links = northbound.getAllLinks()
-                assert islUtils.getIslInfo(links, isl.reversed).get().state == DISCOVERED
-                assert islUtils.getIslInfo(links, isl).get().state == DISCOVERED
-            }
-        }
-        database.resetCosts(topology.isls)
     }
 
     def "System detects a 1-way ISL as a Failed ISL"() {
@@ -743,11 +697,7 @@ class LinkSpec extends HealthCheckSpecification {
         def isl = topology.islsForActiveSwitches.find {
             it.aswitch?.inPort && it.aswitch?.outPort
         } ?: assumeTrue(false, "Wasn't able to find suitable link")
-        lockKeeper.removeFlows([isl.aswitch])
-        lockKeeper.removeFlows([isl.aswitch.reversed])
-        def aSwitchForwardRuleIsDeleted = true
-        def aSwitchReverseRuleIsDeleted = true
-
+        aSwitchFlows.removeFlows([isl.aswitch, isl.aswitch.reversed])
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET) {
             def links = northbound.getAllLinks()
             assert islUtils.getIslInfo(links, isl).get().state == FAILED
@@ -761,8 +711,8 @@ class LinkSpec extends HealthCheckSpecification {
         }
 
         when: "Add a-switch rules for discovering ISL in one direction only"
-        lockKeeper.addFlows([isl.aswitch])
-        aSwitchForwardRuleIsDeleted = false
+        aSwitchFlows.addFlows([isl.aswitch])
+
 
         then: "The ISL is discovered"
         Wrappers.wait(RULES_INSTALLATION_TIME + discoveryInterval + WAIT_OFFSET) {
@@ -780,18 +730,6 @@ class LinkSpec extends HealthCheckSpecification {
             !it.prop || (it.prop.server42IslRtt == "DISABLED")
         }
         switchHelper.validateAndCollectFoundDiscrepancies(switchesNotAffectedBy3906*.getDpId()).isEmpty()
-
-        cleanup:
-        aSwitchForwardRuleIsDeleted && lockKeeper.addFlows([isl.aswitch])
-        aSwitchReverseRuleIsDeleted && lockKeeper.addFlows([isl.aswitch.reversed])
-        Wrappers.wait(RULES_INSTALLATION_TIME + discoveryInterval + WAIT_OFFSET) {
-            def fw = northbound.getLink(isl)
-            def rv = northbound.getLink(isl.reversed)
-            assert fw.state == DISCOVERED
-            assert fw.actualState == DISCOVERED
-            assert rv.state == DISCOVERED
-            assert rv.actualState == DISCOVERED
-        }
     }
 
     Isl getIsl() {

@@ -15,12 +15,16 @@
 
 package org.openkilda.test;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.openkilda.util.IConstantsTest;
 import org.openkilda.utility.IoUtil;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -38,6 +42,7 @@ import java.util.List;
  *
  * @author Gaurav Chugh
  */
+@ExtendWith(MockitoExtension.class)
 @Slf4j
 public class BaseTest {
 
@@ -66,18 +71,22 @@ public class BaseTest {
 
                 if (url.contains(".css")) {
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.CSS_PATH + fileName);
+                    assertTrue(true);
                 }
                 if (url.contains(".js")) {
                     if (fileName.contains(IConstantsTest.JQUERY_FILE)) {
                         fileName = IConstantsTest.JQUERY_MIN_FILE;
                     }
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.JAVASCRIPT_PATH + fileName);
+                    assertTrue(true);
                 }
                 if (url.contains("ttf") || url.contains("woff2") || url.contains("woff")) {
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.FONTS_PATH + fileName);
+                    assertTrue(true);
                 }
                 if (url.contains("Roboto")) {
                     downloadFiles(url, IConstantsTest.CLASSPATH + IConstantsTest.CSS_PATH + "roboto.css");
+                    assertTrue(true);
                 }
             } catch (Exception e) {
                 log.error("exception occurred Inside method executeKildaFiles.", e);

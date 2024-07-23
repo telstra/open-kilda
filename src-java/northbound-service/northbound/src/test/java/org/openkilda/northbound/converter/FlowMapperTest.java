@@ -38,6 +38,7 @@ import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowEncapsulationType;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.openkilda.messaging.payload.flow.FlowFlushReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowStatusDetails;
@@ -517,6 +518,14 @@ public class FlowMapperTest {
         Assertions.assertEquals(response.getReverse().isPingSuccess(), output.getReverse().isPingSuccess());
         Assertions.assertEquals(1, output.getReverse().getLatency());
         Assertions.assertNull(output.getReverse().getError());
+    }
+
+    @Test
+    public void testRerouteFlushPayload() {
+        FlowFlushReroutePayload output = flowMapper.toRerouteFlushPayload(FLOW_ID, true);
+
+        Assertions.assertEquals(FLOW_ID, output.getId());
+        Assertions.assertTrue(output.isRerouted());
     }
 
     @Test

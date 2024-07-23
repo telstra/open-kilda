@@ -26,12 +26,14 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageError;
+import org.openkilda.messaging.payload.flow.FlowFlushReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
@@ -113,7 +115,6 @@ public class FlowControllerTest {
 
         MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk())
-
                 .andExpect(content().contentType(APPLICATION_JSON_VALUE))
                 .andReturn();
         FlowResponsePayload response = MAPPER.readValue(result.getResponse().getContentAsString(),
@@ -276,6 +277,23 @@ public class FlowControllerTest {
 
         MessageError response = MAPPER.readValue(result.getResponse().getContentAsString(), MessageError.class);
         assertEquals(AUTH_ERROR, response);
+    }
+
+    @Test
+    @WithMockUser(username = USERNAME, password = PASSWORD, roles = ROLE)
+    public void rerouteFlushFlow() throws Exception {
+        MvcResult mvcResult = mockMvc.perform(patch("/v1/flows/{flow-id}/reroute/flush", TestMessageMock.FLOW_ID)
+                        .header(CORRELATION_ID, testCorrelationId())
+                        .contentType(APPLICATION_JSON_VALUE))
+                .andReturn();
+
+        MvcResult result = mockMvc.perform(asyncDispatch(mvcResult))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(APPLICATION_JSON_VALUE))
+                .andReturn();
+        FlowFlushReroutePayload response = MAPPER.readValue(result.getResponse().getContentAsString(),
+                FlowFlushReroutePayload.class);
+        assertEquals(TestMessageMock.FLOW_FLUSH_RESPONSE_PAYLOAD, response);
     }
 
     private static String testCorrelationId() {

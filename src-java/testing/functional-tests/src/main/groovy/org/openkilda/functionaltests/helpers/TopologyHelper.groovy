@@ -141,6 +141,41 @@ class TopologyHelper {
                     && (it.pathsEp1[0].size() > 2 && it.pathsEp2[0].size() > 2) }
     }
 
+    SwitchTriplet findSwitchTripletServer42SupportWithSharedEpInTheMiddleOfTheChainExceptWBSw() {
+        def server42switches = topology.getActiveServer42Switches()
+        return switchTriplets.findAll(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT).findAll(SwitchTriplet.NOT_WB_ENDPOINTS).find {
+            it.shared.dpId in server42switches.dpId
+                    && it.ep1.dpId in server42switches.dpId
+                    && it.ep2.dpId in server42switches.dpId
+                    && (it.pathsEp1[0].size() == 2 && it.pathsEp2[0].size() == 2) }
+    }
+
+    SwitchTriplet findSwitchTripletWithOnlySharedSwServer42Support() {
+        def server42switches = topology.getActiveServer42Switches()
+        return switchTriplets.findAll(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT).find {
+            it.shared.dpId in server42switches.dpId
+                    && !(it.ep1.dpId in server42switches.dpId)
+                    && !(it.ep2.dpId in server42switches.dpId)
+        }
+    }
+
+    SwitchTriplet findSwitchTripletWithSharedEpEp1Ep2InChainServer42Support() {
+        def server42switches = topology.getActiveServer42Switches()
+        return switchTriplets.findAll(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT).find {
+            def areEp1Ep2AndEp1OrEp2AndShEpNeighbour
+            if(it.pathsEp1[0].size() == 2 && it.pathsEp2[0].size() > 2) {
+                //both pair sh_ep+ep1 and ep1+ep2 are neighbours, sh_ep and ep2 is not neighbour
+                areEp1Ep2AndEp1OrEp2AndShEpNeighbour = it.pathsEp2.find {ep2Path -> ep2Path.containsAll(it.pathsEp1[0]) && ep2Path.size() == 4 }
+            } else if(it.pathsEp2[0].size() == 2 && it.pathsEp1[0].size() > 2) {
+                //both pair sh_ep+ep2 and ep2+ep1 are neighbours, sh_ep and ep1 is not neighbour
+                areEp1Ep2AndEp1OrEp2AndShEpNeighbour = it.pathsEp1.find {ep1Path -> ep1Path.containsAll(it.pathsEp2[0]) && ep1Path.size() == 4}
+            }
+            it.shared.dpId in server42switches.dpId
+                    && it.ep1.dpId in server42switches.dpId
+                    && it.ep2.dpId in server42switches.dpId
+                    && areEp1Ep2AndEp1OrEp2AndShEpNeighbour}
+    }
+
     SwitchTriplet findSwitchTripletForHaFlowWithProtectedPaths() {
         return switchTriplets.find {
             if (!SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it)) {

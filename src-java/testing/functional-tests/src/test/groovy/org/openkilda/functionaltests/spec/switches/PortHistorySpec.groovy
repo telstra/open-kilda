@@ -172,7 +172,7 @@ class PortHistorySpec extends HealthCheckSpecification {
         def timestampBefore = System.currentTimeMillis()
 
         when: "Execute port DOWN on the src switch for activating antiflap"
-        cleanupManager.addAction(CleanupActionType.PORT_UP, {northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)})
+        cleanupManager.addAction(CleanupActionType.PORT_UP, { northbound.portUp(isl.srcSwitch.dpId, isl.srcPort) })
         northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)
         Wrappers.wait(WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.FAILED
@@ -218,6 +218,10 @@ class PortHistorySpec extends HealthCheckSpecification {
 @Isolated
 
 class PortHistoryIsolatedSpec extends HealthCheckSpecification {
+
+    @Autowired @Shared
+    CleanupManager cleanupManager
+
     @Shared
     def antiflapDumpingInterval = 60
 
@@ -243,6 +247,7 @@ class PortHistoryIsolatedSpec extends HealthCheckSpecification {
         }
 
         when: "Blink port to generate antiflap statistic"
+        cleanupManager.addAction(CleanupActionType.PORT_UP, { northbound.portUp(isl.srcSwitch.dpId, isl.srcPort) })
         Wrappers.timedLoop(antiflapDumpingInterval - antiflapCooldown + 1) {
             northbound.portUp(isl.srcSwitch.dpId, isl.srcPort)
             northbound.portDown(isl.srcSwitch.dpId, isl.srcPort)

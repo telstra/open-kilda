@@ -1,25 +1,32 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
+import org.openkilda.functionaltests.error.flow.FlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.error.PinnedFlowNotReroutedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.error.MessageError
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
+import spock.lang.Shared
 
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Narrative("""A new flag of flow that indicates that flow shouldn't be rerouted in case of auto-reroute.
 - In case of isl down such flow should be marked as DOWN.
@@ -28,22 +35,29 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 class PinnedFlowSpec extends HealthCheckSpecification {
 
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+    @Autowired
+    @Shared
+    SwitchRulesFactory switchRulesFactory
+
+
     def "Able to CRUD pinned flow"() {
         when: "Create a flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flow.pinned = true
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
+                .withPinned(true).build().create()
 
         then: "Pinned flow is created"
-        def flowInfo = northboundV2.getFlow(flow.flowId)
+        def flowInfo = flow.retrieveDetails()
         flowInfo.pinned
 
         when: "Update the flow (pinned=false)"
-        northboundV2.updateFlow(flowInfo.flowId, flowHelperV2.toRequest(flowInfo.tap { it.pinned = false }))
+        flow.update(flow.deepCopy().tap { it.pinned = false})
 
         then: "The pinned option is disabled"
-        def newFlowInfo = northboundV2.getFlow(flow.flowId)
+        def newFlowInfo = flow.retrieveDetails()
         !newFlowInfo.pinned
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
     }
@@ -51,21 +65,21 @@ class PinnedFlowSpec extends HealthCheckSpecification {
     def "Able to CRUD unmetered one-switch pinned flow"() {
         when: "Create a flow"
         def sw = topology.getActiveSwitches().first()
-        def flow = flowHelperV2.singleSwitchFlow(sw)
-        flow.maximumBandwidth = 0
-        flow.ignoreBandwidth = true
-        flow.pinned = true
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(sw, sw)
+        .withBandwidth(0)
+        .withIgnoreBandwidth(true)
+        .withPinned(true).build().create()
 
         then: "Pinned flow is created"
-        def flowInfo = northboundV2.getFlow(flow.flowId)
+        def flowInfo = flow.retrieveDetails()
         flowInfo.pinned
 
         when: "Update the flow (pinned=false)"
-        northboundV2.updateFlow(flowInfo.flowId, flowHelperV2.toRequest(flowInfo.tap { it.pinned = false }))
+        def flowNotPinned = flow.deepCopy().tap { it.pinned = false}
+        flow.update(flowNotPinned)
 
         then: "The pinned option is disabled"
-        def newFlowInfo = northboundV2.getFlow(flow.flowId)
+        def newFlowInfo = flow.retrieveDetails()
         !newFlowInfo.pinned
         Instant.parse(flowInfo.lastUpdated) < Instant.parse(newFlowInfo.lastUpdated)
     }
@@ -77,30 +91,32 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         List<List<PathNode>> allPaths = database.getPaths(switchPair.src.dpId, switchPair.dst.dpId)*.path
         def longestPath = allPaths.max { it.size() }
         allPaths.findAll { it != longestPath }.collect { pathHelper.makePathMorePreferable(longestPath, it) }
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.pinned = true
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair)
+                .withPinned(true)
+                .build().create()
 
-        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def allEntityPath = flow.retrieveAllEntityPaths()
+        def currentPath = allEntityPath.getPathNodes()
         def altPath = switchPair.paths.findAll { it != currentPath }.min { it.size() }
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
+        def involvedSwitches = allEntityPath.getInvolvedSwitches()
 
         when: "Make alt path more preferable than current path"
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
         switchPair.paths.findAll { it != altPath }.each { pathHelper.makePathMorePreferable(altPath, it) }
 
         and: "Init reroute by bringing current path's ISL down one by one"
-        def currentIsls = pathHelper.getInvolvedIsls(currentPath)
+        def currentIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
         def newIsls = pathHelper.getInvolvedIsls(altPath)
         def islsToBreak = currentIsls.findAll { !newIsls.contains(it) }
 
         def cookiesMap = involvedSwitches.collectEntries { sw ->
-            [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
+            [sw.id, switchRulesFactory.get(sw).getRules().findAll {
                 !new Cookie(it.cookie).serviceFlag
             }*.cookie]
         }
-        def metersMap = involvedSwitches.findAll { it.ofVersion != "OF_12" }.collectEntries { sw ->
-            [sw.dpId, northbound.getAllMeters(sw.dpId).meterEntries.findAll {
+        def metersMap = involvedSwitches
+                .findAll { northbound.getSwitch(it).ofVersion != "OF_12" }.collectEntries { sw ->
+            [sw.id, northbound.getAllMeters(sw).meterEntries.findAll {
                 it.meterId > MAX_SYSTEM_RULE_METER_ID
             }*.meterId]
         }
@@ -110,21 +126,23 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         then: "Flow is not rerouted and marked as DOWN when the first ISL is broken"
         Wrappers.wait(WAIT_OFFSET) {
             Wrappers.timedLoop(2) {
-                assert northboundV2.getFlow(flow.flowId).status == FlowState.DOWN.toString()
+                assert flow.retrieveFlowStatus().status == FlowState.DOWN
                 //do not check history here. In parallel environment it may be overriden by 'up' event on another island
-                assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
+                assert flow.retrieveAllEntityPaths().getPathNodes() == currentPath
             }
         }
         islHelper.breakIsls(islsToBreak[1..-1])
 
         and: "Rules and meters are not changed"
         def cookiesMapAfterReroute = involvedSwitches.collectEntries { sw ->
-            [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
+            [sw.id, northbound.getSwitchRules(sw).flowEntries.findAll {
                 !new Cookie(it.cookie).serviceFlag
             }*.cookie]
         }
-        def metersMapAfterReroute = involvedSwitches.findAll { it.ofVersion != "OF_12" }.collectEntries { sw ->
-            [sw.dpId, northbound.getAllMeters(sw.dpId).meterEntries.findAll {
+
+        def metersMapAfterReroute = involvedSwitches.findAll {
+            northbound.getSwitch(it).ofVersion != "OF_12" }.collectEntries { sw ->
+            [sw.id, northbound.getAllMeters(sw).meterEntries.findAll {
                 it.meterId > MAX_SYSTEM_RULE_METER_ID
             }*.meterId]
         }
@@ -137,8 +155,8 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         TimeUnit.SECONDS.sleep(rerouteDelay)
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             islsToBreak[0..-2].each { assert islUtils.getIslInfo(it).get().state == IslChangeType.DISCOVERED }
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.DOWN
-            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
+            assert flow.retrieveFlowStatus().status == FlowState.DOWN
+            assert flow.retrieveAllEntityPaths().getPathNodes() == currentPath
         }
 
         and: "Restore the last ISL"
@@ -146,47 +164,49 @@ class PinnedFlowSpec extends HealthCheckSpecification {
 
         then: "Flow is marked as UP when the last ISL is restored"
         Wrappers.wait(WAIT_OFFSET * 2) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
+            assert flow.retrieveFlowStatus().status == FlowState.UP
+            assert flow.retrieveAllEntityPaths().getPathNodes() == currentPath
         }
     }
 
     def "System is not rerouting pinned flow when 'reroute link flows' is called"() {
         given: "A pinned flow with alt path available"
         def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
-        def flow = flowHelperV2.randomFlow(switchPair).tap { it.pinned = true }
-        flowHelperV2.addFlow(flow)
-        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def flow = flowFactory.getBuilder(switchPair)
+                .withPinned(true)
+                .build().create()
+        def initialPath =  flow.retrieveAllEntityPaths()
 
         when: "Make another path more preferable"
-        def newPath = switchPair.paths.find { it != currentPath }
+        def newPath = switchPair.paths.find { it != initialPath.getPathNodes() }
         switchPair.paths.findAll { it != newPath }.each { pathHelper.makePathMorePreferable(newPath, it) }
 
         and: "Init reroute of all flows that go through pinned flow's isl"
-        def isl = pathHelper.getInvolvedIsls(currentPath).first()
+        def isl = initialPath.flowPath.getInvolvedIsls().first()
         def affectedFlows = northbound.rerouteLinkFlows(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flow is not rerouted (but still present in reroute response)"
         affectedFlows == [flow.flowId]
         Wrappers.timedLoop(4) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
+            assert flow.retrieveFlowStatus().status == FlowState.UP
+            assert flow.retrieveAllEntityPaths().getPathNodes() == initialPath.getPathNodes()
         }
     }
 
     def "System returns error if trying to intentionally reroute a pinned flow"() {
         given: "A pinned flow with alt path available"
         def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
-        def flow = flowHelperV2.randomFlow(switchPair).tap { it.pinned = true }
-        flowHelperV2.addFlow(flow)
-        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def flow = flowFactory.getBuilder(switchPair)
+                .withPinned(true)
+                .build().create()
+        def currentPath = flow.retrieveAllEntityPaths().getPathNodes()
 
         when: "Make another path more preferable"
         def newPath = switchPair.paths.find { it != currentPath }
         switchPair.paths.findAll { it != newPath }.each { pathHelper.makePathMorePreferable(newPath, it) }
 
         and: "Init manual reroute"
-        northboundV2.rerouteFlow(flow.flowId)
+        flow.reroute()
 
         then: "Error is returned"
         def e = thrown(HttpClientErrorException)
@@ -196,70 +216,58 @@ class PinnedFlowSpec extends HealthCheckSpecification {
     def "System doesn't allow to create pinned and protected flow at the same time"() {
         when: "Try to create pinned and protected flow"
         def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.pinned = true
-        flow.allocateProtectedPath = true
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair)
+                .withProtectedPath(true)
+                .withPinned(true)
+                .build().create()
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
+        new FlowNotCreatedExpectedError(~/Flow flags are not valid, unable to process pinned protected flow/).matches(exc)
     }
 
     def "System doesn't allow to enable the protected path flag on a pinned flow"() {
         given: "A pinned flow"
         def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.pinned = true
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair)
+                .withPinned(true)
+                .build().create()
 
         when: "Update flow: enable the allocateProtectedPath flag(allocateProtectedPath=true)"
-        northboundV2.updateFlow(flow.flowId, flow.tap { it.allocateProtectedPath = true })
+        flow.update(flow.tap{ it.allocateProtectedPath = true })
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not update flow"
-        errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
+        new FlowNotUpdatedExpectedError(~/Flow flags are not valid, unable to process pinned protected flow/).matches(exc)
     }
 
     @Tags([LOW_PRIORITY])
     def "System doesn't allow to create pinned and protected flow at the same time [v1 api]"() {
         when: "Try to create pinned and protected flow"
         def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
-        def flow = flowHelper.randomFlow(switchPair)
-        flow.pinned = true
-        flow.allocateProtectedPath = true
-        flowHelper.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair)
+                .withPinned(true)
+                .withProtectedPath(true)
+                .build().create()
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not create flow"
-        errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
+        new FlowNotCreatedExpectedError(~/Flow flags are not valid, unable to process pinned protected flow/).matches(exc)
     }
 
     @Tags([LOW_PRIORITY])
     def "System doesn't allow to enable the protected path flag on a pinned flow [v1 api]"() {
         given: "A pinned flow"
         def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
-        def flow = flowHelper.randomFlow(switchPair)
-        flow.pinned = true
-        flowHelper.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair)
+                .withPinned(true)
+                .build().create()
 
         when: "Update flow: enable the allocateProtectedPath flag(allocateProtectedPath=true)"
-        northbound.updateFlow(flow.id, flow.tap { it.allocateProtectedPath = true })
+        flow.update(flow.tap { it.allocateProtectedPath = true})
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 400
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
-        errorDetails.errorMessage == "Could not update flow"
-        errorDetails.errorDescription == "Flow flags are not valid, unable to process pinned protected flow"
+        new FlowNotUpdatedExpectedError(~/Flow flags are not valid, unable to process pinned protected flow/).matches(exc)
     }
 }

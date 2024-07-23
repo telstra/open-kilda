@@ -228,7 +228,7 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         }
 
         and: "Delete the link"
-        northbound.deleteLink(islUtils.toLinkParameters(isl))
+        islHelper.deleteIsl(isl)
         !islUtils.getIslInfo(isl)
         !islUtils.getIslInfo(isl.reversed)
 
@@ -245,7 +245,6 @@ class LinkPropertiesSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert islUtils.getIslInfo(isl).get().state == IslChangeType.DISCOVERED
         }
-        def islIsUp = true
 
         then: "The discovered link gets cost from link props"
         database.getIslCost(isl) == costValue.toInteger()

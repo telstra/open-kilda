@@ -1,6 +1,39 @@
 # Changelog
 
-## v1.158.0 (23/04/2024)
+## v1.159.0 (11/06/2024)
+
+### Improvements:
+-  [#5637](https://github.com/telstra/open-kilda/pull/5637) 5560: [TEST]: Eliminate cleanup sections part 1 (Issue: [#5560](https://github.com/telstra/open-kilda/issues/5560)) [**tests**]
+-  [#5641](https://github.com/telstra/open-kilda/pull/5641) Created a separate FeatureToggle class with the northboud calls (Issue: [#5560](https://github.com/telstra/open-kilda/issues/5560)) [**tests**]
+-  [#5643](https://github.com/telstra/open-kilda/pull/5643) Created a separate KildaConfiguration class with the northboud calls (Issue: [#5560](https://github.com/telstra/open-kilda/issues/5560)) [**tests**]
+-  [#5644](https://github.com/telstra/open-kilda/pull/5644) [TEST]: 5633: Gradle retry: Updating tests name [**tests**]
+-  [#5645](https://github.com/telstra/open-kilda/pull/5645) Fixed the flaky test when the flow swaps to protected path (Issue: [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5654](https://github.com/telstra/open-kilda/pull/5654) 5560: [TEST]: Eliminate cleanup sections pt.2 (Ha-Flows) (Issue: [#5560](https://github.com/telstra/open-kilda/issues/5560)) [**tests**]
+-  [#5656](https://github.com/telstra/open-kilda/pull/5656) Fixed the flaky test in the ProtectedPathSpec (Issues: [#5390](https://github.com/telstra/open-kilda/issues/5390) [#5608](https://github.com/telstra/open-kilda/issues/5608) [#5653](https://github.com/telstra/open-kilda/issues/5653) [#5655](https://github.com/telstra/open-kilda/issues/5655)) [**tests**]
+-  [#5658](https://github.com/telstra/open-kilda/pull/5658) 5560: [TEST]: Eliminate cleanup sections pt.3 (Y-Flows) (Issue: [#5560](https://github.com/telstra/open-kilda/issues/5560)) [**tests**]
+-  [#5660](https://github.com/telstra/open-kilda/pull/5660) 5390: [TEST]: Stabilize flaky Throttling Reroute test (Issue: [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5665](https://github.com/telstra/open-kilda/pull/5665) [Test]: Regular Flow: New Approach to interact with flow [**tests**]
+-  [#5667](https://github.com/telstra/open-kilda/pull/5667) RetriesSpec: small fix to add missing break ISLs action (Issue: [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5668](https://github.com/telstra/open-kilda/pull/5668) [TEST]: Regular Flow: CrudV1Spec: New approach for flow interaction [**tests**]
+-  [#5669](https://github.com/telstra/open-kilda/pull/5669) [TEST]: 5390: Stabilize flaky RetriesSpec test (Issue: [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+-  [#5670](https://github.com/telstra/open-kilda/pull/5670) [TEST]: Regular Flow: Bandwidth, ConnectedDevices, Affinity, Default Flow [**tests**]
+-  [#5672](https://github.com/telstra/open-kilda/pull/5672) 5560: [TEST]: Eliminate cleanup sections pt.4 (the rest) (Issue: [#5560](https://github.com/telstra/open-kilda/issues/5560)) [**tests**]
+-  [#5673](https://github.com/telstra/open-kilda/pull/5673) [TEST]: Regular Flow: Diverse, History, Loop, Monitoring, Ping, Sync: New approach for flow interaction [**tests**]
+-  [#5679](https://github.com/telstra/open-kilda/pull/5679) Make flow.reroute.hub.timeout.seconds configurable via the phabricator
+-  [#5680](https://github.com/telstra/open-kilda/pull/5680) add logs to KafkaProducerService.
+-  [#5682](https://github.com/telstra/open-kilda/pull/5682) [TEST]: Reroute: Global Timeout(now 45sec): Test refactoring [**tests**]
+-  [#5684](https://github.com/telstra/open-kilda/pull/5684) Update flow reroute operation timeout [**storm-topologies**]
+-  [#5625](https://github.com/telstra/open-kilda/pull/5625) 5390: [TEST]: Stabilize flaky Swap Endpoint test (Issues: [#3770](https://github.com/telstra/open-kilda/issues/3770) [#3770](https://github.com/telstra/open-kilda/issues/3770) [#5390](https://github.com/telstra/open-kilda/issues/5390)) [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.158.0...v1.159.0).
+
+### Affected Components:
+reroute
+
+---
+
+## v1.158.0 (22/04/2024)
 
 ### Features:
 -  [#5353](https://github.com/telstra/open-kilda/pull/5353) 5208 add ha flow support into server42

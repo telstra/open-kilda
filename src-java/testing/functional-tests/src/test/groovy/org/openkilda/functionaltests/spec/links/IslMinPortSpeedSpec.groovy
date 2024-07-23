@@ -35,7 +35,7 @@ class IslMinPortSpeedSpec extends HealthCheckSpecification {
         def newDstPort = northbound.getPort(newDst.srcSwitch.dpId, newDst.srcPort)
 
         when: "Replug one end of the connected link to the destination switch(isl.srcSwitchId -> newDst.srcSwitchId)"
-        def newIsl = islUtils.replug(isl, false, newDst, true, false)
+        def newIsl = islHelper.replugDestination(isl, newDst, true, false)
 
         Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
             [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == DISCOVERED }
@@ -45,16 +45,6 @@ class IslMinPortSpeedSpec extends HealthCheckSpecification {
         then: "Max bandwidth of new ISL is equal to the minimal port speed"
         Wrappers.wait(WAIT_OFFSET) {
             islUtils.getIslInfo(newIsl).get().maxBandwidth == [port.maxSpeed, newDstPort.maxSpeed].min()
-        }
-
-        cleanup: "Replug the link back and delete the moved ISL"
-        if (newIsl){
-            islUtils.replug(newIsl, true, isl, false, false)
-            islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
-            islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
-            northbound.deleteLink(islUtils.toLinkParameters(newIsl))
-            Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
-            database.resetCosts(topology.isls)
         }
     }
 }

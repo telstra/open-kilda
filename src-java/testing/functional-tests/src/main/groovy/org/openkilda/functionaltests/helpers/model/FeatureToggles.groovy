@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers.model
 
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
+
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.model.system.FeatureTogglesDto
@@ -7,31 +9,45 @@ import org.openkilda.testing.service.northbound.NorthboundService
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
-
-import javax.annotation.PostConstruct
 
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
 
 @Slf4j
 @Component
+@Scope(SCOPE_PROTOTYPE)
 class FeatureToggles {
+    private static FeatureTogglesDto initialState = FeatureTogglesDto.builder()
+    // all these params are specified during env set up
+            .createFlowEnabled(true)
+            .updateFlowEnabled(true)
+            .deleteFlowEnabled(true)
+            .flowsRerouteOnIslDiscoveryEnabled(true)
+            .useBfdForIslIntegrityCheck(true)
+            .floodlightRoutePeriodicSync(true)
+            .collectGrpcStats(true)
+            .server42FlowRtt(true)
+            .server42IslRtt(true)
+            .modifyYFlowEnabled(true)
+            .createHaFlowEnabled(true)
+            .modifyHaFlowEnabled(true)
+            .deleteHaFlowEnabled(true)
+            .syncSwitchOnConnect(true)
+    //the following toggles are disabled by default
+            .flowsRerouteUsingDefaultEncapType(false)
+            .flowLatencyMonitoringReactions(false)
+            .discoverNewIslsInUnderMaintenanceMode(false)
+            .build()
 
     @Autowired @Qualifier("islandNb")
     NorthboundService northbound
     @Autowired
     CleanupManager cleanupManager
 
-    FeatureTogglesDto initialState
-
-    @PostConstruct
-    void init() {
-        initialState = getFeatureToggles()
-    }
-
     FeatureTogglesDto setFeatureToggles(FeatureTogglesDto featureTogglesDto, CleanupAfter cleanupAfter= TEST) {
-        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, {northbound.toggleFeature(initialState)}, cleanupAfter)
+        cleanupManager.addAction(RESTORE_FEATURE_TOGGLE, { safeTogglesRecover() }, cleanupAfter)
         northbound.toggleFeature(featureTogglesDto)
     }
 
@@ -123,5 +139,12 @@ class FeatureToggles {
                 .flowLatencyMonitoringReactions(enabled)
                 .build()
         )
+    }
+
+    void safeTogglesRecover() {
+        FeatureTogglesDto currentState = getFeatureToggles()
+        if(currentState != initialState) {
+            northbound.toggleFeature(initialState)
+        }
     }
 }

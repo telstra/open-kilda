@@ -72,9 +72,6 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
     @Autowired
     @Shared
     Provider<TraffExamService> traffExamProvider
-    @Autowired
-    @Shared
-    CleanupManager cleanupManager
 
     @Value("#{kafkaTopicsConfig.getSpeakerSwitchManagerTopic()}")
     @Shared
@@ -447,10 +444,10 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
                 "different number of hops found")
 
         and: "Make all shorter forward paths not preferable. Shorter reverse paths are still preferable"
-        cleanupManager.addAction(RESET_ISLS_COST, {database.resetCosts(topology.isls)})
-        List<Isl> modifiedIsls = possibleFlowPaths.findAll { it.size() == pathNodeCount }.collectMany {
-            pathHelper.getInvolvedIsls(it).each {database.updateIslCost(it, Integer.MAX_VALUE) }
-        }
+        def modifiedIsls = possibleFlowPaths.findAll { it.size() == pathNodeCount }.collect {
+            pathHelper.getInvolvedIsls(it)
+        }.flatten().unique()
+        pathHelper.updateIslsCostInDatabase(modifiedIsls, Integer.MAX_VALUE)
 
         when: "Create a flow"
         def flow = flowFactory.getRandomV1(srcSwitch, dstSwitch)
@@ -640,7 +637,7 @@ Failed to find path with requested bandwidth=$invalidFlow.maximumBandwidth/).mat
         def notConnectedIsls = topology.notConnectedIsls
         assumeTrue(notConnectedIsls.size() > 0, "Unable to find non-connected isl")
         def notConnectedIsl = notConnectedIsls.first()
-        def newIsl = islUtils.replug(isl, false, notConnectedIsl, true, false)
+        def newIsl = islHelper.replugDestination(isl, notConnectedIsl, true, false)
 
         islUtils.waitForIslStatus([isl, isl.reversed], MOVED)
         Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET) {
@@ -655,15 +652,6 @@ Failed to find path with requested bandwidth=$invalidFlow.maximumBandwidth/).mat
         then: "Flow is not created"
         def exc = thrown(HttpClientErrorException)
         new FlowNotCreatedExpectedError(getPortViolationError("source", isl.srcPort, isl.srcSwitch.dpId)).matches(exc)
-
-        cleanup: "Restore status of the ISL and delete new created ISL"
-        if (islIsMoved) {
-            islUtils.replug(newIsl, true, isl, false, false)
-            islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
-            islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
-            northbound.deleteLink(islUtils.toLinkParameters(newIsl))
-            Wrappers.wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
-        }
     }
 
     def "Able to CRUD #flowDescription pinned flow"() {

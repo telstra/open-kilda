@@ -8,19 +8,26 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchFeature
 
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Isolated
+import spock.lang.Shared
 
 import java.util.concurrent.TimeUnit
 
 @Isolated
 class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
     static final int PERIODIC_SYNC_TIME = 60
+
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     @Value('${floodlight.alive.timeout}')
     int floodlightAliveTimeout
@@ -36,7 +43,7 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
             def otherRegions = sw.regions - rwRegions
             def regionToStay = rwRegions[i % rwRegions.size()]
             def regionsToDc = rwRegions - regionToStay
-            knockoutData << [(sw): lockKeeper.knockoutSwitch(sw, regionsToDc)]
+            knockoutData << [(sw): switchHelper.knockoutSwitch(sw, regionsToDc)]
             updatedRegions[sw.dpId] = [regionToStay] + otherRegions
         }
         assumeTrue(updatedRegions.values().flatten().unique().size() > 1,
@@ -104,11 +111,11 @@ class FloodlightKafkaConnectionSpec extends HealthCheckSpecification {
             [pair.src, pair.dst].any { updatedRegions[it.dpId].contains(regionToBreak) }  &&
                     updatedRegions[pair.src.dpId] != updatedRegions[pair.dst.dpId]
         }
-        def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.attemptToAddFlow(flow)
-        wait(WAIT_OFFSET * 2) { //FL may be a bit laggy right after comming up, so this may take a bit longer than usual
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP }
-        northbound.validateFlow(flow.flowId).each { assert it.asExpected }
+        def flow = flowFactory.getBuilder(swPair).build().sendCreateRequest()
+        wait(WAIT_OFFSET * 2) {
+            //FL may be a bit laggy right after comming up, so this may take a bit longer than usual
+            assert flow.retrieveFlowStatus().status == FlowState.UP }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         cleanup:
         nonRtlShouldFail?.join()

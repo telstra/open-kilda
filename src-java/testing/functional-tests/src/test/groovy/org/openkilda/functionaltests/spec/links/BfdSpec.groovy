@@ -4,11 +4,9 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.link.LinkBfdNotSetExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.links.BfdProperties
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.ResourceLock
@@ -23,7 +21,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_FEATURE_TOGGLE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/network-discovery")
@@ -35,8 +32,6 @@ class BfdSpec extends HealthCheckSpecification {
 
     @Shared
     BfdProperties defaultBfdProps = new BfdProperties(350, (short)3)
-    @Autowired @Shared
-    CleanupManager cleanupManager
 
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
     def "Able to create a valid BFD session between two Noviflow switches"() {
@@ -76,7 +71,7 @@ class BfdSpec extends HealthCheckSpecification {
 
         when: "Interrupt ISL connection by breaking rule on a-switch"
         def costBeforeFailure = islUtils.getIslInfo(isl).get().cost
-        lockKeeper.removeFlows([isl.aswitch])
+        aSwitchFlows.removeFlows([isl.aswitch])
 
         then: "ISL immediately gets failed because bfd has higher priority than RTL"
         Wrappers.wait(WAIT_OFFSET / 2) {
@@ -97,7 +92,7 @@ class BfdSpec extends HealthCheckSpecification {
         }
 
         when: "Restore connection"
-        lockKeeper.addFlows([isl.aswitch])
+        aSwitchFlows.addFlows([isl.aswitch])
 
         then: "ISL is rediscovered and bfd status is 'up'"
         Wrappers.wait(discoveryAuxiliaryInterval + WAIT_OFFSET) {
@@ -131,7 +126,7 @@ class BfdSpec extends HealthCheckSpecification {
         }
 
         when: "Interrupt ISL connection by breaking rule on a-switch"
-        lockKeeper.removeFlows([isl.aswitch])
+        aSwitchFlows.removeFlows([isl.aswitch])
 
         then: "ISL fails ONLY after discovery timeout"
         Wrappers.timedLoop(discoveryTimeout * 0.8) {
@@ -141,13 +136,6 @@ class BfdSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryTimeout * 0.2 + WAIT_OFFSET) {
             assert northbound.getLink(isl).state == IslChangeType.FAILED
             assert northbound.getLink(isl.reversed).state == IslChangeType.FAILED
-        }
-
-        cleanup: "Restore broken ISL"
-        lockKeeper.addFlows([isl.aswitch])
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
-            assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
         }
     }
 
@@ -170,7 +158,7 @@ class BfdSpec extends HealthCheckSpecification {
         featureToggles.useBfdForIslIntegrityCheck(false)
 
         and: "Interrupt ISL connection by breaking rule on a-switch"
-        lockKeeper.removeFlows([isl.aswitch])
+        aSwitchFlows.removeFlows([isl.aswitch])
 
         then: "ISL does not get FAILED immediately"
         Wrappers.timedLoop(discoveryTimeout * 0.8) {
@@ -185,7 +173,7 @@ class BfdSpec extends HealthCheckSpecification {
         }
 
         when: "Set BFD toggle back to 'on' state and restore the ISL"
-        lockKeeper.addFlows([isl.aswitch])
+        aSwitchFlows.addFlows([isl.aswitch])
         featureToggles.useBfdForIslIntegrityCheck(true)
         Wrappers.wait(discoveryAuxiliaryInterval + WAIT_OFFSET) {
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
@@ -193,19 +181,12 @@ class BfdSpec extends HealthCheckSpecification {
         }
 
         and: "Again interrupt ISL connection by breaking rule on a-switch"
-        lockKeeper.removeFlows([isl.aswitch])
+        aSwitchFlows.removeFlows([isl.aswitch])
 
         then: "ISL immediately gets failed"
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert northbound.getLink(isl).state == IslChangeType.FAILED
             assert northbound.getLink(isl.reversed).state == IslChangeType.FAILED
-        }
-
-        cleanup: "Restore ISL and remove BFD session"
-        lockKeeper.addFlows([isl.aswitch])
-        Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-            assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
-            assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
         }
     }
 
@@ -241,7 +222,7 @@ class BfdSpec extends HealthCheckSpecification {
         def isBfdDisabled = true
 
         and: "Acts like there is no BFD session (fails only after discovery timeout)"
-        lockKeeper.removeFlows([isl.aswitch])
+        aSwitchFlows.removeFlows([isl.aswitch])
         Wrappers.timedLoop(discoveryTimeout * 0.8) {
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
             assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
@@ -250,9 +231,6 @@ class BfdSpec extends HealthCheckSpecification {
             assert northbound.getLink(isl).state == IslChangeType.FAILED
             assert northbound.getLink(isl.reversed).state == IslChangeType.FAILED
         }
-
-        cleanup:
-        isl && lockKeeper.addFlows([isl.aswitch])
     }
 
     @Tags([SMOKE_SWITCHES, LOCKKEEPER])
@@ -263,7 +241,7 @@ class BfdSpec extends HealthCheckSpecification {
         }
         assumeTrue(isl as boolean, "The test requires at least one a-switch BFD ISL")
         islHelper.setLinkBfd(isl)
-        lockKeeper.removeFlows([isl.aswitch])
+        aSwitchFlows.removeFlows([isl.aswitch])
         def isAswitchRuleDeleted = true
         Wrappers.wait(WAIT_OFFSET / 2) {
             assert northbound.getLink(isl).state == IslChangeType.FAILED
@@ -281,15 +259,6 @@ class BfdSpec extends HealthCheckSpecification {
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
             assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
             assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
-        }
-
-        cleanup:
-        if(isAswitchRuleDeleted) {
-            lockKeeper.addFlows([isl.aswitch])
-            Wrappers.wait(discoveryInterval + WAIT_OFFSET) {
-                assert northbound.getLink(isl).state == IslChangeType.DISCOVERED
-                assert northbound.getLink(isl.reversed).state == IslChangeType.DISCOVERED
-            }
         }
     }
 

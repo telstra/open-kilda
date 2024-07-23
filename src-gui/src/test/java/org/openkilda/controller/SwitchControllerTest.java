@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2024 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -17,11 +17,13 @@ package org.openkilda.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.openkilda.auth.context.ServerContext;
@@ -30,6 +32,7 @@ import org.openkilda.log.ActivityLogger;
 import org.openkilda.model.IslLinkInfo;
 import org.openkilda.model.LinkParametersDto;
 import org.openkilda.model.LinkUnderMaintenanceDto;
+import org.openkilda.model.SwitchDetail;
 import org.openkilda.model.SwitchInfo;
 import org.openkilda.model.SwitchProperty;
 import org.openkilda.service.SwitchService;
@@ -45,6 +48,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -78,6 +82,7 @@ public class SwitchControllerTest {
 
     @BeforeEach
     public void init() {
+        MockitoAnnotations.openMocks(this);
         mockMvc = MockMvcBuilders.standaloneSetup(switchController).build();
         RequestContext requestContext = new RequestContext();
         requestContext.setUserId(TestIslMock.USER_ID);
@@ -88,12 +93,13 @@ public class SwitchControllerTest {
     public void testGetAllSwitchesDetails() {
         List<SwitchInfo> switchesInfo = new ArrayList<>();
         try {
-            when(serviceSwitch.getSwitches(false, TestFlowMock.CONTROLLER_FLAG)).thenReturn(switchesInfo);
+            when(serviceSwitch.getSwitchInfos(false, TestFlowMock.CONTROLLER_FLAG))
+                    .thenReturn(switchesInfo);
             mockMvc.perform(get("/api/switch/list").contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception exception) {
-            assertTrue(false);
+            fail();
         }
     }
 
@@ -107,16 +113,32 @@ public class SwitchControllerTest {
                     .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception e) {
-            assertTrue(false);
+            fail();
         }
     }
 
     @Test
-    public void testGetSwitchById() throws Exception {
-        SwitchInfo switchInfo = new SwitchInfo();
-        when(serviceSwitch.getSwitch(TestSwitchMock.SWITCH_ID, TestFlowMock.CONTROLLER_FLAG)).thenReturn(switchInfo);
-        mockMvc.perform(get("/api/switch/{switchId}", TestSwitchMock.SWITCH_ID).contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk());
+    public void getSwitchDetails() throws Exception {
+        List<SwitchDetail> switchDetails = new ArrayList<>();
+        switchDetails.add(SwitchDetail.builder().build());
+        when(serviceSwitch.getSwitchDetails(TestSwitchMock.SWITCH_ID, TestFlowMock.CONTROLLER_FLAG))
+                .thenReturn(switchDetails);
+        mockMvc.perform(get("/api/switch/details")
+                        .param("switchId", TestSwitchMock.SWITCH_ID)
+                        .param("controller", "true")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().string("[{\"under_maintenance\":false}]"));
+
+
+        when(serviceSwitch.getSwitchDetails(null, TestFlowMock.CONTROLLER_FLAG))
+                .thenReturn(switchDetails);
+        mockMvc.perform(get("/api/switch/details")
+                        .param("controller", "true")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().string("[{\"under_maintenance\":false}]"));
+
         assertTrue(true);
     }
 
@@ -124,12 +146,13 @@ public class SwitchControllerTest {
     public void testGetSwichLinkDetails() {
         List<SwitchInfo> switchesInfo = new ArrayList<>();
         try {
-            when(serviceSwitch.getSwitches(false, TestFlowMock.CONTROLLER_FLAG)).thenReturn(switchesInfo);
+            when(serviceSwitch.getSwitchInfos(false, TestFlowMock.CONTROLLER_FLAG))
+                    .thenReturn(switchesInfo);
             mockMvc.perform(get("/api/switch/links").contentType(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception e) {
-            assertTrue(false);
+            fail();
         }
     }
 
@@ -144,7 +167,7 @@ public class SwitchControllerTest {
             assertTrue(true);
         } catch (Exception e) {
             System.out.println("exception: " + e.getMessage());
-            assertTrue(false);
+            fail();
         }
     }
 
@@ -157,7 +180,7 @@ public class SwitchControllerTest {
             assertTrue(true);
         } catch (Exception e) {
             System.out.println("exception: " + e.getMessage());
-            assertTrue(false);
+            fail();
         }
     }
 
@@ -178,9 +201,9 @@ public class SwitchControllerTest {
     @Test
     public void testIslMaintenance() throws Exception {
         LinkUnderMaintenanceDto linkUnderMaintenanceDto = new LinkUnderMaintenanceDto();
-        linkUnderMaintenanceDto.setSrcPort(Integer.valueOf(TestIslMock.SRC_PORT));
+        linkUnderMaintenanceDto.setSrcPort(TestIslMock.SRC_PORT);
         linkUnderMaintenanceDto.setSrcSwitch(TestIslMock.SRC_SWITCH);
-        linkUnderMaintenanceDto.setDstPort(Integer.valueOf(TestIslMock.DST_PORT));
+        linkUnderMaintenanceDto.setDstPort(TestIslMock.DST_PORT);
         linkUnderMaintenanceDto.setDstSwitch(TestIslMock.DST_SWITCH);
         linkUnderMaintenanceDto.setUnderMaintenance(TestIslMock.UNDER_MAINTENANE_FLAG);
 
@@ -272,7 +295,7 @@ public class SwitchControllerTest {
             assertTrue(true);
         } catch (Exception e) {
             System.out.println("Exception is: " + e);
-            assertTrue(false);
+            fail();
         }
     }
 
@@ -289,7 +312,7 @@ public class SwitchControllerTest {
             assertTrue(true);
         } catch (Exception ex) {
             System.out.println("Exception is: " + ex);
-            assertTrue(false);
+            fail();
         }
     }
 
@@ -304,7 +327,7 @@ public class SwitchControllerTest {
             assertTrue(true);
         } catch (Exception e) {
             System.out.println("Exception is: " + e);
-            assertTrue(false);
+            fail();
         }
     }
 
@@ -319,7 +342,7 @@ public class SwitchControllerTest {
                     .andExpect(status().isOk());
             assertTrue(true);
         } catch (Exception e) {
-            assertTrue(false);
+            fail();
         }
     }
 
@@ -331,7 +354,7 @@ public class SwitchControllerTest {
                     .andExpect(status().isNotFound());
             assertTrue(true);
         } catch (Exception e) {
-            assertTrue(false);
+            fail();
         }
     }
 
@@ -343,7 +366,7 @@ public class SwitchControllerTest {
                     .andExpect(status().isNotFound());
             assertTrue(true);
         } catch (Exception e) {
-            assertTrue(false);
+            fail();
         }
     }
 

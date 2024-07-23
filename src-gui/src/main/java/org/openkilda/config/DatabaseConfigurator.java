@@ -22,6 +22,8 @@ import com.ibatis.common.jdbc.ScriptRunner;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
@@ -37,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 
 @Slf4j
@@ -56,7 +59,7 @@ public class DatabaseConfigurator {
 
     private final DataSource dataSource;
 
-    public DatabaseConfigurator(VersionRepository versionRepository, final DataSource dataSource,
+    public DatabaseConfigurator(@Autowired final VersionRepository versionRepository, final DataSource dataSource,
                                 final ResourceLoader resourceLoader, EntityManager em) {
         this.versionEntityRepository = versionRepository;
         this.dataSource = dataSource;
@@ -68,7 +71,7 @@ public class DatabaseConfigurator {
     private void loadInitialData() {
         List<Long> versionNumberList = versionEntityRepository.findAllVersionNumber();
 
-        if (versionNumberList.isEmpty()) {
+        if (CollectionUtils.isEmpty(versionNumberList)) {
             try {
 
                 List<VersionEntity> list = new ArrayList<>();
@@ -99,7 +102,7 @@ public class DatabaseConfigurator {
             Resource[] resources = resolver.getResources("classpath:" + SCRIPT_LOCATION + "/*");
             List<String> dbScripts = Arrays.stream(resources)
                     .map(Resource::getFilename)
-                    .toList();
+                    .collect(Collectors.toList());
             ArrayList<Long> sortedList = new ArrayList<Long>();
             for (String scriptFile : dbScripts) {
                 String scriptFileName = scriptFile.replaceFirst("[.][^.]+$", "");
@@ -113,12 +116,20 @@ public class DatabaseConfigurator {
                     if (!versionNumberList.contains(scriptFileNumber)) {
                         inputStream = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/"
                                 + SCRIPT_FILE_PREFIX + scriptFileNumber + SCRIPT_FILE_SUFFIX).getInputStream();
-                        runScript(inputStream);
+                        if (inputStream != null) {
+                            runScript(inputStream);
+                        } else {
+                            break;
+                        }
                     }
                 } else {
                     inputStream = resourceLoader.getResource("classpath:" + SCRIPT_LOCATION + "/"
                             + SCRIPT_FILE_PREFIX + scriptFileNumber + SCRIPT_FILE_SUFFIX).getInputStream();
-                    runScript(inputStream);
+                    if (inputStream != null) {
+                        runScript(inputStream);
+                    } else {
+                        break;
+                    }
                 }
             }
         } catch (IOException ex) {

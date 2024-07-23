@@ -1,35 +1,57 @@
 package org.openkilda.functionaltests.helpers.model
 
+import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
+import static org.openkilda.functionaltests.helpers.FlowNameGenerator.FLOW
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_FLOW
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
+import static org.openkilda.testing.Constants.EGRESS_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
+import static org.openkilda.testing.Constants.INGRESS_RULE_MULTI_TABLE_ID
+import static org.openkilda.testing.Constants.TRANSIT_RULE_MULTI_TABLE_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.messaging.info.rule.FlowEntry
+import org.openkilda.messaging.info.meter.FlowMeterEntries
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
+import org.openkilda.messaging.payload.flow.FlowCreatePayload
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.messaging.payload.flow.FlowPayload
+import org.openkilda.messaging.payload.flow.FlowReroutePayload
 import org.openkilda.messaging.payload.flow.FlowResponsePayload
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.FlowPathDirection
+import org.openkilda.model.FlowPathStatus
 import org.openkilda.model.SwitchId
+import org.openkilda.northbound.dto.v1.flows.FlowConnectedDevicesResponse
+import org.openkilda.northbound.dto.v1.flows.FlowPatchDto
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
 import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v1.flows.PingOutput
 import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
 import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
+import org.openkilda.northbound.dto.v2.flows.FlowLoopPayload
+import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointResponseV2
+import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointsResponseV2
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.northbound.dto.v2.flows.FlowRerouteResponseV2
 import org.openkilda.northbound.dto.v2.flows.FlowResponseV2
 import org.openkilda.northbound.dto.v2.flows.FlowStatistics
 import org.openkilda.northbound.dto.v2.flows.MirrorPointStatus
 import org.openkilda.northbound.dto.v2.flows.PathStatus
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.traffexam.TraffExamService
@@ -39,6 +61,7 @@ import org.openkilda.testing.service.traffexam.model.FlowBidirectionalExam
 import org.openkilda.testing.service.traffexam.model.Host
 import org.openkilda.testing.service.traffexam.model.TimeLimit
 import org.openkilda.testing.service.traffexam.model.Vlan
+import org.openkilda.testing.tools.ConnectedDevice
 import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -89,7 +112,7 @@ class FlowExtended {
     Set<String> diverseWithYFlows
     Set<String> diverseWithHaFlows
 
-    List<MirrorPointStatus> mirrorPointStatus
+    List<MirrorPointStatus> mirrorPointStatuses
     String yFlowId
     FlowStatistics statistics
 
@@ -105,17 +128,21 @@ class FlowExtended {
     @JsonIgnore
     CleanupManager cleanupManager
 
+    @JsonIgnore
+    Database database
+
     FlowExtended(String flowId, NorthboundService northbound, NorthboundServiceV2 northboundV2,
-                 TopologyDefinition topologyDefinition, CleanupManager cleanupManager) {
+                 TopologyDefinition topologyDefinition, CleanupManager cleanupManager, Database database) {
         this.flowId = flowId
         this.northbound = northbound
         this.northboundV2 = northboundV2
         this.topologyDefinition = topologyDefinition
         this.cleanupManager = cleanupManager
+        this.database = database
     }
 
     FlowExtended(FlowResponseV2 flow, NorthboundService northbound, NorthboundServiceV2 northboundV2,
-                 TopologyDefinition topologyDefinition, CleanupManager cleanupManager) {
+                 TopologyDefinition topologyDefinition, CleanupManager cleanupManager, Database database) {
         this.flowId = flow.flowId
         this.status = FlowState.getByValue(flow.status)
         this.statusDetails = flow.statusDetails
@@ -150,7 +177,7 @@ class FlowExtended {
         this.diverseWithYFlows = flow.diverseWithYFlows
         this.diverseWithHaFlows = flow.diverseWithHaFlows
 
-        this.mirrorPointStatus = flow.mirrorPointStatuses
+        this.mirrorPointStatuses = flow.mirrorPointStatuses
         this.yFlowId = flow.YFlowId
         this.statistics = flow.statistics
 
@@ -158,10 +185,11 @@ class FlowExtended {
         this.northboundV2 = northboundV2
         this.topologyDefinition = topologyDefinition
         this.cleanupManager = cleanupManager
+        this.database = database
     }
 
     FlowExtended(FlowPayload flow, NorthboundService northbound, NorthboundServiceV2 northboundV2,
-                 TopologyDefinition topologyDefinition, CleanupManager cleanupManager) {
+                 TopologyDefinition topologyDefinition, CleanupManager cleanupManager, Database database) {
         this.flowId = flow.id
         this.status = FlowState.getByValue(flow.status)
         this.source = convertEndpointToV2(flow.source)
@@ -184,9 +212,10 @@ class FlowExtended {
         this.northboundV2 = northboundV2
         this.topologyDefinition = topologyDefinition
         this.cleanupManager = cleanupManager
+        this.database = database
 
         if(flow instanceof FlowResponsePayload) {
-            this.diverseWith == flow.diverseWith
+            this.diverseWith = flow.diverseWith
             this.statusDetails = !flow.flowStatusDetails ? null : PathStatus.builder()
                     .mainPath(flow.flowStatusDetails.mainFlowPathStatus)
                     .protectedPath(flow.flowStatusDetails.protectedFlowPathStatus).build()
@@ -202,7 +231,7 @@ class FlowExtended {
 
     FlowExtended create(FlowState expectedState = FlowState.UP, CleanupAfter cleanupAfter = TEST) {
         cleanupManager.addAction(DELETE_FLOW, { delete() }, cleanupAfter)
-        sendCreateRequest()
+        sendCreateRequest(cleanupAfter)
         waitForBeingInState(expectedState)
     }
 
@@ -229,11 +258,11 @@ class FlowExtended {
                 .build()
         cleanupManager.addAction(DELETE_FLOW, { delete() }, cleanupAfter)
         def flow = northboundV2.addFlow(flowRequest)
-        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager)
+        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
     }
 
     FlowExtended createV1(FlowState expectedState = FlowState.UP, CleanupAfter cleanupAfter = TEST) {
-        def flowRequest = convertToFlowPayload()
+        def flowRequest = convertToFlowCreatePayload()
         cleanupManager.addAction(DELETE_FLOW, { delete() }, cleanupAfter)
         northbound.addFlow(flowRequest)
         waitForBeingInState(expectedState)
@@ -243,7 +272,7 @@ class FlowExtended {
         def flowRequest = convertToFlowPayload()
         cleanupManager.addAction(DELETE_FLOW, { delete() }, cleanupAfter)
         def flow = northbound.addFlow(flowRequest)
-        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager)
+        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
     }
 
     static FlowEndpointV2 convertEndpointToV2(FlowEndpointPayload endpointToConvert) {
@@ -268,6 +297,49 @@ class FlowExtended {
                 .build()
     }
 
+    FlowMirrorPointPayload buildMirrorPointPayload(SwitchId sinkSwitchId,
+                                                   Integer sinkPortNumber,
+                                                   Integer sinkVlanId = randomVlan(),
+                                                   FlowPathDirection mirrorDirection = FlowPathDirection.FORWARD,
+                                                   SwitchId mirrorPointSwitchId = sinkSwitchId) {
+        FlowEndpointV2 sinkEndpoint = this.source.switchId == sinkSwitchId ? this.source.jacksonCopy() : this.destination.jacksonCopy()
+        sinkEndpoint.tap {
+            sinkEndpoint.portNumber = sinkPortNumber
+            sinkEndpoint.vlanId = sinkVlanId
+            sinkEndpoint.switchId = sinkSwitchId
+        }
+        FlowMirrorPointPayload.builder()
+                .mirrorPointId(FLOW.generateId())
+                .mirrorPointDirection(mirrorDirection.toString().toLowerCase())
+                .mirrorPointSwitchId(mirrorPointSwitchId)
+                .sinkEndpoint(sinkEndpoint)
+                .build()
+    }
+
+    FlowMirrorPointResponseV2 createMirrorPointWithPayload(FlowMirrorPointPayload mirrorPointPayload,
+                                                           boolean withWait=true) {
+        def response = northboundV2.createMirrorPoint(flowId, mirrorPointPayload)
+        if (withWait) {
+            wait(FLOW_CRUD_TIMEOUT) {
+                assert retrieveDetails().mirrorPointStatuses[0].status ==
+                        FlowPathStatus.ACTIVE.toString().toLowerCase()
+                assert !retrieveFlowHistory().getEntriesByType(FlowActionType.CREATE_MIRROR).isEmpty()
+            }
+        }
+        return response
+    }
+
+    FlowMirrorPointResponseV2 createMirrorPoint(SwitchId sinkSwitchId,
+                                                Integer sinkPortNumber,
+                                                Integer sinkVlanId = randomVlan(),
+                                                FlowPathDirection mirrorDirection = FlowPathDirection.FORWARD,
+                                                SwitchId mirrorPointSwitchId = sinkSwitchId,
+                                                boolean withWait=true) {
+        FlowMirrorPointPayload mirrorPointPayload = buildMirrorPointPayload(
+                sinkSwitchId, sinkPortNumber, sinkVlanId, mirrorDirection, mirrorPointSwitchId)
+        return createMirrorPointWithPayload(mirrorPointPayload, withWait)
+    }
+
     FlowEntityPath retrieveAllEntityPaths() {
         FlowPathPayload flowPath = northbound.getFlowPath(flowId)
         new FlowEntityPath(flowPath, topologyDefinition)
@@ -276,13 +348,17 @@ class FlowExtended {
     def retrieveDetails() {
         log.debug("Get Flow '$flowId' details")
         def flow = northboundV2.getFlow(flowId)
-        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager)
+        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
+    }
+
+    def retrieveDetailsFromDB() {
+        database.getFlow(flowId)
     }
 
     def retrieveDetailsV1() {
         log.debug("Get Flow '$flowId' details")
         def flow = northbound.getFlow(flowId)
-        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager)
+        return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
     }
 
     FlowIdStatusPayload retrieveFlowStatus() {
@@ -290,14 +366,42 @@ class FlowExtended {
         return northboundV2.getFlowStatus(flowId)
     }
 
-    FlowHistory retrieveFlowHistory() {
+    FlowHistory retrieveFlowHistory(Long timeFrom = null , Long timeTo = null) {
         log.debug("Get Flow '$flowId' history details")
-        new FlowHistory(northbound.getFlowHistory(flowId))
+        new FlowHistory(northbound.getFlowHistory(flowId, timeFrom, timeTo))
+    }
+
+    int retrieveHistoryEventsNumber() {
+        retrieveFlowHistory().getEventsNumber()
+    }
+
+    List<FlowHistoryStatus> retrieveFlowHistoryStatus(Long timeFrom = null, Long timeTo = null, Integer maxCount = null) {
+        northboundV2.getFlowHistoryStatuses(flowId, timeFrom, timeTo, maxCount).historyStatuses.collect {
+            new FlowHistoryStatus(it.timestamp, it.statusBecome)
+        }
+    }
+
+    List<FlowHistoryStatus> retrieveFlowHistoryStatus(Integer maxCount) {
+        retrieveFlowHistoryStatus(null, null, maxCount)
+    }
+
+    FlowMirrorPointsResponseV2 retrieveMirrorPoints() {
+        log.debug("Get Flow '$flowId' mirror points")
+        return northboundV2.getMirrorPoints(flowId)
+    }
+
+    FlowMirrorPointResponseV2 deleteMirrorPoint(String mirrorPointId) {
+        log.debug("Deleting mirror point '$mirrorPointId' of the flow '$flowId'")
+        northboundV2.deleteMirrorPoint(flowId, mirrorPointId)
     }
 
     List<FlowValidationDto> validate() {
         log.debug("Validate Flow '$flowId'")
         northbound.validateFlow(flowId)
+    }
+
+    FlowRerouteResponseV2 reroute() {
+        northboundV2.rerouteFlow(flowId)
     }
 
     Map<FlowDirection, PathDiscrepancyDto> validateAndCollectDiscrepancies() {
@@ -308,14 +412,22 @@ class FlowExtended {
                 .collectEntries { [(FlowDirection.getByDirection(it.direction)): it.discrepancies] }
     }
 
+    FlowReroutePayload sync() {
+        northbound.synchronizeFlow(flowId)
+    }
 
     PingOutput ping(PingInput pingInput = new PingInput()) {
         log.debug("Ping Flow '$flowId'")
         northbound.pingFlow(flowId, pingInput)
     }
 
+    FlowExtended sendUpdateRequest(FlowExtended expectedEntity) {
+        def response = northboundV2.updateFlow(flowId, expectedEntity.convertToUpdate())
+        return new FlowExtended(response, northbound, northboundV2, topologyDefinition, cleanupManager, database)
+    }
+
     FlowExtended update(FlowExtended expectedEntity, FlowState flowState = FlowState.UP) {
-        northboundV2.updateFlow(flowId, expectedEntity.convertToUpdate())
+        sendUpdateRequest(expectedEntity)
         return waitForBeingInState(flowState)
     }
 
@@ -325,8 +437,61 @@ class FlowExtended {
     }
 
     FlowExtended partialUpdate(FlowPatchV2 updateRequest, FlowState flowState = FlowState.UP) {
-        northboundV2.partialUpdate(flowId, updateRequest)
+        sendPartialUpdateRequest(updateRequest)
         return waitForBeingInState(flowState)
+    }
+
+    FlowReroutePayload rerouteV1() {
+        return northbound.rerouteFlow(flowId)
+    }
+
+    FlowExtended sendPartialUpdateRequest(FlowPatchV2 updateRequest) {
+        def response = northboundV2.partialUpdate(flowId, updateRequest)
+        return new FlowExtended(response, northbound, northboundV2, topologyDefinition, cleanupManager, database)
+
+    }
+
+    FlowExtended partialUpdateV1(FlowPatchDto updateRequest, FlowState flowState = FlowState.UP) {
+        sendPartialUpdateRequestV1(updateRequest)
+        return waitForBeingInState(flowState)
+    }
+
+    FlowExtended sendPartialUpdateRequestV1(FlowPatchDto updateRequest) {
+        def response = northbound.partialUpdate(flowId, updateRequest)
+        return new FlowExtended(response, northbound, northboundV2, topologyDefinition, cleanupManager, database)
+
+    }
+
+    void updateFlowBandwidthInDB(long newBandwidth) {
+        database.updateFlowBandwidth(flowId, newBandwidth)
+    }
+
+    void updateFlowMeterIdInDB(long newMeterId) {
+        database.updateFlowMeterId(flowId, newMeterId)
+    }
+
+    boolean isFlowAtSingleSwitch() {
+        return source.switchId == destination.switchId
+    }
+
+    def getFlowRulesCountBySwitch(FlowDirection direction, int involvedSwitchesCount, boolean isSwitchServer42) {
+        def flowEndpoint = direction == FlowDirection.FORWARD ? source : destination
+        def swProps = northbound.getSwitchProperties(flowEndpoint.switchId)
+        int count = involvedSwitchesCount - 1;
+
+        count += 1 // customer input rule
+        count += (flowEndpoint.vlanId != 0) ? 1 : 0 // pre ingress rule
+        count += 1 // multi table ingress rule
+
+        def server42 = isSwitchServer42 && !isFlowAtSingleSwitch()
+        if (server42) {
+            count += (flowEndpoint.vlanId != 0) ? 1 : 0 // shared server42 rule
+            count += 2 // ingress server42 rule and server42 input rule
+        }
+
+        count += (swProps.switchLldp || flowEndpoint.detectConnectedDevices.lldp) ? 1 : 0 // lldp rule
+        count += (swProps.switchArp || flowEndpoint.detectConnectedDevices.arp) ? 1 : 0 // arp rule
+        return count
     }
 
     /*
@@ -356,6 +521,26 @@ class FlowExtended {
         return flowDetails
     }
 
+    /*
+    This method swaps the main path with the protected path
+     */
+    FlowExtended swapFlowPath() {
+        def flow = northbound.swapFlowPath(flowId)
+        new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
+    }
+
+    FlowLoopResponse createFlowLoop(SwitchId switchId) {
+        northboundV2.createFlowLoop(flowId, new FlowLoopPayload(switchId))
+    }
+
+    List<FlowLoopResponse> retrieveFlowLoop(SwitchId switchId = null) {
+        northboundV2.getFlowLoop(flowId, switchId)
+    }
+
+    FlowLoopResponse deleteFlowLoop() {
+        northboundV2.deleteFlowLoop(flowId)
+    }
+
     FlowRequestV2 convertToUpdate() {
         def flowCopy = this.clone()
         def builder = FlowRequestV2.builder()
@@ -376,6 +561,10 @@ class FlowExtended {
         return flowCopy
     }
 
+    FlowMeterEntries resetMeters() {
+        northbound.resetMeters(flowId)
+    }
+
     /**
      * Sends delete request for flow and waits for that flow to disappear from flows list
      */
@@ -388,7 +577,7 @@ class FlowExtended {
         def response = northboundV2.deleteFlow(flowId)
         wait(FLOW_CRUD_TIMEOUT) {
             assert !retrieveFlowStatus()
-            assert retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).first()
+            assert retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).last()
                     .payload.last().action == FlowActionType.DELETE.payloadLastAction
         }
         return response
@@ -406,7 +595,7 @@ class FlowExtended {
         def response = northbound.deleteFlow(flowId)
         wait(FLOW_CRUD_TIMEOUT) {
             assert !northbound.getFlowStatus(flowId)
-            assert retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).first()
+            assert retrieveFlowHistory().getEntriesByType(FlowActionType.DELETE).last()
                     .payload.last().action == FlowActionType.DELETE.payloadLastAction
         }
         return response
@@ -424,6 +613,14 @@ class FlowExtended {
      */
     FlowPayload sendDeleteRequestV1() {
         northbound.deleteFlow(flowId)
+    }
+
+    /**
+     * This method gets info about connected devices to flow src and dst switches
+     * @param since can be used to get details about connected devices starting from a specific time
+     */
+    FlowConnectedDevicesResponse retrieveConnectedDevices(String since = null) {
+        northbound.getFlowConnectedDevices(flowId, since)
     }
 
     List<SwitchPortVlan> occupiedEndpoints() {
@@ -447,6 +644,16 @@ class FlowExtended {
                 .encapsulationType(encapsulationType ? encapsulationType.toString() : null)
                 .pathComputationStrategy(pathComputationStrategy ? pathComputationStrategy.toString() : null)
                 .build()
+    }
+
+    FlowCreatePayload convertToFlowCreatePayload() {
+        new FlowCreatePayload(
+                flowId, convertEndpointToV1(source), convertEndpointToV1(destination), maximumBandwidth, ignoreBandwidth,
+                periodicPings, allocateProtectedPath, description, null, null,
+                (diverseWith ? diverseWith.first() : null), null, maxLatency, priority, pinned,
+                (encapsulationType ? encapsulationType.toString() : null),
+                (pathComputationStrategy ? pathComputationStrategy.toString() : null)
+        )
     }
 
     String retrieveAnyDiverseFlow() {
@@ -502,6 +709,23 @@ class FlowExtended {
         return new FlowBidirectionalExam(forward, reverse)
     }
 
+    ConnectedDevice sourceConnectedDeviceExam(TraffExamService tgService, List<Integer> vlanIds = null) {
+        vlanIds ? buildConnectedDeviceExam(tgService, this.source, vlanIds) : buildConnectedDeviceExam(tgService, this.source)
+    }
+
+    ConnectedDevice destinationConnectedDeviceExam(TraffExamService tgService, List<Integer> vlanIds = null) {
+        vlanIds ? buildConnectedDeviceExam(tgService, this.destination, vlanIds) : buildConnectedDeviceExam(tgService, this.destination)
+    }
+
+    ConnectedDevice buildConnectedDeviceExam(TraffExamService tgService, FlowEndpointV2 endpoint,
+                                             List<Integer> vlanIds = [endpoint?.vlanId, endpoint?.innerVlanId]) {
+        Optional<TraffGen> tg = Optional.ofNullable(topologyDefinition.getTraffGen(endpoint.switchId, endpoint.portNumber))
+        cleanupManager.addAction(OTHER, { database.removeConnectedDevices(tg.get().getSwitchConnected().dpId) })
+        def device = new ConnectedDevice(tgService, tg.get(), vlanIds)
+        cleanupManager.addAction(OTHER, { device.close() })
+        return device
+    }
+
     void hasTheSamePropertiesAs(FlowExtended expectedFlowExtended) {
         SoftAssertionsWrapper assertions = new SoftAssertionsWrapper()
         assertions.checkSucceeds { assert this.flowId == expectedFlowExtended.flowId }
@@ -525,7 +749,7 @@ class FlowExtended {
         assertions.checkSucceeds { assert this.diverseWith == expectedFlowExtended.diverseWith }
         assertions.checkSucceeds { assert this.diverseWithYFlows == expectedFlowExtended.diverseWithYFlows }
         assertions.checkSucceeds { assert this.diverseWithHaFlows == expectedFlowExtended.diverseWithHaFlows }
-        assertions.checkSucceeds { assert this.mirrorPointStatus == expectedFlowExtended.mirrorPointStatus }
+        assertions.checkSucceeds { assert this.mirrorPointStatuses == expectedFlowExtended.mirrorPointStatuses }
         assertions.checkSucceeds { assert this.yFlowId == expectedFlowExtended.yFlowId}
         assertions.checkSucceeds { assert this.statistics == expectedFlowExtended.statistics }
 
@@ -543,6 +767,78 @@ class FlowExtended {
         assertions.checkSucceeds { assert this.destination.detectConnectedDevices == expectedFlowExtended.destination.detectConnectedDevices }
 
         assertions.verify()
+    }
+
+    void hasTheSameDetectedDevicesAs(FlowExtended expectedFlowExtended) {
+        SoftAssertionsWrapper assertions = new SoftAssertionsWrapper()
+
+        assertions.checkSucceeds { assert this.source.detectConnectedDevices.lldp == expectedFlowExtended.source.detectConnectedDevices.lldp }
+        assertions.checkSucceeds { assert this.source.detectConnectedDevices.arp == expectedFlowExtended.source.detectConnectedDevices.arp }
+
+        assertions.checkSucceeds { assert this.destination.detectConnectedDevices.lldp == expectedFlowExtended.destination.detectConnectedDevices.lldp }
+        assertions.checkSucceeds { assert this.destination.detectConnectedDevices.arp == expectedFlowExtended.destination.detectConnectedDevices.arp }
+
+        assertions.verify()
+    }
+
+    void verifyRulesForProtectedFlowOnSwitches(HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules) {
+
+        def flowDBInfo = retrieveDetailsFromDB()
+        long mainForwardCookie = flowDBInfo.forwardPath.cookie.value
+        long mainReverseCookie = flowDBInfo.reversePath.cookie.value
+        long protectedForwardCookie = flowDBInfo.protectedForwardPath.cookie.value
+        long protectedReverseCookie = flowDBInfo.protectedReversePath.cookie.value
+        assert protectedForwardCookie && protectedReverseCookie, "Flow doesn't have protected path(no protected path cookies in DB)"
+
+        def rulesOnSrcSwitch = flowInvolvedSwitchesWithRules.get(this.source.switchId)
+        assert rulesOnSrcSwitch.find { it.cookie == mainForwardCookie }.tableId == INGRESS_RULE_MULTI_TABLE_ID
+        assert rulesOnSrcSwitch.find { it.cookie == mainReverseCookie }.tableId == EGRESS_RULE_MULTI_TABLE_ID
+        assert rulesOnSrcSwitch.find { it.cookie == protectedReverseCookie }.tableId == EGRESS_RULE_MULTI_TABLE_ID
+        assert !rulesOnSrcSwitch*.cookie.contains(protectedForwardCookie)
+
+        def rulesOnDstSwitch = flowInvolvedSwitchesWithRules.get(this.destination.switchId)
+        assert rulesOnDstSwitch.find { it.cookie == mainForwardCookie }.tableId == EGRESS_RULE_MULTI_TABLE_ID
+        assert rulesOnDstSwitch.find { it.cookie == mainReverseCookie }.tableId == INGRESS_RULE_MULTI_TABLE_ID
+        assert rulesOnDstSwitch.find { it.cookie == protectedForwardCookie }.tableId == EGRESS_RULE_MULTI_TABLE_ID
+        assert !rulesOnDstSwitch*.cookie.contains(protectedReverseCookie)
+
+        def flowPathInfo = retrieveAllEntityPaths()
+        List<SwitchId> mainFlowSwitches = flowPathInfo.flowPath.path.forward.getInvolvedSwitches()
+        List<SwitchId> mainFlowTransitSwitches = flowPathInfo.flowPath.path.forward.getTransitInvolvedSwitches()
+
+        List<SwitchId> protectedFlowSwitches = flowPathInfo.flowPath.protectedPath.forward.getInvolvedSwitches()
+        List<SwitchId> protectedFlowTransitSwitches = flowPathInfo.flowPath.protectedPath.forward.getTransitInvolvedSwitches()
+
+        def commonSwitches = mainFlowSwitches.intersect(protectedFlowSwitches)
+        def commonTransitSwitches = mainFlowTransitSwitches.intersect(protectedFlowTransitSwitches)
+
+        def uniqueTransitSwitchesMainPath = mainFlowTransitSwitches.findAll { !commonSwitches.contains(it) }
+        def uniqueTransitSwitchesProtectedPath = protectedFlowTransitSwitches.findAll { !commonSwitches.contains(it) }
+
+        def transitTableId = TRANSIT_RULE_MULTI_TABLE_ID
+        withPool {
+            flowInvolvedSwitchesWithRules.findAll { it.getKey() in commonTransitSwitches }.each { rulesPerSwitch ->
+                assert rulesPerSwitch.getValue().find { it.cookie == mainForwardCookie }?.tableId == transitTableId
+                assert rulesPerSwitch.getValue().find { it.cookie == mainReverseCookie }?.tableId == transitTableId
+                assert rulesPerSwitch.getValue().find { it.cookie == protectedForwardCookie }?.tableId == transitTableId
+                assert rulesPerSwitch.getValue().find { it.cookie == protectedReverseCookie }?.tableId == transitTableId
+            }
+        }
+        //this loop checks rules on unique transit nodes
+        withPool {
+            flowInvolvedSwitchesWithRules.findAll { it.getKey() in uniqueTransitSwitchesProtectedPath }
+                    .each { rulesPerSwitch ->
+                        assert rulesPerSwitch.getValue().find { it.cookie == protectedForwardCookie }?.tableId == transitTableId
+                        assert rulesPerSwitch.getValue().find { it.cookie == protectedReverseCookie }?.tableId == transitTableId
+                    }
+        }
+        //this loop checks rules on unique main nodes
+        withPool {
+            flowInvolvedSwitchesWithRules.findAll { it.getKey() in uniqueTransitSwitchesMainPath }.each { rulesPerSwitch ->
+                assert rulesPerSwitch.getValue().find { it.cookie == mainForwardCookie }?.tableId == transitTableId
+                assert rulesPerSwitch.getValue().find { it.cookie == mainReverseCookie }?.tableId == transitTableId
+            }
+        }
     }
 }
 
