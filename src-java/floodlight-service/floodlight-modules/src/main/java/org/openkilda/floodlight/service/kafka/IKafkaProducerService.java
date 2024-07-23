@@ -18,6 +18,7 @@ package org.openkilda.floodlight.service.kafka;
 import org.openkilda.floodlight.service.IService;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.info.InfoData;
 
 import java.util.Collection;
@@ -30,6 +31,9 @@ public interface IKafkaProducerService extends IService {
     void sendMessageAndTrack(String topic, String key, AbstractMessage message);
 
     void sendChunkedMessageAndTrack(String topic, String key, Collection<? extends InfoData> data);
+
+    void sendChunkedSpeakerDataAndTrack(String topic, MessageContext messageContext,
+                                        Collection<? extends InfoData> data);
 
     void sendMessageAndTrackWithZk(String topic, Message message);
 

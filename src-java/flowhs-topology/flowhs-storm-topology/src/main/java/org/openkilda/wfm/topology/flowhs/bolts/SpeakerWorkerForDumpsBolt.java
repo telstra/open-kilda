@@ -18,12 +18,14 @@ package org.openkilda.wfm.topology.flowhs.bolts;
 import static org.openkilda.wfm.topology.flowhs.FlowHsTopology.Stream.SPEAKER_WORKER_REQUEST_SENDER;
 import static org.openkilda.wfm.topology.utils.KafkaRecordTranslator.FIELD_ID_PAYLOAD;
 
+import org.openkilda.floodlight.api.response.ChunkedSpeakerDataResponse;
 import org.openkilda.floodlight.api.response.SpeakerDataResponse;
+import org.openkilda.messaging.MessageData;
 import org.openkilda.messaging.command.CommandMessage;
-import org.openkilda.messaging.error.ErrorData;
-import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.wfm.error.PipelineException;
 import org.openkilda.wfm.share.hubandspoke.WorkerBolt;
+import org.openkilda.wfm.topology.flowhs.service.SpeakerCommandForDumpsCarrier;
+import org.openkilda.wfm.topology.flowhs.service.SpeakerWorkerForDumpsService;
 import org.openkilda.wfm.topology.utils.MessageKafkaTranslator;
 
 import com.google.common.base.Preconditions;
@@ -31,9 +33,20 @@ import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
-public class SpeakerWorkerForDumpsBolt extends WorkerBolt {
-    public SpeakerWorkerForDumpsBolt(Config config) {
+public class SpeakerWorkerForDumpsBolt extends WorkerBolt implements SpeakerCommandForDumpsCarrier {
+
+    private transient SpeakerWorkerForDumpsService service;
+    private final int chunkedMessagesExpirationMinutes;
+
+    public SpeakerWorkerForDumpsBolt(Config config, int chunkedMessagesExpirationMinutes) {
         super(config);
+        this.chunkedMessagesExpirationMinutes = chunkedMessagesExpirationMinutes;
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        service = new SpeakerWorkerForDumpsService(this, chunkedMessagesExpirationMinutes);
     }
 
     @Override
@@ -44,17 +57,19 @@ public class SpeakerWorkerForDumpsBolt extends WorkerBolt {
         // Due to specific request handling in FL, we have to provide the key and correlationId which are equal.
         Preconditions.checkArgument(key.equals(request.getCorrelationId()),
                 "Tuple %s has the key which doesn't correspond to correlationId", requestTuple);
-
-        emitWithContext(SPEAKER_WORKER_REQUEST_SENDER.name(), getCurrentTuple(), new Values(key, request));
+        service.sendCommand(key, request);
     }
 
     @Override
     protected void onAsyncResponse(Tuple requestTuple, Tuple responseTuple) throws Exception {
         String key = pullKey();
         Object payload = responseTuple.getValueByField(FIELD_ID_PAYLOAD);
-        if (payload instanceof SpeakerDataResponse) {
+        if (payload instanceof ChunkedSpeakerDataResponse) {
+            ChunkedSpeakerDataResponse chunkedInfoMessage = (ChunkedSpeakerDataResponse) payload;
+            service.handleChunkedResponse(key, chunkedInfoMessage);
+        } else if (payload instanceof SpeakerDataResponse) {
             SpeakerDataResponse dataResponse = (SpeakerDataResponse) payload;
-            emitResponseToHub(getCurrentTuple(), new Values(key, dataResponse.getData(), getCommandContext()));
+            service.handleResponse(key, dataResponse);
         } else {
             log.debug("Unknown response received: {}", payload);
         }
@@ -63,12 +78,7 @@ public class SpeakerWorkerForDumpsBolt extends WorkerBolt {
     @Override
     public void onRequestTimeout(Tuple requestTuple) throws PipelineException {
         String key = pullKey();
-        CommandMessage request = pullValue(requestTuple, FIELD_ID_PAYLOAD, CommandMessage.class);
-
-        ErrorData errorData = new ErrorData(ErrorType.OPERATION_TIMED_OUT,
-                String.format("Timeout for waiting response on command %s", request),
-                "Error in SpeakerWorker");
-        emitResponseToHub(getCurrentTuple(), new Values(key, errorData, getCommandContext()));
+        service.handleTimeout(key);
     }
 
     @Override
@@ -76,5 +86,15 @@ public class SpeakerWorkerForDumpsBolt extends WorkerBolt {
         super.declareOutputFields(declarer);
 
         declarer.declareStream(SPEAKER_WORKER_REQUEST_SENDER.name(), MessageKafkaTranslator.STREAM_FIELDS);
+    }
+
+    @Override
+    public void sendCommand(String key, CommandMessage command) {
+        emitWithContext(SPEAKER_WORKER_REQUEST_SENDER.name(), getCurrentTuple(), new Values(key, command));
+    }
+
+    @Override
+    public void sendResponse(String key, MessageData response) throws PipelineException {
+        emitResponseToHub(getCurrentTuple(), new Values(key, response, getCommandContext()));
     }
 }
