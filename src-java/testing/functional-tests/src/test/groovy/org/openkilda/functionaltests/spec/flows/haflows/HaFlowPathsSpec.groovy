@@ -41,7 +41,7 @@ class HaFlowPathsSpec extends HealthCheckSpecification {
 
     def "HA flow main path is not overlapped with protected path"() {
         given: "An HA-flow with protected path"
-        def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
+        def swT = switchTriplets.all().findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         HaFlowExtended haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(true)
                 .build().create()

@@ -210,7 +210,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         data << [
                 [
                         descr       : "subflow1 and subflow2 same vlan on shared endpoint",
-                        yFlowBuilder: yFlowFactory.getBuilder(topologyHelper.switchTriplets[0]).withSameSharedEndpointsVlan(),
+                        yFlowBuilder: yFlowFactory.getBuilder(switchTriplets.all().first()).withSameSharedEndpointsVlan(),
                         errorPattern: { YFlowBuilder flow ->
                             ~/The sub-flows .* and .* have shared endpoint conflict: \
 SubFlowSharedEndpointEncapsulation\(vlanId=${flow.yFlow.subFlows.first().sharedEndpoint.vlanId}, innerVlanId=0\) \/ \
@@ -219,7 +219,7 @@ SubFlowSharedEndpointEncapsulation\(vlanId=${flow.yFlow.subFlows.last().sharedEn
                 ],
                 [
                         descr       : "subflow1 and subflow2 no vlan on shared endpoint",
-                        yFlowBuilder: yFlowFactory.getBuilder(topologyHelper.switchTriplets[0]).withSharedEndpointsVlan(0, 0),
+                        yFlowBuilder: yFlowFactory.getBuilder(switchTriplets.all().first()).withSharedEndpointsVlan(0, 0),
                         errorPattern: { YFlowBuilder flow ->
                             ~/The sub-flows .*? and .*? have shared endpoint conflict: \
 SubFlowSharedEndpointEncapsulation\(vlanId=0, innerVlanId=0\) \/ \
@@ -228,7 +228,7 @@ SubFlowSharedEndpointEncapsulation\(vlanId=0, innerVlanId=0\)/
                 ],
                 [
                         descr       : "ep1 = ep2, same vlan",
-                        yFlowBuilder: yFlowFactory.getBuilder(topologyHelper.switchTriplets[0]).withEp1AndEp2SameSwitchAndPort()
+                        yFlowBuilder: yFlowFactory.getBuilder(switchTriplets.all().first()).withEp1AndEp2SameSwitchAndPort()
                                 .withEp1VlanSameAsEp2Vlan(),
                         errorPattern: { YFlowBuilder flow ->
                             ~/The sub-flows .*? and .*? have endpoint conflict: \
@@ -238,7 +238,7 @@ switchId="${flow.yFlow.subFlows.last().endpoint.switchId}" port=${flow.yFlow.sub
                 ],
                 [
                         descr       : "ep1 = ep2, both no vlan",
-                        yFlowBuilder: yFlowFactory.getBuilder(topologyHelper.switchTriplets[0]).withEp1AndEp2SameSwitchAndPort()
+                        yFlowBuilder: yFlowFactory.getBuilder(switchTriplets.all().first()).withEp1AndEp2SameSwitchAndPort()
                                 .withEp1AndEp2Vlan(0, 0),
                         errorPattern: { YFlowBuilder flow ->
                             ~/The sub-flows .*? and .*? have endpoint conflict: \
@@ -248,7 +248,7 @@ switchId="${flow.yFlow.subFlows.first().endpoint.switchId}" port=${flow.yFlow.su
                 ],
                 [
                         descr       : "ep1 = ep2, vlans [0,X] and [X,0]",
-                        yFlowBuilder: yFlowFactory.getBuilder(topologyHelper.switchTriplets[0]).withEp1AndEp2SameSwitchAndPort()
+                        yFlowBuilder: yFlowFactory.getBuilder(switchTriplets.all().first()).withEp1AndEp2SameSwitchAndPort()
                                 .withEp2QnqAsEp1Vlan(),
                         errorPattern: { YFlowBuilder flow ->
                             ~/The sub-flows .*? and .*? have endpoint conflict: \
@@ -258,7 +258,7 @@ switchId="${flow.yFlow.subFlows.last().endpoint.switchId}" port=${flow.yFlow.sub
                 ],
                 [
                         descr       : "ep1 on ISL port",
-                        yFlowBuilder: yFlowFactory.getBuilder(topologyHelper.switchTriplets[0]).withEp1OnISLPort(),
+                        yFlowBuilder: yFlowFactory.getBuilder(switchTriplets.all().first()).withEp1OnISLPort(),
                         errorPattern: { YFlowBuilder flow ->
                             ~/The port ${flow.yFlow.subFlows.first().endpoint.portNumber} on the \
 switch '${flow.yFlow.subFlows.first().endpoint.switchId}' is occupied by an ISL \(destination endpoint collision\)./
@@ -266,7 +266,7 @@ switch '${flow.yFlow.subFlows.first().endpoint.switchId}' is occupied by an ISL 
                 ],
                 [
                         descr       : "shared endpoint on ISL port",
-                        yFlowBuilder: yFlowFactory.getBuilder(topologyHelper.switchTriplets[0]).withSharedEpOnISLPort(),
+                        yFlowBuilder: yFlowFactory.getBuilder(switchTriplets.all().first()).withSharedEpOnISLPort(),
                         errorPattern: { YFlowBuilder flow ->
                             ~/The port ${flow.yFlow.sharedEndpoint.portNumber} on the \
 switch '${flow.yFlow.sharedEndpoint.switchId}' is occupied by an ISL \(source endpoint collision\)./
@@ -275,7 +275,7 @@ switch '${flow.yFlow.sharedEndpoint.switchId}' is occupied by an ISL \(source en
                 [
                         descr       : "ep2 on s42 port",
                         yFlowBuilder: {
-                            def swTriplet = topologyHelper.getSwitchTriplets(true).find { it.ep2.prop?.server42Port }
+                            def swTriplet = switchTriplets.all(true).getSwitchTriplets().find { it.ep2.prop?.server42Port }
                             if (swTriplet) {
                                 return yFlowFactory.getBuilder(swTriplet).withEp2Port(swTriplet.ep2.prop.server42Port)
                             }
@@ -289,7 +289,7 @@ switch '${flow.yFlow.sharedEndpoint.switchId}' is occupied by an ISL \(source en
                 [
                         descr       : "shared endpoint on s42 port",
                         yFlowBuilder: {
-                            def swTriplet = topologyHelper.switchTriplets.find { it.shared.prop?.server42Port }
+                            def swTriplet = switchTriplets.all().getSwitchTriplets().find { it.shared.prop?.server42Port }
                             if (swTriplet) {
                                 return yFlowFactory.getBuilder(swTriplet).withSharedEpPort(swTriplet.shared.prop.server42Port)
                             }
@@ -303,7 +303,7 @@ switch '${flow.yFlow.sharedEndpoint.switchId}' is occupied by an ISL \(source en
                 [
                         descr       : "negative shared endpoint port number",
                         yFlowBuilder: {
-                            def swTriplet = topologyHelper.switchTriplets.shuffled().first()
+                            def swTriplet = switchTriplets.all().random()
                             if (swTriplet) {
                                 return yFlowFactory.getBuilder(swTriplet).withSharedEpPort(-1)
                             }
@@ -319,7 +319,7 @@ switch '${flow.yFlow.sharedEndpoint.switchId}' is occupied by an ISL \(source en
 
     def "System forbids to create a Y-Flow with conflict: subflow1 vlans are [0,X] and subflow2 vlans are [X,0] on shared endpoint"() {
         when: "Try creating a Y-Flow with one endpoint being in conflict with the other one"
-        def flowParams = yFlowFactory.getBuilder(topologyHelper.switchTriplets[0]).withSubFlow1SharedEpQnqAsSubFlow2SharedEpVlan()
+        def flowParams = yFlowFactory.getBuilder(switchTriplets.all().first()).withSubFlow1SharedEpQnqAsSubFlow2SharedEpVlan()
         def yFlow = flowParams.build().create()
 
         then: "Error is received, describing the problem"
@@ -346,7 +346,7 @@ source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams
     @Tags([HARDWARE])
     def "System forbids to create a Y-Flow with conflict: shared endpoint port is inside a LAG group"() {
         given: "A LAG port"
-        def swT = topologyHelper.switchTriplets.find { it.shared.features.contains(SwitchFeature.LAG) }
+        def swT = switchTriplets.all().getSwitchTriplets().find { it.shared.features.contains(SwitchFeature.LAG) }
         assumeTrue(swT != null, "Unable to find a switch that supports LAG")
         def portsArray = topology.getAllowedPortsForSwitch(swT.shared)[-2, -1] as Set
         def payload = new LagPortRequest(portNumbers: portsArray)
@@ -383,7 +383,7 @@ source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams
         given: "three switches and potential Y-Flow point"
         def slowestLinkOnTheWest = database.getIsls(topology.getIsls()).sort { it.getMaxBandwidth() }.first()
         def slowestLinkSwitchIds = [slowestLinkOnTheWest.getSrcSwitchId(), slowestLinkOnTheWest.getDestSwitchId()]
-        def switchTriplet = topologyHelper.getSwitchTriplets(true, false)
+        def switchTriplet = switchTriplets.all(true, false).getSwitchTriplets()
                 .find {
                     def yPoints = topologyHelper.findPotentialYPoints(it).collect { it.getDpId() }
                     slowestLinkSwitchIds.contains(it.shared.getDpId()) &&
@@ -412,7 +412,7 @@ source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams
         }
         //se noVlan+vlan, ep1-ep2 same sw-port, vlan+noVlan
         testData.with {
-            List<SwitchTriplet> suitingTriplets = owner.topologyHelper.switchTriplets.findAll { it.ep1 == it.ep2 }
+            List<SwitchTriplet> suitingTriplets = owner.switchTriplets.all().getSwitchTriplets().findAll { it.ep1 == it.ep2 }
             def swT = suitingTriplets.find { isTrafficApplicable(it) } ?: suitingTriplets[0]
             def yFlowBuilder = owner.yFlowFactory.getBuilder(swT).withSubFlow2SharedEp(0)
                     .withEp1AndEp2SameSwitchAndPort().withEp1Vlan(0)
@@ -420,7 +420,7 @@ source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams
         }
         //se same vlan+qinq, ep1 default, ep2 qinq
         testData.with {
-            def suitingTriplets = owner.topologyHelper.switchTriplets.findAll { it.ep1 != it.ep2 }
+            def suitingTriplets = owner.switchTriplets.all().getSwitchTriplets().findAll { it.ep1 != it.ep2 }
             def swT = suitingTriplets.find { isTrafficApplicable(it) } ?: suitingTriplets[0]
             def yFlowBuilder = owner.yFlowFactory.getBuilder(swT)
                     .withSameSharedEndpointsVlan().withSharedEpQnQ().withEp1Vlan(0).withEp2QnQ()
@@ -428,7 +428,7 @@ source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams
         }
         //se qinq, ep1-ep2 same sw-port, qinq
         testData.with {
-            def suitingTriplets = owner.topologyHelper.switchTriplets.findAll { it.ep1 == it.ep2 }
+            def suitingTriplets = owner.switchTriplets.all().getSwitchTriplets().findAll { it.ep1 == it.ep2 }
             def swT = suitingTriplets.find { isTrafficApplicable(it) } ?: suitingTriplets[0]
             def yFlowBuilder = owner.yFlowFactory.getBuilder(swT)
                     .withSharedEpQnQ().withEp1AndEp2SameSwitchAndPort().withEp1QnQ().withEp2QnQ()
@@ -442,7 +442,7 @@ source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams
                     .sort { swIt -> topo.getActiveTraffGens().findAll { it.switchConnected.dpId == swIt.dpId }.size() }
                     .reverse()
                     .first()
-            def swT = owner.topologyHelper.getSwitchTriplets(false, true).find() {
+            def swT = owner.switchTriplets.all(false, true).getSwitchTriplets().find() {
                 it.shared == sw && it.ep1 == sw && it.ep2 == sw
             }
             def yFlowBuilder = owner.yFlowFactory.getBuilder(swT)
@@ -507,7 +507,7 @@ source: switchId="${flowParams.yFlow.sharedEndpoint.switchId}" port=${flowParams
         ]
         requiredCases.each { it.picked = false }
         //match all triplets to the list of requirements that it satisfies
-        Map<SwitchTriplet, List<String>> weightedTriplets = topologyHelper.getSwitchTriplets(false, true)
+        Map<SwitchTriplet, List<String>> weightedTriplets = switchTriplets.all(false, true).getSwitchTriplets()
                 .collectEntries { triplet ->
                     [(triplet): requiredCases.findAll { it.condition(triplet) }*.name]
                 }

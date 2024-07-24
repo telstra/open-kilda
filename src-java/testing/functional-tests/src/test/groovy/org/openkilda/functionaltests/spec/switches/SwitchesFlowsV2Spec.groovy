@@ -59,7 +59,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
             usual flow                  🡹                                   🡹
                                    usual flow protected path           subflow 2
          */
-        switchTriplet = topologyHelper.getSwitchTriplets(true, false).find {
+        switchTriplet = switchTriplets.all(true, false).getSwitchTriplets().find {
             it.shared != it.ep1 && it.pathsEp1.min { it.size() }?.size() > 2
                     && it.pathsEp1.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
         }
@@ -160,7 +160,8 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "One-switch Y-Flow subflows are listed in flows list"() {
         given: "One switch Y-Flow"
-        def swT = topologyHelper.getSingleSwitchTriplet(switchProtectedPathGoesThrough.dpId)
+        def swT = switchTriplets.all(false, true)
+                .withSpecificSingleSwitch(switchProtectedPathGoesThrough)
         def yFlow = yFlowFactory.getRandom(swT, false)
 
         when: "Request flows on switch"

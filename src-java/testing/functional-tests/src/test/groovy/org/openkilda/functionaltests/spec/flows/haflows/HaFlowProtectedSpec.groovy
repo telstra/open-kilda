@@ -25,7 +25,7 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
 
     def "Able to enable protected path on an HA-Flow"() {
         given: "A simple HA-Flow"
-        def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
+        def swT = switchTriplets.all().findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         def haFlow = haFlowFactory.getRandom(swT)
         assert !haFlow.allocateProtectedPath
@@ -65,7 +65,7 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
 
     def "Able to disable protected path on an HA-Flow via partial update"() {
         given: "An HA-Flow with protected path"
-        def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
+        def swT = switchTriplets.all().findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(true)
                 .build().create()
@@ -100,7 +100,7 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
 
     def "User can update #data.descr of an HA-Flow with protected path"() {
         given: "An HA-Flow with protected path"
-        def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
+        def swT = switchTriplets.all().findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
 
         def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(true)
@@ -144,7 +144,7 @@ class HaFlowProtectedSpec extends HealthCheckSpecification {
                 [
                         descr: "shared switch and subflow switches",
                         updateClosure: { HaFlowExtended payload ->
-                            def newSwT = topologyHelper.getSwitchTriplets(true).find {
+                            def newSwT = switchTriplets.all(true).getSwitchTriplets().find {
                                 it.shared.dpId != payload.sharedEndpoint.switchId &&
                                         it.ep1.dpId != payload.subFlows[0].endpointSwitchId &&
                                         it.ep2.dpId != payload.subFlows[1].endpointSwitchId &&

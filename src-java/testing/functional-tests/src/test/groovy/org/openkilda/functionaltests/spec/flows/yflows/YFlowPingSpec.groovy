@@ -7,9 +7,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowFactory
-import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v2.yflows.SubFlowPingPayload
@@ -33,7 +31,7 @@ class YFlowPingSpec extends HealthCheckSpecification {
 
     def "Able to turn on periodic pings on a y-flow"() {
         when: "Create a y-flow with periodic pings turned on"
-        def swT = topologyHelper.switchTriplets.first()
+        def swT = switchTriplets.all().first()
         def yFlow = yFlowFactory.getBuilder(swT).withPeriodicPings(true).build().create()
 
         then: "Periodic pings is really enabled"
@@ -57,8 +55,7 @@ class YFlowPingSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Able to ping y-flow when one of subflows is one-switch one (#5019)"() {
         given: "y-flow which has one-switch subflow"
-        def switchTriplet = topologyHelper.getSwitchTriplets(true, true)
-                .find(SwitchTriplet.ONE_SUB_FLOW_IS_ONE_SWITCH_FLOW)
+        def switchTriplet = switchTriplets.all(true, true).findSwitchTripletForOneSwitchSubflow()
         assumeTrue(switchTriplet != null, "These cases cannot be covered on given topology:")
         def yFlow = yFlowFactory.getRandom(switchTriplet)
 

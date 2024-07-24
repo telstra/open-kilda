@@ -29,7 +29,7 @@ class SubFlowSpec extends HealthCheckSpecification {
 
     def "Unable to #data.action a sub-flow"() {
         given: "Existing Y-Flow"
-        def swT = topologyHelper.switchTriplets[0]
+        def swT = switchTriplets.all().first()
         def yFlow = yFlowFactory.getRandom(swT)
 
         when: "Invoke a certain action for a sub-flow"

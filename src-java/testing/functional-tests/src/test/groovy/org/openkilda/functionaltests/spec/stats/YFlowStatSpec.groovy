@@ -59,10 +59,9 @@ class YFlowStatSpec extends HealthCheckSpecification {
     FlowStats flowStats
 
     def setupSpec() {
-        def switchTriplet = topologyHelper.getSwitchTriplets(false, false).find {
-            it.ep1 != it.ep2 && it.ep1 != it.shared && it.ep2 != it.shared &&
-                    [it.shared, it.ep1, it.ep2].every { it.traffGens }
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchTriplet = switchTriplets.all().withAllDifferentEndpoints().withTraffgensOnEachEnd().random()
+        assumeTrue(switchTriplet != null, "No suiting switches found")
+
         yFlow = yFlowFactory.getBuilder(switchTriplet).withBandwidth(10).build()
                 .create(FlowState.UP, CleanupAfter.CLASS)
         def traffExam = traffExamProvider.get()

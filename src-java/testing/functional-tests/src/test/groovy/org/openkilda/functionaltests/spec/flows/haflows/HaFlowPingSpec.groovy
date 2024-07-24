@@ -51,7 +51,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Able to turn off periodic pings on an HA-Flow"() {
         given: "An HA-Flow with periodic pings turned on"
-        def swT = topologyHelper.findSwitchTripletWithYPointOnSharedEp()
+        def swT = switchTriplets.all(true).findSwitchTripletWithYPointOnSharedEp()
         def haFlow = haFlowFactory.getBuilder(swT).withPeriodicPing(true)
                 .build().create()
         assert haFlow.periodicPings
@@ -83,7 +83,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
     def "Unable to ping one of the HA-subflows via periodic pings if related ISL is broken"() {
         given: "Pinned HA-flow with periodic pings turned on which won't be rerouted after ISL fails"
-        def swT = topologyHelper.findSwitchTripletWithYPointOnSharedEp()
+        def swT = switchTriplets.all(true).findSwitchTripletWithYPointOnSharedEp()
         def haFlow = haFlowFactory.getBuilder(swT).withPeriodicPing(true).withPinned(true)
                 .build().create()
         assert haFlow.periodicPings
@@ -123,7 +123,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
 
     def "Able to turn on periodic pings on an Ha-flow"() {
         given: "Create an Ha-flow without periodic pings turned on"
-        def swT = topologyHelper.findSwitchTripletWithYPointOnSharedEp()
+        def swT = switchTriplets.all(true).findSwitchTripletWithYPointOnSharedEp()
         def beforeCreationTime = new Date().getTime()
         def haFlow = haFlowFactory.getRandom(swT)
 
@@ -154,9 +154,8 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Unable to ping HA-Flow when one of subflows is one-switch one"() {
         given: "HA-Flow which has one-switch subflow"
-        def switchTriplet = topologyHelper.getSwitchTriplets(true, true).find {
-            SwitchTriplet.ONE_SUB_FLOW_IS_ONE_SWITCH_FLOW(it)
-        }
+        def switchTriplet = switchTriplets.all(true, true)
+                .findSwitchTripletForOneSwitchSubflow()
         assumeTrue(switchTriplet != null, "These cases cannot be covered on given topology:")
         def haFlow = haFlowFactory.getRandom(switchTriplet)
 
@@ -172,7 +171,7 @@ class HaFlowPingSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Able to ping HA-Flow when neither of the sub-flows end on Y-Point"() {
         given: "HA-Flow has been created"
-        def swT = topologyHelper.findSwitchTripletWithYPointOnSharedEp()
+        def swT = switchTriplets.all(true).findSwitchTripletWithYPointOnSharedEp()
         def haFlow = haFlowFactory.getRandom(swT)
 
         and: "Neither of the sub-flows end on Y-Point (ping is disabled for such kind of HA-Flow)"

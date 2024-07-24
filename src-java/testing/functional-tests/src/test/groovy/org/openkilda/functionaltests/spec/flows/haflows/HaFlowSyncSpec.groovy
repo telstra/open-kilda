@@ -40,8 +40,8 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
     def "Able to synchronize an HA-Flow (install missing rules, reinstall existing). protectedPath=#data.protectedPath"() {
         given: "An HA-Flow with deleted rules on shared switch"
         def swT = data.protectedPath
-                ? topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
-                : topologyHelper.findSwitchTripletWithDifferentEndpoints()
+                ? switchTriplets.all().findSwitchTripletForHaFlowWithProtectedPaths()
+                : switchTriplets.all().withAllDifferentEndpoints().random()
         assumeTrue(swT != null, "Can't find required switch triplet")
 
         def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(data.protectedPath)
@@ -98,8 +98,8 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
     def "Able to synchronize an HA-Flow if HA-Flow switch is inactive protectedPath=#data.protectedPath"() {
         given: "An HA-Flow with down shared endpoint"
         def swT = data.protectedPath
-                ? topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
-                : topologyHelper.findSwitchTripletWithDifferentEndpoints()
+                ? switchTriplets.all().findSwitchTripletForHaFlowWithProtectedPaths()
+                : switchTriplets.all().withAllDifferentEndpoints().random()
         assumeTrue(swT != null, "Can't find required switch triplet")
 
         def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(data.protectedPath)

@@ -21,8 +21,8 @@ import static org.springframework.beans.factory.config.ConfigurableBeanFactory.S
 /**
  * Class which simplifies search for corresponding switch pair. Just chain existing methods to combine requirements
  * Usage: switchPairs.all()
- * .nonNeighouring()
- * .withAllTraffgerns()
+ * .nonNeighbouring()
+ * .withTraffgensOnBothEnds()
  * .random()
  * Also it eliminates need to verify if no switch can be found (skips test immediately)
  */
