@@ -41,8 +41,8 @@ public class FlowRerouteFlushRequest extends CommandData {
 
     @JsonCreator
     public FlowRerouteFlushRequest(@NonNull @JsonProperty("flow_id") String flowId,
-                                   @JsonProperty("reason") String reason,
-                                   @JsonProperty("flow_type") String flowType) {
+                                   @JsonProperty("flow_type") String flowType,
+                                   @JsonProperty("reason") String reason) {
         this.flowId = flowId;
         this.flowType = flowType;
         this.reason = reason;
