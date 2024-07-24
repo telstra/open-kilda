@@ -70,6 +70,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
+import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
@@ -614,8 +615,8 @@ public class FlowServiceImpl implements FlowService {
 
         return messagingChannel.sendAndGet(rerouteTopic, command)
                 .thenApply(FlowResponse.class::cast)
-                .thenApply(response ->
-                        flowMapper.toRerouteFlushPayload(flowId, response != null));
+                .thenApply(response -> flowMapper.toRerouteFlushPayload(flowId, response != null
+                        && response.getPayload() != null && response.getPayload().getState() == FlowState.IN_PROGRESS));
     }
 
     @Override

@@ -31,6 +31,7 @@ import org.openkilda.messaging.info.reroute.error.NoPathFoundError;
 import org.openkilda.messaging.info.reroute.error.RerouteError;
 import org.openkilda.messaging.info.reroute.error.SpeakerRequestError;
 import org.openkilda.messaging.model.FlowDto;
+import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.model.Flow;
 import org.openkilda.model.HaFlow;
 import org.openkilda.model.PathComputationStrategy;
@@ -160,9 +161,11 @@ public class RerouteQueueService {
         if (rerouteQueue.hasInProgress()) {
             rerouteQueue.putToInProgress(null);
             flowData = new FlowResponse(FlowDto.builder()
+                    .state(FlowState.IN_PROGRESS)
                     .statusInfo("Reroute has flushed").build());
         } else {
             flowData = new FlowResponse(FlowDto.builder()
+                    .state(FlowState.DOWN)
                     .statusInfo("Flow is not it rerouting process").build());
         }
         carrier.emitFlowRerouteInfo(flowData);
