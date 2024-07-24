@@ -607,7 +607,7 @@ public class FlowServiceImpl implements FlowService {
 
     @Override
     public CompletableFuture<FlowFlushReroutePayload> flushRerouteFlow(String flowId, String flowType) {
-        log.info("API request: Flush flow reroute: {}={}", FLOW_ID, flowId);
+        log.info("API request: Flush flow reroute: {}={}, flow type={}", FLOW_ID, flowId, flowType);
 
         FlowRerouteFlushRequest payload = new FlowRerouteFlushRequest(
                 flowId, flowType, "initiated via Northbound");
