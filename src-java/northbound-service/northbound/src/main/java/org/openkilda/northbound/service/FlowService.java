@@ -197,9 +197,10 @@ public interface FlowService extends FlowHistoryAware<FlowHistoryEntry> {
      * Flush rerouting when stuck in the progress queue.
      *
      * @param flowId id of flow to be flushed.
+     * @param flowType name of flow to be flushed.
      * @return updated flow path information.
      */
-    CompletableFuture<FlowFlushReroutePayload> flushRerouteFlow(final String flowId);
+    CompletableFuture<FlowFlushReroutePayload> flushRerouteFlow(final String flowId, String flowType);
 
     /**
      * Performs flow paths swapping for flow with protected path.

@@ -606,10 +606,11 @@ public class FlowServiceImpl implements FlowService {
     }
 
     @Override
-    public CompletableFuture<FlowFlushReroutePayload> flushRerouteFlow(String flowId) {
+    public CompletableFuture<FlowFlushReroutePayload> flushRerouteFlow(String flowId, String flowType) {
         log.info("API request: Flush flow reroute: {}={}", FLOW_ID, flowId);
 
-        FlowRerouteFlushRequest payload = new FlowRerouteFlushRequest(flowId, "initiated via Northbound");
+        FlowRerouteFlushRequest payload = new FlowRerouteFlushRequest(
+                flowId, flowType, "initiated via Northbound");
         CommandMessage command = new CommandMessage(
                 payload, System.currentTimeMillis(), RequestCorrelationId.getId());
 

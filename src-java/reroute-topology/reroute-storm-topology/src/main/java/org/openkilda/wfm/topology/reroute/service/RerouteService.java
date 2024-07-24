@@ -734,6 +734,7 @@ public class RerouteService {
         FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(flow.orElse(null))
                 .correlationId(correlationId)
                 .reason(request.getReason())
+                .flowType(FlowType.valueOf(request.getFlowType()))
                 .affectedIsl(new HashSet<>())
                 .build();
         sender.emitManualRerouteFlushCommand(request.getFlowId(), flowThrottlingData);
