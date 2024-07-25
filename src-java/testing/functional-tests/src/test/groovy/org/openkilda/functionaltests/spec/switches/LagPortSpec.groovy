@@ -164,7 +164,8 @@ class LagPortSpec extends HealthCheckSpecification {
 
         and: "System allows traffic on the flow"
         def traffExam = traffExamProvider.get()
-        def exam = flow.traffExam(traffExam, 1000, 3)
+        //the physical port with traffGen used for LAG port creation should be specified
+        def exam = flow.deepCopy().tap{ source.portNumber = traffgenSrcSwPort }.traffExam(traffExam, 1000, 3)
         withPool {
             [exam.forward, exam.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
@@ -194,7 +195,8 @@ class LagPortSpec extends HealthCheckSpecification {
 
         and: "System allows traffic on the flow"
         def traffExam = traffExamProvider.get()
-        def exam = flow.traffExam(traffExam, 1000, 3)
+        //the physical port with traffGen used for LAG port creation should be specified
+        def exam = flow.deepCopy().tap { source.portNumber = traffgenSrcSwPort }.traffExam(traffExam, 1000, 3)
         withPool {
             [exam.forward, exam.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
