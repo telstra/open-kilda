@@ -57,6 +57,14 @@ class TopologyHelper {
         }
     }
 
+    SwitchTriplet getSingleSwitchTriplet(SwitchId singleSwitch) {
+        return getSwitchTriplets(false, true).find {
+            it.shared.getDpId() == singleSwitch
+                    && it.ep1.getDpId() == singleSwitch
+                    && it.ep2.getDpId() == singleSwitch
+        }
+    }
+
     List<SwitchTriplet> getAllNotNeighbouringSwitchTriplets(boolean includeReverse = false) {
         return getSwitchTriplets(includeReverse).findAll {
             it.shared != it.ep1 && it.ep1 != it.ep2 && it.ep2 != it.shared &&
