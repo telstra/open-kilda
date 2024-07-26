@@ -72,8 +72,8 @@ import org.openkilda.wfm.topology.network.model.facts.HistoryFacts;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -180,7 +180,7 @@ public class NetworkSwitchServiceTest {
         reset(transactionManager);
 
         lenient().when(transactionManager.getDefaultRetryPolicy())
-                .thenReturn(new RetryPolicy<>().withMaxRetries(2));
+                .thenReturn(RetryPolicy.builder().withMaxRetries(2));
         lenient()
                 .doAnswer(invocation -> {
                     RetryPolicy<?> retryPolicy = invocation.getArgument(0);

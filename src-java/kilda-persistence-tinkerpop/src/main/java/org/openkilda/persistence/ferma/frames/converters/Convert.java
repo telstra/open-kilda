@@ -29,5 +29,5 @@ public @interface Convert {
     /**
      * The type of {@link AttributeConverter} implementation to apply on the property.
      */
-    Class<? extends AttributeConverter> value();
+    Class<? extends AttributeConverter<?, ?>> value();
 }

@@ -1,4 +1,4 @@
-/* Copyright 2018 Telstra Open Source
+/* Copyright 2024 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,19 +15,18 @@
 
 package org.openkilda.northbound.config;
 
-import org.openkilda.config.KafkaConsumerGroupConfig;
-import org.openkilda.config.mapping.Mapping;
+import static java.lang.String.format;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
-import com.sabre.oss.conf4j.annotation.Default;
-import com.sabre.oss.conf4j.annotation.Key;
+import lombok.Getter;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 
-@Configuration
-public interface KafkaNorthboundConfig extends KafkaConsumerGroupConfig {
-    String NORTHBOUND_COMPONENT_NAME = "northbound";
+@Getter
+public class EnvironmentConfig {
+    @Value("${environment.naming.prefix:}")
+    private String namingPrefix;
 
-    @Key("kafka.groupid")
-    @Default("northbound-consumer")
-    @Mapping(target = KAFKA_CONSUMER_GROUP_MAPPING)
-    String getGroupId();
+    public String addPrefixAndGet(String target) {
+        return StringUtils.isBlank(namingPrefix) ? target : format("%s_%s", namingPrefix, target);
+    }
 }

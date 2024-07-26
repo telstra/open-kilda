@@ -6,7 +6,10 @@ import static org.openkilda.bluegreen.Signal.START
 
 import org.openkilda.bluegreen.Signal
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.model.SwitchFeature
+import org.openkilda.testing.model.topology.TopologyDefinition.Status
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import groovy.util.logging.Slf4j
 import org.apache.zookeeper.ZooKeeper
@@ -29,7 +32,7 @@ class HealthCheckSpecification extends HealthCheckBaseSpecification {
         }
         Closure allZookeeperNodesInExpectedState = {
             def zk = new ZooKeeper(zkConnectString, 5000, {})
-            def zkAssertions = new SoftAssertions()
+            def zkAssertions = new SoftAssertionsWrapper()
             def activeColor = getActiveNetworkColor(zk)
             def floodlightRegions = flHelper.getFls()*.region
             def pathsToCheck = ["connecteddevices", "floodlightrouter", "flowhs", "isllatency", "nbworker",

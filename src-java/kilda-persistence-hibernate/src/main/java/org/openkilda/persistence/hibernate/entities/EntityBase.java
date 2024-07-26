@@ -16,24 +16,21 @@
 package org.openkilda.persistence.hibernate.entities;
 
 import com.vladmihalcea.hibernate.type.json.JsonType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.MappedSuperclass;
 import lombok.Getter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.TypeDef;
-import org.hibernate.annotations.TypeDefs;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
-import javax.persistence.Column;
-import javax.persistence.MappedSuperclass;
 
-@TypeDefs({
-        @TypeDef(name = "json", typeClass = JsonType.class)
-})
+@Convert(attributeName = "json", converter = JsonType.class)
 @MappedSuperclass
 public class EntityBase {
     @Getter
     @CreationTimestamp
-    @Column(name = "time_create")
+    @Column(name = "time_create", nullable = false, updatable = false)
     protected Instant timeCreated;
 
     @Getter

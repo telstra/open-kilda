@@ -29,6 +29,10 @@ import org.openkilda.persistence.hibernate.entities.history.HibernateHaFlowEvent
 import org.openkilda.persistence.hibernate.utils.UniqueKeyUtil;
 import org.openkilda.persistence.repositories.history.HaFlowEventRepository;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
@@ -37,10 +41,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Root;
 
 @Slf4j
 public class HibernateHistoryHaFlowEventRepository

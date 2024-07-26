@@ -38,8 +38,9 @@ import org.openkilda.wfm.topology.flowhs.fsm.common.FlowProcessingWithHistorySup
 import org.openkilda.wfm.topology.flowhs.service.FlowPathBuilder;
 
 import com.google.common.annotations.VisibleForTesting;
+import dev.failsafe.RetryPolicy;
+import dev.failsafe.RetryPolicyBuilder;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.RetryPolicy;
 
 import java.time.Duration;
 import java.util.List;
@@ -179,19 +180,19 @@ public abstract class BaseResourceAllocationAction<T
     }
 
     protected <P> RetryPolicy<P> getPathAllocationRetryPolicy() {
-        RetryPolicy<P> pathAllocationRetryPolicy = new RetryPolicy<P>()
+        RetryPolicyBuilder<P> pathAllocationRetryPolicy = RetryPolicy.<P>builder()
                 .handle(RecoverableException.class)
                 .handle(ResourceAllocationException.class)
                 .handle(UnroutableFlowException.class)
                 .handle(PersistenceException.class)
                 .onRetry(e -> log.warn("Failure in path allocation. Retrying #{}...", e.getAttemptCount(),
-                        e.getLastFailure()))
-                .onRetriesExceeded(e -> log.warn("Failure in path allocation. No more retries", e.getFailure()))
+                        e.getLastException()))
+                .onRetriesExceeded(e -> log.warn("Failure in path allocation. No more retries", e.getException()))
                 .withMaxRetries(pathAllocationRetriesLimit);
         if (pathAllocationRetryDelay > 0) {
             pathAllocationRetryPolicy.withDelay(Duration.ofMillis(pathAllocationRetryDelay));
         }
-        return pathAllocationRetryPolicy;
+        return pathAllocationRetryPolicy.build();
     }
 
     @VisibleForTesting
@@ -220,10 +221,11 @@ public abstract class BaseResourceAllocationAction<T
                 .handle(ResourceAllocationException.class)
                 .handle(ConstraintViolationException.class)
                 .onRetry(e -> log.warn("Failure in resource allocation. Retrying #{}...", e.getAttemptCount(),
-                        e.getLastFailure()))
+                        e.getLastException()))
                 .onRetriesExceeded(e -> log.warn("Failure in resource allocation. No more retries",
-                        e.getFailure()))
-                .withMaxRetries(resourceAllocationRetriesLimit);
+                        e.getException()))
+                .withMaxRetries(resourceAllocationRetriesLimit)
+                .build();
     }
 
     protected abstract void checkAllocatedPaths(T stateMachine) throws ResourceAllocationException;

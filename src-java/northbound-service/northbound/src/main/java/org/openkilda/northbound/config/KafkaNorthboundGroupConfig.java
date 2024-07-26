@@ -13,21 +13,20 @@
  *   limitations under the License.
  */
 
-package org.openkilda.grpc.speaker.config;
+package org.openkilda.northbound.config;
 
-import org.openkilda.config.KafkaConsumerGroupConfig;
-import org.openkilda.config.mapping.Mapping;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
-import com.sabre.oss.conf4j.annotation.Configuration;
-import com.sabre.oss.conf4j.annotation.Default;
-import com.sabre.oss.conf4j.annotation.Key;
+@Component
+public class KafkaNorthboundGroupConfig extends EnvironmentConfig {
 
-@Configuration
-public interface KafkaGrpcSpeakerConfig extends KafkaConsumerGroupConfig {
-    String GRPC_COMPONENT_NAME = "grpc";
+    public static final String NORTHBOUND_COMPONENT_NAME = "northbound";
 
-    @Key("kafka.groupid")
-    @Default("grpc-speaker-consumer")
-    @Mapping(target = KAFKA_CONSUMER_GROUP_MAPPING)
-    String getGroupId();
+    @Value("${kafka.groupid:northbound-consumer}")
+    private String groupId;
+
+    public String getGroupId() {
+        return addPrefixAndGet(groupId);
+    }
 }

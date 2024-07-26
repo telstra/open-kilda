@@ -15,7 +15,8 @@
 
 package org.openkilda.northbound.controller;
 
-import org.openkilda.northbound.config.KafkaConfig;
+import org.openkilda.northbound.config.KafkaNorthboundGroupConfig;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
 import org.openkilda.northbound.config.SecurityConfig;
 import org.openkilda.northbound.config.WebConfig;
 import org.openkilda.northbound.controller.mock.TestMessageMock;
@@ -37,14 +38,14 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
  */
 @Configuration
 @EnableWebSecurity
-@Import({WebConfig.class, SecurityConfig.class, KafkaConfig.class})
+@Import({WebConfig.class, SecurityConfig.class, KafkaNorthboundGroupConfig.class, KafkaTopicsNorthboundConfig.class})
 @ComponentScan(
         basePackages = {
                 "org.openkilda.northbound.controller.v1",
                 "org.openkilda.northbound.controller.v2",
                 "org.openkilda.northbound.converter",
                 "org.openkilda.northbound.service",
-                "org.openkilda.northbound.utils"
+                "org.openkilda.northbound.utils",
         },
         excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.ANNOTATION, value = TestConfiguration.class)

@@ -39,13 +39,13 @@ public class LagPortPoolEntityAdapter implements PoolEntityAdapter {
     @Override
     public boolean allocateSpecificId(long entityId) {
         Optional<LagLogicalPort> existing = repository.findBySwitchIdAndPortNumber(switchId, (int) entityId);
-        return ! existing.isPresent();
+        return existing.isEmpty();
     }
 
     @Override
     public Optional<Long> allocateFirstInRange(long idMinimum, long idMaximum) {
         return repository.findUnassignedPortInRange(switchId, (int) idMinimum, (int) idMaximum)
-                .map(Long::new);
+                .map(Long::valueOf);
     }
 
     @Override

@@ -13,15 +13,11 @@
  *   limitations under the License.
  */
 
-
 package org.openkilda.server42.control.stormstub.swagger;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
-import springfox.documentation.annotations.ApiIgnore;
 
-
-@ApiIgnore
 @Controller
 public class SwaggerUiController {
     @RequestMapping(value = "/")

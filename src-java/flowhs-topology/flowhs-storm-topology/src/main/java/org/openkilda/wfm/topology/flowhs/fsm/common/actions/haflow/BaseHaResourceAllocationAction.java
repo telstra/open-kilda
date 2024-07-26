@@ -56,11 +56,11 @@ import org.openkilda.wfm.topology.flowhs.service.history.FlowHistoryService;
 import org.openkilda.wfm.topology.flowhs.service.history.HaFlowHistory;
 
 import com.google.common.base.Suppliers;
+import dev.failsafe.Failsafe;
+import dev.failsafe.FailsafeException;
+import dev.failsafe.RetryPolicy;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.FailsafeException;
-import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.lang.StringUtils;
 
 import java.util.ArrayList;

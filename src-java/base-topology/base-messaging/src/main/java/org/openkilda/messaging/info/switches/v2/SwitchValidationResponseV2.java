@@ -22,7 +22,7 @@ import org.openkilda.messaging.Utils;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.split.SplitIterator;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;

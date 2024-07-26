@@ -13,28 +13,19 @@
  *   limitations under the License.
  */
 
-package org.openkilda.wfm.kafka;
+package org.openkilda.grpc.speaker.config;
 
-import org.apache.commons.lang3.StringUtils;
-import org.apache.storm.kafka.spout.NamedSubscription;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
-import java.util.Collection;
+@Component
+public class KafkaGroupConfig extends EnvironmentConfig {
+    public static final String GRPC_COMPONENT_NAME = "grpc";
 
-/**
- * Custom implementation of storm's {@link NamedSubscription} with fix of incorrect topic names.
- */
-public class CustomNamedSubscription extends NamedSubscription {
+    @Value("${kafka.groupid:grpc-speaker-consumer}")
+    private String groupId;
 
-    public CustomNamedSubscription(Collection<String> topics) {
-        super(topics);
-    }
-
-    public CustomNamedSubscription(String... topics) {
-        super(topics);
-    }
-
-    @Override
-    public String getTopicsString() {
-        return StringUtils.join(this.topics, ",");
+    public String getGroupId() {
+        return addPrefixAndGet(groupId);
     }
 }

@@ -1,47 +1,25 @@
 plugins {
-    id 'java-library'
+    id "java-library"
 }
 
-description = 'Kilda Persistence Hibernate Implemention'
+description = "Kilda Persistence Hibernate Implementation"
 dependencies {
-    api project(':kilda-persistence-api')
-    api project(':kilda-model')
-    api project(':base-messaging')
-    implementation project(':kilda-configuration')
+    api(project(":kilda-persistence-api"))
+    api(project(":kilda-model"))
+    api(project(":base-messaging"))
+    implementation(project(":kilda-configuration"))
 
-    implementation 'com.google.guava:guava'
-    implementation 'net.jodah:failsafe'
-    implementation 'commons-codec:commons-codec'
+    implementation("com.google.guava:guava")
+    implementation("dev.failsafe:failsafe")
+    implementation("commons-codec:commons-codec")
+    implementation("jakarta.validation:jakarta.validation-api")
+    implementation("org.hibernate:hibernate-core:6.4.0.Final")
+    implementation("org.hibernate:hibernate-c3p0:6.4.0.Final")
+    implementation("com.fasterxml.jackson.module:jackson-module-jaxb-annotations")
+    implementation("com.vladmihalcea:hibernate-types-60:2.21.1")
+    implementation("mysql:mysql-connector-java:8.0.32")
 
-    implementation ('org.hibernate:hibernate-core:5.4.32.Final') {
-        // To avoid collision between javax and jakarta implementations.
-        exclude module: 'jaxb-api'
-        exclude module: 'javax.activation-api'
-        exclude module: 'jaxb-runtime'
-    }
-    implementation ('org.hibernate:hibernate-c3p0:5.4.32.Final') {
-        // To avoid collision between javax and jakarta implementations.
-        exclude module: 'jaxb-api'
-        exclude module: 'javax.activation-api'
-        exclude module: 'jaxb-runtime'
-    }
-    implementation 'com.fasterxml.jackson.module:jackson-module-jaxb-annotations'
-    implementation('com.vladmihalcea:hibernate-types-52:2.12.0') {
-        exclude group: 'com.fasterxml.jackson.module', module: 'jackson-module-jaxb-annotations'
-        // To avoid collision between javax and jakarta implementations.
-        exclude module: 'jaxb-api'
-        exclude module: 'javax.activation-api'
-        exclude module: 'jaxb-runtime'
-    }
-
-    implementation 'mysql:mysql-connector-java:8.0.32'
-
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor ('org.hibernate:hibernate-jpamodelgen:5.4.32.Final') {
-        // To avoid collision between javax and jakarta implementations.
-        exclude module: 'jaxb-api'
-        exclude module: 'javax.activation-api'
-        exclude module: 'jaxb-runtime'
-    }
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.hibernate:hibernate-jpamodelgen:6.4.0.Final")
 }

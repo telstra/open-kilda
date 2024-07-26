@@ -77,16 +77,10 @@ Do not change this file, all changes will be lost. Change corresponding template
             <KeyValuePair key="correlation_id" value="${ctx:correlation_id}"/>
         </JsonLayout>
     </Socket>
-
-    <Syslog name="syslog" format="RFC5424" charset="UTF-8" host="localhost" port="514"
-        protocol="UDP" appName="[${sys:storm.id}:${sys:worker.port}]" mdcId="mdc" includeMDC="true"
-        facility="LOCAL5" enterpriseNumber="18060" newLine="true" exceptionPattern="%rEx{full}"
-        messageId="[${sys:user.name}:${sys:logging.sensitivity}]" id="storm" immediateFail="true" immediateFlush="true"/>
 </appenders>
 <loggers>
     <root level="info"> <!-- We log everything -->
         <appender-ref ref="A1"/>
-        <appender-ref ref="syslog"/>
         <appender-ref ref="LOGSTASH"/>
     </root>
     <Logger name="org.apache.storm.metric.LoggingMetricsConsumer" level="info" additivity="false">
@@ -94,11 +88,9 @@ Do not change this file, all changes will be lost. Change corresponding template
     </Logger>
     <Logger name="STDERR" level="INFO">
         <appender-ref ref="STDERR"/>
-        <appender-ref ref="syslog"/>
     </Logger>
     <Logger name="STDOUT" level="INFO">
         <appender-ref ref="STDOUT"/>
-        <appender-ref ref="syslog"/>
     </Logger>
 </loggers>
 </configuration>

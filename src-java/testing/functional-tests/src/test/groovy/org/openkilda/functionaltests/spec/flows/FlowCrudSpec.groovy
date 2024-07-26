@@ -1,6 +1,28 @@
 package org.openkilda.functionaltests.spec.flows
 
 import groovy.util.logging.Slf4j
+import jakarta.inject.Provider
+import static groovyx.gpars.GParsPool.withPool
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
+import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
+import static org.openkilda.messaging.info.event.IslChangeType.MOVED
+import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
+import static org.openkilda.messaging.payload.flow.FlowState.UP
+import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.RULES_DELETION_TIME
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
@@ -11,6 +33,7 @@ import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithMissingPathExp
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.builder.FlowBuilder
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType
@@ -35,11 +58,10 @@ import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.ExamReport
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
+import jakarta.inject.Provider
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
-
-import javax.inject.Provider
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -55,6 +77,8 @@ import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.messaging.payload.flow.FlowState.IN_PROGRESS
 import static org.openkilda.messaging.payload.flow.FlowState.UP
+import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN
+import static org.openkilda.model.FlowEncapsulationType.VXLAN
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -73,8 +97,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
     final static Long IMPOSSIBLY_HIGH_BANDWIDTH = Long.MAX_VALUE
     final static FlowStatistics FLOW_STATISTICS_CAUSING_ERROR =
             new FlowStatistics([[4096, 0].shuffled().first(), 2001] as Set)
-    @Autowired
-    @Shared
+
+    @Autowired @Shared
     Provider<TraffExamService> traffExamProvider
     @Autowired
     @Shared
@@ -815,6 +839,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def swPair = switchPairs.all().random()
         def longPath = swPair.paths.max { it.size() }
         swPair.paths.findAll { it != longPath }.each { pathHelper.makePathMorePreferable(longPath, it) }
+
         def flow = flowFactory.getRandom(swPair, false, IN_PROGRESS)
 
         then: "Flow status is changed to UP only when all rules are actually installed"

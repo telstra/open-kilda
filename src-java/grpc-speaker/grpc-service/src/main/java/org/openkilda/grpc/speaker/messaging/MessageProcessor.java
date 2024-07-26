@@ -15,6 +15,7 @@
 
 package org.openkilda.grpc.speaker.messaging;
 
+import org.openkilda.grpc.speaker.config.KafkaTopicsGrpcConfig;
 import org.openkilda.grpc.speaker.exception.GrpcRequestFailureException;
 import org.openkilda.grpc.speaker.mapper.NoviflowResponseMapper;
 import org.openkilda.grpc.speaker.mapper.RequestMapper;
@@ -41,8 +42,6 @@ import org.openkilda.messaging.info.grpc.GetPacketInOutStatsResponse;
 import org.openkilda.messaging.info.grpc.GetSwitchInfoResponse;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.CompletableFuture;
@@ -52,23 +51,23 @@ import java.util.concurrent.CompletionException;
 @Component
 public class MessageProcessor {
 
-    @Autowired
-    KafkaMessageProducer messageProducer;
+    private final KafkaMessageProducer messageProducer;
+    private final GrpcSenderService service;
+    private final RequestMapper requestMapper;
+    private final NoviflowResponseMapper responseMapper;
+    private final String grpcResponseTopic;
+    private final String statsTopic;
 
-    @Autowired
-    private GrpcSenderService service;
-
-    @Autowired
-    RequestMapper requestMapper;
-
-    @Autowired
-    NoviflowResponseMapper responseMapper;
-
-    @Value("#{kafkaTopicsConfig.getGrpcResponseTopic()}")
-    private String grpcResponseTopic;
-
-    @Value("#{kafkaTopicsConfig.getStatsTopic()}")
-    private String statsTopic;
+    public MessageProcessor(KafkaMessageProducer messageProducer, GrpcSenderService service,
+                            RequestMapper requestMapper, NoviflowResponseMapper responseMapper,
+                            KafkaTopicsGrpcConfig kafkaTopicsGrpcConfig) {
+        this.messageProducer = messageProducer;
+        this.service = service;
+        this.requestMapper = requestMapper;
+        this.responseMapper = responseMapper;
+        this.grpcResponseTopic = kafkaTopicsGrpcConfig.getGrpcResponseTopic();
+        this.statsTopic = kafkaTopicsGrpcConfig.getStatsTopic();
+    }
 
     /**
      * Process request.

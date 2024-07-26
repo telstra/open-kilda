@@ -23,7 +23,7 @@ import org.openkilda.northbound.dto.v2.switches.LagPortRequest
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.ExamReport
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
@@ -31,7 +31,7 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @Slf4j
 @Narrative("Verify create operations on y-flows.")
@@ -134,7 +134,7 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         then: "Traffic flows on both sub-flows, but does not exceed the Y-Flow bandwidth restriction (~halves for each sub-flow)"
         if (trafficApplicable) {
-            def assertions = new SoftAssertions()
+            def assertions = new SoftAssertionsWrapper()
             examReports.each { report ->
                 assertions.checkSucceeds {
 //                    def flowBwBits = yFlow.maximumBandwidth * 1000

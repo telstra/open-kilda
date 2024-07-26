@@ -18,7 +18,8 @@ package org.openkilda.northbound.messaging;
 import org.openkilda.messaging.Message;
 
 import org.springframework.kafka.support.SendResult;
-import org.springframework.util.concurrent.ListenableFuture;
+
+import java.util.concurrent.CompletableFuture;
 
 public interface MessageProducer {
 
@@ -28,5 +29,5 @@ public interface MessageProducer {
      * @param topic  kafka topic
      * @param message message to serialize and send
      */
-    ListenableFuture<SendResult<String, Message>> send(final String topic, final Message message);
+    CompletableFuture<SendResult<String, Message>> send(final String topic, final Message message);
 }

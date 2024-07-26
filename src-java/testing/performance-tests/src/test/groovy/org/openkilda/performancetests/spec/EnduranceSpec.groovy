@@ -15,14 +15,13 @@ import org.openkilda.performancetests.BaseSpecification
 import org.openkilda.performancetests.helpers.FlowPinger
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import groovy.util.logging.Slf4j
 import org.junit.Assume
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
 import spock.lang.Narrative
-import spock.lang.Unroll
 
 import java.util.concurrent.TimeUnit
 
@@ -43,7 +42,7 @@ class EnduranceSpec extends BaseSpecification {
     /**
      * Deploy topology and create certain amount of flows in the system. Define amount of events to happen during the
      * test and their chances to happen.
-     * An event can be one of the following: flow creation, flow deletion, isl blink, manual reroute of 25% of all flows 
+     * An event can be one of the following: flow creation, flow deletion, isl blink, manual reroute of 25% of all flows
      * or just being idle.
      * At the end of the test verify that all flows are valid and switches don't have any missing or excess entities.
      * During the test all flows will be continuously 'pinged'. Any failed ping will be logged, any twice-failed ping
@@ -89,7 +88,7 @@ idle, mass manual reroute. Step repeats pre-defined number of times"
             northbound.getAllLinks().every { it.state == IslChangeType.DISCOVERED }
         }
         Wrappers.wait(60 + preset.switchesAmount) {
-            def soft = new SoftAssertions()
+            def soft = new SoftAssertionsWrapper()
             flows.each { flow ->
                 soft.checkSucceeds { assert northbound.getFlowStatus(flow.id).status == FlowState.UP }
                 soft.checkSucceeds {

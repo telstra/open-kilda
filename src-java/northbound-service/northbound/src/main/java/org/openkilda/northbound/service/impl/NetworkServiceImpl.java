@@ -28,6 +28,7 @@ import org.openkilda.messaging.payload.network.PathsDto;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.PathComputationStrategy;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
 import org.openkilda.northbound.converter.PathMapper;
 import org.openkilda.northbound.dto.v2.flows.PathValidateResponse;
 import org.openkilda.northbound.messaging.MessagingChannel;
@@ -35,8 +36,6 @@ import org.openkilda.northbound.service.NetworkService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -48,17 +47,21 @@ import java.util.stream.Collectors;
 @Service
 public class NetworkServiceImpl implements NetworkService {
 
-    @Autowired
-    private PathMapper pathMapper;
 
     /**
      * The kafka topic for the nb topology.
      */
-    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
-    private String nbworkerTopic;
+    private final String nbworkerTopic;
 
-    @Autowired
-    private MessagingChannel messagingChannel;
+    private final PathMapper pathMapper;
+    private final MessagingChannel messagingChannel;
+
+    public NetworkServiceImpl(KafkaTopicsNorthboundConfig kafkaTopicsNorthboundConfig, PathMapper pathMapper,
+                              MessagingChannel messagingChannel) {
+        this.nbworkerTopic = kafkaTopicsNorthboundConfig.getTopoNbTopic();
+        this.pathMapper = pathMapper;
+        this.messagingChannel = messagingChannel;
+    }
 
     @Override
     public CompletableFuture<PathsDto> getPaths(
@@ -66,8 +69,8 @@ public class NetworkServiceImpl implements NetworkService {
             PathComputationStrategy pathComputationStrategy, Duration maxLatency, Duration maxLatencyTier2,
             Integer maxPathCount, Boolean includeProtectedPath) {
         log.info("API request: Get Paths: srcSwitch {}, dstSwitch {}, encapsulationType {}, "
-                + "pathComputationStrategy {}, maxLatency {}, maxLatencyTier2 {}, maxPathCount {},"
-                + "includeProtectedPath {}",
+                        + "pathComputationStrategy {}, maxLatency {}, maxLatencyTier2 {}, maxPathCount {},"
+                        + "includeProtectedPath {}",
                 srcSwitch, dstSwitch, encapsulationType, pathComputationStrategy,
                 maxLatency, maxLatencyTier2, maxPathCount, includeProtectedPath);
 
@@ -102,6 +105,7 @@ public class NetworkServiceImpl implements NetworkService {
      * Validates that a flow with the given path can possibly be created. If it is not possible,
      * it responds with the reasons, such as: not enough bandwidth, requested latency is too low, there is no
      * links between the selected switches, and so on.
+     *
      * @param pathValidationPayload a path together with validation parameters provided by a user
      * @return either a successful response or a list of errors
      */

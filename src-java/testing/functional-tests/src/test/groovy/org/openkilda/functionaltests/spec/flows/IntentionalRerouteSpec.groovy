@@ -25,7 +25,7 @@ import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/hub-and-spoke/reroute")
 @Narrative("Verify that on-demand reroute operations are performed accurately.")
@@ -235,7 +235,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         def allLinks = northbound.getAllLinks()
         changedIsls.each {
             islUtils.getIslInfo(allLinks, it).each {
-                assert it.value.availableBandwidth == newBw
+                assert it.get().availableBandwidth == newBw
             }
         }
     }

@@ -32,9 +32,9 @@ import org.openkilda.model.victoria.VictoriaData;
 import org.openkilda.model.victoria.VictoriaStatsRes;
 import org.openkilda.service.StatsService;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -50,11 +50,11 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @RestController
 @RequestMapping(value = "/api/stats")
 public class StatsController {
 
-    private static final Logger LOGGER = Logger.getLogger(StatsController.class);
     private static final String REQUIRED_START_DATE_ERROR = "startDate must not be null or empty.";
     private static final String STATS_TYPE_ERROR = "statsType path variable should not be empty or wrong.";
     private static final String REQUIRED_METRIC_ERROR = "metric must not be null or empty.";
@@ -107,7 +107,7 @@ public class StatsController {
                                                                  @RequestParam List<String> metric,
                                                                  @RequestParam(required = false) String direction) {
         //TODO find a way to unite this controller method with the commonVictoriaStats method.
-        LOGGER.info("Get victoria stat for flow");
+        log.info("Get victoria stat for flow");
         if (StringUtils.isBlank(startDate)) {
             return buildVictoriaBadRequestErrorRes(REQUIRED_START_DATE_ERROR);
         }
@@ -148,7 +148,7 @@ public class StatsController {
     @ResponseBody
     public ResponseEntity<VictoriaStatsRes> commonVictoriaStats(@RequestBody VictoriaStatsReq victoriaStatsReq) {
 
-        LOGGER.info(String.format("Get flow path stat request: %s", victoriaStatsReq));
+        log.info(String.format("Get flow path stat request: %s", victoriaStatsReq));
         ResponseEntity<VictoriaStatsRes> res;
         try {
             List<VictoriaData> victoriaResult = statsService.getVictoriaStats(victoriaStatsReq);
@@ -178,7 +178,7 @@ public class StatsController {
     @Permissions(values = {IConstants.Permission.MENU_SWITCHES})
     @ResponseBody
     public List<PortInfo> switchPortsStats(@RequestBody VictoriaStatsReq statsReq) throws InvalidRequestException {
-        LOGGER.info("POST switch ports stat ");
+        log.info("POST switch ports stat ");
         return statsService.getSwitchPortsStats(statsReq);
     }
 

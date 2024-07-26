@@ -17,9 +17,7 @@ package org.openkilda.config;
 
 import com.sabre.oss.conf4j.annotation.Configuration;
 import com.sabre.oss.conf4j.annotation.Key;
-
-import javax.validation.constraints.NotBlank;
-
+import jakarta.validation.constraints.NotBlank;
 
 @Configuration
 @Key("kafka")

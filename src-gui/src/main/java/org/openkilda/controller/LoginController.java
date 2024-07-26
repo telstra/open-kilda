@@ -22,8 +22,9 @@ import org.openkilda.exception.TwoFaKeyNotSetException;
 import org.openkilda.security.CustomWebAuthenticationDetails;
 import org.openkilda.security.TwoFactorUtility;
 
-import org.apache.log4j.Logger;
-
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -43,27 +44,21 @@ import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpSession;
-
 /**
  * The Class LoginController : entertain requests of login module.
  *
  * @author Gaurav Chugh
- *
  */
-
+@Slf4j
 @Controller
 public class LoginController extends BaseController {
-
-    private static final Logger LOGGER = Logger.getLogger(LoginController.class);
 
     @Autowired
     private AuthenticationManager authenticationManager;
 
     @Autowired
     private UserService userService;
-    
+
     @Value("${application.name}")
     private String applicationName;
 
@@ -72,11 +67,11 @@ public class LoginController extends BaseController {
      *
      * @return the model and view
      */
-    @RequestMapping(value = { "/", "/login" })
+    @RequestMapping(value = {"/", "/login"})
     public ModelAndView login(final HttpServletRequest request) {
         return validateAndRedirect(request, IConstants.View.LOGIN);
     }
-    
+
     /**
      * Logout.
      *
@@ -93,14 +88,14 @@ public class LoginController extends BaseController {
      *
      * @param username the username
      * @param password the password
-     * @param request the request
+     * @param request  the request
      * @return the model and view
      */
-    
+
     @RequestMapping(value = "/authenticate", method = RequestMethod.POST)
     public ModelAndView authenticate(@RequestParam("username") String username,
-            @RequestParam("password") final String password, final HttpServletRequest request, 
-            RedirectAttributes redir) {
+                                     @RequestParam("password") final String password, final HttpServletRequest request,
+                                     RedirectAttributes redir) {
         ModelAndView modelAndView = new ModelAndView(IConstants.View.LOGIN);
         String error = null;
         username = username != null ? username.toLowerCase() : null;
@@ -122,11 +117,11 @@ public class LoginController extends BaseController {
                 userService.updateLoginDetail(username);
             } else {
                 error = "Login failed; Invalid email or password.";
-                LOGGER.warn("Authentication failure for user: '" + username + "'");
+                log.warn("Authentication failure for user: '" + username + "'");
                 modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
             }
         } catch (TwoFaKeyNotSetException e) {
-            LOGGER.warn("2 FA Key not set for user: '" + username + "'");
+            log.warn("2 FA Key not set for user: '" + username + "'");
             modelAndView.addObject("username", username);
             modelAndView.addObject("password", password);
 
@@ -136,13 +131,13 @@ public class LoginController extends BaseController {
             modelAndView.addObject("applicationName", applicationName);
             modelAndView.setViewName(IConstants.View.TWO_FA_GENERATOR);
         } catch (OtpRequiredException e) {
-            LOGGER.warn("OTP required for user: '" + username + "'");
+            log.warn("OTP required for user: '" + username + "'");
             modelAndView.addObject("username", username);
             modelAndView.addObject("password", password);
             modelAndView.addObject("applicationName", applicationName);
             modelAndView.setViewName(IConstants.View.OTP);
         } catch (InvalidOtpException e) {
-            LOGGER.warn("Authentication code is invalid for user: '" + username + "'");
+            log.warn("Authentication code is invalid for user: '" + username + "'");
             error = "Authentication code is invalid";
             modelAndView.addObject("username", username);
             modelAndView.addObject("password", password);
@@ -155,21 +150,21 @@ public class LoginController extends BaseController {
                 modelAndView.setViewName(IConstants.View.OTP);
             }
         } catch (BadCredentialsException e) {
-            LOGGER.warn("Authentication failure", e);
+            log.warn("Authentication failure", e);
             error = e.getMessage();
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         } catch (LockedException e) {
             error = e.getMessage();
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         } catch (Exception e) {
-            LOGGER.warn("Authentication failure", e);
+            log.warn("Authentication failure", e);
             error = "Login Failed. Error: " + e.getMessage() + ".";
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         }
-        if (error != null) { 
+        if (error != null) {
             redir.addFlashAttribute("error", error);
         }
         return modelAndView;
     }
-    
+
 }

@@ -15,6 +15,7 @@
 
 package org.openkilda.grpc.speaker.controller;
 
+
 import org.openkilda.grpc.speaker.model.EnableLogMessagesResponse;
 import org.openkilda.grpc.speaker.model.GrpcDeleteOperationResponse;
 import org.openkilda.grpc.speaker.model.LicenseDto;
@@ -27,15 +28,14 @@ import org.openkilda.grpc.speaker.model.PortConfigDto;
 import org.openkilda.grpc.speaker.model.PortConfigSetupResponse;
 import org.openkilda.grpc.speaker.model.RemoteLogServerDto;
 import org.openkilda.grpc.speaker.service.GrpcSenderService;
-import org.openkilda.messaging.error.GrpcMessageError;
 import org.openkilda.messaging.model.grpc.LogicalPort;
 import org.openkilda.messaging.model.grpc.RemoteLogServer;
 import org.openkilda.messaging.model.grpc.SwitchInfoStatus;
 
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiResponse;
-import io.swagger.annotations.ApiResponses;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.HttpStatus;
@@ -53,31 +53,30 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 @RestController
-@RequestMapping(value = "/noviflow", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+@RequestMapping(value = "/noviflow", produces = MediaType.APPLICATION_JSON_VALUE)
 @PropertySource("classpath:grpc-service.properties")
-@Api
+@Tag(name = "Noviflow Controller")
 @ApiResponses(value = {
-        @ApiResponse(code = 200, message = "Operation is successful"),
-        @ApiResponse(code = 400, response = GrpcMessageError.class, message = "Invalid input data"),
-        @ApiResponse(code = 401, response = GrpcMessageError.class, message = "Unauthorized"),
-        @ApiResponse(code = 403, response = GrpcMessageError.class, message = "Forbidden"),
-        @ApiResponse(code = 404, response = GrpcMessageError.class, message = "Not found"),
-        @ApiResponse(code = 500, response = GrpcMessageError.class, message = "General error"),
-        @ApiResponse(code = 503, response = GrpcMessageError.class, message = "Service unavailable")})
-
+        @ApiResponse(responseCode = "200", description = "Operation is successful"),
+        @ApiResponse(responseCode = "400", description = "Invalid input data"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "404", description = "Not found"),
+        @ApiResponse(responseCode = "500", description = "General error"),
+        @ApiResponse(responseCode = "503", description = "Service unavailable")})
 public class NoviflowController {
 
     @Autowired
     private GrpcSenderService grpcService;
 
-    @ApiOperation(value = "Get switch status", response = SwitchInfoStatus.class)
+    @Operation(summary = "Get switch status")
     @GetMapping(path = "/{switch_address}/status")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<SwitchInfoStatus> getSwitchStatus(@PathVariable("switch_address") String switchAddress) {
         return grpcService.getSwitchStatus(switchAddress);
     }
 
-    @ApiOperation(value = "Get switch logical ports", response = LogicalPort.class, responseContainer = "List")
+    @Operation(summary = "Get switch logical ports")
     @GetMapping(path = "/{switch_address}/logicalports")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<List<LogicalPort>> getSwitchLogicalPorts(
@@ -85,7 +84,7 @@ public class NoviflowController {
         return grpcService.dumpLogicalPorts(switchAddress);
     }
 
-    @ApiOperation(value = "Create a logical port", response = LogicalPortDto.class)
+    @Operation(summary = "Create a logical port")
     @PutMapping(path = "/{switch_address}/logicalports")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<LogicalPort> createLogicalPort(
@@ -94,7 +93,7 @@ public class NoviflowController {
         return grpcService.createOrUpdateLogicalPort(switchAddress, logicalPortDto);
     }
 
-    @ApiOperation(value = "Get switch logical port configuration", response = LogicalPort.class)
+    @Operation(summary = "Get switch logical port configuration")
     @GetMapping(path = "/{switch_address}/logicalports/{logical_port_number}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<LogicalPort> getSwitchLogicalPortConfig(
@@ -103,7 +102,7 @@ public class NoviflowController {
         return grpcService.showConfigLogicalPort(switchAddress, logicalPortNumber);
     }
 
-    @ApiOperation(value = "Delete switch logical port", response = GrpcDeleteOperationResponse.class)
+    @Operation(summary = "Delete switch logical port")
     @DeleteMapping(path = "/{switch_address}/logicalports/{logical_port_number}")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<GrpcDeleteOperationResponse> deleteSwitchLogicalPort(
@@ -112,8 +111,7 @@ public class NoviflowController {
         return grpcService.deleteConfigLogicalPort(switchAddress, logicalPortNumber);
     }
 
-    @ApiOperation(value = "Set configuration for logging \"messages\" on the switch",
-            response = EnableLogMessagesResponse.class)
+    @Operation(summary = "Set configuration for logging \"messages\" on the switch")
     @PutMapping(path = "/{switch_address}/logmessages")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<EnableLogMessagesResponse> enableLogMessages(
@@ -122,8 +120,7 @@ public class NoviflowController {
         return grpcService.enableLogMessages(switchAddress, logMessagesDto);
     }
 
-    @ApiOperation(value = "Set configuration for logging OF Errors on the switch",
-            response = EnableLogMessagesResponse.class)
+    @Operation(summary = "Set configuration for logging OF Errors on the switch")
     @PutMapping(path = "/{switch_address}/logoferrors")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<EnableLogMessagesResponse> enableLogOfErrors(
@@ -132,7 +129,7 @@ public class NoviflowController {
         return grpcService.enableLogOfError(switchAddress, ofErrorsDto);
     }
 
-    @ApiOperation(value = "Get a remote log server configuration for the switch", response = RemoteLogServer.class)
+    @Operation(summary = "Get a remote log server configuration for the switch")
     @GetMapping(path = "/{switch_address}/remotelogserver")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<RemoteLogServer> showConfigRemoteLogServer(
@@ -140,7 +137,7 @@ public class NoviflowController {
         return grpcService.showConfigRemoteLogServer(switchAddress);
     }
 
-    @ApiOperation(value = "Set a remote log server configuration for switch", response = RemoteLogServer.class)
+    @Operation(summary = "Set a remote log server configuration for switch")
     @PutMapping(path = "/{switch_address}/remotelogserver")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<RemoteLogServer> setConfigRemoteLogServer(
@@ -149,8 +146,7 @@ public class NoviflowController {
         return grpcService.setConfigRemoteLogServer(switchAddress, remoteLogServerDto);
     }
 
-    @ApiOperation(value = "Delete a remote log server configuration for switch",
-            response = GrpcDeleteOperationResponse.class)
+    @Operation(summary = "Delete a remote log server configuration for switch")
     @DeleteMapping(path = "/{switch_address}/remotelogserver")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<GrpcDeleteOperationResponse> deleteConfigRemoteLogServer(
@@ -158,7 +154,7 @@ public class NoviflowController {
         return grpcService.deleteConfigRemoteLogServer(switchAddress);
     }
 
-    @ApiOperation(value = "Set port configuration", response = PortConfigSetupResponse.class)
+    @Operation(summary = "Set port configuration")
     @PutMapping(path = "/{switch_address}/{port_number}/config")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<PortConfigSetupResponse> setPortConfig(
@@ -168,7 +164,7 @@ public class NoviflowController {
         return grpcService.setPortConfig(switchAddress, portNumber, portConfigDto);
     }
 
-    @ApiOperation(value = "Set a license configuration for switch", response = LicenseResponse.class)
+    @Operation(summary = "Set a license configuration for switch")
     @PutMapping(path = "{switch_address}/license")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<LicenseResponse> setConfigLicense(
@@ -177,7 +173,7 @@ public class NoviflowController {
         return grpcService.setConfigLicense(switchAddress, licenseDto);
     }
 
-    @ApiOperation(value = "Get packet in out stats for switch", response = PacketInOutStatsResponse.class)
+    @Operation(summary = "Get packet in out stats for switch")
     @GetMapping(path = "{switch_address}/packet-in-out-stats")
     @ResponseStatus(HttpStatus.OK)
     public CompletableFuture<PacketInOutStatsResponse> packetInOutStats(

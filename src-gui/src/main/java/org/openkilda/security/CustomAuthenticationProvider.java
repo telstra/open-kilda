@@ -22,8 +22,7 @@ import org.openkilda.exception.OtpRequiredException;
 import org.openkilda.exception.TwoFaKeyNotSetException;
 import org.openkilda.service.ApplicationSettingService;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.LockedException;
@@ -42,9 +41,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 public class CustomAuthenticationProvider extends DaoAuthenticationProvider {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(CustomAuthenticationProvider.class);
     
     @Autowired
     private MailUtils mailUtils;
@@ -151,7 +149,7 @@ public class CustomAuthenticationProvider extends DaoAuthenticationProvider {
                     mailService.send(entity.getEmail(), mailUtils.getSubjectAccountBlock(),
                             TemplateService.Template.ACCOUNT_BLOCK, map);
                 } catch (Exception e) {
-                    LOGGER.warn("User account block email failed for username:'" + entity.getUsername());
+                    log.warn("User account block email failed for username:'" + entity.getUsername());
                 }
                 throw new LockedException("User account is locked for "
                         + Integer.valueOf(accUnlockTime) + " minute(s)");

@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2024 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,13 +15,11 @@
 
 package org.openkilda.integration.converter;
 
+import static org.openkilda.utility.SwitchUtil.customSwitchName;
+
 import org.openkilda.integration.model.response.IslLink;
 import org.openkilda.integration.model.response.IslPath;
-import org.openkilda.integration.service.SwitchIntegrationService;
 import org.openkilda.model.IslLinkInfo;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,12 +29,11 @@ import java.util.Map;
  * The Class IslLinkConverter.
  */
 
-@Component
-public class IslLinkConverter {
+public final class IslLinkConverter {
 
-    /** The switch integration service. */
-    @Autowired
-    private SwitchIntegrationService switchIntegrationService;
+    private IslLinkConverter() {
+
+    }
 
     /**
      * To isl links info.
@@ -45,15 +42,15 @@ public class IslLinkConverter {
      * @param islCostMap the isl cost map
      * @return the list
      */
-    public List<IslLinkInfo> toIslLinksInfo(final List<IslLink> islLinks, Map<String, String> islCostMap) {
+    public static List<IslLinkInfo> toIslLinksInfo(final List<IslLink> islLinks, Map<String, String> islCostMap,
+                                                   Map<String, String> csNames) {
         if (islLinks != null) {
             final List<IslLinkInfo> islLinkInfos = new ArrayList<>();
-            final Map<String, String> csNames = switchIntegrationService.getSwitchNames();
             islLinks.forEach(islLink -> {
 
                 IslLinkInfo islLinkInfo = toIslLinkInfo(islLink, csNames, islCostMap);
 
-                if (islLinkInfos.size() == 0) {
+                if (islLinkInfos.isEmpty()) {
                     islLinkInfos.add(islLinkInfo);
                 } else {
                     boolean isSwitchRelationAdd = true;
@@ -86,8 +83,8 @@ public class IslLinkConverter {
      * @param islCostMap the isl cost map
      * @return the isl link info
      */
-    private IslLinkInfo toIslLinkInfo(final IslLink islLink, final Map<String, String> csNames,
-            Map<String, String> islCostMap) {
+    private static IslLinkInfo toIslLinkInfo(final IslLink islLink, final Map<String, String> csNames,
+                                             Map<String, String> islCostMap) {
         IslLinkInfo islLinkInfo = new IslLinkInfo();
         islLinkInfo.setUnidirectional(true);
         islLinkInfo.setAvailableBandwidth(islLink.getAvailableBandwidth());
@@ -106,8 +103,7 @@ public class IslLinkConverter {
             if (islPaths.get(0) != null) {
                 islLinkInfo.setSrcPort(islPaths.get(0).getPortNo());
                 islLinkInfo.setSrcSwitch(islPaths.get(0).getSwitchId());
-                islLinkInfo.setSrcSwitchName(
-                        switchIntegrationService.customSwitchName(csNames, islPaths.get(0).getSwitchId()));
+                islLinkInfo.setSrcSwitchName(customSwitchName(csNames, islPaths.get(0).getSwitchId()));
                 if (islPaths.get(0).getSegmentLatency() > 0) {
                     islLinkInfo.setLatency(islPaths.get(0).getSegmentLatency());
                 }
@@ -115,12 +111,11 @@ public class IslLinkConverter {
             if (islPaths.get(1) != null) {
                 islLinkInfo.setDstPort(islPaths.get(1).getPortNo());
                 islLinkInfo.setDstSwitch(islPaths.get(1).getSwitchId());
-                islLinkInfo.setDstSwitchName(
-                        switchIntegrationService.customSwitchName(csNames, islPaths.get(1).getSwitchId()));
+                islLinkInfo.setDstSwitchName(customSwitchName(csNames, islPaths.get(1).getSwitchId()));
                 if (islPaths.get(1).getSegmentLatency() > 0) {
                     islLinkInfo.setLatency(islPaths.get(1).getSegmentLatency());
                 }
-                
+
             }
         }
         // set isl cost

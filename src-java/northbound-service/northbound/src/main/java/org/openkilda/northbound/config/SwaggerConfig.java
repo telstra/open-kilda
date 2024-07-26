@@ -17,69 +17,46 @@ package org.openkilda.northbound.config;
 
 import static org.openkilda.messaging.Utils.CORRELATION_ID;
 
-import org.openkilda.model.SwitchId;
-
+import io.swagger.v3.oas.models.parameters.HeaderParameter;
+import org.springdoc.core.customizers.OperationCustomizer;
+import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import springfox.documentation.builders.ApiInfoBuilder;
-import springfox.documentation.builders.ParameterBuilder;
-import springfox.documentation.builders.RequestHandlerSelectors;
-import springfox.documentation.schema.ModelRef;
-import springfox.documentation.spi.DocumentationType;
-import springfox.documentation.spring.web.plugins.Docket;
-import springfox.documentation.swagger2.annotations.EnableSwagger2;
-
-import java.util.Collections;
 
 @Configuration
-@EnableSwagger2
 public class SwaggerConfig {
-    private final ParameterBuilder correlationIdParameter = new ParameterBuilder()
-                .name(CORRELATION_ID)
-                .description("Request's unique identifier")
-                .parameterType("header")
-                .modelRef(new ModelRef("string"));
 
-    /**
-     * Swagger configuration for API version 1.
-     *
-     * @return {@link Docket} instance
-     */
-    @Bean
-    public Docket apiV1() {
-        return new Docket(DocumentationType.SWAGGER_2)
-                .directModelSubstitute(SwitchId.class, String.class)
-                .groupName("API v1")
-                .apiInfo(new ApiInfoBuilder()
-                        .title("Northbound")
-                        .description("Kilda SDN Controller API <h1>NOTE: There are features "
-                                + "that are present in API v2 but are not present in API v1.</h1>")
-                        .version("1.0")
-                        .build())
-                .globalOperationParameters(Collections.singletonList(correlationIdParameter.build()))
-                .select()
-                .apis(RequestHandlerSelectors.basePackage("org.openkilda.northbound.controller.v1"))
+    @Bean(name = "apiV1")
+    public GroupedOpenApi apiV1() {
+        return GroupedOpenApi.builder()
+                .group("api_v1")
+                .pathsToMatch("/v1/**")
+                .displayName("OpenKilda Northbound API v1")
+                .packagesToScan("org.openkilda.northbound.controller.v1")
+                .addOperationCustomizer(addCorrelationIdHeader())
                 .build();
     }
 
-    /**
-     * Swagger configuration for API version 2.
-     *
-     * @return {@link Docket} instance
-     */
     @Bean
-    public Docket apiV2() {
-        return new Docket(DocumentationType.SWAGGER_2)
-                .directModelSubstitute(SwitchId.class, String.class)
-                .groupName("API v2")
-                .apiInfo(new ApiInfoBuilder()
-                        .title("Northbound")
-                        .description("Kilda SDN Controller API")
-                        .version("2.0")
-                        .build())
-                .globalOperationParameters(Collections.singletonList(correlationIdParameter.required(true).build()))
-                .select()
-                .apis(RequestHandlerSelectors.basePackage("org.openkilda.northbound.controller.v2"))
+    public GroupedOpenApi apiV2() {
+        return GroupedOpenApi.builder()
+                .group("api_v2")
+                .pathsToMatch("/v2/**")
+                .packagesToScan("org.openkilda.northbound.controller.v2")
+                .displayName("OpenKilda Northbound API v2")
+                .addOperationCustomizer(addCorrelationIdHeader())
                 .build();
+    }
+
+    private OperationCustomizer addCorrelationIdHeader() {
+        return (operation, handlerMethod) -> {
+            operation.addParametersItem(
+                    new HeaderParameter()
+                            .name(CORRELATION_ID)
+                            .description("Request's unique identifier.")
+                            .required(true)
+            );
+            return operation;
+        };
     }
 }

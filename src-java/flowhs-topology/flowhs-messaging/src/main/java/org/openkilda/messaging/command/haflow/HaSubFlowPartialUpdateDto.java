@@ -18,7 +18,7 @@ package org.openkilda.messaging.command.haflow;
 import org.openkilda.messaging.command.yflow.FlowPartialUpdateEndpoint;
 import org.openkilda.model.FlowStatus;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

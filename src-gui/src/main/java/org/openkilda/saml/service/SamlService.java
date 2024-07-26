@@ -22,9 +22,7 @@ import org.openkilda.saml.model.SamlConfig;
 import org.openkilda.saml.repository.SamlRepository;
 import org.openkilda.saml.validator.SamlValidator;
 
-import org.opensaml.saml2.metadata.provider.MetadataProviderException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -40,6 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Service
 @Transactional(propagation = Propagation.REQUIRED, readOnly = false)
 public class SamlService {
@@ -55,8 +54,6 @@ public class SamlService {
     
     @Autowired
     private SamlMetadataManager metadataManager;
-    
-    private static final Logger LOGGER = LoggerFactory.getLogger(SamlService.class);
 
     /**
      * Creates the provider.
@@ -81,8 +78,8 @@ public class SamlService {
         samlRepository.save(samlConfigEntity);
         try {
             metadataManager.loadProviderMetadata(samlConfigEntity.getUuid(), samlConfigEntity.getType().name());
-        } catch (MetadataProviderException e) {
-            LOGGER.error("Error occurred while loading provider" + e);
+        } catch (Exception e) {
+            log.error("Error occurred while loading provider" + e);
         }
         return SamlConversionUtil.toSamlConfig(samlConfigEntity);
     }
@@ -112,7 +109,7 @@ public class SamlService {
                 file, name, url, entityId, status, userCreation, attribute);
         samlRepository.save(samlConfigEntity);
         if (requireManagerUpdate) {
-            metadataManager.updateProviderToMetadataManager(samlConfigEntity.getUuid(), 
+            metadataManager.updateProviderToMetadataManager(samlConfigEntity.getUuid(),
                     samlConfigEntity.getType().name());
         }
         return SamlConversionUtil.toSamlConfig(samlConfigEntity);
@@ -136,7 +133,7 @@ public class SamlService {
                 String metadata = new String(bdata);
                 samlConfig.setMetadata(metadata);
             } catch (Exception e) {
-                LOGGER.error("Error occurred while getting provider detail" + e);
+                log.error("Error occurred while getting provider detail" + e);
             }
         }
         return samlConfig;
@@ -151,7 +148,7 @@ public class SamlService {
     public Message deleteByUuid(String uuid) {
         SamlConfigEntity samlConfigEntity = samlValidator.getEntityByUuid(uuid);
         samlRepository.delete(samlConfigEntity);
-        metadataManager.deleteProviderFromMetadataManager(samlConfigEntity);
+        metadataManager.deleteProviderFromMetadataManager(samlConfigEntity.toString());
         return new Message("Provider deleted successfully");
     }
     

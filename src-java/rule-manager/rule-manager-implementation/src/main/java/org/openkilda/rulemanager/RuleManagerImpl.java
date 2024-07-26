@@ -489,7 +489,8 @@ public class RuleManagerImpl implements RuleManager {
         SwitchProperties switchProperties = adapter.getSwitchProperties(switchId);
         Switch sw = adapter.getSwitch(switchId);
         List<RuleGenerator> generators = getIslServiceRuleGenerators(port);
-        if (adapter.getFeatureToggles().getServer42IslRtt() && switchProperties.hasServer42IslRttEnabled()) {
+        if (adapter.getFeatureToggles().getServer42IslRtt() && switchProperties != null
+                && switchProperties.hasServer42IslRttEnabled()) {
             generators.add(serviceRulesFactory
                     .getServer42IslRttInputRuleGenerator(switchProperties.getServer42Port(), port));
         }

@@ -17,6 +17,7 @@ package org.openkilda.test;
 
 import static org.mockito.Mockito.mock;
 
+import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.extension.ExtensionContext.Store;
@@ -30,19 +31,19 @@ import org.mockito.MockitoAnnotations;
 
 import java.lang.reflect.Parameter;
 
-public class MockitoExtension implements TestInstancePostProcessor, ParameterResolver {
+public class CustomMockitoExtension implements TestInstancePostProcessor, ParameterResolver, AfterAllCallback {
+
+    private AutoCloseable mocksAutoClosable;
 
     @Override
-    public void postProcessTestInstance(Object testInstance, ExtensionContext context) throws Exception {
-        MockitoAnnotations.initMocks(testInstance);
-
+    public void postProcessTestInstance(Object testInstance, ExtensionContext context) {
+        mocksAutoClosable = MockitoAnnotations.openMocks(testInstance);
     }
 
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
             throws ParameterResolutionException {
         return getMock(parameterContext.getParameter(), extensionContext);
-
     }
 
     @Override
@@ -53,7 +54,7 @@ public class MockitoExtension implements TestInstancePostProcessor, ParameterRes
 
     private Object getMock(Parameter parameter, ExtensionContext extensionContext) {
         Class<?> mockType = parameter.getType();
-        Store mocks = extensionContext.getStore(Namespace.create(MockitoExtension.class, mockType));
+        Store mocks = extensionContext.getStore(Namespace.create(CustomMockitoExtension.class, mockType));
         String mockName = getMockName(parameter);
 
         if (mockName != null) {
@@ -72,4 +73,10 @@ public class MockitoExtension implements TestInstancePostProcessor, ParameterRes
         return null;
     }
 
+    @Override
+    public void afterAll(ExtensionContext extensionContext) throws Exception {
+        if (mocksAutoClosable != null) {
+            mocksAutoClosable.close();
+        }
+    }
 }

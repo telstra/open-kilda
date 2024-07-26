@@ -108,7 +108,8 @@ public class Gate implements ConsumerSeekAware {
 
     @KafkaHandler
     void listen(@Payload AddFlow data,
-                @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String switchIdKey) {
+                @Header(KafkaHeaders.RECEIVED_KEY) String switchIdKey) {
+
         SwitchId switchId = new SwitchId(switchIdKey);
         Flow flow = Flow.newBuilder()
                 .setFlowId(data.getFlowId())
@@ -138,7 +139,7 @@ public class Gate implements ConsumerSeekAware {
 
     @KafkaHandler
     void listen(ClearFlows data,
-                @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String switchIdKey) {
+                @Header(KafkaHeaders.RECEIVED_KEY) String switchIdKey) {
         Builder builder = CommandPacket.newBuilder();
         builder.setType(Type.CLEAR_FLOWS);
         SwitchId switchId = new SwitchId(switchIdKey);
@@ -154,7 +155,7 @@ public class Gate implements ConsumerSeekAware {
 
     @KafkaHandler
     void listen(ListFlowsRequest data,
-                @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String switchIdKey) {
+                @Header(KafkaHeaders.RECEIVED_KEY) String switchIdKey) {
         CommandPacket commandPacket = getFlowListCommandPacket(switchIdKey);
         try {
             CommandPacketResponse serverResponse = zeroMqClient.send(commandPacket);
@@ -181,7 +182,7 @@ public class Gate implements ConsumerSeekAware {
 
     @KafkaHandler
     void listen(ListFlowsOnSwitch data,
-                @Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String switchIdKey) {
+                @Header(KafkaHeaders.RECEIVED_KEY) String switchIdKey) {
 
         CommandPacket commandPacket = getFlowListCommandPacket(switchIdKey);
 

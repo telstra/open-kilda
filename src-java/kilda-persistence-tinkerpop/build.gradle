@@ -1,51 +1,55 @@
 plugins {
-    id 'java-library'
-    id 'io.freefair.aspectj.post-compile-weaving'
+    id "java-library"
+    id "io.freefair.aspectj.post-compile-weaving"
 }
 
-compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
-compileJava.ajc.options.compilerArgs += '-verbose'
+compileJava.ajc.options.compilerArgs += "-showWeaveInfo"
+compileJava.ajc.options.compilerArgs += "-verbose"
 
-description = 'Kilda Persistence TinkerPop Implemention'
+description = "Kilda Persistence TinkerPop Implemention"
 dependencies {
-    api project(':kilda-model')
-    api project(':kilda-persistence-api')
-    aspect project(':kilda-persistence-api')
-    implementation project(':kilda-configuration')
-
-    api('com.syncleus.ferma:ferma:3.3.0') {
-        exclude group: 'org.codehaus.groovy'
+    api(project(":kilda-model"))
+    api(project(":kilda-persistence-api"))
+    api("dev.failsafe:failsafe")
+    api("com.syncleus.ferma:ferma:3.3.0") {
+        exclude group: "org.codehaus.groovy"
     }
-    implementation('org.apache.tinkerpop:gremlin-core:3.3.11') {
-        exclude group: 'org.codehaus.groovy'
+    aspect(project(":kilda-persistence-api"))
+
+    implementation(project(":kilda-configuration"))
+    implementation("com.google.guava:guava")
+    implementation("io.netty:netty-all:4.1.86.Final")
+    implementation("org.apache.tinkerpop:gremlin-core:3.3.11") {
+        exclude group: "org.codehaus.groovy"
+        exclude group: "io.netty:netty-all"
     }
-    implementation('org.apache.tinkerpop:gremlin-driver:3.3.11') {
-        exclude group: 'org.codehaus.groovy'
+    implementation("org.apache.tinkerpop:gremlin-driver:3.3.11") {
+        exclude group: "org.codehaus.groovy"
+        exclude group: "io.netty:netty-all"
     }
 
-    api 'net.jodah:failsafe'
-    implementation 'com.google.guava:guava'
-
-    implementation 'org.aspectj:aspectjrt'
-    implementation 'org.mapstruct:mapstruct'
-    implementation 'org.mapstruct:mapstruct-processor'
-    annotationProcessor 'org.mapstruct:mapstruct-processor'
-
-    testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
-    testImplementation 'org.junit.jupiter:junit-jupiter-params'
-    testImplementation('org.apache.tinkerpop:tinkergraph-gremlin:3.3.11') {
-        exclude group: 'org.codehaus.groovy'
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine")
+    testImplementation("org.junit.jupiter:junit-jupiter-params")
+    testImplementation("io.netty:netty-all:4.1.86.Final")
+    testImplementation("org.mockito:mockito-junit-jupiter")
+    testImplementation("org.hamcrest:hamcrest-library")
+    testImplementation("org.apache.tinkerpop:tinkergraph-gremlin:3.3.11") {
+        exclude group: "org.codehaus.groovy"
+        exclude group: "io.netty:netty-all"
     }
-    testImplementation 'org.mockito:mockito-junit-jupiter'
-    testImplementation 'org.hamcrest:hamcrest-library'
 
-    compileOnly 'org.projectlombok:lombok'
-    testCompileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    testAnnotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
-    testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    implementation("org.aspectj:aspectjrt")
+    implementation("org.mapstruct:mapstruct")
+    implementation("org.mapstruct:mapstruct-processor")
+    annotationProcessor("org.mapstruct:mapstruct-processor")
+
+    compileOnly("org.projectlombok:lombok")
+    testCompileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    testAnnotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding")
+    testAnnotationProcessor("org.projectlombok:lombok-mapstruct-binding")
 }
 
 configurations {
@@ -53,20 +57,22 @@ configurations {
 }
 
 dependencies {
-    testArtifacts('org.apache.tinkerpop:tinkergraph-gremlin:3.3.11') {
-        exclude group: 'org.codehaus.groovy'
+    testArtifacts("org.apache.tinkerpop:tinkergraph-gremlin:3.3.11") {
+        exclude(group: "org.codehaus.groovy")
+        exclude(group: "io.netty:netty-all")
     }
-    testArtifacts project(':kilda-persistence-tinkerpop')
+    testArtifacts("io.netty:netty-all:4.1.86.Final")
+    testArtifacts(project(":kilda-persistence-tinkerpop"))
 }
 
-task testJar(type: Jar) {
-    dependsOn compileTestJava
-    classifier 'test'
-    from sourceSets.test.output
+tasks.register("testJar", Jar) {
+    dependsOn(compileTestJava)
+    archiveClassifier = "test"
+    from(sourceSets.test.output)
 }
 
 artifacts {
-    testArtifacts testJar
+    testArtifacts(testJar)
 }
 
 test {

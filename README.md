@@ -39,63 +39,11 @@ The build process described below requires to install a number of packages. It i
 The following packages are required for building OpenKilda controller:
  - Gradle 7.0+
  - Maven 3.3.9+
- - JDK 8+
+ - JDK 17+
  - Python 3.8+
  - Docker 19.03.3+
- - Docker Compose 1.20.0+
  - GNU Make 4.1+
  - Open vSwitch 2.9+
-
-#### Python dependency notice
-
-We do not recommend upgrading pip and install docker-compose using the methods described below, bypassing the packer managers. Instead, please read the documentation for installing the [pip](https://pip.pypa.io/en/stable/installation/#upgrading-pip) and the [docker-compose](https://docs.docker.com/compose/install/).
-
-
-#### Dependency installation on Ubuntu 18.04
-
-For running a virtual environment (that is a Docker instance with the Open vSwitch service) it is required to have Linux kernel 4.18+ for OVS meters support.
-The following commands will install necessary dependencies on Ubuntu 18.04:
-Add Python's PPA repository
-```shell
-sudo add-apt-repository -y ppa:deadsnakes/ppa
-```
-
-Install required packages:
-```shell
-sudo apt update && sudo apt-get install -y \
-  maven \
-  openjdk-8-jdk \
-  python \
-  python3.8 \
-  python3-pip \
-  virtualenv \
-  make \
-  tox \
-  rsync \
-  openvswitch-switch \
-  linux-generic-hwe-18.04
-```
-
-Install required components for Python 3.6:
-```shell
-sudo pip3 install setuptools-rust==1.1.2 setuptools==46.4.0 --upgrade
-```
-
-Upgrade pip3:
-```shell
-sudo pip3 install pip --upgrade
-```
-
-(Optional) To avoid version conflict install python3-pip with the official script. To do it, you need to download script & run script:
-```shell
-wget -P /tmp/ https://bootstrap.pypa.io/get-pip.py \
-  && sudo python3.8 /tmp/get-pip.py
-```
-
-After pip upgrade install Docker compose:
-```shell
-sudo pip3 install docker-compose
-```
 
 #### Dependency installation on Ubuntu 20.04
 
@@ -104,7 +52,8 @@ The following commands will install necessary dependencies on Ubuntu 20.04:
 sudo apt update && sudo apt install -y \
   maven \
   make \
-  openjdk-8-jdk \
+  openjdk-17-jdk \
+  openjdk-17-jre \
   openvswitch-switch \
   python3-pip \
   tox \
@@ -120,11 +69,6 @@ sudo pip3 install pip --upgrade
 ```shell
 wget -P /tmp/ https://bootstrap.pypa.io/get-pip.py \
   && sudo python3.8 /tmp/get-pip.py
-```
-
-After pip upgrade install Docker compose:
-```shell
-sudo pip3 install docker-compose
 ```
 
 #### Gradle
@@ -151,10 +95,22 @@ sudo apt-get install -y ca-certificates curl gnupg lsb-release \
   docker-ce \
   docker-ce-cli \
   containerd.io \
-  docker-compose-plugin \
 && sudo usermod -aG docker $USER
 # re-login or reboot to apply the usermod command
 ```
+
+#### Docker default network settings
+When deploying OpenKilda on a remote PC, docker's default network address pool could collide with other PC on your network.
+To avoid conflicts, you can configure the address pool by creating or editing the file `/etc/docker/daemon.json`:
+```json
+{
+  "default-address-pools":
+  [
+    {"base":"10.10.0.0/16","size":24}
+  ]
+} 
+```
+Adjust the network IP address when needed.
 
 #### Maven
 You also need to increase the maven RAM limit at least up to 1G.
@@ -162,6 +118,23 @@ You also need to increase the maven RAM limit at least up to 1G.
 ```shell
 export MAVEN_OPTS="-Xmx1g -XX:MaxPermSize=128m"
 ```
+
+#### Elastic search
+Make sure the virtual memory areas parameter is set to the recommended value on the host where you start ELK container. 
+To see the current setting, you can use the following command:
+```shell
+sysctl vm.max_map_count
+```
+The default value 65530 is too low for ELK. To set it to the recommended value, you need to edit a read-only file `/etc/sysctl.conf` 
+on the host (not in the docker container):
+```shell
+sudo vim /etc/sysctl.conf
+```
+add or modify the line with the `vm.max_map_count` setting:
+```shell
+vm.max_map_count=262144
+```
+To apply the changes, restart the host or execute: `sudo sysctl --system`.
 
 ### How to build OpenKilda Controller
 
@@ -265,7 +238,7 @@ FROM ${base_image}
 
 ADD BUILD/northbound/libs/northbound.jar /app/
 WORKDIR /app
-CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", "-agentlib:jdwp=transport=dt_socket,address=50505,suspend=n,server=y", "-jar", "northbound.jar"]
+CMD ["java", "-agentlib:jdwp=transport=dt_socket,address=50505,suspend=n,server=y", "-jar", "northbound.jar"]
 ```
 
 Since debugging is done over the network, that also means we need to expose that port in Docker. For that purpose we need
@@ -286,7 +259,7 @@ northbound:
 After making these changes, we need to configure a remote debugging in a debugger. For example, in IntelliJ IDEA: navigate to ```Edit Configurations -> Remote```
 and set up the debug port as ```50505```. For more details, please see the documentation of a particular debugger application.
 
-Next, we just run ```docker-compose up```. If everything above was done correctly you must see:
+Next, we just run ```docker compose up```. If everything above was done correctly you must see:
 
 ```
 "java -agentlib:jdwp=transport=dt_socket,address=50505,suspend=n,server=y -jar northbound.jar"
@@ -341,7 +314,7 @@ wfm:
     - "50506:50506"
 ```
 
-After executing ```docker-compose up``` you should see the following log record ```Listening for transport dt_socket at address: 50506```
+After executing ```docker compose up``` you should see the following log record ```Listening for transport dt_socket at address: 50506```
 in the WFM logs.
 
 Now, after we configure the remote debugger to connect to the port ```50506```, we'll be able to debug both components: WFM and Storm.
@@ -350,7 +323,7 @@ For more details, please see the documentation of a particular debugger applicat
 
 In order to debug a topology, for example, ```NetworkTopology```: 
 create (or open if already exists) ```NetworkTopology.main``` application debug configuration and add ```--local``` to Program arguments, 
-execute ```docker-compose up``` and run in the debug mode ```NetworkTopology.main```.
+execute ```docker compose up``` and run in the debug mode ```NetworkTopology.main```.
 
 ### How to run tests
 
@@ -411,7 +384,7 @@ git clone git@github.com:<your_github_account>/open-kilda.git vm-dev
 cd vm-dev
 git checkout mvp1rc
 make build-base
-docker-compose build
+docker compose build
 make unit
 make up-test-mode
 ```
