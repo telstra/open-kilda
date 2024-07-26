@@ -69,7 +69,7 @@ class IslHelper {
         cleanupManager.addAction(RESTORE_ISL,{restoreIsl(islToBreak)}, cleanupAfter)
         cleanupManager.addAction(RESET_ISLS_COST,{database.resetCosts(topology.isls)}, cleanupAfter)
         if (getIslStatus(islToBreak).equals(DISCOVERED)) {
-            antiflapHelper.portDown(islToBreak.getSrcSwitch().getDpId(), islToBreak.getSrcPort())
+            antiflapHelper.portDown(islToBreak.getSrcSwitch().getDpId(), islToBreak.getSrcPort(), cleanupAfter, false)
         }
         islUtils.waitForIslStatus([islToBreak], FAILED)
     }

@@ -66,10 +66,10 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         mainIsls = pathHelper.getInvolvedIsls(mainPath)
         alternativeIsls = pathHelper.getInvolvedIsls(alternativePath)
         //deactivate other paths for more clear experiment
-        def isls = mainIsls + alternativeIsls
-        islsToBreak = switchPair.paths.findAll { !paths.contains(it) }
-                .collect { pathHelper.getInvolvedIsls(it).find { !isls.contains(it) && !isls.contains(it.reversed) } }
-                .unique { [it, it.reversed].sort() }
+        def isls = mainIsls.collectMany { [it, it.reversed]} + alternativeIsls.collectMany { [it, it.reversed]}
+        islsToBreak = switchPair.paths.findAll{ !(it.containsAll(mainPath) || it.containsAll(alternativePath))}
+                .collectMany{ pathHelper.getInvolvedIsls(it)}.unique()
+                .collectMany{ [it, it.reversed] }.findAll { !isls.contains(it)}
         islHelper.breakIsls(islsToBreak, CleanupAfter.CLASS)
     }
 
