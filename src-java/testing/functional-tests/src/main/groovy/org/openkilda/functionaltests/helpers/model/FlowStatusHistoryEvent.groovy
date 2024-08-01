@@ -3,7 +3,9 @@ package org.openkilda.functionaltests.helpers.model
 
 enum FlowStatusHistoryEvent {
     UP("UP"),
-    DELETED("DELETED")
+    DELETED("DELETED"),
+    DEGRADED("DEGRADED"),
+    DOWN("DOWN")
 
     String status
 

@@ -1,7 +1,14 @@
 package org.openkilda.functionaltests.spec.flows
 
-import groovy.transform.Memoized
-import groovy.util.logging.Slf4j
+import static groovyx.gpars.GParsPool.withPool
+import static org.assertj.core.api.Assertions.assertThat
+import static org.junit.jupiter.api.Assumptions.assumeFalse
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
@@ -9,53 +16,56 @@ import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
-import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
 import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
+import org.openkilda.testing.service.traffexam.model.FlowBidirectionalExam
+
+import groovy.transform.Memoized
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Shared
 
 import javax.inject.Provider
 
-import static groovyx.gpars.GParsPool.withPool
-import static org.assertj.core.api.Assertions.assertThat
-import static org.junit.jupiter.api.Assumptions.assumeFalse
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.DELETE_SUCCESS
-import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 @Slf4j
 
 class QinQFlowSpec extends HealthCheckSpecification {
 
-    @Autowired @Shared
+    @Autowired
+    @Shared
     Provider<TraffExamService> traffExamProvider
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+    @Autowired
+    @Shared
+    SwitchRulesFactory switchRulesFactory
 
     @Tags([SMOKE_SWITCHES, TOPOLOGY_DEPENDENT])
     def "System allows to manipulate with QinQ flow\
 [srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.hwSwString()]#trafficDisclaimer"() {
         when: "Create a QinQ flow"
-        def qinqFlow = flowHelperV2.randomFlow(swPair).tap {
-            source.vlanId = srcVlanId
-            source.innerVlanId = srcInnerVlanId
-            destination.vlanId = dstVlanId
-            destination.innerVlanId = dstInnerVlanId
-        }
-        def response = flowHelperV2.addFlow(qinqFlow)
+        def qinqFlow = flowFactory.getBuilder(swPair)
+                .withSourceVlan(srcVlanId)
+                .withSourceInnerVlan(srcInnerVlanId)
+                .withDestinationVlan(dstVlanId)
+                .withDestinationInnerVlan(dstInnerVlanId)
+                .build().sendCreateRequest()
 
         then: "Response contains correct info about vlanIds"
-        with(response) {
+        qinqFlow.waitForBeingInState(FlowState.UP)
+        with(qinqFlow) {
             it.source.vlanId == srcVlanId
             it.source.innerVlanId == srcInnerVlanId
             it.destination.vlanId == dstVlanId
@@ -63,7 +73,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is really created with requested vlanIds"
-        with(northbound.getFlow(qinqFlow.flowId)) {
+        with(qinqFlow.retrieveDetails()) {
             it.source.vlanId == srcVlanId
             it.source.innerVlanId == srcInnerVlanId
             it.destination.vlanId == dstVlanId
@@ -71,8 +81,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is valid and pingable"
-        northbound.validateFlow(qinqFlow.flowId).each { assert it.asExpected }
-        verifyAll(northbound.pingFlow(qinqFlow.flowId, new PingInput())) {
+        qinqFlow.validateAndCollectDiscrepancies().isEmpty()
+        verifyAll(qinqFlow.ping()) {
             it.forward.pingSuccess
             it.reverse.pingSuccess
         }
@@ -81,45 +91,35 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def examQinQFlow
         if(!trafficDisclaimer) {
-            examQinQFlow = new FlowTrafficExamBuilder(topology, traffExam)
-                    .buildBidirectionalExam(flowHelperV2.toV1(qinqFlow), 1000, 5)
-            withPool {
-                [examQinQFlow.forward, examQinQFlow.reverse].eachParallel { direction ->
-                    def resources = traffExam.startExam(direction)
-                    direction.setResources(resources)
-                    assert traffExam.waitExam(direction).hasTraffic()
-                }
-            }
+            examQinQFlow = qinqFlow.traffExam(traffExam, 1000, 5)
+            verifyFlowHasBidirectionalTraffic(examQinQFlow, traffExam)
         }
 
         and: "Involved switches pass switch validation"
-        def involvedSwitchesFlow1 = pathHelper.getInvolvedSwitches(
-                pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId))
-        )
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesFlow1*.getDpId()).isEmpty()
+        def involvedSwitchesFlow1 = qinqFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesFlow1).isEmpty()
 
         when: "Create a vlan flow on the same port as QinQ flow"
-        def vlanFlow = flowHelper.randomFlow(swPair).tap {
-            it.source.portNumber = qinqFlow.source.portNumber
-            it.source.vlanId = qinqFlow.source.vlanId + 1
-            it.destination.portNumber = qinqFlow.destination.portNumber
-            it.destination.vlanId = qinqFlow.destination.vlanId + 1
-        }
-        flowHelper.addFlow(vlanFlow)
+        def vlanFlow = flowFactory.getBuilder(swPair)
+                .withSourcePort(qinqFlow.source.portNumber)
+                .withSourceVlan(qinqFlow.source.vlanId + 1)
+                .withDestinationPort(qinqFlow.destination.portNumber)
+                .withDestinationVlan(qinqFlow.destination.vlanId + 1)
+                .build().create()
 
         then: "Both existing flows are valid"
-        [qinqFlow.flowId, vlanFlow.id].each {
-            northbound.validateFlow(it).each { assert it.asExpected }
+        [qinqFlow, vlanFlow].each {
+            it.validateAndCollectDiscrepancies().isEmpty()
         }
 
         and: "Involved switches pass switch validation"
-        def involvedSwitchesFlow2 = pathHelper.getInvolvedSwitches(pathHelper.convert(northbound.getFlowPath(vlanFlow.id)))
-        def involvedSwitchesforBothFlows = (involvedSwitchesFlow1 + involvedSwitchesFlow2).unique { it.dpId }
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesforBothFlows*.getDpId()).isEmpty()
+        def involvedSwitchesFlow2 = vlanFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+        def involvedSwitchesforBothFlows = (involvedSwitchesFlow1 + involvedSwitchesFlow2).unique()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesforBothFlows).isEmpty()
 
         and: "Both flows are pingable"
-        [qinqFlow.flowId, vlanFlow.id].each {
-            verifyAll(northbound.pingFlow(it, new PingInput())) {
+        [qinqFlow, vlanFlow].each {
+            verifyAll(it.ping()) {
                 it.forward.pingSuccess
                 it.reverse.pingSuccess
             }
@@ -127,28 +127,22 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "Both flows allow traffic"
         if(!trafficDisclaimer) {
-            def examSimpleFlow = new FlowTrafficExamBuilder(topology, traffExam)
-                    .buildBidirectionalExam(vlanFlow, 1000, 5)
-            withPool {
-                [examQinQFlow.forward, examQinQFlow.reverse, examSimpleFlow.forward, examSimpleFlow.reverse]
-                        .eachParallel { direction ->
-                            def resources = traffExam.startExam(direction)
-                            direction.setResources(resources)
-                            assert traffExam.waitExam(direction).hasTraffic()
-                        }
-            }
+            def examSimpleFlow = vlanFlow.traffExam(traffExam, 1000, 5)
+            verifyFlowHasBidirectionalTraffic(examQinQFlow, traffExam)
+            verifyFlowHasBidirectionalTraffic(examSimpleFlow, traffExam)
         }
 
         when: "Update the QinQ flow(outer/inner vlans)"
-        def updateResponse = flowHelperV2.updateFlow(qinqFlow.flowId, qinqFlow.tap {
-            qinqFlow.source.vlanId = vlanFlow.source.vlanId
-            qinqFlow.source.innerVlanId = vlanFlow.destination.vlanId
-            qinqFlow.destination.vlanId = vlanFlow.destination.vlanId
-            qinqFlow.destination.innerVlanId = vlanFlow.source.vlanId
-        })
+        def updateQinqFlowEntity = qinqFlow.tap {
+            it.source.vlanId = vlanFlow.source.vlanId
+            it.source.innerVlanId = vlanFlow.destination.vlanId
+            it.destination.vlanId = vlanFlow.destination.vlanId
+            it.destination.innerVlanId = vlanFlow.source.vlanId
+        }
+        def updatedQinqFlow = qinqFlow.sendUpdateRequest(updateQinqFlowEntity)
 
         then: "Update response contains correct info about innerVlanIds"
-        with(updateResponse) {
+        with(updatedQinqFlow) {
             it.source.vlanId == vlanFlow.source.vlanId
             it.source.innerVlanId == vlanFlow.destination.vlanId
             it.destination.vlanId == vlanFlow.destination.vlanId
@@ -156,7 +150,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is really updated"
-        with(northbound.getFlow(qinqFlow.flowId)) {
+        with(qinqFlow.retrieveDetails()) {
             it.source.vlanId == vlanFlow.source.vlanId
             it.source.innerVlanId == vlanFlow.destination.vlanId
             it.destination.vlanId == vlanFlow.destination.vlanId
@@ -164,14 +158,14 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow history shows actual info into stateBefore and stateAfter sections"
-        def flowHistoryEntry = flowHelper.getLatestHistoryEntry(qinqFlow.flowId)
-        with(flowHistoryEntry.dumps.find { it.type == "stateBefore" }){
+        def qinqFlowHistoryEntry = qinqFlow.waitForHistoryEvent(FlowActionType.UPDATE)
+        with(qinqFlowHistoryEntry.dumps.find { it.type == "stateBefore" }){
             it.sourceVlan == srcVlanId
             it.sourceInnerVlan == srcInnerVlanId
             it.destinationVlan == dstVlanId
             it.destinationInnerVlan ==  dstInnerVlanId
         }
-        with(flowHistoryEntry.dumps.find { it.type == "stateAfter" }){
+        with(qinqFlowHistoryEntry.dumps.find { it.type == "stateAfter" }){
             it.sourceVlan == vlanFlow.source.vlanId
             it.sourceInnerVlan == vlanFlow.destination.vlanId
             it.destinationVlan == vlanFlow.destination.vlanId
@@ -179,31 +173,33 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         then: "Both existing flows are still valid and pingable"
-        [qinqFlow.flowId, vlanFlow.id].each {
-            northbound.validateFlow(it).each { assert it.asExpected }
+        [qinqFlow, vlanFlow].each {
+            it.validateAndCollectDiscrepancies().isEmpty()
         }
 
-        [qinqFlow.flowId, vlanFlow.id].each {
-            verifyAll(northbound.pingFlow(it, new PingInput())) {
+        [qinqFlow, vlanFlow].each {
+            verifyAll(it.ping()) {
                 it.forward.pingSuccess
                 it.reverse.pingSuccess
             }
         }
 
         when: "Delete the flows"
-        [qinqFlow.flowId, vlanFlow.id].each { it && flowHelperV2.deleteFlow(it) }
+        [qinqFlow, vlanFlow].each { it && it.delete() }
 
         then: "Flows rules are deleted"
-        involvedSwitchesforBothFlows.each { sw ->
+        def allSwitches = topology.activeSwitches
+        involvedSwitchesforBothFlows.each { swId ->
+            def sw = allSwitches.find { item -> item.dpId == swId }
             Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-                assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
+                assertThat(switchRulesFactory.get(swId).getRules()*.cookie.toArray()).as(swId.toString())
                         .containsExactlyInAnyOrder(*sw.defaultCookies)
             }
         }
 
         and: "Shared rule of flow is deleted"
         [swPair.src.dpId, swPair.dst.dpId].each { swId ->
-            assert northbound.getSwitchRules(swId).flowEntries.findAll {
+            assert switchRulesFactory.get(swId).getRules().findAll {
                 new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
             }.empty
         }
@@ -220,15 +216,15 @@ class QinQFlowSpec extends HealthCheckSpecification {
     def "System allows to create a single switch QinQ flow\
 [srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.src.hwSwString]#trafficDisclaimer"() {
         when: "Create a single switch QinQ flow"
-        def qinqFlow = flowHelperV2.singleSwitchFlow(swPair)
-        qinqFlow.source.vlanId = srcVlanId
-        qinqFlow.source.innerVlanId = srcInnerVlanId
-        qinqFlow.destination.vlanId = dstVlanId
-        qinqFlow.destination.innerVlanId = dstInnerVlanId
-        def response = flowHelperV2.addFlow(qinqFlow)
+        def qinqFlow = flowFactory.getBuilder(swPair)
+                .withSourceVlan(srcVlanId)
+                .withSourceInnerVlan(srcInnerVlanId)
+                .withDestinationVlan(dstVlanId)
+                .withDestinationInnerVlan(dstInnerVlanId)
+                .build().create()
 
         then: "Response contains correct info about vlanIds"
-        with(response) {
+        with(qinqFlow) {
             it.source.vlanId == srcVlanId
             it.source.innerVlanId == srcInnerVlanId
             it.destination.vlanId == dstVlanId
@@ -236,7 +232,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is really created with requested vlanIds"
-        with(northbound.getFlow(qinqFlow.flowId)) {
+        with(qinqFlow.retrieveDetails()) {
             it.source.vlanId == srcVlanId
             it.source.innerVlanId == srcInnerVlanId
             it.destination.vlanId == dstVlanId
@@ -244,10 +240,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is valid"
-        northbound.validateFlow(qinqFlow.flowId).each { assert it.asExpected }
+        qinqFlow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Unable to ping a one-switch qinq flow"
-        verifyAll(northbound.pingFlow(qinqFlow.flowId, new PingInput())) {
+        verifyAll(qinqFlow.ping()) {
             !it.forward
             !it.reverse
             it.error == "Flow ${qinqFlow.flowId} should not be one-switch flow"
@@ -259,26 +255,19 @@ class QinQFlowSpec extends HealthCheckSpecification {
         and: "Traffic examination is successful (if possible)"
         if(!trafficDisclaimer) {
             def traffExam = traffExamProvider.get()
-            def examQinQFlow = new FlowTrafficExamBuilder(topology, traffExam)
-                    .buildBidirectionalExam(flowHelperV2.toV1(qinqFlow), 1000, 5)
-            withPool {
-                [examQinQFlow.forward, examQinQFlow.reverse].eachParallel { direction ->
-                    def resources = traffExam.startExam(direction)
-                    direction.setResources(resources)
-                    assert traffExam.waitExam(direction).hasTraffic()
-                }
-            }
+            def examQinQFlow = qinqFlow.traffExam(traffExam, 1000, 5)
+            verifyFlowHasBidirectionalTraffic(examQinQFlow, traffExam)
         }
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(qinqFlow.flowId)
+        qinqFlow.delete()
 
         then: "Flow rules are deleted"
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-            assertThat(northbound.getSwitchRules(swPair.src.dpId).flowEntries*.cookie.toArray())
+            assertThat(switchRulesFactory.get(swPair.src.dpId).getRules()*.cookie.toArray())
                     .containsExactlyInAnyOrder(*swPair.src.defaultCookies)
         }
-        northbound.getSwitchRules(swPair.src.dpId).flowEntries.findAll {
+        switchRulesFactory.get(swPair.src.dpId).getRules().findAll {
             new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
         }.empty
 
@@ -297,10 +286,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def swP = switchPairs.all().neighbouring().random()
 
         when: "Try to create a QinQ flow with incorrect innerVlanId"
-        def flow = flowHelperV2.randomFlow(swP)
-        flow.source.innerVlanId = srcInnerVlanId
-        flow.destination.innerVlanId = dstInnerVlanId
-        flowHelperV2.addFlow(flow)
+        flowFactory.getBuilder(swP)
+                .withSourceInnerVlan(srcInnerVlanId)
+                .withDestinationInnerVlan(dstInnerVlanId)
+                .build().create()
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -320,19 +309,20 @@ class QinQFlowSpec extends HealthCheckSpecification {
     def "Flow with innerVlan and vlanId=0 is transformed into a regular vlan flow without innerVlan"() {
         when: "Create a flow with vlanId=0 and innerVlanId!=0"
         def swP = switchPairs.all().random()
-        def flow = flowHelper.randomFlow(swP)
-        flow.source.vlanId = 0
-        flow.source.innerVlanId = 123
-        flowHelper.addFlow(flow)
+        def flowEntity = flowFactory.getBuilder(swP)
+                .withSourceVlan(0)
+                .withSourceInnerVlan(123)
+                .build()
+        def flow = flowEntity.create()
 
         then: "Flow is created but with vlanId!=0 and innerVlanId==0"
-        with(northbound.getFlow(flow.id)) {
-            it.source.vlanId == flow.source.innerVlanId
+        with(flow.retrieveDetails()) {
+            it.source.vlanId == flowEntity.source.innerVlanId
             it.source.innerVlanId  == 0
         }
 
         and: "Flow is valid"
-        northbound.validateFlow(flow.id).each { assert it.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
     }
 
     def "System allow to create/update/delete a protected QinQ flow via APIv1"() {
@@ -340,60 +330,61 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def swP = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
 
         when: "Create a QinQ flow"
-        def flow = flowHelper.randomFlow(swP)
-        flow.source.innerVlanId = 234
-        flow.destination.innerVlanId = 432
-        flowHelper.addFlow(flow)
+        def flowEntity = flowFactory.getBuilder(swP)
+                .withSourceInnerVlan(234)
+                .withDestinationInnerVlan(432)
+                .build()
+        def flow = flowEntity.createV1()
 
         then: "Flow is really created with requested innerVlanId"
-        with(northbound.getFlow(flow.id)) {
-            it.source.innerVlanId == flow.source.innerVlanId
-            it.destination.innerVlanId == flow.destination.innerVlanId
+        with(flow.retrieveDetailsV1()) {
+            it.source.innerVlanId == flowEntity.source.innerVlanId
+            it.destination.innerVlanId == flowEntity.destination.innerVlanId
         }
 
         when: "Update the flow(innerVlan/vlanId) via partialUpdate"
         def newDstVlanId = flow.destination.vlanId + 1
         def newDstInnerVlanId = flow.destination.innerVlanId + 1
         def updateRequest = new FlowPatchV2(
-                destination: new FlowPatchEndpoint(innerVlanId: newDstInnerVlanId, vlanId: newDstVlanId)
+                destination: new FlowPatchEndpoint(
+                        innerVlanId: newDstInnerVlanId,
+                        vlanId: newDstVlanId
+                )
         )
-        def response = flowHelperV2.partialUpdate(flow.id, updateRequest)
+        def response = flow.sendPartialUpdateRequest(updateRequest)
 
         then: "Partial update response reflects the changes"
+        flow.waitForBeingInState(FlowState.UP)
         response.destination.vlanId == newDstVlanId
         response.destination.innerVlanId == newDstInnerVlanId
 
         and: "Flow is really updated with requested innerVlanId/vlanId"
-        with(northbound.getFlow(flow.id)) {
+        with(flow.retrieveDetailsV1()) {
             it.destination.vlanId == newDstVlanId
             it.destination.innerVlanId == newDstInnerVlanId
         }
 
         and: "Flow is valid and pingable"
-        northbound.validateFlow(flow.id).each { assert it.asExpected }
-        verifyAll(northbound.pingFlow(flow.id, new PingInput())) {
+        flow.validateAndCollectDiscrepancies().isEmpty()
+        verifyAll(flow.ping()) {
             it.forward.pingSuccess
             it.reverse.pingSuccess
         }
 
         when: "Delete the flow via APIv1"
-        northbound.deleteFlow(flow.id)
-        Wrappers.wait(WAIT_OFFSET) {
-            assert !northbound.getFlowStatus(flow.id)
-            assert northbound.getFlowHistory(flow.id).find { it.payload.last().action == DELETE_SUCCESS }
-        }
+        flow.deleteV1()
 
         then: "Flows rules are deleted"
         [swP.src, swP.dst].each { sw ->
             Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-                assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray())
+                assertThat(switchRulesFactory.get(sw.dpId).getRules()*.cookie.toArray())
                         .containsExactlyInAnyOrder(*sw.defaultCookies)
             }
         }
 
         and: "Shared rule of flow is deleted"
         [swP.src.dpId, swP.dst.dpId].each { swId ->
-            assert northbound.getSwitchRules(swId).flowEntries.findAll {
+            assert switchRulesFactory.get(swId).getRules().findAll {
                 new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
             }.empty
         }
@@ -404,31 +395,23 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def swP = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
 
         when: "Create a QinQ flow"
-        def flowWithQinQ = flowHelperV2.randomFlow(swP)
-        flowWithQinQ.source.innerVlanId = 234
-        flowWithQinQ.destination.innerVlanId = 432
-        flowHelperV2.addFlow(flowWithQinQ)
+        def flowWithQinQ = flowFactory.getBuilder(swP)
+                .withSourceInnerVlan(234)
+                .withDestinationInnerVlan(432)
+                .build().create()
 
         and: "Create a flow without QinQ"
-        def flowWithoutQinQ = flowHelperV2.randomFlow(swP)
-        flowWithoutQinQ.source.vlanId = 0
-        flowWithoutQinQ.source.innerVlanId = flowWithQinQ.source.vlanId
-        flowHelperV2.addFlow(flowWithoutQinQ)
+        def flowWithoutQinQ = flowFactory.getBuilder(swP)
+                .withSourceVlan(0)
+                .withSourceInnerVlan(flowWithQinQ.source.vlanId)
+                .build().create()
 
         then: "Both flows allow traffic"
         def traffExam = traffExamProvider.get()
-        def examFlowWithtQinQ = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flowWithQinQ), 1000, 5)
-        def examFlowWithoutQinQ = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flowWithoutQinQ), 1000, 5)
-        withPool {
-            [examFlowWithtQinQ.forward, examFlowWithtQinQ.reverse,
-             examFlowWithoutQinQ.forward, examFlowWithoutQinQ.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
-            }
-        }
+        def examFlowWithtQinQ = flowWithQinQ.traffExam(traffExam, 1000, 5)
+        def examFlowWithoutQinQ = flowWithoutQinQ.traffExam(traffExam, 1000, 5)
+        verifyFlowHasBidirectionalTraffic(examFlowWithtQinQ, traffExam)
+        verifyFlowHasBidirectionalTraffic(examFlowWithoutQinQ, traffExam)
     }
 
     def "System detects conflict QinQ flows(oVlan: #conflictVlan, iVlan: #conflictInnerVlanId)"() {
@@ -436,17 +419,19 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def swP = switchPairs.all().neighbouring().random()
 
         when: "Create a first flow"
-        def flow = flowHelperV2.randomFlow(swP)
-        flow.source.vlanId = vlan
-        flow.source.innerVlanId = innerVlan
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(swP)
+                .withSourceVlan(vlan)
+                .withSourceInnerVlan(innerVlan)
+                .build()
+        flow.create()
 
         and: "Try to create a flow which conflicts(vlan) with first flow"
-        def conflictFlow = flowHelperV2.randomFlow(swP)
-        conflictFlow.source.vlanId = conflictVlan
-        conflictFlow.source.innerVlanId = conflictInnerVlanId
-        conflictFlow.source.portNumber = flow.source.portNumber
-        flowHelperV2.addFlow(conflictFlow)
+        def conflictFlow = flowFactory.getBuilder(swP)
+                .withSourceVlan(conflictVlan)
+                .withSourceInnerVlan(conflictInnerVlanId)
+                .withSourcePort(flow.source.portNumber)
+                .build()
+        conflictFlow.create()
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -464,24 +449,23 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def swP = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
 
         when: "Create a first QinQ flow"
-        def flow1 = flowHelperV2.randomFlow(swP)
-        flow1.source.innerVlanId = 300
-        flow1.destination.innerVlanId = 400
-        flowHelperV2.addFlow(flow1)
+        def flow1 = flowFactory.getBuilder(swP)
+                .withSourceInnerVlan(300)
+                .withDestinationInnerVlan(400)
+                .build().create()
 
         and: "Create a second QinQ flow"
-        def flow2 = flowHelperV2.randomFlow(swP)
-        flow2.source.vlanId = flow1.source.vlanId
-        flow2.source.innerVlanId = flow1.destination.innerVlanId
-        flow2.destination.vlanId = flow1.destination.vlanId
-        flow2.destination.innerVlanId = flow1.source.innerVlanId
-        flowHelperV2.addFlow(flow2)
-
+        def flow2 = flowFactory.getBuilder(swP)
+                .withSourceVlan(flow1.source.vlanId)
+                .withSourceInnerVlan(flow1.destination.innerVlanId)
+                .withDestinationVlan(flow1.destination.vlanId)
+                .withDestinationInnerVlan(flow1.source.innerVlanId)
+                .build().create()
 
         then: "Both flow are valid and pingable"
-        [flow1.flowId, flow2.flowId].each { flowId ->
-            northbound.validateFlow(flowId).each { assert it.asExpected }
-            verifyAll(northbound.pingFlow(flowId, new PingInput())) {
+        [flow1, flow2].each { flow ->
+            flow.validateAndCollectDiscrepancies().isEmpty()
+            verifyAll(flow.ping()) {
                 it.forward.pingSuccess
                 it.reverse.pingSuccess
             }
@@ -489,36 +473,23 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "Flows allow traffic"
         def traffExam = traffExamProvider.get()
-        def exam1 = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flow1), 1000, 5)
-        def exam2 = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flow2), 1000, 5)
-        withPool {
-            [exam1.forward, exam1.reverse, exam2.forward, exam2.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
-            }
-        }
+        def exam1 = flow1.traffExam(traffExam, 1000, 5)
+        def exam2 = flow2.traffExam(traffExam, 1000, 5)
+        verifyFlowHasBidirectionalTraffic(exam1, traffExam)
+        verifyFlowHasBidirectionalTraffic(exam2, traffExam)
 
         when: "Delete the second flow"
-        flowHelperV2.deleteFlow(flow2.flowId)
+        flow2.delete()
 
         then: "The first flow is still valid and pingable"
-        northbound.validateFlow(flow1.flowId).each { assert it.asExpected }
-        verifyAll(northbound.pingFlow(flow1.flowId, new PingInput())) {
+        flow1.validateAndCollectDiscrepancies().isEmpty()
+        verifyAll(flow1.ping()) {
             it.forward.pingSuccess
             it.reverse.pingSuccess
         }
 
         and: "The first flow still allows traffic"
-        withPool {
-            [exam1.forward, exam1.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
-            }
-        }
+        verifyFlowHasBidirectionalTraffic(exam1, traffExam)
     }
 
     def "System allows to create a single-switch-port QinQ flow\
@@ -527,15 +498,15 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def sw = topology.activeSwitches[0]
 
         when: "Create a single switch QinQ flow"
-        def qinqFlow = flowHelperV2.singleSwitchSinglePortFlow(sw)
-        qinqFlow.source.vlanId = srcVlanId
-        qinqFlow.source.innerVlanId = srcInnerVlanId
-        qinqFlow.destination.vlanId = dstVlanId
-        qinqFlow.destination.innerVlanId = dstInnerVlanId
-        def response = flowHelperV2.addFlow(qinqFlow)
+        def qinqFlow = flowFactory.getBuilder(sw, sw)
+                .withSourceVlan(srcVlanId)
+                .withSourceInnerVlan(srcInnerVlanId)
+                .withDestinationVlan(dstVlanId)
+                .withDestinationInnerVlan(dstInnerVlanId)
+                .build().create()
 
         then: "Response contains correct info about vlanIds"
-        with(response) {
+        with(qinqFlow) {
             it.source.vlanId == srcVlanId
             it.source.innerVlanId == srcInnerVlanId
             it.destination.vlanId == dstVlanId
@@ -543,7 +514,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is really created with requested vlanIds"
-        with(northbound.getFlow(qinqFlow.flowId)) {
+        with(qinqFlow.retrieveDetails()) {
             it.source.vlanId == srcVlanId
             it.source.innerVlanId == srcInnerVlanId
             it.destination.vlanId == dstVlanId
@@ -551,20 +522,20 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is valid"
-        northbound.validateFlow(qinqFlow.flowId).each { assert it.asExpected }
+        qinqFlow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Involved switches pass switch validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(
-                pathHelper.getInvolvedSwitches(
-                        pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId)))*.getDpId()).isEmpty()
+        def involvedSwitches = qinqFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(qinqFlow.flowId)
+        qinqFlow.delete()
 
         then: "Flow rules are deleted"
+        def singleSw = topology.getActiveSwitches().find { it.dpId == sw.dpId }
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-            assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
-                    .containsExactlyInAnyOrder(*sw.defaultCookies)
+            assertThat(switchRulesFactory.get(singleSw.dpId).getRules()*.cookie.toArray()).as(singleSw.dpId.toString())
+                    .containsExactlyInAnyOrder(*singleSw.defaultCookies)
         }
 
         where:
@@ -581,13 +552,14 @@ class QinQFlowSpec extends HealthCheckSpecification {
     def "System allows to manipulate with QinQ vxlan flow\
 [srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.hwSwString()]#trafficDisclaimer"() {
         when: "Create QinQ vxlan flow"
-        def qinqFlow = flowHelperV2.randomFlow(swPair)
-        qinqFlow.encapsulationType = FlowEncapsulationType.VXLAN
-        qinqFlow.source.vlanId = srcVlanId
-        qinqFlow.source.innerVlanId = srcInnerVlanId
-        qinqFlow.destination.vlanId = dstVlanId
-        qinqFlow.destination.innerVlanId = dstInnerVlanId
-        def response = flowHelperV2.addFlow(qinqFlow)
+        def qinqFlow = flowFactory.getBuilder(swPair)
+                .withEncapsulationType(FlowEncapsulationType.VXLAN)
+                .withSourceVlan(srcVlanId)
+                .withSourceInnerVlan(srcInnerVlanId)
+                .withDestinationVlan(dstVlanId)
+                .withDestinationInnerVlan(dstInnerVlanId)
+                .build()
+        def response = qinqFlow.create()
 
         then: "Response contains correct info about vlanIds"
         /** System doesn't allow to create a flow with innerVlan and without vlan at the same time.
@@ -603,7 +575,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is really created with requested vlanIds"
-        with(northbound.getFlow(qinqFlow.flowId)) {
+        with(qinqFlow.retrieveDetails()) {
             it.source.vlanId == srcVlanId
             it.source.innerVlanId == srcInnerVlanId
             it.destination.vlanId == dstVlanId
@@ -611,8 +583,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is valid and pingable"
-        northbound.validateFlow(qinqFlow.flowId).each { assert it.asExpected }
-        verifyAll(northbound.pingFlow(qinqFlow.flowId, new PingInput())) {
+        qinqFlow.validateAndCollectDiscrepancies().isEmpty()
+        verifyAll(qinqFlow.ping()) {
             it.forward.pingSuccess
             it.reverse.pingSuccess
         }
@@ -621,45 +593,36 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def examQinQFlow
         if(!trafficDisclaimer) {
-            examQinQFlow = new FlowTrafficExamBuilder(topology, traffExam)
-                    .buildBidirectionalExam(flowHelperV2.toV1(qinqFlow), 1000, 5)
-            withPool {
-                [examQinQFlow.forward, examQinQFlow.reverse].eachParallel { direction ->
-                    def resources = traffExam.startExam(direction)
-                    direction.setResources(resources)
-                    assert traffExam.waitExam(direction).hasTraffic()
-                }
-            }
+            examQinQFlow = qinqFlow.traffExam(traffExam, 1000, 5)
+            verifyFlowHasBidirectionalTraffic(examQinQFlow, traffExam)
         }
 
         and: "Involved switches pass switch validation"
-        def involvedSwitchesFlow1 = pathHelper.getInvolvedSwitches(
-                pathHelper.convert(northbound.getFlowPath(qinqFlow.flowId))
-        )
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesFlow1*.getDpId()).isEmpty()
+        def involvedSwitchesFlow1 = qinqFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesFlow1).isEmpty()
 
         when: "Create a vlan flow on the same port as QinQ flow"
-        def vlanFlow = flowHelper.randomFlow(swPair).tap {
-            it.source.portNumber = qinqFlow.source.portNumber
-            it.source.vlanId = qinqFlow.source.vlanId + 1
-            it.destination.portNumber = qinqFlow.destination.portNumber
-            it.destination.vlanId = qinqFlow.destination.vlanId + 1
-        }
-        flowHelperV2.addFlow(vlanFlow)
+        def vlanFlow = flowFactory.getBuilder(swPair)
+                .withSourcePort(qinqFlow.source.portNumber)
+                .withSourceVlan(qinqFlow.source.vlanId + 1)
+                .withDestinationPort(qinqFlow.destination.portNumber)
+                .withDestinationVlan(qinqFlow.destination.vlanId + 1)
+                .build()
+        vlanFlow.create()
 
         then: "Both existing flows are valid"
-        [qinqFlow.flowId, vlanFlow.id].each {
-            northbound.validateFlow(it).each { assert it.asExpected }
+        [qinqFlow, vlanFlow].each {
+            it.validateAndCollectDiscrepancies().isEmpty()
         }
 
         and: "Involved switches pass switch validation"
-        def involvedSwitchesFlow2 = pathHelper.getInvolvedSwitches(pathHelper.convert(northbound.getFlowPath(vlanFlow.id)))
-        def involvedSwitchesforBothFlows = (involvedSwitchesFlow1 + involvedSwitchesFlow2).unique { it.dpId }
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesforBothFlows*.getDpId()).isEmpty()
+        def involvedSwitchesFlow2 = vlanFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+        def involvedSwitchesforBothFlows = (involvedSwitchesFlow1 + involvedSwitchesFlow2).unique()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesforBothFlows).isEmpty()
 
         and: "Both flows are pingable"
-        [qinqFlow.flowId, vlanFlow.id].each {
-            verifyAll(northbound.pingFlow(it, new PingInput())) {
+        [qinqFlow, vlanFlow].each {
+            verifyAll(it.ping()) {
                 it.forward.pingSuccess
                 it.reverse.pingSuccess
             }
@@ -667,25 +630,19 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "Both flows allow traffic"
         if(!trafficDisclaimer) {
-            def examSimpleFlow = new FlowTrafficExamBuilder(topology, traffExam)
-                    .buildBidirectionalExam(vlanFlow, 1000, 5)
-            withPool {
-                [examQinQFlow.forward, examQinQFlow.reverse, examSimpleFlow.forward, examSimpleFlow.reverse]
-                        .eachParallel { direction ->
-                            def resources = traffExam.startExam(direction)
-                            direction.setResources(resources)
-                            assert traffExam.waitExam(direction).hasTraffic()
-                        }
-            }
+            def examSimpleFlow = vlanFlow.traffExam(traffExam, 1000, 5)
+            verifyFlowHasBidirectionalTraffic(examQinQFlow, traffExam)
+            verifyFlowHasBidirectionalTraffic(examSimpleFlow, traffExam)
         }
 
         when: "Update the QinQ flow(outer/inner vlans)"
-        def updateResponse = flowHelperV2.updateFlow(qinqFlow.flowId, qinqFlow.tap {
-            qinqFlow.source.vlanId = vlanFlow.source.vlanId
-            qinqFlow.source.innerVlanId = vlanFlow.destination.vlanId
-            qinqFlow.destination.vlanId = vlanFlow.destination.vlanId
-            qinqFlow.destination.innerVlanId = vlanFlow.source.vlanId
-        })
+        def updateRequest = qinqFlow.tap {
+            it.source.vlanId = vlanFlow.source.vlanId
+            it.source.innerVlanId = vlanFlow.destination.vlanId
+            it.destination.vlanId = vlanFlow.destination.vlanId
+            it.destination.innerVlanId = vlanFlow.source.vlanId
+        }
+        def updateResponse = qinqFlow.update(updateRequest)
 
         then: "Update response contains correct info about innerVlanIds"
         with(updateResponse) {
@@ -696,7 +653,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is really updated"
-        with(northbound.getFlow(qinqFlow.flowId)) {
+        with(qinqFlow.retrieveDetails()) {
             it.source.vlanId == vlanFlow.source.vlanId
             it.source.innerVlanId == vlanFlow.destination.vlanId
             it.destination.vlanId == vlanFlow.destination.vlanId
@@ -704,31 +661,32 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         then: "Both existing flows are still valid and pingable"
-        [qinqFlow.flowId, vlanFlow.id].each {
-            northbound.validateFlow(it).each { assert it.asExpected }
+        [qinqFlow, vlanFlow].each {
+            it.validateAndCollectDiscrepancies().isEmpty()
         }
 
-        [qinqFlow.flowId, vlanFlow.id].each {
-            verifyAll(northbound.pingFlow(it, new PingInput())) {
+        [qinqFlow, vlanFlow].each {
+            verifyAll(it.ping()) {
                 it.forward.pingSuccess
                 it.reverse.pingSuccess
             }
         }
 
         when: "Delete the flows"
-        [qinqFlow.flowId, vlanFlow.id].each { flowHelperV2.deleteFlow(it) }
+        [qinqFlow, vlanFlow].each { it.delete() }
 
         then: "Flows rules are deleted"
-        involvedSwitchesforBothFlows.each { sw ->
+        involvedSwitchesforBothFlows.each { swId ->
+            def sw = topology.getActiveSwitches().find { it.dpId == swId }
             Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-                assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
+                assertThat(switchRulesFactory.get(swId).getRules()*.cookie.toArray()).as(swId.toString())
                         .containsExactlyInAnyOrder(*sw.defaultCookies)
             }
         }
 
         and: "Shared rule of flow is deleted"
         [swPair.src.dpId, swPair.dst.dpId].each { swId ->
-            assert northbound.getSwitchRules(swId).flowEntries.findAll {
+            assert switchRulesFactory.get(swId).getRules().findAll {
                 new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
             }.empty
         }
@@ -750,11 +708,11 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def swP = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
 
         and: "A QinQ flow on the given switches"
-        def flow = flowHelperV2.randomFlow(swP)
-        flow.maximumBandwidth = 100
-        flow.source.innerVlanId = 600
-        flow.destination.innerVlanId = 700
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(swP)
+                .withBandwidth(100)
+                .withSourceInnerVlan(600)
+                .withDestinationInnerVlan(700)
+                .build().create()
 
         when: "Delete all flow rules(ingress/egress/shared) on the src switch"
         switchHelper.deleteSwitchRules(swP.src.dpId, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
@@ -767,19 +725,12 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is valid"
-        northbound.validateFlow(flow.flowId).each { assert it.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "The flow allows traffic"
         def traffExam = traffExamProvider.get()
-        def examFlow = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flow), 100, 5)
-        withPool {
-            [examFlow.forward, examFlow.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
-            }
-        }
+        def examFlow = flow.traffExam(traffExam, 100, 5)
+        verifyFlowHasBidirectionalTraffic(examFlow, traffExam)
     }
 
     def "System doesn't rebuild flow path to more preferable path while updating innerVlanId"() {
@@ -790,52 +741,46 @@ class QinQFlowSpec extends HealthCheckSpecification {
                 .random()
 
         and: "A flow"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.source.innerVlanId = flow.source.vlanId
-        flow.destination.innerVlanId = flow.destination.vlanId
-        flowHelperV2.addFlow(flow)
+        def flowEntity = flowFactory.getBuilder(switchPair).build().tap {
+            it.source.innerVlanId = it.source.vlanId
+            it.destination.innerVlanId = it.destination.vlanId
+        }
+        def flow = flowEntity.create()
 
         when: "Make the current path less preferable than alternatives"
-        def currentPath = pathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def currentPath = flow.retrieveAllEntityPaths().getPathNodes()
         def alternativePaths = switchPair.paths.findAll { it != currentPath }
         alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
 
         and: "Update the flow: port number and vlanId on the src/dst endpoints"
-        def updatedFlow = flow.jacksonCopy().tap {
+        def updatedFlow = flow.deepCopy().tap {
             it.source.innerVlanId = flow.destination.vlanId
             it.destination.innerVlanId = flow.source.vlanId
         }
-        flowHelperV2.updateFlow(flow.flowId, updatedFlow)
+        flow.update(updatedFlow)
 
         then: "Flow is really updated"
-        with(northboundV2.getFlow(flow.flowId)) {
+        with(flow.retrieveDetails()) {
             it.source.innerVlanId == updatedFlow.source.innerVlanId
             it.destination.innerVlanId == updatedFlow.destination.innerVlanId
         }
 
         and: "Flow is not rerouted"
         Wrappers.timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
-            assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == currentPath
+            assert flow.retrieveAllEntityPaths().getPathNodes() == currentPath
         }
 
         and: "System allows traffic on the flow"
         def traffExam = traffExamProvider.get()
-        def examFlow = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
-                flowHelperV2.toV1(updatedFlow), 100, 5
-        )
-        withPool {
-            [examFlow.forward, examFlow.reverse].eachParallel { direction ->
-                def resources = traffExam.startExam(direction)
-                direction.setResources(resources)
-                assert traffExam.waitExam(direction).hasTraffic()
-            }
-        }
+        def examFlow = updatedFlow.traffExam(traffExam, 100, 5)
+        verifyFlowHasBidirectionalTraffic(examFlow, traffExam)
 
         and: "Flow is valid"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "All involved switches pass switch validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(currentPath*.switchId).isEmpty()
+        def involvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
     }
 
     @Memoized
@@ -867,5 +812,15 @@ class QinQFlowSpec extends HealthCheckSpecification {
             unpickedSuitableSwitches = unpickedSuitableSwitches - pair.src.hwSwString - pair.dst.hwSwString
         }
         return result
+    }
+
+    def verifyFlowHasBidirectionalTraffic(FlowBidirectionalExam examFlow, TraffExamService traffExam) {
+        withPool {
+            [examFlow.forward, examFlow.reverse].eachParallel { direction ->
+                def resources = traffExam.startExam(direction)
+                direction.setResources(resources)
+                assert traffExam.waitExam(direction).hasTraffic()
+            }
+        }
     }
 }

@@ -5,7 +5,6 @@ import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.CLEAN_LINK_DELAY
 import static org.openkilda.functionaltests.model.stats.Direction.FORWARD
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
 import static org.openkilda.functionaltests.model.stats.Origin.FLOW_MONITORING
@@ -18,9 +17,9 @@ import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -67,10 +66,10 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
         mainIsls = pathHelper.getInvolvedIsls(mainPath)
         alternativeIsls = pathHelper.getInvolvedIsls(alternativePath)
         //deactivate other paths for more clear experiment
-        def isls = mainIsls + alternativeIsls
-        islsToBreak = switchPair.paths.findAll { !paths.contains(it) }
-                .collect { pathHelper.getInvolvedIsls(it).find { !isls.contains(it) && !isls.contains(it.reversed) } }
-                .unique { [it, it.reversed].sort() }
+        def isls = mainIsls.collectMany { [it, it.reversed]} + alternativeIsls.collectMany { [it, it.reversed]}
+        islsToBreak = switchPair.paths.findAll{ !(it.containsAll(mainPath) || it.containsAll(alternativePath))}
+                .collectMany{ pathHelper.getInvolvedIsls(it)}.unique()
+                .collectMany{ [it, it.reversed] }.findAll { !isls.contains(it)}
         islHelper.breakIsls(islsToBreak, CleanupAfter.CLASS)
     }
 
@@ -133,8 +132,9 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
 
         and: "flowLatencyMonitoringReactions is disabled in featureToggle"
         and: "Disable s42 in featureToggle for generating flow-monitoring stats"
-        featureToggles.flowLatencyMonitoringReactions(false)
-        featureToggles.server42FlowRtt(false)
+        featureToggles.toggleMultipleFeatures(FeatureTogglesDto.builder()
+                .flowLatencyMonitoringReactions(false)
+                .server42FlowRtt(false).build())
 
         and : "A flow with max_latency 210"
         def flow = flowFactory.getBuilder(switchPair)

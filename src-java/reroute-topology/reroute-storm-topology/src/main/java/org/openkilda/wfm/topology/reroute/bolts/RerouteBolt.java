@@ -21,6 +21,7 @@ import org.openkilda.messaging.Message;
 import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowPathSwapRequest;
+import org.openkilda.messaging.command.flow.FlowRerouteFlushRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.haflow.HaFlowPathSwapRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
@@ -59,6 +60,7 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
     public static final String BOLT_ID = "reroute-bolt";
     public static final String STREAM_REROUTE_REQUEST_ID = "reroute-request-stream";
     public static final String STREAM_MANUAL_REROUTE_REQUEST_ID = "manual-reroute-request-stream";
+    public static final String STREAM_MANUAL_REROUTE_FLUSH_REQUEST_ID = "manual-reroute-flush-request-stream";
     public static final String STREAM_TO_METRICS_BOLT = "to-metrics-bolt-stream";
 
     public static final String STREAM_OPERATION_QUEUE_ID = "operation-queue";
@@ -110,6 +112,8 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
             rerouteService.processRerouteRequest(this, correlationId, (YFlowRerouteRequest) commandData);
         } else if (commandData instanceof HaFlowRerouteRequest) {
             rerouteService.processRerouteRequest(this, correlationId, (HaFlowRerouteRequest) commandData);
+        } else if (commandData instanceof FlowRerouteFlushRequest) {
+            rerouteService.processRerouteFlushRequest(this, correlationId, (FlowRerouteFlushRequest) commandData);
         } else {
             unhandledInput(getCurrentTuple());
         }
@@ -168,6 +172,14 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
         log.info("Manual reroute command message sent for flow {}", flowId);
     }
 
+    @Override
+    public void emitManualRerouteFlushCommand(String flowId, FlowThrottlingData flowThrottlingData) {
+        emitWithContext(STREAM_MANUAL_REROUTE_FLUSH_REQUEST_ID,
+                getCurrentTuple(), new Values(flowId, flowThrottlingData));
+
+        log.info("Manual reroute flush command message sent for flow {}. Reason: {}", flowId, flowThrottlingData);
+    }
+
     /**
      * Emit swap command for consumer.
      *
@@ -224,6 +236,8 @@ public class RerouteBolt extends AbstractBolt implements MessageSender {
         declarer.declareStream(STREAM_REROUTE_REQUEST_ID,
                 new Fields(FLOW_ID_FIELD, THROTTLING_DATA_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(STREAM_MANUAL_REROUTE_REQUEST_ID,
+                new Fields(FLOW_ID_FIELD, THROTTLING_DATA_FIELD, FIELD_ID_CONTEXT));
+        declarer.declareStream(STREAM_MANUAL_REROUTE_FLUSH_REQUEST_ID,
                 new Fields(FLOW_ID_FIELD, THROTTLING_DATA_FIELD, FIELD_ID_CONTEXT));
         declarer.declareStream(STREAM_OPERATION_QUEUE_ID, FIELDS_OPERATION_QUEUE);
         declarer.declareStream(ZkStreams.ZK.toString(), new Fields(ZooKeeperBolt.FIELD_ID_STATE,

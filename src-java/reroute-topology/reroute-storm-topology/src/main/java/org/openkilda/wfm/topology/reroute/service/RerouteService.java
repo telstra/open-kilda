@@ -18,6 +18,7 @@ package org.openkilda.wfm.topology.reroute.service;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toSet;
 
+import org.openkilda.messaging.command.flow.FlowRerouteFlushRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
 import org.openkilda.messaging.command.reroute.RerouteAffectedFlows;
@@ -722,6 +723,21 @@ public class RerouteService {
         } else {
             sender.emitRerouteCommand(request.getHaFlowId(), flowThrottlingData);
         }
+    }
+
+    /**
+     * Process manual reroute request.
+     */
+    public void processRerouteFlushRequest(MessageSender sender, String correlationId,
+                                           FlowRerouteFlushRequest request) {
+        Optional<Flow> flow = flowRepository.findById(request.getFlowId());
+        FlowThrottlingData flowThrottlingData = getFlowThrottlingDataBuilder(flow.orElse(null))
+                .correlationId(correlationId)
+                .reason(request.getReason())
+                .flowType(request.getFlowType())
+                .affectedIsl(new HashSet<>())
+                .build();
+        sender.emitManualRerouteFlushCommand(request.getFlowId(), flowThrottlingData);
     }
 
     /**

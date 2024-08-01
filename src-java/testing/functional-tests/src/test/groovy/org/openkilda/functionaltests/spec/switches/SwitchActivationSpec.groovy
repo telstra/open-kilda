@@ -1,27 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import com.google.common.collect.Sets
-import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerRecord
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.model.MeterId
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.rulemanager.FlowSpeakerData
-import org.openkilda.rulemanager.Instructions
-import org.openkilda.rulemanager.MeterFlag
-import org.openkilda.rulemanager.MeterSpeakerData
-import org.openkilda.rulemanager.OfTable
-import org.openkilda.rulemanager.OfVersion
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Qualifier
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.Shared
-
 import static org.openkilda.functionaltests.extension.tags.Tag.LOCKKEEPER
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
@@ -37,21 +15,49 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 import static org.openkilda.testing.tools.KafkaUtils.buildCookie
 import static org.openkilda.testing.tools.KafkaUtils.buildMessage
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.model.cleanup.CleanupManager
+import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.model.MeterId
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.rulemanager.FlowSpeakerData
+import org.openkilda.rulemanager.Instructions
+import org.openkilda.rulemanager.MeterFlag
+import org.openkilda.rulemanager.MeterSpeakerData
+import org.openkilda.rulemanager.OfTable
+import org.openkilda.rulemanager.OfVersion
+
+import com.google.common.collect.Sets
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.annotation.Value
+import spock.lang.Shared
+
+
 class SwitchActivationSpec extends HealthCheckSpecification {
     @Value("#{kafkaTopicsConfig.getSpeakerSwitchManagerTopic()}")
     String speakerTopic
     @Autowired
     @Qualifier("kafkaProducerProperties")
     Properties producerProps
-    @Autowired @Shared
+    @Autowired
+    @Shared
     CleanupManager cleanupManager
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER, SWITCH_RECOVER_ON_FAIL])
     def "Missing flow rules/meters are installed on a new switch before connecting to the controller"() {
         given: "A switch with missing flow rules/meters and not connected to the controller"
         def switchPair = switchPairs.all().neighbouring().random()
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(switchPair)
 
         def originalMeterIds = northbound.getAllMeters(switchPair.src.dpId).meterEntries*.meterId
         assert originalMeterIds.size() == 1 + switchPair.src.defaultMeters.size()

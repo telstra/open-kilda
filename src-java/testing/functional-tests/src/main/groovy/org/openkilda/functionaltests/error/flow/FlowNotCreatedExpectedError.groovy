@@ -7,10 +7,9 @@ import java.util.regex.Pattern
 
 class FlowNotCreatedExpectedError extends AbstractExpectedError{
     final static HttpStatus statusCode = HttpStatus.BAD_REQUEST
-    final static String message = "Could not create flow"
 
     FlowNotCreatedExpectedError(Pattern descriptionPattern) {
-        super(statusCode, message, descriptionPattern)
+        super(statusCode, "Could not create flow", descriptionPattern)
     }
 
     FlowNotCreatedExpectedError(String message, Pattern descriptionPattern) {

@@ -1,25 +1,30 @@
 package org.openkilda.functionaltests.spec.flows
 
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.messaging.payload.flow.FlowState.DEGRADED
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithMissingPathExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
+import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.StatusInfo
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
 
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.messaging.payload.flow.FlowState.DEGRADED
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @See(["https://github.com/telstra/open-kilda/blob/develop/docs/design/pce/design.md",
         "https://github.com/telstra/open-kilda/blob/develop/docs/design/pce/max-latency-issue/README.md"])
@@ -50,6 +55,10 @@ class MaxLatencySpec extends HealthCheckSpecification {
     List<Isl> mainIsls, alternativeIsls, islsToBreak
     @Shared
     SwitchPair switchPair
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+
 
     def setupSpec() {
         //setup: Two active switches with two diverse paths
@@ -60,10 +69,10 @@ class MaxLatencySpec extends HealthCheckSpecification {
         mainIsls = pathHelper.getInvolvedIsls(mainPath)
         alternativeIsls = pathHelper.getInvolvedIsls(alternativePath)
         //deactivate other paths for more clear experiment
-        def isls = mainIsls + alternativeIsls
-        islsToBreak = switchPair.paths.findAll { !paths.contains(it) }
-                .collect { pathHelper.getInvolvedIsls(it).find { !isls.contains(it) && !isls.contains(it.reversed) } }
-                .unique { [it, it.reversed].sort() }
+        def isls = mainIsls.collectMany { [it, it.reversed]} + alternativeIsls.collectMany { [it, it.reversed]}
+        islsToBreak = switchPair.paths.findAll{ !(it.containsAll(mainPath) || it.containsAll(alternativePath))}
+                .collectMany{ pathHelper.getInvolvedIsls(it)}.unique()
+                .collectMany{ [it, it.reversed] }.findAll { !isls.contains(it)}
         islHelper.breakIsls(islsToBreak, CleanupAfter.CLASS)
     }
 
@@ -72,18 +81,17 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(10, 15)
 
         when: "Create a flow with protected path, max_latency 16 and max_latency_tier_2 18"
-        def flow = flowHelperV2.randomFlow(switchPair).tap {
-            allocateProtectedPath = true
-            maxLatency = 16
-            maxLatencyTier2 = 18
-            pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
-        }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+                .withProtectedPath(true)
+                .withMaxLatency(16)
+                .withMaxLatencyTier2(18)
+                .withPathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
+                .build().create()
 
         then: "Flow is created, main path is the 15 latency path, protected is 10 latency"
-        def path = northbound.getFlowPath(flow.flowId)
-        pathHelper.convert(path) == alternativePath
-        pathHelper.convert(path.protectedPath) == mainPath
+        def flowPath = flow.retrieveAllEntityPaths()
+        flowPath.getPathNodes(Direction.FORWARD, false) == alternativePath
+        flowPath.getPathNodes(Direction.FORWARD, true) == mainPath
     }
 
     @Tags([LOW_PRIORITY])
@@ -92,12 +100,11 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(10, 9)
 
         when: "Create a flow with protected path and max_latency #testMaxLatency"
-        def flow = flowHelperV2.randomFlow(switchPair).tap {
-            allocateProtectedPath = true
-            maxLatency = testMaxLatency
-            pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
-        }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+                .withProtectedPath(true)
+                .withMaxLatency(testMaxLatency)
+                .withPathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
+                .build().create()
 
         then: "Flow is not created, error returned describing that no paths found"
         def e = thrown(HttpClientErrorException)
@@ -114,19 +121,18 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(10, 15)
 
         when: "Create a flow with protected path, maxLatency 11 and maxLatencyTier2 16"
-        def flow = flowHelperV2.randomFlow(switchPair).tap {
-            allocateProtectedPath = true
-            maxLatency = 11
-            maxLatencyTier2 = 16  // maxLatency < pathLatency < maxLatencyTier2
-            pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
-        }
-        flowHelperV2.addFlow(flow, DEGRADED)
+        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+                .withProtectedPath(true)
+                .withMaxLatency(11)
+                .withMaxLatencyTier2(16) // maxLatency < pathLatency < maxLatencyTier2
+                .withPathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
+                .build().create(DEGRADED)
 
         then: "Flow is created, main path is the 10 latency path, protected is 15 latency"
         and: "Flow goes to DEGRADED state"
-        def path = northbound.getFlowPath(flow.flowId)
-        pathHelper.convert(path) == mainPath
-        pathHelper.convert(path.protectedPath) == alternativePath
+        def flowPath = flow.retrieveAllEntityPaths()
+        flowPath.getPathNodes(Direction.FORWARD, false) == mainPath
+        flowPath.getPathNodes(Direction.FORWARD, true) == alternativePath
     }
 
     @Tags([LOW_PRIORITY])
@@ -135,16 +141,15 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(11, 15)
 
         when: "Create a flow with max_latency 11 and max_latency_tier2 16"
-        def flow = flowHelperV2.randomFlow(switchPair).tap {
-            allocateProtectedPath = false
-            maxLatency = 11
-            maxLatencyTier2 = 16
-            pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
-        }
-        flowHelperV2.addFlow(flow, DEGRADED)
+        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+                .withProtectedPath(false)
+                .withMaxLatency(11)
+                .withMaxLatencyTier2(16)
+                .withPathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
+                .build().create(DEGRADED)
 
         then: "Flow is created, flow path is the 15 latency path"
-        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == alternativePath
+        flow.retrieveAllEntityPaths().getPathNodes() == alternativePath
     }
 
     @Tags([LOW_PRIORITY])
@@ -153,31 +158,31 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(10, 15)
 
         when: "Create a flow with max_latency 11 and max_latency_tier2 16"
-        def flow = flowHelperV2.randomFlow(switchPair).tap {
-            allocateProtectedPath = false
-            maxLatency = 11
-            maxLatencyTier2 = 16
-            pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
-        }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+                .withProtectedPath(false)
+                .withMaxLatency(11)
+                .withMaxLatencyTier2(16)
+                .withPathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
+                .build().create()
         //flow path is the 10 latency path
-        assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
+        assert flow.retrieveAllEntityPaths().getPathNodes() == mainPath
 
         and: "Update the flow(maxLatency: 10)"
         def newMaxLatency = 10
-        northboundV2.updateFlow(flow.flowId, flow.tap { maxLatency = newMaxLatency })
+        def flowWithNewMaxLatency = flow.deepCopy().tap { it.maxLatency = 10}
+        flow.update(flowWithNewMaxLatency, DEGRADED)
 
         then: "Flow is updated and goes to the DEGRADED state"
         wait(WAIT_OFFSET) {
-            def flowInfo = northboundV2.getFlow(flow.flowId)
+            def flowInfo = flow.retrieveDetails()
             assert flowInfo.maxLatency == newMaxLatency
-            assert flowInfo.status == DEGRADED.toString()
+            assert flowInfo.status == DEGRADED
             assert flowInfo.statusInfo == StatusInfo.BACK_UP_STRATEGY_USED
             /*[0..1] - can be more than two statuses due to running this test in a parallel mode.
             for example: reroute can be triggered by blinking/activating any isl (not involved in flow path)*/
             assert northboundV2.getFlowHistoryStatuses(flow.flowId).historyStatuses*.statusBecome[0..1] == ["UP", "DEGRADED"]
         }
-        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == alternativePath
+        assert flow.retrieveAllEntityPaths().getPathNodes() == alternativePath
     }
 
     def "Able to reroute a MAX_LATENCY flow if maxLatencyTier2 > pathLatency > maxLatency"() {
@@ -185,14 +190,13 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(10, 15)
 
         when: "Create a flow with max_latency 11 and max_latency_tier2 16"
-        def flow = flowHelperV2.randomFlow(switchPair).tap {
-            allocateProtectedPath = false
-            maxLatency = 11
-            maxLatencyTier2 = 16
-            pathComputationStrategy = PathComputationStrategy.MAX_LATENCY.toString()
-        }
-        flowHelperV2.addFlow(flow)
-        assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
+        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+                .withProtectedPath(false)
+                .withMaxLatency(11)
+                .withMaxLatencyTier2(16)
+                .withPathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
+                .build().create()
+        assert flow.retrieveAllEntityPaths().getPathNodes() == mainPath
 
         and: "Init auto reroute (bring port down on the src switch)"
         setLatencyForPaths(10, 15)
@@ -201,15 +205,16 @@ class MaxLatencySpec extends HealthCheckSpecification {
 
         then: "Flow is rerouted and goes to the DEGRADED state"
         wait(rerouteDelay + WAIT_OFFSET) {
-            def flowHistory = flowHelper.getLatestHistoryEntry(flow.flowId)
-            flowHistory.payload.last().action == REROUTE_SUCCESS
+            def flowLastHistoryEntry = flow.retrieveFlowHistory()
+                    .getEntriesByType(FlowActionType.REROUTE).last()
+            assert flowLastHistoryEntry.payload.last().action == "Flow reroute completed"
             // https://github.com/telstra/open-kilda/issues/4049
-            flowHistory.payload.last().details == "Flow reroute completed with status DEGRADED and error: The primary path status is DEGRADED"
-            def flowInfo = northboundV2.getFlow(flow.flowId)
-            assert flowInfo.status == DEGRADED.toString()
+            flowLastHistoryEntry.payload.last().details == "Flow reroute completed with status DEGRADED and error: The primary path status is DEGRADED"
+            def flowInfo = flow.retrieveDetails()
+            assert flowInfo.status == DEGRADED
             assert flowInfo.statusInfo == StatusInfo.BACK_UP_STRATEGY_USED
         }
-        pathHelper.convert(northbound.getFlowPath(flow.flowId)) == alternativePath
+        flow.retrieveAllEntityPaths().getPathNodes() == alternativePath
     }
 
     def "Able to create DEGRADED flow with LATENCY strategy if max_latency_tier_2 > flowPath > max_latency"() {
@@ -217,18 +222,16 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(11, 15)
 
         when: "Create a flow, maxLatency 10 and maxLatencyTier2 12"
-        def flow = flowHelperV2.randomFlow(switchPair).tap {
-            allocateProtectedPath = false
-            maxLatency = 10
-            maxLatencyTier2 = 12
-            pathComputationStrategy = PathComputationStrategy.LATENCY.toString()
-        }
-        flowHelperV2.addFlow(flow, DEGRADED)
+        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+                .withProtectedPath(false)
+                .withMaxLatency(10)
+                .withMaxLatencyTier2(12)
+                .withPathComputationStrategy(PathComputationStrategy.LATENCY)
+                .build().create(DEGRADED)
 
         then: "Flow is created in DEGRADED state because flowPath doesn't satisfy max_latency value \
 but satisfies max_latency_tier2"
-        def path = northbound.getFlowPath(flow.flowId)
-        pathHelper.convert(path) == mainPath
+        flow.retrieveAllEntityPaths().getPathNodes() == mainPath
     }
 
     @Tags([LOW_PRIORITY])
@@ -237,17 +240,15 @@ but satisfies max_latency_tier2"
         setLatencyForPaths(9, 15)
 
         when: "Create a flow, maxLatency 9 and maxLatencyTier2 12"
-        def flow = flowHelperV2.randomFlow(switchPair).tap {
-            allocateProtectedPath = false
-            maxLatency = 9
-            maxLatencyTier2 = 12
-            pathComputationStrategy = PathComputationStrategy.LATENCY.toString()
-        }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+                .withProtectedPath(false)
+                .withMaxLatency(9)
+                .withMaxLatencyTier2(12)
+                .withPathComputationStrategy(PathComputationStrategy.LATENCY)
+                .build().create()
 
         then: "Flow is created in UP"
-        def path = northbound.getFlowPath(flow.flowId)
-        pathHelper.convert(path) == mainPath
+        flow.retrieveAllEntityPaths().getPathNodes() == mainPath
     }
 
     @Tags([LOW_PRIORITY])
@@ -256,13 +257,12 @@ but satisfies max_latency_tier2"
         setLatencyForPaths(12, 13)
 
         when: "Create a flow, maxLatency 10 and maxLatencyTier2 11"
-        def flow = flowHelperV2.randomFlow(switchPair).tap {
-            allocateProtectedPath = false
-            maxLatency = 10
-            maxLatencyTier2 = 11
-            pathComputationStrategy = PathComputationStrategy.LATENCY.toString()
-        }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+                .withProtectedPath(false)
+                .withMaxLatency(10)
+                .withMaxLatencyTier2(11)
+                .withPathComputationStrategy(PathComputationStrategy.LATENCY)
+                .build().create()
 
         then: "Flow is not created, human readable error is returned"
         def e = thrown(HttpClientErrorException)
@@ -275,14 +275,14 @@ but satisfies max_latency_tier2"
         setLatencyForPaths(11, 15)
 
         and: "A flow with maxLatency 11 and maxLatencyTier2 14 on the path with 11 latency"
-        def flow = flowHelperV2.randomFlow(switchPair).tap {
-            allocateProtectedPath = false
-            maxLatency = 11
-            maxLatencyTier2 = 14
-            pathComputationStrategy = PathComputationStrategy.LATENCY.toString()
-        }
-        flowHelperV2.addFlow(flow)
-        assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
+        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+                .withProtectedPath(false)
+                .withMaxLatency(11)
+                .withMaxLatencyTier2(14)
+                .withPathComputationStrategy(PathComputationStrategy.LATENCY)
+                .build().create()
+
+        assert flow.retrieveAllEntityPaths().getPathNodes() == mainPath
 
         when: "Break the flow path to init autoReroute"
         def islToBreak = pathHelper.getInvolvedIsls(mainPath).first()
@@ -290,12 +290,12 @@ but satisfies max_latency_tier2"
 
         then: "Flow is not rerouted and moved to the DOWN state"
         wait(WAIT_OFFSET) {
-            with(northboundV2.getFlow(flow.flowId)) {
-                it.status == FlowState.DOWN.toString()
+            with(flow.retrieveDetails()) {
+                it.status == FlowState.DOWN
                 it.statusInfo.contains("No path found.")
             }
         }
-        assert pathHelper.convert(northbound.getFlowPath(flow.flowId)) == mainPath
+        assert flow.retrieveAllEntityPaths().getPathNodes() == mainPath
     }
 
     def setLatencyForPaths(int mainPathLatency, int alternativePathLatency) {

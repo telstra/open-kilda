@@ -41,17 +41,18 @@ class FlowBuilder {
 
         this.flowExtended.source = FlowEndpointV2.builder()
                 .switchId(srcSwitch.dpId)
-                .portNumber(getRandomAvailablePort(srcSwitch, topologyDefinition, useTraffgenPorts, busyEndpoints*.port))
+                .portNumber(getRandomAvailablePort(srcSwitch, topologyDefinition, useTraffgenPorts, busyEndpoints.findAll { it.sw == srcSwitch.dpId }.port))
                 .vlanId(randomVlan(busyEndpoints*.vlan))
                 .detectConnectedDevices(new DetectConnectedDevicesV2(false, false)).build()
 
         if (srcSwitch.dpId == dstSwitch.dpId) {
+            // For a SingleSwitch flow, selected switch should have >=2 traffGens
             busyEndpoints << new SwitchPortVlan(flowExtended.source.switchId, flowExtended.source.portNumber, flowExtended.source.vlanId)
         }
 
         this.flowExtended.destination = FlowEndpointV2.builder()
                 .switchId(dstSwitch.dpId)
-                .portNumber(getRandomAvailablePort(dstSwitch, topologyDefinition, useTraffgenPorts, busyEndpoints*.port))
+                .portNumber(getRandomAvailablePort(dstSwitch, topologyDefinition, useTraffgenPorts, busyEndpoints.findAll { it.sw == dstSwitch.dpId }.port))
                 .vlanId(randomVlan(busyEndpoints*.vlan))
                 .detectConnectedDevices(new DetectConnectedDevicesV2(false, false)).build()
 

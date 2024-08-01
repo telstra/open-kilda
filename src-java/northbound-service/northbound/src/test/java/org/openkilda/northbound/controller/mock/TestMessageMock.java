@@ -27,6 +27,7 @@ import org.openkilda.messaging.command.CommandData;
 import org.openkilda.messaging.command.CommandMessage;
 import org.openkilda.messaging.command.flow.FlowDeleteRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
+import org.openkilda.messaging.command.flow.FlowRerouteFlushRequest;
 import org.openkilda.messaging.command.flow.SwapFlowEndpointRequest;
 import org.openkilda.messaging.command.switches.SwitchRulesDeleteRequest;
 import org.openkilda.messaging.error.ErrorData;
@@ -47,6 +48,7 @@ import org.openkilda.messaging.nbtopology.request.GetFlowPathRequest;
 import org.openkilda.messaging.nbtopology.response.GetFlowPathResponse;
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.openkilda.messaging.payload.flow.FlowFlushReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
@@ -116,6 +118,9 @@ public class TestMessageMock implements MessagingChannel {
             .status(FlowState.UP.getState())
             .build();
 
+    public static final FlowFlushReroutePayload FLOW_FLUSH_RESPONSE_PAYLOAD =
+            new FlowFlushReroutePayload(FLOW_ID, true);
+
     public static final SwapFlowPayload firstSwapFlow = SwapFlowPayload.builder()
             .flowId(FLOW_ID)
             .source(FLOW_PAYLOAD_ENDPOINT)
@@ -168,6 +173,9 @@ public class TestMessageMock implements MessagingChannel {
             ErrorType.DATA_INVALID.toString(), "flow_id from body and from path are different",
             format("Body flow_id: %s, path flow_id: %s", FLOW_ID, FLOW_ID_FROM_PATH));
 
+    private static final FlowResponse flowFlushResponse = new FlowResponse(
+            FlowDto.builder().flowId(FLOW_ID).state(FlowState.IN_PROGRESS).build());
+
     /**
      * Chooses response by request.
      *
@@ -186,6 +194,8 @@ public class TestMessageMock implements MessagingChannel {
             result = completedFuture(switchRulesResponse);
         } else if (data instanceof SwapFlowEndpointRequest) {
             result = completedFuture(bulkFlowResponse);
+        } else if (data instanceof FlowRerouteFlushRequest) {
+            result = completedFuture(flowFlushResponse);
         } else {
             return null;
         }

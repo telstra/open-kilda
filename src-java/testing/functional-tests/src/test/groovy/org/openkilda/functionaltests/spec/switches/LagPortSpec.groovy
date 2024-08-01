@@ -1,5 +1,14 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static groovyx.gpars.GParsPool.withPool
+import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.model.MeterId.LACP_REPLY_METER_ID
+import static org.openkilda.model.cookie.Cookie.DROP_SLOW_PROTOCOLS_LOOP_COOKIE
+import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.LagNotCreatedExpectedError
 import org.openkilda.functionaltests.error.LagNotDeletedExpectedError
@@ -7,21 +16,17 @@ import org.openkilda.functionaltests.error.LagNotDeletedWithNotFoundExpectedErro
 import org.openkilda.functionaltests.error.LagNotUpdatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.grpc.speaker.model.LogicalPortDto
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.model.grpc.LogicalPortType
-import org.openkilda.model.FlowPathDirection
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.model.cookie.PortColourCookie
-import org.openkilda.northbound.dto.v1.flows.PingInput
-import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
-import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.grpc.GrpcService
 import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
+
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
@@ -30,13 +35,6 @@ import spock.lang.Shared
 
 import javax.inject.Provider
 
-import static groovyx.gpars.GParsPool.withPool
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-import static org.openkilda.model.MeterId.LACP_REPLY_METER_ID
-import static org.openkilda.model.cookie.Cookie.DROP_SLOW_PROTOCOLS_LOOP_COOKIE
-import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
-import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 
 @See("https://github.com/telstra/open-kilda/blob/develop/docs/design/LAG-for-ports/README.md")
 @Narrative("Verify that flow can be created on a LAG port.")
@@ -48,11 +46,12 @@ class LagPortSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     GrpcService grpc
-
     @Autowired
     @Shared
     Provider<TraffExamService> traffExamProvider
-
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
     @Shared
     Integer lagOffset = 2000
 
@@ -152,20 +151,21 @@ class LagPortSpec extends HealthCheckSpecification {
         def lagPort = switchHelper.createLagLogicalPort(switchPair.src.dpId, portsArray as Set).logicalPortNumber
 
         when: "Create a flow"
-        def flow = flowHelperV2.randomFlow(switchPair, true).tap { source.portNumber = lagPort }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair)
+                .withSourcePort(lagPort)
+                .build().create()
 
         then: "Flow is valid and pingable"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        verifyAll(northbound.pingFlow(flow.flowId, new PingInput())) {
+        flow.validateAndCollectDiscrepancies().isEmpty()
+        verifyAll(flow.ping()) {
             it.forward.pingSuccess
             it.reverse.pingSuccess
         }
 
         and: "System allows traffic on the flow"
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flow.tap { source.portNumber = traffgenSrcSwPort }), 1000, 3)
+        //the physical port with traffGen used for LAG port creation should be specified
+        def exam = flow.deepCopy().tap{ source.portNumber = traffgenSrcSwPort }.traffExam(traffExam, 1000, 3)
         withPool {
             [exam.forward, exam.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
@@ -182,23 +182,21 @@ class LagPortSpec extends HealthCheckSpecification {
                 .withAtLeastNTraffgensOnSource(2).random()
         def traffgenSrcSwPort = swPair.src.traffGens[0].switchPort
         def traffgenDstSwPort = swPair.src.traffGens[1].switchPort
-        def payload = new LagPortRequest(portNumbers: [traffgenSrcSwPort])
         def lagPort = switchHelper.createLagLogicalPort(swPair.src.dpId, [traffgenSrcSwPort] as Set).logicalPortNumber
 
         when: "Create a flow"
-        def flow = flowHelperV2.singleSwitchFlow(swPair).tap {
-            source.portNumber = lagPort
-            destination.portNumber = traffgenDstSwPort
-        }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(swPair)
+                .withSourcePort(lagPort)
+                .withDestinationPort(traffgenDstSwPort)
+                .build().create()
 
         then: "Flow is valid"
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "System allows traffic on the flow"
         def traffExam = traffExamProvider.get()
-        def exam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flow.tap { source.portNumber = traffgenSrcSwPort }), 1000, 3)
+        //the physical port with traffGen used for LAG port creation should be specified
+        def exam = flow.deepCopy().tap { source.portNumber = traffgenSrcSwPort }.traffExam(traffExam, 1000, 3)
         withPool {
             [exam.forward, exam.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
@@ -235,15 +233,13 @@ class LagPortSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().random()
         def portsArray = topology.getAllowedPortsForSwitch(switchPair.src)[-2, -1]
         def lagPort = switchHelper.createLagLogicalPort(switchPair.src.dpId, portsArray as Set).logicalPortNumber
-        def flow = flowHelperV2.randomFlow(switchPair).tap { source.portNumber = lagPort }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair).withSourcePort(lagPort).build().create()
 
         when: "When delete LAG port"
         northboundV2.deleteLagLogicalPort(switchPair.src.dpId, lagPort)
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        def errorDetails = exc.responseBodyAsString.to(MessageError)
         new LagNotDeletedExpectedError(~/Couldn\'t delete LAG port \'$lagPort\' from switch $switchPair.src.dpId \
 because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
     }
@@ -251,8 +247,7 @@ because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
     def "Unable to create LAG on a port with flow on it"() {
         given: "Active switch with flow on it"
         def sw = topology.activeSwitches.first()
-        def flow = flowHelperV2.singleSwitchFlow(sw)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(sw, sw)
 
         when: "Create a LAG port with flow's port"
         switchHelper.createLagLogicalPort(sw.dpId, [flow.source.portNumber] as Set)
@@ -267,19 +262,18 @@ because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
         given: "An active switch with LAG port on it"
         def sw = topology.activeSwitches.first()
         def portsArray = topology.getAllowedPortsForSwitch(sw)[-2, -1]
-        def payload = new LagPortRequest(portNumbers: portsArray)
+        def flowSourcePort = portsArray[0]
         def lagPort = switchHelper.createLagLogicalPort(sw.dpId, portsArray as Set).logicalPortNumber
 
         when: "Create flow on ports which are in inside LAG group"
-        def flow = flowHelperV2.singleSwitchFlow(sw).tap {
-            source.portNumber = portsArray[0]
-            destination.portNumber = portsArray[1]
-        }
-        flowHelperV2.addFlow(flow)
+        flowFactory.getBuilder(sw, sw)
+                .withSourcePort(flowSourcePort)
+                .withDestinationPort(portsArray[1])
+                .build().sendCreateRequest()
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        new FlowNotCreatedExpectedError("Could not create flow", ~/Port $flow.source.portNumber \
+        new FlowNotCreatedExpectedError(~/Port $flowSourcePort \
 on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
 
     }
@@ -287,19 +281,9 @@ on switch $sw.dpId is used as part of LAG port $lagPort/).matches(exc)
     def "Unable to create a LAG port with port which is used as mirrorPort"() {
         given: "A flow with mirrorPoint"
         def swP = switchPairs.all().neighbouring().random()
-        def flow = flowHelperV2.randomFlow(swP, false)
-        flowHelperV2.addFlow(flow)
-
+        def flow = flowFactory.getRandom(swP, false)
         def mirrorPort = topology.getAllowedPortsForSwitch(swP.src).last()
-        def mirrorEndpoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(FlowPathDirection.FORWARD.toString().toLowerCase())
-                .mirrorPointSwitchId(swP.src.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(swP.src.dpId).portNumber(mirrorPort)
-                        .vlanId(flowHelperV2.randomVlan())
-                        .build())
-                .build()
-        flowHelperV2.createMirrorPoint(flow.flowId, mirrorEndpoint)
+        def mirrorEndpoint = flow.createMirrorPoint(swP.src.dpId, mirrorPort, randomVlan())
 
         when: "Create a LAG port with port which is used as mirrorPort"
         switchHelper.createLagLogicalPort(swP.src.dpId, [mirrorPort] as Set)
@@ -864,11 +848,10 @@ occupied by other LAG group\(s\)./).matches(exc)
         assert testPorts.size > 1
         def maximumBandwidth = testPorts.sum { northbound.getPort(switchPair.src.dpId, it).currentSpeed }
         def lagPort = switchHelper.createLagLogicalPort(switchPair.src.dpId, testPorts as Set).logicalPortNumber
-        def flow = flowHelperV2.randomFlow(switchPair).tap {
-            source.portNumber = lagPort
-            it.maximumBandwidth = maximumBandwidth
-        }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair)
+                .withSourcePort(lagPort)
+                .withBandwidth(maximumBandwidth as Long)
+                .build().create()
 
         when: "Decrease LAG port bandwidth by deleting one port to make it lower than connected flows bandwidth sum"
         def updatePayload = new LagPortRequest(portNumbers: [testPorts.get(0)])

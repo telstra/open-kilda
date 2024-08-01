@@ -1,18 +1,25 @@
 package org.openkilda.functionaltests.spec.flows
 
-import groovy.util.logging.Slf4j
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.messaging.payload.flow.FlowState.UP
+import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
+import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.error.MessageError
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.FlowValidationDto
+
+import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
-
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
+import spock.lang.Shared
 
 @Slf4j
 @Narrative("""The specification covers the following scenarios:
@@ -26,38 +33,39 @@ import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 
 class FlowValidationNegativeSpec extends HealthCheckSpecification {
 
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+    @Autowired
+    @Shared
+    SwitchRulesFactory switchRulesFactory
+
+
     @IterationTag(tags = [SMOKE], iterationNameRegex = /reverse/)
     def "Flow and switch validation should fail in case of missing rules with #flowConfig configuration [#flowType]"() {
         given: "Two flows with #flowConfig configuration"
-        def flowToBreak = flowHelperV2.randomFlow(switchPair, false)
-        def intactFlow = flowHelperV2.randomFlow(switchPair, false, [flowToBreak])
-
-        flowHelperV2.addFlow(flowToBreak)
-        flowHelperV2.addFlow(intactFlow)
+        def flowToBreak = flowFactory.getRandom(switchPair, false)
+        def intactFlow = flowFactory.getRandom(
+                switchPair, false, UP, flowToBreak.occupiedEndpoints())
 
         and: "Both flows have the same switches in path"
-        def damagedFlowSwitches = pathHelper.getInvolvedSwitches(flowToBreak.flowId)*.dpId
-        def intactFlowSwitches = pathHelper.getInvolvedSwitches(intactFlow.flowId)*.dpId
-        assert damagedFlowSwitches.equals(intactFlowSwitches)
+        def damagedFlowSwitches = flowToBreak.retrieveAllEntityPaths().getInvolvedSwitches()
+        def intactFlowSwitches = intactFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+        assert damagedFlowSwitches == intactFlowSwitches
 
         when: "#flowType flow rule from first flow on #switchNo switch gets deleted"
-        def cookieToDelete = flowType == "forward" ? database.getFlow(flowToBreak.flowId).forwardPath.cookie.value :
-                database.getFlow(flowToBreak.flowId).reversePath.cookie.value
+        def cookieToDelete = flowType == "forward" ? flowToBreak.retrieveDetailsFromDB().forwardPath.cookie.value :
+                flowToBreak.retrieveDetailsFromDB().reversePath.cookie.value
         SwitchId damagedSwitch = damagedFlowSwitches[item]
-        switchHelper.deleteSwitchRules(damagedSwitch, cookieToDelete)
+        def swRules = switchRulesFactory.get(damagedSwitch)
+        swRules.delete(cookieToDelete)
 
         then: "Intact flow should be validated successfully"
-        def intactFlowValidation = northbound.validateFlow(intactFlow.flowId)
-        intactFlowValidation.each { direction ->
-            assert direction.discrepancies.empty
-            assert direction.asExpected
-        }
+        intactFlow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Damaged #flowType flow validation should fail, while other direction should be validated successfully"
-        def brokenFlowValidation = northbound.validateFlow(flowToBreak.flowId)
-        brokenFlowValidation.findAll { it.discrepancies.empty && it.asExpected }.size() == 1
-        def damagedDirection = brokenFlowValidation.findAll { !it.discrepancies.empty && !it.asExpected }
-        damagedDirection.size() == 1
+        flowToBreak.validateAndCollectDiscrepancies().size() == 1
+        def damagedDirection = flowToBreak.validate().findAll { !it.discrepancies.empty && !it.asExpected }
 
         and: "Flow rule discrepancy should contain dpID of the affected switch and cookie of the damaged flow"
         def rules = findRulesDiscrepancies(damagedDirection[0])
@@ -149,48 +157,41 @@ class FlowValidationNegativeSpec extends HealthCheckSpecification {
     def "Able to detect discrepancies for a flow with protected path"() {
         when: "Create a flow with protected path"
         def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.allocateProtectedPath = true
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair)
+                .withProtectedPath(true)
+                .build().create()
 
         then: "Flow with protected path is created"
-        northbound.getFlowPath(flow.flowId).protectedPath
+        flow.retrieveAllEntityPaths().getPathNodes(Direction.FORWARD, true)
 
         and: "Validation of flow with protected path must be successful"
-        northbound.validateFlow(flow.flowId).each { direction ->
-            assert direction.discrepancies.empty
-        }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         when: "Delete rule of protected path on the srcSwitch"
-        def flowPathInfo = northbound.getFlowPath(flow.flowId)
-        def protectedPath = flowPathInfo.protectedPath.forwardPath
-        def rules = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            !new Cookie(it.cookie).serviceFlag
-        }
-
+        def flowPathInfo = flow.retrieveAllEntityPaths()
+        def protectedPath = flowPathInfo.getPathNodes(Direction.FORWARD, true)
+        def swRules = switchRulesFactory.get(switchPair.src.dpId)
+        def rules = swRules.getRules().findAll { !new Cookie(it.cookie).serviceFlag }
         def ruleToDelete = rules.find {
-            it.instructions?.applyActions?.flowOutput == protectedPath[0].inputPort.toString() &&
-                    it.match.inPort == protectedPath[0].outputPort.toString()
+            it.match.inPort == protectedPath[0].portNo.toString()
         }.cookie
-
-        switchHelper.deleteSwitchRules(switchPair.src.dpId, ruleToDelete)
+        swRules.delete(ruleToDelete)
 
         then: "Flow validate detects discrepancies"
         //TODO(andriidovhan) try to extend this test when the issues/2302 is fixed
-        def responseValidateFlow = northbound.validateFlow(flow.flowId).findAll { !it.discrepancies.empty }*.discrepancies
-        assert responseValidateFlow.size() == 1
-        responseValidateFlow[0].expectedValue[0].contains(ruleToDelete.toString())
+        def validateFlow = flow.validateAndCollectDiscrepancies()
+        assert validateFlow.size() == 1
+        validateFlow.toString().contains(ruleToDelete.toString())
 
         when: "Delete all rules except default on the all involved switches"
-        def mainPath = flowPathInfo.forwardPath
-        def involvedSwitchIds = (mainPath*.switchId + protectedPath*.switchId).unique()
+        def flowPath = flow.retrieveAllEntityPaths()
+        def involvedSwitchIds = flowPath.getInvolvedSwitches()
         involvedSwitchIds.each { switchId ->
             switchHelper.deleteSwitchRules(switchId, DeleteRulesAction.IGNORE_DEFAULTS)
         }
 
         then: "Flow validate detects discrepancies for all deleted rules"
-        def responseValidateFlow2 = northbound.validateFlow(flow.flowId).findAll { !it.discrepancies.empty }*.discrepancies
-        assert responseValidateFlow2.size() == 4
+        flow.validateAndCollectDiscrepancies().size() == 4
     }
 
     /**

@@ -175,6 +175,11 @@ class SwitchHelper {
     static int getRandomAvailablePort(Switch sw, TopologyDefinition topologyDefinition, boolean useTraffgenPorts = true, List<Integer> busyPort = []) {
         List<Integer> allowedPorts = topologyDefinition.getAllowedPortsForSwitch(sw)
         def availablePorts = allowedPorts - busyPort
+        if(!availablePorts) {
+            //as default flow is generated with vlan, we can reuse the same port if all available ports have been used
+            //this is a rare case for the situation when we need to create more than 20 flows in a row
+            availablePorts = allowedPorts
+        }
         def port = availablePorts[new Random().nextInt(availablePorts.size())]
         if (useTraffgenPorts) {
             List<Integer> tgPorts = sw.traffGens*.switchPort.findAll { availablePorts.contains(it) }
@@ -604,15 +609,15 @@ class SwitchHelper {
      * @param sw switch which is going to be disconnected
      * @param waitForRelatedLinks make sure that all switch related ISLs are FAILED
      */
-    List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode, boolean waitForRelatedLinks) {
+    List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode, boolean waitForRelatedLinks, double timeout = WAIT_OFFSET) {
         def blockData = lockKeeper.knockoutSwitch(sw, mode)
-        cleanupManager.addAction(REVIVE_SWITCH, {reviveSwitch(sw, blockData, true)}, CleanupAfter.TEST)
-        Wrappers.wait(WAIT_OFFSET) {
+        cleanupManager.addAction(REVIVE_SWITCH, { reviveSwitch(sw, blockData, true) }, CleanupAfter.TEST)
+        Wrappers.wait(timeout) {
             assert northbound.get().getSwitch(sw.dpId).state == SwitchChangeType.DEACTIVATED
         }
         if (waitForRelatedLinks) {
             def swIsls = topology.get().getRelatedIsls(sw)
-            Wrappers.wait(discoveryTimeout + WAIT_OFFSET * 2) {
+            Wrappers.wait(discoveryTimeout + timeout * 2) {
                 def allIsls = northbound.get().getAllLinks()
                 swIsls.each { assert islUtils.getIslInfo(allIsls, it).get().state == IslChangeType.FAILED }
             }
@@ -623,6 +628,18 @@ class SwitchHelper {
 
     List<FloodlightResourceAddress> knockoutSwitch(Switch sw, FloodlightConnectMode mode) {
         knockoutSwitch(sw, mode, false)
+    }
+
+    List<FloodlightResourceAddress> knockoutSwitch(Switch sw, List<String> regions) {
+        def blockData = lockKeeper.knockoutSwitch(sw, regions)
+        cleanupManager.addAction(REVIVE_SWITCH, { reviveSwitch(sw, blockData, true) }, CleanupAfter.TEST)
+        return blockData
+    }
+
+    List<FloodlightResourceAddress> knockoutSwitchFromStatsController(Switch sw){
+        def blockData = lockKeeper.knockoutSwitch(sw, FloodlightConnectMode.RO)
+        cleanupManager.addAction(REVIVE_SWITCH, { reviveSwitch(sw, blockData, true) }, CleanupAfter.TEST)
+        return blockData
     }
 
     /**
@@ -835,13 +852,18 @@ class SwitchHelper {
         def originalProps = northbound.get().getSwitchProperties(sw.dpId)
         if (originalProps.server42FlowRtt != isServer42FlowRttEnabled) {
             def s42Config = sw.prop
-            cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {northbound.get().updateSwitchProperties(sw.dpId, originalProps)})
-            northbound.get().updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap {
+            def requiredProps = originalProps.jacksonCopy().tap {
                 server42FlowRtt = isServer42FlowRttEnabled
                 server42MacAddress = s42Config ? s42Config.server42MacAddress : null
                 server42Port = s42Config ? s42Config.server42Port : null
                 server42Vlan = s42Config ? s42Config.server42Vlan : null
+            }
+
+            cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {
+                northbound.get().updateSwitchProperties(sw.dpId, requiredProps.jacksonCopy().tap { server42FlowRtt = sw?.prop?.server42FlowRtt })
             })
+
+            northbound.get().updateSwitchProperties(sw.dpId, requiredProps)
         }
         int expectedNumberOfS42Rules = (isS42ToggleOn && isServer42FlowRttEnabled) ? getExpectedS42SwitchRulesBasedOnVxlanSupport(sw.dpId) : 0
         Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -862,7 +884,7 @@ class SwitchHelper {
 
     static void waitForS42SwRulesSetup(boolean isS42ToggleOn = true) {
         List<SwitchPropertiesDto> switchDetails = northboundV2.get().getAllSwitchProperties().switchProperties
-
+                .findAll { it.switchId in getTopology().get().switches.dpId }
         withPool {
             Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
                 switchDetails.eachParallel { sw ->
@@ -897,5 +919,12 @@ class SwitchHelper {
                 }
         )
         return northboundV2.get().partialSwitchUpdate(switchId, updateDto)
+    }
+
+    static boolean isServer42Supported(SwitchId switchId) {
+        def swProps = northbound.get().getSwitchProperties(switchId)
+        def featureToggles = northbound.get().getFeatureToggles()
+        def isServer42 = swProps.server42FlowRtt && featureToggles.server42FlowRtt
+        return isServer42
     }
 }

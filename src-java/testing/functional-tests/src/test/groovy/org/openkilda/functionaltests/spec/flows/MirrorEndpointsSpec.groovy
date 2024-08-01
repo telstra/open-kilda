@@ -1,8 +1,20 @@
 package org.openkilda.functionaltests.spec.flows
 
-import groovy.transform.AutoClone
-import groovy.transform.Memoized
-import groovy.util.logging.Slf4j
+import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.junit.jupiter.api.Assumptions.assumeFalse
+import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
+import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
+import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
+import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
+import static org.openkilda.functionaltests.helpers.FlowNameGenerator.FLOW
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
+import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
+import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static spock.util.matcher.HamcrestSupport.expect
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.AbstractExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
@@ -13,13 +25,17 @@ import org.openkilda.functionaltests.error.switchproperties.SwitchPropertiesNotU
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.FlowHistoryConstants
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
+import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.FlowPathDirection
 import org.openkilda.model.FlowPathStatus
 import org.openkilda.model.SwitchId
@@ -29,33 +45,22 @@ import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.Exam
 import org.openkilda.testing.service.traffexam.model.FlowBidirectionalExam
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
 import org.openkilda.testing.tools.TraffgenStats
+
+import groovy.transform.AutoClone
+import groovy.transform.Memoized
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.See
 import spock.lang.Shared
 
-import javax.inject.Provider
 import java.util.regex.Pattern
-
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static org.junit.jupiter.api.Assumptions.assumeFalse
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
-import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static spock.util.matcher.HamcrestSupport.expect
+import javax.inject.Provider
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-traffic-mirroring")
@@ -65,11 +70,18 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     Provider<TraffExamService> traffExamProvider
-
-    @Autowired @Shared
+    @Autowired
+    @Shared
     FlowStats flowStats
-    @Autowired @Shared
+    @Autowired
+    @Shared
     CleanupManager cleanupManager
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+    @Autowired
+    @Shared
+    SwitchRulesFactory switchRulesFactory
 
     def setupSpec() {
         deleteAnyFlowsLeftoversIssue5480()
@@ -79,57 +91,47 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     def "Able to CRUD a mirror endpoint on the src switch, mirror to the same switch diff port [#swPair.src.hwSwString, #mirrorDirection]#trafficDisclaimer"() {
         given: "A flow"
         assumeTrue(swPair as boolean, "Unable to find a switch pair")
-        def flow = flowHelperV2.randomFlow(swPair).tap { maximumBandwidth = 100000 }
+        def flowEntity = flowFactory.getBuilder(swPair).withBandwidth(100000)
         if (profile == 'virtual') {
             // ovs switch doesn't support mirroring for the vxlan flows
-            flow.encapsulationType = FlowEncapsulationType.TRANSIT_VLAN
+            flowEntity.withEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
         }
-        flowHelperV2.addFlow(flow)
+        def flow = flowEntity.build().create()
 
         when: "Create a mirror point on src switch, pointing to a different port, random vlan"
         def mirrorTg = swPair.src.traffGens ?[1]
         def mirrorPort = mirrorTg?.switchPort ?: (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
-        def mirrorEndpoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(mirrorDirection.toString().toLowerCase())
-                .mirrorPointSwitchId(swPair.src.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(swPair.src.dpId).portNumber(mirrorPort)
-                        .vlanId(flowHelperV2.randomVlan())
-                        .build())
-                .build()
-        northboundV2.createMirrorPoint(flow.flowId, mirrorEndpoint)
+        def mirrorPointPayload = flow.buildMirrorPointPayload(
+                flow.source.switchId, mirrorPort, randomVlan(), mirrorDirection as FlowPathDirection
+        )
+        flow.createMirrorPointWithPayload(mirrorPointPayload)
 
         then: "Mirror status changes to Active"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlow(flow.flowId).mirrorPointStatuses[0].status ==
+            assert flow.retrieveDetails().mirrorPointStatuses[0].status ==
                     FlowPathStatus.ACTIVE.toString().toLowerCase()
         }
 
         and: "Flow history reports a successful mirror creation"
-        Wrappers.wait(WAIT_OFFSET) {
-            with(flowHelper.getLatestHistoryEntry(flow.getFlowId())) {
-                action == FlowHistoryConstants.CREATE_MIRROR_ACTION
-                it.payload.last().action == FlowHistoryConstants.CREATE_MIRROR_SUCCESS
-            }
-        }
+        flow.waitForHistoryEvent(FlowActionType.CREATE_MIRROR)
 
         and: "Mirror endpoint is visible in 'get flows', 'get single flow' and 'get mirror endpoint' APIs"
         def allFlows = northboundV2.getAllFlows()
-        def gotFlow = northboundV2.getFlow(flow.flowId)
+        def gotFlow = flow.retrieveDetails()
         allFlows.size() == 1
-        [allFlows[0], gotFlow].each {
-            assert it.mirrorPointStatuses.size() == 1
-            assert it.mirrorPointStatuses[0].status == FlowPathStatus.ACTIVE.toString().toLowerCase()
-            assert it.mirrorPointStatuses[0].mirrorPointId == mirrorEndpoint.mirrorPointId
+        [allFlows[0].mirrorPointStatuses, gotFlow.mirrorPointStatuses].each { mirrorPointsDetails ->
+            assert mirrorPointsDetails.size() == 1
+            assert mirrorPointsDetails[0].status == FlowPathStatus.ACTIVE.toString().toLowerCase()
+            assert mirrorPointsDetails[0].mirrorPointId == mirrorPointPayload.mirrorPointId
         }
-        with(northboundV2.getMirrorPoints(flow.flowId)) {
-            flowId == flow.flowId
+        with(flow.retrieveMirrorPoints()) {
             points.size() == 1
-            expect points[0], sameBeanAs(mirrorEndpoint)
+            expect points[0], sameBeanAs(mirrorPointPayload)
         }
 
         and: "Mirror flow rule has an OF group action and higher prio than flow rule"
-        def rules = getFlowRules(swPair.src.dpId)
+        def swRules = switchRulesFactory.get(swPair.src.dpId)
+        def rules = swRules.getRules()
         def mirrorRule = findMirrorRule(rules, mirrorDirection)
         def flowRule = findFlowRule(rules, mirrorDirection)
         def groupId = mirrorRule.instructions.applyActions.group
@@ -143,18 +145,19 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         findMirrorRule(rules, oppositeDirection) == null
 
         and: "Related switches and flow pass validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(pathHelper.getInvolvedSwitches(flow.flowId)*.getDpId()).isEmpty()
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        def flowInvolvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         when: "Traffic briefly runs through the flow"
         def traffExam = traffExamProvider.get()
-        def mirrorPortStats = mirrorTg ? new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId]) : null
+        def mirrorPortStats = mirrorTg ? new TraffgenStats(traffExam, mirrorTg, [mirrorPointPayload.sinkEndpoint.vlanId]) : null
         if (mirrorPortStats) {
             cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
         }
         def rxPacketsBefore = mirrorPortStats?.get()?.rxPackets
         if (!trafficDisclaimer) {
-            verifyTraffic(traffExam, flow, mirrorDirection)
+            sendTrafficAndVerifyOnMainFlow(traffExam, flow, mirrorDirection)
             statsHelper."force kilda to collect stats"()
         }
 
@@ -175,7 +178,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         and: "System collects stat for mirror cookie in tsdb"
         if (!trafficDisclaimer) {
             Wrappers.wait(statsRouterRequestInterval) {
-                flowStats.of(flow.getFlowId()).get(FLOW_RAW_BYTES, mirrorRule.cookie).hasNonZeroValues()
+                flowStats.of(flow.flowId).get(FLOW_RAW_BYTES, mirrorRule.cookie).hasNonZeroValues()
             }
         }
 
@@ -186,20 +189,15 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         }
 
         when: "Delete the mirror point"
-        northboundV2.deleteMirrorPoint(flow.flowId, mirrorEndpoint.mirrorPointId)
+        flow.deleteMirrorPoint(mirrorPointPayload.mirrorPointId)
 
         then: "'Mirror point delete' operation is present in flow history"
-        Wrappers.wait(WAIT_OFFSET) {
-            with(flowHelper.getLatestHistoryEntry(flow.flowId)) {
-                action == FlowHistoryConstants.DELETE_MIRROR_ACTION
-                payload.last().action == FlowHistoryConstants.DELETE_MIRROR_SUCCESS
-            }
-        }
+        flow.waitForHistoryEvent(FlowActionType.DELETE_MIRROR)
 
         and: "Mirror point is no longer present in flow and mirror APIs"
-        assert northboundV2.getFlow(flow.flowId).mirrorPointStatuses.empty
+        assert flow.retrieveDetails().mirrorPointStatuses.empty
         northboundV2.getAllFlows()[0].mirrorPointStatuses.empty
-        northboundV2.getMirrorPoints(flow.flowId).points.empty
+        flow.retrieveMirrorPoints().points.empty
 
         and: "Mirror flow rule is removed and flow rule is intact"
         def rulesAfterRemove = getFlowRules(swPair.src.dpId)
@@ -211,10 +209,10 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         and: "Src switch and flow pass validation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         when: "Delete the flow"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow.delete()
 
         then: "Src switch pass validation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
@@ -234,44 +232,40 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                 .withAtLeastNTraffgensOnSource(2)
                 .withAtLeastNNonOverlappingPaths(2)
                 .random()
-        def flow = flowHelperV2.randomFlow(swPair).tap { it.allocateProtectedPath = true }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(swPair)
+                .withProtectedPath(true)
+                .build().create()
 
         when: "Create a mirror point"
-        def mirrorTg = swPair.src.traffGens[1]
-        def mirrorEndpoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(mirrorDirection.toString().toLowerCase())
-                .mirrorPointSwitchId(swPair.src.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(swPair.src.dpId).portNumber(mirrorTg.switchPort)
-                        .vlanId(flowHelperV2.randomVlan())
-                        .build())
-                .build()
-        flowHelperV2.createMirrorPoint(flow.flowId, mirrorEndpoint)
+        def mirrorTg = swPair.src.traffGens.find {  it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
+        assumeTrue(mirrorTg != null) ?: "Could not find a free traffgen port which is not equal to the flow source port"
+        def mirrorPointPayload = flow.buildMirrorPointPayload(
+                flow.source.switchId, mirrorTg.switchPort, randomVlan(), mirrorDirection)
+        flow.createMirrorPointWithPayload(mirrorPointPayload)
 
         then: "Mirror point is created and Active"
         and: "Flow and switch pass validation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         when: "Swap flow paths"
         northbound.swapFlowPath(flow.flowId)
         Wrappers.wait(WAIT_OFFSET) {
-            northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+            flow.retrieveFlowStatus().status == FlowState.UP
         }
 
         then: "Flow and switch both pass validation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Flow passes main traffic"
         def traffExam = traffExamProvider.get()
-        def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId])
+        def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorPointPayload.sinkEndpoint.vlanId])
         if (mirrorPortStats) {
             cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
         }
         def rxPacketsBefore = mirrorPortStats.get().rxPackets
-        verifyTraffic(traffExam, flow, mirrorDirection)
+        sendTrafficAndVerifyOnMainFlow(traffExam, flow, mirrorDirection)
 
         and: "Flow passes mirrored traffic"
         mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
@@ -285,35 +279,32 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     def "Can create mirror point on a VXLAN flow [#swPair.src.hwSwString, #mirrorDirection]#trafficDisclaimer"() {
         given: "A VXLAN flow"
         assumeTrue(swPair as boolean, "Unable to find required vxlan-enabled switches with traffgens")
-        def flow = flowHelperV2.randomFlow(swPair).tap { encapsulationType = FlowEncapsulationType.VXLAN }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(swPair)
+                .withEncapsulationType(FlowEncapsulationType.VXLAN)
+                .build().create()
 
         when: "Create a mirror point"
-        def mirrorTg = swPair.src.traffGens[1]
+        def mirrorTg = swPair.src.traffGens.find {  it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
+        assumeTrue(mirrorTg != null) ?: "Could not find a free traffgen port which is not equal to the flow source port"
         def mirrorPort = mirrorTg?.switchPort ?: (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
-        def mirrorEndpoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(mirrorDirection.toString().toLowerCase())
-                .mirrorPointSwitchId(swPair.src.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(swPair.src.dpId).portNumber(mirrorPort)
-                        .vlanId(flowHelperV2.randomVlan())
-                        .build())
-                .build()
-        flowHelperV2.createMirrorPoint(flow.flowId, mirrorEndpoint)
+        def mirrorEpVlan = randomVlan()
+        flow.createMirrorPoint(flow.source.switchId, mirrorPort,
+                mirrorEpVlan, mirrorDirection as FlowPathDirection)
 
         then: "Mirror point is created and Active"
         and: "Related switches and flow pass validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(pathHelper.getInvolvedSwitches(flow.flowId)*.getDpId()).isEmpty()
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        def flowInvolvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Flow passes traffic on main path as well as to the mirror (if possible to check)"
         def traffExam = traffExamProvider.get()
-        def mirrorPortStats = mirrorTg ? new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId]) : null
+        def mirrorPortStats = mirrorTg ? new TraffgenStats(traffExam, mirrorTg, [mirrorEpVlan]) : null
         if (mirrorPortStats) {
             cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
         }
         def rxPacketsBefore = mirrorPortStats?.get()?.rxPackets
-        verifyTraffic(traffExam, flow, mirrorDirection)
+        sendTrafficAndVerifyOnMainFlow(traffExam, flow, mirrorDirection)
         //https://github.com/telstra/open-kilda/issues/5420
         if (mirrorTg && !swPair.src.isWb5164()) {
             assert mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
@@ -331,28 +322,22 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         // ovs switch doesn't support mirroring for the vxlan flows
         assumeFalse("virtual" == profile && data.encap == FlowEncapsulationType.VXLAN)
         assumeTrue(swPair as boolean, "Unable to find enough switches for a $data.encap flow")
-        def flow = flowHelperV2.randomFlow(swPair).tap { encapsulationType = data.encap }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(swPair)
+                .withEncapsulationType(data.encap)
+                .build().create()
         def freePort = (topology.getAllowedPortsForSwitch(swPair.dst) - flow.destination.portNumber)[0]
-        def mirrorEndpoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(mirrorDirection.toString().toLowerCase())
-                .mirrorPointSwitchId(swPair.dst.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(swPair.dst.dpId).portNumber(freePort)
-                        .vlanId(flowHelperV2.randomVlan())
-                        .build())
-                .build()
-        flowHelperV2.createMirrorPoint(flow.flowId, mirrorEndpoint)
+        flow.createMirrorPoint(flow.destination.switchId, freePort, randomVlan(), mirrorDirection as FlowPathDirection)
 
         when: "Call flow sync for the flow"
-        northbound.synchronizeFlow(flow.flowId)
+        flow.sync()
         Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
+            assert flow.retrieveFlowStatus().status == FlowState.UP
         }
 
         then: "Related switches and flow pass validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(pathHelper.getInvolvedSwitches(flow.flowId)*.getDpId()).isEmpty()
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        def flowInvolvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         where:
         [data, mirrorDirection] << [
@@ -374,29 +359,20 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     def "Can create mirror point on unmetered pinned flow, #mirrorDirection"() {
         given: "An unmetered pinned flow"
         def swPair = switchPairs.all().random()
-        def flow = flowHelperV2.randomFlow(swPair).tap {
-            pinned = true
-            maximumBandwidth = 0
-            ignoreBandwidth = true
-        }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(swPair)
+                .withPinned(true)
+                .withBandwidth(0)
+                .withIgnoreBandwidth(true)
+                .build().create()
 
         when: "Create a mirror point on src"
         def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
-        def mirrorEndpoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(mirrorDirection.toString().toLowerCase())
-                .mirrorPointSwitchId(swPair.src.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(swPair.src.dpId).portNumber(freePort)
-                        .vlanId(flowHelperV2.randomVlan())
-                        .build())
-                .build()
-        flowHelperV2.createMirrorPoint(flow.flowId, mirrorEndpoint)
+        flow.createMirrorPoint(flow.source.switchId, freePort, randomVlan(), mirrorDirection)
 
         then: "Mirror point is created and Active"
         and: "Flow and src switch both pass validation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.src.dpId).isPresent()
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         where:
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
@@ -405,26 +381,21 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT])
     def "Can create a mirror point on the same port as flow, different vlan  [#swPair.dst.hwSwString, #encapType, #mirrorDirection]"() {
         given: "A flow"
-        def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow).tap { encapsulationType = encapType }
+        def flow = flowFactory.getBuilder(swPair)
+                .withEncapsulationType(encapType)
+                .build().create()
 
         when: "Add a mirror point on the same port with flow, different vlan"
-        def mirrorPoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(mirrorDirection.toString())
-                .mirrorPointSwitchId(swPair.dst.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(flow.destination.switchId)
-                        .portNumber(flow.destination.portNumber)
-                        .vlanId(flow.destination.vlanId - 1)
-                        .build())
-                .build()
-        flowHelperV2.createMirrorPoint(flow.flowId, mirrorPoint)
+        flow.createMirrorPoint(
+                flow.destination.switchId, flow.destination.portNumber,
+                flow.destination.vlanId - 1, mirrorDirection as FlowPathDirection
+        )
 
         then: "Mirror point is successfully created"
-        northboundV2.getMirrorPoints(flow.flowId).points.size() == 1
+        flow.retrieveMirrorPoints().points.size() == 1
 
         when: "Delete the flow without deleting its mirror point"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow.delete()
 
         then: "Mirror point is also deleted from db"
         database.getMirrorPoints().empty
@@ -456,38 +427,19 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     def "Can create multiple mirror points for the same flow and switch"() {
         given: "A flow"
         def swPair = switchPairs.all().random()
-        def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(swPair)
 
         when: "Add a Forward mirror point on the same port with flow, different vlan"
-        def mirrorPointFw = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(FlowPathDirection.FORWARD.toString())
-                .mirrorPointSwitchId(swPair.dst.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(flow.destination.switchId)
-                        .portNumber(flow.destination.portNumber)
-                        .vlanId(flow.destination.vlanId - 1)
-                        .build())
-                .build()
-        flowHelperV2.createMirrorPoint(flow.flowId, mirrorPointFw)
+        flow.createMirrorPoint(flow.destination.switchId, flow.destination.portNumber, flow.destination.vlanId - 1)
 
         then: "Mirror point is created"
-        northboundV2.getMirrorPoints(flow.flowId).points.size() == 1
+        flow.retrieveMirrorPoints().points.size() == 1
 
         when: "Add one more Forward mirror point on the same port with flow, different vlan"
-        def mirrorPointFw2 = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(FlowPathDirection.FORWARD.toString())
-                .mirrorPointSwitchId(swPair.dst.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(flow.destination.switchId)
-                        .portNumber(flow.destination.portNumber)
-                        .vlanId(flow.destination.vlanId - 2)
-                        .build())
-                .build()
-        flowHelperV2.createMirrorPoint(flow.flowId, mirrorPointFw2)
+        flow.createMirrorPoint(flow.destination.switchId, flow.destination.portNumber, flow.destination.vlanId - 2)
 
         then: "Mirror point is created"
-        northboundV2.getMirrorPoints(flow.flowId).points.size() == 2
+        flow.retrieveMirrorPoints().points.size() == 2
 
         and: "Mirrorring group for forward path has 3 buckets (main flow + 2 mirrors)"
         def fwGroupId = findMirrorRule(getFlowRules(swPair.dst.dpId), FlowPathDirection.FORWARD).instructions.applyActions.group
@@ -496,21 +448,15 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         fwMirrorGroup.bucketCounters.size() == 3
 
         when: "Add a Reverse mirror point on the different port with flow"
-        def mirrorPointRv = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(FlowPathDirection.REVERSE.toString())
-                .mirrorPointSwitchId(swPair.dst.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(flow.destination.switchId)
-                        .portNumber(flow.destination.portNumber)
-                        .vlanId(0)
-                        .build())
-                .build()
-        northboundV2.createMirrorPoint(flow.flowId, mirrorPointRv)
+        def mirrorPointRvPayload = flow.buildMirrorPointPayload(
+                flow.destination.switchId, flow.destination.portNumber, 0, FlowPathDirection.REVERSE
+        )
+        flow.createMirrorPointWithPayload(mirrorPointRvPayload)
 
         then: "Mirror point is created"
         Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlow(flow.flowId).mirrorPointStatuses.find {
-                it.mirrorPointId == mirrorPointRv.mirrorPointId
+            assert flow.retrieveDetails().mirrorPointStatuses.find {
+                it.mirrorPointId == mirrorPointRvPayload.mirrorPointId
             }.status == FlowPathStatus.ACTIVE.toString().toLowerCase()
         }
 
@@ -523,24 +469,14 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     def "System also updates mirror rule after flow partial update"() {
         given: "A flow with mirror point"
         def swPair = switchPairs.all().random()
-        def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(swPair)
         def freePort = (topology.getAllowedPortsForSwitch(swPair.dst) - flow.destination.portNumber)[0]
-        def mirrorPointFw = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(FlowPathDirection.FORWARD.toString())
-                .mirrorPointSwitchId(swPair.dst.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(flow.destination.switchId)
-                        .portNumber(freePort)
-                        .vlanId(flow.destination.vlanId - 1)
-                        .build())
-                .build()
-        flowHelperV2.createMirrorPoint(flow.flowId, mirrorPointFw)
+        flow.createMirrorPoint(flow.destination.switchId, freePort, flow.destination.vlanId - 1)
 
         when: "Update flow port and vlan on the same endpoint where mirror is"
         def newFlowPort = (topology.getAllowedPortsForSwitch(swPair.dst) - flow.destination.portNumber - freePort)[0]
         def newFlowVlan = flow.destination.vlanId - 2
-        flowHelperV2.partialUpdate(flow.flowId, new FlowPatchV2().tap {
+        flow.partialUpdate(new FlowPatchV2().tap {
             destination = new FlowPatchEndpoint().tap {
                 portNumber = newFlowPort
                 vlanId = newFlowVlan
@@ -549,7 +485,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
 
         then: "Flow and affected switch are valid"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(swPair.dst.dpId).isPresent()
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Mirror rule has updated port/vlan values"
         def mirrorRule = findMirrorRule(getFlowRules(swPair.dst.dpId), FlowPathDirection.FORWARD)
@@ -569,34 +505,31 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def swPair = switchPairs.all()
                 .withTraffgensOnBothEnds()
                 .withAtLeastNTraffgensOnSource(2).random()
-        def flow = flowHelperV2.randomFlow(swPair).tap { source.vlanId = 0 }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(swPair)
+                .withSourceVlan(0)
+                .build().create()
 
         when: "Create a mirror point"
-        def mirrorTg = swPair.src.traffGens[1]
-        def mirrorEndpoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(mirrorDirection.toString().toLowerCase())
-                .mirrorPointSwitchId(swPair.src.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(swPair.src.dpId).portNumber(mirrorTg.switchPort)
-                        .vlanId(flowHelperV2.randomVlan())
-                        .build())
-                .build()
-        flowHelperV2.createMirrorPoint(flow.flowId, mirrorEndpoint)
+        def mirrorTg = swPair.src.traffGens.find {  it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
+        assumeTrue(mirrorTg != null) ?: "Could not find a free traffgen port which is not equal to the flow source port"
+        def mirrorVlanId = randomVlan()
+        flow.createMirrorPoint(
+                flow.source.switchId, mirrorTg.switchPort, mirrorVlanId, mirrorDirection)
 
         then: "Mirror point is created and Active"
         and: "Related switches and flow pass validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(pathHelper.getInvolvedSwitches(flow.flowId)*.getDpId()).isEmpty()
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        def flowInvolvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Flow passes traffic on main path as well as to the mirror"
         def traffExam = traffExamProvider.get()
-        def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId])
+        def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorVlanId])
         if (mirrorPortStats) {
             cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
         }
         def rxPacketsBefore = mirrorPortStats.get().rxPackets
-        verifyTraffic(traffExam, flow, mirrorDirection)
+        sendTrafficAndVerifyOnMainFlow(traffExam, flow, mirrorDirection)
         mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
 
         where:
@@ -610,36 +543,30 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                 .withTraffgensOnBothEnds()
                 .withAtLeastNTraffgensOnSource(2)
                 .random()
-        def flow = flowHelperV2.randomFlow(swPair).tap {
-            source.innerVlanId = 100
-            destination.innerVlanId = 200
-        }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(swPair)
+                .withSourceInnerVlan(100)
+                .withDestinationInnerVlan(200)
+                .build().create()
 
         when: "Create a mirror point"
-        def mirrorTg = swPair.src.traffGens[1]
-        def mirrorEndpoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(mirrorDirection.toString().toLowerCase())
-                .mirrorPointSwitchId(swPair.src.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(swPair.src.dpId).portNumber(mirrorTg.switchPort)
-                        .vlanId(flowHelperV2.randomVlan([flow.source.vlanId, flow.source.innerVlanId]))
-                        .build())
-                .build()
-        flowHelperV2.createMirrorPoint(flow.flowId, mirrorEndpoint)
+        def mirrorTg = swPair.src.traffGens.find {  it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
+        assumeTrue(mirrorTg != null) ?: "Could not find a free traffgen port which is not equal to the flow source port"
+        def mirrorVlanId = randomVlan([flow.source.vlanId, flow.source.innerVlanId])
+        flow.createMirrorPoint(flow.source.switchId, mirrorTg.switchPort, mirrorVlanId, mirrorDirection)
 
         then: "Mirror point is created, flow and switches are valid"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(pathHelper.getInvolvedSwitches(flow.flowId)*.getDpId()).isEmpty()
-        northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
+        def flowInvolvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(flowInvolvedSwitches).isEmpty()
+        flow.validateAndCollectDiscrepancies().isEmpty()
 
         and: "Traffic examination reports packets on mirror point"
         def traffExam = traffExamProvider.get()
-        def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorEndpoint.sinkEndpoint.vlanId])
+        def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorVlanId])
         if (mirrorPortStats) {
             cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
         }
         def rxPacketsBefore = mirrorPortStats.get().rxPackets
-        verifyTraffic(traffExam, flow, mirrorDirection)
+        sendTrafficAndVerifyOnMainFlow(traffExam, flow, mirrorDirection)
         mirrorPortStats.get().rxPackets - rxPacketsBefore > 0
 
         where:
@@ -655,20 +582,17 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
             involvedSwitches = pathHelper.getInvolvedSwitches(it)
             involvedSwitches.size() == 3
         }
-        def flow = flowHelperV2.randomFlow(swPair)
+        // Sometimes a pair has >3 involvedSwitches and the required path cannot be found
+        assumeTrue(path != null, "Could not find a path with 1 transit switch.")
         swPair.paths.findAll { it != path }.each { pathHelper.makePathMorePreferable(path, it) }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(swPair).build().create()
 
         when: "Try to add a mirror endpoint on the transit switch"
         def freePort = (topology.getAllowedPortsForSwitch(swPair.dst) - flow.destination.portNumber)[0]
-        def mirrorPoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(FlowPathDirection.FORWARD.toString())
-                .mirrorPointSwitchId(data.mirrorPointSwitch(involvedSwitches).dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(data.sinkEndpointSwitch(involvedSwitches).dpId)
-                        .portNumber(freePort).vlanId(flowHelperV2.randomVlan()).build())
-                .build()
-        northboundV2.createMirrorPoint(flow.flowId, mirrorPoint)
+        SwitchId mirrorEpSinkSwitch = data.sinkEndpointSwitch(involvedSwitches).dpId
+        SwitchId mirrorPointSwitch = data.mirrorPointSwitch(involvedSwitches).dpId
+        flow.createMirrorPoint(mirrorEpSinkSwitch, freePort, randomVlan(),
+                FlowPathDirection.FORWARD, mirrorPointSwitch, false)
 
         then: "Error is returned, cannot create mirror point on given sw"
         def error = thrown(HttpClientErrorException)
@@ -704,13 +628,15 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     }
 
     @Tags([LOW_PRIORITY])
-    def "Test possible error scenarios during mirror point creation: [#testData.testName, #testData.mirrorPoint.mirrorPointDirection]"(MirrorErrorTestData testData) {
+    def "Test possible error scenarios during mirror point creation: [#testData.testName, #testData.mirrorPointDirection]"(MirrorErrorTestData testData) {
         given: "A flow"
-        def flow = testData.flow
-        flowHelperV2.addFlow(flow)
+        def flow = testData.flow.create()
 
         when: "Try adding a mirror point with conflict"
-        northboundV2.createMirrorPoint(flow.flowId, testData.mirrorPoint)
+        flow.createMirrorPoint(
+                testData.mirrorSinkEndpointSwitchId, testData.port, randomVlan(),
+                testData.mirrorPointDirection, testData.mirrorPointSwitchId, false
+        )
 
         then: "Error is returned, cannot create mirror point with given params"
         def error = thrown(HttpClientErrorException)
@@ -720,56 +646,40 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         testData << [
                 new MirrorErrorTestData("Unable to create a mirror endpoint on the src sw and sink back to dst sw", {
                     def swPair = switchPairs.all().random()
-                    it.flow = flowHelperV2.randomFlow(swPair)
-                    def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
-                    it.mirrorPoint = FlowMirrorPointPayload.builder()
-                            .mirrorPointId(flowHelperV2.generateFlowId())
-                            .mirrorPointDirection(FlowPathDirection.FORWARD.toString())
-                            .mirrorPointSwitchId(swPair.dst.dpId)
-                            .sinkEndpoint(FlowEndpointV2.builder().switchId(swPair.src.dpId).portNumber(freePort)
-                                    .vlanId(flowHelperV2.randomVlan())
-                                    .build())
-                            .build()
+                    it.flow = flowFactory.getBuilder(swPair).build()
+                    it.port = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
+                    it.mirrorSinkEndpointSwitchId = flow.source.switchId
+                    it.mirrorPointDirection = FlowPathDirection.FORWARD
+                    it.mirrorPointSwitchId = swPair.dst.dpId
                     it.expectedError = new FlowMirrorPointNotCreatedExpectedError(
                             ~/Invalid sink endpoint switch id: $swPair.src.dpId. In the current implementation, \
 the sink switch id cannot differ from the mirror point switch id./)
                 }),
                 new MirrorErrorTestData("Unable to create a mirror point with isl conflict", {
                     def swPair = switchPairs.all().random()
-                    it.flow = flowHelperV2.randomFlow(swPair)
-                    def islPort = topology.getBusyPortsForSwitch(swPair.dst)[0]
-                    it.mirrorPoint = FlowMirrorPointPayload.builder()
-                            .mirrorPointId(flowHelperV2.generateFlowId())
-                            .mirrorPointDirection(FlowPathDirection.FORWARD.toString())
-                            .mirrorPointSwitchId(swPair.dst.dpId)
-                            .sinkEndpoint(FlowEndpointV2.builder().switchId(swPair.dst.dpId)
-                                    .portNumber(islPort)
-                                    .vlanId(flowHelperV2.randomVlan())
-                                    .build())
-                            .build()
-                    it.expectedError = new FlowMirrorPointNotCreatedExpectedError(~/The port $islPort on the switch \
+                    it.flow = flowFactory.getBuilder(swPair).build()
+                    it.port = topology.getBusyPortsForSwitch(swPair.dst)[0]
+                    it.mirrorSinkEndpointSwitchId = flow.destination.switchId
+                    it.mirrorPointDirection = FlowPathDirection.FORWARD
+                    it.mirrorPointSwitchId = swPair.dst.dpId
+                    it.expectedError = new FlowMirrorPointNotCreatedExpectedError(~/The port $it.port on the switch \
 \'$swPair.dst.dpId\' is occupied by an ISL \(destination endpoint collision\)./)
                 }),
                 new MirrorErrorTestData("Unable to create a mirror point with s42Port conflict", {
                     def swPair = switchPairs.all().withDestinationSwitchConnectedToServer42().random()
-                    it.flow = flowHelperV2.randomFlow(swPair)
+                    it.flow = flowFactory.getBuilder(swPair).build()
                     def s42Port = swPair.dst.prop.server42Port
-                    it.mirrorPoint = FlowMirrorPointPayload.builder()
-                            .mirrorPointId(flowHelperV2.generateFlowId())
-                            .mirrorPointDirection(FlowPathDirection.FORWARD.toString())
-                            .mirrorPointSwitchId(swPair.dst.dpId)
-                            .sinkEndpoint(FlowEndpointV2.builder().switchId(swPair.dst.dpId)
-                                    .portNumber(s42Port)
-                                    .vlanId(flowHelperV2.randomVlan())
-                                    .build())
-                            .build()
+                    it.port = s42Port
+                    it.mirrorSinkEndpointSwitchId = flow.destination.switchId
+                    it.mirrorPointDirection = FlowPathDirection.FORWARD
+                    it.mirrorPointSwitchId = swPair.dst.dpId
                     it.expectedError = new FlowMirrorPointNotCreatedExpectedError(~/Server 42 port in the switch \
 properties for switch \'$swPair.dst.dpId\' is set to \'$s42Port\'. It is not possible to create or update an endpoint \
 with these parameters./)
                 })
         ].collectMany {
-            [it.tap { mirrorPoint.mirrorPointDirection = FlowPathDirection.FORWARD.toString() },
-             it.clone().tap { mirrorPoint.mirrorPointDirection = FlowPathDirection.REVERSE.toString() }]
+            [it.tap { mirrorPointDirection = FlowPathDirection.FORWARD },
+             it.clone().tap { mirrorPointDirection = FlowPathDirection.REVERSE }]
         }
     }
 
@@ -777,27 +687,18 @@ with these parameters./)
     def "Unable to create a mirror point with existing flow conflict, #mirrorDirection"() {
         given: "A flow"
         def swPair = switchPairs.all().random()
-        def flow = flowHelperV2.randomFlow(swPair)
-        def otherFlow = flowHelperV2.randomFlow(swPair, false, [flow])
-        flowHelperV2.addFlow(flow)
-        flowHelperV2.addFlow(otherFlow)
+        def flow = flowFactory.getRandom(swPair)
+        def otherFlow = flowFactory.getBuilder(swPair, false, flow.occupiedEndpoints()).build().create()
 
         when: "Try adding a mirror point that conflicts with other existing flow"
-        def mirrorPoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(mirrorDirection.toString())
-                .mirrorPointSwitchId(swPair.src.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(otherFlow.source.switchId)
-                        .portNumber(otherFlow.source.portNumber)
-                        .vlanId(otherFlow.source.vlanId)
-                        .build())
-                .build()
-        northboundV2.createMirrorPoint(flow.flowId, mirrorPoint)
+        def mirrorPointPayload = flow.buildMirrorPointPayload(
+                otherFlow.source.switchId, otherFlow.source.portNumber, otherFlow.source.vlanId, mirrorDirection)
+        flow.createMirrorPointWithPayload(mirrorPointPayload, false)
 
         then: "Error is returned, cannot create mirror point with given params"
         def error = thrown(HttpClientErrorException)
         new FlowMirrorPointNotCreatedWithConflictExpectedError(
-                getEndpointConflictError(mirrorPoint, otherFlow, "source")).matches(error)
+                getEndpointConflictError(mirrorPointPayload, otherFlow, "source")).matches(error)
 
         where:
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
@@ -807,35 +708,30 @@ with these parameters./)
     def "Unable to create a flow that conflicts with mirror point, #mirrorDirection"() {
         given: "A flow with mirror point"
         def swPair = switchPairs.all().random()
-        def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(swPair)
         def freePort = (topology.getAllowedPortsForSwitch(swPair.dst) - flow.destination.portNumber)[0]
-        def mirrorPoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(mirrorDirection.toString())
-                .mirrorPointSwitchId(swPair.dst.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(flow.destination.switchId)
-                        .portNumber(freePort)
-                        .vlanId(flowHelperV2.randomVlan())
-                        .build())
-                .build()
-        northboundV2.createMirrorPoint(flow.flowId, mirrorPoint)
+        def mirrorPointPayload = flow.buildMirrorPointPayload(
+                flow.destination.switchId, freePort, randomVlan(), mirrorDirection, swPair.dst.dpId)
+        flow.createMirrorPointWithPayload(mirrorPointPayload)
+
         Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlow(flow.flowId).mirrorPointStatuses[0].status ==
+            assert flow.retrieveDetails().mirrorPointStatuses[0].status ==
                     FlowPathStatus.ACTIVE.toString().toLowerCase()
         }
 
         when: "Try adding a flow that conflicts with existing mirror point"
-        def otherFlow = flowHelperV2.randomFlow(swPair, false, [flow]).tap {
-            it.destination.portNumber = mirrorPoint.sinkEndpoint.portNumber
-            it.destination.vlanId = mirrorPoint.sinkEndpoint.vlanId
-        }
-        flowHelperV2.addFlow(otherFlow)
+        def busyEndpoints = []
+        busyEndpoints.addAll(flow.occupiedEndpoints())
+        def otherFlow = flowFactory.getBuilder(swPair, false, busyEndpoints)
+                .withDestinationPort(mirrorPointPayload.sinkEndpoint.portNumber)
+                .withDestinationVlan(mirrorPointPayload.sinkEndpoint.vlanId)
+                .build()
+        otherFlow.create()
 
         then: "Error is returned, cannot create flow that conflicts with mirror point"
         def error = thrown(HttpClientErrorException)
         new FlowNotCreatedWithConflictExpectedError(
-                getEndpointConflictError(otherFlow.destination, mirrorPoint)).matches(error)
+                getEndpointConflictError(otherFlow.destination, mirrorPointPayload)).matches(error)
 
         where:
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
@@ -845,23 +741,15 @@ with these parameters./)
     def "Unable to create mirror point with connected devices enabled, #mirrorDirection"() {
         given: "A flow with connected devices enabled"
         def swPair = switchPairs.all().random()
-        def flow = flowHelperV2.randomFlow(swPair).tap {
-            source.detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
-        }
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(swPair)
+                .withDetectedDevicesOnSrc(true, true)
+                .build().create()
 
         when: "Try to create a mirror for the flow (on the same endpoint)"
         def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
-        def mirrorPoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(mirrorDirection.toString())
-                .mirrorPointSwitchId(swPair.src.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(flow.source.switchId)
-                        .portNumber(freePort)
-                        .vlanId(flowHelperV2.randomVlan())
-                        .build())
-                .build()
-        northboundV2.createMirrorPoint(flow.flowId, mirrorPoint)
+        flow.createMirrorPoint(
+                flow.source.switchId, freePort, randomVlan(),
+                mirrorDirection, flow.source.switchId, false)
 
         then: "Error is returned, cannot create create mirror for a flow with devices"
         def error = thrown(HttpClientErrorException)
@@ -877,26 +765,19 @@ flow mirror point cannot be created this flow/).matches(error)
     def "Unable to update flow and enable connected devices if mirror is present, #mirrorDirection"() {
         given: "A flow with a mirror point"
         def swPair = switchPairs.all().random()
-        def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(swPair)
         def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
-        def mirrorPoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(mirrorDirection.toString())
-                .mirrorPointSwitchId(swPair.src.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(flow.source.switchId)
-                        .portNumber(freePort)
-                        .vlanId(flowHelperV2.randomVlan())
-                        .build())
-                .build()
-        flowHelperV2.createMirrorPoint(flow.flowId, mirrorPoint)
+        flow.createMirrorPoint(
+                flow.source.switchId, freePort, randomVlan(),
+                mirrorDirection, flow.source.switchId, false)
 
         when: "Try to partial update the flow and enable connected devices"
-        northboundV2.partialUpdate(flow.flowId, new FlowPatchV2().tap {
+        def flowPatch = new FlowPatchV2().tap {
             source = new FlowPatchEndpoint().tap {
                 detectConnectedDevices = new DetectConnectedDevicesV2(true, true)
             }
-        })
+        }
+        flow.partialUpdate(flowPatch)
 
         then: "Error is returned, cannot enable devices on a flow with mirror"
         def error = thrown(HttpClientErrorException)
@@ -911,19 +792,9 @@ flow mirror point cannot be created this flow/).matches(error)
     def "Cannot enable connected devices on switch if mirror is present"() {
         given: "A flow with a mirror endpoint"
         def swPair = switchPairs.all().random()
-        def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(swPair)
         def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
-        def mirrorPoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(FlowPathDirection.FORWARD.toString())
-                .mirrorPointSwitchId(swPair.src.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(flow.source.switchId)
-                        .portNumber(freePort)
-                        .vlanId(flowHelperV2.randomVlan())
-                        .build())
-                .build()
-        flowHelperV2.createMirrorPoint(flow.flowId, mirrorPoint)
+        flow.createMirrorPoint(flow.source.switchId, freePort)
 
         when: "Try to enable connected devices for switch where mirror is created"
         def originalProps = switchHelper.getCachedSwProps(swPair.src.dpId)
@@ -949,19 +820,10 @@ flow mirror point cannot be created this flow/).matches(error)
         })
 
         when: "Try to create a mirror on the switch with devices"
-        def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(swPair)
         def freePort = (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
-        def mirrorPoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(FlowPathDirection.REVERSE.toString())
-                .mirrorPointSwitchId(swPair.src.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(flow.source.switchId)
-                        .portNumber(freePort)
-                        .vlanId(flowHelperV2.randomVlan())
-                        .build())
-                .build()
-        northboundV2.createMirrorPoint(flow.flowId, mirrorPoint)
+        flow.createMirrorPoint(flow.source.switchId, freePort, randomVlan(),
+                FlowPathDirection.REVERSE, flow.source.switchId, false)
 
         then: "Error is returned, cannot create flow that conflicts with mirror point"
         def error = thrown(HttpClientErrorException)
@@ -973,40 +835,31 @@ flow mirror point cannot be created this flow/).matches(error)
     def "Unable to create a mirror point with existing mirror point conflict, #mirrorDirection"() {
         given: "A flow with mirror point"
         def swPair = switchPairs.all().random()
-        def flow = flowHelperV2.randomFlow(swPair)
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getRandom(swPair)
         def freePort = (topology.getAllowedPortsForSwitch(swPair.dst) - flow.destination.portNumber)[0]
-        def mirrorPoint = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(mirrorDirection.toString())
-                .mirrorPointSwitchId(swPair.dst.dpId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(flow.destination.switchId)
-                        .portNumber(freePort)
-                        .vlanId(flowHelperV2.randomVlan())
-                        .build())
-                .build()
-        northboundV2.createMirrorPoint(flow.flowId, mirrorPoint)
+        def mirrorPoint = flow.deepCopy().destination.tap {
+            it.vlanId = randomVlan()
+            it.portNumber = freePort
+        }
+        def mirrorPointPayload = flow.buildMirrorPointPayload(
+                mirrorPoint.switchId, mirrorPoint.portNumber, mirrorPoint.vlanId, mirrorDirection)
+        flow.createMirrorPointWithPayload(mirrorPointPayload)
         Wrappers.wait(WAIT_OFFSET) {
-            assert northboundV2.getFlow(flow.flowId).mirrorPointStatuses[0].status ==
+            assert flow.retrieveDetails().mirrorPointStatuses[0].status ==
                     FlowPathStatus.ACTIVE.toString().toLowerCase()
         }
 
         when: "Try adding one more mirror point that conflicts with existing mirror point"
-        def mirrorPoint2 = FlowMirrorPointPayload.builder()
-                .mirrorPointId(flowHelperV2.generateFlowId())
-                .mirrorPointDirection(mirrorDirection.toString())
-                .mirrorPointSwitchId(mirrorPoint.mirrorPointSwitchId)
-                .sinkEndpoint(FlowEndpointV2.builder().switchId(mirrorPoint.mirrorPointSwitchId)
-                        .portNumber(mirrorPoint.sinkEndpoint.portNumber)
-                        .vlanId(mirrorPoint.sinkEndpoint.vlanId)
-                        .build())
-                .build()
-        northboundV2.createMirrorPoint(flow.flowId, mirrorPoint2)
+        def mirrorPoint2 = mirrorPoint.jacksonCopy()
+        def mirrorPoint2Payload = mirrorPointPayload.jacksonCopy().tap {
+            it.mirrorPointId = FLOW.generateId()
+        }
+        flow.createMirrorPointWithPayload(mirrorPoint2Payload, false)
 
         then: "Error is returned, cannot create flow that conflicts with mirror point"
         def error = thrown(HttpClientErrorException)
         new FlowMirrorPointNotCreatedWithConflictExpectedError(
-                getEndpointConflictError(mirrorPoint2.sinkEndpoint, mirrorPoint)).matches(error)
+                getEndpointConflictError(mirrorPoint2, mirrorPointPayload)).matches(error)
 
         where:
         mirrorDirection << [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]
@@ -1014,8 +867,8 @@ flow mirror point cannot be created this flow/).matches(error)
 
 
     List<FlowEntry> getFlowRules(SwitchId swId) {
-        northbound.getSwitchRules(swId).flowEntries
-                .findAll { new FlowSegmentCookie(it.cookie).direction != FlowPathDirection.UNDEFINED }
+        def swRules = switchRulesFactory.get(swId).getRules()
+        swRules.findAll { new FlowSegmentCookie(it.cookie).direction != FlowPathDirection.UNDEFINED }
     }
 
     static FlowEntry findRule(List<FlowEntry> rules, FlowPathDirection pathDirection, boolean isMirror) {
@@ -1033,21 +886,12 @@ flow mirror point cannot be created this flow/).matches(error)
         findRule(rules, pathDirection, true)
     }
 
-    static Pattern getEndpointConflictError(FlowMirrorPointPayload mirrorEp, FlowRequestV2 existingFlow, String srcOrDst) {
+    static Pattern getEndpointConflictError(FlowMirrorPointPayload mirrorEp, FlowExtended existingFlow, String srcOrDst) {
         FlowEndpointV2 flowEndpoint = existingFlow."$srcOrDst"
         ~/Requested flow \'$mirrorEp.mirrorPointId\' conflicts with existing flow \'$existingFlow.flowId\'. Details: \
 requested flow \'$mirrorEp.mirrorPointId\' destination: switchId=\"${mirrorEp.sinkEndpoint.switchId}\"\
  port=${mirrorEp.sinkEndpoint.portNumber} vlanId=${mirrorEp.sinkEndpoint.vlanId}, existing flow \'$existingFlow.flowId\'\
  $srcOrDst: switchId=\"${flowEndpoint.switchId}\" port=${flowEndpoint.portNumber} vlanId=${flowEndpoint.vlanId}/
-    }
-
-    static Pattern getEndpointConflictError(FlowRequestV2 reqFlow, FlowMirrorPointPayload existingMirror, String srcOrDst) {
-        FlowEndpointV2 flowEndpoint = reqFlow."$srcOrDst"
-        ~/Requested flow \'$reqFlow.flowId\' conflicts with existing flow \'$existingMirror.mirrorPointId\'. Details: \
-requested flow \'$reqFlow.flowId\' $srcOrDst: switchId=\"${flowEndpoint.switchId}\" port=${flowEndpoint.portNumber} \
-vlanId=${flowEndpoint.vlanId}, existing flow \'$existingMirror.mirrorPointId\' \
-destination: switchId=\"${existingMirror.sinkEndpoint.switchId}\" port=${existingMirror.sinkEndpoint.portNumber} \
-vlanId=${existingMirror.sinkEndpoint.vlanId}/
     }
 
     static Pattern getEndpointConflictError(FlowEndpointV2 flowEp, FlowMirrorPointPayload existingMirror) {
@@ -1059,9 +903,8 @@ with existing flow mirror point \'$existingMirror.mirrorPointId\'./
         direction == FlowPathDirection.FORWARD ? biExam.forward : biExam.reverse
     }
 
-    private void verifyTraffic(TraffExamService traffExam, FlowRequestV2 flow, FlowPathDirection mirrorDirection) {
-        FlowBidirectionalExam biExam = new FlowTrafficExamBuilder(topology, traffExam)
-                .buildBidirectionalExam(flowHelperV2.toV1(flow), 300, 1)
+    private static void sendTrafficAndVerifyOnMainFlow(TraffExamService traffExam, FlowExtended flow, FlowPathDirection mirrorDirection) {
+        def biExam = flow.traffExam(traffExam, 300, 1)
         getExam(biExam, mirrorDirection).with {
             udp = true
             bufferLength = 500 //due to MTU size issue on TG after mirror encapsulation
@@ -1077,8 +920,10 @@ with existing flow mirror point \'$existingMirror.mirrorPointId\'./
      */
     @Memoized
     List<SwitchPair> getUniqueSwitchPairs(Closure additionalConditions = { true }) {
-        def unpickedUniqueTgSwitches = topology.activeSwitches.findAll { it.traffGens }
-                .unique(false) { it.hwSwString }
+        def allTgSwitches = topology.activeSwitches.findAll { it.traffGens }
+                //switches that have 2+ traffgens go to the beginning of the list
+                .sort { a, b -> b.traffGens.size() <=> a.traffGens.size() }
+        def unpickedUniqueTgSwitches = allTgSwitches.unique(false) { it.hwSwString }
         def tgPairs = switchPairs.all().getSwitchPairs().findAll {
             additionalConditions(it)
         }
@@ -1087,8 +932,6 @@ with existing flow mirror point \'$existingMirror.mirrorPointId\'./
         while (!unpickedUniqueTgSwitches.empty) {
             def pairs = tgPairs.findAll {
                 it.src in unpickedUniqueTgSwitches
-            }.sort(false) { swPair -> //switches that have 2+ traffgens go to the end of the list
-                swPair.src.traffGens.size() > 1
             }
             if (pairs) {
                 //pick a highest score pair, update list of unpicked switches, re-run
@@ -1117,8 +960,11 @@ with existing flow mirror point \'$existingMirror.mirrorPointId\'./
     @AutoClone
     private static class MirrorErrorTestData {
         String testName
-        FlowRequestV2 flow
-        FlowMirrorPointPayload mirrorPoint
+        FlowExtended flow
+        Integer port
+        SwitchId mirrorPointSwitchId
+        SwitchId mirrorSinkEndpointSwitchId
+        FlowPathDirection mirrorPointDirection
         AbstractExpectedError expectedError
 
         MirrorErrorTestData(String testName, Closure init) {

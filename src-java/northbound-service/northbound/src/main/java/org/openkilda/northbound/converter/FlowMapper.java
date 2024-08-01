@@ -37,6 +37,7 @@ import org.openkilda.messaging.nbtopology.response.FlowMirrorPointsDumpResponse.
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowEndpointPayload;
+import org.openkilda.messaging.payload.flow.FlowFlushReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
 import org.openkilda.messaging.payload.flow.FlowPayload;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
@@ -246,6 +247,10 @@ public abstract class FlowMapper {
     @Mapping(source = "path", target = "path")
     @Mapping(source = "rerouted", target = "rerouted")
     public abstract FlowReroutePayload toReroutePayload(String flowId, PathInfoData path, boolean rerouted);
+
+    @Mapping(source = "flowId", target = "id")
+    @Mapping(source = "rerouted", target = "rerouted")
+    public abstract FlowFlushReroutePayload toRerouteFlushPayload(String flowId, boolean rerouted);
 
     @Mapping(source = "path", target = "path")
     public abstract FlowRerouteResponseV2 toRerouteResponseV2(String flowId, PathInfoData path, boolean rerouted);

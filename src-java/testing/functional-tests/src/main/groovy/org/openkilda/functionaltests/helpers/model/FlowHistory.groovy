@@ -24,4 +24,8 @@ class FlowHistory {
     List<FlowHistoryEventExtension> getEntriesByType(FlowActionType type) {
         entries.findAll { it.action == type.getValue() }
     }
+
+    int getEventsNumber() {
+        entries.size()
+    }
 }

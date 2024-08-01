@@ -1,6 +1,45 @@
 # Changelog
 
-## v1.159.0 (11/06/2024)
+## v1.160.0 (01/08/2024)
+
+### Features:
+-  [#5657](https://github.com/telstra/open-kilda/pull/5657) GUI fix for gui switch-datatable and switch-detail components [**gui**]
+
+### Bug Fixes:
+-  [#5704](https://github.com/telstra/open-kilda/pull/5704) fix QR code image display issue in 2FA screen (Issue: [#5703](https://github.com/telstra/open-kilda/issues/5703)) [**gui**]
+
+### Improvements:
+-  [#5696](https://github.com/telstra/open-kilda/pull/5696) [TEST]: Regular Flow: New interaction approach(switches) [**tests**]
+-  [#5697](https://github.com/telstra/open-kilda/pull/5697) [TEST]: 5694: Improvement: Error verification [**tests**]
+-  [#5698](https://github.com/telstra/open-kilda/pull/5698) [TEST]: Improvement: Flaky test: Path: toString() throws NPE [**tests**]
+-  [#5706](https://github.com/telstra/open-kilda/pull/5706) [TEST]: Improvement: Fix test discrepancies [**tests**]
+-  [#5707](https://github.com/telstra/open-kilda/pull/5707) [TEST]: Improvement: Server42: Flakiness during parallel execution [**tests**]
+-  [#5708](https://github.com/telstra/open-kilda/pull/5708) [TEST]: Improvement: Flaky tests(global timeout/single switchTriplet) [**tests**]
+-  [#5579](https://github.com/telstra/open-kilda/pull/5579) [TEST]: 5569: Y-Flow: Server42: Adding TCs [**tests**]
+-  [#5712](https://github.com/telstra/open-kilda/pull/5712) [TEST]: Improvement: Refactoring tests to be applicable to hardware env [**tests**]
+-  [#5714](https://github.com/telstra/open-kilda/pull/5714) [TEST]: Improvement: Cleanup: ISL recovering: Flaky tests [**tests**]
+-  [#5717](https://github.com/telstra/open-kilda/pull/5717) Add API to flush reroute for pending flow (fix response)
+-  [#5674](https://github.com/telstra/open-kilda/pull/5674) [TEST]: Regular Flows: MaxLatency, ThrottlingReroute, PinnedFlow specs are refactored with new approach [**tests**]
+-  [#5681](https://github.com/telstra/open-kilda/pull/5681) [TEST]: Regular Flows: MirrorEndpoints, IntentionalReroute, MultiReroute and FlowValidationNegative specs were refactored with new approach [**tests**]
+-  [#5686](https://github.com/telstra/open-kilda/pull/5686) [TEST]: Regular Flows: PartialUpdate, QinQFlow, VxlanFlow specs were refactored with new approach [**tests**]
+-  [#5687](https://github.com/telstra/open-kilda/pull/5687) [TEST]: Regular Flow: Autoreroute, Protected(v1/v2), Swap: New approach for flow interaction [**tests**]
+-  [#5688](https://github.com/telstra/open-kilda/pull/5688) [TEST]: Cleanup: Updating calls to be with autocleanup [**tests**]
+-  [#5690](https://github.com/telstra/open-kilda/pull/5690) [TEST]: Regular Flow: New interaction approach(additional specs) [**tests**]
+-  [#5692](https://github.com/telstra/open-kilda/pull/5692) [TEST]: Refactor regular flows in Switches specs: pt1:  [**tests**]
+-  [#5693](https://github.com/telstra/open-kilda/pull/5693) [TEST]: Improvement: Y-Flow: Stats: Flaky test [**tests**]
+
+### Other changes:
+-  [#5700](https://github.com/telstra/open-kilda/pull/5700) [TEST]: 5390: Fix some broken / flaky tests after refactoring [**tests**]
+-  [#5702](https://github.com/telstra/open-kilda/pull/5702) Flush reroute queue with stuck flow
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.159.0...v1.160.0).
+
+### Affected Components:
+gui
+
+---
+
+## v1.159.0 (17/06/2024)
 
 ### Improvements:
 -  [#5637](https://github.com/telstra/open-kilda/pull/5637) 5560: [TEST]: Eliminate cleanup sections part 1 (Issue: [#5560](https://github.com/telstra/open-kilda/issues/5560)) [**tests**]

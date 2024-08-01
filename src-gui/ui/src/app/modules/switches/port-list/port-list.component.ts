@@ -37,7 +37,7 @@ export class PortListComponent implements OnInit, AfterViewInit, OnDestroy, OnCh
     portListSubscriber = null;
     portFlowSubscription: Subscription[] = [];
     loadPorts = false;
-    switchFilterFlag: string = localStorage.getItem('switchFilterFlag') || 'controller';
+    switchFilterFlag: string = sessionStorage.getItem('switchFilterFlag') || 'controller';
     hasStoreSetting;
 
     constructor(private switchService: SwitchService,

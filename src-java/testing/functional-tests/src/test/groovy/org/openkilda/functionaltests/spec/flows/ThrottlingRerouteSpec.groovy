@@ -1,30 +1,32 @@
 package org.openkilda.functionaltests.spec.flows
 
-import groovy.util.logging.Slf4j
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.payload.flow.FlowPathPayload
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.springframework.beans.factory.annotation.Value
-import spock.lang.Ignore
-import spock.lang.Narrative
-
-import java.util.concurrent.TimeUnit
-
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_ACTION
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_FAIL
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.helpers.model.FlowEntityPath
+import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+
+import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+import spock.lang.Ignore
+import spock.lang.Narrative
+import spock.lang.Shared
+
+import java.util.concurrent.TimeUnit
 
 @Narrative("""
 This test verifies that we do not perform a reroute as soon as we receive a reroute request (we talk only about
@@ -38,6 +40,11 @@ for each flowId).
 @Tags([VIRTUAL]) //may be unstable on hardware. not tested
 class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+
+
     @Value('${reroute.hardtimeout}')
     int rerouteHardTimeout
 
@@ -50,55 +57,53 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
 
         assumeTrue(swPairs.size() > 4, "Topology is too small to run this test")
         def flows = swPairs.take(5).collect { switchPair ->
-            def flow = flowHelperV2.randomFlow(switchPair)
-            flowHelperV2.addFlow(flow)
+            def flow = flowFactory.getRandom(switchPair)
             flow
         }
-        def flowPaths = flows.collect { northbound.getFlowPath(it.flowId) }
+        def flowPaths = flows.collect { it.retrieveAllEntityPaths() }
 
         when: "All flows break one by one"
-        def timeBeforeBreak = new Date().time
-        def brokenIsls = flowPaths.collect {
-            breakFlow(it, false)
-            //don't sleep here, since there is already an antiFlapMin delay between actual port downs
-        }
+        flowPaths.collect { breakFlow(it, false) }
+        // Don't sleep here, since there is already an antiFlapMin delay between actual port downs
         def rerouteTriggersEnd = new Date().time
         /*At this point all reroute triggers have happened. Save this time in order to calculate when the actual
         reroutes will happen (time triggers stopped + reroute delay seconds)*/
 
         then: "The oldest broken flow is still not rerouted before rerouteDelay run out"
         Wrappers.wait(rerouteDelay * 3) {
-            assert flowHelper.getLatestHistoryEntry(flows.first().flowId).action == "Flow rerouting"
+            assert flows.first().retrieveFlowHistory().entries.last().action == FlowActionType.REROUTE.value
             // wait till reroute starts
         }
-        def rerouteTimestamp = flowHelper.getLatestHistoryEntry(flows.first().flowId).timestampIso
+        def rerouteTimestamp = flows.first().retrieveFlowHistory().entries.last().timestampIso
         // check time diff between the time when reroute was triggered and the first action of reroute in history
         def differenceInMillis = flowHelper.convertStringTimestampIsoToLong(rerouteTimestamp) - rerouteTriggersEnd
         // reroute starts not earlier than the expected reroute delay
         assert differenceInMillis > (rerouteDelay) * 1000
         // reroute starts not later than 2 seconds later than the expected delay
-        assert differenceInMillis < (rerouteDelay + 2) * 1000
+        assert differenceInMillis < (rerouteDelay + 2.5) * 1000
 
         and: "The oldest broken flow is rerouted when the rerouteDelay runs out"
         def untilReroutesBegin = { rerouteTriggersEnd + rerouteDelay * 1000 - new Date().time }
         def waitTime = untilReroutesBegin() / 1000.0 + PATH_INSTALLATION_TIME * 2
         Wrappers.wait(waitTime) {
-            //Flow should go DOWN or change path on reroute. In our case it doesn't matter which of these happen.
-            assert (northboundV2.getFlowStatus(flows.first().flowId).status == FlowState.DOWN &&
-                    flowHelper.getHistoryEntriesByAction(flows.first().flowId, REROUTE_ACTION).find {
-                        it.taskId =~ (/.+ : retry #1/) })||
-                    northbound.getFlowPath(flows.first().flowId) != flowPaths.first()
+            // Flow should go DOWN or change path on reroute.
+            // In our case it doesn't matter which of these happen.
+            def flow1 = flows.first()
+            assert (flow1.retrieveFlowStatus().status == FlowState.DOWN &&
+                    flow1.retrieveFlowHistory().getEntriesByType(FlowActionType.REROUTE)
+                            .find { it.taskId =~ (/.+ : retry #1/) })||
+                    flow1.retrieveAllEntityPaths().getPathNodes() != flowPaths.find{ it.flowPath.flowId == flow1.flowId}
         }
 
         and: "The rest of the flows are rerouted too"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            flowPaths[1..-1].each { flowPath ->
-                assert (northboundV2.getFlowStatus(flowPath.id).status == FlowState.DOWN &&
-                        flowHelper.getHistoryEntriesByAction(flowPath.id, REROUTE_ACTION).find {
-                    it.taskId =~ (/.+ : retry #1/)
-                })  ||
-                        (northbound.getFlowPath(flowPath.id) != flowPath &&
-                                northboundV2.getFlowStatus(flowPath.id).status == FlowState.UP)
+            flows.subList(1, flows.size()).each { flow ->
+                def currentFlowStatus = flow.retrieveFlowStatus().status
+                assert (currentFlowStatus == FlowState.DOWN &&
+                        flow.retrieveFlowHistory().getEntriesByType(FlowActionType.REROUTE)
+                                .find { it.taskId =~ (/.+ : retry #1/)}) ||
+                        (flow.retrieveAllEntityPaths().getPathNodes() != flowPaths.find{ it.flowPath.flowId == flow.flowId} &&
+                                currentFlowStatus == FlowState.UP)
             }
         }
     }
@@ -117,11 +122,10 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         int minFlowsRequired = (int) Math.min(rerouteHardTimeout / antiflapMin, antiflapCooldown / antiflapMin + 1) + 1
         assumeTrue(switchPairs.size() >= minFlowsRequired, "Topology is too small to run this test")
         def flows = switchPairs.collect { switchPair ->
-            def flow = flowHelperV2.randomFlow(switchPair)
-            flowHelperV2.addFlow(flow)
+            def flow = flowFactory.getRandom(switchPair)
             flow
         }
-        def flowPaths = flows.collect { northbound.getFlowPath(it.flowId) }
+        def flowPaths = flows.collect { it.retrieveAllEntityPaths() }
 
         when: "All flows begin to continuously reroute in a loop"
         def stop = false //flag to abort all reroute triggers
@@ -152,20 +156,22 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
         then: "Right until hard timeout should run out no flow reroutes happen"
         //check until 80% of hard timeout runs out
         while (System.currentTimeMillis() < rerouteTriggersStart.time + rerouteHardTimeout * 1000 * 0.8) {
-            flowPaths.each { flowPath ->
-                assert northboundV2.getFlowStatus(flowPath.id).status == FlowState.UP &&
-                        northbound.getFlowPath(flowPath.id) == flowPath
+            flows.each { flow ->
+                def initialFlowPath = flowPaths.find { it.flowPath.flowId == flow.flowId }
+                assert flow.retrieveFlowStatus().status == FlowState.UP &&
+                        flow.retrieveAllEntityPaths().getPathNodes() == initialFlowPath
             }
         }
 
-        and: "Flows should start to reroute after hard timeout, eventhough reroutes are still being triggered"
+        and: "Flows should start to reroute after hard timeout, even though reroutes are still being triggered"
         rerouteTriggers.any { it.alive }
         def flowPathsClone = flowPaths.collect()
         Wrappers.wait(untilHardTimeoutEnds() + WAIT_OFFSET) {
             flowPathsClone.removeAll { flowPath ->
-                (northboundV2.getFlowStatus(flowPath.id).status == FlowState.DOWN && northbound
-                        .getFlowHistory(flowPath.id).last().payload.find { it.action == REROUTE_FAIL }) ||
-                        northbound.getFlowPath(flowPath.id) != flowPath
+                def flow = flows.find { it.flowId == flowPath.flowPath.flowId }
+                def lastFlowAction = flow.retrieveFlowHistory().getEntriesByType(FlowActionType.REROUTE_FAILED).last()
+                (flow.retrieveFlowStatus().status == FlowState.DOWN && lastFlowAction.payload.last().action == FlowActionType.REROUTE_FAILED.payloadLastAction)
+                        || flow.retrieveAllEntityPaths().getPathNodes() != flowPath
             }
             assert flowPathsClone.empty
         }
@@ -175,45 +181,38 @@ class ThrottlingRerouteSpec extends HealthCheckSpecification {
     def "Flow can be safely deleted while it is in the reroute window waiting for reroute"() {
         given: "A flow"
         def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.addFlow(flow)
-        def path = northbound.getFlowPath(flow.flowId)
+        def flow = flowFactory.getRandom(srcSwitch, dstSwitch)
+        def path = flow.retrieveAllEntityPaths()
 
         when: "Init a flow reroute by breaking current path"
-        def brokenIsl = breakFlow(path)
+        breakFlow(path)
 
         and: "Immediately remove the flow before reroute delay runs out and flow is actually rerouted"
-        flowHelperV2.deleteFlow(flow.flowId)
+        flow.delete()
 
         then: "The flow is not present in NB"
         !northboundV2.getAllFlows().find { it.flowId == flow.flowId}
 
         and: "Related switches have no excess rules, though need to wait until server42 rules are deleted"
         Wrappers.wait(RULES_DELETION_TIME) {
-            switchHelper.validateAndCollectFoundDiscrepancies(
-                    pathHelper.getInvolvedSwitches(PathHelper.convert(path))*.getDpId()).isEmpty()
+            switchHelper.validateAndCollectFoundDiscrepancies(path.getInvolvedSwitches()).isEmpty()
         }
     }
 
     /**
      * Breaks certain flow path. Ensures that the flow is indeed broken by waiting for ISL to actually get FAILED.
-     * @param flowpath path to break
+     * @param flowPath path to break
      * @return ISL which 'src' was brought down in order to break the path
      */
-    Isl breakFlow(FlowPathPayload flowpath, boolean waitForBrokenIsl = true) {
-        def sw = flowpath.forwardPath.first().switchId
-        def port = flowpath.forwardPath.first().outputPort
-        def brokenIsl = (topology.islsForActiveSwitches +
-                topology.islsForActiveSwitches.collect { it.reversed }).find {
-            it.srcSwitch.dpId == sw && it.srcPort == port
-        }
-        assert brokenIsl, "This should not be possible. Trying to switch port on ISL which is not present in config?"
-        antiflap.portDown(sw, port)
+    Isl breakFlow(FlowEntityPath flowPath, boolean waitForBrokenIsl = true) {
+        def islToBreak = flowPath.flowPath.path.forward.getInvolvedIsls().first()
+        assert islToBreak, "This should not be possible. Trying to switch port on ISL which is not present in config?"
+        antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
         if (waitForBrokenIsl) {
             Wrappers.wait(WAIT_OFFSET, 0) {
-                assert northbound.getLink(brokenIsl).state == IslChangeType.FAILED
+                assert northbound.getLink(islToBreak).state == IslChangeType.FAILED
             }
         }
-        return brokenIsl
+        return islToBreak
     }
 }

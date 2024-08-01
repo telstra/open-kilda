@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.server42
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
+import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.VXLAN
@@ -25,8 +26,12 @@ import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.cookie.CookieBase.CookieType
 
 import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Isolated
+import spock.lang.ResourceLock
 import spock.lang.Shared
 
+@ResourceLock(S42_TOGGLE)
+@Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
 class Server42HaFlowRttSpec extends HealthCheckSpecification {
 
     @Shared
@@ -50,7 +55,7 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
         assert swT, "There is no switch triplet for the further ha-flow creation"
 
         when: "Set server42FlowRtt toggle to true"
-        featureToggles.server42FlowRtt(true)
+        !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on all switches"
@@ -96,7 +101,7 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
         assert swT, "There is no switch triplet for the ha-flow creation"
 
         and: "Set server42FlowRtt toggle to true"
-        featureToggles.server42FlowRtt(true)
+        !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
         switchHelper.waitForS42SwRulesSetup()
 
         and: "server42FlowRtt is enabled on all switches"

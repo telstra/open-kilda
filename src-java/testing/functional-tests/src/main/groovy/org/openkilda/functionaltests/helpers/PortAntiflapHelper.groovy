@@ -1,6 +1,9 @@
 package org.openkilda.functionaltests.helpers
 
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
+
 import org.openkilda.functionaltests.helpers.model.PortHistoryEvent
+import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -10,6 +13,7 @@ import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.PORT_UP
@@ -22,6 +26,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
  * port was brought down and forces sleep for required 'cooldown' amount of time when one wants to bring that port 'up'.
  */
 @Component
+@Scope(SCOPE_PROTOTYPE)
 class PortAntiflapHelper {
     @Autowired @Qualifier("islandNb")
     NorthboundService northbound
@@ -65,9 +70,12 @@ class PortAntiflapHelper {
         }
     }
 
-    def portDown(SwitchId swId, int portNo, cleanupAfter = TEST) {
-        cleanupManager.addAction(PORT_UP, {safePortUp(swId, portNo)}, cleanupAfter)
-        cleanupManager.addAction(RESET_ISLS_COST, {database.resetCosts(topology.isls)})
+    def portDown(SwitchId swId, int portNo, CleanupAfter cleanupAfter = TEST, boolean isNotInScopeOfIslBreak = true) {
+        if(isNotInScopeOfIslBreak) {
+            //there is port recovery and resetting ISL cost in the scope of ISL breaking
+            cleanupManager.addAction(PORT_UP, {safePortUp(swId, portNo)}, cleanupAfter)
+            cleanupManager.addAction(RESET_ISLS_COST, {database.resetCosts(topology.isls)})
+        }
         def response = northbound.portDown(swId, portNo)
         sleep(antiflapMin * 1000)
         history.put(new Tuple2(swId, portNo), System.currentTimeMillis())

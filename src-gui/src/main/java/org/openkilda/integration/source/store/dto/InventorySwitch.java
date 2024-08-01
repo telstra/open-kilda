@@ -17,66 +17,37 @@ package org.openkilda.integration.source.store.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 
 import java.io.Serializable;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonNaming(PropertyNamingStrategies.KebabCaseStrategy.class)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({ "uuid", "switch-id", "description", "state", "name", "common-name", "pop-location", "model",
+@JsonPropertyOrder({"uuid", "switch-id", "description", "name", "common-name", "pop-location", "model",
         "status", "rack-location", "reference-url", "serial-number", "rack-number", "software-version",
-        "manufacturer" })
+        "manufacturer"})
 @Data
 public class InventorySwitch implements Serializable {
 
     private static final long serialVersionUID = 8314830507932457367L;
 
-    @JsonProperty("uuid")
     private String uuid;
-
-    @JsonProperty("switch-id")
     private String switchId;
-
-    @JsonProperty("description")
     private String description;
-
-    @JsonProperty("state")
-    private String state;
-
-    @JsonProperty("name")
     private String name;
-
-    @JsonProperty("common-name")
     private String commonName;
-
-    @JsonProperty("pop-location")
     private PopLocation popLocation;
-
-    @JsonProperty("model")
     private String model;
-
-    @JsonProperty("status")
     private String status;
-
-    @JsonProperty("rack-location")
     private String rackLocation;
-
-    @JsonProperty("reference-url")
     private String referenceUrl;
-
-    @JsonProperty("serial-number")
     private String serialNumber;
-
-    @JsonProperty("rack-number")
     private String rackNumber;
-
-    @JsonProperty("software-version")
     private String softwareVersion;
-
-    @JsonProperty("manufacturer")
     private String manufacturer;
-
+    private boolean hasDuplicate; // the value for this field is dynamically generated
 }

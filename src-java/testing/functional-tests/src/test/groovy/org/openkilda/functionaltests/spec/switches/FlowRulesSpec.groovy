@@ -1,30 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.messaging.error.MessageError
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.info.rule.FlowEntry
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.model.cookie.CookieBase.CookieType
-import org.openkilda.northbound.dto.v2.flows.FlowEndpointV2
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.tools.FlowTrafficExamBuilder
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Narrative
-import spock.lang.Shared
-
-import javax.inject.Provider
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
@@ -42,6 +17,33 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static spock.util.matcher.HamcrestSupport.expect
 
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.SwitchNotFoundExpectedError
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
+import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
+import org.openkilda.functionaltests.model.stats.Direction
+import org.openkilda.messaging.command.switches.DeleteRulesAction
+import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.info.rule.FlowEntry
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.model.cookie.CookieBase.CookieType
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.traffexam.TraffExamService
+
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
+import spock.lang.Shared
+
+import javax.inject.Provider
+
 @Narrative("""Verify how Kilda behaves with switch rules (either flow rules or default rules) under different 
 circumstances: e.g. persisting rules on newly connected switch, installing default rules on new switch etc.""")
 
@@ -49,7 +51,12 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
     @Autowired
     Provider<TraffExamService> traffExamProvider
-
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
+    @Autowired
+    @Shared
+    SwitchRulesFactory switchRulesFactory
     @Shared
     Switch srcSwitch, dstSwitch
     @Shared
@@ -82,8 +89,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Tags([VIRTUAL, SMOKE, SWITCH_RECOVER_ON_FAIL])
     def "Pre-installed flow rules are not deleted from a new switch connected to the controller"() {
         given: "A switch with proper flow rules installed (including default) and not connected to the controller"
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.addFlow(flow)
+        flowFactory.getRandom(srcSwitch, dstSwitch)
 
         def defaultPlusFlowRules = []
         Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -105,8 +111,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @IterationTag(tags = [SMOKE_SWITCHES], iterationNameRegex = /delete-action=DROP_ALL\)/)
     def "Able to delete rules from a switch (delete-action=#data.deleteRulesAction)"() {
         given: "A switch with some flow rules installed"
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.addFlow(flow)
+        flowFactory.getRandom(srcSwitch, dstSwitch)
 
         when: "Delete rules from the switch"
         def expectedRules = data.getExpectedRules(srcSwitch, srcSwDefaultRules)
@@ -185,8 +190,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "Able to delete switch rules by cookie/priority #data.identifier"() {
         given: "A switch with some flow rules installed"
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.addFlow(flow)
+        flowFactory.getRandom(srcSwitch, dstSwitch)
 
         when: "Delete switch rules by #data.identifier"
         //exclude the "SERVER_42_INPUT" rule, this rule has less priority than usual flow rule
@@ -217,9 +221,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     def "Attempt to delete switch rules by supplying non-existing #data.description leaves all rules intact"() {
         given: "A switch with some flow rules installed"
         assumeTrue(data.description != "priority", "https://github.com/telstra/open-kilda/issues/1701")
-
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.addFlow(flow)
+        flowFactory.getRandom(srcSwitch, dstSwitch)
 
         def ingressRule = (northbound.getSwitchRules(srcSwitch.dpId).flowEntries - data.defaultRules).find {
             new Cookie(it.cookie).serviceFlag
@@ -227,7 +229,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
         if (ingressRule) {
             data.defaultRules = (data.defaultRules + ingressRule + sharedRulesCount)
         }
-
 
         when: "Delete switch rules by non-existing #data.description"
         def deletedRules = switchHelper.deleteSwitchRules(data.switch.dpId, data.value)
@@ -254,7 +255,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @IterationTag(tags = [SMOKE], iterationNameRegex = /inPort/)
     def "Able to delete switch rules by #data.description"() {
         given: "A switch with some flow rules installed"
-        flowHelperV2.addFlow(flow)
+        flow.create()
         def cookiesBefore = northbound.getSwitchRules(data.switch.dpId).flowEntries*.cookie.sort()
         def s42IsEnabled = switchHelper.getCachedSwProps(data.switch.dpId).server42FlowRtt
 
@@ -276,7 +277,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         where:
         data << [[description      : "inPort",
-                  flow             : buildFlow(),
+                  flow             : flowFactory.getBuilder(srcSwitch, dstSwitch).build(),
                   switch           : srcSwitch,
                   inVlan           : null,
                   encapsulationType: null,
@@ -284,7 +285,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
                   removedRules     : 3
                  ].tap { inPort = flow.source.portNumber },
                  [description      : "inVlan",
-                  flow             : buildFlow(),
+                  flow             : flowFactory.getBuilder(srcSwitch, dstSwitch).build(),
                   switch           : srcSwitch,
                   inPort           : null,
                   encapsulationType: "TRANSIT_VLAN",
@@ -292,14 +293,14 @@ class FlowRulesSpec extends HealthCheckSpecification {
                   removedRules     : 1
                  ].tap { inVlan = flow.source.vlanId },
                  [description      : "inPort and inVlan",
-                  flow             : buildFlow(),
+                  flow             : flowFactory.getBuilder(srcSwitch, dstSwitch).build(),
                   switch           : srcSwitch,
                   encapsulationType: "TRANSIT_VLAN",
                   outPort          : null,
                   removedRules     : 1
                  ].tap { inVlan = flow.source.vlanId; inPort = flow.source.portNumber },
                  [description      : "outPort",
-                  flow             : buildFlow(),
+                  flow             : flowFactory.getBuilder(srcSwitch, dstSwitch).build(),
                   switch           : dstSwitch,
                   inPort           : null,
                   inVlan           : null,
@@ -307,14 +308,13 @@ class FlowRulesSpec extends HealthCheckSpecification {
                   removedRules     : 1
                  ].tap { outPort = flow.destination.portNumber },
         ]
-        flow = data.flow as FlowRequestV2
+        flow = data.flow as FlowExtended
     }
 
     @IterationTag(tags = [SMOKE], iterationNameRegex = /inVlan/)
     def "Attempt to delete switch rules by supplying non-existing #data.description keeps all rules intact"() {
         given: "A switch with some flow rules installed"
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.addFlow(flow)
+        flowFactory.getRandom(srcSwitch, dstSwitch)
         def originalRules = northbound.getSwitchRules(data.switch.dpId).flowEntries*.cookie.sort()
 
         when: "Delete switch rules by non-existing #data.description"
@@ -369,13 +369,13 @@ class FlowRulesSpec extends HealthCheckSpecification {
         switchPair.paths.findAll { it != longPath }.each { pathHelper.makePathMorePreferable(longPath, it) }
 
         and: "Create a transit-switch flow going through these switches"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.maximumBandwidth = maximumBandwidth
-        flow.ignoreBandwidth = maximumBandwidth ? false : true
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair)
+                .withBandwidth(maximumBandwidth)
+                .withIgnoreBandwidth(maximumBandwidth ? false : true).build()
+                .create()
 
         and: "Remove flow rules so that they become 'missing'"
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
+        def involvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
         def defaultPlusFlowRulesMap = involvedSwitches.collectEntries { switchId ->
             [switchId, northbound.getSwitchRules(switchId).flowEntries]
         }
@@ -384,12 +384,13 @@ class FlowRulesSpec extends HealthCheckSpecification {
             def swProps = switchHelper.getCachedSwProps(switchId)
             def switchIdInSrcOrDst = (switchId in [switchPair.src.dpId, switchPair.dst.dpId])
             def defaultAmountOfFlowRules = 2 // ingress + egress
-            def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
-            if (swProps.server42FlowRtt) {
-                if ((flow.destination.getSwitchId() == switchId && flow.destination.vlanId) || (
-                        flow.source.getSwitchId() == switchId && flow.source.vlanId))
-                    amountOfServer42Rules += 1
+            def amountOfServer42Rules = 0
+            if(swProps.server42FlowRtt && switchIdInSrcOrDst) {
+                amountOfServer42Rules +=1
+                switchId == switchPair.src.dpId && flow.source.vlanId && ++amountOfServer42Rules
+                switchId == switchPair.dst.dpId && flow.destination.vlanId && ++amountOfServer42Rules
             }
+
             def rulesCount = defaultAmountOfFlowRules + amountOfServer42Rules + (switchIdInSrcOrDst ? 1 : 0)
 
             [switchId, (rulesCount)]
@@ -435,8 +436,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         then: "An error is received (404 code)"
         def exc = thrown(HttpClientErrorException)
-        exc.rawStatusCode == 404
-        exc.responseBodyAsString.to(MessageError).errorMessage == "Switch '$NON_EXISTENT_SWITCH_ID' not found"
+        new SwitchNotFoundExpectedError("Switch '${NON_EXISTENT_SWITCH_ID}' not found", ~/Error in switch validation/).matches(exc)
 
         where:
         action        | method
@@ -450,18 +450,22 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "Create a flow with protected path"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.allocateProtectedPath = true
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair)
+                .withProtectedPath(true).build()
+                .create()
 
-        flowHelper.verifyRulesOnProtectedFlow(flow.flowId)
-        def flowPathInfo = northbound.getFlowPath(flow.flowId)
-        def mainFlowPath = flowPathInfo.forwardPath
-        def protectedFlowPath = flowPathInfo.protectedPath.forwardPath
-        def commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
-        def uniqueNodes = (protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
+        def flowPathInfo = flow.retrieveAllEntityPaths()
+
+        HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
+                .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
+        flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
+
+        def mainFlowPath = flowPathInfo.getPathNodes(Direction.FORWARD, false)
+        def protectedFlowPath = flowPathInfo.getPathNodes(Direction.FORWARD, true)
+        List<SwitchId> commonNodeIds = mainFlowPath*.switchId.intersect(protectedFlowPath*.switchId)
+        List<SwitchId> uniqueNodes = (protectedFlowPath.findAll { !commonNodeIds.contains(it.switchId) } + mainFlowPath.findAll {
             !commonNodeIds.contains(it.switchId)
-        })*.switchId
+        })*.switchId.unique()
         def rulesOnSwitchesBefore = (commonNodeIds + uniqueNodes).collectEntries {
             [it, northbound.getSwitchRules(it).flowEntries.sort { it.cookie }]
         }
@@ -525,9 +529,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def (srcSwitch, dstSwitch) = [isl.srcSwitch, isl.dstSwitch]
 
         and: "Create a flow going through these switches"
-        def flow = flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-        flowHelperV2.addFlow(flow)
-        def flowInfo = database.getFlow(flow.flowId)
+        def flow = flowFactory.getRandom(srcSwitch, dstSwitch)
+        def flowInfo = flow.retrieveDetailsFromDB()
         def flowRulesSrcSw = getFlowRules(srcSwitch)
         def flowRulesDstSw = getFlowRules(dstSwitch)
         def sharedRuleSrcSw = flowRulesSrcSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW &&
@@ -543,9 +546,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
 
         when: "Start traffic examination"
         def traffExam = traffExamProvider.get()
-        def examVlanFlow = new FlowTrafficExamBuilder(topology, traffExam).buildBidirectionalExam(
-                flowHelperV2.toV1(flow), 100, 2
-        )
+        def examVlanFlow = flow.traffExam(traffExam, 100, 2)
         withPool {
             [examVlanFlow.forward, examVlanFlow.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
@@ -591,19 +592,19 @@ class FlowRulesSpec extends HealthCheckSpecification {
          }
 
         when: "Break the flow ISL (bring switch port down) to cause flow rerouting"
-        def flowPath = PathHelper.convert(northbound.getFlowPath(flow.flowId))
+        def actualFlowPath = flow.retrieveAllEntityPaths()
         // Switches may have parallel links, so we need to get involved ISLs.
-        def islToFail = pathHelper.getInvolvedIsls(flowPath).first()
+        def islToFail = actualFlowPath.flowPath.getInvolvedIsls().first()
         islHelper.breakIsl(islToFail)
 
         then: "The flow was rerouted after reroute timeout"
         def flowInfoAfterReroute
-        def rulesAfterRerouteSrcSw
-        def rulesAfterRerouteDstSw
+        List<FlowEntry> rulesAfterRerouteSrcSw
+        List<FlowEntry> rulesAfterRerouteDstSw
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert northboundV2.getFlowStatus(flow.flowId).status == FlowState.UP
-            assert PathHelper.convert(northbound.getFlowPath(flow.flowId)) != flowPath
-            flowInfoAfterReroute = database.getFlow(flow.flowId)
+            assert flow.retrieveFlowStatus().status == FlowState.UP
+            assert flow.retrieveAllEntityPaths() != actualFlowPath
+            flowInfoAfterReroute = flow.retrieveDetailsFromDB()
             rulesAfterRerouteSrcSw = getFlowRules(srcSwitch)
             rulesAfterRerouteDstSw = getFlowRules(dstSwitch)
             //system doesn't reinstall shared rule
@@ -662,13 +663,13 @@ class FlowRulesSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().nonNeighbouring().withBothSwitchesVxLanEnabled().random()
 
         and: "Create a flow with vxlan encapsulation"
-        def flow = flowHelperV2.randomFlow(switchPair)
-        flow.encapsulationType = FlowEncapsulationType.VXLAN
-        flowHelperV2.addFlow(flow)
+        def flow = flowFactory.getBuilder(switchPair)
+                .withEncapsulationType(FlowEncapsulationType.VXLAN).build()
+                .create()
 
         and: "Delete flow rules so that they become 'missing'"
-        def flowInfoFromDb = database.getFlow(flow.flowId)
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)*.dpId
+        def flowInfoFromDb = flow.retrieveDetailsFromDB()
+        def involvedSwitches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
         def transitSwitchIds = involvedSwitches[1..-2]
         def defaultPlusFlowRulesMap = involvedSwitches.collectEntries { switchId ->
             [switchId, northbound.getSwitchRules(switchId).flowEntries]
@@ -678,12 +679,13 @@ class FlowRulesSpec extends HealthCheckSpecification {
             def swProps = switchHelper.getCachedSwProps(switchId)
             def switchIdInSrcOrDst = (switchId in [switchPair.src.dpId, switchPair.dst.dpId])
             def defaultAmountOfFlowRules = 2 // ingress + egress
-            def amountOfServer42Rules = (switchIdInSrcOrDst && swProps.server42FlowRtt ? 1 : 0)
-            if (swProps.server42FlowRtt) {
-                if ((flow.destination.getSwitchId() == switchId && flow.destination.vlanId) || (
-                        flow.source.getSwitchId() == switchId && flow.source.vlanId))
-                    amountOfServer42Rules += 1
+            def amountOfServer42Rules = 0
+            if(swProps.server42FlowRtt && switchIdInSrcOrDst) {
+                amountOfServer42Rules +=1
+                switchId == switchPair.src.dpId && flow.source.vlanId && ++amountOfServer42Rules
+                switchId == switchPair.dst.dpId && flow.destination.vlanId && ++amountOfServer42Rules
             }
+
             def rulesCount = defaultAmountOfFlowRules + amountOfServer42Rules + (switchIdInSrcOrDst ? 1 : 0)
             [switchId, rulesCount]
         }
@@ -758,9 +760,6 @@ class FlowRulesSpec extends HealthCheckSpecification {
                 .ignoring("durationSeconds"))
     }
 
-    FlowRequestV2 buildFlow() {
-        flowHelperV2.randomFlow(srcSwitch, dstSwitch)
-    }
 
     List<FlowEntry> filterRules(List<FlowEntry> rules, inPort, inVlan, outPort) {
         if (inPort) {
@@ -775,24 +774,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         return rules
     }
 
-    void checkTrafficCountersInRules(FlowEndpointV2 flowEndpoint, isTrafficThroughRuleExpected) {
-        def rules = northbound.getSwitchRules(flowEndpoint.switchId).flowEntries
-        def ingressRule = filterRules(rules, flowEndpoint.portNumber, flowEndpoint.vlanId, null)[0]
-        def egressRule = filterRules(rules, null, null, flowEndpoint.portNumber).find {
-            it.instructions.applyActions.setFieldActions*.fieldValue.contains(flowEndpoint.vlanId.toString())
-        }
-
-        assert ingressRule.flags.contains("RESET_COUNTS")
-        assert isTrafficThroughRuleExpected == (ingressRule.packetCount > 0)
-        assert isTrafficThroughRuleExpected == (ingressRule.byteCount > 0)
-
-        assert !egressRule.flags.contains("RESET_COUNTS")
-        assert isTrafficThroughRuleExpected == (egressRule.packetCount > 0)
-        assert isTrafficThroughRuleExpected == (egressRule.byteCount > 0)
-
-    }
-
     List<FlowEntry> getFlowRules(Switch sw) {
-        northbound.getSwitchRules(sw.dpId).flowEntries.findAll { !(it.cookie in sw.defaultCookies) }.sort()
+        switchRulesFactory.get(sw.dpId).getRules().findAll { !(it.cookie in sw.defaultCookies) }.sort()
     }
 }

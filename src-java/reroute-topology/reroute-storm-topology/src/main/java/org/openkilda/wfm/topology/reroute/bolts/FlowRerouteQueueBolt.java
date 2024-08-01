@@ -15,6 +15,7 @@
 
 package org.openkilda.wfm.topology.reroute.bolts;
 
+import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_MANUAL_REROUTE_FLUSH_REQUEST_ID;
 import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_MANUAL_REROUTE_REQUEST_ID;
 import static org.openkilda.wfm.topology.reroute.bolts.RerouteBolt.STREAM_REROUTE_REQUEST_ID;
 import static org.openkilda.wfm.topology.reroute.bolts.TimeWindowBolt.STREAM_TIME_WINDOW_EVENT_ID;
@@ -25,6 +26,8 @@ import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
 import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.messaging.error.ErrorMessage;
+import org.openkilda.messaging.info.flow.FlowRerouteFlushResponse;
+import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.reroute.RerouteResultInfoData;
 import org.openkilda.persistence.PersistenceManager;
 import org.openkilda.wfm.CommandContext;
@@ -86,6 +89,10 @@ public class FlowRerouteQueueBolt extends CoordinatedBolt implements IRerouteQue
                 throttlingData = (FlowThrottlingData) tuple.getValueByField(RerouteBolt.THROTTLING_DATA_FIELD);
                 rerouteQueueService.processManualRequest(flowId, throttlingData);
                 break;
+            case STREAM_MANUAL_REROUTE_FLUSH_REQUEST_ID:
+                throttlingData = (FlowThrottlingData) tuple.getValueByField(RerouteBolt.THROTTLING_DATA_FIELD);
+                rerouteQueueService.processManualFlushRequest(flowId, throttlingData);
+                break;
             default:
                 unhandledInput(tuple);
         }
@@ -143,6 +150,13 @@ public class FlowRerouteQueueBolt extends CoordinatedBolt implements IRerouteQue
         String correlationId = getCommandContext().getCorrelationId();
         getOutput().emit(STREAM_NORTHBOUND_ID, getCurrentTuple(), new Values(correlationId,
                 new ErrorMessage(errorData, System.currentTimeMillis(), correlationId)));
+    }
+
+    @Override
+    public void emitFlowRerouteInfo(FlowResponse flowData) {
+        String correlationId = getCommandContext().getCorrelationId();
+        getOutput().emit(STREAM_NORTHBOUND_ID, getCurrentTuple(), new Values(correlationId,
+                new FlowRerouteFlushResponse(System.currentTimeMillis(), correlationId, flowData)));
     }
 
     @Override

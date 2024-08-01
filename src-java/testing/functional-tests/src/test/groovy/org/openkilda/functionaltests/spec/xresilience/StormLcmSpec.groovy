@@ -1,7 +1,5 @@
 package org.openkilda.functionaltests.spec.xresilience
 
-import org.openkilda.model.IslStatus
-
 import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
@@ -15,11 +13,15 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.WfmManipulator
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.SwitchChangeType
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.model.IslStatus
 import org.openkilda.testing.Constants
 
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import spock.lang.Ignore
 import spock.lang.Isolated
@@ -41,11 +43,17 @@ verify their consistency after restart.
 @Tags(VIRTUAL)
 @Isolated
 class StormLcmSpec extends HealthCheckSpecification {
+
+    static final IntRange KILDA_ALLOWED_VLANS = 1..4095
+
     @Shared
     WfmManipulator wfmManipulator
     @Value('${docker.host}')
     @Shared
     String dockerHost
+    @Autowired
+    @Shared
+    FlowFactory flowFactory
 
     def setupSpec() {
         //since we simulate storm restart by restarting the docker container, for now this is only possible on virtual
@@ -58,19 +66,20 @@ class StormLcmSpec extends HealthCheckSpecification {
     // note: it takes ~15 minutes to run this test
     def "System survives Storm topologies restart"() {
         given: "Non-empty system with some flows created"
-        List<FlowRequestV2> flows = []
+        List<FlowExtended> flows = []
         def flowsAmount = topology.activeSwitches.size() * 3
+        List<SwitchPortVlan> busyEndpoints = []
         flowsAmount.times {
-            def flow = flowHelperV2.randomFlow(switchPairs.all().random(), false, flows)
-            flow.maximumBandwidth = 500000
-            flowHelperV2.addFlow(flow)
+            def flow = flowFactory.getBuilder(switchPairs.all().random(), false, busyEndpoints)
+                    .withBandwidth(500000).build()
+                    .create()
+
+            busyEndpoints.addAll(flow.occupiedEndpoints())
             flows << flow
         }
 
         and: "All created flows are valid"
-        flows.each { flow ->
-            northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        }
+        flows.each { flow -> flow.validateAndCollectDiscrepancies().isEmpty() }
 
         and: "Database dump"
         //unstable for parallel runs even when isolated. why?
@@ -109,17 +118,16 @@ class StormLcmSpec extends HealthCheckSpecification {
         }
 
         and: "Flows remain valid in terms of installed rules and meters"
-        flows.each { flow ->
-            northbound.validateFlow(flow.flowId).each { direction -> assert direction.asExpected }
-        }
+        flows.each { flow -> flow.validateAndCollectDiscrepancies().isEmpty() }
 
         and: "Flow can be updated"
-        def flowToUpdate = flows[0]
+        FlowExtended flowToUpdate = flows[0]
         //expect enough free vlans here, ignore used switch-ports for simplicity of search
-        def unusedVlan = (flowHelper.KILDA_ALLOWED_VLANS - flows
+        def unusedVlan = (KILDA_ALLOWED_VLANS - flows
                 .collectMany { [it.source.vlanId, it.destination.vlanId] })[0]
-        flowHelperV2.updateFlow(flowToUpdate.flowId, flowToUpdate.tap { it.source.vlanId = unusedVlan })
-        northbound.validateFlow(flowToUpdate.flowId).each { direction -> assert direction.asExpected }
+
+        flowToUpdate.update(flowToUpdate.tap { it.source.vlanId = unusedVlan })
+        flowToUpdate.validateAndCollectDiscrepancies().isEmpty()
     }
 
     @Ignore
