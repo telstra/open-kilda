@@ -46,7 +46,6 @@ import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Issue
 import spock.lang.Narrative
 import spock.lang.See
 import spock.lang.Shared
@@ -1251,7 +1250,6 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         "an unmetered"  | 0
     }
 
-    @Issue("https://github.com/telstra/open-kilda/issues/5699")
     @Tags(ISL_RECOVER_ON_FAIL)
     def "System doesn't reroute main flow path when protected path is broken and new alt path is available\
 (altPath is more preferable than mainPath)"() {
@@ -1264,29 +1262,32 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
         def initialFlowPathInfo = flow.retrieveAllEntityPaths()
         def initialMainPath = initialFlowPathInfo.getPathNodes(Direction.FORWARD, false)
-        def mainPathIsl = initialFlowPathInfo.flowPath.getMainPathInvolvedIsls().first()
+        def mainPathIsl = initialFlowPathInfo.flowPath.getMainPathInvolvedIsls()
         def initialProtectedPath = initialFlowPathInfo.getPathNodes(Direction.FORWARD, true)
-        def protectedIslToBreak = initialFlowPathInfo.flowPath.getProtectedPathInvolvedIsls().first()
-        def broughtDownIsls = topology.getRelatedIsls(switchPair.src) - mainPathIsl - protectedIslToBreak
+        def protectedIslToBreak = initialFlowPathInfo.flowPath.getProtectedPathInvolvedIsls()
+        def broughtDownIsls = topology.getRelatedIsls(switchPair.src) - mainPathIsl.first() - protectedIslToBreak.first()
         islHelper.breakIsls(broughtDownIsls)
 
         and: "ISL on a protected path is broken(bring port down) for changing the flow state to DEGRADED"
-        islHelper.breakIsl(protectedIslToBreak)
+        islHelper.breakIsl(protectedIslToBreak.first())
+        flow.waitForHistoryEvent(REROUTE_FAILED)
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.DEGRADED }
 
-        when: "Make the current path less preferable than alternative path"
+        when: "Make the current paths(main and protected) less preferable than alternative path"
         def alternativePath = switchPair.paths.find { it != initialMainPath && it != initialProtectedPath }
-        def alternativeIsl = pathHelper.getInvolvedIsls(alternativePath)[0]
-
+        def alternativeIsl = pathHelper.getInvolvedIsls(alternativePath)
         switchPair.paths.findAll { it != alternativePath }.each {
             pathHelper.makePathMorePreferable(alternativePath, it)
         }
-        assert northbound.getLink(mainPathIsl).cost > northbound.getLink(alternativeIsl).cost
+
+        int alternativeIslCost = alternativeIsl.sum { northbound.getLink(it).cost }
+        assert mainPathIsl.sum { northbound.getLink(it).cost } > alternativeIslCost
 
         and: "Make alternative path available(bring port up on the source switch)"
-        islHelper.restoreIsl(alternativeIsl)
+        islHelper.restoreIsl(alternativeIsl.first())
 
-        then: "Flow state is changed to UP"
+        then: "Reroute has been executed successfully and flow state is changed to UP"
+        flow.waitForHistoryEvent(REROUTE)
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
 
         and: "Protected path is recalculated only"
