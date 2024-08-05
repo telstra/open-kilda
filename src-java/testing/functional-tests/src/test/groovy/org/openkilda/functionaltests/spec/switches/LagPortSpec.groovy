@@ -1,9 +1,9 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
 import static org.openkilda.model.MeterId.LACP_REPLY_METER_ID
 import static org.openkilda.model.cookie.Cookie.DROP_SLOW_PROTOCOLS_LOOP_COOKIE
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID

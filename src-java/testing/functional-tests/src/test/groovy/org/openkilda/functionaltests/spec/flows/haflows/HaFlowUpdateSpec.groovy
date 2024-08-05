@@ -1,7 +1,8 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
+
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.model.Switch
 
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 
@@ -300,8 +301,8 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
     }
 
     private void setRandomVlans(HaFlowExtended payload) {
-        payload.sharedEndpoint.vlanId = flowHelperV2.randomVlan([payload.sharedEndpoint.vlanId])
-        payload.subFlows.forEach { it.endpointVlan = flowHelperV2.randomVlan([it.endpointVlan]) }
+        payload.sharedEndpoint.vlanId = randomVlan([payload.sharedEndpoint.vlanId])
+        payload.subFlows.forEach { it.endpointVlan = randomVlan([it.endpointVlan]) }
     }
 
     def "User cannot partial update an HA-Flow with #data.descr"() {

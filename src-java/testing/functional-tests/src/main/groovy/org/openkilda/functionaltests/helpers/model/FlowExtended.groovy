@@ -1,8 +1,8 @@
 package org.openkilda.functionaltests.helpers.model
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
 import static org.openkilda.functionaltests.helpers.FlowNameGenerator.FLOW
+import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_FLOW
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
@@ -256,6 +256,7 @@ class FlowExtended {
                 .diverseFlowId(diverseWith ? diverseWith.first() : null)
                 .build()
         cleanupManager.addAction(DELETE_FLOW, { delete() }, cleanupAfter)
+        log.debug("Adding flow '$flowId'")
         def flow = northboundV2.addFlow(flowRequest)
         return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
     }
@@ -263,6 +264,7 @@ class FlowExtended {
     FlowExtended createV1(FlowState expectedState = FlowState.UP, CleanupAfter cleanupAfter = TEST) {
         def flowRequest = convertToFlowCreatePayload()
         cleanupManager.addAction(DELETE_FLOW, { delete() }, cleanupAfter)
+        log.debug("Adding flow '$flowId'")
         northbound.addFlow(flowRequest)
         waitForBeingInState(expectedState)
     }
@@ -270,6 +272,7 @@ class FlowExtended {
     FlowExtended sendCreateRequestV1(CleanupAfter cleanupAfter = TEST) {
         def flowRequest = convertToFlowPayload()
         cleanupManager.addAction(DELETE_FLOW, { delete() }, cleanupAfter)
+        log.debug("Adding flow '$flowId'")
         def flow = northbound.addFlow(flowRequest)
         return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
     }
@@ -340,33 +343,35 @@ class FlowExtended {
     }
 
     FlowEntityPath retrieveAllEntityPaths() {
+        log.debug("Getting Flow path for '$flowId'")
         FlowPathPayload flowPath = northbound.getFlowPath(flowId)
         new FlowEntityPath(flowPath, topologyDefinition)
     }
 
     def retrieveDetails() {
-        log.debug("Get Flow '$flowId' details")
+        log.debug("Getting Flow '$flowId' details")
         def flow = northboundV2.getFlow(flowId)
         return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
     }
 
     def retrieveDetailsFromDB() {
+        log.debug("Getting DB details for Flow '$flowId'")
         database.getFlow(flowId)
     }
 
     def retrieveDetailsV1() {
-        log.debug("Get Flow '$flowId' details")
+        log.debug("Getting Flow '$flowId' details")
         def flow = northbound.getFlow(flowId)
         return new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
     }
 
     FlowIdStatusPayload retrieveFlowStatus() {
-        log.debug("Get Flow '$flowId' status")
+        log.debug("Getting Flow '$flowId' status")
         return northboundV2.getFlowStatus(flowId)
     }
 
     FlowHistory retrieveFlowHistory(Long timeFrom = null , Long timeTo = null) {
-        log.debug("Get Flow '$flowId' history details")
+        log.debug("Getting Flow '$flowId' history details")
         new FlowHistory(northbound.getFlowHistory(flowId, timeFrom, timeTo))
     }
 
@@ -375,17 +380,19 @@ class FlowExtended {
     }
 
     List<FlowHistoryStatus> retrieveFlowHistoryStatus(Long timeFrom = null, Long timeTo = null, Integer maxCount = null) {
+        log.debug("Getting '$flowId' Flow history status")
         northboundV2.getFlowHistoryStatuses(flowId, timeFrom, timeTo, maxCount).historyStatuses.collect {
             new FlowHistoryStatus(it.timestamp, it.statusBecome)
         }
     }
 
     List<FlowHistoryStatus> retrieveFlowHistoryStatus(Integer maxCount) {
+        log.debug("Getting '$flowId' Flow history status")
         retrieveFlowHistoryStatus(null, null, maxCount)
     }
 
     FlowMirrorPointsResponseV2 retrieveMirrorPoints() {
-        log.debug("Get Flow '$flowId' mirror points")
+        log.debug("Getting Flow '$flowId' mirror points")
         return northboundV2.getMirrorPoints(flowId)
     }
 
@@ -395,11 +402,12 @@ class FlowExtended {
     }
 
     List<FlowValidationDto> validate() {
-        log.debug("Validate Flow '$flowId'")
+        log.debug("Validating Flow '$flowId'")
         northbound.validateFlow(flowId)
     }
 
     FlowRerouteResponseV2 reroute() {
+        log.debug("Rerouting Flow '$flowId'")
         northboundV2.rerouteFlow(flowId)
     }
 
@@ -412,6 +420,7 @@ class FlowExtended {
     }
 
     FlowReroutePayload sync() {
+        log.debug("Sync Flow '$flowId'")
         northbound.synchronizeFlow(flowId)
     }
 
@@ -421,6 +430,7 @@ class FlowExtended {
     }
 
     FlowExtended sendUpdateRequest(FlowExtended expectedEntity) {
+        log.debug("Updating Flow '$flowId'")
         def response = northboundV2.updateFlow(flowId, expectedEntity.convertToUpdate())
         return new FlowExtended(response, northbound, northboundV2, topologyDefinition, cleanupManager, database)
     }
@@ -431,6 +441,7 @@ class FlowExtended {
     }
 
     FlowExtended updateV1(FlowExtended expectedEntity, FlowState flowState = FlowState.UP) {
+        log.debug("Updating(V1) Flow '$flowId'")
         northbound.updateFlow(flowId, expectedEntity.convertToFlowPayload())
         return waitForBeingInState(flowState)
     }
@@ -441,10 +452,12 @@ class FlowExtended {
     }
 
     FlowReroutePayload rerouteV1() {
+        log.debug("Rerouting(V1) Flow '$flowId'")
         return northbound.rerouteFlow(flowId)
     }
 
     FlowExtended sendPartialUpdateRequest(FlowPatchV2 updateRequest) {
+        log.debug("Partitial updating Flow '$flowId'")
         def response = northboundV2.partialUpdate(flowId, updateRequest)
         return new FlowExtended(response, northbound, northboundV2, topologyDefinition, cleanupManager, database)
 
@@ -456,16 +469,19 @@ class FlowExtended {
     }
 
     FlowExtended sendPartialUpdateRequestV1(FlowPatchDto updateRequest) {
+        log.debug("Partitial updating(V1) Flow '$flowId'")
         def response = northbound.partialUpdate(flowId, updateRequest)
         return new FlowExtended(response, northbound, northboundV2, topologyDefinition, cleanupManager, database)
 
     }
 
     void updateFlowBandwidthInDB(long newBandwidth) {
+        log.debug("Updating Flow '$flowId' bandwidth in DB")
         database.updateFlowBandwidth(flowId, newBandwidth)
     }
 
     void updateFlowMeterIdInDB(long newMeterId) {
+        log.debug("Updating Flow '$flowId' meter in DB")
         database.updateFlowMeterId(flowId, newMeterId)
     }
 
@@ -524,19 +540,23 @@ class FlowExtended {
     This method swaps the main path with the protected path
      */
     FlowExtended swapFlowPath() {
+        log.debug("Swapping Flow '$flowId' path")
         def flow = northbound.swapFlowPath(flowId)
         new FlowExtended(flow, northbound, northboundV2, topologyDefinition, cleanupManager, database)
     }
 
     FlowLoopResponse createFlowLoop(SwitchId switchId) {
+        log.debug("Creating loop Flow '$flowId'")
         northboundV2.createFlowLoop(flowId, new FlowLoopPayload(switchId))
     }
 
     List<FlowLoopResponse> retrieveFlowLoop(SwitchId switchId = null) {
+        log.debug("Getting loop Flow '$flowId'")
         northboundV2.getFlowLoop(flowId, switchId)
     }
 
     FlowLoopResponse deleteFlowLoop() {
+        log.debug("Deleting loop Flow '$flowId'")
         northboundV2.deleteFlowLoop(flowId)
     }
 
@@ -561,6 +581,7 @@ class FlowExtended {
     }
 
     FlowMeterEntries resetMeters() {
+        log.debug("Resetting meters Flow '$flowId'")
         northbound.resetMeters(flowId)
     }
 
@@ -590,7 +611,7 @@ class FlowExtended {
             wait(WAIT_OFFSET) { assert northbound.getFlowStatus(flowId).status != FlowState.IN_PROGRESS }
         }
 
-        log.debug("Deleting flow '$flowId'")
+        log.debug("Deleting Flow '$flowId'")
         def response = northbound.deleteFlow(flowId)
         wait(FLOW_CRUD_TIMEOUT) {
             assert !northbound.getFlowStatus(flowId)
@@ -604,6 +625,7 @@ class FlowExtended {
      * Sends delete request for flow without actual clarification of flow deletion
      */
     FlowResponseV2 sendDeleteRequest() {
+        log.debug("Deleting Flow '$flowId'")
         northboundV2.deleteFlow(flowId)
     }
 
@@ -611,6 +633,7 @@ class FlowExtended {
      * Sends delete request for flow without actual clarification of flow deletion (API.V1)
      */
     FlowPayload sendDeleteRequestV1() {
+        log.debug("Deleting(V1) Flow '$flowId'")
         northbound.deleteFlow(flowId)
     }
 
@@ -619,6 +642,7 @@ class FlowExtended {
      * @param since can be used to get details about connected devices starting from a specific time
      */
     FlowConnectedDevicesResponse retrieveConnectedDevices(String since = null) {
+        log.debug("Getting connected devices Flow '$flowId'")
         northbound.getFlowConnectedDevices(flowId, since)
     }
 
@@ -780,8 +804,16 @@ class FlowExtended {
         assertions.verify()
     }
 
+    /**
+     * Check that all needed rules are created for a flow with protected path.<br>
+     * Protected path creates the 'egress' rule only on the src and dst switches
+     * and creates 2 rules(input/output) on the transit switches.<br>
+     * if (switchId == src/dst): 2 rules for main flow path + 1 egress for protected path = 3<br>
+     * if (switchId != src/dst): 2 rules for main flow path + 2 rules for protected path = 4<br>
+     *
+     * @param flowInvolvedSwitchesWithRules (map of switch-rules data for further verification)
+     */
     void verifyRulesForProtectedFlowOnSwitches(HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules) {
-
         def flowDBInfo = retrieveDetailsFromDB()
         long mainForwardCookie = flowDBInfo.forwardPath.cookie.value
         long mainReverseCookie = flowDBInfo.reversePath.cookie.value

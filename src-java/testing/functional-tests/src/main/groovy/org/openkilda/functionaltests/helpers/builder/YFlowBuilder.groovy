@@ -1,10 +1,11 @@
 package org.openkilda.functionaltests.helpers.builder
 
+import static org.openkilda.functionaltests.helpers.SwitchHelper.availableVlanList
+import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
+
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.northbound.dto.v2.yflows.SubFlow
 
-import static org.openkilda.functionaltests.helpers.FlowHelperV2.availableVlanList
-import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
 import static org.openkilda.functionaltests.helpers.FlowNameGenerator.Y_FLOW
 import static org.openkilda.functionaltests.helpers.StringGenerator.generateDescription
 import static org.openkilda.functionaltests.helpers.SwitchHelper.getRandomAvailablePort
@@ -22,16 +23,12 @@ import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 
-import com.github.javafaker.Faker
 import groovy.util.logging.Slf4j
 
 @Slf4j
 class YFlowBuilder {
 
     YFlowExtended yFlow
-
-    static def random = new Random()
-    static def faker = new Faker()
 
     YFlowBuilder(SwitchTriplet swT,
                  NorthboundService northbound,
