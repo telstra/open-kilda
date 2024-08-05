@@ -283,22 +283,22 @@ class RecordHandler implements Runnable {
     }
 
     private void doDumpRulesRequest(CommandMessage message) {
-        processDumpRulesRequest(((DumpRulesRequest) message.getData()).getSwitchId(),
+        dumpRulesRequest(((DumpRulesRequest) message.getData()).getSwitchId(),
                 buildSenderToNorthbound(message), message);
     }
 
     private void doDumpRulesForSwitchManagerRequest(CommandMessage message) {
-        processDumpRulesRequest(((DumpRulesForSwitchManagerRequest) message.getData()).getSwitchId(),
+        dumpRulesRequest(((DumpRulesForSwitchManagerRequest) message.getData()).getSwitchId(),
                 buildSenderToSwitchManager(message), message);
     }
 
     private void doDumpRulesForFlowHsRequest(CommandMessage message) {
-        processDumpRulesRequest(((DumpRulesForFlowHsRequest) message.getData()).getSwitchId(),
+        dumpRulesRequest(((DumpRulesForFlowHsRequest) message.getData()).getSwitchId(),
                 buildSenderToFlowHs(message), message);
     }
 
-    private void processDumpRulesRequest(SwitchId switchId, java.util.function.Consumer<MessageData> sender,
-                                         CommandMessage commandMessage) {
+    private void dumpRulesRequest(SwitchId switchId, java.util.function.Consumer<MessageData> sender,
+                                  CommandMessage commandMessage) {
         try {
             logger.debug("Loading installed rules for switch {}", switchId);
             List<OFFlowStatsEntry> flowEntries =
@@ -508,22 +508,22 @@ class RecordHandler implements Runnable {
 
     private void doDumpMetersRequest(CommandMessage message) {
         DumpMetersRequest request = (DumpMetersRequest) message.getData();
-        dumpMeters(request.getSwitchId(), buildSenderToNorthbound(message), message);
+        dumpMetersRequest(request.getSwitchId(), buildSenderToNorthbound(message), message);
     }
 
     private void doDumpMetersForSwitchManagerRequest(CommandMessage message) {
         DumpMetersForSwitchManagerRequest request = (DumpMetersForSwitchManagerRequest) message.getData();
-        dumpMeters(request.getSwitchId(), buildSenderToSwitchManager(message), message);
+        dumpMetersRequest(request.getSwitchId(), buildSenderToSwitchManager(message), message);
     }
 
     private void doDumpMetersForFlowHsRequest(CommandMessage message) {
         DumpMetersForFlowHsRequest request = (DumpMetersForFlowHsRequest) message.getData();
-        dumpMeters(request.getSwitchId(), buildSenderToFlowHs(message), message);
+        dumpMetersRequest(request.getSwitchId(), buildSenderToFlowHs(message), message);
     }
 
-    private void dumpMeters(SwitchId switchId,
-                            java.util.function.Consumer<MessageData> sender,
-                            CommandMessage message) {
+    private void dumpMetersRequest(SwitchId switchId,
+                                   java.util.function.Consumer<MessageData> sender,
+                                   CommandMessage message) {
         try {
             logger.debug("Get all meters for switch {}", switchId);
             ISwitchManager switchManager = context.getSwitchManager();
@@ -627,6 +627,32 @@ class RecordHandler implements Runnable {
         };
     }
 
+    private java.util.function.Consumer<MessageData> buildSenderToFlowHs(Message message) {
+        IKafkaProducerService producerService = getKafkaProducer();
+        return data -> {
+            MessageContext messageContext = new MessageContext(message);
+            if (data instanceof Chunkable<?>) {
+                List<? extends InfoData> chunks = ((Chunkable<?>) data).split(
+                        context.getKafkaChannel().getConfig().getMessagesBatchSize());
+                if (chunks.isEmpty()) {
+                    sendSpeakerDataResponse(producerService, message, messageContext, data);
+                } else {
+                    producerService.sendChunkedSpeakerDataAndTrack(
+                            context.getKafkaSpeakerFlowHsTopic(), messageContext, chunks);
+                }
+            } else {
+                sendSpeakerDataResponse(producerService, message, messageContext, data);
+            }
+        };
+    }
+
+    private void sendSpeakerDataResponse(IKafkaProducerService producerService, Message message,
+                                         MessageContext messageContext, MessageData data) {
+        SpeakerDataResponse result = new SpeakerDataResponse(messageContext, data);
+        producerService.sendMessageAndTrack(context.getKafkaSpeakerFlowHsTopic(),
+                message.getCorrelationId(), result);
+    }
+
     private java.util.function.Consumer<MessageData> buildSenderToNorthbound(Message message) {
         return buildSenderToTopic(context.getKafkaNorthboundTopic(),
                 message.getCorrelationId(), message.getTimestamp());
@@ -645,16 +671,6 @@ class RecordHandler implements Runnable {
                 throw new IllegalArgumentException("Unsupported data: " + data);
             }
             producerService.sendMessageAndTrack(kafkaTopic, correlationId, result);
-        };
-    }
-
-    private java.util.function.Consumer<MessageData> buildSenderToFlowHs(Message message) {
-        IKafkaProducerService producerService = getKafkaProducer();
-        return data -> {
-            MessageContext messageContext = new MessageContext(message);
-            SpeakerDataResponse result = new SpeakerDataResponse(messageContext, data);
-            producerService.sendMessageAndTrack(context.getKafkaSpeakerFlowHsTopic(),
-                    message.getCorrelationId(), result);
         };
     }
 
