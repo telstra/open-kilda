@@ -3,27 +3,23 @@ package org.openkilda.performancetests.spec.benchmark
 import static groovyx.gpars.GParsPool.withPool
 
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.performancetests.BaseSpecification
 import org.openkilda.performancetests.helpers.TopologyBuilder
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import groovy.util.logging.Slf4j
-import spock.lang.Shared
-import spock.lang.Unroll
 
 @Slf4j
 class ConcurrentFlowRerouteSpec extends BaseSpecification {
-    @Shared
-    def r = new Random()
 
     def "Flow reroute (concurrent) on mesh topology"() {
         given: "A mesh topology"
         def topo = new TopologyBuilder(flHelper.fls,
                 preset.islandCount, preset.regionsPerIsland, preset.switchesPerRegion).buildMeshes()
         topoHelper.createTopology(topo)
-        flowHelperV2.setTopology(topo)
+        flowFactory.setTopology(topoHelper.topology)
 
         when: "A source switch"
         def srcSw = topo.switches.first()
@@ -38,18 +34,21 @@ class ConcurrentFlowRerouteSpec extends BaseSpecification {
             islUtils.toLinkProps(isl, [cost: busyPortsFirstHalf.contains(isl.srcPort) ? "1" : "5000"])
         })
 
-        List<FlowRequestV2> flows = []
+        List<FlowExtended> flows = []
+        List<SwitchPortVlan> busyEndpoints = []
         allowedPorts.each { port ->
-            def flow = flowHelperV2.randomFlow(srcSw, pickRandom(topo.switches - srcSw), false, flows)
-            flow.allocateProtectedPath = false
-            flow.source.portNumber = port
-            flowHelperV2.addFlow(flow)
+            def flow = flowFactory.getBuilder(srcSw, pickRandom(topo.switches - srcSw), false, busyEndpoints)
+                    .withProtectedPath(false).withSourcePort(port).build().create()
+            busyEndpoints.addAll(flow.occupiedEndpoints())
             flows << flow
         }
         Collections.shuffle(flows)
 
         and: "Flows are created"
         assert flows.size() == preset.flowCount
+        Wrappers.wait(flows.size()) {
+            flows.forEach { assert it.retrieveFlowStatus().status == FlowState.UP }
+        }
 
         then: "Reroute flows"
         (1..(int)(preset.maxConcurrentReroutes / 10)).each { iteration ->
@@ -63,18 +62,21 @@ class ConcurrentFlowRerouteSpec extends BaseSpecification {
                 })
 
                 withPool(concurrentReroutes) {
-                    flows[0..Math.min(flows.size() - 1, concurrentReroutes)].eachParallel { flow ->
+                    flows[0..Math.min(flows.size() - 1, concurrentReroutes)].eachParallel { FlowExtended flow ->
                         Wrappers.wait(flows.size()) {
-                            northboundV2.rerouteFlow(flow.flowId)
+                            flow.reroute()
                         }
                     }
                 }
 
                 Wrappers.wait(flows.size()) {
-                    flows.forEach { assert northbound.getFlowStatus(it.flowId).status == FlowState.UP }
+                    flows.forEach { assert it.retrieveFlowStatus().status == FlowState.UP }
                 }
             }
         }
+
+        cleanup: "Remove all flows"
+        deleteFlows(flows)
 
         where:
         preset << [
@@ -87,9 +89,5 @@ class ConcurrentFlowRerouteSpec extends BaseSpecification {
                         rerouteAttempts   : 10,
                 ]
         ]
-    }
-
-    Switch pickRandom(List<Switch> switches) {
-        switches[r.nextInt(switches.size())]
     }
 }
