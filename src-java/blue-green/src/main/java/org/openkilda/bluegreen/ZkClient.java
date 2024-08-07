@@ -29,11 +29,13 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
+import org.slf4j.MDC;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 
 @Slf4j
 @SuperBuilder
@@ -42,6 +44,7 @@ public abstract class ZkClient implements Watcher {
     private static final int DEFAULT_SESSION_TIMEOUT = 30000;
     public static final long DEFAULT_CONNECTION_REFRESH_INTERVAL = 10;
     public static final int RECONNECT_DELAY_MS = 100;
+    private static final String CORRELATION_ID = "correlation_id";
 
     @Getter
     protected String id;
@@ -54,6 +57,7 @@ public abstract class ZkClient implements Watcher {
     protected Instant lastRefreshAttempt;
     protected long connectionRefreshInterval;
     protected long reconnectDelayMs;
+    private String correlationId;
 
     public ZkClient(String id, String serviceName, String connectionString, int sessionTimeout,
                     long connectionRefreshInterval, long reconnectDelayMs) {
@@ -71,6 +75,7 @@ public abstract class ZkClient implements Watcher {
             reconnectDelayMs = RECONNECT_DELAY_MS;
         }
         this.reconnectDelayMs = reconnectDelayMs;
+        this.correlationId = UUID.randomUUID().toString();
     }
 
     /**
@@ -171,6 +176,7 @@ public abstract class ZkClient implements Watcher {
 
     void initZk() throws IOException {
         nodesValidated = false;
+        MDC.put(CORRELATION_ID, correlationId);
         zookeeper = getZk();
     }
 
