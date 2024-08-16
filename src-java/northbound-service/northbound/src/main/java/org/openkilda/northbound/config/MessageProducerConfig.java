@@ -27,6 +27,7 @@ import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.kafka.KafkaMessageProducer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Getter;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,6 +45,7 @@ import java.util.Map;
 /**
  * Kafka message producer configuration.
  */
+@Getter
 @Configuration
 @PropertySource("classpath:northbound.properties")
 public class MessageProducerConfig {
