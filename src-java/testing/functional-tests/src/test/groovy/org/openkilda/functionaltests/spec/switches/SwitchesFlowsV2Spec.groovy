@@ -3,7 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
+import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.CLASS
 import static org.openkilda.messaging.payload.flow.FlowState.UP
 
@@ -84,8 +84,11 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     def "System allows to get flows on particular ports on switch"() {
         given: "Y-Flow subflow which starts on switch"
         and: "List of the ports that subflow uses on switch, received from flow path"
-        def usedPortsList = flowHelper."get ports that flow uses on switch from path"(yFlowSubFlow2Id,
-                switchTriplet.getShared().getDpId())
+        def usedPortsList = yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == yFlowSubFlow2Id }
+                .collect {
+                    (it.path.forward.getNodes().nodes + it?.protectedPath?.forward?.getNodes()?.nodes)
+                            .findAll { it?.switchId == switchTriplet.getShared().getDpId() }.portNo
+                }.flatten()
 
         when: "Get all flows on the switch ports used by subflow under test"
         def response = switchHelper.getFlowsV2(switchTriplet.getShared(), usedPortsList)

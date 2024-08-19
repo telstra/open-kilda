@@ -17,6 +17,8 @@ package org.openkilda.model;
 
 import static com.google.common.collect.Sets.newHashSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openkilda.model.SwitchFeature.MAX_BURST_COEFFICIENT_LIMITATION;
 
 import org.junit.jupiter.api.Test;
@@ -54,5 +56,13 @@ public class MeterTest {
         assertEquals(1, Meter.calculateBurstSizeConsideringHardwareLimitations(1, 4096, limitationFeature));
         assertEquals(100, Meter.calculateBurstSizeConsideringHardwareLimitations(100, 100, limitationFeature));
         assertEquals(10, Meter.calculateBurstSizeConsideringHardwareLimitations(100, 10, limitationFeature));
+    }
+
+    @Test
+    public void equalsRate() {
+        assertTrue(Meter.equalsRate(100, 100, false));
+        assertFalse(Meter.equalsRate(65, 64, false));
+        assertTrue(Meter.equalsRate(10003, 10000, true));
+        assertTrue(Meter.equalsRate(65, 64, true));
     }
 }

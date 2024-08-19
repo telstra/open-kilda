@@ -1,5 +1,8 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import static org.openkilda.functionaltests.helpers.FlowNameGenerator.FLOW
+import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotModifiedExpectedError
 import org.openkilda.functionaltests.helpers.model.YFlowActionType
@@ -114,13 +117,13 @@ class SubFlowSpec extends HealthCheckSpecification {
                         action: "create a mirrorPoint on",
                         method: { SubFlow sFlow ->
                             def mirrorEndpoint = FlowMirrorPointPayload.builder()
-                                    .mirrorPointId(flowHelperV2.generateFlowId())
+                                    .mirrorPointId(FLOW.generateId())
                                     .mirrorPointDirection(FlowPathDirection.FORWARD.toString().toLowerCase())
                                     .mirrorPointSwitchId(sFlow.endpoint.switchId)
                                     .sinkEndpoint(FlowEndpointV2.builder().switchId(sFlow.endpoint.switchId)
                                             .portNumber(topology.getAllowedPortsForSwitch(
                                                     topology.activeSwitches.find { it.dpId == sFlow.endpoint.switchId }).first())
-                                            .vlanId(flowHelperV2.randomVlan())
+                                            .vlanId(randomVlan())
                                             .build())
                                     .build()
                             northboundV2.createMirrorPoint(sFlow.flowId, mirrorEndpoint)

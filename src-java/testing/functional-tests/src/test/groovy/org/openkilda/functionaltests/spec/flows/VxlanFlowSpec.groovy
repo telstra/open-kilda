@@ -23,7 +23,9 @@ import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -249,12 +251,16 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                 .build().create()
 
         then: "Flow is created with protected path"
-        def flowPathInfo = flow.retrieveDetails()
-        flowPathInfo.allocateProtectedPath
+        def flowPathInfo = flow.retrieveAllEntityPaths()
+        !flowPathInfo.flowPath.protectedPath.isPathAbsent()
         flow.retrieveDetails().statusDetails
 
         and: "Rules for main and protected paths are created"
-        Wrappers.wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.flowId) }
+        Wrappers.wait(WAIT_OFFSET) {
+            HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
+                    .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
+            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
+        }
 
         def flowInfoFromDb = flow.retrieveDetailsFromDB()
         // ingressRule should contain "pushVxlan"

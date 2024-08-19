@@ -69,8 +69,8 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
         and: "Y-Flows histories contains 'diverse' information"
-        [yFlow2.subFlows.first(), yFlow3.subFlows.first()].each {//yFlow1 had no diversity at the time of creation
-            assert flowHelper.getEarliestHistoryEntryByAction(it.flowId, FlowActionType.CREATE.value).dumps
+        [yFlow2, yFlow3].each {//yFlow1 had no diversity at the time of creation
+            assert  it.retrieveSubFlowHistory(it.subFlows.first().flowId).getEntriesByType(FlowActionType.CREATE).first().dumps
                     .find { it.type == "stateAfter" }?.diverseGroupId
         }
 
@@ -85,7 +85,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         }
 
         then: "Y-Flows' histories contain 'diverseGroupId' information in 'delete' operation"
-        verifyAll(flowHelper.getEarliestHistoryEntryByAction(yFlow1.subFlows[0].flowId,  FlowActionType.DELETE.value).dumps) {
+        verifyAll(yFlow1.retrieveSubFlowHistory(yFlow1.subFlows[0].flowId).getEntriesByType(FlowActionType.DELETE).first().dumps) {
             it.find { it.type == "stateBefore" }?.diverseGroupId
             !it.find { it.type == "stateAfter" }?.diverseGroupId
         }
@@ -136,7 +136,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         assert involvedIslSubFlowAfterUpdate != involvedIslSimpleFlow
 
         and: "First sub flow history contains 'groupId' information"
-        verifyAll(flowHelper.getEarliestHistoryEntryByAction(subFlowId, FlowActionType.UPDATE.value).dumps) {
+        verifyAll(yFlow.retrieveSubFlowHistory(subFlowId).getEntriesByType(FlowActionType.UPDATE).first().dumps) {
             !it.find { it.type == "stateBefore" }?.diverseGroupId
             it.find { it.type == "stateAfter" }?.diverseGroupId
         }

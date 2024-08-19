@@ -87,6 +87,10 @@ public interface FlowHsTopologyConfig extends AbstractTopologyConfig {
     @Default("10")
     int getSpeakerTimeoutSeconds();
 
+    @Key("kafka.chunked.messages.expiration.minutes")
+    @Default("15")
+    int getChunkedMessagesExpirationMinutes();
+
     @Key("flow.create.speaker.command.retries")
     @Default("3")
     int getCreateSpeakerCommandRetries();

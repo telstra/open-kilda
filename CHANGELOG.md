@@ -1,4 +1,20 @@
 # Changelog
+## v1.161.0 (08/08/2024)
+
+### Bug Fixes:
+-  [#5711](https://github.com/telstra/open-kilda/pull/5711) Add a delta to compare all the metric rates (Issue: [#5638](https://github.com/telstra/open-kilda/issues/5638))
+-  [#5716](https://github.com/telstra/open-kilda/pull/5716) Add split kafka message support for flow validation process (Issue: [#5718](https://github.com/telstra/open-kilda/issues/5718))
+
+### Improvements:
+-  [#5705](https://github.com/telstra/open-kilda/pull/5705) [TEST]: Regular Flow: New interaction approach: Func-tests: Eliminating flowHelper(v1/v2) usage [**tests**]
+-  [#5709](https://github.com/telstra/open-kilda/pull/5709) Update git hook
+-  [#5713](https://github.com/telstra/open-kilda/pull/5713) [TEST]: Regular Flow: Performance tests: Eliminating flowHelper(v1/v2) usage [**tests**]
+-  [#5722](https://github.com/telstra/open-kilda/pull/5722) [TEST]: Issue 5699: Flaky test: Flow with protected path(reroute) [**tests**]
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v.160.0...v1.161.0).
+
+---
 
 ## v1.160.0 (01/08/2024)
 

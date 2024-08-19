@@ -25,7 +25,7 @@ import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.FlowHistoryEventExtension
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
-import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.payload.flow.FlowState
@@ -84,18 +84,17 @@ class AutoRerouteSpec extends HealthCheckSpecification {
     def "Strict bandwidth true: Flow status is set to DOWN after reroute if no alternative path with enough bandwidth"() {
         given: "A flow with one alternative path at least"
         def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
-        List<List<PathNode>> allFlowPaths = switchPair.paths
 
         FlowExtended flow = flowFactory.getBuilder(switchPair)
                 .withStrictBandwidth(true).build()
                 .create()
         def initialPath = flow.retrieveAllEntityPaths()
+        def flowIsls = initialPath.flowPath.getInvolvedIsls(Direction.FORWARD) + initialPath.flowPath.getInvolvedIsls(Direction.REVERSE)
 
         and: "Alt path ISLs have not enough bandwidth to host the flow"
-        def altPaths = allFlowPaths.findAll { it != initialPath.getPathNodes() }
-        def flowIsls = initialPath.flowPath.getInvolvedIsls()
-        def altIsls = altPaths.collectMany { pathHelper.getInvolvedIsls(it).findAll { !(it in flowIsls || it.reversed in flowIsls) } }
-                .unique { a, b -> (a == b || a == b.reversed) ? 0 : 1 }
+        def altIsls = topology.getRelatedIsls(switchPair.src) + topology.getRelatedIsls(switchPair.dst)
+        altIsls.removeAll(flowIsls)
+
         List<SwitchPortVlan> busyEndpoints = flow.occupiedEndpoints()
         altIsls.each { isl ->
             def linkProp = islUtils.toLinkProps(isl, [cost: "1"])
@@ -107,11 +106,12 @@ class AutoRerouteSpec extends HealthCheckSpecification {
             northbound.deleteLinkProps([linkProp])
         }
 
+        altIsls.each {
+            assert northbound.getLink(it).availableBandwidth < flow.maximumBandwidth
+        }
+
         when: "Fail a flow ISL (bring switch port down)"
-        Set<Isl> altFlowIsls = []
-        allFlowPaths.findAll { it != initialPath.getPathNodes() }
-                .each { altFlowIsls.addAll(pathHelper.getInvolvedIsls(it)) }
-        def islToFail = flowIsls.find { !(it in altFlowIsls) && !(it.reversed in altFlowIsls) }
+        def islToFail = flowIsls.first()
         islHelper.breakIsl(islToFail)
 
         then: "Flow history shows 3 retry attempts, eventually bringing flow to Down"

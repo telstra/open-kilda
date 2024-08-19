@@ -126,6 +126,10 @@ class SwitchHelper {
     static NOVIFLOW_BURST_COEFFICIENT = 1.005 // Driven by the Noviflow specification
     static CENTEC_MIN_BURST = 1024 // Driven by the Centec specification
     static CENTEC_MAX_BURST = 32000 // Driven by the Centec specification
+
+    //Kilda allows user to pass reserved VLAN IDs 1 and 4095 if they want.
+    static final IntRange KILDA_ALLOWED_VLANS = 1..4095
+
     @Value('${burst.coefficient}')
     double burstCoefficient
     @Value('${discovery.generic.interval}')
@@ -926,5 +930,17 @@ class SwitchHelper {
         def featureToggles = northbound.get().getFeatureToggles()
         def isServer42 = swProps.server42FlowRtt && featureToggles.server42FlowRtt
         return isServer42
+    }
+
+    static int randomVlan() {
+        return randomVlan([])
+    }
+
+    static int randomVlan(List<Integer> exclusions) {
+        return (KILDA_ALLOWED_VLANS - exclusions).shuffled().first()
+    }
+
+    static List<Integer> availableVlanList(List<Integer> exclusions) {
+        return (KILDA_ALLOWED_VLANS - exclusions).shuffled()
     }
 }

@@ -946,7 +946,7 @@ public class FlowHsTopology extends AbstractTopology<FlowHsTopologyConfig> {
                 .hubComponent(ComponentId.YFLOW_VALIDATION_HUB.name())
                 .hubComponent(ComponentId.HA_FLOW_VALIDATION_HUB.name())
                 .streamToHub(SPEAKER_WORKER_TO_HUB_VALIDATION.name())
-                .build());
+                .build(), topologyConfig.getChunkedMessagesExpirationMinutes());
 
         declareBolt(topologyBuilder, speakerWorkerForDumpsBolt, ComponentId.FLOW_VALIDATION_SPEAKER_WORKER.name())
                 .fieldsGrouping(ComponentId.SPEAKER_WORKER_SPOUT.name(), FIELDS_KEY)

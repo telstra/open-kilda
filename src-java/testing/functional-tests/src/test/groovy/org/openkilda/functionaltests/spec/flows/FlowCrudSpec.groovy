@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.messaging.info.rule.FlowEntry
+
 import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
@@ -716,7 +718,11 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         flowInfo.statusDetails
 
         and: "Rules for main and protected paths are created"
-        wait(WAIT_OFFSET) { flowHelper.verifyRulesOnProtectedFlow(flow.flowId) }
+        wait(WAIT_OFFSET) {
+            HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
+                    .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
+            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
+        }
 
         and: "Validation of flow must be successful"
         flow.validateAndCollectDiscrepancies().isEmpty()
