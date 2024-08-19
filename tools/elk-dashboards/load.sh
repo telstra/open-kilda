@@ -2,7 +2,7 @@
 ELASTICSEARCH=http://localhost:9200
 CURL=curl
 KIBANA_INDEX=".kibana"
-
+# exit 0
 (echo > /dev/tcp/127.0.0.1/9200) >/dev/null 2>&1
  result=$?
 if [[ $result -eq 0 ]]; then

@@ -24,7 +24,7 @@ ENV DEBIAN_FRONTEND noninteractive
 
 # setuptools, wheel and tox should be installed one by one otherwise it is going to fail with no good reason
 RUN apt update \
-    && apt install -y --no-install-recommends \
+    && apt install -y \
         software-properties-common \
         wget \
         make \

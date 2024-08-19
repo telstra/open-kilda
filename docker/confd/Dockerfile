@@ -22,6 +22,6 @@ RUN apt-get -q -o Acquire::CompressionTypes::Order=bz2 update \
     && apt-get install -yq --no-install-recommends \
         wget \
         ca-certificates \
-    && wget https://github.com/kelseyhightower/confd/releases/download/v0.16.0/confd-0.16.0-linux-amd64 -O /usr/local/bin/confd \
-    && chmod +x /usr/local/bin/confd \
+    && wget -c https://github.com/abtreece/confd/releases/download/v0.19.2/confd-v0.19.2-linux-arm64.tar.gz -O - | tar -xz \
+    && mv confd /usr/local/bin/confd \
     && rm -rfv /var/lib/apt/lists/* /tmp/* /var/tmp/*
