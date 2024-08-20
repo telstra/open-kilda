@@ -1,6 +1,6 @@
 # WFM (WorkFlow Manager) - Base Topology
 
-This subproject holds the base classes for Storm topologies that are used to implement the workflow management 
+This subproject holds the base classes for Storm topologies that are used to implement the workflow management
 aspects of OpenKilda.
 
 # Deployment
@@ -18,28 +18,28 @@ storm jar TOPOLOGY_JAR.FILE class --jars "DEPENDENCY_JAR1.FILE,DEPENDENCY_JAR2.F
 ## Topology CLI arguments
 
 You can specify the following arguments for topology submit commands:
-* `--name=NAME` - override the topology name. When this parameter is absent, the topology name is constructed using 
+* `--name=NAME` - override the topology name. When this parameter is absent, the topology name is constructed using
 a file name of that topology.
 * `--local` - use the topology in "local" mode: submit topology into `org.apache.storm.LocalCluster`.
 * `--local-execution-time=TIME` - used only in combination with `--local`. Define how long (in seconds) topology will be
   running. `TIME` argument parsed as float number.
 * `CONFIG` - a path to the properties file. These properties will override compiled in properties. You can pass more than one
-  file; each next file overrides properties defined in the previous files. 
+  file; each next file overrides properties defined in the previous files.
 
 ## Configuration
 
 All topology options are defined as properties. There is a set of properties compiled in JAR that provides default values.
-You can pass more properties files using CLI to override these defaults. 
+You can pass more properties files using CLI to override these defaults.
 
 Properties have different scope that depends on used prefix. Let's take `opentsdb.hosts` as an example:
 * `opentsdb.hosts` - this is the `global` scope that will be used by all topologies
 * `$name.opentsdb.hosts` - this is a `name` scope.  $name is passed from CLI `--name` argument. Or constructed from
   topology class name if `--name` is missing.
-* `defaults.statstopology.opentsdb.hosts` - this is a `topology` scope. In this scope, option `opentsdb.hosts` will be used 
+* `defaults.statstopology.opentsdb.hosts` - this is a `topology` scope. In this scope, option `opentsdb.hosts` will be used
   only by StatsTopology. Topology name `statstopology` constructed from topology class name.
-  
+
 Properties lookup is done in the following order: `name scope`, `topology scope`. `global scope`. When a property is found,
-lookup is finished. This approach allows to pass options bounded to a specific name, to a specific topology, or used globally. 
+lookup is finished. This approach allows to pass options bounded to a specific name, to a specific topology, or used globally.
 
 # Developers
 
@@ -52,9 +52,9 @@ OpenKilda primarily uses Kafka topics as a messaging carrier.
 #### Viewing Topics
 One way to look at what is going on in a topic:
 
-* Template: 
+* Template:
 ```kafka-console-consumer --bootstrap-server <kafka host:port> --topic <name of topic> --from-beginning```
-* Example: 
+* Example:
 ```kafka-console-consumer --bootstrap-server localhost:9092 --topic kilda.speaker --from-beginning```
 
 #### Producing Messages on Topics
@@ -81,12 +81,12 @@ One way to look at what is going on in a topic:
     ```
 
 #### Viewing Logs
-It is possible to access Storm logs using Storm UI (by default localhost:8888/index.html). 
+It is possible to access Storm logs using Storm UI (by default localhost:8888/index.html).
 You can also look at the log files directly on the Storm cluster:
 
-* connect to the supervisor: ```docker-compose exec storm-supervisor /bin/bash```
+* connect to the supervisor: ```docker compose exec storm-supervisor /bin/bash```
 * navigate to logs directory (`workers-artifacts` is created when deploying a topology): ```cd /opt/storm/logs/workers-artifacts```
-  
+
 
 ## Testing tips
 

@@ -5,7 +5,7 @@ OPEN KILDA SDN CONTROLLER
 
 ## Introduction
 
-OpenKilda is a Web-Scale Software-Defined Networking controller. OpenKilda is capable of manage traffic on tens of thousands of switches simultaneously, 
+OpenKilda is a Web-Scale Software-Defined Networking controller. OpenKilda is capable of manage traffic on tens of thousands of switches simultaneously,
 control millions of flows, and provide sub-second network telemetry. OpenKilda provides a variety of features, such as:
 - manual and automatic management of L2 services: point-to-point flows, Y-flows, etc.;
 - advanced features for some types of services: mirroring, data gathering, path pinning, etc.;
@@ -48,7 +48,7 @@ The following packages are required for building OpenKilda controller:
 
 #### Python dependency notice
 
-We do not recommend upgrading pip and install docker-compose using the methods described below, bypassing the packer managers. Instead, please read the documentation for installing the [pip](https://pip.pypa.io/en/stable/installation/#upgrading-pip) and the [docker-compose](https://docs.docker.com/compose/install/).
+We do not recommend upgrading pip using the method described below, bypassing the packer managers. Instead, please read the documentation for installing the [pip](https://pip.pypa.io/en/stable/installation/#upgrading-pip).
 
 
 #### Dependency installation on Ubuntu 18.04
@@ -92,11 +92,6 @@ wget -P /tmp/ https://bootstrap.pypa.io/get-pip.py \
   && sudo python3.8 /tmp/get-pip.py
 ```
 
-After pip upgrade install Docker compose:
-```shell
-sudo pip3 install docker-compose
-```
-
 #### Dependency installation on Ubuntu 20.04
 
 The following commands will install necessary dependencies on Ubuntu 20.04:
@@ -122,22 +117,17 @@ wget -P /tmp/ https://bootstrap.pypa.io/get-pip.py \
   && sudo python3.8 /tmp/get-pip.py
 ```
 
-After pip upgrade install Docker compose:
-```shell
-sudo pip3 install docker-compose
-```
-
 #### Gradle
 
 You can either install Gradle, or use Gradle wrapper:
- - Option 1: Use Gradle wrapper. The OpenKilda repository contains an instance of Gradle Wrapper 
+ - Option 1: Use Gradle wrapper. The OpenKilda repository contains an instance of Gradle Wrapper
  which can be used straight from here without further installation.
  - Option 2: Install Gradle 7.0 or later versions - https://gradle.org/install/
 
 
 #### Docker
 
-Note that your build user needs to be a member of the docker group for the build to work. 
+Note that your build user needs to be a member of the docker group for the build to work.
 Do that by adding the user to /etc/groups, logging out, and logging in back again.
 
 ##### Basic installation instruction from Docker site
@@ -184,7 +174,7 @@ make clean
 ### How to run OpenKilda Controller
 
 __NB: To run OpenKilda, you should have built it already (see the previous section).__
-This is particularly important because docker-compose will expect that some specific containers already exist.
+This is particularly important because docker compose will expect that some specific containers already exist.
 
 From the base directory, execute the following command:
 
@@ -218,19 +208,19 @@ make build-latest
 
 These two commands build images with tags `stable` and `latest`.
 These tags will be used to run OpenKilda in blue mode (from stable images)
-or in green mode (for latest images).  
+or in green mode (for latest images).
 
-__There are 3 new commands to run OpenKilda in blue-green mode:__ 
+__There are 3 new commands to run OpenKilda in blue-green mode:__
 
 The following command runs OpenKilda in blue mode from stable images.
-It starts all common components like Zookeeper, database, Kafka, etc.  
+It starts all common components like Zookeeper, database, Kafka, etc.
 ```shell
 make up-stable
 ```
 
 The next command starts the green version of OpenKilda from the latest images.
 Common components wouldn't be restarted (we started them using the previous command).
-Floodlight 1 wouldn't be restarted; Floodlight 1 will stay on blue mode.   
+Floodlight 1 wouldn't be restarted; Floodlight 1 will stay on blue mode.
 Only Floodlight 2 will be restarted.
 ```shell
 make up-green
@@ -238,11 +228,11 @@ make up-green
 
 The next command is used to test rollbacks. It runs stable components in blue mode.
 The difference with `make up-stable` is that this command wouldn't start common components
-(like Zookeeper, Kafka, etc) and Floodlight 2 (it stays in green mode). 
+(like Zookeeper, Kafka, etc) and Floodlight 2 (it stays in green mode).
 
 ```shell
 make up-blue
-``` 
+```
 
 ### How to debug OpenKilda Controller components
 
@@ -269,7 +259,7 @@ CMD ["java", "-XX:+PrintFlagsFinal", "-XX:+UnlockExperimentalVMOptions", "-XX:+U
 ```
 
 Since debugging is done over the network, that also means we need to expose that port in Docker. For that purpose we need
-to add  ```"50505:50505"``` to the northbound the ```ports``` block in ```docker-compose.yml```: 
+to add  ```"50505:50505"``` to the northbound the ```ports``` block in ```docker-compose.yml```:
 
 ```
 northbound:
@@ -286,7 +276,7 @@ northbound:
 After making these changes, we need to configure a remote debugging in a debugger. For example, in IntelliJ IDEA: navigate to ```Edit Configurations -> Remote```
 and set up the debug port as ```50505```. For more details, please see the documentation of a particular debugger application.
 
-Next, we just run ```docker-compose up```. If everything above was done correctly you must see:
+Next, we just run ```docker compose up```. If everything above was done correctly you must see:
 
 ```
 "java -agentlib:jdwp=transport=dt_socket,address=50505,suspend=n,server=y -jar northbound.jar"
@@ -341,16 +331,16 @@ wfm:
     - "50506:50506"
 ```
 
-After executing ```docker-compose up``` you should see the following log record ```Listening for transport dt_socket at address: 50506```
+After executing ```docker compose up``` you should see the following log record ```Listening for transport dt_socket at address: 50506```
 in the WFM logs.
 
 Now, after we configure the remote debugger to connect to the port ```50506```, we'll be able to debug both components: WFM and Storm.
 For example, in IntelliJ IDEA: navigate to ```Edit Configurations -> Remote``` and set up the debug port as ```50506```.
 For more details, please see the documentation of a particular debugger application.
 
-In order to debug a topology, for example, ```NetworkTopology```: 
-create (or open if already exists) ```NetworkTopology.main``` application debug configuration and add ```--local``` to Program arguments, 
-execute ```docker-compose up``` and run in the debug mode ```NetworkTopology.main```.
+In order to debug a topology, for example, ```NetworkTopology```:
+create (or open if already exists) ```NetworkTopology.main``` application debug configuration and add ```--local``` to Program arguments,
+execute ```docker compose up``` and run in the debug mode ```NetworkTopology.main```.
 
 ### How to run tests
 
@@ -411,7 +401,7 @@ git clone git@github.com:<your_github_account>/open-kilda.git vm-dev
 cd vm-dev
 git checkout mvp1rc
 make build-base
-docker-compose build
+docker compose build
 make unit
 make up-test-mode
 ```

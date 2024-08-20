@@ -11,17 +11,17 @@ This project holds the OPEN KILDA GUI service for Open Kilda Controller.
 #### Configuration
 
 * The **_openkilda-gui_** feature must be installed in OPEN KILDA.
-* The GUI listens on port 8010 if we run it using docker-compose and/or make commands
+* The GUI listens on port 8010 if we run it using docker compose and/or make commands
 	+ These values can be changed in ```src/main/resources/application.properties``` file:
 		``` server.port = 1010```
-		
+
 * The base application context is ```/openkilda```
 	+ for example, to access the GUI on _localhost_, use
-    `http://localhost:8010/openkilda` 
-	
+    `http://localhost:8010/openkilda`
+
 * In Base url as VM_IP address where controller will be deployed.
 	+ Default as localhost (127.0.0.1) :
-  
+
 		`base.url = 127.0.0.1`
 
 These values can be changed in ```src/main/resources/application.properties``` file:
@@ -32,7 +32,7 @@ These values can be changed in ```src/main/resources/application.properties``` f
 * Northbound API services default username and password are:
   + kilda
   + kilda
-  
+
   It uses Basic Authentication Scheme in some api call.
 
 These values could be changed in ```src/main/resources/application.properties``` file:
@@ -75,7 +75,7 @@ By default, application is running with Apache Derby Database. In order to run t
 
 >kilda_gui_db_password:
 
-where 
+where
 **kilda_gui_db_url** will be url to MySQL database along with database name
 Example:- jdbc:mysql://127.0.0.1:3306/dbname
 **kilda_gui_db_username** will be DB username
