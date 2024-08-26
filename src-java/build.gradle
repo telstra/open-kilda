@@ -84,7 +84,7 @@ subprojects {
             testImplementation("org.junit.jupiter:junit-jupiter-engine:5.8.2")
             testImplementation("org.hamcrest:hamcrest-library:2.2")
             testImplementation("org.mockito:mockito-junit-jupiter:4.2.0")
-            testImplementation("org.apache.curator:curator-test:2.8.0")
+            testImplementation("org.apache.curator:curator-test:5.5.0")
             testImplementation("io.netty:netty-all:4.1.107.Final")
 
             implementation("jakarta.validation:jakarta.validation-api:3.1.0-M1")
