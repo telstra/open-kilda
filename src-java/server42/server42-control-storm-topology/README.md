@@ -7,6 +7,5 @@
     ```
     make compile
     storm kill server42-control
-    docker-compose run wfm ./deploy_single_topology.sh server42-control topology.properties
+    docker compose run wfm ./deploy_single_topology.sh server42-control topology.properties
     ```
-  

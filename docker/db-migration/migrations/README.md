@@ -1,15 +1,15 @@
 # OrientDB migrations
 
 ## Migration sets:
-* `initial-access-management.yaml` - create required roles and users, executed from `root` user, applied only on dev 
+* `initial-access-management.yaml` - create required roles and users, executed from `root` user, applied only on dev
   environment.
-* `prehistory.yaml` - migration steps already applied to the prod DB on the moment when this migration toolset created, 
-  applied to the dev environment 
+* `prehistory.yaml` - migration steps already applied to the prod DB on the moment when this migration toolset created,
+  applied to the dev environment
 * `root.yaml` - main migration set, applied on all environments.
 
 ## migrations concepts
 * use `yaml` format
-* do not include `changeSet` entries directly into `root.yaml` - create a separate migration file for each migration and 
+* do not include `changeSet` entries directly into `root.yaml` - create a separate migration file for each migration and
   include it into `root.yaml`
 * put all request that must be applied as one transaction inside one `changeSet`
 * filename + changeSet id + author together represents a unique identifier for changeSet, used by `liquibase` to track
@@ -52,7 +52,7 @@ changeSet:
 
 To start DB update by hands you need to build migration container
 ```shell script
-docker-compose build db_migration
+docker compose build db_migration
 ```
 
 And execute following command (for DB on some foreign host):
