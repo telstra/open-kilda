@@ -10,7 +10,6 @@ import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithMissingPathExp
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.messaging.info.event.IslInfoData
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -70,32 +69,34 @@ class BandwidthSpec extends HealthCheckSpecification {
     def "Longer path is chosen in case of not enough available bandwidth on a shorter path"() {
         given: "Two active switches with two possible flow paths at least"
         def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
+        def availablePaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
 
         // Make the first path more preferable than others.
-        switchPair.paths[1..-1].each { pathHelper.makePathMorePreferable(switchPair.paths.first(), it) }
+        def preferablePathIsls = availablePaths[0]
+        availablePaths[1..-1].each { islHelper.makePathIslsMorePreferable(preferablePathIsls, it) }
 
         // Get min available bandwidth on the preferable path.
         def involvedBandwidths = []
         def allLinks = northbound.getAllLinks()
-        pathHelper.getInvolvedIsls(switchPair.paths.first()).each {
+        preferablePathIsls.each {
             involvedBandwidths.add(islUtils.getIslInfo(allLinks, it).get().availableBandwidth)
         }
         def minAvailableBandwidth = involvedBandwidths.min()
 
         when: "Create a flow to reduce available bandwidth on links of the expected preferable path"
         def flow1 = flowFactory.getBuilder(switchPair).withBandwidth(minAvailableBandwidth - 100).build().create()
-        def flow1Path = flow1.retrieveAllEntityPaths().getPathNodes()
+        def flow1PathIsls = flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
 
         then: "The flow is really built through the expected preferable path"
-        flow1Path == switchPair.paths.first()
+        flow1PathIsls == preferablePathIsls
 
         when: "Create another flow. One path is shorter but available bandwidth is not enough, another path is longer"
         def flow2 = flowFactory.getBuilder(switchPair, false, flow1.occupiedEndpoints())
                 .withBandwidth(101).build().create()
 
         then: "The flow is built through longer path where available bandwidth is enough"
-        def flow2Path = flow2.retrieveAllEntityPaths().getPathNodes()
-        pathHelper.getCost(flow2Path) > pathHelper.getCost(flow1Path)
+        def flow2PathIsls = flow2.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        islHelper.getCost(flow2PathIsls) > islHelper.getCost(flow1PathIsls)
     }
 
     def "Unable to exceed bandwidth limit on ISL when creating a flow"() {
@@ -104,8 +105,8 @@ class BandwidthSpec extends HealthCheckSpecification {
 
         when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL"
         def involvedBandwidths = []
-        switchPair.paths.each { path ->
-            pathHelper.getInvolvedIsls(path).each { link ->
+        switchPair.retrieveAvailablePaths().each { path ->
+            path.getInvolvedIsls().each { link ->
                 involvedBandwidths.add(islUtils.getIslInfo(link).get().availableBandwidth)
             }
         }
@@ -131,8 +132,8 @@ class BandwidthSpec extends HealthCheckSpecification {
 
         and: "Update the flow with a bandwidth that exceeds available bandwidth on ISL"
         List<Long> involvedBandwidths = []
-        switchPair.paths.each { path ->
-            pathHelper.getInvolvedIsls(path).each { link ->
+        switchPair.retrieveAvailablePaths().each { path ->
+            path.getInvolvedIsls().each { link ->
                 involvedBandwidths.add(islUtils.getIslInfo(link).get().availableBandwidth)
             }
         }
@@ -187,9 +188,11 @@ class BandwidthSpec extends HealthCheckSpecification {
 
         // We need to handle the case when there are parallel links between chosen switches. So we make all parallel
         // links except the first link not preferable to avoid flow reroute when updating the flow.
-        List<List<PathNode>> parallelPaths = switchPair.paths.findAll { it.size() == 2 }
+        List<List<Isl>> parallelPaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+                .findAll { it.size() == 1 }
+        def preferablePathIsls = parallelPaths.first()
         if (parallelPaths.size() > 1) {
-            parallelPaths[1..-1].each { pathHelper.makePathMorePreferable(parallelPaths.first(), it) }
+            parallelPaths[1..-1].each { islHelper.makePathIslsMorePreferable(preferablePathIsls, it) }
         }
 
         when: "Create a flow with a valid small bandwidth"
@@ -202,7 +205,7 @@ class BandwidthSpec extends HealthCheckSpecification {
         def initialFlowPath = flow.retrieveAllEntityPaths()
         def involvedIsls = initialFlowPath.flowPath.getInvolvedIsls()
         involvedIsls.size() == 1
-        involvedIsls.first() == pathHelper.getInvolvedIsls(parallelPaths.first()).first()
+        involvedIsls == preferablePathIsls
 
         when: "Update flow bandwidth to maximum link speed"
         def linkSpeed = islUtils.getIslInfo(involvedIsls.first()).get().speed
@@ -261,8 +264,8 @@ class BandwidthSpec extends HealthCheckSpecification {
 
         when: "Create a flow with a bandwidth that exceeds available bandwidth on ISL"
         def involvedBandwidths = []
-        switchPair.paths.each { path ->
-            pathHelper.getInvolvedIsls(path).each { link ->
+        switchPair.retrieveAvailablePaths().each { path ->
+           path.getInvolvedIsls().each { link ->
                 involvedBandwidths.add(islUtils.getIslInfo(link).get().availableBandwidth)
             }
         }

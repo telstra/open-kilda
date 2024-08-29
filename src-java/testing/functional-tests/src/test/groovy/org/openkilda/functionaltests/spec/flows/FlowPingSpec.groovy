@@ -18,6 +18,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
+import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.model.SwitchId
@@ -25,6 +26,7 @@ import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v1.flows.PingInput
 import org.openkilda.northbound.dto.v1.flows.PingOutput.PingOutputBuilder
 import org.openkilda.northbound.dto.v1.flows.UniFlowPingOutput
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -157,26 +159,27 @@ class FlowPingSpec extends HealthCheckSpecification {
     def "Flow ping can detect a broken path(#description) for a vlan flow"() {
         given: "A flow with at least 1 a-switch link"
         def switches = topology.activeSwitches.findAll { !it.centec && it.ofVersion != "OF_12" }
-        List<List<PathNode>> allPaths = []
-        List<PathNode> aswitchPath
+        List<List<Isl>> allPaths = []
+        List<Isl> aswitchPathIsls = []
         //select src and dst switches that have an a-switch path
-        def (Switch srcSwitch, Switch dstSwitch) = [switches, switches].combinations()
-                .findAll { src, dst -> src != dst }.find { Switch src, Switch dst ->
-            allPaths = database.getPaths(src.dpId, dst.dpId)*.path
-            aswitchPath = allPaths.find { pathHelper.getInvolvedIsls(it).find { it.aswitch } }
-            aswitchPath
+        def swPair = switchPairs.all().getSwitchPairs().find {
+            if(!(it.src in switches && it.dst in switches)) return false
+            allPaths = it.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+            aswitchPathIsls = allPaths.find { it.find { isl ->  isl.aswitch }}
+            aswitchPathIsls
         } ?: assumeTrue(false, "Wasn't able to find suitable switch pair")
+
         //make a-switch path the most preferable
-        allPaths.findAll { it != aswitchPath }.each { pathHelper.makePathMorePreferable(aswitchPath, it) }
+        allPaths.findAll { !it.containsAll(aswitchPathIsls) }.each { islHelper.makePathIslsMorePreferable(aswitchPathIsls, it) }
 
         //build a flow
-        def flow = flowFactory.getRandom(srcSwitch, dstSwitch)
+        def flow = flowFactory.getRandom(swPair)
 
         expectedPingResult.flowId = flow.flowId
-        assert aswitchPath == flow.retrieveAllEntityPaths().getPathNodes()
+        assert aswitchPathIsls == flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
 
         when: "Break the flow by removing rules from a-switch"
-        def islToBreak = pathHelper.getInvolvedIsls(aswitchPath).find { it.aswitch }
+        def islToBreak = aswitchPathIsls.find { it.aswitch }
         def rulesToRemove = []
         data.breakForward && rulesToRemove << islToBreak.aswitch
         data.breakReverse && rulesToRemove << islToBreak.aswitch.reversed

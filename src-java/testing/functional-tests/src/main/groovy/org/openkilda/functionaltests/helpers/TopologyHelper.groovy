@@ -3,9 +3,11 @@ package org.openkilda.functionaltests.helpers
 
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
+import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
@@ -16,7 +18,6 @@ import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.northbound.NorthboundService
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
@@ -106,8 +107,20 @@ class TopologyHelper {
         }.findAll().unique()
     }
 
-    @Memoized
-    List<List<PathNode>> getDbPathsCached(SwitchId src, SwitchId dst) {
+    List<List<PathNode>> getDbPathsNodes(SwitchId src, SwitchId dst) {
         database.getPaths(src, dst)*.path
+    }
+
+    static List<List<PathNodePayload>> convertToPathNodePayload(List<List<PathNode>> paths) {
+        paths.collect { path ->
+            def result = [new PathNodePayload(path[0].getSwitchId(), null, path[0].getPortNo())]
+            for (int i = 1; i < path.size() - 1; i += 2) {
+                result.add(new PathNodePayload(path.get(i).getSwitchId(),
+                        path.get(i).getPortNo(),
+                        path.get(i + 1).getPortNo()))
+            }
+            result.add(new PathNodePayload(path[-1].getSwitchId(), path[-1].getPortNo(), null))
+            result
+        }
     }
 }

@@ -10,6 +10,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.tools.SoftAssertions
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -29,8 +30,9 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         given: "Many flows on the same path, with alt paths available"
         def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(3).first()
         List<FlowExtended> flows = []
-        def currentPath = switchPair.paths.first()
-        switchPair.paths.findAll { it != currentPath }.each { pathHelper.makePathMorePreferable(currentPath, it) }
+        def availablePaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+        def currentPathIsls = availablePaths.first()
+        availablePaths.findAll { it != currentPathIsls }.each { islHelper.makePathIslsMorePreferable(currentPathIsls, it) }
         30.times {
             // do not use busyEndpoints argument here since the flows are not full-port flows, all flows are tagged
             def flow = flowFactory.getBuilder(switchPair, false)
@@ -40,35 +42,28 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         }
         //ensure all flows are on the same path
         flows[1..-1].each {
-            assert it.retrieveAllEntityPaths().getPathNodes() == currentPath
+            assert it.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == currentPathIsls
         }
 
         when: "Make another path more preferable"
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        def prefPath = switchPair.paths.find { it != currentPath }
-        switchPair.paths.findAll { it != prefPath }.each { pathHelper.makePathMorePreferable(prefPath, it) }
+        def prefPathIsls = availablePaths.find { it != currentPathIsls }
+        availablePaths.findAll { !it.containsAll(prefPathIsls) }.each { islHelper.makePathIslsMorePreferable(prefPathIsls, it) }
 
         and: "Make preferable path's ISL to have bandwidth to host only half of the rerouting flows"
-        def currentIsls = pathHelper.getInvolvedIsls(currentPath)
-        def prefIsls = pathHelper.getInvolvedIsls(prefPath)
-        def notPrefIsls = switchPair.paths.findAll { it != prefPath }.collectMany {
-            def isls = pathHelper.getInvolvedIsls(it)
-            isls + isls*.reversed
-        }.unique(false)
-        def thinIsl = prefIsls.find { !notPrefIsls.contains(it) }
+        def notPrefIsls = availablePaths.findAll { !it.containsAll(prefPathIsls) }.flatten().unique()
+                .collectMany { [it, it.reversed] } as List<Isl>
+        def thinIsl = prefPathIsls.find { !notPrefIsls.contains(it) }
         def halfOfFlows = flows[0..flows.size() / 2 - 1]
         long newBw = halfOfFlows.sum { it.maximumBandwidth } as Long
         [thinIsl, thinIsl.reversed].each {
             islHelper.setAvailableBandwidth(it, newBw)
-            database.updateIslMaxBandwidth(it, newBw)
         }
 
         and: "Init simultaneous reroute of all flows by bringing current path's ISL down"
-        def notCurrentIsls = switchPair.paths.findAll { it != currentPath }.collectMany {
-            def isls = pathHelper.getInvolvedIsls(it)
-            isls + isls*.reversed
-        }.unique()
-        def islToBreak = currentIsls.find { !notCurrentIsls.contains(it) }
+        def notCurrentIsls = availablePaths.findAll { it != currentPathIsls }.flatten().unique()
+                .collectMany { [it, it.reversed] } as List<Isl>
+        def islToBreak = currentPathIsls.find { !notCurrentIsls.contains(it) }
         islHelper.breakIsl(islToBreak)
         TimeUnit.SECONDS.sleep(rerouteDelay - 1)
 
@@ -77,7 +72,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         wait(WAIT_OFFSET * 3) {
             def assertions = new SoftAssertions()
             flowsOnPrefPath = flows.findAll {
-                it.retrieveAllEntityPaths().getPathNodes() == prefPath
+                it.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == prefPathIsls
             }
             flowsOnPrefPath.each { flow ->
                 assertions.checkSucceeds { assert flow.retrieveFlowStatus().status == FlowState.UP }
@@ -92,7 +87,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
             def assertions = new SoftAssertions()
             restFlows.each { flow ->
                 assertions.checkSucceeds { assert flow.retrieveFlowStatus().status == FlowState.UP }
-                assertions.checkSucceeds { assert flow.retrieveAllEntityPaths().getPathNodes() != prefPath }
+                assertions.checkSucceeds { assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() != prefPathIsls }
             }
             assertions.verify()
         }

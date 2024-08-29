@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -8,16 +7,15 @@ import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESE
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
-import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.service.traffexam.TraffExamService
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -47,23 +45,19 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
                 .withBandwidth(10000)
                 .build().create()
 
-        def currentPathEntities = flow.retrieveAllEntityPaths()
-        def currentPath = currentPathEntities.getPathNodes()
-        def currentPathNodesV2 = currentPathEntities.flowPath.path.forward.nodes.toPathNodeV2()
+        def initialFlowPath = flow.retrieveAllEntityPaths()
+        def initialFlowIsls = initialFlowPath.flowPath.getInvolvedIsls()
 
         when: "Make the current path less preferable than alternatives"
-        def alternativePaths = switchPair.paths.findAll { it != currentPath }
-        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
+        def alternativePathsIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+                .findAll { it != initialFlowIsls }
+        alternativePathsIsls.each { islHelper.makePathIslsMorePreferable(it, initialFlowIsls) }
 
         and: "Make all alternative paths to have not enough bandwidth to handle the flow"
-        def currentIsls = currentPathEntities.flowPath.getInvolvedIsls()
-        alternativePaths.collect { altPath ->
-            def thinIsl = pathHelper.getInvolvedIsls(altPath).find {
-                !currentIsls.contains(it) && !currentIsls.contains(it.reversed)
-            }
-            def newBw = flow.maximumBandwidth - 1
+        def newBw = flow.maximumBandwidth - 1
+        alternativePathsIsls.collect { isls ->
+            def thinIsl = isls.find { !initialFlowIsls.contains(it) && !initialFlowIsls.contains(it.reversed) }
             [thinIsl, thinIsl.reversed].each {
-                database.updateIslMaxBandwidth(it, newBw)
                 islHelper.setAvailableBandwidth(it, newBw)
             }
             thinIsl
@@ -75,8 +69,8 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         then: "The flow is NOT rerouted because of not enough bandwidth on alternative paths"
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
         !rerouteResponse.rerouted
-        rerouteResponse.path.nodes == currentPathNodesV2
-        flow.retrieveAllEntityPaths().getPathNodes() == currentPath
+        rerouteResponse.path.nodes == initialFlowPath.flowPath.path.forward.nodes.toPathNodeV2()
+        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialFlowIsls
     }
 
     @Tags(ISL_PROPS_DB_RESET)
@@ -87,22 +81,21 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
                 .withBandwidth(10000)
                 .withEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build().create()
-        def currentPathEntities = flow.retrieveAllEntityPaths()
-        def currentPath = currentPathEntities.getPathNodes()
+        def initialPathEntities = flow.retrieveAllEntityPaths()
+        def initialFlowIsls = initialPathEntities.flowPath.getInvolvedIsls()
 
         when: "Make one of the alternative paths to be the most preferable among all others"
-        def preferableAltPath = switchPair.paths.find { it != currentPath }
-        switchPair.paths.findAll { it != preferableAltPath }.each {
-            pathHelper.makePathMorePreferable(preferableAltPath, it)
+        List<List<Isl>> availablePathsIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+        def preferableAltPathIsls = availablePathsIsls.find { it != initialFlowIsls }
+        availablePathsIsls.findAll { it != preferableAltPathIsls }.each {
+            islHelper.makePathIslsMorePreferable(preferableAltPathIsls, it)
         }
 
         and: "Make the future path to have exact bandwidth to handle the flow"
-        def currentIsls = currentPathEntities.flowPath.getInvolvedIsls()
-        def thinIsl = pathHelper.getInvolvedIsls(preferableAltPath).find {
-            !currentIsls.contains(it) && !currentIsls.contains(it.reversed)
+        def thinIsl = preferableAltPathIsls.find {
+            !initialFlowIsls.contains(it) && !initialFlowIsls.contains(it.reversed)
         }
         [thinIsl, thinIsl.reversed].each {
-            database.updateIslMaxBandwidth(it, flow.maximumBandwidth)
             islHelper.setAvailableBandwidth(it, flow.maximumBandwidth)
         }
 
@@ -113,14 +106,13 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
 
         then: "The flow is successfully rerouted and goes through the preferable path"
         def newPathEntities = flow.retrieveAllEntityPaths()
-        def newPath = newPathEntities.getPathNodes()
-        def newPathNodesV2 = newPathEntities.flowPath.path.forward.nodes.toPathNodeV2()
+        def flowNewPathIsls = newPathEntities.flowPath.getInvolvedIsls()
 
         rerouteResponse.rerouted
-        rerouteResponse.path.nodes == newPathNodesV2
+        rerouteResponse.path.nodes == newPathEntities.flowPath.path.forward.nodes.toPathNodeV2()
 
-        newPath == preferableAltPath
-        newPathEntities.flowPath.getInvolvedIsls().contains(thinIsl)
+        flowNewPathIsls == preferableAltPathIsls
+        flowNewPathIsls.contains(thinIsl)
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
 
         and: "'Thin' ISL has 0 available bandwidth left"
@@ -138,23 +130,26 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         assumeTrue(topology.activeTraffGens.size() >= 2,
                 "There should be at least two active traffgens for test execution")
 
-        def src = topology.activeSwitches.find { it.traffGens }
-        def dst = (topology.activeSwitches - src).find { it.traffGens }
+        def switchPair = switchPairs.all().withTraffgensOnBothEnds().random()
         //first adjust costs to use the longest possible path between switches
-        List<List<PathNode>> allPaths = database.getPaths(src.dpId, dst.dpId)*.path
-        def longestPath = allPaths.max { it.size() }
-        def changedIsls = allPaths.findAll { it != longestPath }
-                .collect { pathHelper.makePathMorePreferable(longestPath, it) }.findAll()
+        List<Path> availablePaths = switchPair.retrieveAvailablePaths()
+        List<List<Isl>> availablePathsIsls = availablePaths.collect { it.getInvolvedIsls() }
+        def longestPathIsls = availablePathsIsls.max { it.size() }
+        def changedIsls = availablePathsIsls.findAll { it != longestPathIsls }
+                .collect { islHelper.makePathIslsMorePreferable(longestPathIsls, it) }.findAll()
+
         //and create the flow that uses the long path
-        def flowEntity = flowFactory.getBuilder(src, dst)
+        def flowEntity = flowFactory.getBuilder(switchPair)
                 .withBandwidth(0)
                 .withIgnoreBandwidth(true)
         def flow = flowEntity.build().create()
-        assert flow.retrieveAllEntityPaths().getPathNodes() == longestPath
+        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == longestPathIsls
         //now make another long path more preferable, for reroute to rebuild the rules on other switches in the future
-        pathHelper.updateIslsCost((changedIsls + changedIsls*.reversed) as List, DEFAULT_COST)
-        def potentialNewPath = allPaths.findAll { it != longestPath }.max { it.size() }
-        allPaths.findAll { it != potentialNewPath }.each { pathHelper.makePathMorePreferable(potentialNewPath, it) }
+        islHelper.updateIslsCost((changedIsls + changedIsls*.reversed) as List<Isl>, DEFAULT_COST)
+
+        def potentialNewPath = availablePaths.findAll { it.getInvolvedIsls() != longestPathIsls }.max { it.retrieveNodes().size() }
+        def potentialNewPathIsls = potentialNewPath.getInvolvedIsls()
+        availablePathsIsls.findAll { it != potentialNewPathIsls }.each { islHelper.makePathIslsMorePreferable(potentialNewPathIsls, it) }
 
         when: "Start traffic examination"
         def traffExam = traffExamProvider.get()
@@ -172,8 +167,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
 
         then: "Flow is rerouted"
         reroute.rerouted
-        expect reroute.path.nodes, sameBeanAs(PathHelper.convertToNodesV2(potentialNewPath))
-                .ignoring("segmentLatency")
+        reroute.path.nodes == potentialNewPath.retrieveNodes()
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
 
         and: "Traffic examination result shows acceptable packet loss percentage"
@@ -196,23 +190,19 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
                 .withEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build().create()
 
-        def currentPathEntities = flow.retrieveAllEntityPaths()
-        def currentPath = currentPathEntities.getPathNodes()
-        def currentPathNodesV2 = currentPathEntities.flowPath.path.forward.nodes.toPathNodeV2()
+        def initialFlowPath = flow.retrieveAllEntityPaths()
+        def initialFlowIsls = initialFlowPath.flowPath.getInvolvedIsls()
 
         when: "Make the current path less preferable than alternatives"
-        def alternativePaths = switchPair.paths.findAll { it != currentPath }
-        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
+        def alternativePathsIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+                .findAll { it != initialFlowIsls }
+        alternativePathsIsls.each { islHelper.makePathIslsMorePreferable(it, initialFlowIsls) }
 
         and: "Make all alternative paths to have not enough bandwidth to handle the flow"
-        def currentIsls = currentPathEntities.flowPath.getInvolvedIsls()
         def newBw = flow.maximumBandwidth - 1
-        def changedIsls = alternativePaths.collect { altPath ->
-            def thinIsl = pathHelper.getInvolvedIsls(altPath).find {
-                !currentIsls.contains(it) && !currentIsls.contains(it.reversed)
-            }
+        def changedIsls = alternativePathsIsls.collect { isls ->
+            def thinIsl = isls.find { !initialFlowIsls.contains(it) && !initialFlowIsls.contains(it.reversed) }
             [thinIsl, thinIsl.reversed].each {
-                database.updateIslMaxBandwidth(it, newBw)
                 islHelper.setAvailableBandwidth(it, newBw)
             }
             thinIsl
@@ -223,12 +213,12 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
 
         then: "The flow is rerouted because ignoreBandwidth=true"
         rerouteResponse.rerouted
-        rerouteResponse.path.nodes != currentPathNodesV2
+        rerouteResponse.path.nodes != initialFlowPath.flowPath.path.forward.nodes.toPathNodeV2()
 
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
 
-        def updatedPath = flow.retrieveAllEntityPaths().getPathNodes()
-        updatedPath != currentPath
+        def newFlowIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        newFlowIsls != initialFlowIsls
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
 
         and: "Available bandwidth was not changed while rerouting due to ignoreBandwidth=true"
@@ -244,17 +234,19 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
     def "Intentional flow reroute with VXLAN encapsulation is not causing any packet loss"() {
         given: "A vxlan flow"
         def switchPair = switchPairs.all().neighbouring().withBothSwitchesVxLanEnabled().withTraffgensOnBothEnds().random()
-        def availablePaths = switchPair.paths.findAll { pathHelper.getInvolvedSwitches(it).find { it.noviflow }}
+        def allAvailablePathsIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+        def availablePathsIsls = allAvailablePathsIsls.findAll{ isls ->
+            islHelper.retrieveInvolvedSwitches(isls).find { it.noviflow }
+        }
 
         def flow = flowFactory.getBuilder(switchPair)
                 .withBandwidth(0)
                 .withIgnoreBandwidth(true)
                 .withEncapsulationType(FlowEncapsulationType.VXLAN)
                 .build().create()
-        def currentPath = flow.retrieveAllEntityPaths().getPathNodes()
-        def altPaths = availablePaths.findAll { it != currentPath }
-        def potentialNewPath = altPaths[0]
-        availablePaths.findAll { it != potentialNewPath }.each { pathHelper.makePathMorePreferable(potentialNewPath, it) }
+        def initialFlowIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def potentialNewPath = availablePathsIsls.findAll { it != initialFlowIsls }.first()
+        availablePathsIsls.findAll { it != potentialNewPath }.each { islHelper.makePathIslsMorePreferable(potentialNewPath, it) }
 
         when: "Start traffic examination"
         def traffExam = traffExamProvider.get()
@@ -292,22 +284,21 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         def flow = flowFactory.getBuilder(switchPair)
                 .withBandwidth(10000)
                 .build().create()
-        def currentPathEntityPaths = flow.retrieveAllEntityPaths()
-        def currentPath = currentPathEntityPaths.getPathNodes()
+        def initialFlowPath = flow.retrieveAllEntityPaths()
+        def initialFlowIsls = initialFlowPath.flowPath.getInvolvedIsls()
 
         when: "Make the current path less preferable than alternatives"
-        def alternativePaths = switchPair.paths.findAll { it != currentPath }
-        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
+        def alternativePaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+                .findAll{ it != initialFlowIsls }
+        alternativePaths.each { islHelper.makePathIslsMorePreferable(it, initialFlowIsls) }
 
         and: "Make all alternative paths to have not enough bandwidth to handle the flow"
-        def currentIsls = currentPathEntityPaths.flowPath.getInvolvedIsls()
-        def changedIsls = alternativePaths.collect { altPath ->
-            def thinIsl = pathHelper.getInvolvedIsls(altPath).find {
-                !currentIsls.contains(it) && !currentIsls.contains(it.reversed)
+        alternativePaths.collect { isls ->
+            def thinIsl = isls.find {
+                !initialFlowIsls.contains(it) && !initialFlowIsls.contains(it.reversed)
             }
             def newBw = flow.maximumBandwidth - 1
             [thinIsl, thinIsl.reversed].each {
-                database.updateIslMaxBandwidth(it, newBw)
                 islHelper.setAvailableBandwidth(it, newBw)
             }
             thinIsl
@@ -319,10 +310,10 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         then: "The flow is NOT rerouted because of not enough bandwidth on alternative paths"
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
         !rerouteResponse.rerouted
-        rerouteResponse.path.path == currentPath
+        rerouteResponse.path.path == initialFlowPath.flowPath.path.forward.nodes.toPathNode()
         int seqId = 0
         rerouteResponse.path.path.each { assert it.seqId == seqId++ }
-        flow.retrieveAllEntityPaths().getPathNodes() == currentPath
+        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialFlowIsls
     }
 
     @Tags([LOW_PRIORITY, ISL_PROPS_DB_RESET])
@@ -332,22 +323,21 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         def flow = flowFactory.getBuilder(switchPair)
                 .withBandwidth(10000)
                 .build().create()
-        def currentEntityPaths = flow.retrieveAllEntityPaths()
-        def currentPath = currentEntityPaths.getPathNodes()
+        def initialFlowPath = flow.retrieveAllEntityPaths()
+        def initialFlowIsls = initialFlowPath.flowPath.getInvolvedIsls()
 
         when: "Make one of the alternative paths to be the most preferable among all others"
-        def preferableAltPath = switchPair.paths.find { it != currentPath }
-        switchPair.paths.findAll { it != preferableAltPath }.each {
-            pathHelper.makePathMorePreferable(preferableAltPath, it)
+        def availablePathsIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+        def preferableAltPathIsls = availablePathsIsls.find { it != initialFlowIsls }
+        availablePathsIsls.findAll { it != preferableAltPathIsls }.each {
+            islHelper.makePathIslsMorePreferable(preferableAltPathIsls, it)
         }
 
         and: "Make the future path to have exact bandwidth to handle the flow"
-        def currentIsls = currentEntityPaths.flowPath.getInvolvedIsls()
-        def thinIsl = pathHelper.getInvolvedIsls(preferableAltPath).find {
-            !currentIsls.contains(it) && !currentIsls.contains(it.reversed)
+        def thinIsl = preferableAltPathIsls.find {
+            !initialFlowIsls.contains(it) && !initialFlowIsls.contains(it.reversed)
         }
         [thinIsl, thinIsl.reversed].each {
-            database.updateIslMaxBandwidth(it, flow.maximumBandwidth)
             islHelper.setAvailableBandwidth(it, flow.maximumBandwidth)
         }
 
@@ -356,16 +346,16 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
 
         then: "The flow is successfully rerouted and goes through the preferable path"
-        def newPathEntities = flow.retrieveAllEntityPaths()
-        def newPath = newPathEntities.getPathNodes()
+        def newFlowPath = flow.retrieveAllEntityPaths()
+        def newFlowIsls = newFlowPath.flowPath.getInvolvedIsls()
         int seqId = 0
 
         rerouteResponse.rerouted
-        rerouteResponse.path.path == newPath
+        rerouteResponse.path.path == newFlowPath.flowPath.path.forward.nodes.toPathNode()
         rerouteResponse.path.path.each { assert it.seqId == seqId++ }
 
-        newPath == preferableAltPath
-        newPathEntities.flowPath.getInvolvedIsls().contains(thinIsl)
+        newFlowIsls == preferableAltPathIsls
+        newFlowIsls.contains(thinIsl)
 
         and: "'Thin' ISL has 0 available bandwidth left"
         Wrappers.wait(WAIT_OFFSET) { assert islUtils.getIslInfo(thinIsl).get().availableBandwidth == 0 }
