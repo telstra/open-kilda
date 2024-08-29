@@ -46,8 +46,8 @@ class SwitchTriplets {
    SwitchTriplets nonNeighbouring() {
         switchTriplets = switchTriplets.findAll {
             it.shared != it.ep1 && it.ep1 != it.ep2 && it.ep2 != it.shared &&
-                    it.pathsEp1.every {it.size() > 2} &&
-                    it.pathsEp2.every {it.size() > 2}}
+                    it.getPathsEp1().every {it.size() > 2} &&
+                    it.getPathsEp2().every {it.size() > 2}}
 
        return this
     }
@@ -149,7 +149,7 @@ class SwitchTriplets {
                     .unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
             def yPoints = topologyHelper.findPotentialYPoints(it)
 
-            yPoints.size() == 1 && (isYPointOnSharedEp ? yPoints[0] == it.shared.dpId : yPoints[0] != it.shared.dpId) && yPoints[0] != it.ep1.dpId && yPoints[0] != it.ep2.dpId &&
+            yPoints.size() == 1 && (isYPointOnSharedEp ? yPoints[0] == it.shared : yPoints[0] != it.shared) && yPoints[0] != it.ep1 && yPoints[0] != it.ep2 &&
                     ep1paths.size() >= 2 && ep2paths.size() >= 2
         }
     }
@@ -184,7 +184,7 @@ class SwitchTriplets {
 
     SwitchTriplet findSwitchTripletWithYPointOnSharedEp() {
         return switchTriplets.find {
-            topologyHelper.findPotentialYPoints(it).size() == 1 && it.getShared().getDpId() == topologyHelper.findPotentialYPoints(it).get(0)
+            topologyHelper.findPotentialYPoints(it).size() == 1 && it.getShared().getDpId() == topologyHelper.findPotentialYPoints(it).get(0).getDpId()
         }
     }
 
@@ -226,8 +226,7 @@ class SwitchTriplets {
                             ep1: ep1,
                             ep2: ep2,
                             pathsEp1: retrievePairPathNode(shared.dpId, ep1.dpId),
-                            pathsEp2: retrievePairPathNode(shared.dpId, ep2.dpId),
-                            topologyDefinition: topology)
+                            pathsEp2: retrievePairPathNode(shared.dpId, ep2.dpId))
                 }
     }
 

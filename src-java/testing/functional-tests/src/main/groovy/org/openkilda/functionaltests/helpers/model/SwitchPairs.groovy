@@ -79,11 +79,6 @@ class SwitchPairs {
         return this
     }
 
-    SwitchPairs withoutOf12Switches() {
-        switchPairs = switchPairs.findAll { it.src.ofVersion != "OF_12" && it.dst.ofVersion != "OF_12" }
-        return this
-    }
-
     SwitchPairs withTraffgensOnBothEnds() {
         switchPairs = switchPairs.findAll { [it.src, it.dst].every { !it.traffGens.isEmpty() } }
         return this

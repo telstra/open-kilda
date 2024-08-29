@@ -6,7 +6,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FA
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.functionaltests.model.stats.Direction.*
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -33,7 +32,7 @@ import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Narrative
 import spock.lang.Shared
 
-import jakarta.inject.Provider
+import javax.inject.Provider
 
 @Slf4j
 @Narrative("Verify reroute operations on y-flows.")
@@ -52,7 +51,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         given: "A qinq y-flow"
         def swT = switchTriplets.all().withAllDifferentEndpoints().withoutWBSwitch().getSwitchTriplets().find {
             def yPoints = topologyHelper.findPotentialYPoints(it)
-             yPoints.size() == 1 && yPoints[0] != it.shared.dpId
+             yPoints.size() == 1 && yPoints[0] != it.shared
         }
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
 
@@ -155,12 +154,10 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         def swT = switchTriplets.all().withAllDifferentEndpoints().withSharedEpEp1Ep2InChain().random()
 
         and: "The ISLs cost between switches has been changed to make preferable path"
-        def pathsEp1 = swT.retrieveAvailablePathsEp1().collect { it.getInvolvedIsls() }
-        def pathsEp2 = swT.retrieveAvailablePathsEp2().collect { it.getInvolvedIsls() }
-        List<Isl> directSwTripletIsls = (pathsEp1[0].size() == 1 ?
-                pathsEp2.findAll { it.size() == 2 && it.containsAll(pathsEp1[0])} :
-                pathsEp1.findAll { it.size() == 2 && it.containsAll(pathsEp2[0])})
-                .flatten().unique()
+        List<Isl> directSwTripletIsls = (swT.pathsEp1[0].size() == 2 ?
+                swT.pathsEp2.findAll { it.size() == 4 && it.containsAll(swT.pathsEp1[0]) } :
+                swT.pathsEp1.findAll { it.size() == 4 && it.containsAll(swT.pathsEp2[0]) })
+                .collectMany { pathHelper.getInvolvedIsls(it) }.collectMany { [it, it.reversed] }.unique()
         islHelper.updateIslsCost(directSwTripletIsls, 1)
 
         and: "Y-Flow with shared path has been created successfully"
@@ -185,10 +182,12 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
 
         def yFlowPathAfterReroute = yFlow.retrieveAllEntityPaths()
         def sharedPathIslAfterReroute = yFlowPathAfterReroute.sharedPath.getInvolvedIsls()
-        assert sharedPathIslAfterReroute.sort() != sharedPathIslBeforeReroute.sort()
-        yFlowPathAfterReroute.subFlowPaths.each { subFlow ->
-            assert yFlowPathBeforeReroute.getSubFlowIsls(subFlow.flowId, FORWARD) != subFlow.getInvolvedIsls(FORWARD)
-            assert yFlowPathBeforeReroute.getSubFlowIsls(subFlow.flowId, REVERSE) != subFlow.getInvolvedIsls(REVERSE)
+        verifyAll {
+            sharedPathIslAfterReroute.sort() != sharedPathIslBeforeReroute.sort()
+            yFlowPathAfterReroute.subFlowPaths.first().path.forward != yFlowPathBeforeReroute.subFlowPaths.first().path.forward
+            yFlowPathAfterReroute.subFlowPaths.first().path.reverse != yFlowPathBeforeReroute.subFlowPaths.first().path.reverse
+            yFlowPathAfterReroute.subFlowPaths.last().path.forward != yFlowPathBeforeReroute.subFlowPaths.last().path.forward
+            yFlowPathAfterReroute.subFlowPaths.last().path.reverse != yFlowPathBeforeReroute.subFlowPaths.last().path.reverse
         }
     }
 
@@ -199,12 +198,10 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         def swT = switchTriplets.all().withAllDifferentEndpoints().withSharedEpEp1Ep2InChain().random()
 
         and: "The ISLs cost between switches has been changed to make preferable path"
-        def pathsEp1 = swT.retrieveAvailablePathsEp1().collect { it.getInvolvedIsls() }
-        def pathsEp2 = swT.retrieveAvailablePathsEp2().collect { it.getInvolvedIsls() }
-        List<Isl> directSwTripletIsls = (pathsEp1[0].size() == 1 ?
-                pathsEp2.findAll { it.size() == 2 && it.containsAll(pathsEp1[0])} :
-                pathsEp1.findAll { it.size() == 2 && it.containsAll(pathsEp2[0])})
-                .flatten().unique()
+        List<Isl> directSwTripletIsls = (swT.pathsEp1[0].size() == 2 ?
+                swT.pathsEp2.findAll { it.size() == 4  && it.containsAll(swT.pathsEp1[0])} :
+                swT.pathsEp1.findAll { it.size() == 4 && it.containsAll(swT.pathsEp2[0])})
+                .collectMany { pathHelper.getInvolvedIsls(it) }.collectMany{[it, it.reversed]}.unique()
         islHelper.updateIslsCost(directSwTripletIsls, 1)
 
         and: "Y-Flow with shared path has been created successfully"
@@ -213,11 +210,11 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         assert !yFlowPathBeforeReroute.sharedPath.path.isPathAbsent()
 
         and: "The required ISLs cost has been updated to make manual reroute available"
-        def islsSubFlow1 = (yFlowPathBeforeReroute.subFlowPaths.first().getInvolvedIsls(FORWARD)
-                + yFlowPathBeforeReroute.subFlowPaths.first().getInvolvedIsls(REVERSE)).unique()
+        def islsSubFlow1 = (yFlowPathBeforeReroute.subFlowPaths.first().getInvolvedIsls(Direction.FORWARD)
+                + yFlowPathBeforeReroute.subFlowPaths.first().getInvolvedIsls(Direction.REVERSE)).unique()
 
-        def islsSubFlow2 = (yFlowPathBeforeReroute.subFlowPaths.last().getInvolvedIsls(FORWARD)
-                + yFlowPathBeforeReroute.subFlowPaths.last().getInvolvedIsls(REVERSE)).unique()
+        def islsSubFlow2 = (yFlowPathBeforeReroute.subFlowPaths.last().getInvolvedIsls(Direction.FORWARD)
+                + yFlowPathBeforeReroute.subFlowPaths.last().getInvolvedIsls(Direction.REVERSE)).unique()
 
         assert islsSubFlow1 != islsSubFlow2, "Y-Flow path doesn't allow us to the check this case as subFlows have the same ISLs"
 
@@ -245,12 +242,11 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         yFlow.waitForBeingInState(FlowState.UP, FLOW_CRUD_TIMEOUT)
 
         def yFlowPathAfterReroute = yFlow.retrieveAllEntityPaths()
-        def additionalSubFlowId = yFlow.subFlows.flowId.find { it != subFlowId }
         verifyAll {
-            assert yFlowPathAfterReroute.getSubFlowIsls(subFlowId, FORWARD) != yFlowPathBeforeReroute.getSubFlowIsls(subFlowId, FORWARD)
-            assert yFlowPathAfterReroute.getSubFlowIsls(subFlowId, REVERSE) != yFlowPathBeforeReroute.getSubFlowIsls(subFlowId, REVERSE)
-            assert yFlowPathAfterReroute.getSubFlowIsls(additionalSubFlowId, FORWARD)  == yFlowPathBeforeReroute.getSubFlowIsls(additionalSubFlowId, FORWARD)
-            assert yFlowPathAfterReroute.getSubFlowIsls(additionalSubFlowId, REVERSE)  == yFlowPathBeforeReroute.getSubFlowIsls(additionalSubFlowId, REVERSE)
+            yFlowPathAfterReroute.subFlowPaths.find { it.flowId == subFlowId }.path.forward != yFlowPathBeforeReroute.subFlowPaths.find { it.flowId == subFlowId }.path.forward
+            yFlowPathAfterReroute.subFlowPaths.find { it.flowId == subFlowId }.path.reverse != yFlowPathBeforeReroute.subFlowPaths.find { it.flowId == subFlowId }.path.reverse
+            yFlowPathAfterReroute.subFlowPaths.find { it.flowId != subFlowId }.path.forward == yFlowPathBeforeReroute.subFlowPaths.find { it.flowId != subFlowId }.path.forward
+            yFlowPathAfterReroute.subFlowPaths.find { it.flowId != subFlowId }.path.reverse == yFlowPathBeforeReroute.subFlowPaths.find { it.flowId != subFlowId }.path.reverse
         }
     }
 
