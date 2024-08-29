@@ -155,11 +155,10 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
 
         and: "The ISLs cost between switches has been changed to make preferable path"
         List<Isl> directSwTripletIsls = (swT.pathsEp1[0].size() == 2 ?
-                        swT.pathsEp2.findAll { it.size() == 4  && it.containsAll(swT.pathsEp1[0])} :
-                        swT.pathsEp1.findAll { it.size() == 4 && it.containsAll(swT.pathsEp2[0])})
-                .collectMany { pathHelper.getInvolvedIsls(it) }.collectMany{[it, it.reversed]}.unique()
-        pathHelper.updateIslsCost(directSwTripletIsls, 1)
-
+                swT.pathsEp2.findAll { it.size() == 4 && it.containsAll(swT.pathsEp1[0]) } :
+                swT.pathsEp1.findAll { it.size() == 4 && it.containsAll(swT.pathsEp2[0]) })
+                .collectMany { pathHelper.getInvolvedIsls(it) }.collectMany { [it, it.reversed] }.unique()
+        islHelper.updateIslsCost(directSwTripletIsls, 1)
 
         and: "Y-Flow with shared path has been created successfully"
         def yFlow = yFlowFactory.getRandom(swT, false)
@@ -167,7 +166,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
 
         and: "Shared ISLs cost has been changed to provide on-demand Y-Flow reroute"
         def sharedPathIslBeforeReroute = yFlowPathBeforeReroute.sharedPath.getInvolvedIsls()
-        pathHelper.updateIslsCost(sharedPathIslBeforeReroute, 80000)
+        islHelper.updateIslsCost(sharedPathIslBeforeReroute, 80000)
 
         when: "Y-Flow reroute has been called"
         YFlowRerouteResult rerouteDetails = yFlow.reroute()
@@ -203,7 +202,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
                 swT.pathsEp2.findAll { it.size() == 4  && it.containsAll(swT.pathsEp1[0])} :
                 swT.pathsEp1.findAll { it.size() == 4 && it.containsAll(swT.pathsEp2[0])})
                 .collectMany { pathHelper.getInvolvedIsls(it) }.collectMany{[it, it.reversed]}.unique()
-        pathHelper.updateIslsCost(directSwTripletIsls, 1)
+        islHelper.updateIslsCost(directSwTripletIsls, 1)
 
         and: "Y-Flow with shared path has been created successfully"
         def yFlow = yFlowFactory.getRandom(swT, false)
@@ -228,7 +227,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
             islsToModify = islsSubFlow2.findAll { !(it in islsSubFlow1) }
             subFlowId = yFlowPathBeforeReroute.subFlowPaths.last().flowId
         }
-        pathHelper.updateIslsCost(islsToModify, 80000)
+        islHelper.updateIslsCost(islsToModify, 80000)
 
         when: "Y-Flow reroute has been called"
         YFlowRerouteResult rerouteDetails = yFlow.reroute()

@@ -5,7 +5,6 @@ import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
@@ -58,8 +57,9 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
 
         and: "All Y-Flows have different paths"
-        def allInvolvedIsls = [yFlow1.subFlows[0], yFlow2.subFlows[0], yFlow3.subFlows[0]].collectMany {
-            pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(it.flowId)))
+        def allInvolvedIsls = [yFlow1, yFlow2, yFlow3].collectMany { yFlow ->
+           yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == yFlow.subFlows.first().flowId }.getInvolvedIsls()
+
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
@@ -98,7 +98,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def flow = flowFactory.getRandom(swT.shared, swT.ep1, false)
         def subFlowId = yFlow.subFlows.first().flowId
         def involvedIslSubFlow = yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == subFlowId }.getInvolvedIsls()
-        def involvedIslSimpleFlow = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.flowId)))
+        def involvedIslSimpleFlow = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
         assert involvedIslSubFlow == involvedIslSimpleFlow
 
         when: "Update Y-Flow to become diverse with simple multiSwitch flow"

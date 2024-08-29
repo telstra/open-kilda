@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.flows.haflows
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.IslHelper
 import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
@@ -41,7 +42,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         def involvedIsls = initialPath.getInvolvedIsls()
 
         when: "Make the current path less preferable than alternatives"
-        pathHelper.updateIslsCost(involvedIsls, PathHelper.NOT_PREFERABLE_COST * 3)
+        islHelper.updateIslsCost(involvedIsls, IslHelper.NOT_PREFERABLE_COST * 3)
 
         and: "Make all alternative paths to have not enough bandwidth to handle the HA-Flow"
         def alternativePaths = getAlternativesPaths(initialPath, (swT.pathsEp1 + swT.pathsEp2))
@@ -140,13 +141,12 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
                 .build().create()
 
         def initialPath = haFlow.retrievedAllEntityPaths()
-        def initialPathNodesView = initialPath.subFlowPaths.collect { it.path.forward.nodes.toPathNode() }
         def initialInvolvedIsls = initialPath.getInvolvedIsls()
         def initialInvolvedSwitchIds = initialInvolvedIsls.collect { [it.srcSwitch.dpId, it.dstSwitch.dpId] }.flatten().unique()
 
         when: "Make the current path less preferable than alternatives"
         def alternativePaths = getAlternativesPaths(initialPath, (swT.pathsEp1 + swT.pathsEp2))
-        pathHelper.makePathNotPreferable(initialPathNodesView.flatten())
+        islHelper.updateIslsCost(initialInvolvedIsls, IslHelper.NOT_PREFERABLE_COST * 3)
 
         and: "Make all alternative paths to have not enough bandwidth to handle the HA-Flow"
         def newBw = haFlow.maximumBandwidth - 1

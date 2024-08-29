@@ -365,8 +365,9 @@ class FlowRulesSpec extends HealthCheckSpecification {
     def "Able to validate and sync missing rules for #description on terminating/transit switches"() {
         given: "Two active not neighboring switches with a long available path"
         def switchPair = switchPairs.all().nonNeighbouring().random()
-        def longPath = switchPair.paths.max { it.size() }
-        switchPair.paths.findAll { it != longPath }.each { pathHelper.makePathMorePreferable(longPath, it) }
+        def availablePath = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls()}
+        def longPath = availablePath.max { it.size() }
+        availablePath.findAll { it != longPath }.each { islHelper.makePathIslsMorePreferable(longPath, it) }
 
         and: "Create a transit-switch flow going through these switches"
         def flow = flowFactory.getBuilder(switchPair)

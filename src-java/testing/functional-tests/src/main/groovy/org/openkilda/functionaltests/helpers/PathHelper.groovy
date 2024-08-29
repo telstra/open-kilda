@@ -1,18 +1,12 @@
 package org.openkilda.functionaltests.helpers
 
-import groovy.util.logging.Slf4j
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
+
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
-import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath
-import org.openkilda.messaging.payload.flow.OverlappingSegmentsStats
-import org.openkilda.messaging.payload.flow.PathNodePayload
-import org.openkilda.messaging.payload.network.PathValidationPayload
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.PathComputationStrategy
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2.PathNodeV2
-import org.openkilda.northbound.dto.v2.flows.PathValidateResponse
-import org.openkilda.northbound.dto.v2.yflows.YFlowPaths
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -20,6 +14,8 @@ import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.tools.IslUtils
+
+import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Scope
@@ -28,15 +24,6 @@ import org.springframework.stereotype.Component
 import java.util.AbstractMap.SimpleEntry
 import java.util.stream.Collectors
 
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_ISLS_PROPERTIES
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
-import static org.openkilda.model.FlowEncapsulationType.TRANSIT_VLAN
-import static org.openkilda.model.FlowEncapsulationType.VXLAN
-import static org.openkilda.model.PathComputationStrategy.COST
-import static org.openkilda.model.PathComputationStrategy.COST_AND_AVAILABLE_BANDWIDTH
-import static org.openkilda.model.PathComputationStrategy.LATENCY
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
-
 /**
  * Holds utility methods for working with flow paths.
  */
@@ -44,7 +31,6 @@ import static org.springframework.beans.factory.config.ConfigurableBeanFactory.S
 @Slf4j
 @Scope(SCOPE_PROTOTYPE)
 class PathHelper {
-    static final Integer NOT_PREFERABLE_COST = 99999999
 
     @Autowired
     TopologyDefinition topology
@@ -61,36 +47,6 @@ class PathHelper {
     @Autowired
     CleanupManager cleanupManager
 
-    /**
-     * All ISLs of the given path will have their cost set to a very high value.
-     */
-    void makePathNotPreferable(List<PathNode> path) {
-        def notPreferableIsls = getInvolvedIsls(path)
-        log.debug "ISLs to avoid: $notPreferableIsls"
-        updateIslsCost(notPreferableIsls, NOT_PREFERABLE_COST * 3)
-    }
-
-    /**
-     * All ISLs will have their cost set to the specified value.
-     */
-    void updateIslsCost(List<Isl> isls, Integer newCost) {
-        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,{northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
-        northbound.updateLinkProps(isls.collectMany { isl ->
-            [islUtils.toLinkProps(isl, ["cost": (newCost).toString()])]
-        })
-    }
-
-    void updateIslsCostInDatabase(List<Isl> isls, Integer newCost) {
-        cleanupManager.addAction(RESET_ISLS_COST,{database.resetCosts(topology.isls)})
-        isls.each {database.updateIslCost(it, newCost)}
-    }
-
-    /**
-     * All ISLs of the given path will have their cost set to a very high value.
-     */
-    void makePathNotPreferable(FlowPathPayload path) {
-        makePathNotPreferable(convert(path))
-    }
 
     /**
      * If required, makes one path more preferable than another.
@@ -128,13 +84,6 @@ class PathHelper {
                     ["cost": (islCosts.get(islToAvoid) + difference + 1).toString()])])
         }
         return islToAvoid
-    }
-
-    /**
-     * Method to call in test cleanup if test required to manipulate path ISL's cost
-     */
-    void 'remove ISL properties artifacts after manipulating paths weights'() {
-        northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
     }
 
 
@@ -187,20 +136,7 @@ class PathHelper {
         getPathNodes(path)
     }
 
-    /**
-     * Converts FlowPathPayload.FlowProtectedPath path representation to a List<PathNode> representation
-     */
-    static List<PathNode> convert(FlowProtectedPath pathPayload, pathToConvert = "forwardPath") {
-        def path = pathPayload."$pathToConvert"
-        getPathNodes(path)
-    }
 
-    /**
-     * Converts List<PathNodePayload> path representation to a List<PathNode> representation
-     */
-    static List<PathNode> convert(List<PathNodePayload> path, boolean removeTail = true) {
-        getPathNodes(path, removeTail)
-    }
 
     /**
      * Returns a List<PathNode> representation of a path
@@ -226,59 +162,6 @@ class PathHelper {
         return pathNodes
     }
 
-    /**
-     * Converts FlowPathPayload path representation to a List<FlowPathV2.PathNodeV2> representation
-     */
-    static List<PathNodeV2> convertToNodesV2(FlowPathPayload pathPayload, pathToConvert = "forwardPath") {
-        def path = pathPayload."$pathToConvert"
-        if (path.empty) {
-            throw new IllegalArgumentException("Path cannot be empty. " +
-                    "This should be impossible for valid FlowPathPayload")
-        }
-        List<PathNodeV2> pathNodes = []
-        path.each { pathEntry ->
-            pathNodes << new PathNodeV2(pathEntry.switchId,
-                    pathEntry.inputPort == null ? 0 : pathEntry.inputPort, null)
-            pathNodes << new PathNodeV2(pathEntry.switchId,
-                    pathEntry.outputPort == null ? 0 : pathEntry.outputPort, null)
-        }
-        if (pathNodes.size() > 2) {
-            pathNodes = pathNodes.dropRight(1).tail() //remove first and last elements (not used in PathNode view)
-        }
-        return pathNodes
-    }
-
-    static List<PathNodePayload> convertToPathNodePayload(List<PathNode> path) {
-        def result = [new PathNodePayload(path[0].getSwitchId(), null, path[0].getPortNo())]
-        for (int i = 1; i < path.size() - 1; i += 2) {
-            result.add(new PathNodePayload(path.get(i).getSwitchId(),
-                    path.get(i).getPortNo(),
-                    path.get(i + 1).getPortNo()))
-        }
-        result.add(new PathNodePayload(path[-1].getSwitchId(), path[-1].getPortNo(), null))
-        return result
-    }
-
-    /**
-     * Converts path nodes (in the form of List<PathNode>) to a List<FlowPathV2.PathNodeV2> representation
-     */
-    static List<PathNodeV2> convertToNodesV2(List<PathNode> path) {
-        if (path.empty) {
-            throw new IllegalArgumentException("Path cannot be empty.")
-        }
-        List<PathNodeV2> pathNodes = []
-        path.each { pathEntry ->
-            pathNodes << new PathNodeV2(pathEntry.switchId, pathEntry.portNo, pathEntry.segmentLatency)
-        }
-        return pathNodes
-    }
-
-    /**
-     * Converts List<PathNodePayload> path representation to a List<FlowPathV2.PathNodeV2> representation
-     */
-    static List<PathNodeV2> toNodesV2(List<PathNodePayload> path) {
-        return convertToNodesV2(convert(path))
-    }
 
     /**
      * Converts List<PathNodeV2> path representation to the list of PathNodeV2, but with null segmentLatency field
@@ -294,158 +177,4 @@ class PathHelper {
         return (List<Switch>) getInvolvedIsls(path).collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique()
     }
 
-    List<Switch> getInvolvedYSwitches(YFlowPaths yFlowPaths) {
-        return yFlowPaths.subFlowPaths.collectMany { subFlowPath ->
-            def switches = getInvolvedSwitchesV2(subFlowPath.forward)
-            if (subFlowPath.protectedPath != null) {
-                switches += getInvolvedSwitchesV2(subFlowPath.protectedPath.forward)
-            }
-            switches
-        }.unique()
-    }
-
-    List<Switch> getInvolvedYSwitches(String yFlowId) {
-        return getInvolvedYSwitches(northboundV2.getYFlowPaths(yFlowId))
-    }
-
-    List<Switch> getInvolvedSwitchesV2(List<PathNodePayload> nodes) {
-        return nodes.collect { it.switchId }.unique().collect { topology.find(it) }
-    }
-
-    List<Switch> getInvolvedHaSwitches(String haFlowId) {
-        return northboundV2.getHaFlowPaths(haFlowId).subFlowPaths.collectMany { subFlowPath ->
-            def switches = getInvolvedSwitchesV2(subFlowPath.forward)
-            if (subFlowPath.protectedPath != null) {
-                switches += getInvolvedSwitchesV2(subFlowPath.protectedPath.forward)
-            }
-            switches
-        }.unique()
-    }
-
-    /**
-     * Get list of switches involved in an existing flow.
-     */
-    List<Switch> getInvolvedSwitches(String flowId) {
-        return getInvolvedSwitches(convert(northbound.getFlowPath(flowId)))
-    }
-
-    /**
-     * Get list of switches involved in an existing flow for protected path.
-     */
-    List<Switch> getInvolvedSwitchesForProtectedPath(String flowId) {
-        return getInvolvedSwitches(convert(northbound.getFlowPath(flowId).protectedPath))
-    }
-
-    /**
-     * Get total cost of all ISLs that are involved in a given path.
-     *
-     * @param path Path in List<PathNode> representation
-     * @return ISLs cost
-     */
-    int getCost(List<PathNode> path) {
-        return getInvolvedIsls(path).sum { database.getIslCost(it) } as int
-    }
-
-    /**
-     * Returns expected statistics for overlapping segments (switches and isls) of two flows
-     * @param baseFlow flow to be taken as base of comparison
-     * @param comparedFlow flow to be compared (one from 'other_flows' list)
-     * @return object with expected overlapping statistics
-     */
-    OverlappingSegmentsStats getOverlappingSegmentStats(List<PathNodePayload> baseFlow,
-                                                        List<List<PathNodePayload>> comparedFlows) {
-        def baseFlowSwitches = getInvolvedSwitchesV2(baseFlow)
-        def comparedFlowSwitches = comparedFlows.collect {getInvolvedSwitchesV2(it)}.flatten() as Set
-        def baseFlowIsls = baseFlow.size() > 1 ? getInvolvedIsls(convert(baseFlow)) : []
-        def comparedFlowIsls = comparedFlows.collect {getInvolvedIsls(convert(it))}.flatten() as Set
-        def intersectingSwitchSize = baseFlowSwitches.intersect(comparedFlowSwitches).size()
-        def intersectingIslSize = baseFlowIsls.intersect(comparedFlowIsls).size()
-        return new OverlappingSegmentsStats(intersectingIslSize,
-                intersectingSwitchSize,
-                intersectingIslSize ? intersectingIslSize / baseFlowIsls.size() * 100 as int : 0,
-                intersectingSwitchSize / baseFlowSwitches.size() * 100 as int,)
-    }
-
-    PathValidateResponse getPathCheckResult(List<PathNode> path,
-                                            Long bandwidth,
-                                            Long latencyMs,
-                                            Long latencyTier2ms,
-                                            String diverseWithFlow,
-                                            String reuseFlowResources,
-                                            FlowEncapsulationType flowEncapsulationType = TRANSIT_VLAN,
-                                            PathComputationStrategy pathComputationStrategy = COST) {
-        return northboundV2.checkPath(PathValidationPayload.builder()
-                .nodes(convertToPathNodePayload(path))
-                .bandwidth(bandwidth)
-                .latencyMs(latencyMs)
-                .latencyTier2ms(latencyTier2ms)
-                .diverseWithFlow(diverseWithFlow)
-                .reuseFlowResources(reuseFlowResources)
-                .flowEncapsulationType(convertEncapsulationType(flowEncapsulationType))
-                .pathComputationStrategy(pathComputationStrategy)
-                .build())
-    }
-
-    PathValidateResponse getPathCheckResult(List<PathNode> path,
-                                    Long bandwidth,
-                                    FlowEncapsulationType flowEncapsulationType = TRANSIT_VLAN) {
-        return getPathCheckResult(path,
-                bandwidth,
-                null,
-                null,
-                null,
-                null,
-                flowEncapsulationType,
-                COST_AND_AVAILABLE_BANDWIDTH)
-    }
-
-    PathValidateResponse getPathCheckResult(List<PathNode> path) {
-        return getPathCheckResult(path,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                COST_AND_AVAILABLE_BANDWIDTH)
-    }
-
-    PathValidateResponse getPathCheckResult(List<PathNode> path,
-                                    String flowId,
-                                    Long maxLatency,
-                                    Long maxLatencyTier2 = null) {
-        return getPathCheckResult(path,
-                null,
-                maxLatency,
-                maxLatencyTier2,
-                null,
-                flowId,
-                null,
-                LATENCY)
-    }
-
-    PathValidateResponse getPathCheckResult(List<PathNode> path,
-                                    String flowId) {
-        return getPathCheckResult(path,
-                null,
-                null,
-                null,
-                flowId,
-                null,
-                null,
-                null)
-    }
-
-    private static org.openkilda.messaging.payload.flow.FlowEncapsulationType convertEncapsulationType(FlowEncapsulationType origin) {
-        // Let's laugh on this naive implementation after the third encapsulation type is introduced, not before.
-        if (origin == VXLAN) {
-            return org.openkilda.messaging.payload.flow.FlowEncapsulationType.VXLAN
-        } else {
-            return org.openkilda.messaging.payload.flow.FlowEncapsulationType.TRANSIT_VLAN
-        }
-    }
-
-    private static "pick random most probably free port"() {
-        return new Random().nextInt(1000) + 2000; //2000..2999
-    }
 }

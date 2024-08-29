@@ -14,11 +14,11 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType
+import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.stats.FlowStats
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
@@ -33,8 +33,6 @@ import spock.lang.Shared
 @Tags([VIRTUAL, LOW_PRIORITY])
 @Isolated //s42 toggle affects all switches in the system, may lead to excess rules during sw validation in other tests
 class FlowMonitoringSpec extends HealthCheckSpecification {
-    @Shared
-    List<PathNode> mainPath, alternativePath
     @Shared
     List<Isl> mainIsls, alternativeIsls, islsToBreak
     @Shared
@@ -60,16 +58,14 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
     def setupSpec() {
         //setup: Two active switches with two diverse paths
         switchPair = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
-        List<List<PathNode>> paths = switchPair.getPaths()
-        mainPath = paths[0]
-        alternativePath = paths[1]
-        mainIsls = pathHelper.getInvolvedIsls(mainPath)
-        alternativeIsls = pathHelper.getInvolvedIsls(alternativePath)
+        List<List<Isl>> paths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+        mainIsls = paths[0]
+        alternativeIsls = paths[1]
         //deactivate other paths for more clear experiment
         def isls = mainIsls.collectMany { [it, it.reversed]} + alternativeIsls.collectMany { [it, it.reversed]}
-        islsToBreak = switchPair.paths.findAll{ !(it.containsAll(mainPath) || it.containsAll(alternativePath))}
-                .collectMany{ pathHelper.getInvolvedIsls(it)}.unique()
-                .collectMany{ [it, it.reversed] }.findAll { !isls.contains(it)}
+        islsToBreak = paths.findAll{ it != mainIsls && it != alternativeIsls }
+                .flatten().unique().collectMany{ [it, it.reversed] }.findAll { !isls.contains(it)}
+
         islHelper.breakIsls(islsToBreak, CleanupAfter.CLASS)
     }
 
@@ -93,10 +89,10 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
             assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
 
-        assert flow.retrieveAllEntityPaths().getPathNodes() == mainPath
+        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainIsls
 
         when: "Main path does not satisfy SLA(update isl latency via db)"
-        def isl = pathHelper.getInvolvedIsls(mainPath).first()
+        def isl = mainIsls.first()
         String srcInterfaceName = isl.srcSwitch.name + "-" + isl.srcPort
         String dstInterfaceName = isl.dstSwitch.name + "-" + isl.dstPort
         def newLatency = (flow.maxLatency + (flow.maxLatency * flowLatencySlaThresholdPercent)).toInteger()
@@ -146,10 +142,10 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET * 3) {
             assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
-        assert flow.retrieveAllEntityPaths().getPathNodes() == mainPath
+        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainIsls
 
         when: "Main path does not satisfy SLA(update isl latency via db)"
-        def isl = pathHelper.getInvolvedIsls(mainPath).first()
+        def isl = mainIsls.first()
         String srcInterfaceName = isl.srcSwitch.name + "-" + isl.srcPort
         String dstInterfaceName = isl.dstSwitch.name + "-" + isl.dstPort
         def newLatency = (flow.maxLatency + (flow.maxLatency * flowLatencySlaThresholdPercent)).toInteger()
@@ -164,7 +160,7 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         !flow.retrieveFlowHistory().getEntriesByType(FlowActionType.REROUTE)
 
         and: "Flow path is not changed"
-        flow.retrieveAllEntityPaths().getPathNodes() == mainPath
+        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainIsls
     }
 
     def setLatencyForPaths(int mainPathLatency, int alternativePathLatency) {

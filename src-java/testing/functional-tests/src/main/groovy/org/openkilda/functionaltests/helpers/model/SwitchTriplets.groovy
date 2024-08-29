@@ -225,8 +225,15 @@ class SwitchTriplets {
                             shared: shared,
                             ep1: ep1,
                             ep2: ep2,
-                            pathsEp1: topologyHelper.getDbPathsCached(shared.dpId, ep1.dpId),
-                            pathsEp2: topologyHelper.getDbPathsCached(shared.dpId, ep2.dpId))
+                            pathsEp1: retrievePairPathNode(shared.dpId, ep1.dpId),
+                            pathsEp2: retrievePairPathNode(shared.dpId, ep2.dpId))
                 }
+    }
+
+    private retrievePairPathNode(SwitchId srcId, SwitchId dstId) {
+        String pair = "$srcId-$dstId"
+        String reversePair = "$dstId-$srcId"
+        topology.switchesDbPathsNodes.containsKey(pair) ? topology.switchesDbPathsNodes.get(pair) :
+                topology.switchesDbPathsNodes.get(reversePair).collect { it.reverse() }
     }
 }

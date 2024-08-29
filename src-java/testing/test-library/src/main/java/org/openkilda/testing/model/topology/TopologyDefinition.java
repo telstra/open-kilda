@@ -17,9 +17,11 @@ package org.openkilda.testing.model.topology;
 
 import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableList;
+import static java.util.Collections.unmodifiableMap;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
+import org.openkilda.messaging.info.event.PathNode;
 import org.openkilda.model.SwitchId;
 import org.openkilda.testing.service.lockkeeper.model.ASwitchFlow;
 import org.openkilda.testing.tools.TopologyPool;
@@ -46,7 +48,9 @@ import lombok.experimental.NonFinal;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
@@ -79,6 +83,9 @@ public class TopologyDefinition {
     @Setter
     @JsonIgnore
     private TopologyPool parentPool;
+
+    @JsonIgnore
+    Map<String, List<List<PathNode>>> switchesDbPathsNodes;
 
     /**
      * Creates TopologyDefinition instance.
@@ -116,6 +123,10 @@ public class TopologyDefinition {
 
     public long getLabId() {
         return labId;
+    }
+
+    public void setSwitchesDbPathsNodes(HashMap<String, List<List<PathNode>>> switchesDbPathsNodes) {
+        this.switchesDbPathsNodes = unmodifiableMap(new HashMap<>(switchesDbPathsNodes));
     }
 
     /**

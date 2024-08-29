@@ -21,15 +21,12 @@ import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.Direction
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.flows.FlowStatistics
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -417,30 +414,28 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
     def "A flow cannot be created with asymmetric forward and reverse paths"() {
         given: "Two active neighboring switches with two possible flow paths at least and different number of hops"
-        List<List<PathNode>> possibleFlowPaths = []
-        int pathNodeCount = 2
-        def (Switch srcSwitch, Switch dstSwitch) = topology.getIslsForActiveSwitches().find {
-            possibleFlowPaths = database.getPaths(it.srcSwitch.dpId, it.dstSwitch.dpId)*.path.sort { it.size() }
-            possibleFlowPaths.size() > 1 && possibleFlowPaths.max { it.size() }.size() > pathNodeCount
-        }.collect {
-            [it.srcSwitch, it.dstSwitch]
-        }.flatten() ?: assumeTrue(false, "No suiting active neighboring switches " +
-                "with two possible flow paths at least and different number of hops found")
+        List<List<Isl>> availablePathsIsls
+        //the shortest path between neighboring switches is 1 ISL(2 nodes: src_sw-port<--->port-dst_sw)
+        int shortestIslCountPath = 1
+        def swPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).getSwitchPairs().find {
+            availablePathsIsls = it.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+            availablePathsIsls.size() > 1  && availablePathsIsls.find { it.size() > shortestIslCountPath }
+        } ?: assumeTrue(false, "No suiting active neighboring switches with two possible flow paths at least and " +
+                "different number of hops found")
 
-        and: "Make all shorter forward paths not preferable. Shorter reverse paths are still preferable"
-        List<Isl> modifiedIsls = possibleFlowPaths.findAll { it.size() == pathNodeCount }.collect {
-            pathHelper.getInvolvedIsls(it)
-        }.flatten().unique()
-        pathHelper.updateIslsCostInDatabase(modifiedIsls, Integer.MAX_VALUE)
+        and: "Make all shorter(one isl) forward paths not preferable. Shorter reverse paths are still preferable"
+        List<Isl> modifiedIsls = availablePathsIsls.findAll { it.size() == shortestIslCountPath }.flatten().unique() as List<Isl>
+        islHelper.updateIslsCostInDatabase(modifiedIsls, Integer.MAX_VALUE)
 
         when: "Create a flow"
-        def flow = flowFactory.getRandom(srcSwitch, dstSwitch)
+        def flow = flowFactory.getRandom(swPair)
 
         then: "The flow is built through one of the long paths"
         def fullFlowPath = flow.retrieveAllEntityPaths()
         def forwardIsls = fullFlowPath.flowPath.getInvolvedIsls(Direction.FORWARD)
         def reverseIsls = fullFlowPath.flowPath.getInvolvedIsls(Direction.REVERSE)
         assert forwardIsls.intersect(modifiedIsls).isEmpty()
+        assert forwardIsls.size() > shortestIslCountPath
 
         and: "The flow has symmetric forward and reverse paths even though there is a more preferable reverse path"
         forwardIsls.collect { it.reversed }.reverse() == reverseIsls
@@ -493,8 +488,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
     def "Removing flow while it is still in progress of being set up should not cause rule discrepancies"() {
         given: "A potential flow"
         def switchPair = switchPairs.all().neighbouring().random()
-        def paths = database.getPaths(switchPair.src.dpId, switchPair.dst.dpId)*.path
-        def switches = pathHelper.getInvolvedSwitches(paths.min { pathHelper.getCost(it) })
+        def flowExpectedPath = switchPair.retrieveAvailablePaths().min { islHelper.getCost(it.getInvolvedIsls()) }
+        def switchesId = flowExpectedPath.getInvolvedSwitches()
 
         when: "Init creation of a new flow"
         def flow = flowFactory.getBuilder(switchPair).build().sendCreateRequest()
@@ -510,20 +505,21 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "Flow eventually gets into UP state"
         flow.waitForBeingInState(UP)
+        flow.retrieveAllEntityPaths().getInvolvedSwitches().sort() == switchesId.sort()
 
         and: "All related switches have no discrepancies in rules"
-        switches.each {
-            def syncResult = switchHelper.synchronize(it.getDpId())
+        switchesId.each {
+            def syncResult = switchHelper.synchronize(it)
             assert syncResult.rules.installed.isEmpty() && syncResult.rules.removed.isEmpty()
             assert syncResult.meters.installed.isEmpty() && syncResult.meters.removed.isEmpty()
 
-            def swProps = switchHelper.getCachedSwProps(it.dpId)
+            def swProps = switchHelper.getCachedSwProps(it)
             def amountOfServer42Rules = 0
 
-            if(swProps.server42FlowRtt && it.dpId in [switchPair.src.dpId, switchPair.dst.dpId]) {
+            if(swProps.server42FlowRtt && it in [switchPair.src.dpId, switchPair.dst.dpId]) {
                 amountOfServer42Rules +=1
-                it.dpId == switchPair.src.dpId && flow.source.vlanId && ++amountOfServer42Rules
-                it.dpId == switchPair.dst.dpId && flow.destination.vlanId && ++amountOfServer42Rules
+                it == switchPair.src.dpId && flow.source.vlanId && ++amountOfServer42Rules
+                it == switchPair.dst.dpId && flow.destination.vlanId && ++amountOfServer42Rules
             }
 
             def amountOfFlowRules = 3 + amountOfServer42Rules
@@ -819,8 +815,9 @@ types .* or update switch properties and add needed encapsulation type./).matche
     def "Flow status accurately represents the actual state of the flow and flow rules"() {
         when: "Create a flow on a long path"
         def swPair = switchPairs.all().random()
-        def longPath = swPair.paths.max { it.size() }
-        swPair.paths.findAll { it != longPath }.each { pathHelper.makePathMorePreferable(longPath, it) }
+        def availablePaths = swPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+        def longPath = availablePaths.max { it.size() }
+        availablePaths.findAll { !it.containsAll(longPath) }.each { islHelper.makePathIslsMorePreferable(longPath, it) }
         def flow = flowFactory.getRandom(swPair, false, IN_PROGRESS)
 
         then: "Flow status is changed to UP only when all rules are actually installed"
@@ -965,9 +962,9 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def flow = flowFactory.getRandom(switchPair)
 
         when: "Make the current path less preferable than alternatives"
-        def currentPath = flow.retrieveAllEntityPaths().getPathNodes()
-        def alternativePaths = switchPair.paths.findAll { it != currentPath }
-        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
+        def initialFlowIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { !it.containsAll(initialFlowIsls) }
+                .each { islHelper.makePathIslsMorePreferable(it, initialFlowIsls) }
 
         and: "Update the flow"
         def newFlowDesc = flow.description + " updated"
@@ -975,17 +972,17 @@ types .* or update switch properties and add needed encapsulation type./).matche
         flow.update(flowExpectedEntity)
 
         then: "Flow is rerouted"
-        def newCurrentPath
+        def newFlowPath
         wait(rerouteDelay + WAIT_OFFSET) {
-            newCurrentPath = flow.retrieveAllEntityPaths().getPathNodes()
-            assert newCurrentPath != currentPath
+            newFlowPath = flow.retrieveAllEntityPaths()
+            assert newFlowPath.flowPath.getInvolvedIsls() != initialFlowIsls
         }
 
         and: "Flow is updated"
         flow.retrieveDetails().description == newFlowDesc
 
         and: "All involved switches pass switch validation"
-        def involvedSwitchIds = flow.retrieveAllEntityPaths().getInvolvedSwitches()
+        def involvedSwitchIds = newFlowPath.getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchIds).isEmpty()
     }
 
@@ -997,12 +994,13 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def flow = flowFactory.getRandom(switchPair)
 
         when: "Make the current path less preferable than alternatives"
-        def currentPath = flow.retrieveAllEntityPaths().getPathNodes()
-        def alternativePaths = switchPair.paths.findAll { it != currentPath }
-        alternativePaths.each { pathHelper.makePathMorePreferable(it, currentPath) }
+        def initialFlowPath = flow.retrieveAllEntityPaths()
+        def initialFlowIsls = initialFlowPath.flowPath.getInvolvedIsls()
+        switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { !it.containsAll(initialFlowIsls) }
+                .each { islHelper.makePathIslsMorePreferable(it, initialFlowIsls) }
 
         and: "Update the flow: vlanId on the src endpoint"
-        def flowExpectedEntity = flow.deepCopy().tap {it.source.vlanId = flow.destination.vlanId - 1 }
+        def flowExpectedEntity = flow.deepCopy().tap { it.source.vlanId = flow.destination.vlanId - 1 }
         def updatedFlow = flow.update(flowExpectedEntity)
 
         then: "Flow is really updated"
@@ -1011,7 +1009,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay) {
-            assert flow.retrieveAllEntityPaths().getPathNodes() == currentPath
+            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialFlowIsls
         }
 
         when: "Update the flow: vlanId on the dst endpoint"
@@ -1024,7 +1022,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay) {
-            assert flow.retrieveAllEntityPaths().getPathNodes() == currentPath
+            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialFlowIsls
         }
 
         when: "Update the flow: port number and vlanId on the src/dst endpoints"
@@ -1042,7 +1040,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
-            assert updatedFlow.retrieveAllEntityPaths().getPathNodes() == currentPath
+            assert updatedFlow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialFlowIsls
         }
 
         and: "Flow is valid"
@@ -1068,7 +1066,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
 
         and: "All involved switches pass switch validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(currentPath*.switchId).isEmpty()
+        switchHelper.synchronizeAndCollectFixedDiscrepancies(initialFlowPath.getInvolvedSwitches()).isEmpty()
     }
 
     @Tags([TOPOLOGY_DEPENDENT, LOW_PRIORITY])

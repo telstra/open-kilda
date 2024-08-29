@@ -97,18 +97,20 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         def involvedSwitches = paths.getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
-        and: "Bandwidth is properly consumed on shared and non-shared ISLs"
+        and: "Bandwidth is properly consumed on shared and non-shared ISLs(not applicable for single switch Y-Flow)"
         def allLinksAfter = northbound.getAllLinks()
-        def involvedIslsSFlow_1 = pathHelper.getInvolvedIsls(yFlow.subFlows[0].flowId)
-        def involvedIslsSFlow_2 = pathHelper.getInvolvedIsls(yFlow.subFlows[1].flowId)
+        def involvedIslsSFlow_1 = paths.subFlowPaths.first().getInvolvedIsls()
+        def involvedIslsSFlow_2 = paths.subFlowPaths.last().getInvolvedIsls()
 
-        (involvedIslsSFlow_1 + involvedIslsSFlow_2).unique().each { link ->
-            [link, link.reversed].each {
-                islUtils.getIslInfo(allLinksBefore, it).ifPresent(islBefore -> {
-                    def bwBefore = islBefore.availableBandwidth
-                    def bwAfter = islUtils.getIslInfo(allLinksAfter, it).get().availableBandwidth
-                    assert bwBefore == bwAfter + yFlow.maximumBandwidth
-                })
+        if(!swT.singleSwitch) {
+            (involvedIslsSFlow_1 + involvedIslsSFlow_2).unique().each { link ->
+                [link, link.reversed].each {
+                    islUtils.getIslInfo(allLinksBefore, it).ifPresent(islBefore -> {
+                        def bwBefore = islBefore.availableBandwidth
+                        def bwAfter = islUtils.getIslInfo(allLinksAfter, it).get().availableBandwidth
+                        assert bwBefore == bwAfter + yFlow.maximumBandwidth
+                    })
+                }
             }
         }
 
