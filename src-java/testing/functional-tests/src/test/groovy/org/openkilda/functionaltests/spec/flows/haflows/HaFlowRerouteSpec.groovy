@@ -49,7 +49,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
     @Issue("https://github.com/telstra/open-kilda/issues/5647 (hardware)")
     def "Valid HA-flow can be rerouted"() {
         given: "An HA-flow"
-        def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
+        def swT = switchTriplets.all().findSwitchTripletWithAlternativePaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         def haFlow = haFlowFactory.getRandom(swT)
 
@@ -96,13 +96,13 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
 
         and: "Traffic passes through HA-Flow"
-        if (swT.isHaTraffExamAvailable()) {
+        if (swT.isTraffExamAvailable()) {
             assert haFlow.traffExam(traffExamProvider.get()).run().hasTraffic()
             statsHelper."force kilda to collect stats"()
         }
 
         then: "Stats are collected"
-        if (swT.isHaTraffExamAvailable()) {
+        if (swT.isTraffExamAvailable()) {
             wait(STATS_LOGGING_TIMEOUT) {
                 assert haFlowStats.of(haFlow.haFlowId).get(HA_FLOW_RAW_BITS,
                         REVERSE,
@@ -117,7 +117,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "HA-flow in 'Down' status is rerouted when discovering a new ISL"() {
         given: "An HA-flow"
-        def swT = topologyHelper.findSwitchTripletWithAlternativeFirstPortPaths()
+        def swT = switchTriplets.all().findSwitchTripletWithAlternativeFirstPortPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         def haFlow = haFlowFactory.getRandom(swT)
 
@@ -167,7 +167,10 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "HA-flow goes to 'Down' status when ISl of the HA-flow fails and there is no alt path to reroute"() {
         given: "An HA-flow without alternative paths"
-        def swT = topologyHelper.findSwitchTripletWithDifferentEndpoints()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().switchTriplets.find {
+            def yPoints = topologyHelper.findPotentialYPoints(it)
+            yPoints.size() == 1 && yPoints[0] != it.shared
+        }
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         def haFlow = haFlowFactory.getRandom(swT)
 

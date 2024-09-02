@@ -14,7 +14,6 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.yflow.YFlowRerouteExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.model.FlowActionType
-import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowActionType
 import org.openkilda.functionaltests.helpers.model.YFlowFactory
 import org.openkilda.functionaltests.model.stats.Direction
@@ -35,18 +34,6 @@ import spock.lang.Shared
 
 import javax.inject.Provider
 
-import static groovyx.gpars.GParsPool.withPool
-import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS
-import static org.openkilda.functionaltests.helpers.FlowHistoryConstants.REROUTE_SUCCESS_Y
-import static org.openkilda.functionaltests.helpers.Wrappers.wait
-import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
-import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
-import static org.openkilda.testing.Constants.WAIT_OFFSET
-
 @Slf4j
 @Narrative("Verify reroute operations on y-flows.")
 class YFlowRerouteSpec extends HealthCheckSpecification {
@@ -62,12 +49,9 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, ISL_RECOVER_ON_FAIL])
     def "Valid y-flow can be rerouted"() {
         given: "A qinq y-flow"
-        def swT = topologyHelper.switchTriplets.find { it ->
+        def swT = switchTriplets.all().withAllDifferentEndpoints().withoutWBSwitch().getSwitchTriplets().find {
             def yPoints = topologyHelper.findPotentialYPoints(it)
-            [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
-                    [it.pathsEp1, it.pathsEp2].every { it.size() > 1 } &&
-                    it.ep1 != it.ep2 && yPoints.size() == 1 && yPoints[0] != it.shared &&
-                    !it.shared.wb5164 && !it.ep1.wb5164 && !it.ep2.wb5164
+             yPoints.size() == 1 && yPoints[0] != it.shared
         }
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
 
@@ -144,7 +128,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Y-Flow reroute has not been executed when both sub-flows are on the best path"() {
         given: "Y-Flow has been created successfully"
-        def swT = topologyHelper.switchTriplets.findAll { SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it) }.first()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().first()
         def yFlow = yFlowFactory.getRandom(swT, false)
         def yFlowPathBeforeReroute = yFlow.retrieveAllEntityPaths()
 
@@ -167,12 +151,15 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     def "Y-Flow reroute has been executed when more preferable path is available for both sub-flows (shared path cost was changed)" () {
         given: "The appropriate switches have been collected"
         //y-flow with shared path is created when shared_ep+ep1->neighbour && ep1+ep2->neighbour && shared_ep+ep2->not neighbour
-        def swT = topologyHelper.findSwitchTripletWithSharedEpEp1Ep2InChain()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().withSharedEpEp1Ep2InChain().random()
 
         and: "The ISLs cost between switches has been changed to make preferable path"
-        List<Isl> directSwTripletIsls = (swT.pathsEp2).findAll { it.size() == 4  && swT.ep1.dpId in it.switchId }
-                .collectMany { pathHelper.getInvolvedIsls(it) }.unique()
-        pathHelper.updateIslsCost(directSwTripletIsls, 0)
+        List<Isl> directSwTripletIsls = (swT.pathsEp1[0].size() == 2 ?
+                        swT.pathsEp2.findAll { it.size() == 4  && it.containsAll(swT.pathsEp1[0])} :
+                        swT.pathsEp1.findAll { it.size() == 4 && it.containsAll(swT.pathsEp2[0])})
+                .collectMany { pathHelper.getInvolvedIsls(it) }.collectMany{[it, it.reversed]}.unique()
+        pathHelper.updateIslsCost(directSwTripletIsls, 1)
+
 
         and: "Y-Flow with shared path has been created successfully"
         def yFlow = yFlowFactory.getRandom(swT, false)
@@ -209,12 +196,14 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     def "Y-Flow reroute has been executed when more preferable path is available for one of the sub-flows" () {
         given: "The appropriate switches have been collected"
         //y-flow with shared path is created when shared_ep+ep1->neighbour && ep1+ep2->neighbour && shared_ep+ep2->not neighbour
-        def swT = topologyHelper.findSwitchTripletWithSharedEpEp1Ep2InChain()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().withSharedEpEp1Ep2InChain().random()
 
         and: "The ISLs cost between switches has been changed to make preferable path"
-        List<Isl> directSwTripletIsls = (swT.pathsEp2).findAll { it.size() == 4  && swT.ep1.dpId in it.switchId }
-                .collectMany { pathHelper.getInvolvedIsls(it) }.unique()
-        pathHelper.updateIslsCost(directSwTripletIsls, 0)
+        List<Isl> directSwTripletIsls = (swT.pathsEp1[0].size() == 2 ?
+                swT.pathsEp2.findAll { it.size() == 4  && it.containsAll(swT.pathsEp1[0])} :
+                swT.pathsEp1.findAll { it.size() == 4 && it.containsAll(swT.pathsEp2[0])})
+                .collectMany { pathHelper.getInvolvedIsls(it) }.collectMany{[it, it.reversed]}.unique()
+        pathHelper.updateIslsCost(directSwTripletIsls, 1)
 
         and: "Y-Flow with shared path has been created successfully"
         def yFlow = yFlowFactory.getRandom(swT, false)
@@ -265,7 +254,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL])
     def "Y-Flow reroute has not been executed when one sub-flow is on the best path and there is no alternative path for another sub-flow due to the down ISLs" () {
         given: "Y-Flow has been created successfully"
-        def swT = topologyHelper.switchTriplets.findAll{ SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(it)}.first()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().first()
         def yFlow = yFlowFactory.getRandom(swT, false)
         def yFlowPathBeforeReroute = yFlow.retrieveAllEntityPaths()
 

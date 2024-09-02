@@ -335,18 +335,19 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
     @Tags([LOW_PRIORITY])
     def "Able to update flow to become diverse and single-switch"() {
-        given: "Three switches"
-        def switches = topologyHelper.getSwitchTriplets().find {it.shared != it.ep1 && it.shared != it.ep2 && it.ep1 != it.ep2}
+        given: "Both switch pairs are with the same source switch"
+        def switchPair1 = switchPairs.all().neighbouring().random()
+        def switchPair2 = switchPairs.all().neighbouring().excludePairs([switchPair1]).includeSourceSwitch(switchPair1.src).random()
 
         and: "Create two flows starting from the same switch"
-        def flow1 = flowFactory.getRandom(switches.shared, switches.ep1, false)
-        def flow2 = flowFactory.getRandom(switches.shared, switches.ep2, false, UP, flow1.occupiedEndpoints())
+        def flow1 = flowFactory.getRandom(switchPair1, false)
+        def flow2 = flowFactory.getRandom(switchPair2, false, UP, flow1.occupiedEndpoints())
 
         when: "Update the second flow to become diverse and single-switch"
        def updatedFlow2 = flow2.update(flow2.deepCopy().tap {
             it.diverseWith = [flow1.flowId]
-            it.destination.switchId = switches.shared.dpId
-            it.destination.portNumber = getRandomAvailablePort(switches.shared, topologyDefinition, false,
+            it.destination.switchId = switchPair1.src.dpId
+            it.destination.portNumber = getRandomAvailablePort(switchPair1.src, topologyDefinition, false,
                     [flow1.source.portNumber, flow2.source.portNumber])
         })
         updatedFlow2.waitForHistoryEvent(FlowActionType.UPDATE)

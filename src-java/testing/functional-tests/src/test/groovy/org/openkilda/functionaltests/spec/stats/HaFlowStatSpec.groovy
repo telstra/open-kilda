@@ -57,11 +57,11 @@ class HaFlowStatSpec extends HealthCheckSpecification {
     HaFlowFactory haFlowFactory
 
     def setupSpec() {
-        switchTriplet = topologyHelper.getSwitchTriplets(true, false).find {
-            it.ep1 != it.ep2 && it.ep1 != it.shared && it.ep2 != it.shared &&
-                    [it.shared, it.ep1, it.ep2].every { it.traffGens }
-                    && it.ep2.getTraffGens().size() > 1 // needed for update flow test
-        } ?: assumeTrue(false, "No suiting switches found")
+        switchTriplet = switchTriplets.all(true, false).withAllDifferentEndpoints()
+                .withTraffgensOnEachEnd().getSwitchTriplets().find {
+            it.ep2.getTraffGens().size() > 1 // needed for update flow test
+        }
+        assumeTrue(switchTriplet != null, "No suiting switches found")
         // Flow with low maxBandwidth to make meters to drop packets when traffgens can't generate high load
         haFlow = haFlowFactory.getBuilder(switchTriplet).withBandwidth(10).build().create(UP, CLASS)
         def exam = haFlow.traffExam(traffExamProvider.get(), haFlow.getMaximumBandwidth() * 10, traffgenRunDuration)
@@ -124,9 +124,8 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Stats are collected after #data.descr of HA-Flow are updated"() {
         given: "HA-Flow"
-        def swT = topologyHelper.getSwitchTriplets(true, false)
-                .findAll(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT)
-                .findAll(SwitchTriplet.TRAFFGEN_CAPABLE).shuffled().first()
+        def swT = switchTriplets.all(true, false).withAllDifferentEndpoints()
+                .withTraffgensOnEachEnd().random()
 
         def haFlow = haFlowFactory.getRandom(swT, false)
 
@@ -181,9 +180,8 @@ class HaFlowUpdateStatSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Stats are collected after partial update (shared endpoint VLAN id) of HA-Flow"() {
         given: "HA-Flow"
-        def swT = topologyHelper.getSwitchTriplets(true, false)
-                .findAll(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT)
-                .findAll(SwitchTriplet.TRAFFGEN_CAPABLE).shuffled().first()
+        def swT = switchTriplets.all(true, false).withAllDifferentEndpoints()
+                .withTraffgensOnEachEnd().random()
         def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Partially update HA-Flow"

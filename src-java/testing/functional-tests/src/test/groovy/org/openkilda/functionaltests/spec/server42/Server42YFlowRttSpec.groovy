@@ -71,8 +71,11 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
     SwitchTriplet switchTripletWithYPointOnSubFlowEnd
 
     def setupSpec() {
-        switchTripletWithYPointOnSharedEp = topologyHelper.findSwitchTripletWithSharedEpInTheMiddleOfTheChainServer42Support()
-        switchTripletWithYPointOnSubFlowEnd = topologyHelper.findSwitchTripletWithSharedEpEp1Ep2InChainServer42Support()
+        switchTripletWithYPointOnSharedEp = switchTriplets.all().withAllDifferentEndpoints().withS42Support()
+                .withSharedEpInTheMiddleOfTheChain().random()
+        switchTripletWithYPointOnSubFlowEnd = switchTriplets.all().withAllDifferentEndpoints().withS42Support()
+                .withSharedEpEp1Ep2InChain().random()
+
     }
 
     @Tags(TOPOLOGY_DEPENDENT)
@@ -211,7 +214,7 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
 
         and: "Switches triplet with ONLY shared switch that supports server42 feature"
-        def swT = topologyHelper.findSwitchTripletWithOnlySharedSwServer42Support()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().findSwitchTripletWithOnlySharedSwS42Support()
         assumeTrue(swT as boolean, "Unable to find requested switchTriplet")
 
         and: "server42FlowRtt feature enabled globally and switch ON for appropriate switches(swT)"
@@ -466,7 +469,8 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
 
         and: "Switches triplet doesn't contain WB164 switch"
-        def swT = topologyHelper.findSwitchTripletServer42SupportWithSharedEpInTheMiddleOfTheChainExceptWBSw()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().withoutWBSwitch().withS42Support()
+                .withSharedEpInTheMiddleOfTheChain().random()
 
         and: "server42FlowRtt feature enabled globally and switch ON for appropriate switches(swT)"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)

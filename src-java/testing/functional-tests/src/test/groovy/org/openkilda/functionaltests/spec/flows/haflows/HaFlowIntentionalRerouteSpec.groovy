@@ -32,7 +32,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
     @Tags(ISL_PROPS_DB_RESET)
     def "Not able to reroute to a path with not enough bandwidth available"() {
         given: "An HA-Flow with alternate paths available"
-        def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
+        def swT = switchTriplets.all().findSwitchTripletWithAlternativePaths()
         assumeTrue(swT != null, "No suiting switches found")
         def haFlow = haFlowFactory.getBuilder(swT).withBandwidth(10000)
                 .build().create()
@@ -70,7 +70,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
     @Tags(ISL_PROPS_DB_RESET)
     def "Able to reroute to a better path if it has enough bandwidth"() {
         given: "An HA-Flow with alternate paths available"
-        def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
+        def swT = switchTriplets.all().findSwitchTripletWithAlternativePaths()
         assumeTrue(swT != null, "No suiting switches found")
         def haFlow = haFlowFactory.getBuilder(swT).withEncapsulationType(TRANSIT_VLAN)
                 .withBandwidth(10000).build().create()
@@ -133,7 +133,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
     @Tags(ISL_PROPS_DB_RESET)
     def "Able to reroute to a path with not enough bandwidth available in case ignoreBandwidth=true"() {
         given: "an HA-Flow with alternate paths available"
-        def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
+        def swT = switchTriplets.all().findSwitchTripletWithAlternativePaths()
         assumeTrue(swT != null, "No suiting switches found")
         def haFlow = haFlowFactory.getBuilder(swT).withEncapsulationType(TRANSIT_VLAN)
                 .withBandwidth(10000).withIgnoreBandwidth(true)

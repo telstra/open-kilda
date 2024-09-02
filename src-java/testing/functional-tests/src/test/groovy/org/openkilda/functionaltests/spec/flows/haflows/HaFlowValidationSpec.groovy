@@ -35,7 +35,7 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "HA-Flow passes validation after creation"() {
         given: "HA-Flow on non-neighbouring switches"
-        def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
+        def swT = switchTriplets.all().nonNeighbouring().random()
         def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Validate HA-Flow"
@@ -48,7 +48,7 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
 
     def "HA-Flow validation should fail in case of missing rule on #switchRole switch"() {
         given: "HA-Flow on non-neighbouring switches"
-        def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
+        def swT = switchTriplets.all().nonNeighbouring().random()
         def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Delete HA-Flow rule on switch"
@@ -77,7 +77,7 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
 
     def "HA-Flow validation should fail in case of missing meter on #switchRole switch"() {
         given: "HA-Flow on non-neighbouring switches"
-        def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
+        def swT = switchTriplets.all().nonNeighbouring().random()
         def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Delete HA-Flow meter"

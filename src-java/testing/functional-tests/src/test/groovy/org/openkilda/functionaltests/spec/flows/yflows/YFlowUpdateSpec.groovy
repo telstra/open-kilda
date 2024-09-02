@@ -33,7 +33,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
     def "User can update #data.descr of a Y-Flow"() {
         given: "Existing Y-Flow"
-        def swT = topologyHelper.switchTriplets.find(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT)
+        def swT = switchTriplets.all().withAllDifferentEndpoints().random()
 
         def yFlow = yFlowFactory.getRandom(swT, false)
         def oldSharedSwitch = yFlow.sharedEndpoint.switchId
@@ -75,7 +75,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                 [
                         descr: "shared switch and subflow switches",
                         updateClosure: { YFlowExtended payload ->
-                            def newSwT = topologyHelper.getSwitchTriplets(true).find {
+                            def newSwT = switchTriplets.all(true).getSwitchTriplets().find {
                                 it.shared.dpId != payload.sharedEndpoint.switchId &&
                                         it.ep1.dpId != payload.subFlows[0].endpoint.switchId &&
                                         it.ep2.dpId != payload.subFlows[1].endpoint.switchId &&
@@ -103,8 +103,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
     def "User can update y-flow where one of subflows has both ends on shared switch"() {
         given: "Existing y-flow where one of subflows has both ends on shared switch"
-        def switchTriplet = topologyHelper.getSwitchTriplets(true, true)
-                .find { it.ep1 == it.shared && it.ep2 != it.shared }
+        def switchTriplet = switchTriplets.all(true, true).findSwitchTripletForOneSwitchSubflow()
 
         def yFlow = yFlowFactory.getRandom(switchTriplet, false)
         yFlow.setDescription("new description")
@@ -130,7 +129,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
     def "User can partially update fields of one-switch y-flow"() {
         given: "Existing one-switch y-flow"
-        def swT = topologyHelper.getSwitchTriplets(false, true).find(SwitchTriplet.ONE_SWITCH_FLOW)
+        def swT = switchTriplets.all(false, true).singleSwitch().random()
         def yFlow = yFlowFactory.getBuilder(swT, false)
                 .withMaxLatency(50).withMaxLatencyTier2(100).build().create()
 
@@ -173,7 +172,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
     def "User can partially update #data.descr of a y-flow"() {
         given: "Existing y-flow"
-        def swT = topologyHelper.switchTriplets.find { it.ep1 != it.ep2 }
+        def swT = switchTriplets.all().withAllDifferentEndpoints().random()
         def yFlow = yFlowFactory.getRandom(swT, false)
 
         List<SwitchId> involvedSwitches = yFlow.retrieveAllEntityPaths().getInvolvedSwitches()
@@ -228,7 +227,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                 [
                         descr: "shared switch and subflow switches",
                         buildPatchRequest: { YFlowExtended payload ->
-                            def newSwT = topologyHelper.getSwitchTriplets(true).find {
+                            def newSwT = switchTriplets.all(true).getSwitchTriplets().find {
                                 it.shared.dpId != payload.sharedEndpoint.switchId &&
                                         it.ep1.dpId != payload.subFlows[0].endpoint.switchId &&
                                         it.ep2.dpId != payload.subFlows[1].endpoint.switchId &&
@@ -282,7 +281,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
     def "User cannot update a y-flow with #data.descr"() {
         given: "Existing y-flow"
-        def swT = topologyHelper.switchTriplets[0]
+        def swT = switchTriplets.all().first()
         def yFlow = yFlowFactory.getRandom(swT, false)
         yFlow.tap(data.updateClosure)
         def update = yFlow.convertToUpdate()
@@ -342,7 +341,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
 
     def "User cannot partial update a y-flow with #data.descr"() {
         given: "Existing y-flow"
-        def swT = topologyHelper.switchTriplets[0]
+        def swT = switchTriplets.all().first()
         def yFlow = yFlowFactory.getRandom(swT, false)
         def patch = data.buildPatchRequest(yFlow)
 
