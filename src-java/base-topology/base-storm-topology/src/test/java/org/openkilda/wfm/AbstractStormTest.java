@@ -149,6 +149,8 @@ public abstract class AbstractStormTest {
         config.setMaxTaskParallelism(1);
         config.setNumWorkers(2);
         config.put(Config.TOPOLOGY_TESTING_ALWAYS_TRY_SERIALIZE, true);
+        config.put(Config.TOPOLOGY_SKIP_MISSING_KRYO_REGISTRATIONS, true);
+        config.put(Config.TOPOLOGY_FALL_BACK_ON_JAVA_SERIALIZATION, true);
         return config;
     }
 

@@ -45,7 +45,6 @@ import com.google.common.collect.ImmutableList;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -56,8 +55,6 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 @Slf4j
-@Disabled("Sleep method from Storm Utils causes gradle to exit. Without the sleep, the test fails because there are"
-        + "no records when polling from the speaker See https://github.com/telstra/open-kilda/issues/5563")
 public class StatsTopologySwitchTest extends StatsTopologyBaseTest {
 
     @BeforeAll
