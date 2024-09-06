@@ -144,8 +144,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         database.updateIslsMaxBandwidth(yFlowIsls, yFlow.maximumBandwidth)
         islHelper.setAvailableBandwidth(yFlowIsls, 0)
 
-        List<Isl> alternativeIsls = (swT.pathsEp1 + swT.pathsEp2).collectMany { pathHelper.getInvolvedIsls(it) }
-                .collectMany { [it, it.reversed] }.unique()
+        List<Isl> alternativeIsls = (swT.retrieveAvailablePathsEp1() + swT.retrieveAvailablePathsEp2())
+                .collectMany { it.getInvolvedIsls() }.unique().collectMany { [it, it.reversed] }
         alternativeIsls.removeAll(yFlowIsls)
 
         database.updateIslsMaxBandwidth(alternativeIsls, yFlow.maximumBandwidth - 1)
@@ -264,8 +264,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         database.updateIslsMaxBandwidth(yFlowIsls, yFlow.maximumBandwidth)
         islHelper.setAvailableBandwidth(yFlowIsls, 0)
 
-        List<Isl> alternativeIsls = (swT.pathsEp1 + swT.pathsEp2).collectMany { pathHelper.getInvolvedIsls(it) }
-                .collectMany { [it, it.reversed] }.unique()
+        List<Isl> alternativeIsls = (swT.retrieveAvailablePathsEp1() + swT.retrieveAvailablePathsEp2())
+                .collectMany { it.getInvolvedIsls()}.unique().collectMany { [it, it.reversed] }
         alternativeIsls.removeAll(yFlowIsls)
         database.updateIslsMaxBandwidth(alternativeIsls, yFlow.maximumBandwidth - 1)
         islHelper.setAvailableBandwidth(alternativeIsls, 0)
