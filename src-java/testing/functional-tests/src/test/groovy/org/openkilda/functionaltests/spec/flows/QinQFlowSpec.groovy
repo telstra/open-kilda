@@ -748,7 +748,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def flow = flowEntity.create()
 
         when: "Make the current path less preferable than alternatives"
-        def initialPathIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def initialPathIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
         switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { it != initialPathIsls }
                 .each { islHelper.makePathIslsMorePreferable(it, initialPathIsls) }
 
@@ -767,7 +767,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "Flow is not rerouted"
         Wrappers.timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
-            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialPathIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialPathIsls
         }
 
         and: "System allows traffic on the flow"

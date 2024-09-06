@@ -221,8 +221,8 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flow2.partialUpdate(updateRequest)
 
         then: "Flows use diverse paths"
-        def flow1InvolvedIsls = flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
-        def flow2InvolvedIsls = flow2.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def flow1InvolvedIsls = flow1.retrieveAllEntityPaths().getInvolvedIsls()
+        def flow2InvolvedIsls = flow2.retrieveAllEntityPaths().getInvolvedIsls()
         flow1InvolvedIsls.intersect(flow2InvolvedIsls).empty
     }
 

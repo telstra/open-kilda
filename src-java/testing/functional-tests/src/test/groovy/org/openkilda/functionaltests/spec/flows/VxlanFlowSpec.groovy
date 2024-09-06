@@ -461,7 +461,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                 .build().create()
 
         then: "Flow is built through vxlan-enabled path, even though it is not the shortest"
-        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() != noVxlanPathIsls
+        flow.retrieveAllEntityPaths().getInvolvedIsls() != noVxlanPathIsls
     }
 
     @Tags([LOW_PRIORITY, TOPOLOGY_DEPENDENT])

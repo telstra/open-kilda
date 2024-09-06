@@ -61,7 +61,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         assert flow1Path.getPathNodes() == flow2Path.getPathNodes()
 
         when: "Set maintenance mode without flows evacuation flag for the first link involved in flow paths"
-        def isl = flow1Path.flowPath.getInvolvedIsls().first()
+        def isl = flow1Path.getInvolvedIsls().first()
         islHelper.setLinkMaintenance(isl, true, false)
 
         then: "Flows are not evacuated (rerouted) and have the same paths"
@@ -84,8 +84,8 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         }
 
         and: "Link under maintenance is not involved in new flow paths"
-        !flow1PathUpdated.flowPath.getInvolvedIsls().contains(isl)
-        !flow2PathUpdated.flowPath.getInvolvedIsls().contains(isl)
+        !flow1PathUpdated.getInvolvedIsls().contains(isl)
+        !flow2PathUpdated.getInvolvedIsls().contains(isl)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -102,7 +102,7 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
         assert flow1Path.getPathNodes() == flow2Path.getPathNodes()
 
         and: "Make only one alternative path available for both flows"
-        def flow1ActualIsl = flow1Path.flowPath.getInvolvedIsls().first()
+        def flow1ActualIsl = flow1Path.getInvolvedIsls().first()
         def altIsls = topology.getRelatedIsls(switchPair.src) - flow1ActualIsl
         /* altIsls can have only 1 element (the only one alt ISL).
         In this case it will be set under maintenance mode, and breaking the other
@@ -125,8 +125,8 @@ class LinkMaintenanceSpec extends HealthCheckSpecification {
 
             assert flow1PathUpdated != flow1Path
             assert flow2PathUpdated != flow2Path
-            assert flow1PathUpdated.flowPath.getInvolvedIsls().contains(islUnderMaintenance)
-            assert flow2PathUpdated.flowPath.getInvolvedIsls().contains(islUnderMaintenance)
+            assert flow1PathUpdated.getInvolvedIsls().contains(islUnderMaintenance)
+            assert flow2PathUpdated.getInvolvedIsls().contains(islUnderMaintenance)
         }
     }
 }

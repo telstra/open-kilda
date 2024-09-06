@@ -589,7 +589,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
         when: "Break the flow ISL (bring switch port down) to cause flow rerouting"
         def actualFlowPath = flow.retrieveAllEntityPaths()
         // Switches may have parallel links, so we need to get involved ISLs.
-        def islToFail = actualFlowPath.flowPath.getInvolvedIsls().first()
+        def islToFail = actualFlowPath.getInvolvedIsls().first()
         islHelper.breakIsl(islToFail)
 
         then: "The flow was rerouted after reroute timeout"

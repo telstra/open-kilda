@@ -133,8 +133,8 @@ class FlowStatSpec extends HealthCheckSpecification {
 
         def flowPathInfo = flow.retrieveAllEntityPaths()
         assert !flowPathInfo.flowPath.protectedPath.isPathAbsent()
-        def mainPathIsls = flowPathInfo.flowPath.getMainPathInvolvedIsls()
-        def protectedPathIsls = flowPathInfo.flowPath.getProtectedPathInvolvedIsls()
+        def mainPathIsls = flowPathInfo.getMainPathInvolvedIsls()
+        def protectedPathIsls = flowPathInfo.getProtectedPathInvolvedIsls()
 
         when: "Generate traffic on the given flow"
         def traffExam = traffExamProvider.get()
@@ -170,7 +170,7 @@ class FlowStatSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == UP }
 
         def flowPathInfoAfterRerouting = flow.retrieveAllEntityPaths()
-        def newMainPath = flowPathInfoAfterRerouting.flowPath.getMainPathInvolvedIsls()
+        def newMainPath = flowPathInfoAfterRerouting.getMainPathInvolvedIsls()
         newMainPath != mainPathIsls
         newMainPath != protectedPathIsls
 

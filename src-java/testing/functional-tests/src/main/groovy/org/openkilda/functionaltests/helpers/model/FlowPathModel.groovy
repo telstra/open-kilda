@@ -24,13 +24,4 @@ class FlowPathModel {
         direction == Direction.FORWARD ? (path.forward.getInvolvedIsls() + protectedPath?.forward?.getInvolvedIsls()).findAll() :
                 (path.reverse.getInvolvedIsls() + protectedPath?.reverse?.getInvolvedIsls()).findAll()
     }
-
-    List<Isl> getMainPathInvolvedIsls(Direction direction = Direction.FORWARD) {
-        direction == Direction.FORWARD ? path.forward.getInvolvedIsls() : path.reverse.getInvolvedIsls()
-    }
-
-    List<Isl> getProtectedPathInvolvedIsls(Direction direction = Direction.FORWARD) {
-        direction == Direction.FORWARD ? protectedPath.forward.getInvolvedIsls() :  protectedPath.reverse.getInvolvedIsls()
-    }
-
 }

@@ -39,7 +39,7 @@ class BandwidthSpec extends HealthCheckSpecification {
 
         then: "Available bandwidth on ISLs is changed in accordance with flow maximum bandwidth"
         def linksAfterFlowCreate = northbound.getAllLinks()
-        def involvedIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def involvedIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
         checkBandwidth(involvedIsls, linksBeforeFlowCreate, linksAfterFlowCreate, -flow.maximumBandwidth)
 
         when: "Update the flow with a valid bandwidth"
@@ -52,7 +52,7 @@ class BandwidthSpec extends HealthCheckSpecification {
         and: "Available bandwidth on ISLs is changed in accordance with new flow maximum bandwidth"
         def linksBeforeFlowUpdate = linksAfterFlowCreate
         def linksAfterFlowUpdate = northbound.getAllLinks()
-        def involvedIslsAfterUpdating = updatedFlow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def involvedIslsAfterUpdating = updatedFlow.retrieveAllEntityPaths().getInvolvedIsls()
         involvedIslsAfterUpdating.sort() == involvedIsls.sort()
 
         checkBandwidth(involvedIslsAfterUpdating, linksBeforeFlowUpdate, linksAfterFlowUpdate,
@@ -85,7 +85,7 @@ class BandwidthSpec extends HealthCheckSpecification {
 
         when: "Create a flow to reduce available bandwidth on links of the expected preferable path"
         def flow1 = flowFactory.getBuilder(switchPair).withBandwidth(minAvailableBandwidth - 100).build().create()
-        def flow1PathIsls = flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def flow1PathIsls = flow1.retrieveAllEntityPaths().getInvolvedIsls()
 
         then: "The flow is really built through the expected preferable path"
         flow1PathIsls == preferablePathIsls
@@ -95,7 +95,7 @@ class BandwidthSpec extends HealthCheckSpecification {
                 .withBandwidth(101).build().create()
 
         then: "The flow is built through longer path where available bandwidth is enough"
-        def flow2PathIsls = flow2.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def flow2PathIsls = flow2.retrieveAllEntityPaths().getInvolvedIsls()
         islHelper.getCost(flow2PathIsls) > islHelper.getCost(flow1PathIsls)
     }
 
@@ -165,7 +165,7 @@ class BandwidthSpec extends HealthCheckSpecification {
 
         then: "Available bandwidth on ISLs is not changed in accordance with flow maximum bandwidth"
         def linksAfterFlowCreate = northbound.getAllLinks()
-        def involvedIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def involvedIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
         checkBandwidth(involvedIsls, linksBeforeFlowCreate, linksAfterFlowCreate)
 
         when: "Update the flow with a bandwidth that exceeds available bandwidth on ISL (ignore_bandwidth = true)"
@@ -176,7 +176,7 @@ class BandwidthSpec extends HealthCheckSpecification {
 
         and: "Available bandwidth on ISLs is not changed in accordance with new flow maximum bandwidth"
         def linksAfterFlowUpdate = northbound.getAllLinks()
-        def involvedIslsAfterUpdating = updatedFlow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def involvedIslsAfterUpdating = updatedFlow.retrieveAllEntityPaths().getInvolvedIsls()
 
         involvedIslsAfterUpdating == involvedIsls
         checkBandwidth(involvedIslsAfterUpdating, linksBeforeFlowCreate, linksAfterFlowUpdate)
@@ -204,7 +204,7 @@ class BandwidthSpec extends HealthCheckSpecification {
 
         then: "Only one link is involved in flow path"
         def initialFlowPath = flow.retrieveAllEntityPaths()
-        def involvedIsls = initialFlowPath.flowPath.getInvolvedIsls()
+        def involvedIsls = initialFlowPath.getInvolvedIsls()
         involvedIsls.size() == 1
         involvedIsls == preferablePathIsls
 
@@ -236,7 +236,7 @@ class BandwidthSpec extends HealthCheckSpecification {
         then: "Available bandwidth on ISLs is not changed in accordance with flow maximum bandwidth"
         def linksAfterFlowCreate = northbound.getAllLinks()
         def initialPath = flow.retrieveAllEntityPaths()
-        checkBandwidth(initialPath.flowPath.getInvolvedIsls(), linksBeforeFlowCreate, linksAfterFlowCreate)
+        checkBandwidth(initialPath.getInvolvedIsls(), linksBeforeFlowCreate, linksAfterFlowCreate)
 
         when: "Update the flow (ignore_bandwidth = false)"
         flow.update(flow.tap { it.ignoreBandwidth = false })
@@ -255,7 +255,7 @@ class BandwidthSpec extends HealthCheckSpecification {
         def linksAfterFlowUpdate = northbound.getAllLinks()
         def flowPathAfterUpdate = flow.retrieveAllEntityPaths()
         flowPathAfterUpdate == initialPath
-        checkBandwidth(flowPathAfterUpdate.flowPath.getInvolvedIsls(), linksBeforeFlowCreate, linksAfterFlowUpdate)
+        checkBandwidth(flowPathAfterUpdate.getInvolvedIsls(), linksBeforeFlowCreate, linksAfterFlowUpdate)
     }
 
     @Tags([LOW_PRIORITY])

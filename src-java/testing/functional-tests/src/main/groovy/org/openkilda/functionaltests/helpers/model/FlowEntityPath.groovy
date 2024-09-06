@@ -5,6 +5,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import groovy.transform.Canonical
 import groovy.transform.EqualsAndHashCode
@@ -54,6 +55,18 @@ class FlowEntityPath {
         } else {
             isProtected ? flowPath.protectedPath.reverse.nodes.toPathNode() : flowPath.path.reverse.nodes.toPathNode()
         }
+    }
+
+    List<Isl> getMainPathInvolvedIsls(Direction direction = Direction.FORWARD) {
+        direction == Direction.FORWARD ? flowPath.path.forward.getInvolvedIsls() : flowPath.path.reverse.getInvolvedIsls()
+    }
+
+    List<Isl> getProtectedPathInvolvedIsls(Direction direction = Direction.FORWARD) {
+        direction == Direction.FORWARD ? flowPath.protectedPath.forward.getInvolvedIsls() :  flowPath.protectedPath.reverse.getInvolvedIsls()
+    }
+
+    List<Isl> getInvolvedIsls(Direction direction = Direction.FORWARD) {
+        flowPath.getInvolvedIsls(direction)
     }
 }
 
