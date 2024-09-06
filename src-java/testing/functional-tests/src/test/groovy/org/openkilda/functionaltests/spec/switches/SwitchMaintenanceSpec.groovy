@@ -89,15 +89,15 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         and: "Create a couple of flows going through these switches"
         def flow1 = flowFactory.getRandom(switchPair)
         def flow2 = flowFactory.getRandom(switchPair, false, FlowState.UP, flow1.occupiedEndpoints())
-        assert flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == pathIsls
-        assert flow2.retrieveAllEntityPaths().flowPath.getInvolvedIsls()== pathIsls
+        assert flow1.retrieveAllEntityPaths().getInvolvedIsls() == pathIsls
+        assert flow2.retrieveAllEntityPaths().getInvolvedIsls()== pathIsls
 
         when: "Set maintenance mode without flows evacuation flag for some intermediate switch involved in flow paths"
         switchHelper.setSwitchMaintenance(swId, true, false)
 
         then: "Flows are not evacuated (rerouted) and have the same paths"
-        flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == pathIsls
-        flow2.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == pathIsls
+        flow1.retrieveAllEntityPaths().getInvolvedIsls() == pathIsls
+        flow2.retrieveAllEntityPaths().getInvolvedIsls() == pathIsls
 
         when: "Set maintenance mode again with flows evacuation flag for the same switch"
         northbound.setSwitchMaintenance(swId, true, true)
@@ -110,8 +110,8 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
             flow1PathUpdated = flow1.retrieveAllEntityPaths()
             flow2PathUpdated = flow2.retrieveAllEntityPaths()
 
-            assert flow1PathUpdated.flowPath.getInvolvedIsls() != pathIsls
-            assert flow2PathUpdated.flowPath.getInvolvedIsls()!= pathIsls
+            assert flow1PathUpdated.getInvolvedIsls() != pathIsls
+            assert flow2PathUpdated.getInvolvedIsls()!= pathIsls
         }
 
         and: "Switch under maintenance is not involved in new flow paths"

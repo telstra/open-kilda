@@ -176,7 +176,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         def flow = flowFactory.getRandom(swPair)
 
         expectedPingResult.flowId = flow.flowId
-        assert aswitchPathIsls == flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        assert aswitchPathIsls == flow.retrieveAllEntityPaths().getInvolvedIsls()
 
         when: "Break the flow by removing rules from a-switch"
         def islToBreak = aswitchPathIsls.find { it.aswitch }

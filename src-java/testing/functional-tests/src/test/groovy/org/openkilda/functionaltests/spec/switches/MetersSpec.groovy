@@ -348,7 +348,7 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
         !dstSwFlowEgressRule.instructions.goToMeter
 
         and: "Intermediate switches don't have meters in flow rules at all"
-        List<Switch> flowInvolvedSwitches = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        List<Switch> flowInvolvedSwitches = flow.retrieveAllEntityPaths().getInvolvedIsls()
                 .collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique() as List<Switch>
 
         flowInvolvedSwitches[1..-2].findAll { it.ofVersion != "OF_12" }.each { sw ->
