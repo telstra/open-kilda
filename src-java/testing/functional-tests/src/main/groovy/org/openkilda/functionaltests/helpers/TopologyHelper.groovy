@@ -38,8 +38,6 @@ class TopologyHelper {
     Database database
     @Autowired
     FloodlightsHelper flHelper
-    @Autowired
-    PathHelper pathHelper
 
     TopologyDefinition readCurrentTopology() {
         readCurrentTopology(false)
@@ -87,7 +85,7 @@ class TopologyHelper {
     }
 
     @Memoized
-    List<Switch> findPotentialYPoints(SwitchTriplet swT) {
+    List<SwitchId> findPotentialYPoints(SwitchTriplet swT) {
         def sortedEp1Paths = swT.pathsEp1.sort { it.size() }
         def potentialEp1Paths = sortedEp1Paths.takeWhile { it.size() == sortedEp1Paths[0].size() }
         def potentialEp2Paths = potentialEp1Paths.collect { potentialEp1Path ->
@@ -99,8 +97,8 @@ class TopologyHelper {
         }
         return potentialEp2Paths.collectMany {path1WithPath2 ->
             path1WithPath2.potentialPaths2.collect { List<PathNode> potentialPath2 ->
-                def switches = pathHelper.getInvolvedSwitches(path1WithPath2.path1)
-                        .intersect(pathHelper.getInvolvedSwitches(potentialPath2))
+                def switches = path1WithPath2.path1.switchId
+                        .intersect(potentialPath2.switchId)
                 switches ? switches[-1] : null
             }
         }.findAll().unique()

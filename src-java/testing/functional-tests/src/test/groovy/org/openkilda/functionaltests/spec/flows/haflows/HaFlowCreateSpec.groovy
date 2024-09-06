@@ -65,7 +65,7 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         }
 
         and: "HA-Flow has been successfully deleted"
-        def flowRemoved = haFlow.delete()
+        haFlow.delete()
 
         and: "And involved switches pass validation"
         def involvedSwitchIds = haFlowPath.getInvolvedSwitches()
@@ -166,12 +166,12 @@ and ${haFlowInvalidRequest.subFlows[1].endpointInnerVlan}./).matches(exc)
                 [name     : "se is wb and se!=yp",
                  condition: { SwitchTriplet swT ->
                      def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared
+                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.dpId
                  }],
                 [name     : "se is non-wb and se!=yp",
                  condition: { SwitchTriplet swT ->
                      def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared
+                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.dpId
                  }],
                 [name     : "ep on wb and different eps", //ep1 is not the same sw as ep2
                  condition: { SwitchTriplet swT -> swT.ep1.wb5164 && swT.ep1 != swT.ep2 }],
@@ -180,37 +180,37 @@ and ${haFlowInvalidRequest.subFlows[1].endpointInnerVlan}./).matches(exc)
                 [name     : "se+yp on wb",
                  condition: { SwitchTriplet swT ->
                      def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared
+                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared.dpId
                  }],
                 [name     : "se+yp on non-wb",
                  condition: { SwitchTriplet swT ->
                      def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared
+                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] == swT.shared.dpId
                  }],
                 [name     : "yp on wb and yp!=se!=ep",
                  condition: { SwitchTriplet swT ->
                      def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared && yPoints[0] != swT.ep1 && yPoints[0] != swT.ep2
+                     swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.dpId && yPoints[0] != swT.ep1.dpId && yPoints[0] != swT.ep2.dpId
                  }],
                 [name     : "yp on non-wb and yp!=se!=ep",
                  condition: { SwitchTriplet swT ->
                      def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared && yPoints[0] != swT.ep1 && yPoints[0] != swT.ep2
+                     !swT.shared.wb5164 && yPoints.size() == 1 && yPoints[0] != swT.shared.dpId && yPoints[0] != swT.ep1.dpId && yPoints[0] != swT.ep2.dpId
                  }],
                 [name     : "ep+yp on wb",
                  condition: { SwitchTriplet swT ->
                      def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1 || yPoints[0] == swT.ep2)
+                     swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1.dpId || yPoints[0] == swT.ep2.dpId)
                  }],
                 [name     : "ep+yp on non-wb",
                  condition: { SwitchTriplet swT ->
                      def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     !swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1 || yPoints[0] == swT.ep2)
+                     !swT.shared.wb5164 && yPoints.size() == 1 && (yPoints[0] == swT.ep1.dpId || yPoints[0] == swT.ep2.dpId)
                  }],
                 [name     : "yp==se",
                  condition: { SwitchTriplet swT ->
                      def yPoints = topologyHelper.findPotentialYPoints(swT)
-                     yPoints.size() == 1 && yPoints[0] == swT.shared && swT.shared != swT.ep1 && swT.shared != swT.ep2
+                     yPoints.size() == 1 && yPoints[0] == swT.shared.dpId && swT.shared != swT.ep1 && swT.shared != swT.ep2
                  }]
         ]
         requiredCases.each { it.picked = false }

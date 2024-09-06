@@ -60,7 +60,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
                                    usual flow protected path           subflow 2
          */
         switchTriplet = switchTriplets.all(true, false).getSwitchTriplets().find {
-            it.shared != it.ep1 && it.pathsEp1.min { it.size() }?.size() > 2
+            it.shared != it.ep1 && it.pathsEp1.min{ it.size() }?.size() > 2
                     && it.pathsEp1.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
         }
         assumeTrue(switchTriplet != null, "Couldn't find appropriate switch triplet")
@@ -135,7 +135,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
                 - topology.getBusyPortsForSwitch(switchUnderTest)).first()
 
         when: "Create mirror point on switch with sink pointing to free port"
-        def mirrorEndpoint = flow.createMirrorPoint(
+        flow.createMirrorPoint(
                 switchUnderTest.getDpId(), freePort, randomVlan(),
                 FlowPathDirection.REVERSE
         )

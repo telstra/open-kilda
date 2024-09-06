@@ -34,8 +34,8 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
 
     def "Able to create diverse HA-Flows"() {
         given: "Switches with three not overlapping paths at least"
-        def swT = switchTriplets.all().withAllDifferentEndpoints().withAtLeastNNonOverlappingPaths(3)
-                .withAtLeastNIslOnSharedEndpoint(5).random()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().withTraffgensOnEachEnd()
+                .withAtLeastNNonOverlappingPaths(3).withAtLeastNIslOnSharedEndpoint(5).random()
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create three Ha-Flows with diversity enabled"

@@ -1,6 +1,9 @@
 package org.openkilda.functionaltests.helpers.model
 
+import static org.openkilda.functionaltests.helpers.TopologyHelper.convertToPathNodePayload
+
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -15,6 +18,9 @@ class SwitchTriplet {
     Switch ep2
     List<List<PathNode>> pathsEp1
     List<List<PathNode>> pathsEp2
+
+    @JsonIgnore
+    TopologyDefinition topologyDefinition
 
     @JsonIgnore
     SwitchTriplet getReversed() {
@@ -67,5 +73,16 @@ class SwitchTriplet {
                 areEp1Ep2AndEp1OrEp2AndShEpNeighbour = swT.pathsEp1.find { ep1Path -> ep1Path.containsAll(swT.pathsEp2[0]) && ep1Path.size() == 4 }
             }
             areEp1Ep2AndEp1OrEp2AndShEpNeighbour
+    }
+
+    List<Path> retrieveAvailablePathsEp1(){
+        convertToPathNodePayload(pathsEp1).collect{
+            new Path(it, topologyDefinition)
+        }
+    }
+    List<Path> retrieveAvailablePathsEp2(){
+        convertToPathNodePayload(pathsEp2).collect{
+            new Path(it, topologyDefinition)
+        }
     }
 }
