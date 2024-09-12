@@ -409,7 +409,7 @@ class SwitchHelper {
         return northboundV2.get().getSwitchFlows(new SwitchId(sw.getDpId().getId()), portIds)
     }
 
-    static List<Integer> "get used ports" (SwitchId switchId) {
+    static List<Integer> getUsedPorts(SwitchId switchId) {
         return northboundV2.get().getSwitchFlows(switchId, []).flowsByPort.keySet().asList()
     }
 
