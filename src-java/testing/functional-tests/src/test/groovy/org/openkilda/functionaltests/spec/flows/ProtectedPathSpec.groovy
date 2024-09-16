@@ -428,10 +428,10 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def otherIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
                 .findAll { !it.containsAll(originalMainPathIsls) && !it.containsAll(originalProtectedPathIsls) }.flatten()
                 .unique().findAll { !usedIsls.contains(it) && !usedIsls.contains(it.reversed) }
-                .unique { a, b -> a == b || a == b.reversed ? 0 : 1 } as List<Isl>
-        otherIsls.collectMany{[it, it.reversed]}.each { Isl isl ->
-            islHelper.setAvailableBandwidth(isl, flow.maximumBandwidth - 1)
-        }
+                .unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
+                .collectMany{[it, it.reversed]} as List<Isl>
+
+        islHelper.setAvailableAndMaxBandwidth(otherIsls, flow.maximumBandwidth - 1)
 
         and: "Main flow path breaks"
         def mainIsl = originalMainPathIsls.first()
@@ -659,7 +659,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Update all ISLs which can be used by protected path"
         def bandwidth = 100
-        isls[1..-1].each { islHelper.setAvailableBandwidth(it, 90) }
+        islHelper.setAvailableBandwidth(isls[1..-1], 90)
 
         when: "Create flow without protected path"
         def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
@@ -688,7 +688,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Update all ISLs which can be used by protected path"
         def bandwidth = 100
-        isls[1..-1].each { islHelper.setAvailableBandwidth(it, 90) }
+        islHelper.setAvailableBandwidth(isls[1..-1], 90)
 
         when: "Create flow with protected path"
         def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
@@ -1096,7 +1096,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Update all ISLs which can be used by protected path"
         def bandwidth = 100
-        isls[1..-1].each { islHelper.setAvailableBandwidth(it, 90) }
+        islHelper.setAvailableBandwidth(isls[1..-1], 90)
 
         when: "Create flow with protected path"
         flowFactory.getBuilder(srcSwitch, dstSwitch)

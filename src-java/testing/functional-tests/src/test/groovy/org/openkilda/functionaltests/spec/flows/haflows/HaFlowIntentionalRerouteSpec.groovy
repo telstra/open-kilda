@@ -208,15 +208,9 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    private Collection<Isl> setBandwidthForAlternativesPaths(List<Isl> flowIsls, List<List<Isl>> alternativePaths, long newBandwidth) {
-        Set<Isl> changedIsls = alternativePaths.flatten().unique().findAll { !flowIsls.contains(it) && !flowIsls.contains(it.reversed) }
-        withPool {
-            changedIsls.eachParallel { Isl thinIsl ->
-                [thinIsl, thinIsl.reversed].each {
-                    islHelper.setAvailableBandwidth(it, newBandwidth)
-                }
-            }
-        }
+    private List<Isl> setBandwidthForAlternativesPaths(List<Isl> flowIsls, List<List<Isl>> alternativePaths, long newBandwidth) {
+        List<Isl> changedIsls = alternativePaths.flatten().unique().findAll { !flowIsls.contains(it) && !flowIsls.contains(it.reversed) } as List<Isl>
+        islHelper.setAvailableAndMaxBandwidth(changedIsls.collectMany {[it, it.reversed]}.unique(), newBandwidth)
         changedIsls
     }
 

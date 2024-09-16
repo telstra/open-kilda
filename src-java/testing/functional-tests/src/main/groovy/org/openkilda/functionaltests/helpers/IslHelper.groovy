@@ -126,16 +126,17 @@ class IslHelper {
 
     def setAvailableBandwidth(Isl isl, long newValue) {
         cleanupManager.addAction(RESET_ISL_PARAMETERS, {resetAvailableBandwidth([isl, isl.reversed])})
-        database.updateIslMaxBandwidth(isl, newValue)
         database.updateIslAvailableBandwidth(isl, newValue)
     }
 
     def setAvailableBandwidth(List<Isl> isls, long newValue) {
-        cleanupManager.addAction(RESET_ISL_PARAMETERS, {resetAvailableBandwidth(isls + isls.collect{it.reversed})})
-        isls.each {
-            database.updateIslMaxBandwidth(it, newValue)
-            database.updateIslAvailableBandwidth(it, newValue)
-        }
+        cleanupManager.addAction(RESET_ISL_PARAMETERS, {resetAvailableBandwidth(isls)})
+        database.updateIslsAvailableBandwidth(isls, newValue)
+    }
+
+    def setAvailableAndMaxBandwidth(List<Isl> isls, long availableValue, long maxValue = availableValue) {
+        cleanupManager.addAction(RESET_ISL_PARAMETERS, {resetAvailableBandwidth(isls)})
+        database.updateIslsAvailableAndMaxBandwidth(isls, availableValue, maxValue)
     }
 
     def resetAvailableBandwidth(List<Isl> isls) {

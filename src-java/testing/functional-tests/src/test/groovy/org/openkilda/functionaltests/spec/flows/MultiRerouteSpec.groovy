@@ -56,9 +56,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         def thinIsl = prefPathIsls.find { !notPrefIsls.contains(it) }
         def halfOfFlows = flows[0..flows.size() / 2 - 1]
         long newBw = halfOfFlows.sum { it.maximumBandwidth } as Long
-        [thinIsl, thinIsl.reversed].each {
-            islHelper.setAvailableBandwidth(it, newBw)
-        }
+        islHelper.setAvailableAndMaxBandwidth([thinIsl, thinIsl.reversed], newBw)
 
         and: "Init simultaneous reroute of all flows by bringing current path's ISL down"
         def notCurrentIsls = availablePaths.findAll { it != currentPathIsls }.flatten().unique()

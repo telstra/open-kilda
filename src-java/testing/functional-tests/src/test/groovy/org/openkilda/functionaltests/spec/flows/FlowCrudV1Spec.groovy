@@ -774,12 +774,9 @@ are not connected to the controller/).matches(exc)
         and: "Update reverse path to have not enough bandwidth to handle the flow"
         //Forward path is still have enough bandwidth
         def flowBandwidth = 500
-        def islsToModify = desiredPathMaxIsls[1]
+        Isl islsToModify = desiredPathMaxIsls[1]
         def newIslBandwidth = flowBandwidth - 1
-        islsToModify.each {
-            islHelper.setAvailableBandwidth(it.reversed, newIslBandwidth)
-            database.updateIslMaxBandwidth(it.reversed, newIslBandwidth)
-        }
+        islHelper.setAvailableAndMaxBandwidth([islsToModify.reversed], newIslBandwidth)
 
         when: "Create a flow"
         flowFactory.getBuilder(switchPair).withBandwidth(flowBandwidth).build().createV1()
