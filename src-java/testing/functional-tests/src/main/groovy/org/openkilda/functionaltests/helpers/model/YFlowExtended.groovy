@@ -275,6 +275,12 @@ class YFlowExtended {
         northboundV2.pingYFlow(yFlowId, payload)
     }
 
+    ComplexFlowPingResponse pingAndCollectDiscrepancies(YFlowPingPayload payload = new YFlowPingPayload(2000)) {
+        def response = ping(payload)
+        assert response.getYFlowId() == yFlowId, "Ping response for an incorrect Y-Flow"
+        new ComplexFlowPingResponse(response)
+    }
+
     YFlowRerouteResult reroute() {
         return northboundV2.rerouteYFlow(yFlowId)
     }
