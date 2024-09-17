@@ -141,15 +141,13 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         List<Isl> yFlowIsls = initialPath.subFlowPaths.collectMany { subFlow ->
             subFlow.getInvolvedIsls().collectMany {[it, it.reversed] }}.unique()
 
-        database.updateIslsMaxBandwidth(yFlowIsls, yFlow.maximumBandwidth)
-        islHelper.setAvailableBandwidth(yFlowIsls, 0)
+        islHelper.setAvailableAndMaxBandwidth(yFlowIsls, 0, yFlow.maximumBandwidth)
 
         List<Isl> alternativeIsls = (swT.pathsEp1 + swT.pathsEp2).collectMany { pathHelper.getInvolvedIsls(it) }
                 .collectMany { [it, it.reversed] }.unique()
         alternativeIsls.removeAll(yFlowIsls)
 
-        database.updateIslsMaxBandwidth(alternativeIsls, yFlow.maximumBandwidth - 1)
-        islHelper.setAvailableBandwidth(alternativeIsls, 0)
+        islHelper.setAvailableAndMaxBandwidth(alternativeIsls, 0, yFlow.maximumBandwidth - 1)
 
         when: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = initialPath.subFlowPaths.first().path.forward.getInvolvedIsls().last()
@@ -261,14 +259,12 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         and: "Other ISLs have not enough bandwidth to host the flows in case of reroute"
         List<Isl> yFlowIsls = initialPath.subFlowPaths.collectMany { subFlow ->
             subFlow.getInvolvedIsls().collectMany {[it, it.reversed] }}.unique()
-        database.updateIslsMaxBandwidth(yFlowIsls, yFlow.maximumBandwidth)
-        islHelper.setAvailableBandwidth(yFlowIsls, 0)
+        islHelper.setAvailableAndMaxBandwidth(yFlowIsls, 0, yFlow.maximumBandwidth)
 
         List<Isl> alternativeIsls = (swT.pathsEp1 + swT.pathsEp2).collectMany { pathHelper.getInvolvedIsls(it) }
                 .collectMany { [it, it.reversed] }.unique()
         alternativeIsls.removeAll(yFlowIsls)
-        database.updateIslsMaxBandwidth(alternativeIsls, yFlow.maximumBandwidth - 1)
-        islHelper.setAvailableBandwidth(alternativeIsls, 0)
+        islHelper.setAvailableAndMaxBandwidth(alternativeIsls, 0, yFlow.maximumBandwidth - 1)
 
         when: "Break ISL on the protected path (bring port down) to make it INACTIVE"
         def islToBreak = initialPath.subFlowPaths.first().path.forward.getInvolvedIsls().last()

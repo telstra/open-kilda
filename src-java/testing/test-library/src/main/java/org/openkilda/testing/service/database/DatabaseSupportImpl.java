@@ -202,6 +202,27 @@ public class DatabaseSupportImpl implements Database {
     }
 
     /**
+     * Updates max_bandwidth property on specified ISLs.
+     *
+     * @param islsToUpdate ISLs to be changed
+     * @param availableValue available bandwidth to set
+     * @param maxValue max bandwidth to set
+     * @return true if at least 1 ISL was affected.
+     */
+    @Override
+    public boolean updateIslsAvailableAndMaxBandwidth(List<Isl> islsToUpdate, long availableValue, long maxValue) {
+        return transactionManager.doInTransaction(() -> {
+            Collection<org.openkilda.model.Isl> dbIsls = getIsls(islsToUpdate);
+            dbIsls.forEach(link -> {
+                        link.setAvailableBandwidth(availableValue);
+                        link.setMaxBandwidth(maxValue);
+                    }
+            );
+            return dbIsls.size() > 0;
+        });
+    }
+
+    /**
      * Updates cost property on a certain ISL.
      *
      * @param islToUpdate ISL to be changed

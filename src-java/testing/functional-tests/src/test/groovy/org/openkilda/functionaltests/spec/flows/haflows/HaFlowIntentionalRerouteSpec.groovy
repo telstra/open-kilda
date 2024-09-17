@@ -213,14 +213,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
             }
         } as Set
 
-        withPool {
-            changedIsls.eachParallel { Isl thinIsl ->
-                [thinIsl, thinIsl.reversed].each {
-                    islHelper.setAvailableBandwidth(it, newBandwidth)
-                    database.updateIslMaxBandwidth(it, newBandwidth)
-                }
-            }
-        }
+        islHelper.setAvailableAndMaxBandwidth(changedIsls.collectMany {[it, it.reversed]}, newBandwidth)
         changedIsls
     }
 }

@@ -427,10 +427,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 it != originalProtectedPath }.collectMany { pathHelper.getInvolvedIsls(it) }
                 .findAll { !usedIsls.contains(it) && !usedIsls.contains(it.reversed) }
                 .unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
-        otherIsls.collectMany{[it, it.reversed]}.each { Isl isl ->
-            database.updateIslMaxBandwidth(isl, flow.maximumBandwidth - 1)
-            islHelper.setAvailableBandwidth(isl, flow.maximumBandwidth - 1)
-        }
+        islHelper.setAvailableAndMaxBandwidth(otherIsls.collectMany{[it, it.reversed]}, flow.maximumBandwidth - 1)
 
         and: "Main flow path breaks"
         def mainIsl = initialFlowPath.flowPath.getMainPathInvolvedIsls().first()
@@ -658,7 +655,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Update all ISLs which can be used by protected path"
         def bandwidth = 100
-        isls[1..-1].each { islHelper.setAvailableBandwidth(it, 90) }
+        islHelper.setAvailableBandwidth(isls[1..-1], 90)
 
         when: "Create flow without protected path"
         def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
@@ -687,7 +684,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Update all ISLs which can be used by protected path"
         def bandwidth = 100
-        isls[1..-1].each { islHelper.setAvailableBandwidth(it, 90) }
+        islHelper.setAvailableBandwidth(isls[1..-1], 90)
 
         when: "Create flow with protected path"
         def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
@@ -1098,7 +1095,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Update all ISLs which can be used by protected path"
         def bandwidth = 100
-        isls[1..-1].each { islHelper.setAvailableBandwidth(it, 90) }
+        islHelper.setAvailableBandwidth(isls[1..-1], 90)
 
         when: "Create flow with protected path"
         flowFactory.getBuilder(srcSwitch, dstSwitch)

@@ -62,10 +62,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
                 !currentIsls.contains(it) && !currentIsls.contains(it.reversed)
             }
             def newBw = flow.maximumBandwidth - 1
-            [thinIsl, thinIsl.reversed].each {
-                database.updateIslMaxBandwidth(it, newBw)
-                islHelper.setAvailableBandwidth(it, newBw)
-            }
+            islHelper.setAvailableAndMaxBandwidth([thinIsl, thinIsl.reversed], newBw)
             thinIsl
         }
 
@@ -101,10 +98,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         def thinIsl = pathHelper.getInvolvedIsls(preferableAltPath).find {
             !currentIsls.contains(it) && !currentIsls.contains(it.reversed)
         }
-        [thinIsl, thinIsl.reversed].each {
-            database.updateIslMaxBandwidth(it, flow.maximumBandwidth)
-            islHelper.setAvailableBandwidth(it, flow.maximumBandwidth)
-        }
+        islHelper.setAvailableAndMaxBandwidth([thinIsl, thinIsl.reversed], flow.maximumBandwidth)
 
         and: "Init a reroute of the flow"
         def rerouteResponse = flow.reroute()
@@ -211,10 +205,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
             def thinIsl = pathHelper.getInvolvedIsls(altPath).find {
                 !currentIsls.contains(it) && !currentIsls.contains(it.reversed)
             }
-            [thinIsl, thinIsl.reversed].each {
-                database.updateIslMaxBandwidth(it, newBw)
-                islHelper.setAvailableBandwidth(it, newBw)
-            }
+            islHelper.setAvailableAndMaxBandwidth([thinIsl, thinIsl.reversed], newBw)
             thinIsl
         }
 
@@ -306,10 +297,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
                 !currentIsls.contains(it) && !currentIsls.contains(it.reversed)
             }
             def newBw = flow.maximumBandwidth - 1
-            [thinIsl, thinIsl.reversed].each {
-                database.updateIslMaxBandwidth(it, newBw)
-                islHelper.setAvailableBandwidth(it, newBw)
-            }
+            islHelper.setAvailableAndMaxBandwidth([thinIsl, thinIsl.reversed], newBw)
             thinIsl
         }
 
@@ -346,10 +334,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         def thinIsl = pathHelper.getInvolvedIsls(preferableAltPath).find {
             !currentIsls.contains(it) && !currentIsls.contains(it.reversed)
         }
-        [thinIsl, thinIsl.reversed].each {
-            database.updateIslMaxBandwidth(it, flow.maximumBandwidth)
-            islHelper.setAvailableBandwidth(it, flow.maximumBandwidth)
-        }
+        islHelper.setAvailableAndMaxBandwidth([thinIsl, thinIsl.reversed], flow.maximumBandwidth)
 
         and: "Init a reroute of the flow"
         def rerouteResponse = flow.rerouteV1()
