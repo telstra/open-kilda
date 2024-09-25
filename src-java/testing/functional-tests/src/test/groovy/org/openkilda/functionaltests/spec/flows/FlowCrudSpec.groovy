@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
-import org.openkilda.messaging.info.rule.FlowEntry
+import org.openkilda.functionaltests.helpers.model.FlowRuleEntity
 
 import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -21,7 +21,6 @@ import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.model.SwitchId
@@ -29,7 +28,6 @@ import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.flows.FlowPatchV2
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
 import org.openkilda.northbound.dto.v2.flows.FlowStatistics
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
@@ -719,8 +717,8 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
         and: "Rules for main and protected paths are created"
         wait(WAIT_OFFSET) {
-            HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
-                    .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
+            HashMap<SwitchId, List<FlowRuleEntity>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
+                    .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowRuleEntity>>
             flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
         }
 
