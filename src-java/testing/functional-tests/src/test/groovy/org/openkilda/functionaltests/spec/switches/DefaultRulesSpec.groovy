@@ -1,6 +1,5 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
 import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -15,13 +14,10 @@ import static org.openkilda.model.cookie.Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.messaging.Message
-import org.openkilda.messaging.command.CommandData
-import org.openkilda.messaging.command.CommandMessage
+import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
 import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
@@ -30,9 +26,14 @@ import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
-import spock.lang.Unroll
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Shared
 
 class DefaultRulesSpec extends HealthCheckSpecification {
+
+    @Autowired
+    @Shared
+    SwitchRulesFactory switchRulesFactory
 
     def setupSpec() {
         deleteAnyFlowsLeftoversIssue5480()
@@ -41,7 +42,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Default rules are installed on switches #sw.hwSwString"() {
         expect: "Default rules are installed on the switch"
-        def cookies = northbound.getSwitchRules(sw.dpId).flowEntries*.cookie
+        def cookies = switchRulesFactory.get(sw.dpId).getRules().cookie
         cookies.sort() == sw.defaultCookies.sort()
 
         where:
@@ -53,7 +54,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         given: "A switch with no rules installed and not connected to the controller"
         def sw = topology.activeSwitches.first()
         switchHelper.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
-        wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(sw.dpId).flowEntries.isEmpty() }
+        wait(RULES_DELETION_TIME) { assert switchRulesFactory.get(sw.dpId).getRules().isEmpty() }
         def blockData = switchHelper.knockoutSwitch(sw, RW)
 
         when: "Connect the switch to the controller"
@@ -61,7 +62,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
         then: "Default rules are installed on the switch"
         wait(RULES_INSTALLATION_TIME) {
-            assert northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.sort() == sw.defaultCookies.sort()
+            assert switchRulesFactory.get(sw.dpId).getRules().cookie.sort() == sw.defaultCookies.sort()
         }
     }
 
@@ -69,24 +70,23 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     def "Able to install default rule on #sw.hwSwString [install-action=#data.installRulesAction]"(
             Map data, Switch sw) {
         given: "A switch without any rules"
-        def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
+        def defaultRules = switchRulesFactory.get(sw.dpId).getRules()
         assertThat(defaultRules*.cookie.sort()).containsExactlyInAnyOrder(*sw.defaultCookies.sort())
 
         switchHelper.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
-        wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(sw.dpId).flowEntries.empty }
+        wait(RULES_DELETION_TIME) { assert switchRulesFactory.get(sw.dpId).getRules().empty }
 
         when: "Install rules on the switch"
         def installedRules = northbound.installSwitchRules(sw.dpId, data.installRulesAction)
 
         then: "The corresponding rules are really installed"
-        //https://github.com/telstra/open-kilda/issues/3625
-//        installedRules.size() == 1
+        installedRules.size() == 1
 
         def expectedRules = defaultRules.findAll { it.cookie == data.cookie }
         wait(RULES_INSTALLATION_TIME) {
-            compareRules(northbound.getSwitchRules(sw.dpId).flowEntries
-                    .findAll { new Cookie(it.cookie).getType() != CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES },
-                    expectedRules)
+            def actualRules = switchRulesFactory.get(sw.dpId).getRules()
+                    .findAll { new Cookie(it.cookie).getType() != CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES }
+            assertThat(actualRules).containsExactlyInAnyOrder(*expectedRules)
         }
 
         where:
@@ -135,11 +135,11 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     def "Able to install default rule on switch: #sw.hwSwString [install-action=#data.installRulesAction]"(
             Map data, Switch sw) {
         given: "A switch without rules"
-        def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
+        def defaultRules = switchRulesFactory.get(sw.dpId).getRules()
         assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
 
         switchHelper.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
-        wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(sw.dpId).flowEntries.empty }
+        wait(RULES_DELETION_TIME) { assert switchRulesFactory.get(sw.dpId).getRules().empty }
 
         when: "Install rules on the switch"
         def installedRules = northbound.installSwitchRules(sw.dpId, data.installRulesAction)
@@ -149,7 +149,9 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
         def expectedRules = defaultRules.findAll { it.cookie == data.cookie }
         wait(RULES_INSTALLATION_TIME) {
-            compareRules(northbound.getSwitchRules(sw.dpId).flowEntries, expectedRules)
+            def actualRules = switchRulesFactory.get(sw.dpId).getRules()
+            assert actualRules.cookie == installedRules
+            assertThat(actualRules).containsExactlyInAnyOrder(*expectedRules)
         }
 
         where:
@@ -185,11 +187,11 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     @Tags([TOPOLOGY_DEPENDENT, SMOKE, SMOKE_SWITCHES])
     def "Able to install default rules on #sw.hwSwString [install-action=INSTALL_DEFAULTS]"() {
         given: "A switch without any rules"
-        def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
+        def defaultRules = switchRulesFactory.get(sw.dpId).getRules()
         assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
 
         switchHelper.deleteSwitchRules(sw.dpId, DeleteRulesAction.DROP_ALL)
-        wait(RULES_DELETION_TIME) { assert northbound.getSwitchRules(sw.dpId).flowEntries.empty }
+        wait(RULES_DELETION_TIME) { assert switchRulesFactory.get(sw.dpId).getRules().empty }
 
         when: "Install rules on the switch"
         def installedRules = northbound.installSwitchRules(sw.dpId, InstallRulesAction.INSTALL_DEFAULTS)
@@ -197,7 +199,8 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         then: "The corresponding rules are really installed"
         installedRules.size() == defaultRules.size()
         wait(RULES_INSTALLATION_TIME) {
-            compareRules(northbound.getSwitchRules(sw.dpId).flowEntries, defaultRules)
+            def actualRules = switchRulesFactory.get(sw.dpId).getRules()
+            assertThat(actualRules).containsExactlyInAnyOrder(*defaultRules)
         }
 
         where:
@@ -208,16 +211,15 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     def "Able to delete default rule from #sw.hwSwString[delete-action=#data.deleteRulesAction]"(
             Map data, Switch sw) {
         when: "Delete rules from the switch"
-        def defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
+        def defaultRules = switchRulesFactory.get(sw.dpId).getRules()
         assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
         def deletedRules = switchHelper.deleteSwitchRules(sw.dpId, data.deleteRulesAction)
 
         then: "The corresponding rules are really deleted"
         deletedRules.size() == 1
         wait(RULES_DELETION_TIME) {
-            def actualRules = northbound.getSwitchRules(sw.dpId).flowEntries
-            assert actualRules.findAll { it.cookie in deletedRules }.empty
-            compareRules(actualRules, defaultRules.findAll { it.cookie != data.cookie })
+            def actualRules = switchRulesFactory.get(sw.dpId).getRules()
+            assertThat(actualRules).containsExactlyInAnyOrder(*defaultRules.findAll { it.cookie != data.cookie })
         }
 
         and: "Switch and rules validation shows that corresponding default rule is missing"
@@ -267,7 +269,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         when: "Delete rule from the switch"
         def defaultRules
         wait(RULES_INSTALLATION_TIME) {
-            defaultRules = northbound.getSwitchRules(sw.dpId).flowEntries
+            defaultRules = switchRulesFactory.get(sw.dpId).getRules()
             assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
         }
         def deletedRules = switchHelper.deleteSwitchRules(sw.dpId, data.deleteRulesAction)
@@ -275,9 +277,8 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         then: "The corresponding rule is really deleted"
         deletedRules.size() == 1
         wait(RULES_DELETION_TIME) {
-            def actualRules = northbound.getSwitchRules(sw.dpId).flowEntries
-            assert actualRules.findAll { it.cookie in deletedRules }.empty
-            compareRules(actualRules, defaultRules.findAll { it.cookie != data.cookie })
+            def actualRules = switchRulesFactory.get(sw.dpId).getRules()
+            assertThat(actualRules).containsExactlyInAnyOrder(*defaultRules.findAll { it.cookie != data.cookie })
         }
 
         and: "Switch and rules validation shows that corresponding default rule is missing"
@@ -341,7 +342,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
         and: "The corresponding rule is really deleted"
         wait(RULES_DELETION_TIME) {
-            assert northbound.getSwitchRules(sw.dpId).flowEntries.findAll { it.cookie == SERVER_42_FLOW_RTT_TURNING_COOKIE }.empty
+            assert switchRulesFactory.get(sw.dpId).getRules().findAll { it.cookie == SERVER_42_FLOW_RTT_TURNING_COOKIE }.empty
         }
 
         and: "Switch and rules validation shows that corresponding rule is missing"
@@ -366,7 +367,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
         and: "The corresponding rule is really installed"
         wait(RULES_INSTALLATION_TIME) {
-            assert !northbound.getSwitchRules(sw.dpId).flowEntries.findAll { it.cookie == SERVER_42_FLOW_RTT_TURNING_COOKIE }.empty
+            assert !switchRulesFactory.get(sw.dpId).getRules().findAll { it.cookie == SERVER_42_FLOW_RTT_TURNING_COOKIE }.empty
         }
     }
 
@@ -385,7 +386,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
             it.server42IslRtt = RttState.ENABLED.toString()
         }))
         wait(RULES_INSTALLATION_TIME) {
-            assert northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
+            assert switchRulesFactory.get(sw.dpId).getRules().findAll {
                 (it.cookie in [SERVER_42_ISL_RTT_TURNING_COOKIE, SERVER_42_ISL_RTT_OUTPUT_COOKIE]) ||
                         (new Cookie(it.cookie).getType() in [CookieType.SERVER_42_ISL_RTT_INPUT])
             }.size() == northbound.getLinks(sw.dpId, null, null, null).size() + 2
@@ -400,7 +401,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
         and: "The corresponding rule is really deleted"
         wait(RULES_DELETION_TIME) {
-            assert northbound.getSwitchRules(sw.dpId).flowEntries.findAll { it.cookie == SERVER_42_ISL_RTT_TURNING_COOKIE }.empty
+            assert switchRulesFactory.get(sw.dpId).getRules().findAll { it.cookie == SERVER_42_ISL_RTT_TURNING_COOKIE }.empty
         }
 
         and: "Switch and rules validation shows that corresponding rule is missing"
@@ -425,19 +426,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
 
         and: "The corresponding rule is really installed"
         wait(RULES_INSTALLATION_TIME) {
-            assert !northbound.getSwitchRules(sw.dpId).flowEntries.findAll { it.cookie == SERVER_42_ISL_RTT_TURNING_COOKIE }.empty
+            assert !switchRulesFactory.get(sw.dpId).getRules().findAll { it.cookie == SERVER_42_ISL_RTT_TURNING_COOKIE }.empty
         }
-    }
-
-    void compareRules(actualRules, expectedRules) {
-        assert expect(actualRules.sort { it.cookie }, sameBeanAs(expectedRules.sort { it.cookie })
-                .ignoring("byteCount")
-                .ignoring("packetCount")
-                .ignoring("durationNanoSeconds")
-                .ignoring("durationSeconds"))
-    }
-
-    private static Message buildMessage(final CommandData data) {
-        return new CommandMessage(data, System.currentTimeMillis(), UUID.randomUUID().toString(), null);
     }
 }
