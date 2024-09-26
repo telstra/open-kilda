@@ -902,10 +902,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow is valid and pingable"
         updatedFlow.validateAndCollectDiscrepancies().isEmpty()
-        with(updatedFlow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        updatedFlow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The src switch passes switch validation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(srcSwitch.getDpId()).isPresent()
@@ -945,10 +942,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow is valid and pingable"
         updatedFlow.validateAndCollectDiscrepancies().isEmpty()
-        with(updatedFlow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        updatedFlow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The new and old dst switches pass switch validation"
         wait(RULES_DELETION_TIME) {
@@ -1092,10 +1086,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow is valid and pingable"
         updatedFlow.validateAndCollectDiscrepancies().isEmpty()
-        with(updatedFlow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        updatedFlow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "Involved switches pass switch validation"
         def involvedSwitches = updatedFlow.retrieveAllEntityPaths().getInvolvedSwitches()

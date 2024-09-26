@@ -105,10 +105,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is pingable"
-        verifyAll(flow.ping()) {
-            forward.pingSuccess
-            reverse.pingSuccess
-        }
+        flow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The flow allows traffic"
         def traffExam = traffExamProvider.get()
@@ -127,10 +124,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is pingable"
-        verifyAll(flow.ping()) {
-            forward.pingSuccess
-            reverse.pingSuccess
-        }
+        flow.pingAndCollectDiscrepancies().isEmpty()
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
         def updateEntity = flow.deepCopy().tap {
@@ -149,10 +143,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         and: "Flow is pingable (though sometimes we have to wait)"
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(flow.ping()) {
-                forward.pingSuccess
-                reverse.pingSuccess
-            }
+           flow.pingAndCollectDiscrepancies().isEmpty()
         }
 
         and: "Rules are recreated"

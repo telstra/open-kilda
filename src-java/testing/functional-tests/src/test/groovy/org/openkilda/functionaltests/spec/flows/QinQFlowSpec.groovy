@@ -82,10 +82,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "Flow is valid and pingable"
         qinqFlow.validateAndCollectDiscrepancies().isEmpty()
-        verifyAll(qinqFlow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        qinqFlow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The flow allows traffic (if applicable)"
         def traffExam = traffExamProvider.get()
@@ -119,10 +116,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "Both flows are pingable"
         [qinqFlow, vlanFlow].each {
-            verifyAll(it.ping()) {
-                it.forward.pingSuccess
-                it.reverse.pingSuccess
-            }
+            it.pingAndCollectDiscrepancies().isEmpty()
         }
 
         then: "Both flows allow traffic"
@@ -178,10 +172,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         [qinqFlow, vlanFlow].each {
-            verifyAll(it.ping()) {
-                it.forward.pingSuccess
-                it.reverse.pingSuccess
-            }
+            it.pingAndCollectDiscrepancies().isEmpty()
         }
 
         when: "Delete the flows"
@@ -366,10 +357,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "Flow is valid and pingable"
         flow.validateAndCollectDiscrepancies().isEmpty()
-        verifyAll(flow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        flow.pingAndCollectDiscrepancies().isEmpty()
 
         when: "Delete the flow via APIv1"
         flow.deleteV1()
@@ -465,10 +453,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Both flow are valid and pingable"
         [flow1, flow2].each { flow ->
             flow.validateAndCollectDiscrepancies().isEmpty()
-            verifyAll(flow.ping()) {
-                it.forward.pingSuccess
-                it.reverse.pingSuccess
-            }
+            flow.pingAndCollectDiscrepancies().isEmpty()
         }
 
         and: "Flows allow traffic"
@@ -483,10 +468,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "The first flow is still valid and pingable"
         flow1.validateAndCollectDiscrepancies().isEmpty()
-        verifyAll(flow1.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        flow1.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The first flow still allows traffic"
         verifyFlowHasBidirectionalTraffic(exam1, traffExam)
@@ -584,10 +566,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "Flow is valid and pingable"
         qinqFlow.validateAndCollectDiscrepancies().isEmpty()
-        verifyAll(qinqFlow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        qinqFlow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The flow allows traffic (if applicable)"
         def traffExam = traffExamProvider.get()
@@ -621,12 +600,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesforBothFlows).isEmpty()
 
         and: "Both flows are pingable"
-        [qinqFlow, vlanFlow].each {
-            verifyAll(it.ping()) {
-                it.forward.pingSuccess
-                it.reverse.pingSuccess
-            }
-        }
+        qinqFlow.pingAndCollectDiscrepancies().isEmpty()
+        vlanFlow.pingAndCollectDiscrepancies().isEmpty()
+
 
         then: "Both flows allow traffic"
         if(!trafficDisclaimer) {
@@ -664,12 +640,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         [qinqFlow, vlanFlow].each {
             it.validateAndCollectDiscrepancies().isEmpty()
         }
-
         [qinqFlow, vlanFlow].each {
-            verifyAll(it.ping()) {
-                it.forward.pingSuccess
-                it.reverse.pingSuccess
-            }
+            it.pingAndCollectDiscrepancies().isEmpty()
         }
 
         when: "Delete the flows"
