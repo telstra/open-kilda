@@ -48,6 +48,8 @@ public interface Database {
 
     boolean updateIslsAvailableBandwidth(List<Isl> isls, long value);
 
+    boolean updateIslsAvailableAndMaxBandwidth(List<Isl> islsToUpdate, long availableValue, long maxValue);
+
     boolean resetIslBandwidth(Isl isl);
 
     boolean resetIslsBandwidth(List<Isl> isls);

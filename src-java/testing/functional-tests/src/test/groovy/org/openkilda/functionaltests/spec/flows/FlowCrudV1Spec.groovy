@@ -8,7 +8,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.messaging.payload.flow.FlowState.UP
@@ -778,12 +777,9 @@ are not connected to the controller/).matches(exc)
         and: "Update reverse path to have not enough bandwidth to handle the flow"
         //Forward path is still have enough bandwidth
         def flowBandwidth = 500
-        def islsToModify = involvedIsls[1]
+        Isl islsToModify = involvedIsls[1]
         def newIslBandwidth = flowBandwidth - 1
-        islsToModify.each {
-            islHelper.setAvailableBandwidth(it.reversed, newIslBandwidth)
-            database.updateIslMaxBandwidth(it.reversed, newIslBandwidth)
-        }
+        islHelper.setAvailableAndMaxBandwidth([islsToModify.reversed], newIslBandwidth)
 
         when: "Create a flow"
         flowFactory.getBuilder(switchPair).withBandwidth(flowBandwidth).build().createV1()
