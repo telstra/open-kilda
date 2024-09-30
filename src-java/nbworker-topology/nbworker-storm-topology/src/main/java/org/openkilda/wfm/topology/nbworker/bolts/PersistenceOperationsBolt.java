@@ -27,18 +27,22 @@ import org.openkilda.persistence.tx.TransactionManager;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.topology.nbworker.StreamType;
 
+import org.apache.storm.task.OutputCollector;
+import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
 import org.apache.storm.tuple.Values;
 
 import java.util.List;
+import java.util.Map;
 
 public abstract class PersistenceOperationsBolt extends AbstractBolt {
     public static final String FIELD_ID_REQUEST = "request";
 
     protected transient RepositoryFactory repositoryFactory;
     protected transient TransactionManager transactionManager;
+    protected static volatile PersistenceManager PERSISTENCE_MANAGER_INSTANCE;
 
     PersistenceOperationsBolt(PersistenceManager persistenceManager) {
         super(persistenceManager);
@@ -48,12 +52,32 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
         return getCommandContext().getCorrelationId();
     }
 
+    /**
+     * Sample doc.
+     *
+     * @param stormConf The Storm configuration for this bolt.
+     * @param context   This object can be used to get information about this task's place within the topology.
+     * @param collector The collector is used to emit tuples from this bolt.
+     */
+    @Override
+    public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
+        if (PERSISTENCE_MANAGER_INSTANCE == null) {
+            synchronized (HistoryOperationsBolt.class) {
+                if (PERSISTENCE_MANAGER_INSTANCE == null) {
+                    PERSISTENCE_MANAGER_INSTANCE = persistenceManager;
+                    PERSISTENCE_MANAGER_INSTANCE.install();
+                }
+            }
+        }
+        persistenceManager = null;
+        super.prepare(stormConf, context, collector);
+    }
+
     @Override
     public void init() {
         super.init();
-
-        repositoryFactory = persistenceManager.getRepositoryFactory();
-        transactionManager = persistenceManager.getTransactionManager();
+        repositoryFactory = PERSISTENCE_MANAGER_INSTANCE.getRepositoryFactory();
+        transactionManager = PERSISTENCE_MANAGER_INSTANCE.getTransactionManager();
     }
 
     protected void handleInput(Tuple input) throws Exception {

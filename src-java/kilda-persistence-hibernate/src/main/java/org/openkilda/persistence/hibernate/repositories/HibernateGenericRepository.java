@@ -25,9 +25,11 @@ import org.openkilda.persistence.hibernate.entities.EntityBase;
 import org.openkilda.persistence.repositories.Repository;
 import org.openkilda.persistence.tx.TransactionManager;
 
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 
+@Slf4j
 public abstract class HibernateGenericRepository<M extends CompositeDataEntity<V>, V, H extends V>
         implements Repository<M> {
     protected final HibernatePersistenceImplementation implementation;
@@ -88,6 +90,12 @@ public abstract class HibernateGenericRepository<M extends CompositeDataEntity<V
     protected TransactionManager getTransactionManager() {
         PersistenceManager manager = PersistenceContextManager.INSTANCE.getPersistenceManager();
         return manager.getTransactionManager(implementation.getType());
+    }
+
+    protected TransactionManager getTransactionManager1() {
+        PersistenceManager pm = PersistenceContextManager.INSTANCE.getPersistenceManager();
+        return new TransactionManager(implementation, pm.getTransactionRetriesLimit(),
+                pm.getTransactionRetriesMaxDelay());
     }
 
     protected HibernateContextExtension getContextExtension() {
