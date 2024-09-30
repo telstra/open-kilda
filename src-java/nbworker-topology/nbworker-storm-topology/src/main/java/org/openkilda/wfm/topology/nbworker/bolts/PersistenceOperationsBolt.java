@@ -53,7 +53,9 @@ public abstract class PersistenceOperationsBolt extends AbstractBolt {
     }
 
     /**
-     * Sample doc.
+     * Called when a task for this component is initialized within a worker on the cluster.
+     * It provides the bolt with the environment in which the bolt executes.
+     * Static instance of PersistenceManager is initialized at this step.
      *
      * @param stormConf The Storm configuration for this bolt.
      * @param context   This object can be used to get information about this task's place within the topology.

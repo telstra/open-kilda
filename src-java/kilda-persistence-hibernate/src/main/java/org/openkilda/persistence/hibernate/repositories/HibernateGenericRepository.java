@@ -44,7 +44,7 @@ public abstract class HibernateGenericRepository<M extends CompositeDataEntity<V
         if (view instanceof EntityBase) {
             throw new IllegalArgumentException("Entity of class " + model + " already persisted");
         }
-        getTransactionManager().doInTransaction(() -> {
+        getTransactionManagerWithLocalPersistenceImplementation().doInTransaction(() -> {
             H entity = makeEntity(view);
             getSession().persist(entity);
             model.setData(entity);
@@ -65,7 +65,8 @@ public abstract class HibernateGenericRepository<M extends CompositeDataEntity<V
         H hibernateView = (H) view;
         V detachedView = doDetach(model, hibernateView);
 
-        getTransactionManager().doInTransaction(() -> getSession().remove(hibernateView));
+        getTransactionManagerWithLocalPersistenceImplementation()
+                .doInTransaction(() -> getSession().remove(hibernateView));
         model.setData(detachedView);
     }
 
@@ -92,7 +93,7 @@ public abstract class HibernateGenericRepository<M extends CompositeDataEntity<V
         return manager.getTransactionManager(implementation.getType());
     }
 
-    protected TransactionManager getTransactionManager1() {
+    protected TransactionManager getTransactionManagerWithLocalPersistenceImplementation() {
         PersistenceManager pm = PersistenceContextManager.INSTANCE.getPersistenceManager();
         return new TransactionManager(implementation, pm.getTransactionRetriesLimit(),
                 pm.getTransactionRetriesMaxDelay());

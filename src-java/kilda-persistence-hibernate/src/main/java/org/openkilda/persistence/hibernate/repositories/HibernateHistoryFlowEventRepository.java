@@ -56,12 +56,8 @@ public class HibernateHistoryFlowEventRepository
 
     @Override
     public boolean existsByTaskId(String taskId) {
-        return getTransactionManager().doInTransaction(() -> findEntityByTaskId(taskId).isPresent());
-    }
-
-    @Override
-    public Optional<FlowEvent> findByTaskId(String taskId) {
-        return getTransactionManager().doInTransaction(() -> findEntityByTaskId(taskId).map(FlowEvent::new));
+        return getTransactionManagerWithLocalPersistenceImplementation()
+                .doInTransaction(() -> findEntityByTaskId(taskId).isPresent());
     }
 
     /**
@@ -74,12 +70,12 @@ public class HibernateHistoryFlowEventRepository
      * @param timeTo   The end of the time frame for the events.
      * @param maxCount The maximum number of events to retrieve.
      * @return A list of {@link FlowEvent} objects matching the given criteria, in reverse chronological order.
-     * If no events match the criteria, an empty list is returned.
+     *     If no events match the criteria, an empty list is returned.
      */
     @Override
     public List<FlowEvent> findByFlowIdAndTimeFrame(
             String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
-        TransactionManager transactionManager = getTransactionManager1();
+        TransactionManager transactionManager = getTransactionManagerWithLocalPersistenceImplementation();
         log.info("CHUPIN HibernateHistoryFlowEventRepository findByFlowIdAndTimeFrame, implementation: {}",
                 implementation);
         List<FlowEvent> results = transactionManager.doInTransaction(
@@ -93,7 +89,7 @@ public class HibernateHistoryFlowEventRepository
     @Override
     public List<FlowStatusView> findFlowStatusesByFlowIdAndTimeFrame(
             String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
-        List<FlowStatusView> results = getTransactionManager1().doInTransaction(
+        List<FlowStatusView> results = getTransactionManagerWithLocalPersistenceImplementation().doInTransaction(
                 () -> fetch(flowId, timeFrom, timeTo, maxCount).stream()
                 .flatMap(entry -> entry.getActions().stream())
                 .map(this::extractStatusUpdates)

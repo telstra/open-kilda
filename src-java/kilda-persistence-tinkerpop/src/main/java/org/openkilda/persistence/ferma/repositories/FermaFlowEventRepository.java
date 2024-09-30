@@ -35,7 +35,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -57,16 +56,6 @@ public class FermaFlowEventRepository extends FermaGenericRepository<FlowEvent, 
         } catch (Exception e) {
             throw new PersistenceException("Failed to traverse", e);
         }
-    }
-
-    @Override
-    public Optional<FlowEvent> findByTaskId(String taskId) {
-        List<? extends FlowEventFrame> flowEventFrames = framedGraph().traverse(g -> g.V()
-                .hasLabel(FlowEventFrame.FRAME_LABEL)
-                .has(FlowEventFrame.TASK_ID_PROPERTY, taskId))
-                .toListExplicit(FlowEventFrame.class);
-        return flowEventFrames.isEmpty() ? Optional.empty() : Optional.of(flowEventFrames.get(0))
-                .map(FlowEvent::new);
     }
 
     @Override
