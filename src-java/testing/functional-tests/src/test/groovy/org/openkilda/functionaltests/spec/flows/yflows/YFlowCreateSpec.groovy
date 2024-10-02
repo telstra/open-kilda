@@ -73,9 +73,9 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         def paths = yFlow.retrieveAllEntityPaths()
 
         and: "Y-Flow passes flow validation"
-        with(yFlow.validate()) {
+        with(yFlow.validateAndCollectDiscrepancy()) {
             it.asExpected
-            it.subFlowValidationResults.each { assert it.asExpected }
+            it.subFlowsDiscrepancies.isEmpty()
         }
 
         and: "Both sub-flows pass flow validation"
