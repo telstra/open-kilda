@@ -287,6 +287,11 @@ class HaFlowExtended {
         northboundV2.validateHaFlow(haFlowId)
     }
 
+    ComplexFlowValidationResponse validateAndCollectDiscrepancy() {
+        def validationResponse = validate()
+        new ComplexFlowValidationResponse(validationResponse)
+    }
+
     HaFlowSyncResult sync() {
         log.debug("Sync ha-flow '${haFlowId}'")
         northboundV2.syncHaFlow(haFlowId)

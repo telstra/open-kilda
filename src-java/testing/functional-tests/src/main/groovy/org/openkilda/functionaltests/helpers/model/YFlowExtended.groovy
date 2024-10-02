@@ -262,6 +262,11 @@ class YFlowExtended {
         northboundV2.validateYFlow(yFlowId)
     }
 
+    ComplexFlowValidationResponse validateAndCollectDiscrepancy() {
+       def validationResponse = validate()
+        new ComplexFlowValidationResponse(validationResponse)
+    }
+
     YFlowSyncResult sync() {
         log.debug("Synchronize Y-Flow '${yFlowId}'")
         northboundV2.synchronizeYFlow(yFlowId)
