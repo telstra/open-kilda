@@ -42,7 +42,7 @@ public class HibernateHistoryPortEventRepository
     @Override
     public List<PortEvent> findBySwitchIdAndPortNumber(
             SwitchId switchId, int portNumber, Instant start, Instant end) {
-        return getTransactionManager().doInTransaction(
+        return getTransactionManagerWithLocalPersistenceImplementation().doInTransaction(
                 () -> findEntityBySwitchIdAndPortNumber(switchId, portNumber, start, end).stream()
                         .map(PortEvent::new)
                         .collect(Collectors.toList()));

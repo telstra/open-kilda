@@ -22,6 +22,7 @@ import org.openkilda.persistence.context.PersistenceContextRequired;
 import org.openkilda.persistence.exceptions.PersistenceException;
 import org.openkilda.persistence.exceptions.RecoverablePersistenceException;
 
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
@@ -37,6 +38,7 @@ import java.util.concurrent.Callable;
  */
 @Slf4j
 public class TransactionManager implements Serializable {
+    @Getter
     private final PersistenceImplementation implementation;
 
     private final int transactionRetriesLimit;

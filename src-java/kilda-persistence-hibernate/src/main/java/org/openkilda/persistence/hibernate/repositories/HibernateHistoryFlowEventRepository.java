@@ -31,6 +31,9 @@ import org.openkilda.persistence.hibernate.entities.history.HibernateFlowEventDu
 import org.openkilda.persistence.hibernate.entities.history.HibernateFlowEvent_;
 import org.openkilda.persistence.hibernate.utils.UniqueKeyUtil;
 import org.openkilda.persistence.repositories.history.FlowEventRepository;
+import org.openkilda.persistence.tx.TransactionManager;
+
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -43,6 +46,7 @@ import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
+@Slf4j
 public class HibernateHistoryFlowEventRepository
         extends HibernateGenericRepository<FlowEvent, FlowEventData, HibernateFlowEvent>
         implements FlowEventRepository {
@@ -52,18 +56,29 @@ public class HibernateHistoryFlowEventRepository
 
     @Override
     public boolean existsByTaskId(String taskId) {
-        return getTransactionManager().doInTransaction(() -> findEntityByTaskId(taskId).isPresent());
+        return getTransactionManagerWithLocalPersistenceImplementation()
+                .doInTransaction(() -> findEntityByTaskId(taskId).isPresent());
     }
 
-    @Override
-    public Optional<FlowEvent> findByTaskId(String taskId) {
-        return getTransactionManager().doInTransaction(() -> findEntityByTaskId(taskId).map(FlowEvent::new));
-    }
-
+    /**
+     * Retrieves a list of {@link FlowEvent} objects filtered by the given flow ID and time frame.
+     * The method performs a transactional operation to fetch the events, maps them to new {@link FlowEvent} objects,
+     * and then reverses the order of the list before returning it.
+     *
+     * @param flowId   The ID of the flow for which events are being retrieved. Cannot be null.
+     * @param timeFrom The start of the time frame for the events.
+     * @param timeTo   The end of the time frame for the events.
+     * @param maxCount The maximum number of events to retrieve.
+     * @return A list of {@link FlowEvent} objects matching the given criteria, in reverse chronological order.
+     *     If no events match the criteria, an empty list is returned.
+     */
     @Override
     public List<FlowEvent> findByFlowIdAndTimeFrame(
             String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
-        List<FlowEvent> results = getTransactionManager().doInTransaction(
+        TransactionManager transactionManager = getTransactionManagerWithLocalPersistenceImplementation();
+        log.info("CHUPIN HibernateHistoryFlowEventRepository findByFlowIdAndTimeFrame, implementation: {}",
+                implementation);
+        List<FlowEvent> results = transactionManager.doInTransaction(
                 () -> fetch(flowId, timeFrom, timeTo, maxCount).stream()
                 .map(FlowEvent::new)
                 .collect(Collectors.toList()));
@@ -74,7 +89,7 @@ public class HibernateHistoryFlowEventRepository
     @Override
     public List<FlowStatusView> findFlowStatusesByFlowIdAndTimeFrame(
             String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
-        List<FlowStatusView> results = getTransactionManager().doInTransaction(
+        List<FlowStatusView> results = getTransactionManagerWithLocalPersistenceImplementation().doInTransaction(
                 () -> fetch(flowId, timeFrom, timeTo, maxCount).stream()
                 .flatMap(entry -> entry.getActions().stream())
                 .map(this::extractStatusUpdates)
