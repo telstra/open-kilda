@@ -37,7 +37,6 @@ import spock.lang.See
 import spock.lang.Shared
 
 import java.time.Instant
-import javax.inject.Provider
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags

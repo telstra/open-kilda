@@ -60,7 +60,7 @@ import spock.lang.See
 import spock.lang.Shared
 
 import java.util.regex.Pattern
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @Slf4j
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/flow-traffic-mirroring")
@@ -99,7 +99,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def flow = flowEntity.build().create()
 
         when: "Create a mirror point on src switch, pointing to a different port, random vlan"
-        def mirrorTg = swPair.src.traffGens ?[1]
+        def mirrorTg = swPair.src.traffGens?[1]
         def mirrorPort = mirrorTg?.switchPort ?: (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
         def mirrorPointPayload = flow.buildMirrorPointPayload(
                 flow.source.switchId, mirrorPort, randomVlan(), mirrorDirection as FlowPathDirection
@@ -153,7 +153,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = mirrorTg ? new TraffgenStats(traffExam, mirrorTg, [mirrorPointPayload.sinkEndpoint.vlanId]) : null
         if (mirrorPortStats) {
-            cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
+            cleanupManager.addAction(OTHER, { mirrorPortStats.close() })
         }
         def rxPacketsBefore = mirrorPortStats?.get()?.rxPackets
         if (!trafficDisclaimer) {
@@ -237,7 +237,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                 .build().create()
 
         when: "Create a mirror point"
-        def mirrorTg = swPair.src.traffGens.find {  it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
+        def mirrorTg = swPair.src.traffGens.find { it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
         assumeTrue(mirrorTg != null) ?: "Could not find a free traffgen port which is not equal to the flow source port"
         def mirrorPointPayload = flow.buildMirrorPointPayload(
                 flow.source.switchId, mirrorTg.switchPort, randomVlan(), mirrorDirection)
@@ -262,7 +262,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorPointPayload.sinkEndpoint.vlanId])
         if (mirrorPortStats) {
-            cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
+            cleanupManager.addAction(OTHER, { mirrorPortStats.close() })
         }
         def rxPacketsBefore = mirrorPortStats.get().rxPackets
         sendTrafficAndVerifyOnMainFlow(traffExam, flow, mirrorDirection)
@@ -284,7 +284,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                 .build().create()
 
         when: "Create a mirror point"
-        def mirrorTg = swPair.src.traffGens.find {  it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
+        def mirrorTg = swPair.src.traffGens.find { it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
         assumeTrue(mirrorTg != null) ?: "Could not find a free traffgen port which is not equal to the flow source port"
         def mirrorPort = mirrorTg?.switchPort ?: (topology.getAllowedPortsForSwitch(swPair.src) - flow.source.portNumber)[0]
         def mirrorEpVlan = randomVlan()
@@ -301,7 +301,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = mirrorTg ? new TraffgenStats(traffExam, mirrorTg, [mirrorEpVlan]) : null
         if (mirrorPortStats) {
-            cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
+            cleanupManager.addAction(OTHER, { mirrorPortStats.close() })
         }
         def rxPacketsBefore = mirrorPortStats?.get()?.rxPackets
         sendTrafficAndVerifyOnMainFlow(traffExam, flow, mirrorDirection)
@@ -411,12 +411,12 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                 }, [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]].combinations()
                         .collect { it << FlowEncapsulationType.TRANSIT_VLAN; it } +
 
-                //[swPair, reverse/forward, vxlan]
-                [getUniqueVxlanSwitchPairs(false).collect { it.reversed },
-                 [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]].combinations()
-                        .collect { it << FlowEncapsulationType.VXLAN; it })
+                        //[swPair, reverse/forward, vxlan]
+                        [getUniqueVxlanSwitchPairs(false).collect { it.reversed },
+                         [FlowPathDirection.FORWARD, FlowPathDirection.REVERSE]].combinations()
+                                .collect { it << FlowEncapsulationType.VXLAN; it })
 
-                        //https://github.com/telstra/open-kilda/issues/4374
+                //https://github.com/telstra/open-kilda/issues/4374
                         .findAll { SwitchPair swPair, m, e ->
                             !swPair.dst.isWb5164()
                         }
@@ -510,7 +510,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                 .build().create()
 
         when: "Create a mirror point"
-        def mirrorTg = swPair.src.traffGens.find {  it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
+        def mirrorTg = swPair.src.traffGens.find { it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
         assumeTrue(mirrorTg != null) ?: "Could not find a free traffgen port which is not equal to the flow source port"
         def mirrorVlanId = randomVlan()
         flow.createMirrorPoint(
@@ -526,7 +526,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorVlanId])
         if (mirrorPortStats) {
-            cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
+            cleanupManager.addAction(OTHER, { mirrorPortStats.close() })
         }
         def rxPacketsBefore = mirrorPortStats.get().rxPackets
         sendTrafficAndVerifyOnMainFlow(traffExam, flow, mirrorDirection)
@@ -549,7 +549,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
                 .build().create()
 
         when: "Create a mirror point"
-        def mirrorTg = swPair.src.traffGens.find {  it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
+        def mirrorTg = swPair.src.traffGens.find { it.switchPort != flow.source.portNumber } // try to take TG at the same switch but not used in the flow
         assumeTrue(mirrorTg != null) ?: "Could not find a free traffgen port which is not equal to the flow source port"
         def mirrorVlanId = randomVlan([flow.source.vlanId, flow.source.innerVlanId])
         flow.createMirrorPoint(flow.source.switchId, mirrorTg.switchPort, mirrorVlanId, mirrorDirection)
@@ -563,7 +563,7 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
         def traffExam = traffExamProvider.get()
         def mirrorPortStats = new TraffgenStats(traffExam, mirrorTg, [mirrorVlanId])
         if (mirrorPortStats) {
-            cleanupManager.addAction(OTHER, {mirrorPortStats.close()})
+            cleanupManager.addAction(OTHER, { mirrorPortStats.close() })
         }
         def rxPacketsBefore = mirrorPortStats.get().rxPackets
         sendTrafficAndVerifyOnMainFlow(traffExam, flow, mirrorDirection)
@@ -921,7 +921,7 @@ with existing flow mirror point \'$existingMirror.mirrorPointId\'./
     @Memoized
     List<SwitchPair> getUniqueSwitchPairs(Closure additionalConditions = { true }) {
         def allTgSwitches = topology.activeSwitches.findAll { it.traffGens }
-                //switches that have 2+ traffgens go to the beginning of the list
+        //switches that have 2+ traffgens go to the beginning of the list
                 .sort { a, b -> b.traffGens.size() <=> a.traffGens.size() }
         def unpickedUniqueTgSwitches = allTgSwitches.unique(false) { it.hwSwString }
         def tgPairs = switchPairs.all().getSwitchPairs().findAll {
