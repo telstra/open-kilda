@@ -41,7 +41,7 @@ import org.springframework.web.client.HttpServerErrorException
 import spock.lang.Ignore
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 class SwapEndpointSpec extends HealthCheckSpecification {
     //Kilda allows user to pass reserved VLAN IDs 1 and 4095 if they want.
