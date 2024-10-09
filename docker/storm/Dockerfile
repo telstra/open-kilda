@@ -16,15 +16,15 @@
 ARG base_image=kilda/base-ubuntu
 FROM ${base_image}
 
-ENV PACKAGE apache-storm-2.6.1
+ENV PACKAGE apache-storm-2.6.2
 
 WORKDIR /tmp/
 
 RUN    \
     apt -y update \
     && apt -y install net-tools jq \
-    && wget -q https://archive.apache.org/dist/storm/apache-storm-2.6.1/$PACKAGE.tar.gz \
-    && wget -q https://archive.apache.org/dist/storm/apache-storm-2.6.1/$PACKAGE.tar.gz.sha512 \
+    && wget -q https://archive.apache.org/dist/storm/apache-storm-2.6.2/$PACKAGE.tar.gz \
+    && wget -q https://archive.apache.org/dist/storm/apache-storm-2.6.2/$PACKAGE.tar.gz.sha512 \
     && sha512sum -c $PACKAGE.tar.gz.sha512 \
     && tar -xzf $PACKAGE.tar.gz --directory /opt/ \
     && ln -s /opt/$PACKAGE /opt/storm \
