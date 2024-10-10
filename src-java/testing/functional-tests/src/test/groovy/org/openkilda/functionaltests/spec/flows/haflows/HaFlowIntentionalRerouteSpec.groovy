@@ -1,25 +1,27 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
-import org.openkilda.functionaltests.helpers.PathHelper
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
-import org.openkilda.messaging.info.event.PathNode
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult
-import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.springframework.beans.factory.annotation.Autowired
-import spock.lang.Narrative
-import spock.lang.Shared
-
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.TRANSIT_VLAN
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.IslHelper
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
+import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.northbound.dto.v2.flows.FlowPathV2.PathNodeV2
+import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+
+import org.springframework.beans.factory.annotation.Autowired
+import spock.lang.Narrative
+import spock.lang.Shared
 
 @Narrative("Verify that on-demand HA-Flow reroute operations are performed accurately.")
 @Tags([HA_FLOW])
@@ -41,10 +43,10 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         def involvedIsls = initialPath.getInvolvedIsls()
 
         when: "Make the current path less preferable than alternatives"
-        pathHelper.updateIslsCost(involvedIsls, PathHelper.NOT_PREFERABLE_COST * 3)
+        islHelper.updateIslsCost(involvedIsls, IslHelper.NOT_PREFERABLE_COST * 3)
 
         and: "Make all alternative paths to have not enough bandwidth to handle the HA-Flow"
-        def alternativePaths = getAlternativesPaths(initialPath, (swT.pathsEp1 + swT.pathsEp2))
+        def alternativePaths = getAlternativesPaths(initialPath, swT)
         setBandwidthForAlternativesPaths(involvedIsls, alternativePaths, haFlow.maximumBandwidth - 1)
 
         and: "Init a reroute to a more preferable path"
@@ -57,10 +59,10 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert northboundV2.getHaFlow(haFlow.haFlowId).status == FlowState.UP.toString() }
 
         assertRerouteResponsePaths(initialPath, rerouteResponse)
-
         haFlow.retrievedAllEntityPaths() == initialPath
+
         and: "And involved switches pass validation"
-        def mainPathInvolvedSwitches = involvedIsls.collect { [it.srcSwitch.dpId, it.dstSwitch.dpId] }.flatten().unique()
+        def mainPathInvolvedSwitches = initialPath.getInvolvedSwitches()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(mainPathInvolvedSwitches).isEmpty()
 
         and: "HA-Flow pass validation"
@@ -76,27 +78,32 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
                 .withBandwidth(10000).build().create()
 
         def initialPath = haFlow.retrievedAllEntityPaths()
-        def initialPathNodesView = initialPath.subFlowPaths.collect { it.path.forward.nodes.toPathNode() }
-        def initialInvolvedIsls = initialPath.getInvolvedIsls()
         String ep1FlowId = haFlow.subFlows.find { it.endpointSwitchId == swT.ep1.dpId }.haSubFlowId
         String ep2FlowId = haFlow.subFlows.find { it.endpointSwitchId == swT.ep2.dpId }.haSubFlowId
-        def initialInvolvedSwitchIds = initialInvolvedIsls.collect { [it.srcSwitch.dpId, it.dstSwitch.dpId] }.flatten().unique()
+        List<Isl> initialIslsSubFlow1 = initialPath.getSubFlowIsls(ep1FlowId)
+        List<Isl> initialIslsSubFlow2 = initialPath.getSubFlowIsls(ep2FlowId)
+
+        def initialFlowIsls = (initialIslsSubFlow1 + initialIslsSubFlow2).unique()
+        def initialInvolvedSwitchIds = initialPath.getInvolvedSwitches()
 
         when: "Make one of the alternative paths to be the most preferable among all others"
-        def preferableAltPathForSubFlow1 = swT.pathsEp1.find {!initialPathNodesView.contains(it)}
-        def preferableAltPathForSubFlow2 = swT.pathsEp2.find {!initialPathNodesView.contains(it)}
+        def availablePathsIslsEp1 =  swT.retrieveAvailablePathsEp1().collect { it.getInvolvedIsls() }
+        def availablePathsIslsEp2 = swT.retrieveAvailablePathsEp2().collect { it.getInvolvedIsls() }
+        def preferableAltPathForSubFlow1 = availablePathsIslsEp1.find { it != initialIslsSubFlow1 }
+        def preferableAltPathForSubFlow2 = availablePathsIslsEp2.find { it != initialIslsSubFlow2 }
 
         withPool {
-            swT.pathsEp1.findAll { it != preferableAltPathForSubFlow1 }.eachParallel {
-                pathHelper.makePathMorePreferable(preferableAltPathForSubFlow1, it)
+            availablePathsIslsEp1.findAll { it != preferableAltPathForSubFlow1 }.eachParallel {
+                islHelper.makePathIslsMorePreferable(preferableAltPathForSubFlow1, it)
             }
-            swT.pathsEp2.findAll { it != preferableAltPathForSubFlow2 }.eachParallel {
-                pathHelper.makePathMorePreferable(preferableAltPathForSubFlow2, it)
+            availablePathsIslsEp2.findAll { it != preferableAltPathForSubFlow2 }.eachParallel {
+                islHelper.makePathIslsMorePreferable(preferableAltPathForSubFlow2, it)
             }
         }
 
         and: "Make the future path to have exact bandwidth to handle the HA-Flow"
-        def thinIsl = setBandwidthForAlternativesPaths(initialInvolvedIsls, [preferableAltPathForSubFlow1, preferableAltPathForSubFlow2], haFlow.maximumBandwidth)
+        def thinIsl = setBandwidthForAlternativesPaths(initialFlowIsls,
+                [preferableAltPathForSubFlow1 + preferableAltPathForSubFlow2], haFlow.maximumBandwidth)
 
         and: "Init a reroute of the HA-Flow"
         def rerouteResponse = haFlow.reroute()
@@ -105,20 +112,16 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         then: "The HA-Flow is successfully rerouted and goes through the preferable path"
         rerouteResponse.rerouted
         def haFlowPathAfterReroute = haFlow.retrievedAllEntityPaths()
-        def actualIslsAfterReroute = haFlowPathAfterReroute.getInvolvedIsls()
+        def actualFlowIslsAfterReroute = haFlowPathAfterReroute.getInvolvedIsls()
 
         assertRerouteResponsePaths(haFlowPathAfterReroute, rerouteResponse)
 
-        assert haFlowPathAfterReroute.subFlowPaths.find {it.flowId == ep1FlowId }
-                .path.forward.nodes.toPathNode() == preferableAltPathForSubFlow1
-
-        assert haFlowPathAfterReroute.subFlowPaths.find {it.flowId == ep2FlowId }
-                .path.forward.nodes.toPathNode() == preferableAltPathForSubFlow2
-
-        actualIslsAfterReroute.containsAll(thinIsl)
+        assert haFlowPathAfterReroute.getSubFlowIsls(ep1FlowId) == preferableAltPathForSubFlow1
+        assert haFlowPathAfterReroute.getSubFlowIsls(ep2FlowId) == preferableAltPathForSubFlow2
+        actualFlowIslsAfterReroute.containsAll(thinIsl)
 
         and: "And involved switches pass validation"
-        def allInvolvedSwitchIds = initialInvolvedSwitchIds + actualIslsAfterReroute.collect { [it.srcSwitch.dpId, it.dstSwitch.dpId] }.flatten().unique()
+        def allInvolvedSwitchIds = (initialInvolvedSwitchIds + haFlowPathAfterReroute.getInvolvedSwitches()).unique()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
 
         and: "HA-Flow pass validation"
@@ -140,13 +143,12 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
                 .build().create()
 
         def initialPath = haFlow.retrievedAllEntityPaths()
-        def initialPathNodesView = initialPath.subFlowPaths.collect { it.path.forward.nodes.toPathNode() }
         def initialInvolvedIsls = initialPath.getInvolvedIsls()
-        def initialInvolvedSwitchIds = initialInvolvedIsls.collect { [it.srcSwitch.dpId, it.dstSwitch.dpId] }.flatten().unique()
+        def initialInvolvedSwitchIds = initialPath.getInvolvedSwitches()
 
         when: "Make the current path less preferable than alternatives"
-        def alternativePaths = getAlternativesPaths(initialPath, (swT.pathsEp1 + swT.pathsEp2))
-        pathHelper.makePathNotPreferable(initialPathNodesView.flatten())
+        def alternativePaths = getAlternativesPaths(initialPath, swT)
+        islHelper.updateIslsCost(initialInvolvedIsls, IslHelper.NOT_PREFERABLE_COST * 3)
 
         and: "Make all alternative paths to have not enough bandwidth to handle the HA-Flow"
         def newBw = haFlow.maximumBandwidth - 1
@@ -160,19 +162,19 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
 
         initialPath.subFlowPaths.size() == rerouteResponse.subFlowPaths.size()
         initialPath.subFlowPaths.each {subFlow ->
-            def rerouteSubFlowPath =  rerouteResponse.subFlowPaths.find { it.flowId == subFlow.flowId}.nodes
-            assert subFlow.path.forward.nodes.toPathNodeV2() != PathHelper.setNullLatency(rerouteSubFlowPath)
+            def rerouteSubFlowPath =  getSubFlowRerouteNodesResponse(rerouteResponse, subFlow.flowId)
+            def subFlowNodes = subFlow.path.forward.nodes.toPathNodeV2()
+            assert subFlowNodes != rerouteSubFlowPath
         }
         haFlow.waitForBeingInState(FlowState.UP)
 
         def haFlowPathAfterReroute = haFlow.retrievedAllEntityPaths()
-        def actualIslsAfterReroute = haFlowPathAfterReroute.getInvolvedIsls()
 
         assertRerouteResponsePaths(haFlowPathAfterReroute, rerouteResponse)
         haFlowPathAfterReroute != initialPath
 
         and: "And involved switches pass validation"
-        def allInvolvedSwitchIds = initialInvolvedSwitchIds + actualIslsAfterReroute.collect { [it.srcSwitch.dpId, it.dstSwitch.dpId] }.flatten()
+        def allInvolvedSwitchIds = (initialInvolvedSwitchIds + haFlowPathAfterReroute.getInvolvedSwitches()).unique()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
 
         and: "HA-Flow pass validation"
@@ -189,31 +191,31 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         }
     }
 
-    private getAlternativesPaths(FlowWithSubFlowsEntityPath actualPathNodes, List<List<PathNode>> existingPaths) {
-        existingPaths.findAll {
-            !actualPathNodes.subFlowPaths.collect { it.path.forward.nodes.toPathNode() }.contains(it)
+    private List<List<Isl>> getAlternativesPaths(FlowWithSubFlowsEntityPath haFlowPath, SwitchTriplet swT) {
+        List<List<Isl>> subFlowsPathIsls = haFlowPath.subFlowPaths.collect { it.getInvolvedIsls() }
+        (swT.retrieveAvailablePathsEp1() + swT.retrieveAvailablePathsEp2()).collect { it.getInvolvedIsls() }.findAll{
+            //HA-Flow has 2 sub-flows
+            it != subFlowsPathIsls.first() && it != subFlowsPathIsls.last()
         }
     }
 
     private void assertRerouteResponsePaths(FlowWithSubFlowsEntityPath haFlowPath, HaFlowRerouteResult rerouteResponse) {
         assert haFlowPath.subFlowPaths.size() == rerouteResponse.subFlowPaths.size()
         haFlowPath.subFlowPaths.each {subFlow ->
-            def rerouteSubFlowPath =  rerouteResponse.subFlowPaths.find { it.flowId == subFlow.flowId}.nodes
-            assert subFlow.path.forward.nodes.toPathNodeV2() == PathHelper.setNullLatency(rerouteSubFlowPath)
+            def rerouteSubFlowPath =  getSubFlowRerouteNodesResponse(rerouteResponse, subFlow.flowId)
+            def subFlowNodes = subFlow.path.forward.nodes.toPathNodeV2()
+            assert subFlowNodes == rerouteSubFlowPath
         }
     }
 
-    private Collection<Isl> setBandwidthForAlternativesPaths(currentIsls, alternativePaths, long newBandwidth) {
-        //collecting only the first Isl from each alternative path
-        Set<Isl> changedIsls = withPool {
-            alternativePaths.collectParallel { List<PathNode> altPath ->
-                pathHelper.getInvolvedIsls(altPath).find {
-                    !currentIsls.contains(it) && !currentIsls.contains(it.reversed)
-                }
-            }
-        } as Set
-
+    private Collection<Isl> setBandwidthForAlternativesPaths(List<Isl> flowIsls, List<List<Isl>> alternativePaths, long newBandwidth) {
+        Set<Isl> changedIsls = alternativePaths.flatten().unique().findAll { !flowIsls.contains(it) && !flowIsls.contains(it.reversed) }
         islHelper.setAvailableAndMaxBandwidth(changedIsls.collectMany {[it, it.reversed]}, newBandwidth)
         changedIsls
+    }
+
+    private List<PathNodeV2> getSubFlowRerouteNodesResponse(HaFlowRerouteResult rerouteResult, String subFlowId) {
+        rerouteResult.subFlowPaths.find { it.flowId == subFlowId}.nodes
+                .collect { PathNodeV2.builder().switchId(it.switchId).portNo(it.portNo).segmentLatency(null).build() }
     }
 }

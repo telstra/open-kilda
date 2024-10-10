@@ -32,7 +32,6 @@ import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.FlowStats
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowPathDirection
@@ -576,14 +575,14 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
     def "Unable to create a mirror endpoint with #data.testDescr on the transit switch"() {
         given: "A flow with transit switch"
         def swPair = switchPairs.all().nonNeighbouring().random()
-        List<Switch> involvedSwitches
-        List<PathNode> path = swPair.getPaths().find {
-            involvedSwitches = pathHelper.getInvolvedSwitches(it)
-            involvedSwitches.size() == 3
-        }
+        def availablePaths = swPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+        //2 isls == 3 switches in a path
+        def pathIsls = availablePaths.find { it.size() == 2 }
+        List<Switch> involvedSwitches = islHelper.retrieveInvolvedSwitches(pathIsls)
         // Sometimes a pair has >3 involvedSwitches and the required path cannot be found
-        assumeTrue(path != null, "Could not find a path with 1 transit switch.")
-        swPair.paths.findAll { it != path }.each { pathHelper.makePathMorePreferable(path, it) }
+        assumeTrue(pathIsls != null, "Could not find a path with 1 transit switch.")
+
+        availablePaths.findAll { it != pathIsls }.each { islHelper.makePathIslsMorePreferable(pathIsls, it) }
         def flow = flowFactory.getBuilder(swPair).build().create()
 
         when: "Try to add a mirror endpoint on the transit switch"
@@ -949,7 +948,7 @@ with existing flow mirror point \'$existingMirror.mirrorPointId\'./
     List<SwitchPair> getUniqueVxlanSwitchPairs(boolean needTraffgens) {
         getUniqueSwitchPairs({ SwitchPair swP ->
             def vxlanCheck = swP.paths.find {
-                pathHelper.getInvolvedSwitches(it).every { switchHelper.isVxlanEnabled(it.dpId) }
+                it*.switchId.every { switchHelper.isVxlanEnabled(it) }
             }
             def tgCheck = needTraffgens ? swP.src.traffGens && swP.dst.traffGens : true
             vxlanCheck && tgCheck

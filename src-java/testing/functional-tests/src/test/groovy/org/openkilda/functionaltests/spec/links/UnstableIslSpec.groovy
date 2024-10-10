@@ -96,37 +96,35 @@ class UnstableIslSpec extends HealthCheckSpecification {
     def "ISL is marked as 'unstable' after port down and system takes it into account during flow creation"() {
         given: "Two active neighboring switches with two parallel links"
         def switchPair = switchPairs.all().neighbouring().withAtLeastNIslsBetweenNeighbouringSwitches(2).random()
+        def availablePaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
 
         and: "Two possible paths for further manipulation with them"
-        def firstPath = switchPair.paths.min { it.size() }
-        def secondPath = switchPair.paths.findAll { it != firstPath }.min { it.size() }
+        def firstPathIsls = availablePaths.min { it.size() }
+        def secondPathIsls = availablePaths.findAll { it != firstPathIsls }.min { it.size() }
 
         and: "All alternative paths are unavailable (bring ports down on the srcSwitch)"
-        def altPathsIsls = topology.getRelatedIsls(switchPair.src) - pathHelper.getInvolvedIsls(firstPath).first() -
-                pathHelper.getInvolvedIsls(secondPath).first()
+        def altPathsIsls = topology.getRelatedIsls(switchPair.src) - firstPathIsls.first() - secondPathIsls.first()
         islHelper.breakIsls(altPathsIsls)
 
         and: "First path is unstable (due to bringing port down/up)"
         // after bringing port down/up, the isl will be marked as unstable by updating the 'time_unstable' field in DB
-        def islToBreak = pathHelper.getInvolvedIsls(firstPath).first()
+        def islToBreak = firstPathIsls.first()
         islHelper.breakIsl(islToBreak)
         [islToBreak, islToBreak.reversed].each { assert database.getIslTimeUnstable(it) != null }
         islHelper.restoreIsl(islToBreak)
 
         and: "Cost of stable path is more preferable than the cost of unstable path (before penalties)"
-        def involvedIslsInUnstablePath = pathHelper.getInvolvedIsls(firstPath)
-        def costOfUnstablePath = involvedIslsInUnstablePath.sum {
+        def costOfUnstablePath = firstPathIsls.sum {
             northbound.getLink(it).cost ?: 700
         } + islUnstableCost
-        def involvedIslsInStablePath = pathHelper.getInvolvedIsls(secondPath)
-        def costOfStablePath = involvedIslsInStablePath.sum { northbound.getLink(it).cost ?: 700 }
+        def costOfStablePath = secondPathIsls.sum { northbound.getLink(it).cost ?: 700 }
         // result after performing 'if' condition: costOfStablePath - costOfUnstablePath = 1
-        def islToUpdate = involvedIslsInStablePath[0]
+        def islToUpdate = secondPathIsls[0]
         def currentCostOfIsl = northbound.getLink(islToUpdate).cost
         def addition = (costOfUnstablePath - costOfStablePath) > 0 ? costOfUnstablePath - costOfStablePath - 1 :
                 costOfStablePath - costOfUnstablePath + 1
         def newCost = addition + currentCostOfIsl
-        pathHelper.updateIslsCost([islToUpdate], newCost)
+        islHelper.updateIslsCost([islToUpdate], newCost)
         Wrappers.wait(WAIT_OFFSET) { assert northbound.getLink(islToUpdate).cost == newCost.toInteger() }
 
         when: "Create a flow"
@@ -134,7 +132,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
 
         then: "Flow is created on the stable path(secondPath)"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert flow.retrieveAllEntityPaths().getPathNodes() == secondPath
+            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == secondPathIsls
         }
 
         when: "Mark first path as stable(update the 'time_unstable' field in db)"
@@ -150,7 +148,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
 
         then: "Flow is rerouted"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert flow.retrieveAllEntityPaths().getPathNodes() == firstPath
+            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == firstPathIsls
         }
     }
 }

@@ -665,7 +665,6 @@ switches"() {
         flow3 = data.flow3 as FlowExtended
     }
 
-    //start from here tomorrow
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /the same src endpoint for flows/)
     def "Unable to swap endpoints for two flows (#data.description)"() {
         given: "Two active flows"

@@ -6,6 +6,7 @@ import static org.springframework.beans.factory.config.ConfigurableBeanFactory.S
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
+import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
@@ -16,7 +17,6 @@ import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.northbound.NorthboundService
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
@@ -38,8 +38,6 @@ class TopologyHelper {
     Database database
     @Autowired
     FloodlightsHelper flHelper
-    @Autowired
-    PathHelper pathHelper
 
     TopologyDefinition readCurrentTopology() {
         readCurrentTopology(false)
@@ -87,7 +85,7 @@ class TopologyHelper {
     }
 
     @Memoized
-    List<Switch> findPotentialYPoints(SwitchTriplet swT) {
+    List<SwitchId> findPotentialYPoints(SwitchTriplet swT) {
         def sortedEp1Paths = swT.pathsEp1.sort { it.size() }
         def potentialEp1Paths = sortedEp1Paths.takeWhile { it.size() == sortedEp1Paths[0].size() }
         def potentialEp2Paths = potentialEp1Paths.collect { potentialEp1Path ->
@@ -99,15 +97,27 @@ class TopologyHelper {
         }
         return potentialEp2Paths.collectMany {path1WithPath2 ->
             path1WithPath2.potentialPaths2.collect { List<PathNode> potentialPath2 ->
-                def switches = pathHelper.getInvolvedSwitches(path1WithPath2.path1)
-                        .intersect(pathHelper.getInvolvedSwitches(potentialPath2))
+                def switches = path1WithPath2.path1.switchId
+                        .intersect(potentialPath2.switchId)
                 switches ? switches[-1] : null
             }
         }.findAll().unique()
     }
 
-    @Memoized
-    List<List<PathNode>> getDbPathsCached(SwitchId src, SwitchId dst) {
+    List<List<PathNode>> getDbPathsNodes(SwitchId src, SwitchId dst) {
         database.getPaths(src, dst)*.path
+    }
+
+    static List<List<PathNodePayload>> convertToPathNodePayload(List<List<PathNode>> paths) {
+        paths.parallelStream().collect { path ->
+            def result = [new PathNodePayload(path[0].getSwitchId(), null, path[0].getPortNo())]
+            for (int i = 1; i < path.size() - 1; i += 2) {
+                result.add(new PathNodePayload(path.get(i).getSwitchId(),
+                        path.get(i).getPortNo(),
+                        path.get(i + 1).getPortNo()))
+            }
+            result.add(new PathNodePayload(path[-1].getSwitchId(), path[-1].getPortNo(), null))
+            result
+        }
     }
 }

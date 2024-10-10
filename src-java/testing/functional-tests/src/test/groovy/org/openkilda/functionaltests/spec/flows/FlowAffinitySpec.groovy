@@ -10,9 +10,11 @@ import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.info.event.PathNode
+
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
@@ -74,50 +76,54 @@ class FlowAffinitySpec extends HealthCheckSpecification {
     def "Affinity flows are created close even if cost is not optimal, same dst"() {
         given: "Two switch pairs with same dst and diverse paths available"
         SwitchPair swPair1, swPair2
-        List<PathNode> path1, uncommonPath2
-        List<List<PathNode>> leastUncommonPaths2
-        /* path1 is a path on swPair1 and is for the main flow. uncommonPath2 is a path on swPair2 and has many
-        'uncommon' ISLs with path1, this is for the affinity flow. This path will be forced to be the most optimal
-        cost-wise. leastUncommonPaths2 are paths on swPair2 that have the least uncommon ISLs with path1 (but not
+        List<Isl> flowExpectedPath, uncommonFlowPathIsls
+        List<Path> leastUncommonPaths2
+        /* flowExpectedPath is a path on swPair1 and is for the main flow. uncommonFlowPathIsls is a path on swPair2 and has many
+        'uncommon' ISLs with flowExpectedPath, this is for the affinity flow. This path will be forced to be the most optimal
+        cost-wise. leastUncommonPaths2 are paths on swPair2 that have the least uncommon ISLs with flowExpectedPath (but not
         guaranteed to have any common ones); one of these paths should be chosen regardless of cost-optimal
-        uncommonPath2 when creating affinity flow */
+        uncommonFlowPathIsls when creating affinity flow */
         switchPairs.all().getSwitchPairs().find{ swP1Candidate ->
             swPair1 = swP1Candidate
-            swPair2 = (switchPairs.all().getSwitchPairs() - swP1Candidate).find { swP2Candidate ->
+            swPair2 = switchPairs.all().excludePairs([swP1Candidate]).getSwitchPairs().find { swP2Candidate ->
                 if (swP1Candidate.dst.dpId != swP2Candidate.dst.dpId) return false
-                path1 = swP1Candidate.paths.find { path1Candidate ->
-                    List<Tuple2<List<PathNode>, Integer>> scoreList = []
-                    swP2Candidate.paths.each {
-                        def uncommon = it - it.intersect(path1Candidate)
+                flowExpectedPath = swP1Candidate.retrieveAvailablePaths().find { path1Candidate ->
+                    List<Tuple2<Path, Integer>> scoreList = []
+                    swP2Candidate.retrieveAvailablePaths().each {
+                        def pathNodes = it.retrieveNodes()
+                        def uncommon = pathNodes - pathNodes.intersect(path1Candidate.retrieveNodes())
                         scoreList << new Tuple2(it, uncommon.size())
                     }
                     if (scoreList.size() < 2) return false
                     scoreList.sort { it.v2 }
                     if (scoreList[0].v2 == scoreList[-1].v2) return false
-                    uncommonPath2 = scoreList[-1].v1
+                    uncommonFlowPathIsls = scoreList[-1].v1.getInvolvedIsls() as List<Isl>
                     leastUncommonPaths2 = scoreList.findAll { it.v2 == scoreList[0].v2 }*.v1
-                }
+                }.getInvolvedIsls() as List<Isl>
             }
         } ?: assumeTrue(false, "No suiting switches/paths found")
 
         and: "Existing flow over one of the switch pairs"
-        swPair1.paths.findAll { it != path1 }.each { pathHelper.makePathMorePreferable(path1, it) }
+        swPair1.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { !it.containsAll(flowExpectedPath) }
+                .each { islHelper.makePathIslsMorePreferable(flowExpectedPath, it) }
         def flow = flowFactory.getRandom(swPair1)
-        def path = flow.retrieveAllEntityPaths()
-        assert path.getPathNodes() == path1
+        def initialFlowPath = flow.retrieveAllEntityPaths()
+        assert initialFlowPath.flowPath.getInvolvedIsls() == flowExpectedPath
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         and: "Potential affinity flow, which optimal path is diverse from the main flow, but it has a not optimal closer path"
         def affinityFlow = flowFactory.getBuilder(swPair2, false, flow.occupiedEndpoints())
                 .withAffinityFlow(flow.flowId).build()
-        swPair2.paths.findAll { it != uncommonPath2 }.each { pathHelper.makePathMorePreferable(uncommonPath2, it) }
+        swPair2.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { it != uncommonFlowPathIsls }
+                .each { islHelper.makePathIslsMorePreferable(uncommonFlowPathIsls, it) }
 
         when: "Build affinity flow"
         affinityFlow.create()
 
         then: "Most optimal, but 'uncommon' to the main flow path is NOT picked, but path with least uncommon ISLs is chosen"
-        def actualAffinityPath = affinityFlow.retrieveAllEntityPaths().getPathNodes()
-        leastUncommonPaths2.any { actualAffinityPath == it }
+        def actualAffinityPathIsls = affinityFlow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        assert actualAffinityPathIsls != uncommonFlowPathIsls
+        leastUncommonPaths2.find { it.getInvolvedIsls() == actualAffinityPathIsls}
 
         and: "Path remains the same when manual reroute is called"
         !affinityFlow.reroute().rerouted
@@ -151,7 +157,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         and: "Isl which is taken by the main flow weighs more/less than the neighboring ISL, taking into account affinity penalty"
         def flowIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
         assert flowIsls.size() == 1
-        pathHelper.updateIslsCost([flowIsls[0]], mainIslCost)
+        islHelper.updateIslsCost([flowIsls[0]], mainIslCost)
 
         when: "Create affinity flow on the same switch pair"
         def affinityFlow = flowFactory.getBuilder(swPair, false, flow.occupiedEndpoints())

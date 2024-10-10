@@ -143,8 +143,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
         islHelper.setAvailableAndMaxBandwidth(yFlowIsls, 0, yFlow.maximumBandwidth)
 
-        List<Isl> alternativeIsls = (swT.pathsEp1 + swT.pathsEp2).collectMany { pathHelper.getInvolvedIsls(it) }
-                .collectMany { [it, it.reversed] }.unique()
+        List<Isl> alternativeIsls = (swT.retrieveAvailablePathsEp1() + swT.retrieveAvailablePathsEp2())
+                .collectMany { it.getInvolvedIsls() }.unique().collectMany { [it, it.reversed] }
         alternativeIsls.removeAll(yFlowIsls)
 
         islHelper.setAvailableAndMaxBandwidth(alternativeIsls, 0, yFlow.maximumBandwidth - 1)
@@ -261,8 +261,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
             subFlow.getInvolvedIsls().collectMany {[it, it.reversed] }}.unique()
         islHelper.setAvailableAndMaxBandwidth(yFlowIsls, 0, yFlow.maximumBandwidth)
 
-        List<Isl> alternativeIsls = (swT.pathsEp1 + swT.pathsEp2).collectMany { pathHelper.getInvolvedIsls(it) }
-                .collectMany { [it, it.reversed] }.unique()
+        List<Isl> alternativeIsls = (swT.retrieveAvailablePathsEp1() + swT.retrieveAvailablePathsEp2())
+                .collectMany { it.getInvolvedIsls()}.unique().collectMany { [it, it.reversed] }
         alternativeIsls.removeAll(yFlowIsls)
         islHelper.setAvailableAndMaxBandwidth(alternativeIsls, 0, yFlow.maximumBandwidth - 1)
 

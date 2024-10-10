@@ -12,7 +12,6 @@ import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 
-import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.PortAntiflapHelper
 import org.openkilda.functionaltests.helpers.StatsHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
@@ -61,8 +60,6 @@ class BaseSpecification extends Specification {
     IslUtils islUtils
     @Autowired @Shared
     TopologyHelper topologyHelper
-    @Autowired @Shared
-    PathHelper pathHelper
     @Autowired @Shared
     SwitchHelper switchHelper
     @Autowired @Shared

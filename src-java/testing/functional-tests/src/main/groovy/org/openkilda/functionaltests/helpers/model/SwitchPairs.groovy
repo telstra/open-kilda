@@ -1,22 +1,21 @@
 package org.openkilda.functionaltests.helpers.model
 
-import groovy.transform.Memoized
+import static org.junit.jupiter.api.Assumptions.assumeFalse
+import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
+
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.functionaltests.model.switches.Manufacturer
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.northbound.NorthboundService
+
+import groovy.transform.Memoized
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
-
-import static org.junit.jupiter.api.Assumptions.assumeFalse
-
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-
-import static org.openkilda.model.SwitchFeature.NOVIFLOW_COPY_FIELD
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 /**
  * Class which simplifies search for corresponding switch pair. Just chain existing methods to combine requirements
@@ -71,12 +70,17 @@ class SwitchPairs {
     }
 
     SwitchPairs withShortestPathShorterThanOthers() {
-        switchPairs = switchPairs.findAll { it.getPaths()[0].size() != it.getPaths()[1].size() }
+        switchPairs = switchPairs.findAll { it.paths[0].size() != it.paths[1].size() }
         return this
     }
 
     SwitchPairs withAtLeastNPaths(int minimumPathsAmount) {
-        switchPairs = switchPairs.findAll { it.getPaths().size() > minimumPathsAmount }
+        switchPairs = switchPairs.findAll { it.paths.size() > minimumPathsAmount }
+        return this
+    }
+
+    SwitchPairs withoutOf12Switches() {
+        switchPairs = switchPairs.findAll { it.src.ofVersion != "OF_12" && it.dst.ofVersion != "OF_12" }
         return this
     }
 
@@ -248,13 +252,12 @@ class SwitchPairs {
                 .findAll { src, dst -> src != dst } //non-single-switch
                 .unique { it.sort() } //no reversed versions of same flows
                 .collect { Switch src, Switch dst ->
+                    String swPair = "${src.dpId}-${dst.dpId}"
                     new SwitchPair(src: src,
                             dst: dst,
-                            paths: topologyHelper.getDbPathsCached(src.dpId, dst.dpId),
+                            paths: topology.switchesDbPathsNodes.get(swPair),
                             northboundService: northbound,
                             topologyDefinition: topology)
                 }
     }
-
-
 }

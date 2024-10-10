@@ -30,12 +30,13 @@ class PathComputationSpec extends HealthCheckSpecification {
 
         and: "Switch pair with two paths at least"
         def swPair = switchPairs.all().withAtLeastNPaths(2).random()
+        def availablePaths = swPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
 
         and: "Update paths so that one path has minimal total latency and the other has minimal total cost"
-        def costEffectivePath = swPair.paths[0]
-        def latencyEffectivePath = swPair.paths[1]
-        swPair.paths.findAll { it != costEffectivePath }.each { pathHelper.makePathMorePreferable(costEffectivePath, it) }
-        def latencyIsls = pathHelper.getInvolvedIsls(latencyEffectivePath).collectMany { [it, it.reversed] }
+        def costEffectivePath = availablePaths[0]
+        def latencyEffectivePath = availablePaths[1]
+        availablePaths.findAll { it != costEffectivePath }.each { islHelper.makePathIslsMorePreferable(costEffectivePath, it) }
+        def latencyIsls = latencyEffectivePath.collectMany { [it, it.reversed] }
         latencyIsls.each { islHelper.updateIslLatency(it, 1) }
 
         when: "Create flow without selecting path strategy"
@@ -48,14 +49,14 @@ class PathComputationSpec extends HealthCheckSpecification {
         flow.pathComputationStrategy == COST
 
         and: "Flow is actually built on the path with the least cost"
-        flow.retrieveAllEntityPaths().getPathNodes() == costEffectivePath
+        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == costEffectivePath
 
         when: "Update default strategy to LATENCY"
         kildaConfiguration.updatePathComputationStrategy(LATENCY.toString())
 
         then: "Existing flow remains with COST strategy and on the same path"
         flow.retrieveDetails().pathComputationStrategy == COST
-        flow.retrieveAllEntityPaths().getPathNodes() == costEffectivePath
+        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == costEffectivePath
 
         and: "Manual reroute of the flow responds that flow is already on the best path"
         !flow.reroute().rerouted
@@ -72,18 +73,19 @@ class PathComputationSpec extends HealthCheckSpecification {
         flow2.pathComputationStrategy == LATENCY
 
         and: "New flow actually uses path with the least latency (ignoring cost)"
-        flow2.retrieveAllEntityPaths().getPathNodes() == latencyEffectivePath
+        flow2.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == latencyEffectivePath
     }
 
     def "Flow path computation strategy can be updated from LATENCY to COST"() {
         given: "Switch pair with two paths at least"
         def swPair = switchPairs.all().withAtLeastNPaths(2).random()
+        def availablePaths = swPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
 
         and: "Update paths so that one path has minimal total latency and the other has minimal total cost"
-        def costEffectivePath = swPair.paths[0]
-        def latencyEffectivePath = swPair.paths[1]
-        swPair.paths.findAll { it != costEffectivePath }.each { pathHelper.makePathMorePreferable(costEffectivePath, it) }
-        def latencyIsls = pathHelper.getInvolvedIsls(latencyEffectivePath).collectMany { [it, it.reversed] }
+        def costEffectivePath = availablePaths[0]
+        def latencyEffectivePath = availablePaths[1]
+        availablePaths.findAll { it != costEffectivePath }.each { islHelper.makePathIslsMorePreferable(costEffectivePath, it) }
+        def latencyIsls = latencyEffectivePath.collectMany { [it, it.reversed] }
         latencyIsls.each { islHelper.updateIslLatency(it, 1) }
 
         when: "Create flow using Latency strategy"
@@ -92,13 +94,13 @@ class PathComputationSpec extends HealthCheckSpecification {
                 .create()
 
         then: "Flow is built on the least-latency path"
-        flow.retrieveAllEntityPaths().getPathNodes() == latencyEffectivePath
+        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == latencyEffectivePath
 
         when: "Update flow path strategy to 'Cost'"
         flow.update(flow.tap{ it.pathComputationStrategy = COST })
 
         then: "Flow path has changed to the least-cost path"
-        flow.retrieveAllEntityPaths().getPathNodes() == costEffectivePath
+        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == costEffectivePath
     }
 
     def "Target flow path computation strategy is not applied immediately in case flow was updated partially"() {

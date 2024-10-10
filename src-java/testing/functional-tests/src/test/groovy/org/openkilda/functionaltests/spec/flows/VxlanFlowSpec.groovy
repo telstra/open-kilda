@@ -19,10 +19,10 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
+import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.model.stats.Direction
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
@@ -240,7 +240,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                 .withAtLeastNNonOverlappingPaths(2)
                 .random()
         def availablePaths = switchPair.paths.findAll { path ->
-            pathHelper.getInvolvedSwitches(path).every { switchHelper.isVxlanEnabled(it.dpId) }
+            path*.switchId.every { switchHelper.isVxlanEnabled(it) }
         }
         assumeTrue(availablePaths.size() >= 2, "Unable to find required paths between switches")
 
@@ -298,7 +298,6 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         flow.validateAndCollectDiscrepancies().isEmpty()
 
         when: "Update flow: disable protected path(allocateProtectedPath=false)"
-        def flowData = flow.retrieveDetails()
         def protectedFlowPath = flow.retrieveAllEntityPaths().getPathNodes(Direction.FORWARD, true)
         def updateEntity = flow.deepCopy().tap { it.allocateProtectedPath = false }
         flow.update(updateEntity)
@@ -424,30 +423,34 @@ class VxlanFlowSpec extends HealthCheckSpecification {
     @Tags(TOPOLOGY_DEPENDENT)
     def "System selects longer path if shorter path does not support required encapsulation type"() {
         given: "Shortest path transit switch does not support VXLAN and alt paths with VXLAN are available"
-        List<PathNode> noVxlanPath
-        Switch noVxlanSw
+        Path noVxlanPath
+        SwitchId noVxlanSwId
         def switchPair = switchPairs.all().getSwitchPairs().find {
-            noVxlanPath = it.paths.find {
-                def involvedSwitches = pathHelper.getInvolvedSwitches(it)
-                noVxlanSw = involvedSwitches[1]
-                involvedSwitches.size() == 3 && involvedSwitches[0,-1].every {switchHelper.isVxlanEnabled(it.dpId) }
+            def availablePath = it.retrieveAvailablePaths()
+            noVxlanPath = availablePath.find {
+                def involvedSwitches = it.getInvolvedSwitches()
+                noVxlanSwId = involvedSwitches[1]
+                involvedSwitches.size() == 3 && involvedSwitches[0,-1].every { swId -> switchHelper.isVxlanEnabled(swId) }
             }
-            List<PathNode> vxlanPath = it.paths.find {
-                def involvedSwitches = pathHelper.getInvolvedSwitches(it)
-                it != noVxlanPath && involvedSwitches.size() >= 3 && !involvedSwitches[1..-2].contains(noVxlanSw) &&
-                        involvedSwitches[1..-2].every {switchHelper.isVxlanEnabled(it.dpId) }
+            Path vxlanPath = availablePath.findAll { it != noVxlanPath }.find {
+                def involvedSwitches = it.getInvolvedSwitches()
+                involvedSwitches.size() >= 3 && !involvedSwitches[1..-2].contains(noVxlanSwId) &&
+                        involvedSwitches[1..-2].every { swId -> switchHelper.isVxlanEnabled(swId) }
             }
             noVxlanPath && vxlanPath
         }
 
         assumeTrue(switchPair as boolean, "Wasn't able to find suitable switches")
         //make a no-vxlan path to be the most preferred
-        switchPair.paths.findAll { it != noVxlanPath }.each { pathHelper.makePathMorePreferable(noVxlanPath, it) }
+        def noVxlanPathIsls = noVxlanPath.getInvolvedIsls()
+        switchPair.retrieveAvailablePaths().findAll { it != noVxlanPath }.collect { it.getInvolvedIsls() }
+                .each { islHelper.makePathIslsMorePreferable(noVxlanPathIsls, it) }
+
         def initNoVxlanSwProps
-        def isVxlanEnabledOnNoVxlanSw = switchHelper.isVxlanEnabled(noVxlanSw.dpId)
+        def isVxlanEnabledOnNoVxlanSw = switchHelper.isVxlanEnabled(noVxlanSwId)
         if (isVxlanEnabledOnNoVxlanSw) {
-            initNoVxlanSwProps = switchHelper.getCachedSwProps(noVxlanSw.dpId)
-            switchHelper.updateSwitchProperties(noVxlanSw, initNoVxlanSwProps.jacksonCopy().tap {
+            initNoVxlanSwProps = switchHelper.getCachedSwProps(noVxlanSwId)
+            switchHelper.updateSwitchProperties(topology.activeSwitches.find{ it.dpId == noVxlanSwId }, initNoVxlanSwProps.jacksonCopy().tap {
                 it.supportedTransitEncapsulation = [FlowEncapsulationType.TRANSIT_VLAN.toString()]
             })
         }
@@ -458,7 +461,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                 .build().create()
 
         then: "Flow is built through vxlan-enabled path, even though it is not the shortest"
-        flow.retrieveAllEntityPaths().getPathNodes() != noVxlanPath
+        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() != noVxlanPathIsls
     }
 
     @Tags([LOW_PRIORITY, TOPOLOGY_DEPENDENT])

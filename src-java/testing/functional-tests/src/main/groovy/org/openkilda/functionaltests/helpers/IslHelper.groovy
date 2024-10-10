@@ -22,6 +22,7 @@ import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.northbound.dto.v2.links.BfdProperties
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -35,6 +36,9 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
+import java.util.AbstractMap.SimpleEntry
+import java.util.stream.Collectors
+
 /**
  * Holds utility methods for manipulating y-flows.
  */
@@ -42,6 +46,8 @@ import org.springframework.stereotype.Component
 @Slf4j
 @Scope(SCOPE_PROTOTYPE)
 class IslHelper {
+    static final Integer NOT_PREFERABLE_COST = 99999999
+
     @Autowired
     IslUtils islUtils
     @Autowired
@@ -122,6 +128,7 @@ class IslHelper {
         cleanupManager.addAction(RESET_ISL_PARAMETERS, {resetAvailableBandwidth([isl, isl.reversed])})
         database.updateIslAvailableBandwidth(isl, newValue)
     }
+
     def setAvailableBandwidth(List<Isl> isls, long newValue) {
         cleanupManager.addAction(RESET_ISL_PARAMETERS, {resetAvailableBandwidth(isls)})
         database.updateIslsAvailableBandwidth(isls, newValue)
@@ -140,6 +147,21 @@ class IslHelper {
         cleanupManager.addAction(DELETE_ISLS_PROPERTIES, {deleteAllLinksProperties()})
         northbound.updateLinkMaxBandwidth(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId,
                 isl.dstPort, newMaxBandwidth)
+    }
+
+    void updateIslsCostInDatabase(List<Isl> isls, Integer newCost) {
+        cleanupManager.addAction(RESET_ISLS_COST,{ database.resetCosts(topology.isls) })
+        isls.each { database.updateIslCost(it, newCost) }
+    }
+
+    /**
+     * All ISLs will have their cost set to the specified value.
+     */
+    void updateIslsCost(List<Isl> isls, Integer newCost) {
+        cleanupManager.addAction(DELETE_ISLS_PROPERTIES,{ northbound.deleteLinkProps(northbound.getLinkProps(topology.isls)) })
+        northbound.updateLinkProps(isls.collectMany { isl ->
+            [islUtils.toLinkProps(isl, ["cost": (newCost).toString()])]
+        })
     }
 
     def updateIslLatency(Isl isl, long newLatency) {
@@ -227,4 +249,59 @@ class IslHelper {
         blinker?.isRunning() && blinker.stop(true)
     }
 
+    /**
+     * If required, makes one path more preferable than another.
+     * Finds a unique ISL of less preferable path and adds 'cost difference between paths + 1' to its cost
+     *
+     * @param morePreferablePathIsls ISLs list that should become more preferable over the 'lessPreferablePathIsls'
+     * @param lessPreferablePathIsls ISLs list that should become less preferable compared to 'morePreferablePathIsls'
+     * @return The changed ISL (one-way ISL, but actually changed in both directions) or null
+     */
+    Isl makePathIslsMorePreferable(List<Isl> morePreferablePathIsls, List<Isl> lessPreferablePathIsls) {
+        List<Isl> uniqueIsls = (morePreferablePathIsls + lessPreferablePathIsls)
+                .unique { a, b -> a == b || a == b.reversed ? 0 : 1 }
+        HashMap<Isl, Integer> islCosts = uniqueIsls.parallelStream().flatMap({ isl ->
+            Integer cost = northbound.getLink(isl).cost ?: 700
+            [isl, isl.reversed].stream().map({ biIsl -> new SimpleEntry<>(biIsl, cost) })
+        }).collect(Collectors.toMap({ it.getKey() }, { it.getValue() }))
+        // under specific condition cost of isl can be 0, but at the same time for the system 0 == 700
+        def totalCostOfMorePrefPath = morePreferablePathIsls.sum { islCosts.get(it) }
+        def totalCostOfLessPrefPath = lessPreferablePathIsls.sum { islCosts.get(it) }
+        def difference = totalCostOfMorePrefPath - totalCostOfLessPrefPath
+        def islToAvoid
+        if (difference >= 0) {
+            islToAvoid = lessPreferablePathIsls.find {
+                !morePreferablePathIsls.contains(it) && !morePreferablePathIsls.contains(it.reversed)
+            }
+            if (!islToAvoid) {
+                //this should be impossible
+                throw new Exception("Unable to make some path more preferable because both paths use same ISLs")
+            }
+            log.debug "ISL to avoid: $islToAvoid"
+            cleanupManager.addAction(DELETE_ISLS_PROPERTIES, {northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))})
+            northbound.updateLinkProps([islUtils.toLinkProps(islToAvoid,
+                    ["cost": (islCosts.get(islToAvoid) + difference + 1).toString()])])
+        }
+        return islToAvoid
+    }
+
+    /**
+     * Get total cost of all ISLs that are involved in a given path.
+     *
+     * @param isls represents a given path
+     * @return total path cost
+     */
+    int getCost(List<Isl> isls) {
+        return isls.sum { database.getIslCost(it) } as int
+    }
+
+    /**
+     * Get all switches that are involved in a given path.
+     *
+     * @param isls represents a given path
+     * @return list of switchIds
+     */
+    List<Switch> retrieveInvolvedSwitches(List<Isl> isls) {
+        isls.collectMany{ [it.srcSwitch, it.dstSwitch] }.unique()
+    }
 }
