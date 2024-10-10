@@ -128,6 +128,11 @@ class SwitchPairs {
         return this
     }
 
+    SwitchPair specificPair(Switch source, Switch destination) {
+        switchPairs = switchPairs.findAll { it.src == source && it.dst == destination }
+        return switchPairs.first()
+    }
+
     SwitchPairs includeSourceSwitch(Switch sw) {
         switchPairs = switchPairs.findAll { it.src == sw }
         return this
