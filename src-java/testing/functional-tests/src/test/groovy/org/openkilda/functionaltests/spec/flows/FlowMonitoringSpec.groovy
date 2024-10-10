@@ -89,7 +89,7 @@ class FlowMonitoringSpec extends HealthCheckSpecification {
             assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
 
-        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainIsls
+        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
 
         when: "Main path does not satisfy SLA(update isl latency via db)"
         def isl = mainIsls.first()
@@ -142,7 +142,7 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         wait(flowSlaCheckIntervalSeconds + WAIT_OFFSET * 3) {
             assert flowStats.of(flow.flowId).get(FLOW_RTT, FORWARD, FLOW_MONITORING).hasNonZeroValues()
         }
-        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainIsls
+        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
 
         when: "Main path does not satisfy SLA(update isl latency via db)"
         def isl = mainIsls.first()
@@ -160,7 +160,7 @@ and flowLatencyMonitoringReactions is disabled in featureToggle"() {
         !flow.retrieveFlowHistory().getEntriesByType(FlowActionType.REROUTE)
 
         and: "Flow path is not changed"
-        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainIsls
+        flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
     }
 
     def setLatencyForPaths(int mainPathLatency, int alternativePathLatency) {

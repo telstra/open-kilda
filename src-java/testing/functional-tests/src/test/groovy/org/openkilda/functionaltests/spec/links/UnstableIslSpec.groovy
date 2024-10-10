@@ -132,7 +132,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
 
         then: "Flow is created on the stable path(secondPath)"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == secondPathIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == secondPathIsls
         }
 
         when: "Mark first path as stable(update the 'time_unstable' field in db)"
@@ -148,7 +148,7 @@ class UnstableIslSpec extends HealthCheckSpecification {
 
         then: "Flow is rerouted"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == firstPathIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == firstPathIsls
         }
     }
 }

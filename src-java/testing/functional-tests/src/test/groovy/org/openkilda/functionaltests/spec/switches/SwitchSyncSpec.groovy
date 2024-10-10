@@ -97,7 +97,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         def flow = flowFactory.getRandom(switchPair)
 
         and: "Drop all rules an meters from related switches (both default and non-default)"
-        List<Switch> involvedSwitches = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        List<Switch> involvedSwitches = flow.retrieveAllEntityPaths().getInvolvedIsls()
                 .collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique() as List<Switch>
         def involvedSwitchIds = involvedSwitches*.getDpId()
         def cookiesMap = involvedSwitches.collectEntries { sw ->
@@ -233,7 +233,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
 
         and: "Reproduce situation when switches have missing rules and meters"
         def flowInfoFromDb = flow.retrieveDetailsFromDB()
-        List<Switch> involvedSwitches = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        List<Switch> involvedSwitches = flow.retrieveAllEntityPaths().getInvolvedIsls()
                 .collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique() as List<Switch>
         def involvedSwitchIds = involvedSwitches*.getDpId()
         def transitSwitchIds = involvedSwitches[1..-2]*.dpId

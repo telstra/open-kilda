@@ -82,7 +82,7 @@ and at least 1 path must remain safe"
         def availablePathsIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
         availablePathsIsls.findAll { it != mainPathIsls }.each { islHelper.makePathIslsMorePreferable(mainPathIsls, it) }
         def flow = flowFactory.getRandom(switchPair)
-        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainPathIsls
+        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainPathIsls
 
         and: "Switch on the preferred failover path will suddenly be unavailable for rules installation when the reroute starts"
         //select a required failover path beforehand
@@ -110,12 +110,12 @@ and at least 1 path must remain safe"
             assert flow.retrieveFlowStatus().status == UP
         }
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def flowPathIsls = flowPathInfo.flowPath.getInvolvedIsls()
+        def flowPathIsls = flowPathInfo.getInvolvedIsls()
         flowPathIsls != mainPathIsls
         flowPathIsls != failoverPathIsls
         !flowPathInfo.getInvolvedSwitches().contains(switchIdToBreak)
-        !flowPathInfo.flowPath.getInvolvedIsls().contains(islToBreak)
-        !flowPathInfo.flowPath.getInvolvedIsls().contains(islToBreak.reversed)
+        !flowPathInfo.getInvolvedIsls().contains(islToBreak)
+        !flowPathInfo.getInvolvedIsls().contains(islToBreak.reversed)
 
         and: "All related switches have no rule anomalies"
         def switchesToVerify = islHelper.retrieveInvolvedSwitches((mainPathIsls + failoverPathIsls + flowPathIsls).unique())
@@ -156,8 +156,8 @@ and at least 1 path must remain safe"
          **/
         def flow = flowFactory.getBuilder(swPair).withProtectedPath(true).build().create()
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        assert flowPathInfo.flowPath.getMainPathInvolvedIsls() == mainPathIsls
-        assert flowPathInfo.flowPath.getProtectedPathInvolvedIsls() == protectedPathIsls
+        assert flowPathInfo.getMainPathInvolvedIsls() == mainPathIsls
+        assert flowPathInfo.getProtectedPathInvolvedIsls() == protectedPathIsls
 
         when: "Disconnect dst switch on protected path"
         def swToManipulate = swPair.dst
@@ -183,8 +183,8 @@ and at least 1 path must remain safe"
 
         and: "Flow is not rerouted"
         def flowPathInfoAfterSwap = flow.retrieveAllEntityPaths()
-        flowPathInfoAfterSwap.flowPath.getMainPathInvolvedIsls() == mainPathIsls
-        flowPathInfoAfterSwap.flowPath.getProtectedPathInvolvedIsls() == protectedPathIsls
+        flowPathInfoAfterSwap.getMainPathInvolvedIsls() == mainPathIsls
+        flowPathInfoAfterSwap.getProtectedPathInvolvedIsls() == protectedPathIsls
 
 
         and: "All involved switches pass switch validation(except dst switch)"
@@ -279,7 +279,7 @@ and at least 1 path must remain safe"
 
         and: "A flow on the main path"
         def flow = flowFactory.getRandom(swPair)
-        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainPathIsls
+        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainPathIsls
 
         when: "Make backupPath more preferable than mainPath"
         islHelper.makePathIslsMorePreferable(backupPathIsls, mainPathIsls)
@@ -304,7 +304,7 @@ and at least 1 path must remain safe"
         }
 
         then: "Flow is not rerouted"
-        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainPathIsls
+        flow.retrieveAllEntityPaths().getInvolvedIsls() == mainPathIsls
 
         and: "All involved switches pass switch validation(except dst switch)"
         def involvedSwitchIds = islHelper.retrieveInvolvedSwitches(backupPathIsls)[0..-2]*.dpId
@@ -363,10 +363,10 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
         availablePaths.findAll { it != preferableIsls }.each { islHelper.makePathIslsMorePreferable(preferableIsls, it) }
 
         def flow = flowFactory.getRandom(swPair)
-        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == preferableIsls
+        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == preferableIsls
 
         when: "Break current path to trigger a reroute"
-        def islToBreak = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls().first()
+        def islToBreak = flow.retrieveAllEntityPaths().getInvolvedIsls().first()
         cleanupManager.addAction(RESTORE_ISL, {islHelper.restoreIsl(islToBreak)})
         cleanupManager.addAction(RESET_ISLS_COST,{database.resetCosts(topology.isls)})
         northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)

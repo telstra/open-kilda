@@ -432,8 +432,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         then: "The flow is built through one of the long paths"
         def fullFlowPath = flow.retrieveAllEntityPaths()
-        def forwardIsls = fullFlowPath.flowPath.getInvolvedIsls(Direction.FORWARD)
-        def reverseIsls = fullFlowPath.flowPath.getInvolvedIsls(Direction.REVERSE)
+        def forwardIsls = fullFlowPath.getInvolvedIsls(Direction.FORWARD)
+        def reverseIsls = fullFlowPath.getInvolvedIsls(Direction.REVERSE)
         assert forwardIsls.intersect(modifiedIsls).isEmpty()
         assert forwardIsls.size() > shortestIslCountPath
 
@@ -962,7 +962,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def flow = flowFactory.getRandom(switchPair)
 
         when: "Make the current path less preferable than alternatives"
-        def initialFlowIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def initialFlowIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
         switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { !it.containsAll(initialFlowIsls) }
                 .each { islHelper.makePathIslsMorePreferable(it, initialFlowIsls) }
 
@@ -975,7 +975,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def newFlowPath
         wait(rerouteDelay + WAIT_OFFSET) {
             newFlowPath = flow.retrieveAllEntityPaths()
-            assert newFlowPath.flowPath.getInvolvedIsls() != initialFlowIsls
+            assert newFlowPath.getInvolvedIsls() != initialFlowIsls
         }
 
         and: "Flow is updated"
@@ -995,7 +995,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         when: "Make the current path less preferable than alternatives"
         def initialFlowPath = flow.retrieveAllEntityPaths()
-        def initialFlowIsls = initialFlowPath.flowPath.getInvolvedIsls()
+        def initialFlowIsls = initialFlowPath.getInvolvedIsls()
         switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { !it.containsAll(initialFlowIsls) }
                 .each { islHelper.makePathIslsMorePreferable(it, initialFlowIsls) }
 
@@ -1009,7 +1009,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay) {
-            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialFlowIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialFlowIsls
         }
 
         when: "Update the flow: vlanId on the dst endpoint"
@@ -1022,7 +1022,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay) {
-            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialFlowIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialFlowIsls
         }
 
         when: "Update the flow: port number and vlanId on the src/dst endpoints"
@@ -1040,7 +1040,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
-            assert updatedFlow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialFlowIsls
+            assert updatedFlow.retrieveAllEntityPaths().getInvolvedIsls() == initialFlowIsls
         }
 
         and: "Flow is valid"

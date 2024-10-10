@@ -108,7 +108,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
                 .each { islHelper.makePathIslsMorePreferable(flowExpectedPath, it) }
         def flow = flowFactory.getRandom(swPair1)
         def initialFlowPath = flow.retrieveAllEntityPaths()
-        assert initialFlowPath.flowPath.getInvolvedIsls() == flowExpectedPath
+        assert initialFlowPath.getInvolvedIsls() == flowExpectedPath
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         and: "Potential affinity flow, which optimal path is diverse from the main flow, but it has a not optimal closer path"
@@ -121,7 +121,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         affinityFlow.create()
 
         then: "Most optimal, but 'uncommon' to the main flow path is NOT picked, but path with least uncommon ISLs is chosen"
-        def actualAffinityPathIsls = affinityFlow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def actualAffinityPathIsls = affinityFlow.retrieveAllEntityPaths().getInvolvedIsls()
         assert actualAffinityPathIsls != uncommonFlowPathIsls
         leastUncommonPaths2.find { it.getInvolvedIsls() == actualAffinityPathIsls}
 
@@ -143,8 +143,8 @@ class FlowAffinitySpec extends HealthCheckSpecification {
                 .create()
 
         then: "Affinity flow path has no overlapping ISLs with the first flow"
-        assert affinityFlow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
-                .intersect(flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()).isEmpty()
+        assert affinityFlow.retrieveAllEntityPaths().getInvolvedIsls()
+                .intersect(flow.retrieveAllEntityPaths().getInvolvedIsls()).isEmpty()
     }
 
     def "Affinity flow on the same endpoints #willOrNot take the same path if main path cost #exceedsOrNot affinity penalty"() {
@@ -155,7 +155,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         def flow = flowFactory.getRandom(swPair)
 
         and: "Isl which is taken by the main flow weighs more/less than the neighboring ISL, taking into account affinity penalty"
-        def flowIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def flowIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
         assert flowIsls.size() == 1
         islHelper.updateIslsCost([flowIsls[0]], mainIslCost)
 
@@ -163,7 +163,7 @@ class FlowAffinitySpec extends HealthCheckSpecification {
         def affinityFlow = flowFactory.getBuilder(swPair, false, flow.occupiedEndpoints())
                 .withAffinityFlow(flow.flowId).build()
                 .create()
-        def affinityFlowIsls = affinityFlow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def affinityFlowIsls = affinityFlow.retrieveAllEntityPaths().getInvolvedIsls()
 
         then: "It takes/doesn't take the path of the main flow"
         (flowIsls.sort() == affinityFlowIsls.sort()) == expectSamePaths
