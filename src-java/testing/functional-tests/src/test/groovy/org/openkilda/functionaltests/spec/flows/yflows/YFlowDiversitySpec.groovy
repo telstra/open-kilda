@@ -5,10 +5,8 @@ import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
-import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
 import org.openkilda.functionaltests.helpers.model.YFlowFactory
 import org.openkilda.messaging.payload.flow.FlowPathPayload
@@ -34,13 +32,9 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
     def "Able to create diverse Y-Flows"() {
         given: "Switches with three not overlapping paths at least"
-        def swT = topologyHelper.switchTriplets.find {
-            [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
-                    [it.pathsEp1, it.pathsEp2].every {
-                        it.collect { pathHelper.getInvolvedIsls(it) }
-                                .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 3
-                    }
-        }
+        def swT = switchTriplets.all(false, false).withAllDifferentEndpoints()
+                .withAtLeastNNonOverlappingPaths(4).random()
+        println("[" + swT.shared.dpId + "] " + swT.ep1.dpId + "---" + swT.ep2.dpId )
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create three Y-Flows with diversity enabled"
@@ -63,14 +57,15 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
 
         and: "All Y-Flows have different paths"
-        def allInvolvedIsls = [yFlow1.subFlows[0], yFlow2.subFlows[0], yFlow3.subFlows[0]].collectMany {
-            pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(it.flowId)))
+        def allInvolvedIsls = [yFlow1, yFlow2, yFlow3].collectMany { yFlow ->
+           yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == yFlow.subFlows.first().flowId }.getInvolvedIsls()
+
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
         and: "Y-Flows histories contains 'diverse' information"
-        [yFlow2.subFlows.first(), yFlow3.subFlows.first()].each {//yFlow1 had no diversity at the time of creation
-            assert flowHelper.getEarliestHistoryEntryByAction(it.flowId, FlowActionType.CREATE.value).dumps
+        [yFlow2, yFlow3].each {//yFlow1 had no diversity at the time of creation
+            assert  it.retrieveSubFlowHistory(it.subFlows.first().flowId).getEntriesByType(FlowActionType.CREATE).first().dumps
                     .find { it.type == "stateAfter" }?.diverseGroupId
         }
 
@@ -85,7 +80,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         }
 
         then: "Y-Flows' histories contain 'diverseGroupId' information in 'delete' operation"
-        verifyAll(flowHelper.getEarliestHistoryEntryByAction(yFlow1.subFlows[0].flowId,  FlowActionType.DELETE.value).dumps) {
+        verifyAll(yFlow1.retrieveSubFlowHistory(yFlow1.subFlows[0].flowId).getEntriesByType(FlowActionType.DELETE).first().dumps) {
             it.find { it.type == "stateBefore" }?.diverseGroupId
             !it.find { it.type == "stateAfter" }?.diverseGroupId
         }
@@ -93,11 +88,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
     def "Able to update Y-Flow to became diverse with simple multiSwitch flow"() {
         given: "Switches with two not overlapping paths at least"
-        def swT = topologyHelper.switchTriplets.find {
-            [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
-                    it.pathsEp1.collect { pathHelper.getInvolvedIsls(it) }
-                            .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
-        }
+        def swT = switchTriplets.all().withAtLeastNNonOverlappingPaths(2).random()
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         and: "Y-Flow created"
@@ -107,7 +98,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def flow = flowFactory.getRandom(swT.shared, swT.ep1, false)
         def subFlowId = yFlow.subFlows.first().flowId
         def involvedIslSubFlow = yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == subFlowId }.getInvolvedIsls()
-        def involvedIslSimpleFlow = pathHelper.getInvolvedIsls(PathHelper.convert(northbound.getFlowPath(flow.flowId)))
+        def involvedIslSimpleFlow = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
         assert involvedIslSubFlow == involvedIslSimpleFlow
 
         when: "Update Y-Flow to become diverse with simple multiSwitch flow"
@@ -136,7 +127,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         assert involvedIslSubFlowAfterUpdate != involvedIslSimpleFlow
 
         and: "First sub flow history contains 'groupId' information"
-        verifyAll(flowHelper.getEarliestHistoryEntryByAction(subFlowId, FlowActionType.UPDATE.value).dumps) {
+        verifyAll(yFlow.retrieveSubFlowHistory(subFlowId).getEntriesByType(FlowActionType.UPDATE).first().dumps) {
             !it.find { it.type == "stateBefore" }?.diverseGroupId
             it.find { it.type == "stateAfter" }?.diverseGroupId
         }
@@ -170,7 +161,8 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def flow = flowFactory.getRandom(switchPair.src, switchPair.dst, false)
 
         when: "Create a Y-Flow with one switch sub flow and diversity with simple flow"
-        def swT = topologyHelper.getSwitchTriplet(switchPair.src.dpId, switchPair.src.dpId, switchPair.dst.dpId)
+        def swT = switchTriplets.all(true, true)
+                .findSpecificSwitchTriplet(switchPair.src.dpId, switchPair.src.dpId, switchPair.dst.dpId)
         def yFlow = yFlowFactory.getBuilder(swT, false).withDiverseFlow(flow.flowId).build().create()
 
         then: "Create response contains information about diverse flow"
@@ -197,13 +189,8 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
     def "Able to get Y-Flow paths with correct overlapping segments stats"() {
         given: "Switches with three not overlapping paths at least"
-        def swT = topologyHelper.switchTriplets.find {
-            [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
-                    [it.pathsEp1, it.pathsEp2].every {
-                        it.collect { pathHelper.getInvolvedIsls(it) }
-                                .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 3
-                    }
-        }
+        def swT = switchTriplets.all().withAtLeastNNonOverlappingPaths(3).random()
+
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create three Y-Flows with diversity enabled"
@@ -258,18 +245,20 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "Able to get Y-Flow paths with correct overlapping segments stats with one-switch Y-Flow"() {
         given: "Three switches"
-        def swT = topologyHelper.switchTriplets.find(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT)
+        def swT = switchTriplets.all().withAllDifferentEndpoints().random()
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create y-flow"
         def yFlow1 = yFlowFactory.getRandom(swT, false)
 
         and: "Create one-switch y-flows on shared and ep1 switches in the same diversity group"
-        def swTAllAsSharedSw = topologyHelper.getSwitchTriplet(swT.shared.dpId, swT.shared.dpId, swT.shared.dpId)
+        def swTAllAsSharedSw = switchTriplets.all(true, true)
+                .findSpecificSwitchTriplet(swT.shared.dpId, swT.shared.dpId, swT.shared.dpId)
         def yFlow2 = yFlowFactory.getBuilder(swTAllAsSharedSw, false, yFlow1.occupiedEndpoints())
                 .withDiverseFlow(yFlow1.yFlowId).build().create()
 
-        def swTAllAsEp1 = topologyHelper.getSwitchTriplet(swT.ep1.dpId, swT.ep1.dpId, swT.ep1.dpId)
+        def swTAllAsEp1 = switchTriplets.all(true, true)
+                .findSpecificSwitchTriplet(swT.ep1.dpId, swT.ep1.dpId, swT.ep1.dpId)
         def yFlow3 = yFlowFactory.getBuilder(swTAllAsEp1, false, yFlow1.occupiedEndpoints() + yFlow2.occupiedEndpoints())
                 .withDiverseFlow(yFlow1.yFlowId).build().create()
 
@@ -299,13 +288,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
 
     def "Able to get Y-Flow paths with with diversity part when flows become diverse after partial update"() {
         given: "Switches with three not overlapping paths at least"
-        def swT = topologyHelper.switchTriplets.find {
-            [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
-                    [it.pathsEp1, it.pathsEp2].every {
-                        it.collect { pathHelper.getInvolvedIsls(it) }
-                                .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 3
-                    }
-        }
+        def swT = switchTriplets.all().withAtLeastNNonOverlappingPaths(3).random()
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         and: "Create two Y-Flows"

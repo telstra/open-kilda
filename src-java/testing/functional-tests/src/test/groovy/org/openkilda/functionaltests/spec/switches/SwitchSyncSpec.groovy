@@ -88,6 +88,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         removeExcess << [false, true]
     }
 
+    @Issue("Noviflow WB5164 Only: https://github.com/telstra/open-kilda/issues/5638")
     def "Able to synchronize switch (install missing rules and meters)"() {
         given: "Two active not neighboring switches"
         def switchPair = switchPairs.all().nonNeighbouring().random()
@@ -161,7 +162,6 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         }
     }
 
-    @Issue("Noviflow WB5164 Only: https://github.com/telstra/open-kilda/issues/5638")
     def "Able to synchronize #switchKind switch (delete excess rules and meters)"() {
         given: "Flow with intermediate switches"
         def switchPair = switchPairs.all().nonNeighbouring().random()

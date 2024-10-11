@@ -33,7 +33,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
 
     def "History records with links details are created during link create operations and can be retrieved with timeline"() {
         given: "HA-Flow has been created"
-        def swT = topologyHelper.switchTriplets[0]
+        def swT = switchTriplets.all().first()
         def timeBeforeCreation = System.currentTimeSeconds()
         HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
         haFlow.waitForHistoryEvent(HaFlowActionType.CREATE)
@@ -53,7 +53,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
 
     def "History records with links details are created during link #updateType operations and can be retrieved without timeline"() {
         given: "HA-Flow has been created"
-        def swT = topologyHelper.switchTriplets[0]
+        def swT = switchTriplets.all().first()
         HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
 
         when: "#type action has been executed"
@@ -98,7 +98,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
 
     def "History records without links details are created during link deletion and can be retrieved with timeline"() {
         given: "HA-Flow has been created"
-        def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
+        def swT = switchTriplets.all().findSwitchTripletWithAlternativePaths()
         Long timeBeforeOperation = System.currentTimeSeconds()
         HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
 
@@ -122,7 +122,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "History records can be retrieved with timeline in milliseconds format"() {
         given: "HA-Flow"
-        def swT = topologyHelper.switchTriplets[0]
+        def swT = switchTriplets.all().first()
         def timeBeforeAction = System.currentTimeMillis()
         HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
 
@@ -139,7 +139,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY, SWITCH_RECOVER_ON_FAIL])
     def "History records are created during link unsuccessful rerouting with root cause details and can be retrieved with or without timeline"() {
         given: "HA-Flow has been created"
-        def swT = topologyHelper.switchTriplets[0]
+        def swT = switchTriplets.all().first()
         Long timeBeforeOperation = System.currentTimeSeconds()
         HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
 
@@ -178,7 +178,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Empty history returned in case filters return no results"() {
         given: "HA-Flow"
-        def swT = topologyHelper.getAllNotNeighbouringSwitchTriplets().shuffled().first()
+        def swT = switchTriplets.all().nonNeighbouring().random()
         HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
         haFlow.waitForHistoryEvent(HaFlowActionType.CREATE)
 
@@ -192,7 +192,7 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Only requested amount of history records are returned"() {
         given: "HA-Flow has been created"
-        def swT = topologyHelper.switchTriplets[0]
+        def swT = switchTriplets.all().first()
         Long timeBeforeOperation = System.currentTimeSeconds()
         HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
 

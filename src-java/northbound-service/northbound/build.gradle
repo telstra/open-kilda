@@ -25,6 +25,7 @@ dependencies {
     implementation(project(":kilda-model")) { transitive(false) }
     implementation(project(":base-messaging")) { transitive(false) }
     implementation(project(":flowhs-messaging")) { transitive(false) }
+    implementation(project(":reroute-messaging")) {transitive(false) }
     implementation(project(":nbworker-messaging")) { transitive(false) }
     implementation(project(":swmanager-messaging")) { transitive(false) }
     implementation(project(":ping-messaging"))  { transitive(false) }

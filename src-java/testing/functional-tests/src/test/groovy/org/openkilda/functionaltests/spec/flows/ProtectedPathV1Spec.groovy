@@ -249,7 +249,7 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
 
         and: "Update all ISLs which can be used by protected path"
         def bandwidth = 100
-        isls[1..-1].each { islHelper.setAvailableBandwidth(it, 90) }
+        islHelper.setAvailableBandwidth(isls[1..-1], 90)
 
         when: "Create flow with protected path"
        flowFactory.getBuilder(srcSwitch, dstSwitch)

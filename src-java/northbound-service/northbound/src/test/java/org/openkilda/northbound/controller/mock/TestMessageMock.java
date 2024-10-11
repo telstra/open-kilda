@@ -173,6 +173,9 @@ public class TestMessageMock implements MessagingChannel {
             ErrorType.DATA_INVALID.toString(), "flow_id from body and from path are different",
             format("Body flow_id: %s, path flow_id: %s", FLOW_ID, FLOW_ID_FROM_PATH));
 
+    private static final FlowResponse flowFlushResponse = new FlowResponse(
+            FlowDto.builder().flowId(FLOW_ID).state(FlowState.IN_PROGRESS).build());
+
     /**
      * Chooses response by request.
      *
@@ -192,7 +195,7 @@ public class TestMessageMock implements MessagingChannel {
         } else if (data instanceof SwapFlowEndpointRequest) {
             result = completedFuture(bulkFlowResponse);
         } else if (data instanceof FlowRerouteFlushRequest) {
-            result = completedFuture(flowResponse);
+            result = completedFuture(flowFlushResponse);
         } else {
             return null;
         }

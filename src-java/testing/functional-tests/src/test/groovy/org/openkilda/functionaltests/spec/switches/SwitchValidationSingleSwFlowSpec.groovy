@@ -133,8 +133,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
         setup: "Select a #switchType switch and retrieve default meters"
-        def sw = switches.find { it.traffGens.size() > 1 }
-        assert sw != null : "Could not find a single switch with TraffGen ports > 1"
+        def sw = switches.first()
 
         when: "Create a flow"
         def amountOfMultiTableFlRules = 4 //2 SHARED_OF_FLOW, 2 MULTI_TABLE_INGRESS_RULES
@@ -143,7 +142,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         def amountOfRules = amountOfSwRules + amountOfFlowRules + amountOfMultiTableFlRules
         def amountOfMeters = northbound.getAllMeters(sw.dpId).meterEntries.size()
         def amountOfFlowMeters = 2
-        def flow = flowFactory.getBuilder(sw, sw).withBandwidth(5000).build().create()
+        def flow = flowFactory.getBuilder(sw, sw, false).withBandwidth(5000).build().create()
         def meterIds = getCreatedMeterIds(sw.dpId)
         Long burstSize = switchHelper.getExpectedBurst(sw.dpId, flow.maximumBandwidth)
 
@@ -381,8 +380,7 @@ class SwitchValidationSingleSwFlowSpec extends HealthCheckSpecification {
         assumeTrue(switches as boolean, "Unable to find required switches in topology")
 
         setup: "Select a #switchType switch and retrieve default meters"
-        def sw = switches.find { it.traffGens.size() > 1 }
-        assert sw != null : "Could not find a single switch with TraffGen ports > 1"
+        def sw = switches.first()
 
         when: "Create a flow"
         def flow = flowFactory.getRandom(sw, sw)

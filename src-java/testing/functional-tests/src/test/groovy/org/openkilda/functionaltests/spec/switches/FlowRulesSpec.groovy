@@ -382,8 +382,9 @@ class FlowRulesSpec extends HealthCheckSpecification {
     def "Able to validate and sync missing rules for #description on terminating/transit switches"() {
         given: "Two active not neighboring switches with a long available path"
         def switchPair = switchPairs.all().nonNeighbouring().random()
-        def longPath = switchPair.paths.max { it.size() }
-        switchPair.paths.findAll { it != longPath }.each { pathHelper.makePathMorePreferable(longPath, it) }
+        def availablePath = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls()}
+        def longPath = availablePath.max { it.size() }
+        availablePath.findAll { it != longPath }.each { islHelper.makePathIslsMorePreferable(longPath, it) }
 
         and: "Create a transit-switch flow going through these switches"
         def flow = flowFactory.getBuilder(switchPair)
@@ -536,20 +537,14 @@ class FlowRulesSpec extends HealthCheckSpecification {
     @Tags([SMOKE, SMOKE_SWITCHES, ISL_RECOVER_ON_FAIL])
     def "Traffic counters in ingress rule are reset on flow rerouting(multiTable mode)"() {
         given: "Two active neighboring switches and two possible flow paths at least"
-        def allTraffgenSwitchIds = topology.activeTraffGens*.switchConnected*.dpId
-        List<List<PathNode>> possibleFlowPaths = []
-        def isl = topology.getIslsForActiveSwitches().find {
-            possibleFlowPaths = database.getPaths(it.srcSwitch.dpId, it.dstSwitch.dpId)*.path.sort { it.size() }
-            possibleFlowPaths.size() > 1 && allTraffgenSwitchIds.containsAll([it.srcSwitch.dpId, it.dstSwitch.dpId]) &&
-                 it.srcSwitch.ofVersion != "OF_12" && it.dstSwitch.ofVersion != "OF_12"
-        } ?: assumeTrue(false, "No suiting switches found")
-        def (srcSwitch, dstSwitch) = [isl.srcSwitch, isl.dstSwitch]
+        def swPair = switchPairs.all().withTraffgensOnBothEnds()
+                .withAtLeastNPaths(1).withoutOf12Switches().random()
 
         and: "Create a flow going through these switches"
-        def flow = flowFactory.getRandom(srcSwitch, dstSwitch)
+        def flow = flowFactory.getRandom(swPair)
         def flowInfo = flow.retrieveDetailsFromDB()
-        def flowRulesSrcSw = getFlowRules(srcSwitch)
-        def flowRulesDstSw = getFlowRules(dstSwitch)
+        def flowRulesSrcSw = getFlowRules(swPair.src)
+        def flowRulesDstSw = getFlowRules(swPair.dst)
         def sharedRuleSrcSw = flowRulesSrcSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW &&
                 it.match.inPort.toInteger() == flow.source.portNumber }.cookie
         def sharedRuleDstSw = flowRulesDstSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW &&
@@ -573,8 +568,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
         }
 
         then: "Traffic counters in shared/ingress/egress rule on source and destination switches represent packets movement"
-        def rulesAfterPassingTrafficSrcSw = getFlowRules(srcSwitch)
-        def rulesAfterPassingTrafficDstSw = getFlowRules(dstSwitch)
+        def rulesAfterPassingTrafficSrcSw = getFlowRules(swPair.src)
+        def rulesAfterPassingTrafficDstSw = getFlowRules(swPair.dst)
          //srcSw
          with(rulesAfterPassingTrafficSrcSw.find { it.cookie == sharedRuleSrcSw}) {
             !it.flags
@@ -622,8 +617,8 @@ class FlowRulesSpec extends HealthCheckSpecification {
             assert flow.retrieveFlowStatus().status == FlowState.UP
             assert flow.retrieveAllEntityPaths() != actualFlowPath
             flowInfoAfterReroute = flow.retrieveDetailsFromDB()
-            rulesAfterRerouteSrcSw = getFlowRules(srcSwitch)
-            rulesAfterRerouteDstSw = getFlowRules(dstSwitch)
+            rulesAfterRerouteSrcSw = getFlowRules(swPair.src)
+            rulesAfterRerouteDstSw = getFlowRules(swPair.dst)
             //system doesn't reinstall shared rule
             assert rulesAfterRerouteSrcSw.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW &&
                     it.match.inPort.toInteger() == flow.source.portNumber }.cookie == sharedRuleSrcSw

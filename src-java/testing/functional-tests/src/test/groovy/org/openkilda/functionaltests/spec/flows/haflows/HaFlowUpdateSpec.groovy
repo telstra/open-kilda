@@ -1,7 +1,8 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
+import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
+
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.model.Switch
 
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 
@@ -35,7 +36,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
     def "User can update #data.descr of an HA-Flow"() {
         given: "Existing HA-Flow"
-        def swT = topologyHelper.switchTriplets[0]
+        def swT = switchTriplets.all().first()
         def haFlow = haFlowFactory.getRandom(swT)
 
         haFlow.tap(data.updateClosure)
@@ -72,7 +73,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                 [
                         descr: "shared switch and subflow switches",
                         updateClosure: { HaFlowExtended payload ->
-                            def newSwT = topologyHelper.getSwitchTriplets(true).find {
+                            def newSwT = switchTriplets.all(true).getSwitchTriplets().find {
                                 it.shared.dpId != payload.sharedEndpoint.switchId &&
                                         it.ep1.dpId != payload.subFlows[0].endpointSwitchId &&
                                         it.ep2.dpId != payload.subFlows[1].endpointSwitchId &&
@@ -98,8 +99,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
     def "User can update HA-Flow where one of subflows has both ends on shared switch"() {
         given: "Existing HA-Flow where one of subflows has both ends on shared switch"
-        def switchTriplet = topologyHelper.getSwitchTriplets(true, true)
-                .find{it.ep1 == it.shared && it.ep2 != it.shared}
+        def switchTriplet = switchTriplets.all(true, true).findSwitchTripletForOneSwitchSubflow()
 
         def haFlow = haFlowFactory.getRandom(switchTriplet)
 
@@ -125,7 +125,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
     def "User can partially update #data.descr of an HA-Flow"() {
         given: "Existing HA-Flow"
-        def swT = topologyHelper.switchTriplets.find { it.ep1 != it.ep2 }
+        def swT = switchTriplets.all().withAllDifferentEndpoints().random()
         def haFlow = haFlowFactory.getRandom(swT)
 
         def patch = data.buildPatchRequest(haFlow)
@@ -195,7 +195,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
                 [
                         descr: "shared switch and subflow switches",
                         buildPatchRequest: { HaFlowExtended payload ->
-                            def newSwT = topologyHelper.getSwitchTriplets(true).find {
+                            def newSwT = switchTriplets.all(true).getSwitchTriplets().find {
                                 it.shared.dpId != payload.sharedEndpoint.switchId &&
                                         it.ep1.dpId != payload.subFlows[0].endpointSwitchId &&
                                         it.ep2.dpId != payload.subFlows[1].endpointSwitchId &&
@@ -247,7 +247,7 @@ class HaFlowUpdateSpec extends HealthCheckSpecification {
 
     def "User cannot update an HA-Flow #data.descr"() {
         given: "Existing HA-Flow"
-        def swT = topologyHelper.switchTriplets[0]
+        def swT = switchTriplets.all().first()
         def haFlow = haFlowFactory.getRandom(swT)
 
         haFlow.tap(data.updateClosure)
@@ -300,13 +300,13 @@ At least one of subflow endpoint switch id must differ from shared endpoint swit
     }
 
     private void setRandomVlans(HaFlowExtended payload) {
-        payload.sharedEndpoint.vlanId = flowHelperV2.randomVlan([payload.sharedEndpoint.vlanId])
-        payload.subFlows.forEach { it.endpointVlan = flowHelperV2.randomVlan([it.endpointVlan]) }
+        payload.sharedEndpoint.vlanId = randomVlan([payload.sharedEndpoint.vlanId])
+        payload.subFlows.forEach { it.endpointVlan = randomVlan([it.endpointVlan]) }
     }
 
     def "User cannot partial update an HA-Flow with #data.descr"() {
         given: "Existing HA-Flow"
-        def swT = topologyHelper.switchTriplets[0]
+        def swT = switchTriplets.all().first()
         def haFlow = haFlowFactory.getRandom(swT)
         HaFlowPatchPayload patch = data.buildPatchRequest(haFlow)
 

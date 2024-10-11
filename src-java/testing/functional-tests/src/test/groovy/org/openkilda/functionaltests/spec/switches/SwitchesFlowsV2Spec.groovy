@@ -3,7 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
+import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.CLASS
 import static org.openkilda.messaging.payload.flow.FlowState.UP
 
@@ -59,8 +59,8 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
             usual flow                  🡹                                   🡹
                                    usual flow protected path           subflow 2
          */
-        switchTriplet = topologyHelper.getSwitchTriplets(true, false).find {
-            it.shared != it.ep1 && it.pathsEp1.min { it.size() }?.size() > 2
+        switchTriplet = switchTriplets.all(true, false).getSwitchTriplets().find {
+            it.shared != it.ep1 && it.pathsEp1.min{ it.size() }?.size() > 2
                     && it.pathsEp1.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2
         }
         assumeTrue(switchTriplet != null, "Couldn't find appropriate switch triplet")
@@ -84,8 +84,11 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     def "System allows to get flows on particular ports on switch"() {
         given: "Y-Flow subflow which starts on switch"
         and: "List of the ports that subflow uses on switch, received from flow path"
-        def usedPortsList = flowHelper."get ports that flow uses on switch from path"(yFlowSubFlow2Id,
-                switchTriplet.getShared().getDpId())
+        def usedPortsList = yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == yFlowSubFlow2Id }
+                .collect {
+                    (it.path.forward.getNodes().nodes + it?.protectedPath?.forward?.getNodes()?.nodes)
+                            .findAll { it?.switchId == switchTriplet.getShared().getDpId() }.portNo
+                }.flatten()
 
         when: "Get all flows on the switch ports used by subflow under test"
         def response = switchHelper.getFlowsV2(switchTriplet.getShared(), usedPortsList)
@@ -132,7 +135,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
                 - topology.getBusyPortsForSwitch(switchUnderTest)).first()
 
         when: "Create mirror point on switch with sink pointing to free port"
-        def mirrorEndpoint = flow.createMirrorPoint(
+        flow.createMirrorPoint(
                 switchUnderTest.getDpId(), freePort, randomVlan(),
                 FlowPathDirection.REVERSE
         )
@@ -157,8 +160,8 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY])
     def "One-switch Y-Flow subflows are listed in flows list"() {
         given: "One switch Y-Flow"
-        def swT = topologyHelper.getSwitchTriplet(switchProtectedPathGoesThrough.dpId,
-                switchProtectedPathGoesThrough.dpId, switchProtectedPathGoesThrough.dpId)
+        def swT = switchTriplets.all(false, true)
+                .withSpecificSingleSwitch(switchProtectedPathGoesThrough)
         def yFlow = yFlowFactory.getRandom(swT, false)
 
         when: "Request flows on switch"

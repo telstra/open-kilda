@@ -1,9 +1,9 @@
 package org.openkilda.functionaltests.spec.switches
 
 import static groovyx.gpars.GParsPool.withPool
-import static org.openkilda.functionaltests.helpers.FlowHelperV2.randomVlan
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
 import static org.openkilda.model.MeterId.LACP_REPLY_METER_ID
 import static org.openkilda.model.cookie.Cookie.DROP_SLOW_PROTOCOLS_LOOP_COOKIE
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
@@ -164,7 +164,8 @@ class LagPortSpec extends HealthCheckSpecification {
 
         and: "System allows traffic on the flow"
         def traffExam = traffExamProvider.get()
-        def exam = flow.traffExam(traffExam, 1000, 3)
+        //the physical port with traffGen used for LAG port creation should be specified
+        def exam = flow.deepCopy().tap{ source.portNumber = traffgenSrcSwPort }.traffExam(traffExam, 1000, 3)
         withPool {
             [exam.forward, exam.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)
@@ -194,7 +195,8 @@ class LagPortSpec extends HealthCheckSpecification {
 
         and: "System allows traffic on the flow"
         def traffExam = traffExamProvider.get()
-        def exam = flow.traffExam(traffExam, 1000, 3)
+        //the physical port with traffGen used for LAG port creation should be specified
+        def exam = flow.deepCopy().tap { source.portNumber = traffgenSrcSwPort }.traffExam(traffExam, 1000, 3)
         withPool {
             [exam.forward, exam.reverse].eachParallel { direction ->
                 def resources = traffExam.startExam(direction)

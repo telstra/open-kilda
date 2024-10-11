@@ -45,6 +45,7 @@ import org.openkilda.messaging.info.flow.FlowResponse;
 import org.openkilda.messaging.info.flow.FlowValidationResponse;
 import org.openkilda.messaging.info.flow.SwapFlowResponse;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
+import org.openkilda.messaging.info.reroute.FlowType;
 import org.openkilda.messaging.model.FlowDto;
 import org.openkilda.messaging.model.FlowPatch;
 import org.openkilda.messaging.model.FlowPathDto;
@@ -70,6 +71,7 @@ import org.openkilda.messaging.payload.flow.FlowPathPayload;
 import org.openkilda.messaging.payload.flow.FlowPathPayload.FlowProtectedPath;
 import org.openkilda.messaging.payload.flow.FlowReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowResponsePayload;
+import org.openkilda.messaging.payload.flow.FlowState;
 import org.openkilda.messaging.payload.flow.FlowUpdatePayload;
 import org.openkilda.messaging.payload.flow.GroupFlowPathPayload;
 import org.openkilda.messaging.payload.history.FlowHistoryEntry;
@@ -589,17 +591,18 @@ public class FlowServiceImpl implements FlowService {
     }
 
     @Override
-    public CompletableFuture<FlowFlushReroutePayload> flushRerouteFlow(String flowId) {
-        log.info("API request: Flush flow reroute: {}={}", FLOW_ID, flowId);
+    public CompletableFuture<FlowFlushReroutePayload> flushRerouteFlow(String flowId, FlowType flowType) {
+        log.info("API request: Flush flow reroute: {}={}, flow type={}", FLOW_ID, flowId, flowType);
 
-        FlowRerouteFlushRequest payload = new FlowRerouteFlushRequest(flowId, "initiated via Northbound");
+        FlowRerouteFlushRequest payload = new FlowRerouteFlushRequest(
+                flowId, flowType, "initiated via Northbound");
         CommandMessage command = new CommandMessage(
                 payload, System.currentTimeMillis(), RequestCorrelationId.getId());
 
         return messagingChannel.sendAndGet(rerouteTopic, command)
                 .thenApply(FlowResponse.class::cast)
-                .thenApply(response ->
-                        flowMapper.toRerouteFlushPayload(flowId, response != null));
+                .thenApply(response -> flowMapper.toRerouteFlushPayload(flowId, response != null
+                        && response.getPayload() != null && response.getPayload().getState() == FlowState.IN_PROGRESS));
     }
 
     @Override

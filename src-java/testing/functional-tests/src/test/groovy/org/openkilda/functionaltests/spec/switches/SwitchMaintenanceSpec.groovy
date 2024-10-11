@@ -11,10 +11,12 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowEntityPath
+import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.model.SwitchId
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Shared
@@ -70,49 +72,51 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Flows can be evacuated (rerouted) from a particular switch when setting maintenance mode for it"() {
         given: "Two active not neighboring switches and a switch to be maintained"
-        TopologyDefinition.Switch sw
-        List<PathNode> path
+        SwitchId swId
+        List<Isl> pathIsls
         def switchPair = switchPairs.all().nonNeighbouring().getSwitchPairs().find {
-            path = it.paths.find { aPath ->
-                sw = pathHelper.getInvolvedSwitches(aPath).find { aSw ->
-                    it.paths.findAll { it != aPath }.find { !pathHelper.getInvolvedSwitches(it).contains(aSw) }
+            List<Path> availablePath = it.retrieveAvailablePaths()
+            pathIsls = availablePath.find { Path aPath ->
+                swId = aPath.getInvolvedSwitches().find { aSw ->
+                    availablePath.findAll { it != aPath }.find { !it.getInvolvedSwitches().contains(aSw) }
                 }
-            }
+        }.getInvolvedIsls()
         } ?: assumeTrue(false, "No suiting switches found. Need a switch pair with at least 2 paths and one of the " +
         "paths should not use the maintenance switch")
-        switchPair.paths.findAll { it != path }.each { pathHelper.makePathMorePreferable(path, it) }
+        switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { it != pathIsls }
+                .each { islHelper.makePathIslsMorePreferable(pathIsls, it) }
 
         and: "Create a couple of flows going through these switches"
         def flow1 = flowFactory.getRandom(switchPair)
         def flow2 = flowFactory.getRandom(switchPair, false, FlowState.UP, flow1.occupiedEndpoints())
-        flow1.retrieveAllEntityPaths().getPathNodes() == path
-        flow2.retrieveAllEntityPaths().getPathNodes() == path
+        assert flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == pathIsls
+        assert flow2.retrieveAllEntityPaths().flowPath.getInvolvedIsls()== pathIsls
 
         when: "Set maintenance mode without flows evacuation flag for some intermediate switch involved in flow paths"
-        switchHelper.setSwitchMaintenance(sw.dpId, true, false)
+        switchHelper.setSwitchMaintenance(swId, true, false)
 
         then: "Flows are not evacuated (rerouted) and have the same paths"
-        flow1.retrieveAllEntityPaths().getPathNodes() == path
-        flow2.retrieveAllEntityPaths().getPathNodes() == path
+        flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == pathIsls
+        flow2.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == pathIsls
 
         when: "Set maintenance mode again with flows evacuation flag for the same switch"
-        northbound.setSwitchMaintenance(sw.dpId, true, true)
+        northbound.setSwitchMaintenance(swId, true, true)
 
         then: "Flows are evacuated (rerouted)"
-        def flow1PathUpdated, flow2PathUpdated
+        FlowEntityPath flow1PathUpdated, flow2PathUpdated
         Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
             [flow1, flow2].each { assert it.retrieveFlowStatus().status == FlowState.UP }
 
             flow1PathUpdated = flow1.retrieveAllEntityPaths()
             flow2PathUpdated = flow2.retrieveAllEntityPaths()
 
-            assert flow1PathUpdated.getPathNodes() != path
-            assert flow2PathUpdated.getPathNodes() != path
+            assert flow1PathUpdated.flowPath.getInvolvedIsls() != pathIsls
+            assert flow2PathUpdated.flowPath.getInvolvedIsls()!= pathIsls
         }
 
         and: "Switch under maintenance is not involved in new flow paths"
-        !(sw in flow1PathUpdated.getInvolvedSwitches())
-        !(sw in flow2PathUpdated.getInvolvedSwitches())
+        !flow1PathUpdated.getInvolvedSwitches().contains(swId)
+        !flow2PathUpdated.getInvolvedSwitches().contains(swId)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)

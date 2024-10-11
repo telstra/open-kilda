@@ -16,6 +16,7 @@
 package org.openkilda.messaging.command.flow;
 
 import org.openkilda.messaging.command.CommandData;
+import org.openkilda.messaging.info.reroute.FlowType;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -33,14 +34,18 @@ public class FlowRerouteFlushRequest extends CommandData {
     private static final long serialVersionUID = 1L;
 
     @JsonProperty("flow_id")
-    private String flowId;
+    String flowId;
 
-    private String reason;
+    FlowType flowType;
+
+    String reason;
 
     @JsonCreator
     public FlowRerouteFlushRequest(@NonNull @JsonProperty("flow_id") String flowId,
+                                   @JsonProperty("flow_type") FlowType flowType,
                                    @JsonProperty("reason") String reason) {
         this.flowId = flowId;
+        this.flowType = flowType;
         this.reason = reason;
     }
 }

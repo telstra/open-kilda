@@ -126,6 +126,10 @@ class SwitchHelper {
     static NOVIFLOW_BURST_COEFFICIENT = 1.005 // Driven by the Noviflow specification
     static CENTEC_MIN_BURST = 1024 // Driven by the Centec specification
     static CENTEC_MAX_BURST = 32000 // Driven by the Centec specification
+
+    //Kilda allows user to pass reserved VLAN IDs 1 and 4095 if they want.
+    static final IntRange KILDA_ALLOWED_VLANS = 1..4095
+
     @Value('${burst.coefficient}')
     double burstCoefficient
     @Value('${discovery.generic.interval}')
@@ -852,13 +856,18 @@ class SwitchHelper {
         def originalProps = northbound.get().getSwitchProperties(sw.dpId)
         if (originalProps.server42FlowRtt != isServer42FlowRttEnabled) {
             def s42Config = sw.prop
-            cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {northbound.get().updateSwitchProperties(sw.dpId, originalProps)})
-            northbound.get().updateSwitchProperties(sw.dpId, originalProps.jacksonCopy().tap {
+            def requiredProps = originalProps.jacksonCopy().tap {
                 server42FlowRtt = isServer42FlowRttEnabled
                 server42MacAddress = s42Config ? s42Config.server42MacAddress : null
                 server42Port = s42Config ? s42Config.server42Port : null
                 server42Vlan = s42Config ? s42Config.server42Vlan : null
+            }
+
+            cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {
+                northbound.get().updateSwitchProperties(sw.dpId, requiredProps.jacksonCopy().tap { server42FlowRtt = sw?.prop?.server42FlowRtt })
             })
+
+            northbound.get().updateSwitchProperties(sw.dpId, requiredProps)
         }
         int expectedNumberOfS42Rules = (isS42ToggleOn && isServer42FlowRttEnabled) ? getExpectedS42SwitchRulesBasedOnVxlanSupport(sw.dpId) : 0
         Wrappers.wait(RULES_INSTALLATION_TIME) {
@@ -879,7 +888,7 @@ class SwitchHelper {
 
     static void waitForS42SwRulesSetup(boolean isS42ToggleOn = true) {
         List<SwitchPropertiesDto> switchDetails = northboundV2.get().getAllSwitchProperties().switchProperties
-
+                .findAll { it.switchId in getTopology().get().switches.dpId }
         withPool {
             Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
                 switchDetails.eachParallel { sw ->
@@ -921,5 +930,17 @@ class SwitchHelper {
         def featureToggles = northbound.get().getFeatureToggles()
         def isServer42 = swProps.server42FlowRtt && featureToggles.server42FlowRtt
         return isServer42
+    }
+
+    static int randomVlan() {
+        return randomVlan([])
+    }
+
+    static int randomVlan(List<Integer> exclusions) {
+        return (KILDA_ALLOWED_VLANS - exclusions).shuffled().first()
+    }
+
+    static List<Integer> availableVlanList(List<Integer> exclusions) {
+        return (KILDA_ALLOWED_VLANS - exclusions).shuffled()
     }
 }

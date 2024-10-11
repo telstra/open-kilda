@@ -20,6 +20,7 @@ import static java.lang.String.format;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.MessageException;
 import org.openkilda.messaging.info.meter.FlowMeterEntries;
+import org.openkilda.messaging.info.reroute.FlowType;
 import org.openkilda.messaging.payload.flow.FlowCreatePayload;
 import org.openkilda.messaging.payload.flow.FlowFlushReroutePayload;
 import org.openkilda.messaging.payload.flow.FlowIdStatusPayload;
@@ -249,11 +250,13 @@ public class FlowController extends BaseController {
      * @param flowId id of flow to be flushed.
      * @return flow payload with updated path.
      */
-    @Operation(summary = "Reroute flow")
+    @Operation(summary = "Reroute flow of specified type")
     @PatchMapping(path = "/{flow_id}/reroute/flush")
     @ResponseStatus(HttpStatus.OK)
-    public CompletableFuture<FlowFlushReroutePayload> flushRerouteFlow(@PathVariable("flow_id") String flowId) {
-        return flowService.flushRerouteFlow(flowId);
+    public CompletableFuture<FlowFlushReroutePayload> flushRerouteFlow(
+            @PathVariable("flow_id") String flowId,
+            @RequestParam(value = "flow_type", defaultValue = "FLOW") FlowType flowType) {
+        return flowService.flushRerouteFlow(flowId, flowType);
     }
 
     /**

@@ -455,12 +455,12 @@ misconfigured"
         def flow = flowFactory.getRandom(switchPair)
 
         when: "Delete created rules on the transit"
-        def involvedSwitches = pathHelper.getInvolvedSwitches(flow.flowId)
-        def transitSw = involvedSwitches[1]
-        switchHelper.deleteSwitchRules(transitSw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
+        def involvedSwitchesIds = flow.retrieveAllEntityPaths().getInvolvedSwitches()
+        def transitSwId = involvedSwitchesIds[1]
+        switchHelper.deleteSwitchRules(transitSwId, DeleteRulesAction.IGNORE_DEFAULTS)
 
         then: "Rule info is moved into the 'missing' section"
-        verifyAll(switchHelper.validateV1(transitSw.dpId)) {
+        verifyAll(switchHelper.validateV1(transitSwId)) {
             it.rules.missing.size() == 2
             it.rules.proper.findAll {
                 !new Cookie(it).serviceFlag
@@ -469,12 +469,12 @@ misconfigured"
         }
 
         when: "Synchronize the switch"
-        with(switchHelper.synchronize(transitSw.dpId, false)) {
+        with(switchHelper.synchronize(transitSwId, false)) {
             rules.installed.size() == 2
         }
 
         then: "Repeated validation shows no discrepancies"
-        verifyAll(switchHelper.validateV1(transitSw.dpId)) {
+        verifyAll(switchHelper.validateV1(transitSwId)) {
             it.rules.proper.findAll { !new Cookie(it).serviceFlag }.size() == 2
             it.verifyRuleSectionsAreEmpty(["missing", "excess"])
         }
@@ -484,8 +484,8 @@ misconfigured"
 
         then: "Check that the switch validate request returns empty sections on all involved switches"
         Wrappers.wait(WAIT_OFFSET) {
-            involvedSwitches.each { sw ->
-                def switchValidateInfo = switchHelper.validateV1(sw.dpId)
+            involvedSwitchesIds.each { sw ->
+                def switchValidateInfo = switchHelper.validateV1(sw)
                 switchValidateInfo.verifyRuleSectionsAreEmpty()
                 if (!sw.description.contains("OF_12")) {
                     switchValidateInfo.verifyMeterSectionsAreEmpty()

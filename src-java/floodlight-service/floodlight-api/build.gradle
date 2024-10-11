@@ -12,9 +12,11 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
     implementation("com.google.guava:guava")
     implementation("org.apache.commons:commons-lang3")
+    implementation("org.apache.commons:commons-collections4")
     implementation("org.slf4j:slf4j-api:2.0.12")
     testImplementation("org.junit.jupiter:junit-jupiter-api")
     testImplementation("org.junit.jupiter:junit-jupiter-engine")
+    testImplementation("org.mockito:mockito-junit-jupiter")
 
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")

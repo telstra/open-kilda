@@ -5,7 +5,7 @@ OPEN KILDA SDN CONTROLLER
 
 ## Introduction
 
-OpenKilda is a Web-Scale Software-Defined Networking controller. OpenKilda is capable of manage traffic on tens of thousands of switches simultaneously, 
+OpenKilda is a Web-Scale Software-Defined Networking controller. OpenKilda is capable of manage traffic on tens of thousands of switches simultaneously,
 control millions of flows, and provide sub-second network telemetry. OpenKilda provides a variety of features, such as:
 - manual and automatic management of L2 services: point-to-point flows, Y-flows, etc.;
 - advanced features for some types of services: mirroring, data gathering, path pinning, etc.;
@@ -74,14 +74,14 @@ wget -P /tmp/ https://bootstrap.pypa.io/get-pip.py \
 #### Gradle
 
 You can either install Gradle, or use Gradle wrapper:
- - Option 1: Use Gradle wrapper. The OpenKilda repository contains an instance of Gradle Wrapper 
+ - Option 1: Use Gradle wrapper. The OpenKilda repository contains an instance of Gradle Wrapper
  which can be used straight from here without further installation.
  - Option 2: Install Gradle 7.0 or later versions - https://gradle.org/install/
 
 
 #### Docker
 
-Note that your build user needs to be a member of the docker group for the build to work. 
+Note that your build user needs to be a member of the docker group for the build to work.
 Do that by adding the user to /etc/groups, logging out, and logging in back again.
 
 ##### Basic installation instruction from Docker site
@@ -157,7 +157,7 @@ make clean
 ### How to run OpenKilda Controller
 
 __NB: To run OpenKilda, you should have built it already (see the previous section).__
-This is particularly important because docker-compose will expect that some specific containers already exist.
+This is particularly important because docker compose will expect that some specific containers already exist.
 
 From the base directory, execute the following command:
 
@@ -191,19 +191,19 @@ make build-latest
 
 These two commands build images with tags `stable` and `latest`.
 These tags will be used to run OpenKilda in blue mode (from stable images)
-or in green mode (for latest images).  
+or in green mode (for latest images).
 
-__There are 3 new commands to run OpenKilda in blue-green mode:__ 
+__There are 3 new commands to run OpenKilda in blue-green mode:__
 
 The following command runs OpenKilda in blue mode from stable images.
-It starts all common components like Zookeeper, database, Kafka, etc.  
+It starts all common components like Zookeeper, database, Kafka, etc.
 ```shell
 make up-stable
 ```
 
 The next command starts the green version of OpenKilda from the latest images.
 Common components wouldn't be restarted (we started them using the previous command).
-Floodlight 1 wouldn't be restarted; Floodlight 1 will stay on blue mode.   
+Floodlight 1 wouldn't be restarted; Floodlight 1 will stay on blue mode.
 Only Floodlight 2 will be restarted.
 ```shell
 make up-green
@@ -211,11 +211,11 @@ make up-green
 
 The next command is used to test rollbacks. It runs stable components in blue mode.
 The difference with `make up-stable` is that this command wouldn't start common components
-(like Zookeeper, Kafka, etc) and Floodlight 2 (it stays in green mode). 
+(like Zookeeper, Kafka, etc) and Floodlight 2 (it stays in green mode).
 
 ```shell
 make up-blue
-``` 
+```
 
 ### How to debug OpenKilda Controller components
 
@@ -242,7 +242,7 @@ CMD ["java", "-agentlib:jdwp=transport=dt_socket,address=50505,suspend=n,server=
 ```
 
 Since debugging is done over the network, that also means we need to expose that port in Docker. For that purpose we need
-to add  ```"50505:50505"``` to the northbound the ```ports``` block in ```docker-compose.yml```: 
+to add  ```"50505:50505"``` to the northbound the ```ports``` block in ```docker-compose.yml```:
 
 ```
 northbound:

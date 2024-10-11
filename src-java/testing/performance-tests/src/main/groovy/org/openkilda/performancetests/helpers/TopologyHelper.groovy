@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component
 @Component("performance")
 class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelper {
 
-    @Autowired @Qualifier("islandNb")
+    @Autowired @Qualifier("northboundServiceImpl")
     NorthboundService northbound
     @Autowired
     LabService labService
@@ -59,7 +59,7 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
             def dst = topo.pickRandomSwitch([src])
             topo.addIsl(src, dst)
         }
-        createTopology(topo);
+        createTopology(topo)
         return topo
     }
 
@@ -68,6 +68,7 @@ class TopologyHelper extends org.openkilda.functionaltests.helpers.TopologyHelpe
         Wrappers.wait(30 + topo.activeSwitches.size() * 3, 5) {
             verifyTopology(topo)
         }
+        setTopology(topo)
         return topo
     }
 

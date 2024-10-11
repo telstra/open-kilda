@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.helpers
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 import org.openkilda.functionaltests.helpers.model.PortHistoryEvent
+import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -69,9 +70,12 @@ class PortAntiflapHelper {
         }
     }
 
-    def portDown(SwitchId swId, int portNo, cleanupAfter = TEST) {
-        cleanupManager.addAction(PORT_UP, {safePortUp(swId, portNo)}, cleanupAfter)
-        cleanupManager.addAction(RESET_ISLS_COST, {database.resetCosts(topology.isls)})
+    def portDown(SwitchId swId, int portNo, CleanupAfter cleanupAfter = TEST, boolean isNotInScopeOfIslBreak = true) {
+        if(isNotInScopeOfIslBreak) {
+            //there is port recovery and resetting ISL cost in the scope of ISL breaking
+            cleanupManager.addAction(PORT_UP, {safePortUp(swId, portNo)}, cleanupAfter)
+            cleanupManager.addAction(RESET_ISLS_COST, {database.resetCosts(topology.isls)})
+        }
         def response = northbound.portDown(swId, portNo)
         sleep(antiflapMin * 1000)
         history.put(new Tuple2(swId, portNo), System.currentTimeMillis())

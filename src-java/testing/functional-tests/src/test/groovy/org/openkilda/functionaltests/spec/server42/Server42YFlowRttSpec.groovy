@@ -71,8 +71,11 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
     SwitchTriplet switchTripletWithYPointOnSubFlowEnd
 
     def setupSpec() {
-        switchTripletWithYPointOnSharedEp = topologyHelper.findSwitchTripletWithSharedEpInTheMiddleOfTheChainServer42Support()
-        switchTripletWithYPointOnSubFlowEnd = topologyHelper.findSwitchTripletWithSharedEpEp1Ep2InChainServer42Support()
+        switchTripletWithYPointOnSharedEp = switchTriplets.all().withAllDifferentEndpoints().withS42Support()
+                .withSharedEpInTheMiddleOfTheChain().random()
+        switchTripletWithYPointOnSubFlowEnd = switchTriplets.all().withAllDifferentEndpoints().withS42Support()
+                .withSharedEpEp1Ep2InChain().random()
+
     }
 
     @Tags(TOPOLOGY_DEPENDENT)
@@ -205,116 +208,13 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         isSharedEndpointYPoint << [true, false]
     }
 
-    def "Y-Flow rtt stats are available only if both global and switch toggles are 'ON' on both endpoints"() {
-        given: "Three active switches with server42 connected"
-        assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
-
-        def swT = isSharedEndpointYPoint ? switchTripletWithYPointOnSharedEp : switchTripletWithYPointOnSubFlowEnd
-        def statsWaitSeconds = 4
-
-        and: "server42FlowRtt toggle is turned off"
-        featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(false)
-        switchHelper.waitForS42SwRulesSetup(false)
-
-        and: "server42FlowRtt is turned off on all switches"
-        def initialSwitchesProps = [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, false, false)] }
-
-        when: "Create a Y-Flow"
-        def yFlow = yFlowFactory.getRandom(swT)
-        assert isSharedEndpointYPoint ? yFlow.sharedEndpoint.switchId == yFlow.yPoint : yFlow.sharedEndpoint.switchId != yFlow.yPoint
-
-        then: "Involved switches pass switch validation"
-        List<SwitchId> involvedSwitches = yFlow.retrieveAllEntityPaths().getInvolvedSwitches()
-        Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
-        }
-
-        and: "Expect no Y-Flow rtt stats for FORWARD and REVERSE directions"
-        timedLoop(statsWaitSeconds) {
-            [flowStats.of(yFlow.subFlows.first().flowId), flowStats.of(yFlow.subFlows.last().flowId)].each { stats ->
-                assert stats.get(FLOW_RTT, FORWARD, SERVER_42).isEmpty()
-                assert stats.get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
-            }
-        }
-
-        when: "Enable global rtt toggle"
-        featureToggles.server42FlowRtt(true)
-        switchHelper.waitForS42SwRulesSetup()
-
-        then: "Expect no flow rtt stats for FORWARD and REVERSE direction for the first sub-flow"
-        verifyAll(flowStats.of(yFlow.subFlows.first().flowId)) { subFlow1Stats ->
-            assert subFlow1Stats.get(FLOW_RTT, FORWARD, SERVER_42).isEmpty()
-            assert subFlow1Stats.get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
-        }
-
-        and: "Expect no flow rtt stats for FORWARD and REVERSE direction for the second sub-flow"
-        verifyAll(flowStats.of(yFlow.subFlows.last().flowId)) { subFlow2Stats ->
-            assert subFlow2Stats.get(FLOW_RTT, FORWARD, SERVER_42).isEmpty()
-            assert subFlow2Stats.get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
-        }
-
-        when: "Enable switch rtt toggle on src and dst"
-        [swT.shared, swT.ep1, swT.ep2].each {
-            switchHelper.setServer42FlowRttForSwitch(it, true, true)
-        }
-        def checkpointTime = new Date().getTime()
-
-        then: "Stats for FORWARD and REVERSE directions are available for the first sub-flow"
-        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            verifyAll(flowStats.of(yFlow.subFlows.first().flowId)) { subFlow1Stats ->
-                assert subFlow1Stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-               assert subFlow1Stats.get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-            }
-        }
-
-        and: "Stats for FORWARD and REVERSE directions are available for the second sub-flow"
-        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
-            verifyAll(flowStats.of(yFlow.subFlows.last().flowId)) { subFlow2Stats ->
-                assert subFlow2Stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-                assert subFlow2Stats.get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-            }
-        }
-
-        when: "Disable switch rtt toggle on ep1 and ep2 ends"
-        switchHelper.setServer42FlowRttForSwitch(swT.ep1, false, true)
-        switchHelper.setServer42FlowRttForSwitch(swT.ep2, false, true)
-        checkpointTime = new Date().getTime()
-
-        then: "Stats for FORWARD direction are available for both sub-flows"
-        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET, 1) {
-            assert flowStats.of(yFlow.subFlows.first().flowId).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-            assert flowStats.of(yFlow.subFlows.last().flowId).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-        }
-
-        when: "Disable global toggle"
-        featureToggles.server42FlowRtt(false)
-        switchHelper.waitForS42SwRulesSetup(false)
-
-        and: "Wait for several seconds"
-        checkpointTime = new Date().getTime()
-
-        then: "Expect no flow rtt stats for FORWARD and REVERSE direction for the first sub-flow"
-        verifyAll(flowStats.of(yFlow.subFlows.first().flowId)) { subFlow1Stats ->
-            assert !subFlow1Stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-            assert !subFlow1Stats.get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-        }
-
-        and: "Expect no flow rtt stats for FORWARD and REVERSE direction for the second sub-flow"
-        verifyAll(flowStats.of(yFlow.subFlows.last().flowId)) { subFlow2Stats ->
-            !subFlow2Stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-            !subFlow2Stats.get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
-        }
-
-        where:
-        isSharedEndpointYPoint << [true, false]
-    }
-
+    @Tags(LOW_PRIORITY)
     def "Rtt statistic is available for a Y-Flow in case switch is not connected to server42"() {
         given: "Three active switches with server42 connected"
         assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
 
         and: "Switches triplet with ONLY shared switch that supports server42 feature"
-        def swT = topologyHelper.findSwitchTripletWithOnlySharedSwServer42Support()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().findSwitchTripletWithOnlySharedSwS42Support()
         assumeTrue(swT as boolean, "Unable to find requested switchTriplet")
 
         and: "server42FlowRtt feature enabled globally and switch ON for appropriate switches(swT)"
@@ -569,7 +469,8 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
 
         and: "Switches triplet doesn't contain WB164 switch"
-        def swT = topologyHelper.findSwitchTripletServer42SupportWithSharedEpInTheMiddleOfTheChainExceptWBSw()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().withoutWBSwitch().withS42Support()
+                .withSharedEpInTheMiddleOfTheChain().random()
 
         and: "server42FlowRtt feature enabled globally and switch ON for appropriate switches(swT)"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
@@ -655,4 +556,110 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
 
         }
     }
+
+    @Tags(LOW_PRIORITY)
+    def "Y-Flow rtt stats are available only if both global and switch toggles are 'ON' on both endpoints"() {
+        given: "Three active switches with server42 connected"
+        assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
+
+        def swT = isSharedEndpointYPoint ? switchTripletWithYPointOnSharedEp : switchTripletWithYPointOnSubFlowEnd
+        def statsWaitSeconds = 4
+
+        and: "server42FlowRtt toggle is turned off"
+        featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(false)
+        switchHelper.waitForS42SwRulesSetup(false)
+
+        and: "server42FlowRtt is turned off on all switches"
+        def initialSwitchesProps = [swT.shared, swT.ep1, swT.ep2].collectEntries { sw -> [sw, switchHelper.setServer42FlowRttForSwitch(sw, false, false)] }
+
+        when: "Create a Y-Flow"
+        def yFlow = yFlowFactory.getRandom(swT)
+        assert isSharedEndpointYPoint ? yFlow.sharedEndpoint.switchId == yFlow.yPoint : yFlow.sharedEndpoint.switchId != yFlow.yPoint
+
+        then: "Involved switches pass switch validation"
+        List<SwitchId> involvedSwitches = yFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
+        }
+
+        and: "Expect no Y-Flow rtt stats for FORWARD and REVERSE directions"
+        timedLoop(statsWaitSeconds) {
+            [flowStats.of(yFlow.subFlows.first().flowId), flowStats.of(yFlow.subFlows.last().flowId)].each { stats ->
+                assert stats.get(FLOW_RTT, FORWARD, SERVER_42).isEmpty()
+                assert stats.get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
+            }
+        }
+
+        when: "Enable global rtt toggle"
+        featureToggles.server42FlowRtt(true)
+        switchHelper.waitForS42SwRulesSetup()
+
+        then: "Expect no flow rtt stats for FORWARD and REVERSE direction for the first sub-flow"
+        verifyAll(flowStats.of(yFlow.subFlows.first().flowId)) { subFlow1Stats ->
+            assert subFlow1Stats.get(FLOW_RTT, FORWARD, SERVER_42).isEmpty()
+            assert subFlow1Stats.get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
+        }
+
+        and: "Expect no flow rtt stats for FORWARD and REVERSE direction for the second sub-flow"
+        verifyAll(flowStats.of(yFlow.subFlows.last().flowId)) { subFlow2Stats ->
+            assert subFlow2Stats.get(FLOW_RTT, FORWARD, SERVER_42).isEmpty()
+            assert subFlow2Stats.get(FLOW_RTT, REVERSE, SERVER_42).isEmpty()
+        }
+
+        when: "Enable switch rtt toggle on src and dst"
+        [swT.shared, swT.ep1, swT.ep2].each {
+            switchHelper.setServer42FlowRttForSwitch(it, true, true)
+        }
+        def checkpointTime = new Date().getTime()
+
+        then: "Stats for FORWARD and REVERSE directions are available for the first sub-flow"
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+            verifyAll(flowStats.of(yFlow.subFlows.first().flowId)) { subFlow1Stats ->
+                assert subFlow1Stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+                assert subFlow1Stats.get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+            }
+        }
+
+        and: "Stats for FORWARD and REVERSE directions are available for the second sub-flow"
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT, 1) {
+            verifyAll(flowStats.of(yFlow.subFlows.last().flowId)) { subFlow2Stats ->
+                assert subFlow2Stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+                assert subFlow2Stats.get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+            }
+        }
+
+        when: "Disable switch rtt toggle on ep1 and ep2 ends"
+        switchHelper.setServer42FlowRttForSwitch(swT.ep1, false, true)
+        switchHelper.setServer42FlowRttForSwitch(swT.ep2, false, true)
+        checkpointTime = new Date().getTime()
+
+        then: "Stats for FORWARD direction are available for both sub-flows"
+        Wrappers.wait(STATS_FROM_SERVER42_LOGGING_TIMEOUT + WAIT_OFFSET, 1) {
+            assert flowStats.of(yFlow.subFlows.first().flowId).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+            assert flowStats.of(yFlow.subFlows.last().flowId).get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+        }
+
+        when: "Disable global toggle"
+        featureToggles.server42FlowRtt(false)
+        switchHelper.waitForS42SwRulesSetup(false)
+
+        and: "Wait for several seconds"
+        checkpointTime = new Date().getTime()
+
+        then: "Expect no flow rtt stats for FORWARD and REVERSE direction for the first sub-flow"
+        verifyAll(flowStats.of(yFlow.subFlows.first().flowId)) { subFlow1Stats ->
+            assert !subFlow1Stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+            assert !subFlow1Stats.get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+        }
+
+        and: "Expect no flow rtt stats for FORWARD and REVERSE direction for the second sub-flow"
+        verifyAll(flowStats.of(yFlow.subFlows.last().flowId)) { subFlow2Stats ->
+            !subFlow2Stats.get(FLOW_RTT, FORWARD, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+            !subFlow2Stats.get(FLOW_RTT, REVERSE, SERVER_42).hasNonZeroValuesAfter(checkpointTime)
+        }
+
+        where:
+        isSharedEndpointYPoint << [true, false]
+    }
+
 }

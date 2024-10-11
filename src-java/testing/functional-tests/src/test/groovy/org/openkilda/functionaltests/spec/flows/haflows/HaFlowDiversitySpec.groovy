@@ -34,14 +34,8 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
 
     def "Able to create diverse HA-Flows"() {
         given: "Switches with three not overlapping paths at least"
-        def swT = topologyHelper.switchTriplets.findAll {
-            [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
-                    [it.pathsEp1, it.pathsEp2].every {
-                        it.collect { pathHelper.getInvolvedIsls(it) }
-                                .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 3
-                    } &&
-                    topology.getRelatedIsls(it.shared).size() >= 5
-        }.shuffled().first()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().withTraffgensOnEachEnd()
+                .withAtLeastNNonOverlappingPaths(3).withAtLeastNIslOnSharedEndpoint(5).random()
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create three Ha-Flows with diversity enabled"
@@ -87,11 +81,7 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
 
     def "Able to create HA-Flow diverse with regular flow that is already in diverse group with another HA-Flow"() {
         given: "Switches with two not overlapping paths at least"
-        def swT = topologyHelper.switchTriplets.find {
-            [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
-                    it.pathsEp1.collect { pathHelper.getInvolvedIsls(it) }
-                            .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
-        }
+        def swT = switchTriplets.all().withAllDifferentEndpoints().withAtLeastNNonOverlappingPaths(2).random()
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create an HA-Flow without diversity"
@@ -146,13 +136,7 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
 
     def "Able to create HA-Flow diverse with Y-Flow that is in diverse group with another HA-Flow"() {
         given: "Switches with three not overlapping paths at least"
-        def swT = topologyHelper.switchTriplets.find {
-            [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
-                    [it.pathsEp1, it.pathsEp2].every {
-                        it.collect { pathHelper.getInvolvedIsls(it) }
-                                .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 3
-                    }
-        }
+        def swT = switchTriplets.all().withAllDifferentEndpoints().withAtLeastNNonOverlappingPaths(3).random()
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create an HA-Flow without diversity"

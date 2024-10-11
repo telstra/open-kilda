@@ -19,10 +19,12 @@ import static org.openkilda.floodlight.service.zookeeper.ZooKeeperService.ZK_COM
 
 import org.openkilda.bluegreen.LifecycleEvent;
 import org.openkilda.bluegreen.Signal;
+import org.openkilda.floodlight.api.response.ChunkedSpeakerDataResponse;
 import org.openkilda.floodlight.service.zookeeper.ZooKeeperEventObserver;
 import org.openkilda.floodlight.service.zookeeper.ZooKeeperService;
 import org.openkilda.messaging.AbstractMessage;
 import org.openkilda.messaging.Message;
+import org.openkilda.messaging.MessageContext;
 import org.openkilda.messaging.info.ChunkedInfoMessage;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.InfoMessage;
@@ -84,6 +86,14 @@ public class KafkaProducerService implements IKafkaProducerService, ZooKeeperEve
     public void sendChunkedMessageAndTrack(String topic, String key, Collection<? extends InfoData> data) {
         for (Message message : ChunkedInfoMessage.createChunkedList(data, key)) {
             sendMessageAndTrack(topic, key, message);
+        }
+    }
+
+    @Override
+    public void sendChunkedSpeakerDataAndTrack(String topic, MessageContext messageContext,
+                                               Collection<? extends InfoData> data) {
+        for (AbstractMessage message : ChunkedSpeakerDataResponse.createChunkedList(data, messageContext)) {
+            sendMessageAndTrack(topic, messageContext.getCorrelationId(), message);
         }
     }
 
