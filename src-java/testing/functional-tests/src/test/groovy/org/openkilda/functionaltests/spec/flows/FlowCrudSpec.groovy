@@ -10,7 +10,6 @@ import org.openkilda.functionaltests.error.flow.FlowNotUpdatedWithMissingPathExp
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.IterationTags
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.builder.FlowBuilder
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType

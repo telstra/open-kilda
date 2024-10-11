@@ -59,43 +59,6 @@ import spock.lang.See
 import spock.lang.Shared
 
 import java.time.Instant
-
-import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
-import org.openkilda.functionaltests.extension.tags.IterationTag
-import org.openkilda.functionaltests.extension.tags.IterationTags
-import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.SwitchPair
-import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.Flow
-import org.openkilda.model.FlowEncapsulationType
-import org.openkilda.model.MeterId
-import org.openkilda.model.SwitchFeature
-import org.openkilda.model.SwitchId
-import org.openkilda.model.cookie.Cookie
-import org.openkilda.northbound.dto.v1.flows.ConnectedDeviceDto
-import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
-import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
-import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
-import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDeviceDto
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
-import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.service.traffexam.model.ArpData
-import org.openkilda.testing.service.traffexam.model.LldpData
-import org.openkilda.testing.tools.ConnectedDevice
-
-import com.github.javafaker.Faker
-import groovy.transform.AutoClone
-import groovy.transform.Memoized
-import groovy.util.logging.Slf4j
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.client.HttpClientErrorException
-import spock.lang.Narrative
-import spock.lang.See
-import spock.lang.Shared
-
-import java.time.Instant
 import jakarta.inject.Provider
 
 @Slf4j
