@@ -34,8 +34,8 @@ import org.openkilda.wfm.topology.floodlightrouter.bolts.SpeakerToControllerProx
 import org.openkilda.wfm.topology.floodlightrouter.bolts.SpeakerToNetworkProxyBolt;
 import org.openkilda.wfm.topology.floodlightrouter.bolts.SwitchMonitorBolt;
 
-import joptsimple.internal.Strings;
 import lombok.Value;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
 import org.apache.storm.topology.BoltDeclarer;
@@ -61,7 +61,7 @@ public class FloodlightRouterTopology extends AbstractTopology<FloodlightRouterT
         super(env, "floodlightrouter-topology", FloodlightRouterTopologyConfig.class);
 
         regions = topologyConfig.getFloodlightRegions().stream()
-                .filter(entry -> !Strings.isNullOrEmpty(entry))
+                .filter(entry -> !StringUtils.isEmpty(entry))
                 .collect(Collectors.toSet());
         if (regions.isEmpty()) {
             throw new ConfigurationException("regions list must not be empty");

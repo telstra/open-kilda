@@ -202,7 +202,7 @@ public class GateTest {
         String switchId = "00:00:1b:45:18:d6:71:5a";
 
         Headers headers = Headers.builder().correlationId("some-correlation-id").build();
-        gate.listen(new ListFlowsRequest(headers), switchId);
+        gate.listen(ListFlowsRequest.builder().headers(headers).build(), switchId);
 
         ArgumentCaptor<ListFlowsResponse> argument = ArgumentCaptor.forClass(ListFlowsResponse.class);
         verify(template).send(eq(toStorm), argument.capture());

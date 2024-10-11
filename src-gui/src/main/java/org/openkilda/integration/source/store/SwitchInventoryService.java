@@ -28,9 +28,7 @@ import org.openkilda.store.model.UrlDto;
 import org.openkilda.store.service.AuthService;
 import org.openkilda.store.service.StoreService;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -38,10 +36,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 public class SwitchInventoryService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(FlowStoreService.class);
 
     @Autowired
     private StoreService storeService;
@@ -61,7 +58,7 @@ public class SwitchInventoryService {
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponseList(urlDto, authDto, InventorySwitch.class);
         } catch (Exception e) {
-            LOGGER.error("Error occurred while retriving switches", e);
+            log.error("Error occurred while retriving switches", e);
             throw new StoreIntegrationException(e);
         }
     }
@@ -82,7 +79,7 @@ public class SwitchInventoryService {
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponseList(urlDto, authDto, Customer.class);
         } catch (Exception e) {
-            LOGGER.error(
+            log.error(
                     "Error occurred while retriving switch port flows. Switch Id: " + switchId + ", Port: " + port,
                     e);
             throw new StoreIntegrationException(e);
@@ -108,7 +105,7 @@ public class SwitchInventoryService {
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponseList(urlDto, authDto, Port.class);
         } catch (Exception e) {
-            LOGGER.error("Error occurred while retriving switch ports. Switch Id: " + switchId, e);
+            log.error("Error occurred while retriving switch ports. Switch Id: " + switchId, e);
             throw new StoreIntegrationException(e);
         }
     }
@@ -131,7 +128,7 @@ public class SwitchInventoryService {
             IAuthService authService = IAuthService.getService(authDto.getAuthType());
             return authService.getResponse(urlDto, authDto, InventorySwitch.class);
         } catch (Exception e) {
-            LOGGER.error("Error occurred while retriving switches. Switch Id: " + switchId, e);
+            log.error("Error occurred while retriving switches. Switch Id: " + switchId, e);
             throw new StoreIntegrationException(e);
         }
     }

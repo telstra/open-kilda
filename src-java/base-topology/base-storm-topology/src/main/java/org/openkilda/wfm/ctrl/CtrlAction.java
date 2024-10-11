@@ -91,6 +91,14 @@ public class CtrlAction extends AbstractAction {
     }
 
 
+    /**
+     * Executes an action using the provided bolt and tuple.
+     * TODO unused, consider to remove.
+     *
+     * @param bolt a Kilda bolt
+     * @param tuple Storm tuple
+     * @return true if handle action is invoked
+     */
     public static boolean boltHandlerEntrance(ICtrlBolt bolt, Tuple tuple) {
         CtrlAction ctrl = new CtrlAction(bolt, tuple);
         ctrl.run();

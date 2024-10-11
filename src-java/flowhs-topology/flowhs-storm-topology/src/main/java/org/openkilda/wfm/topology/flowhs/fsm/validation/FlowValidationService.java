@@ -104,7 +104,7 @@ public class FlowValidationService {
             throws FlowNotFoundException, SwitchNotFoundException {
 
         Optional<Flow> foundFlow = flowRepository.findById(flowId);
-        if (!foundFlow.isPresent()) {
+        if (foundFlow.isEmpty()) {
             throw new FlowNotFoundException(flowId);
         }
         Flow flow = foundFlow.get();
@@ -118,13 +118,20 @@ public class FlowValidationService {
 
         List<SpeakerData> actualSpeakerData = flowDumpResponses.stream()
                 .flatMap(e -> e.getFlowSpeakerData().stream()).collect(Collectors.toList());
-        int rulesCount = actualSpeakerData.size();
+        List<SpeakerData> speakerDataWithFlowDumpOnly = new ArrayList<>(actualSpeakerData);
+        final int rulesCountFromFlowDumpResponsesOnly = speakerDataWithFlowDumpOnly.size();
+
         actualSpeakerData.addAll(metersDumpResponses.stream()
-                .flatMap(e -> e.getMeterSpeakerData().stream()).collect(Collectors.toList()));
-        int metersCount = new Long(metersDumpResponses.stream()
-                .mapToLong(e -> e.getMeterSpeakerData().size()).sum()).intValue();
+                .flatMap(e -> e.getMeterSpeakerData().stream()).toList());
+        long metersCountLong = metersDumpResponses.stream()
+                .mapToLong(e -> e.getMeterSpeakerData().size()).sum();
+        if (metersCountLong > (long) Integer.MAX_VALUE) {
+            log.warn("metersCount value {} is going to be narrowed", metersCountLong);
+        }
+        int metersCount = (int) metersCountLong;
+
         actualSpeakerData.addAll(groupDumpResponses.stream()
-                .flatMap(e -> e.getGroupSpeakerData().stream()).collect(Collectors.toList()));
+                .flatMap(e -> e.getGroupSpeakerData().stream()).toList());
 
         Map<SwitchId, List<SimpleSwitchRule>> actualSimpleSwitchRulesBySwitchId
                 = simpleSwitchRuleConverter.convertSpeakerDataToSimpleSwitchRulesAndGroupBySwitchId(actualSpeakerData);
@@ -147,7 +154,7 @@ public class FlowValidationService {
                 simpleSwitchRuleConverter.convertSpeakerDataToSimpleSwitchRulesAndGroupBySwitchId(expectedForwardRules)
                         .values().stream().flatMap(Collection::stream).collect(Collectors.toList()),
                 flowId,
-                rulesCount,
+                rulesCountFromFlowDumpResponsesOnly,
                 metersCount,
                 FORWARD));
 
@@ -158,7 +165,7 @@ public class FlowValidationService {
                 simpleSwitchRuleConverter.convertSpeakerDataToSimpleSwitchRulesAndGroupBySwitchId(expectedReversRules)
                         .values().stream().flatMap(Collection::stream).collect(Collectors.toList()),
                 flowId,
-                rulesCount,
+                rulesCountFromFlowDumpResponsesOnly,
                 metersCount,
                 REVERSE));
 
@@ -174,7 +181,7 @@ public class FlowValidationService {
                                     expectProtectedForwardRules)
                             .values().stream().flatMap(Collection::stream).collect(Collectors.toList()),
                     flowId,
-                    rulesCount,
+                    rulesCountFromFlowDumpResponsesOnly,
                     metersCount,
                     PROTECTED_FORWARD));
         }
@@ -189,7 +196,7 @@ public class FlowValidationService {
                                     expectProtectedReversRules)
                             .values().stream().flatMap(Collection::stream).collect(Collectors.toList()),
                     flowId,
-                    rulesCount,
+                    rulesCountFromFlowDumpResponsesOnly,
                     metersCount,
                     PROTECTED_REVERSE));
         }

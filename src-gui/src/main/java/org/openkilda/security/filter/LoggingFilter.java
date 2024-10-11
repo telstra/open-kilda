@@ -19,10 +19,11 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -32,19 +33,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 /**
  * The Class LoggingFilter.
  *
  * @author Gaurav Chugh
  */
+@Slf4j
 public class LoggingFilter extends OncePerRequestFilter {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(LoggingFilter.class);
 
     private static final String REQUEST_PREFIX = "Request: ";
 
@@ -55,13 +50,13 @@ public class LoggingFilter extends OncePerRequestFilter {
      *
      * @see
      * org.springframework.web.filter.OncePerRequestFilter#doFilterInternal(
-     * javax.servlet.http. HttpServletRequest,
-     * javax.servlet.http.HttpServletResponse, javax.servlet.FilterChain)
+     * jakarta.servlet.http. HttpServletRequest,
+     * jakarta.servlet.http.HttpServletResponse, jakarta.servlet.FilterChain)
      */
     @Override
     protected void doFilterInternal(final HttpServletRequest request, final HttpServletResponse response,
-            final FilterChain filterChain) throws ServletException, IOException {
-        if (LOGGER.isDebugEnabled()) {
+                                    final FilterChain filterChain) throws ServletException, IOException {
+        if (log.isDebugEnabled()) {
             List<String> apis = Arrays.asList("stats/", "switch/");
 
             final long startTime = System.currentTimeMillis();
@@ -90,12 +85,12 @@ public class LoggingFilter extends OncePerRequestFilter {
                         logResponse(responseWrapper);
                     }
                 } catch (Exception e) {
-                    LOGGER.error("Logging filter. Exception: " + e.getMessage(), e);
+                    log.error("Logging filter. Exception: " + e.getMessage(), e);
                 }
             }
             long elapsedTime = System.currentTimeMillis() - startTime;
             if (60000 - elapsedTime < 0) {
-                LOGGER.debug("Logging filter delayed request detail - Time Taken: '{}', URL: '{}'", elapsedTime,
+                log.debug("Logging filter delayed request detail - Time Taken: '{}', URL: '{}'", elapsedTime,
                         request.getRequestURL());
             }
         } else {
@@ -123,16 +118,16 @@ public class LoggingFilter extends OncePerRequestFilter {
             msg.append("', \n\tparams: '").append(key + " : " + parameters.get(key));
         });
 
-        LOGGER.debug("Log request. Request: " + msg.toString());
+        log.debug("Log request. Request: " + msg.toString());
     }
 
     /**
      * Log response.
      *
      * @param response the response
-     * @throws JsonParseException the json parse exception
+     * @throws JsonParseException   the json parse exception
      * @throws JsonMappingException the json mapping exception
-     * @throws IOException Signals that an I/O exception has occurred.
+     * @throws IOException          Signals that an I/O exception has occurred.
      */
     private void logResponse(final ResponseWrapper response)
             throws JsonParseException, JsonMappingException, IOException {
@@ -148,10 +143,10 @@ public class LoggingFilter extends OncePerRequestFilter {
 
             msg.append("\nResponse: \n").append(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(json));
         } catch (UnsupportedEncodingException e) {
-            LOGGER.error("Log response. Exception: " + e.getMessage(), e);
+            log.error("Log response. Exception: " + e.getMessage(), e);
         } catch (MismatchedInputException e) {
             msg.append("\nResponse: \n").append(content);
         }
-        LOGGER.debug("Log response. Response: " + msg.toString());
+        log.debug("Log response. Response: " + msg.toString());
     }
 }

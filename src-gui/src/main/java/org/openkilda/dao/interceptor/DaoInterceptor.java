@@ -19,12 +19,11 @@ import org.openkilda.auth.context.ServerContext;
 import org.openkilda.auth.model.RequestContext;
 import org.openkilda.entity.BaseEntity;
 
+import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -34,12 +33,10 @@ import java.util.Collection;
 /**
  * The Class DaoInterceptor.
  */
+@Slf4j
 @Component
 @Aspect
 public class DaoInterceptor {
-
-    /** The Constant _log. */
-    private static final Logger _log = LoggerFactory.getLogger(DaoInterceptor.class);
 
     /** The server context. */
     @Autowired
@@ -87,7 +84,7 @@ public class DaoInterceptor {
                     entity.setCreatedBy(userId);
                     entity.setCreatedDate(Calendar.getInstance().getTime());
                 }
-                _log.debug("[updateUserInformation] Update created and updated by in entity.");
+                log.debug("[updateUserInformation] Update created and updated by in entity.");
             }
         }
     }

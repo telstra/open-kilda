@@ -15,16 +15,9 @@
 
 package org.openkilda.saml.provider;
 
-import org.openkilda.saml.model.SamlConfig;
-import org.openkilda.saml.service.SamlService;
-import org.openkilda.security.ApplicationContextProvider;
-
-import org.opensaml.saml2.metadata.provider.AbstractReloadingMetadataProvider;
-import org.opensaml.saml2.metadata.provider.MetadataProviderException;
-
 import java.util.Timer;
 
-public class DbMetadataProvider extends AbstractReloadingMetadataProvider {
+public class DbMetadataProvider {
 
     public DbMetadataProvider() {
         super();
@@ -49,7 +42,6 @@ public class DbMetadataProvider extends AbstractReloadingMetadataProvider {
     */
 
     public DbMetadataProvider(Timer backgroundTaskTimer, String entityId) {
-        super(backgroundTaskTimer);
         setMetaDataEntityId(entityId);
     }
 
@@ -61,26 +53,4 @@ public class DbMetadataProvider extends AbstractReloadingMetadataProvider {
         this.metaDataEntityId = metaDataEntityId;
     }
 
-    @Override
-    protected String getMetadataIdentifier() { 
-        return getMetaDataEntityId();
-    }
-    
-    //This example code simply does straight JDBC
-    @Override
-    protected byte[] fetchMetadata() throws MetadataProviderException {
-        try {
-            SamlService samlService = ApplicationContextProvider.getContext().getBean(SamlService.class);
-            SamlConfig samlConfig = samlService.getById(getMetaDataEntityId());
-            byte[] bytes = null;
-            if (samlConfig.getMetadata() != null) { 
-                String metadata = samlConfig.getMetadata();
-                bytes = metadata.getBytes();
-            }
-            return bytes;
-        } catch (Exception e) {
-            String errorMessage = "Unable to query metadata from database with entityId = " + getMetaDataEntityId();
-            throw new MetadataProviderException(errorMessage, e);
-        }
-    }
 }

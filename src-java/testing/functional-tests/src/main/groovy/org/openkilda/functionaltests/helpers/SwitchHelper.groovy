@@ -46,7 +46,7 @@ import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2Exten
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.tools.ConnectedDevice
 import org.openkilda.testing.tools.IslUtils
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
@@ -299,11 +299,11 @@ class SwitchHelper {
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                      VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE,
                      CATCH_BFD_RULE_COOKIE, ROUND_TRIP_LATENCY_RULE_COOKIE]
-                     + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
+                    + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
         } else if ((sw.noviflow || sw.nbFormat().manufacturer == "E") && sw.wb5164) {
             return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
                      VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE]
-                     + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
+                    + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
         } else if (sw.ofVersion == "OF_12") {
             return [VERIFICATION_BROADCAST_RULE_COOKIE]
         } else {
@@ -405,11 +405,11 @@ class SwitchHelper {
         return response
     }
 
-    static SwitchFlowsPerPortResponse getFlowsV2(Switch sw, List<Integer> portIds = []){
+    static SwitchFlowsPerPortResponse getFlowsV2(Switch sw, List<Integer> portIds = []) {
         return northboundV2.get().getSwitchFlows(new SwitchId(sw.getDpId().getId()), portIds)
     }
 
-    static List<Integer> "get used ports" (SwitchId switchId) {
+    static List<Integer> "get used ports"(SwitchId switchId) {
         return northboundV2.get().getSwitchFlows(switchId, []).flowsByPort.keySet().asList()
     }
 
@@ -453,7 +453,7 @@ class SwitchHelper {
      */
     static void verifyMeterSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
                                             List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         if (switchValidateInfo.meters) {
             sections.each { section ->
                 if (section == "proper") {
@@ -470,7 +470,7 @@ class SwitchHelper {
 
     static void verifyMeterSectionsAreEmpty(SwitchValidationV2ExtendedResult switchValidateInfo,
                                             List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         if (switchValidateInfo.meters) {
             sections.each { section ->
                 if (section == "proper") {
@@ -494,7 +494,7 @@ class SwitchHelper {
      */
     static void verifyRuleSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
                                            List<String> sections = ["missing", "proper", "excess", "misconfigured"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         sections.each { String section ->
             if (section == "proper") {
                 assertions.checkSucceeds {
@@ -512,7 +512,7 @@ class SwitchHelper {
 
     static void verifyRuleSectionsAreEmpty(SwitchValidationV2ExtendedResult switchValidateInfo,
                                            List<String> sections = ["missing", "proper", "excess", "misconfigured"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         sections.each { String section ->
             if (section == "proper") {
                 assertions.checkSucceeds {
@@ -538,7 +538,7 @@ class SwitchHelper {
     static void verifyHexRuleSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
                                               List<String> sections = ["properHex", "excessHex", "missingHex",
                                                                        "misconfiguredHex"]) {
-        def assertions = new SoftAssertions()
+        def assertions = new SoftAssertionsWrapper()
         sections.each { String section ->
             if (section == "properHex") {
                 def defaultCookies = switchValidateInfo.rules.proper.findAll {

@@ -18,22 +18,24 @@ package org.openkilda.bluegreen;
 import static java.lang.String.format;
 
 import com.google.common.annotations.VisibleForTesting;
+import dev.failsafe.Failsafe;
+import dev.failsafe.RetryPolicy;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
+import org.slf4j.MDC;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 
 @Slf4j
 @SuperBuilder
@@ -42,6 +44,7 @@ public abstract class ZkClient implements Watcher {
     private static final int DEFAULT_SESSION_TIMEOUT = 30000;
     public static final long DEFAULT_CONNECTION_REFRESH_INTERVAL = 10;
     public static final int RECONNECT_DELAY_MS = 100;
+    private static final String CORRELATION_ID = "correlation_id";
 
     @Getter
     protected String id;
@@ -54,6 +57,7 @@ public abstract class ZkClient implements Watcher {
     protected Instant lastRefreshAttempt;
     protected long connectionRefreshInterval;
     protected long reconnectDelayMs;
+    private String correlationId;
 
     public ZkClient(String id, String serviceName, String connectionString, int sessionTimeout,
                     long connectionRefreshInterval, long reconnectDelayMs) {
@@ -71,6 +75,7 @@ public abstract class ZkClient implements Watcher {
             reconnectDelayMs = RECONNECT_DELAY_MS;
         }
         this.reconnectDelayMs = reconnectDelayMs;
+        this.correlationId = UUID.randomUUID().toString();
     }
 
     /**
@@ -79,20 +84,20 @@ public abstract class ZkClient implements Watcher {
     public synchronized void initAndWaitConnection() {
         init();
 
-        RetryPolicy<Void> retryPolicy = new RetryPolicy<Void>()
+        RetryPolicy<Void> retryPolicy = RetryPolicy.<Void>builder()
                 .handle(IllegalStateException.class)
                 .withMaxRetries(-1)
                 .withDelay(Duration.ofMillis(reconnectDelayMs))
                 .onRetry(e -> {
                     String message = format("Failed to init zk client, retrying... Attempt: %d", e.getAttemptCount());
                     if (e.getAttemptCount() <= 10) {
-                        log.info(message, e.getLastFailure());
+                        log.info("{}. Error: {}", message, e.getLastException().getMessage());
                     } else if (e.getAttemptCount() <= 20) {
-                        log.warn(message, e.getLastFailure());
+                        log.warn(message, e.getLastException());
                     } else {
-                        log.error(message, e.getLastFailure());
+                        log.error(message, e.getLastException());
                     }
-                });
+                }).build();
 
         Failsafe.with(retryPolicy)
                 .run(this::reconnect);
@@ -171,6 +176,7 @@ public abstract class ZkClient implements Watcher {
 
     void initZk() throws IOException {
         nodesValidated = false;
+        MDC.put(CORRELATION_ID, correlationId);
         zookeeper = getZk();
     }
 

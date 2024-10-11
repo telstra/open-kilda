@@ -46,7 +46,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
 import org.openkilda.testing.service.traffexam.model.ArpData
 import org.openkilda.testing.service.traffexam.model.LldpData
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import com.github.javafaker.Faker
 import groovy.transform.AutoClone
@@ -59,11 +59,48 @@ import spock.lang.See
 import spock.lang.Shared
 
 import java.time.Instant
-import javax.inject.Provider
+
+import org.openkilda.functionaltests.HealthCheckSpecification
+import org.openkilda.functionaltests.error.flow.FlowNotFoundExpectedError
+import org.openkilda.functionaltests.extension.tags.IterationTag
+import org.openkilda.functionaltests.extension.tags.IterationTags
+import org.openkilda.functionaltests.extension.tags.Tags
+import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchPair
+import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.Flow
+import org.openkilda.model.FlowEncapsulationType
+import org.openkilda.model.MeterId
+import org.openkilda.model.SwitchFeature
+import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.northbound.dto.v1.flows.ConnectedDeviceDto
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
+import org.openkilda.northbound.dto.v2.flows.DetectConnectedDevicesV2
+import org.openkilda.northbound.dto.v2.flows.FlowRequestV2
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDeviceDto
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.service.traffexam.model.ArpData
+import org.openkilda.testing.service.traffexam.model.LldpData
+import org.openkilda.testing.tools.ConnectedDevice
+
+import com.github.javafaker.Faker
+import groovy.transform.AutoClone
+import groovy.transform.Memoized
+import groovy.util.logging.Slf4j
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.client.HttpClientErrorException
+import spock.lang.Narrative
+import spock.lang.See
+import spock.lang.Shared
+
+import java.time.Instant
+import jakarta.inject.Provider
 
 @Slf4j
 @Narrative("""
-Verify ability to detect connected devices per flow endpoint (src/dst). 
+Verify ability to detect connected devices per flow endpoint (src/dst).
 Verify allocated Connected Devices resources and installed rules.""")
 @See("https://github.com/telstra/open-kilda/tree/develop/docs/design/connected-devices-lldp")
 
@@ -85,9 +122,9 @@ class ConnectedDevicesSpec extends HealthCheckSpecification {
     ])
     def "Able to create a #flowDescr flow with lldp and arp enabled on #devicesDescr, encapsulation #data.encapsulation"() {
         assumeTrue(data.encapsulation != FlowEncapsulationType.VXLAN,
-"Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
+                "Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
         assumeTrue(data.switchPair.paths.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }.size() >= 2,
- "Unable to find swPair with protected path")
+                "Unable to find swPair with protected path")
 
         given: "A flow with enabled or disabled connected devices"
         def expectedFlowEntity = getFlowWithConnectedDevices(data)
@@ -857,7 +894,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     @IterationTag(tags = [HARDWARE], iterationNameRegex = /VXLAN/)
     def "System detects devices for a qinq(iVlan=#vlanId oVlan=#innerVlanId) flow with lldp and arp enabled on the src switch"() {
         assumeTrue(encapsulationType != FlowEncapsulationType.VXLAN,
-"Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
+                "Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
 
         given: "Two switches connected to traffgen"
         def switchPair = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
@@ -1140,7 +1177,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         })
 
         and: "Flow has been updated successfully"
-        flow.update(flow.tap { it.maximumBandwidth = flow.maximumBandwidth + 1})
+        flow.update(flow.tap { it.maximumBandwidth = flow.maximumBandwidth + 1 })
 
         then: "Check excess rules are not registered on device"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
@@ -1171,7 +1208,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
         })
 
         and: "Flow is created on a target switch with devices feature 'off'"
-        def dstTg = topology.activeTraffGens.find{it != tg && it.getSwitchConnected().getDpId() != sw.getDpId()}
+        def dstTg = topology.activeTraffGens.find { it != tg && it.getSwitchConnected().getDpId() != sw.getDpId() }
         def dst = dstTg.getSwitchConnected()
         def outerVlan = 100
         def flow = flowFactory.getBuilder(sw, dst, true)
@@ -1192,8 +1229,8 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         def tgService = traffExamProvider.get()
         //retrieving devices for both src/dst endpoints, but only specifying flow vlan(outerVlan) without inner_vlan
-        def sourceConnectedDevice = flow.sourceConnectedDeviceExam(tgService,  [outerVlan])
-        def destinationConnectedDevice = flow.destinationConnectedDeviceExam(tgService,  [outerVlan])
+        def sourceConnectedDevice = flow.sourceConnectedDeviceExam(tgService, [outerVlan])
+        def destinationConnectedDevice = flow.destinationConnectedDeviceExam(tgService, [outerVlan])
         sourceConnectedDevice.sendLldp()
         destinationConnectedDevice.sendLldp()
         sourceConnectedDevice.sendArp()
@@ -1230,7 +1267,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Flow is created on a target switch with devices feature 'off'"
         def tgService = traffExamProvider.get()
-        def dstTg = topology.activeTraffGens.find{it != tg && it.getSwitchConnected().getDpId() != sw.getDpId()}
+        def dstTg = topology.activeTraffGens.find { it != tg && it.getSwitchConnected().getDpId() != sw.getDpId() }
         def dst = dstTg.getSwitchConnected()
         def outerVlan = 100
         def flow = flowFactory.getBuilder(sw, dst)
@@ -1303,7 +1340,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     }
 
     private void validateLldpArpMeters(SwitchId switchId) {
-        SoftAssertions assertions = new SoftAssertions()
+        SoftAssertionsWrapper assertions = new SoftAssertionsWrapper()
         def validationResponse = switchHelper.validate(switchId)
         assertions.checkSucceeds { assert validationResponse.meters.asExpected }
         assertions.checkSucceeds { assert validationResponse.meters.proper.findAll { it.meterId == createMeterIdForDefaultRule(LLDP_POST_INGRESS_COOKIE).value }.size() == 1 }
@@ -1320,7 +1357,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
     @Memoized
     List<SwitchPair> getUniqueSwitchPairs() {
         def tgSwitches = topology.activeTraffGens*.switchConnected
-                                 .findAll { it.features.contains(SwitchFeature.MULTI_TABLE) }
+                .findAll { it.features.contains(SwitchFeature.MULTI_TABLE) }
         def unpickedTgSwitches = tgSwitches.unique(false) { [it.description, it.nbFormat().hardware].sort() }
         List<SwitchPair> switchPairs = switchPairs.all().withTraffgensOnBothEnds().getSwitchPairs()
         def result = []

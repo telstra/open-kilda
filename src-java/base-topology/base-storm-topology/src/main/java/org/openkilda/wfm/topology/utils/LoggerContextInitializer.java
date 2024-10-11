@@ -25,12 +25,10 @@ import org.openkilda.messaging.Message;
 import org.openkilda.wfm.AbstractBolt;
 import org.openkilda.wfm.CommandContext;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.storm.tuple.Fields;
 import org.apache.storm.tuple.Tuple;
@@ -139,7 +137,7 @@ public class LoggerContextInitializer {
                     return context;
                 }
             } else if (messageField instanceof String) {
-                String corrId = exractFromJson((String) messageField);
+                String corrId = extractFromJson((String) messageField);
                 if (corrId != null) {
                     return Optional.of(new CommandContext(corrId));
                 }
@@ -147,7 +145,7 @@ public class LoggerContextInitializer {
         }
 
         if (fields.contains(FIELD_ID_JSON)) {
-            String corrId = exractFromJson(input.getStringByField(FIELD_ID_JSON));
+            String corrId = extractFromJson(input.getStringByField(FIELD_ID_JSON));
             if (corrId != null) {
                 return Optional.of(new CommandContext(corrId));
             }
@@ -156,20 +154,16 @@ public class LoggerContextInitializer {
         return Optional.empty();
     }
 
-    private static String exractFromJson(String jsonStr) {
-        JsonParser jsonParser = new JsonParser();
+    private static String extractFromJson(String jsonStr) {
+        ObjectMapper objectMapper = new ObjectMapper();
+
         try {
-            JsonElement json = jsonParser.parse(jsonStr);
-            if (json.isJsonObject()) {
-                JsonPrimitive corrIdObj = ((JsonObject) json).getAsJsonPrimitive(CORRELATION_ID);
-                if (corrIdObj != null && corrIdObj.isString()) {
-                    return corrIdObj.getAsString();
-                }
-            }
-        } catch (JsonParseException ex) {
+            Map<String, Object> values = objectMapper.readValue(jsonStr, new TypeReference<>() {});
+            return values.get(CORRELATION_ID) == null ? null : String.valueOf(values.get(CORRELATION_ID));
+        } catch (JsonProcessingException ex) {
             LOGGER.warn("Unable to parse message payload as a JSON object.", ex);
+            return null;
         }
-        return null;
     }
 
     private static Map<String, String> prepareFields(CommandContext context) {

@@ -1,4 +1,4 @@
-/* Copyright 2019 Telstra Open Source
+/* Copyright 2024 Telstra Open Source
  *
  *   Licensed under the Apache License, Version 2.0 (the "License");
  *   you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 
 package org.openkilda.integration.service;
 
+import static org.openkilda.utility.SwitchUtil.customSwitchName;
+
 import org.openkilda.config.ApplicationProperties;
 import org.openkilda.constants.IConstants;
 import org.openkilda.helper.RestClientManager;
@@ -23,9 +25,8 @@ import org.openkilda.model.NetworkPathInfo;
 import org.openkilda.model.Path;
 import org.openkilda.service.ApplicationService;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
@@ -37,11 +38,9 @@ import java.util.List;
  *
  * @author Swati Sharma
  */
-
+@Slf4j
 @Service
 public class NetworkIntegrationService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(NetworkIntegrationService.class);
 
     @Autowired
     private RestClientManager restClientManager;
@@ -65,10 +64,8 @@ public class NetworkIntegrationService {
         NetworkPathInfo networkPath = getNetworkPath(srcSwitch, dstSwitch, strategy, maxLatency);
         if (networkPath != null) {
             List<Path> pathList = networkPath.getPaths();
-            pathList.forEach(path -> {
-                path.getNode().forEach(node -> node.setSwitchName(switchIntegrationService
-                        .customSwitchName(switchIntegrationService.getSwitchNames(), node.getSwitchId())));
-            });
+            pathList.forEach(path -> path.getNode().forEach(node -> node.setSwitchName(
+                    customSwitchName(switchIntegrationService.getSwitchNames(), node.getSwitchId()))));
             return networkPath;
         }
         return null;
@@ -92,7 +89,7 @@ public class NetworkIntegrationService {
                 return restClientManager.getResponse(response, NetworkPathInfo.class);
             }
         } catch (InvalidResponseException e) {
-            LOGGER.error("Error occurred while getting network path", e);
+            log.error("Error occurred while getting network path", e);
             throw new InvalidResponseException(e.getCode(), e.getResponse());
         }
         return null;

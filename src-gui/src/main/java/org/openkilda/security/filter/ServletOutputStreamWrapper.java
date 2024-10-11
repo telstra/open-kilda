@@ -15,20 +15,19 @@
 
 package org.openkilda.security.filter;
 
+import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.WriteListener;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-
-import javax.servlet.ServletOutputStream;
-import javax.servlet.WriteListener;
 
 /**
  * ServletOutputStreamWrapper is a wrapper of {@link ServletOutputStream}. The data passed is
  * written in one more secondary stream parallel to main stream to read any time, without affecting
  * the main stream.
- * 
- * @author Gaurav Chugh
  *
+ * @author Gaurav Chugh
  */
 public class ServletOutputStreamWrapper extends ServletOutputStream {
 
@@ -42,7 +41,7 @@ public class ServletOutputStreamWrapper extends ServletOutputStream {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see java.io.OutputStream#write(int)
      */
     @Override
@@ -53,7 +52,7 @@ public class ServletOutputStreamWrapper extends ServletOutputStream {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see java.io.OutputStream#write(byte[])
      */
     @Override
@@ -64,7 +63,7 @@ public class ServletOutputStreamWrapper extends ServletOutputStream {
 
     /**
      * Returns the data from secondary stream.
-     * 
+     *
      * @return byte[] having data available in the stream.
      */
     public byte[] getData() {

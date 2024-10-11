@@ -22,6 +22,7 @@ import org.openkilda.constants.IConstants.StorageType;
 import org.openkilda.service.ApplicationSettingService;
 import org.openkilda.validator.ApplicationSettingsValidator;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,11 +34,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
-
 /**
  * The Class SessionTimeoutController.
- *
  */
 
 @RestController
@@ -76,20 +74,20 @@ public class ApplicationSettingController extends BaseController {
     /**
      * Save or update application setting.
      *
-     * @param type the type
-     * @param value the value
+     * @param type    the type
+     * @param value   the value
      * @param request the request
      */
     @ResponseStatus(HttpStatus.OK)
     @RequestMapping(value = "/{type}", method = RequestMethod.PATCH)
-    @Permissions(values = { IConstants.Permission.APPLICATION_SETTING })
+    @Permissions(values = {IConstants.Permission.APPLICATION_SETTING})
     public void saveOrUpdateApplicationSetting(@PathVariable("type") ApplicationSetting type, @RequestBody String value,
-            HttpServletRequest request) {
+                                               HttpServletRequest request) {
 
         applicationSettingsValidator.validate(type, value);
         value = value.trim().toUpperCase();
         applicationSettingService.saveOrUpdateApplicationSetting(type, value);
-        
+
         if (type == ApplicationSetting.SESSION_TIMEOUT) {
             request.getSession().setMaxInactiveInterval(Integer.valueOf(value) * 60);
         }

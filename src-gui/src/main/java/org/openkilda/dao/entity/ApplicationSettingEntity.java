@@ -15,19 +15,18 @@
 
 package org.openkilda.dao.entity;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 import lombok.Data;
 
 import java.io.Serializable;
 import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 
 @Entity
 @Table(name = "APPLICATION_SETTING")
@@ -43,19 +42,20 @@ public class ApplicationSettingEntity implements Serializable {
 
     @Column(name = "setting_type", nullable = false)
     private String settingType;
-    
+
     @Column(name = "setting_value", nullable = false)
     private String value;
-    
+
     @Column(name = "description")
     private String description;
-    
+
     @Column(name = "updated_date")
     @Temporal(TemporalType.TIMESTAMP)
     private Date updatedDate;
-    
-    public ApplicationSettingEntity(){}
-    
+
+    public ApplicationSettingEntity() {
+    }
+
     public ApplicationSettingEntity(final String settingType) {
         this.settingType = settingType;
     }

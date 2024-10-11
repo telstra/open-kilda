@@ -18,11 +18,10 @@ package org.openkilda.controller;
 import org.openkilda.auth.model.Permissions;
 import org.openkilda.constants.IConstants;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.ModelAndView;
-
-import javax.servlet.http.HttpServletRequest;
 
 /**
  * The Class StoreSettingController.
@@ -41,7 +40,7 @@ public class StoreSettingController extends BaseController {
      * @return the model and view
      */
     @RequestMapping
-    @Permissions(values = { IConstants.Permission.STORE_SETTING })
+    @Permissions(values = {IConstants.Permission.STORE_SETTING})
     public ModelAndView storeSettings(final HttpServletRequest request) {
         return validateAndRedirect(request, IConstants.View.STORE_SETTING);
     }

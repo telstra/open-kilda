@@ -1,15 +1,15 @@
 plugins {
-    id 'java-library'
+    id "java-library"
 }
 
-description = 'Isl Latency Topology Messaging'
+description = "Isl Latency Topology Messaging"
 dependencies {
-    api project(':base-messaging')
+    api(project(":base-messaging"))
 
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations'
-    implementation('com.fasterxml.jackson.core:jackson-databind')
+    implementation("com.fasterxml.jackson.core:jackson-core:2.16.1")
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.16.1")
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
 
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
 }

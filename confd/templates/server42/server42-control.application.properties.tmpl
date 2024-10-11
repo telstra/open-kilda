@@ -29,7 +29,7 @@ spring.devtools.add-properties=false
 management.endpoint.metrics.enabled=true
 management.endpoints.web.exposure.include=*
 management.endpoint.prometheus.enabled=true
-management.metrics.export.prometheus.enabled=true
+management.prometheus.metrics.export.enabled=true
 # Kafka
 spring.kafka.consumer.group-id={{ getv "/kilda_server42_control_kafka_group_id" }}
 spring.kafka.consumer.auto-offset-reset=latest
@@ -37,7 +37,7 @@ spring.kafka.bootstrap-servers={{ getv "/kilda_kafka_hosts" }}
 # Remove all that after move to kafka with headers support
 spring.kafka.producer.value-serializer=org.springframework.kafka.support.serializer.JsonSerializer
 spring.kafka.producer.properties.spring.json.add.type.headers=false
-spring.kafka.consumer.value-deserializer=org.springframework.kafka.support.serializer.JsonDeserializer
+spring.kafka.consumer.value-deserializer=org.openkilda.server42.control.kafka.MessageDeserializer
 spring.kafka.consumer.properties.spring.json.default.value.type=org.openkilda.server42.control.messaging.flowrtt.Message
 spring.kafka.consumer.properties.spring.json.use.type.headers=false
 spring.kafka.consumer.properties.spring.json.remove.type.headers=true

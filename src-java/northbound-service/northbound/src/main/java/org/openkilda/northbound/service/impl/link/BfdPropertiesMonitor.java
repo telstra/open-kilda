@@ -27,7 +27,6 @@ import org.springframework.scheduling.TaskScheduler;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -99,7 +98,7 @@ public class BfdPropertiesMonitor {
     }
 
     private void scheduleRead(BfdPropertiesResponse current) throws BfdPropertyApplyException {
-        Optional<Date> at = nextExecutionTime();
+        Optional<Instant> at = nextExecutionTime();
         scheduler.schedule(
                 () -> execute(current),
                 at.orElseThrow(() -> new BfdPropertyApplyException(current)));
@@ -116,12 +115,12 @@ public class BfdPropertiesMonitor {
                 });
     }
 
-    private Optional<Date> nextExecutionTime() {
+    private Optional<Instant> nextExecutionTime() {
         Instant now = Instant.now(clock);
         if (giveUpPoint.isBefore(now)) {
             return Optional.empty();
         }
-        return Optional.of(new Date(now.plus(REQUESTS_DELAY).toEpochMilli()));
+        return Optional.of(now.plus(REQUESTS_DELAY));
     }
 
     private String makeCorrelationId() {

@@ -48,6 +48,33 @@ From the openkilda-gui directory run these commands:
 
 + ```make build-nc-openkilda```
 
+### **How to Develop and Debug Open Kilda GUI**
+
+#### Install following packages and build tools on your machine:
+
++ tomcat 10
+
+Preferably via sdkman:
++ JDK 17
++ Gradle 7+
+
+Preferably via nvm:
++ NodeJs 18+
++ angular cli
+
+#### Build Angular application in ui/ directory - see README inside.
+
+#### Build the project with gradle build.
+NOTE: application.properties should be properly setup
+
+#### Using Intellij Idea add new run configuration:
+
++ choose Tomcat Local application type
++ set the path to tomcat installation
++ set default browser URL to http://localhost:8080/openkilda
++ set deployment - choose kilda-gui war file and /openkilda as an application context.
+
+Start the run/debug session and enjoy.
 
 ### **How to Run Open Kilda GUI**
 
@@ -67,7 +94,7 @@ Some other commands will run in  openkilda-gui directory :
 ----
 ### MySQL Support
 By default, application is running with Apache Derby Database. In order to run the application with MySQL database, you'll have to update following properties in [main.yaml](/confd/vars/main.yaml) file.
->kilda_gui_db_dialect: org.hibernate.dialect.MySQL5Dialect
+>kilda_gui_db_dialect: org.hibernate.dialect.MySQLDialect
 
 >kilda_gui_db_url:
 

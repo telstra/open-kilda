@@ -108,8 +108,8 @@ public class ActionBolt extends AbstractBolt implements FlowOperationsCarrier {
         }
 
         if (ComponentId.TICK_BOLT.name().equals(input.getSourceComponent())) {
-            TickBolt.TickId tickId = pullValue(input, FIELD_ID_TICK_IDENTIFIER, TickBolt.TickId.class);
-            if (TickBolt.TickId.SLA_CHECK.equals(tickId)) {
+            TickId tickId = pullValue(input, FIELD_ID_TICK_IDENTIFIER, TickId.class);
+            if (TickId.SLA_CHECK.equals(tickId)) {
                 actionService.processTick(currentShardNumber);
                 currentShardNumber = (currentShardNumber + 1) % shardCount;
             }

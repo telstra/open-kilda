@@ -32,7 +32,7 @@ import org.openkilda.northbound.dto.v2.flows.SwapFlowEndpointPayload
 import org.openkilda.northbound.dto.v2.flows.SwapFlowPayload
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.traffexam.TraffExamService
-import org.openkilda.testing.tools.SoftAssertions
+import org.openkilda.testing.tools.SoftAssertionsWrapper
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -41,7 +41,7 @@ import org.springframework.web.client.HttpServerErrorException
 import spock.lang.Ignore
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 class SwapEndpointSpec extends HealthCheckSpecification {
     //Kilda allows user to pass reserved VLAN IDs 1 and 4095 if they want.
@@ -1317,7 +1317,7 @@ switches"() {
 
     void verifyEndpoints(SwapFlowEndpointPayload response, FlowEndpointV2 flow1SrcExpected, FlowEndpointV2 flow1DstExpected,
                          FlowEndpointV2 flow2SrcExpected, FlowEndpointV2 flow2DstExpected) {
-        SoftAssertions assertions = new SoftAssertions()
+        SoftAssertionsWrapper assertions = new SoftAssertionsWrapper()
         assertions.checkSucceeds { assert response.firstFlow.source == flow1SrcExpected }
         assertions.checkSucceeds { assert response.firstFlow.destination == flow1DstExpected }
         assertions.checkSucceeds { assert response.secondFlow.source == flow2SrcExpected }
@@ -1329,7 +1329,7 @@ switches"() {
                          FlowEndpointV2 flow2SrcExpected, FlowEndpointV2 flow2DstExpected) {
         def flow1Updated = flow.retrieveDetailsV1()
         def flow2Updated = additionalFlow.retrieveDetailsV1()
-        SoftAssertions assertions = new SoftAssertions()
+        SoftAssertionsWrapper assertions = new SoftAssertionsWrapper()
         assertions.checkSucceeds { assert flow1Updated.source == flow1SrcExpected }
         assertions.checkSucceeds { assert flow1Updated.destination == flow1DstExpected }
         assertions.checkSucceeds { assert flow2Updated.source == flow2SrcExpected }

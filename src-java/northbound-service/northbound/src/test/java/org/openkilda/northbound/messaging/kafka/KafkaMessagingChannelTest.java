@@ -25,7 +25,8 @@ import org.openkilda.messaging.info.InfoMessage;
 import org.openkilda.messaging.info.event.SwitchChangeType;
 import org.openkilda.messaging.info.event.SwitchInfoData;
 import org.openkilda.model.SwitchId;
-import org.openkilda.northbound.config.KafkaConfig;
+import org.openkilda.northbound.config.KafkaNorthboundGroupConfig;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
 import org.openkilda.northbound.messaging.MessageProducer;
 import org.openkilda.northbound.messaging.MessagingChannel;
 
@@ -43,8 +44,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.util.concurrent.SettableListenableFuture;
 
 import java.util.HashSet;
 import java.util.List;
@@ -89,7 +88,7 @@ public class KafkaMessagingChannelTest {
 
         InfoData result = response.get(1, TimeUnit.SECONDS);
         Assertions.assertEquals(data, result);
-        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingRequestsEmpty());
     }
 
     @Test
@@ -105,7 +104,7 @@ public class KafkaMessagingChannelTest {
 
         InfoData result = response.get(1, TimeUnit.SECONDS);
         Assertions.assertNull(result);
-        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingRequestsEmpty());
     }
 
     @Test
@@ -123,7 +122,7 @@ public class KafkaMessagingChannelTest {
         List<InfoData> result = future.get(10, TimeUnit.SECONDS);
         Assertions.assertEquals(messagesAmount, result.size());
 
-        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingRequestsEmpty());
     }
 
     @Test
@@ -140,7 +139,7 @@ public class KafkaMessagingChannelTest {
         List<InfoData> result = future.get(10, TimeUnit.SECONDS);
 
         Assertions.assertEquals(responses, result.size());
-        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingRequestsEmpty());
     }
 
     @Test
@@ -157,7 +156,7 @@ public class KafkaMessagingChannelTest {
         List<InfoData> result = future.get(1, TimeUnit.SECONDS);
 
         Assertions.assertTrue(result.isEmpty());
-        Assertions.assertTrue(messagingChannel.getPendingChunkedRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingChunkedRequestsEmpty());
     }
 
     @Test
@@ -177,7 +176,7 @@ public class KafkaMessagingChannelTest {
             response.get(10, TimeUnit.SECONDS);
         });
         Assertions.assertTrue(response.isCompletedExceptionally());
-        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingRequestsEmpty());
     }
 
     @Test
@@ -197,7 +196,7 @@ public class KafkaMessagingChannelTest {
             response.get(1, TimeUnit.SECONDS);
         });
         Assertions.assertTrue(response.isCompletedExceptionally());
-        Assertions.assertTrue(messagingChannel.getPendingChunkedRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingChunkedRequestsEmpty());
 
     }
 
@@ -214,7 +213,7 @@ public class KafkaMessagingChannelTest {
             response.get(1, TimeUnit.SECONDS);
         });
         Assertions.assertTrue(response.isCompletedExceptionally());
-        Assertions.assertTrue(messagingChannel.getPendingRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingRequestsEmpty());
 
     }
 
@@ -231,7 +230,7 @@ public class KafkaMessagingChannelTest {
             response.get(1, TimeUnit.SECONDS);
         });
         Assertions.assertTrue(response.isCompletedExceptionally());
-        Assertions.assertTrue(messagingChannel.getPendingChunkedRequests().isEmpty());
+        Assertions.assertTrue(messagingChannel.isPendingChunkedRequestsEmpty());
 
     }
 
@@ -248,7 +247,7 @@ public class KafkaMessagingChannelTest {
     }
 
     @TestConfiguration
-    @Import(KafkaConfig.class)
+    @Import({KafkaTopicsNorthboundConfig.class, KafkaNorthboundGroupConfig.class})
     @PropertySource({"classpath:northbound.properties"})
     static class Config {
         @Bean
@@ -270,15 +269,15 @@ public class KafkaMessagingChannelTest {
         }
 
         @Override
-        public ListenableFuture<SendResult<String, Message>> send(String topic, Message message) {
-            SettableListenableFuture<SendResult<String, Message>> future = new SettableListenableFuture<>();
+        public CompletableFuture<SendResult<String, Message>> send(String topic, Message message) {
+            CompletableFuture<SendResult<String, Message>> future = new CompletableFuture<>();
             ProducerRecord<String, Message> record = new ProducerRecord<>(topic, message);
 
             if (BROKEN_TOPIC.equals(topic)) {
                 // simulation of the inability to send the message.
-                future.setException(new RuntimeException("Server is unavailable"));
+                future.completeExceptionally(new RuntimeException("Server is unavailable"));
             } else {
-                future.set(new SendResult<>(record, null));
+                future.complete(new SendResult<>(record, null));
             }
             return future;
         }

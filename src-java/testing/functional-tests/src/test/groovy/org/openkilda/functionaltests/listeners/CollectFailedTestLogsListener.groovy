@@ -35,7 +35,7 @@ class CollectFailedTestLogsListener extends AbstractSpringListener{
             def startTime = startTime.get(error.getMethod().getIteration().getDisplayName())
             def endTime = utcTimeNow()
             def logs = new RestTemplate().getForEntity(
-                    "${elasticSearchEndpoint}${elasticSearchIndex}/_search?q=" +
+                    "${elasticSearchEndpoint}/${elasticSearchIndex}/_search?q=" +
                             "@timestamp:[${startTime} TO ${endTime}]&size=10000", String.class).getBody()
             def beautifiedString = objectMapper.readValue(logs, Object.class)
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(getTargetLogFile(error), beautifiedString)
@@ -49,7 +49,9 @@ class CollectFailedTestLogsListener extends AbstractSpringListener{
     }
 
     private static File getTargetLogFile(ErrorInfo error) {
-        return new File("build/logs/${getIterationPath(error.getMethod().getIteration())}.server.log.json")
+        def file = new File("build/logs/${getIterationPath(error.getMethod().getIteration())}.server.log.json")
+        file.parentFile.mkdirs()
+        return file
     }
 
     private static Boolean isFailedInPreTest(ErrorInfo error) {

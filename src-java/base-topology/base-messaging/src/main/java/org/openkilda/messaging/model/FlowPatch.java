@@ -18,7 +18,7 @@ package org.openkilda.messaging.model;
 import org.openkilda.model.FlowEncapsulationType;
 import org.openkilda.model.PathComputationStrategy;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.Data;

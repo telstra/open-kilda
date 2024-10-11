@@ -1,52 +1,55 @@
 plugins {
-    id 'io.freefair.aspectj.post-compile-weaving'
-    id 'com.github.johnrengelman.shadow'
+    id "io.freefair.aspectj.post-compile-weaving"
+    id "com.github.johnrengelman.shadow"
 }
 
-compileJava.ajc.options.compilerArgs += '-showWeaveInfo'
-compileJava.ajc.options.compilerArgs += '-verbose'
+compileJava.ajc.options.compilerArgs += "-showWeaveInfo"
+compileJava.ajc.options.compilerArgs += "-verbose"
+compileJava.options.compilerArgs += "-Amapstruct.unmappedTargetPolicy=ERROR"
 
-description = 'Switch Manager Storm Topology'
+description = "Switch Manager Storm Topology"
 dependencies {
-    implementation project(':base-storm-topology')
-    implementation project(':swmanager-messaging')
-    implementation project(':grpc-api')
-    aspect project(':base-storm-topology')
-    // runtimeClasspath because 'releaseArtifacts' shouldn't go for tests.
-    runtimeClasspath project(path: ':base-storm-topology', configuration: 'releaseArtifacts')
-    testImplementation project(path: ':base-storm-topology', configuration: 'testArtifacts')
-    implementation project(':flowhs-messaging')
-    implementation project(':floodlight-api')
-    implementation project(':kilda-reporting')
-    runtimeOnly project(':kilda-persistence-orientdb')
-    runtimeOnly project(':kilda-persistence-hibernate')
-    implementation project(':blue-green')
-    implementation project(':rule-manager-api')
-    implementation project(':rule-manager-implementation')
+    implementation(project(":base-storm-topology"))
+    implementation(project(":swmanager-messaging"))
+    implementation(project(":grpc-api"))
+    implementation(project(":flowhs-messaging"))
+    implementation(project(":floodlight-api"))
+    implementation(project(":kilda-reporting"))
+    implementation(project(":blue-green"))
+    implementation(project(":rule-manager-api"))
+    implementation(project(":rule-manager-implementation"))
+    implementation("org.yaml:snakeyaml:2.2")
+    implementation("org.apache.commons:commons-lang3")
 
-    compileOnly('org.apache.storm:storm-core')
-    testImplementation('org.apache.storm:storm-core')
+    aspect(project(":base-storm-topology"))
+    // runtimeClasspath because "releaseArtifacts" shouldn"t go for tests.
+    runtimeClasspath(project(path: ":base-storm-topology", configuration: "releaseArtifacts"))
+    runtimeOnly(project(":kilda-persistence-orientdb"))
+    runtimeOnly(project(":kilda-persistence-hibernate"))
+    compileOnly("org.apache.storm:storm-core"){
+        exclude(group: "org.yaml", module: "snakeyaml")
+    }
 
-    implementation 'org.apache.commons:commons-lang3'
+    testImplementation(project(path: ":base-storm-topology", configuration: "testArtifacts"))
+    testImplementation("org.apache.storm:storm-core")
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine")
+    testImplementation("org.junit.jupiter:junit-jupiter-params")
+    testImplementation("org.mockito:mockito-junit-jupiter")
+    testImplementation("org.hamcrest:hamcrest-library")
+    testRuntimeOnly("org.apache.logging.log4j:log4j-slf4j-impl")
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api'
-    testImplementation 'org.junit.jupiter:junit-jupiter-engine'
-    testImplementation 'org.junit.jupiter:junit-jupiter-params'
-    testImplementation 'org.mockito:mockito-junit-jupiter'
-    testImplementation 'org.hamcrest:hamcrest-library'
-    testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
+    implementation("org.mapstruct:mapstruct")
+    implementation("org.mapstruct:mapstruct-processor")
+    annotationProcessor("org.mapstruct:mapstruct-processor")
+    testAnnotationProcessor("org.mapstruct:mapstruct-processor")
 
-    implementation 'org.mapstruct:mapstruct'
-    implementation 'org.mapstruct:mapstruct-processor'
-    annotationProcessor 'org.mapstruct:mapstruct-processor'
-    testAnnotationProcessor 'org.mapstruct:mapstruct-processor'
-
-    compileOnly 'org.projectlombok:lombok'
-    testCompileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    testAnnotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
-    testAnnotationProcessor 'org.projectlombok:lombok-mapstruct-binding'
+    compileOnly("org.projectlombok:lombok")
+    testCompileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    testAnnotationProcessor("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding")
+    testAnnotationProcessor("org.projectlombok:lombok-mapstruct-binding")
 }
 
 jar {
@@ -54,12 +57,13 @@ jar {
         attributes 'Main-Class': 'org.openkilda.wfm.topology.switchmanager.SwitchManagerTopology'
     }
 
-    classifier = 'original'
+    archiveClassifier = "original"
 }
 
 shadowJar {
-    classifier = ''
+    archiveClassifier = ""
     mergeServiceFiles()
+    zip64 true
 }
 
 artifacts {

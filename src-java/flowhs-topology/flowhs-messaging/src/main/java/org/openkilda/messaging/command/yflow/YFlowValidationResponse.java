@@ -18,7 +18,7 @@ package org.openkilda.messaging.command.yflow;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.info.flow.FlowValidationResponse;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategy.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

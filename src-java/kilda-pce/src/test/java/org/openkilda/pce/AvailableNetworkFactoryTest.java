@@ -17,6 +17,7 @@ package org.openkilda.pce;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -41,14 +42,16 @@ import org.openkilda.persistence.repositories.RepositoryFactory;
 import com.google.common.collect.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+@ExtendWith(MockitoExtension.class)
 public class AvailableNetworkFactoryTest {
 
     public static final SwitchId SWITCH_ID_1 = new SwitchId(1);
@@ -84,11 +87,8 @@ public class AvailableNetworkFactoryTest {
 
     @BeforeEach
     public void setup() {
-        MockitoAnnotations.initMocks(this);
-
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
-        when(repositoryFactory.createHaFlowPathRepository()).thenReturn(haFlowPathRepository);
 
         availableNetworkFactory = new AvailableNetworkFactory(config, repositoryFactory);
     }
@@ -281,7 +281,6 @@ public class AvailableNetworkFactoryTest {
         when(islRepository.findSymmetricActiveByBandwidthAndEncapsulationType(flow1.getBandwidth(),
                 flow1.getEncapsulationType()))
                 .thenReturn(Collections.singletonList(isl1));
-        when(flowPathRepository.findById(PATH_ID_1)).thenReturn(Optional.of(flowPath1));
         when(flowPathRepository.findById(PATH_ID_2)).thenReturn(Optional.of(flowPath2));
         when(flowPathRepository.findById(PATH_ID_3)).thenReturn(Optional.of(flowPath3));
 
@@ -356,14 +355,15 @@ public class AvailableNetworkFactoryTest {
         when(islRepository.findSymmetricActiveByBandwidthAndEncapsulationType(flow1.getBandwidth(),
                 flow1.getEncapsulationType()))
                 .thenReturn(Collections.singletonList(isl1));
-        when(flowPathRepository.findById(PATH_ID_1)).thenReturn(Optional.of(flowPath1));
-        when(flowPathRepository.findById(PATH_ID_2)).thenReturn(Optional.of(flowPath2));
-        when(flowPathRepository.findById(PATH_ID_3)).thenReturn(Optional.of(flowPath3));
+        // these lenient mocks are actually used inside assertAvailableNetworkIsCorrect
+        lenient().when(flowPathRepository.findById(PATH_ID_1)).thenReturn(Optional.of(flowPath1));
+        lenient().when(flowPathRepository.findById(PATH_ID_2)).thenReturn(Optional.of(flowPath2));
+        lenient().when(flowPathRepository.findById(PATH_ID_3)).thenReturn(Optional.of(flowPath3));
 
 
-        when(flowPathRepository.findPathIdsBySharedBandwidthGroupId(yFlowId))
+        lenient().when(flowPathRepository.findPathIdsBySharedBandwidthGroupId(yFlowId))
                 .thenReturn(Collections.singleton(PATH_ID_2));
-        when(islRepository.findActiveByPathAndBandwidthAndEncapsulationType(
+        lenient().when(islRepository.findActiveByPathAndBandwidthAndEncapsulationType(
                 PATH_ID_2, flow2.getBandwidth(), flow2.getEncapsulationType()))
                 .thenReturn(Collections.singletonList(isl2));
         when(islRepository.findActiveByPathAndBandwidthAndEncapsulationType(
@@ -402,15 +402,16 @@ public class AvailableNetworkFactoryTest {
 
     private static IslImmutableView getIslView(Switch srcSwitch, int srcPort, Switch dstSwitch, int dstPort) {
         IslImmutableView isl = mock(IslImmutableView.class);
-        when(isl.getSrcSwitchId()).thenReturn(srcSwitch.getSwitchId());
-        when(isl.getSrcPort()).thenReturn(srcPort);
-        when(isl.getDestSwitchId()).thenReturn(dstSwitch.getSwitchId());
-        when(isl.getDestPort()).thenReturn(dstPort);
-        when(isl.getCost()).thenReturn(10);
-        when(isl.getLatency()).thenReturn(33L);
-        when(isl.getAvailableBandwidth()).thenReturn(AVAILABLE_BANDWIDTH);
-        when(isl.isUnderMaintenance()).thenReturn(false);
-        when(isl.isUnstable()).thenReturn(false);
+        // These lenient mocks are required for tests
+        lenient().when(isl.getSrcSwitchId()).thenReturn(srcSwitch.getSwitchId());
+        lenient().when(isl.getSrcPort()).thenReturn(srcPort);
+        lenient().when(isl.getDestSwitchId()).thenReturn(dstSwitch.getSwitchId());
+        lenient().when(isl.getDestPort()).thenReturn(dstPort);
+        lenient().when(isl.getCost()).thenReturn(10);
+        lenient().when(isl.getLatency()).thenReturn(33L);
+        lenient().when(isl.getAvailableBandwidth()).thenReturn(AVAILABLE_BANDWIDTH);
+        lenient().when(isl.isUnderMaintenance()).thenReturn(false);
+        lenient().when(isl.isUnstable()).thenReturn(false);
         return isl;
     }
 

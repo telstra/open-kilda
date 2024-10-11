@@ -15,7 +15,6 @@
 
 package org.openkilda.northbound.service.impl;
 
-import static com.google.common.collect.Sets.newHashSet;
 import static java.lang.String.format;
 import static org.openkilda.messaging.model.ValidationFilter.FLOW_INFO;
 import static org.openkilda.messaging.model.ValidationFilter.GROUPS;
@@ -85,6 +84,7 @@ import org.openkilda.messaging.swmanager.request.UpdateLagPortRequest;
 import org.openkilda.model.MacAddress;
 import org.openkilda.model.PortStatus;
 import org.openkilda.model.SwitchId;
+import org.openkilda.northbound.config.KafkaTopicsNorthboundConfig;
 import org.openkilda.northbound.converter.ConnectedDeviceMapper;
 import org.openkilda.northbound.converter.FlowMapper;
 import org.openkilda.northbound.converter.LagPortMapper;
@@ -116,11 +116,9 @@ import org.openkilda.northbound.messaging.MessagingChannel;
 import org.openkilda.northbound.service.SwitchService;
 import org.openkilda.northbound.utils.RequestCorrelationId;
 
-import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -135,45 +133,42 @@ import java.util.stream.Collectors;
 @Service
 public class SwitchServiceImpl extends BaseService implements SwitchService {
     public static final String SWITCH_VALIDATION_FILTERS_SPLITTER = "\\|";
-    public static final Set<ValidationFilter> VALID_INCLUDE_FILTERS = Sets.newHashSet(
-            RULES, METERS, GROUPS, LOGICAL_PORTS);
-    public static final Set<ValidationFilter> VALID_EXCLUDE_FILTERS = Sets.newHashSet(FLOW_INFO);
+    public static final Set<ValidationFilter> VALID_INCLUDE_FILTERS = Set.of(RULES, METERS, GROUPS, LOGICAL_PORTS);
+    public static final Set<ValidationFilter> VALID_EXCLUDE_FILTERS = Set.of(FLOW_INFO);
 
+    private final MessagingChannel messagingChannel;
 
-    @Autowired
-    private MessagingChannel messagingChannel;
+    private final SwitchMapper switchMapper;
 
-    @Autowired
-    private SwitchMapper switchMapper;
+    private final LagPortMapper lagPortMapper;
 
-    @Autowired
-    private LagPortMapper lagPortMapper;
+    private final ConnectedDeviceMapper connectedDeviceMapper;
 
-    @Autowired
-    private ConnectedDeviceMapper connectedDeviceMapper;
+    private final PortPropertiesMapper portPropertiesMapper;
 
-    @Autowired
-    private PortPropertiesMapper portPropertiesMapper;
-
-    @Autowired
-    private FlowMapper flowMapper;
-
-    @Value("#{kafkaTopicsConfig.getSpeakerTopic()}")
-    private String floodlightTopic;
-
-    @Value("#{kafkaTopicsConfig.getTopoNbTopic()}")
-    private String nbworkerTopic;
-
-    @Value("#{kafkaTopicsConfig.getTopoDiscoTopic()}")
-    private String topoDiscoTopic;
-
-    @Value("#{kafkaTopicsConfig.getTopoSwitchManagerNbTopic()}")
-    private String switchManagerTopic;
+    private final FlowMapper flowMapper;
+    private final String floodlightTopic;
+    private final String nbworkerTopic;
+    private final String topoDiscoTopic;
+    private final String switchManagerTopic;
 
     @Autowired
-    public SwitchServiceImpl(MessagingChannel messagingChannel) {
+    public SwitchServiceImpl(KafkaTopicsNorthboundConfig kafkaTopicsNorthboundConfig,
+                             MessagingChannel messagingChannel, SwitchMapper switchMapper, LagPortMapper lagPortMapper,
+                             ConnectedDeviceMapper connectedDeviceMapper, PortPropertiesMapper portPropertiesMapper,
+                             FlowMapper flowMapper) {
         super(messagingChannel);
         this.messagingChannel = messagingChannel;
+        this.switchMapper = switchMapper;
+        this.lagPortMapper = lagPortMapper;
+        this.connectedDeviceMapper = connectedDeviceMapper;
+        this.portPropertiesMapper = portPropertiesMapper;
+        this.flowMapper = flowMapper;
+
+        this.floodlightTopic = kafkaTopicsNorthboundConfig.getSpeakerTopic();
+        this.nbworkerTopic = kafkaTopicsNorthboundConfig.getTopoNbTopic();
+        this.topoDiscoTopic = kafkaTopicsNorthboundConfig.getTopoDiscoTopic();
+        this.switchManagerTopic = kafkaTopicsNorthboundConfig.getTopoSwitchManagerNbTopic();
     }
 
     /**
@@ -280,7 +275,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
 
         return performValidateV2(
                 SwitchValidateRequest.builder()
-                        .validationFilters(newHashSet(RULES))
+                        .validationFilters(Set.of(RULES))
                         .switchId(switchId).build())
                 .thenApply(switchMapper::toRulesValidationResult);
     }
@@ -340,7 +335,7 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         return performSync(
                 SwitchValidateRequest.builder()
                         .switchId(switchId)
-                        .validationFilters(Sets.newHashSet(RULES))
+                        .validationFilters(Set.of(RULES))
                         .performSync(true)
                         .build())
                 .thenApply(switchMapper::toRulesSyncResult);
@@ -531,10 +526,10 @@ public class SwitchServiceImpl extends BaseService implements SwitchService {
         CommandMessage message = new CommandMessage(data, System.currentTimeMillis(), correlationId);
 
         return messagingChannel.sendAndGetChunked(nbworkerTopic, message)
-                            .thenApply(response -> GetFlowsPerPortForSwitchResponse.unite(
-                                    response.stream().map(GetFlowsPerPortForSwitchResponse.class::cast)
-                                            .collect(Collectors.toList())))
-                            .thenApply(switchMapper::toSwitchFlowsPerPortResponseV2Api);
+                .thenApply(response -> GetFlowsPerPortForSwitchResponse.unite(
+                        response.stream().map(GetFlowsPerPortForSwitchResponse.class::cast)
+                                .collect(Collectors.toList())))
+                .thenApply(switchMapper::toSwitchFlowsPerPortResponseV2Api);
     }
 
 

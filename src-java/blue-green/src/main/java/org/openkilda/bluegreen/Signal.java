@@ -13,9 +13,12 @@
  *   limitations under the License.
  */
 
-
 package org.openkilda.bluegreen;
 
+import com.esotericsoftware.kryo.DefaultSerializer;
+import com.esotericsoftware.kryo.serializers.EnumNameSerializer;
+
+@DefaultSerializer(EnumNameSerializer.class)
 public enum Signal {
     START,
     SHUTDOWN,

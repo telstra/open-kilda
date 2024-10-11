@@ -48,7 +48,6 @@ import org.openkilda.pce.exception.UnroutableFlowException;
 import org.openkilda.pce.impl.AvailableNetwork;
 import org.openkilda.pce.impl.InMemoryPathComputer;
 import org.openkilda.persistence.repositories.FlowPathRepository;
-import org.openkilda.persistence.repositories.HaFlowPathRepository;
 import org.openkilda.persistence.repositories.IslRepository;
 import org.openkilda.persistence.repositories.IslRepository.IslImmutableView;
 import org.openkilda.persistence.repositories.RepositoryFactory;
@@ -57,13 +56,15 @@ import com.google.common.collect.Lists;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+@ExtendWith(MockitoExtension.class)
 public class ProtectedPathFinderTest {
     private static final SwitchId SWITCH_ID_1 = new SwitchId(1);
     private static final SwitchId SWITCH_ID_2 = new SwitchId(2);
@@ -92,24 +93,15 @@ public class ProtectedPathFinderTest {
     private IslRepository islRepository;
     @Mock
     private FlowPathRepository flowPathRepository;
-    @Mock
-    private HaFlowPathRepository haFlowPathRepository;
 
     private AvailableNetworkFactory availableNetworkFactory;
 
     @BeforeEach
     public void setup() {
-        MockitoAnnotations.initMocks(this);
-
         when(config.getDiversitySwitchLatency()).thenReturn(10000L);
-        when(config.getDiversityIslLatency()).thenReturn(10000L);
-        when(config.getDiversityIslCost()).thenReturn(10000);
-        when(config.getDiversitySwitchCost()).thenReturn(10000);
-        when(config.getDiversityPopIslCost()).thenReturn(10000);
 
         when(repositoryFactory.createIslRepository()).thenReturn(islRepository);
         when(repositoryFactory.createFlowPathRepository()).thenReturn(flowPathRepository);
-        when(repositoryFactory.createHaFlowPathRepository()).thenReturn(haFlowPathRepository);
 
         availableNetworkFactory = new AvailableNetworkFactory(config, repositoryFactory);
     }
@@ -190,6 +182,7 @@ public class ProtectedPathFinderTest {
         //      |    |
         // A----B----C     Already created flow: A-B-C
         //                 No protected path here for this flow
+        when(config.getDiversityIslLatency()).thenReturn(10000L);
 
         List<IslImmutableView> isls = new ArrayList<>();
         isls.addAll(getBidirectionalIsls(switchA, 1, switchB, 2));
@@ -264,6 +257,7 @@ public class ProtectedPathFinderTest {
         //   /       |
         // A----B----C     Already created flow: A-B-C
         //                 Expected protected path: A-D-E-C
+        when(config.getDiversityIslLatency()).thenReturn(10000L);
 
         List<IslImmutableView> isls = new ArrayList<>();
         isls.addAll(getBidirectionalIsls(switchA, 1, switchB, 2));
@@ -362,6 +356,7 @@ public class ProtectedPathFinderTest {
         //   /       |
         // A----B----C     Already created flow: A-B-C
         //                 Expected protected path: A-D-E-C (over MaxLatencyTier2 = DEGRADED state)
+        when(config.getDiversityIslLatency()).thenReturn(10000L);
 
         List<IslImmutableView> isls = new ArrayList<>();
         isls.addAll(getBidirectionalIsls(switchA, 1, switchB, 2));

@@ -13,7 +13,7 @@
  *   limitations under the License.
  */
 
-package org.openkilda.northbound.validator;
+package org.openkilda.northbound.controller.v2.validator;
 
 import org.openkilda.northbound.dto.v2.yflows.SubFlowUpdatePayload;
 import org.openkilda.northbound.dto.v2.yflows.YFlowCreatePayload;

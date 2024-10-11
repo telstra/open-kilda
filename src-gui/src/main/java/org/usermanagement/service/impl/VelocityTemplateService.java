@@ -15,20 +15,17 @@
 
 package org.usermanagement.service.impl;
 
+import jakarta.annotation.PostConstruct;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader;
-
 import org.springframework.stereotype.Service;
-
 import org.usermanagement.service.TemplateService;
 
 import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Map;
-
-import javax.annotation.PostConstruct;
 
 @Service
 public class VelocityTemplateService implements TemplateService {
@@ -57,7 +54,7 @@ public class VelocityTemplateService implements TemplateService {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see
      * org.usermanagement.service.TemplateService#mergeTemplateToString(org.
      * usermanagement.service.TemplateService.Template, java.util.Map)

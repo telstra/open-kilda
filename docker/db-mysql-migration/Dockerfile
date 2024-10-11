@@ -13,7 +13,7 @@
 #   limitations under the License.
 #
 
-ARG base_image=liquibase/liquibase:4.4
+ARG base_image=liquibase/liquibase:4.27
 FROM ${base_image}
 
 RUN lpm add mysql --global

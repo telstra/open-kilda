@@ -31,8 +31,8 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
+import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.ToString;
 
 import java.util.Optional;
@@ -40,7 +40,7 @@ import java.util.Optional;
 /**
  * Class represents information message.
  */
-@Getter
+@Data
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 public class InfoMessage extends Message implements TransportAdapter {

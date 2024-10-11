@@ -31,7 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
 import spock.lang.Shared
 
-import javax.inject.Provider
+import jakarta.inject.Provider
 
 @Tags(LOW_PRIORITY)
 @Narrative("Verify that statistic is collected for different type of Y-flow")
