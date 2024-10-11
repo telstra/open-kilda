@@ -295,7 +295,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         }
 
         when: "Fail a flow ISL (bring switch port down)"
-        def islToFail = flowPath.flowPath.getInvolvedIsls().last()
+        def islToFail = flowPath.getInvolvedIsls().last()
         islHelper.breakIsl(islToFail)
 
         then: "The flow was rerouted"

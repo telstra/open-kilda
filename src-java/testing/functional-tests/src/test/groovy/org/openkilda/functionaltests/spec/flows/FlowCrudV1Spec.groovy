@@ -449,8 +449,8 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
 
         then: "The flow is built through one of the long paths"
         def fullFlowPath = flow.retrieveAllEntityPaths()
-        def forwardIsls = fullFlowPath.flowPath.getInvolvedIsls(Direction.FORWARD)
-        def reverseIsls = fullFlowPath.flowPath.getInvolvedIsls(Direction.REVERSE)
+        def forwardIsls = fullFlowPath.getInvolvedIsls(Direction.FORWARD)
+        def reverseIsls = fullFlowPath.getInvolvedIsls(Direction.REVERSE)
         assert forwardIsls.intersect(modifiedIsls).isEmpty()
 
 
@@ -522,7 +522,7 @@ Failed to find path with requested bandwidth=$invalidFlow.maximumBandwidth/).mat
 
         and: "Flow eventually gets into UP state"
         flow.waitForBeingInState(UP)
-        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == flowExpectedPath.getInvolvedIsls()
+        flow.retrieveAllEntityPaths().getInvolvedIsls() == flowExpectedPath.getInvolvedIsls()
 
         and: "All related switches have no discrepancies in rules"
         switchesId.each {

@@ -5,6 +5,7 @@ import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import groovy.transform.Canonical
 import groovy.transform.EqualsAndHashCode
@@ -49,11 +50,28 @@ class FlowEntityPath {
     }
 
     List<PathNode> getPathNodes(Direction direction = Direction.FORWARD, boolean isProtected = false) {
-        if (direction == Direction.FORWARD) {
-            isProtected ? flowPath.protectedPath.forward.nodes.toPathNode() : flowPath.path.forward.nodes.toPathNode()
-        } else {
-            isProtected ? flowPath.protectedPath.reverse.nodes.toPathNode() : flowPath.path.reverse.nodes.toPathNode()
-        }
+        PathModel path = isProtected ? flowPath.protectedPath : flowPath.path
+        getPathInvolvedNodes(path, direction)
+    }
+
+    List<Isl> getMainPathInvolvedIsls(Direction direction = Direction.FORWARD) {
+        getPathInvolvedIsls(flowPath.path, direction)
+    }
+
+    List<Isl> getProtectedPathInvolvedIsls(Direction direction = Direction.FORWARD) {
+        getPathInvolvedIsls(flowPath.protectedPath, direction)
+    }
+
+    List<Isl> getInvolvedIsls(Direction direction = Direction.FORWARD) {
+        flowPath.getInvolvedIsls(direction)
+    }
+
+    private List<Isl> getPathInvolvedIsls(PathModel path, Direction direction) {
+        direction == Direction.FORWARD ? path.forward.getInvolvedIsls() : path.reverse.getInvolvedIsls()
+    }
+
+    private List<PathNode>  getPathInvolvedNodes(PathModel path, Direction direction) {
+        direction == Direction.FORWARD ? path.forward.nodes.toPathNode() : path.reverse.nodes.toPathNode()
     }
 }
 

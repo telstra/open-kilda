@@ -167,7 +167,7 @@ class SwitchValidationV2Spec extends HealthCheckSpecification {
         when: "Create an intermediate-switch flow"
         def flow = flowFactory.getRandom(switchPair)
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def involvedSwitches = flowPathInfo.flowPath.getInvolvedIsls()
+        def involvedSwitches = flowPathInfo.getInvolvedIsls()
                 .collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique() as List<Switch>
 
         then: "The intermediate switch does not contain any information about meter"
@@ -477,7 +477,7 @@ misconfigured"
         def flow = flowFactory.getRandom(switchPair)
 
         when: "Delete created rules on the transit"
-        List<Switch> involvedSwitches = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        List<Switch> involvedSwitches = flow.retrieveAllEntityPaths().getInvolvedIsls()
                 .collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique() as List<Switch>
         def transitSw = involvedSwitches[1]
         switchHelper.deleteSwitchRules(transitSw.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
@@ -701,7 +701,7 @@ misconfigured"
 
         and: "Remove required rules and meters from switches"
         def flowInfoFromDb = flow.retrieveDetailsFromDB()
-        List<Switch> involvedSwitches = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        List<Switch> involvedSwitches = flow.retrieveAllEntityPaths().getInvolvedIsls()
                 .collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique() as List<Switch>
         def transitSwitchIds = involvedSwitches[1..-2]*.dpId
         def cookiesMap = involvedSwitches.collectEntries { sw ->
