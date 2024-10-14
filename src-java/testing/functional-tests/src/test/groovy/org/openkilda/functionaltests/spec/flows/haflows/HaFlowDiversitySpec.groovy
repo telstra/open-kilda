@@ -72,9 +72,8 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         and: "HA-Flow passes flow validation"
         withPool {
             [haFlow1, haFlow2, haFlow3].eachParallel { HaFlowExtended haFlow ->
-                def validationResponse = haFlow.validate()
-                assert validationResponse.asExpected
-                assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty() }
+                def validationResponse = haFlow.validateAndCollectDiscrepancy()
+                assert validationResponse.asExpected && validationResponse.subFlowsDiscrepancies.isEmpty()
             }
         }
     }
@@ -127,9 +126,8 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         and: "HA-Flow passes flow validation"
         withPool {
             [haFlow1, haFlow2].eachParallel { HaFlowExtended haFlow ->
-                def validationResponse = haFlow.validate()
-                assert validationResponse.asExpected
-                assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty()}
+                def validationResponse = haFlow.validateAndCollectDiscrepancy()
+                assert validationResponse.asExpected && validationResponse.subFlowsDiscrepancies.isEmpty()
             }
         }
     }
@@ -181,9 +179,8 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         and: "HA-Flow passes flow validation"
         withPool {
             [haFlow1, haFlow2].eachParallel { HaFlowExtended haFlow ->
-                def validationResponse = haFlow.validate()
-                assert validationResponse.asExpected
-                assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty()}
+                def validationResponse = haFlow.validateAndCollectDiscrepancy()
+                assert validationResponse.asExpected && validationResponse.subFlowsDiscrepancies.isEmpty()
             }
         }
     }

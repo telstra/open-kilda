@@ -24,6 +24,7 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.builder.YFlowBuilder
+import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
@@ -412,13 +413,10 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "Y-Flow is valid and UP"
-        verifyAll(yFlow.validate()) { validationResult ->
+        verifyAll(yFlow.validateAndCollectDiscrepancy()) { validationResult ->
             assert !validationResult.asExpected
-            validationResult.getSubFlowValidationResults().findAll { it.direction == "FORWARD" }.each {
-                assert !it.asExpected
-            }
-            validationResult.getSubFlowValidationResults().findAll { it.direction == "REVERSE" }.each {
-                assert it.asExpected
+            validationResult.subFlowsDiscrepancies.each {
+                assert it.flowDiscrepancies.get(FlowDirection.FORWARD) && !it.flowDiscrepancies.get(FlowDirection.REVERSE)
             }
         }
 

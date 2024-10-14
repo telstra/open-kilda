@@ -22,6 +22,6 @@ enum FlowDirection {
                 return flowDirection
             }
         }
-        throw new IllegalArgumentException("Invalid value for encapsulation type")
+        throw new IllegalArgumentException("Invalid value for direction")
     }
 }
