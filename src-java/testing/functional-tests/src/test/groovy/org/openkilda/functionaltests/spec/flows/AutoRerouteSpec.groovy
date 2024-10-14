@@ -529,11 +529,7 @@ triggering one more reroute of the current path"
 
         and: "Flow is pingable"
         retry(3, 0) { //Was unstable on Jenkins builds. Fresh env problem?
-            with(flow.ping()) {
-                it.forward.pingSuccess
-                it.reverse.pingSuccess
-            }
-            true
+            flow.pingAndCollectDiscrepancies().isEmpty()
         }
     }
 
