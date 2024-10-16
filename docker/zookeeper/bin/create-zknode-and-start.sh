@@ -14,8 +14,14 @@ for attemp in $(seq 1 5); do
   fi
 done
 
+# check zookeeper server status
+/opt/zookeeper/bin/zkServer.sh status
+
 # add default zkNodes
 /opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE} ""
+
+# sleep for 1 hour
+sleep 3600
 
 # add func tests zkNodes
 /opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/func_test ""
