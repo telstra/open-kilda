@@ -14,14 +14,18 @@ for attemp in $(seq 1 5); do
   fi
 done
 
-# check zookeeper server status
-/opt/zookeeper/bin/zkServer.sh status
+# ensure zK cluster is ready for requests
+for attemp in $(seq 1 5); do
+  if /opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 ls / | grep 'zookeeper\]'; then
+    break
+  else
+    echo "Zookeeper schema is not ready"
+    sleep 3
+  fi
+done
 
 # add default zkNodes
 /opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE} ""
-
-# sleep for 1 hour
-sleep 3600
 
 # add func tests zkNodes
 /opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/func_test ""
@@ -196,5 +200,8 @@ sleep 3600
 /opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/server42-control-storm-stub/server42-control-storm-stub-run-id ""
 /opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/server42-control-storm-stub/server42-control-storm-stub-run-id/signal ""
 /opt/zookeeper/bin/zkCli.sh -server 127.0.0.1:2181 create /${KILDA_ZKNODE}/server42-control-storm-stub/server42-control-storm-stub-run-id/build-version "v3r\$i0n"
+
+# sleep for 1 hour
+sleep 3600
 
 fg %1
