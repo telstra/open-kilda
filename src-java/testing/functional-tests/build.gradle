@@ -17,6 +17,7 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml")
     implementation("jakarta.inject:jakarta.inject-api:2.0.1")
+    implementation ("jakarta.servlet:jakarta.servlet-api:6.1.0")
     implementation("org.codehaus.groovy:groovy-all:3.0.17")
     implementation("org.apache.kafka:kafka-clients")
     implementation("com.shazam:shazamcrest:0.11")
