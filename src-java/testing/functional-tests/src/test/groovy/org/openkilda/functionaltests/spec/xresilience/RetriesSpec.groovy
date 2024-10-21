@@ -359,11 +359,14 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
         def swPair = switchPairs.all().nonNeighbouring().switchPairs
                 .find { it.src.dpId.toString().contains("03") && it.dst.dpId.toString().contains("07")}
         def availablePaths = swPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
-        def preferableIsls = availablePaths.find{ it.size() >= 5 }
-        availablePaths.findAll { it != preferableIsls }.each { islHelper.makePathIslsMorePreferable(preferableIsls, it) }
 
         def flow = flowFactory.getRandom(swPair)
-        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == preferableIsls
+        def initialFlowPathSws = flow.retrieveAllEntityPaths().getInvolvedSwitches()
+
+        def pathToReroute = availablePaths.find { it.size() >= 5 }
+        availablePaths.findAll { it != pathToReroute }.each { islHelper.makePathIslsMorePreferable(pathToReroute, it) }
+        def switchesToSetDelay = islHelper.retrieveInvolvedSwitches(pathToReroute).findAll { !(it.dpId in initialFlowPathSws) }
+        switchHelper.shapeSwitchesTraffic(switchesToSetDelay, new TrafficControlData(8000))
 
         when: "Break current path to trigger a reroute"
         def islToBreak = flow.retrieveAllEntityPaths().getInvolvedIsls().first()
@@ -372,25 +375,34 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
         northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         and: "Connection to src switch is slow in order to simulate a global timeout on reroute operation"
-        switchHelper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(9200))
+        switchHelper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(9100))
 
         then: "After global timeout expect flow reroute to fail and flow to become DOWN"
         TimeUnit.SECONDS.sleep(globalTimeout)
-        int eventsAmount
+        // 1 reroute event: main ISL break -> GlobalTimeout
+        // 1 reroute event: delay on the src(our flow is not affected as event for ISL in pathToReroute)
+        int rerouteEventsAmount = 2
         wait(globalTimeout + WAIT_OFFSET, 1) { //long wait, may be doing some revert actions after global t/o
             def history = flow.retrieveFlowHistory()
             def rerouteEvent = history.getEntriesByType(REROUTE).first()
             assert rerouteEvent.payload.find { it.action == sprintf('Global timeout reached for reroute operation on flow "%s"', flow.flowId) }
             assert rerouteEvent.payload.last().action == REROUTE_FAILED.payloadLastAction
             assert flow.retrieveFlowStatus().status == DOWN
-            eventsAmount = history.entries.size()
+            assert history.getEntriesByType(REROUTE).size() == rerouteEventsAmount
         }
 
-        and: "Flow remains down and no new history events appear for the next 3 seconds (no retry happens)"
-        timedLoop(3) {
+        and: "Flow remains down and no new history events appear for the next 5 seconds (no retry happens)"
+        timedLoop(5) {
             assert flow.retrieveFlowStatus().status == DOWN
-            assert flow.retrieveFlowHistory().entries.size() == eventsAmount
+            assert flow.retrieveFlowHistory().entries.size() == rerouteEventsAmount + 1 // +1 creation event
         }
+
+        and: "The last reroute event was caused by delay on src"
+        def rerouteEvents = flow.retrieveFlowHistory().getEntriesByType(REROUTE).last()
+        rerouteEvents.payload.last().action == REROUTE_FAILED.payloadLastAction
+        rerouteEvents.payload.last().details.toString().contains(
+                "No paths of the flow ${flow.flowId} are affected by failure on IslEndpoint(super=NetworkEndpoint" +
+                        "(switchId=${pathToReroute.first().srcSwitch.dpId}, portNumber=${pathToReroute.first().srcPort}))")
 
         and: "Src/dst switches are valid"
         switchHelper.cleanupTrafficShaperRules([swPair.src])
@@ -400,6 +412,7 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
         }
 
         cleanup:
+        //should be called here as flow deletion is called before removing delay on the switch in our cleanup manager
         !isTrafficShaperRulesCleanedUp && switchHelper.cleanupTrafficShaperRules([swPair.src])
     }
 }
