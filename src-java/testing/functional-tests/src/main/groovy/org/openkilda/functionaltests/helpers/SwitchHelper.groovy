@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
 import groovy.transform.Memoized
+import org.openkilda.functionaltests.helpers.model.SwitchDbData
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.command.switches.DeleteRulesAction
@@ -207,6 +208,10 @@ class SwitchHelper {
     @Memoized
     static Set<SwitchFeature> getFeatures(Switch sw) {
         database.get().getSwitch(sw.dpId).features
+    }
+
+    static List dumpAllSwitches() {
+        database.get().dumpAllSwitches().collect { new SwitchDbData((it.data))}
     }
 
     static List<Long> getDefaultCookies(Switch sw) {
