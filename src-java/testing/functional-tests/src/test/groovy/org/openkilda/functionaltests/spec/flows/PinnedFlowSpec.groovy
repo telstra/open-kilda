@@ -133,7 +133,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
 
         and: "Rules and meters are not changed"
         def cookiesMapAfterReroute = involvedSwitches.collectEntries { sw ->
-            [sw.id, northbound.getSwitchRules(sw).flowEntries.findAll {
+            [sw.id, switchRulesFactory.get(sw).getRules().findAll {
                 !new Cookie(it.cookie).serviceFlag
             }*.cookie]
         }

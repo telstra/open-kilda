@@ -10,8 +10,8 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowRuleEntity
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
-import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
@@ -67,8 +67,8 @@ class FlowSyncSpec extends HealthCheckSpecification {
             Wrappers.wait(RULES_INSTALLATION_TIME) {
                 def flowRules = getFlowRules(sw)
                 assert flowRules.size() == flowRulesCount
-                flowRules.each {
-                    assert it.durationSeconds < TimeCategory.minus(new Date(), syncTime).toMilliseconds() / 1000.0
+                flowRules.each { rule ->
+                    assert rule.durationSeconds < TimeCategory.minus(new Date(), syncTime).toMilliseconds() / 1000.0
                 }
             }
         }
@@ -77,7 +77,7 @@ class FlowSyncSpec extends HealthCheckSpecification {
         flow.validateAndCollectDiscrepancies().isEmpty()
     }
 
-    List<FlowEntry> getFlowRules(SwitchId swId) {
+    List<FlowRuleEntity> getFlowRules(SwitchId swId) {
         switchRulesFactory.get(swId).getRules().findAll { def cookie = new Cookie(it.cookie)
             cookie.type == CookieType.SERVICE_OR_FLOW_SEGMENT && !cookie.serviceFlag
         }.sort()

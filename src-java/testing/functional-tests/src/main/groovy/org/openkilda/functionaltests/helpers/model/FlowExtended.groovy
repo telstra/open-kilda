@@ -16,7 +16,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.info.meter.FlowMeterEntries
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
@@ -832,7 +831,7 @@ class FlowExtended {
      *
      * @param flowInvolvedSwitchesWithRules (map of switch-rules data for further verification)
      */
-    void verifyRulesForProtectedFlowOnSwitches(HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules) {
+    void verifyRulesForProtectedFlowOnSwitches(HashMap<SwitchId, List<FlowRuleEntity>> flowInvolvedSwitchesWithRules) {
         def flowDBInfo = retrieveDetailsFromDB()
         long mainForwardCookie = flowDBInfo.forwardPath.cookie.value
         long mainReverseCookie = flowDBInfo.reversePath.cookie.value

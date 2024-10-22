@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
-import org.openkilda.messaging.info.rule.FlowEntry
+import org.openkilda.functionaltests.helpers.model.FlowRuleEntity
 
 import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
@@ -715,8 +715,8 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
         and: "Rules for main and protected paths are created"
         wait(WAIT_OFFSET) {
-            HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
-                    .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
+            HashMap<SwitchId, List<FlowRuleEntity>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
+                    .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowRuleEntity>>
             flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
         }
 
