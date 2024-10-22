@@ -3,12 +3,14 @@ package org.openkilda.functionaltests.spec.flows.haflows
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -160,18 +162,20 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(switchTriplet)
 
         when: "Ping HA-Flow"
-        def pingResult = haFlow.ping(2000)
+        def response = haFlow.pingAndCollectDiscrepancies()
 
         then: "HA-Flow ping is not successful and the appropriate error message has been returned"
-        !pingResult.isPingSuccess()
-        pingResult.haFlowId == haFlow.haFlowId
-        pingResult.error == "Temporary disabled. HaFlow ${haFlow.haFlowId} has one sub-flow with endpoint switch equals to Y-point switch"
+        verifyAll {
+            assert !response.pingSuccess
+            assert response.error == "Temporary disabled. HaFlow ${haFlow.haFlowId} has one sub-flow with endpoint switch equals to Y-point switch"
+            assert response.subFlowsDiscrepancies.isEmpty()
+        }
     }
 
     @Tags([LOW_PRIORITY])
     def "Able to ping HA-Flow when neither of the sub-flows end on Y-Point"() {
         given: "HA-Flow has been created"
-        def swT = switchTriplets.all(true).findSwitchTripletWithYPointOnSharedEp()
+        def swT = switchTriplets.all().nonNeighbouring().findSwitchTripletWithYPointOnSharedEp()
         def haFlow = haFlowFactory.getRandom(swT)
 
         and: "Neither of the sub-flows end on Y-Point (ping is disabled for such kind of HA-Flow)"
@@ -179,21 +183,63 @@ class HaFlowPingSpec extends HealthCheckSpecification {
         assert !paths.sharedPath.path.forward.nodes.nodes
 
         when: "Ping HA-Flow"
-        def pingResult = haFlow.ping(2000)
+        def pingResult = haFlow.ping()
 
         then: "HA-Flow ping is successful"
         pingResult.isPingSuccess()
         pingResult.haFlowId == haFlow.haFlowId
         !pingResult.error
 
-        and: "Successful ping for both sub-flows in FORWARD direction"
-        pingResult.subFlows.each {subFlow ->
-            assert subFlow.forward.pingSuccess && !subFlow.forward.error
+        when: "Break one sub-flow by removing flow rules from the intermediate switch"
+        def yFlowPath = haFlow.retrievedAllEntityPaths()
+        def subFlow1Switch = yFlowPath.subFlowPaths.first().getInvolvedIsls().last().srcSwitch.dpId
+        def subFlow1Id = yFlowPath.subFlowPaths.first().flowId
+        def subFlow2Switch = yFlowPath.subFlowPaths.last().getInvolvedIsls().last().srcSwitch.dpId
+        def rulesToDelete = switchRulesFactory.get(subFlow1Switch).getRules().findAll {
+            !new Cookie(it.cookie).serviceFlag
+        }*.cookie
+        rulesToDelete.each { cookie ->
+            switchHelper.deleteSwitchRules(subFlow1Switch, cookie)
+        }
+        def collectedDiscrepancies = haFlow.pingAndCollectDiscrepancies()
+
+        then: "HA-Flow ping is not successful, and ping for one sub-flow shows that path is broken"
+        def expectedDiscrepancy = [(FlowDirection.FORWARD): "No ping for reasonable time",
+                                   (FlowDirection.REVERSE): "No ping for reasonable time"]
+        verifyAll {
+            assert !collectedDiscrepancies.pingSuccess
+            assert collectedDiscrepancies.subFlowsDiscrepancies
+                    .find { it.subFlowId == subFlow1Id }.flowDiscrepancies == expectedDiscrepancy
+            assert !collectedDiscrepancies.subFlowsDiscrepancies.find { it.subFlowId != subFlow1Id }
         }
 
-        and: "Successful ping for both sub-flows in REVERSE direction"
-        pingResult.subFlows.each {subFlow ->
-            assert subFlow.reverse.pingSuccess && !subFlow.reverse.error
+        when: "Break another sub-flow by removing flow rules from the intermediate switch(after fixing previous discrepancy)"
+        switchHelper.synchronize(subFlow1Switch)
+        rulesToDelete = switchRulesFactory.get(subFlow2Switch).getRules().findAll {
+            !new Cookie(it.cookie).serviceFlag
+        }*.cookie
+        rulesToDelete.each { cookie ->
+            switchHelper.deleteSwitchRules(subFlow2Switch, cookie)
+        }
+        collectedDiscrepancies = haFlow.pingAndCollectDiscrepancies()
+
+        then: "HA-Flow ping is not successful, and ping for another sub-flow shows that path is broken"
+        verifyAll {
+            assert !collectedDiscrepancies.pingSuccess
+            assert collectedDiscrepancies.subFlowsDiscrepancies
+                    .find { it.subFlowId != subFlow1Id }.flowDiscrepancies == expectedDiscrepancy
+            assert !collectedDiscrepancies.subFlowsDiscrepancies.find { it.subFlowId == subFlow1Id }
+        }
+
+        when: "All required rules have been installed(sync)"
+        switchHelper.synchronize(subFlow2Switch)
+        collectedDiscrepancies = haFlow.pingAndCollectDiscrepancies()
+
+        then: "HA-Flow ping is successful for both sub-flows"
+        verifyAll {
+            assert collectedDiscrepancies.pingSuccess
+            assert !collectedDiscrepancies.error
+            assert collectedDiscrepancies.subFlowsDiscrepancies.isEmpty()
         }
     }
 
