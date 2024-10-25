@@ -50,9 +50,9 @@ subprojects {
             annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
             testAnnotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
 
-            compileOnly("org.apache.storm:storm-core:2.6.1")
-            testImplementation("org.apache.storm:storm-core:2.6.1")
-            implementation("org.apache.storm:storm-kafka-client:2.6.1")
+            compileOnly("org.apache.storm:storm-core:2.6.2")
+            testImplementation("org.apache.storm:storm-core:2.6.2")
+            implementation("org.apache.storm:storm-kafka-client:2.6.2")
             implementation("com.esotericsoftware:kryo:5.6.0")
 
             implementation("org.squirrelframework:squirrel-foundation:0.3.10")
@@ -210,7 +210,7 @@ configure(subprojects.findAll { it.name.endsWith("-topology") }) {
     }
 
     dependencies {
-        localStormRuntime "org.apache.storm:storm-core:2.6.1"
+        localStormRuntime "org.apache.storm:storm-core:2.6.2"
     }
 
     sourceSets {
