@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.switches
 
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+import static org.assertj.core.api.Assertions.assertThat
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -19,7 +19,6 @@ import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_ONE_SWITCH_COOKIE
 import static org.openkilda.model.cookie.Cookie.LLDP_POST_INGRESS_VXLAN_COOKIE
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.MeterExpectedError
@@ -27,10 +26,10 @@ import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowRuleEntity
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.messaging.info.meter.MeterEntry
 import org.openkilda.messaging.info.rule.FlowEntry
-import org.openkilda.messaging.info.rule.SwitchFlowEntries
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
@@ -521,8 +520,8 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
         flow.updateFlowBandwidthInDB(newBandwidth)
         //at this point existing meters do not correspond with the flow
         //now save some original data for further comparison before resetting meters
-        Map<SwitchId, SwitchFlowEntries> originalRules = [src.dpId, dst.dpId].collectEntries {
-            [(it): northbound.getSwitchRules(it)]
+        Map<SwitchId, List<FlowRuleEntity>> originalRules = [src.dpId, dst.dpId].collectEntries {
+            [(it): switchRulesFactory.get(it).getRules()]
         }
         Map<SwitchId, List<MeterEntry>> originalMeters = [src.dpId, dst.dpId].collectEntries {
             [(it): northbound.getAllMeters(it).meterEntries]
@@ -558,19 +557,14 @@ meters in flow rules at all (#srcSwitch - #dstSwitch flow)"() {
 
         and: "Default meters are unchanged"
         [src.dpId, dst.dpId].each { SwitchId swId ->
-            assert expect(northbound.getAllMeters(swId).meterEntries.findAll(defaultMeters).sort(),
-                    sameBeanAs(originalMeters[swId].findAll(defaultMeters).sort())
-                            .ignoring("timestamp"))
+            def actualDefaultMeters = northbound.getAllMeters(swId).meterEntries.findAll(defaultMeters)
+            assertThat(actualDefaultMeters).containsExactlyInAnyOrder(*originalMeters[swId].findAll(defaultMeters))
         }
 
         and: "Switch rules are unchanged"
         [src.dpId, dst.dpId].each { SwitchId swId ->
-            assert expect(northbound.getSwitchRules(swId), sameBeanAs(originalRules[swId])
-                    .ignoring("timestamp")
-                    .ignoring("flowEntries.durationNanoSeconds")
-                    .ignoring("flowEntries.durationSeconds")
-                    .ignoring("flowEntries.byteCount")
-                    .ignoring("flowEntries.packetCount"))
+            def actualRules = switchRulesFactory.get(swId).getRules()
+            assertThat(actualRules).containsExactlyInAnyOrder(*originalRules[swId])
         }
 
         where:

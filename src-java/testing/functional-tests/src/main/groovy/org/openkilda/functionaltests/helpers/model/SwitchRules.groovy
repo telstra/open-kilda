@@ -1,8 +1,6 @@
 package org.openkilda.functionaltests.helpers.model
 
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.FlowMeter
 import org.openkilda.model.SwitchId
@@ -31,19 +29,18 @@ class SwitchRules {
         this.switchId = switchId
     }
 
-    List<FlowEntry> forHaFlow(HaFlowExtended haFlow) {
+    List<FlowRuleEntity> forHaFlow(HaFlowExtended haFlow) {
         def haFlowCookies = (database.getHaFlowCookies(haFlow.haFlowId) + database.getHaSubFlowsCookies(haFlow.subFlows*.haSubFlowId))
                 .collect {it.getValue()}
-        def switchRules = northboundService.getSwitchRules(switchId)
-        return switchRules.getFlowEntries().findAll {haFlowCookies.contains(it.getCookie())}
+        def switchRules = getRules()
+        return switchRules.findAll {haFlowCookies.contains(it.getCookie())}
     }
 
-    Set<FlowEntry> relatedToMeter(FlowMeter flowMeter) {
-        return northboundService.getSwitchRules(switchId).getFlowEntries()
-                .findAll {it.getInstructions().getGoToMeter() == flowMeter.getMeterId().getValue()}
+    Set<FlowRuleEntity> relatedToMeter(FlowMeter flowMeter) {
+        return getRules().findAll {it.getInstructions().getGoToMeter() == flowMeter.getMeterId().getValue()}
     }
 
-    void delete(FlowEntry flowEntry) {
+    void delete(FlowRuleEntity flowEntry) {
         delete(flowEntry.getCookie())
     }
 
@@ -56,10 +53,9 @@ class SwitchRules {
         return missingRules.collect {new Long((it.getRule() =~ COOKIE_ID_IN_RULE_DISCREPANCY_STRING_REGEX)[0])}
     }
 
-    FlowEntry pingRule(String encapsulationType) {
+    FlowRuleEntity pingRule(String encapsulationType) {
         def pingRuleCookie = getPingRuleCookie(encapsulationType)
-        return northboundService.getSwitchRules(switchId).flowEntries
-                .find { it.cookie == pingRuleCookie }
+        return getRules().find { it.cookie == pingRuleCookie }
     }
 
     static long getPingRuleCookie(String encapsulationType) {
@@ -72,18 +68,21 @@ class SwitchRules {
         }
     }
 
-    List<FlowEntry> getRulesByCookieType(CookieType cookieType) {
-       northboundService.getSwitchRules(switchId).flowEntries
-                .findAll { new Cookie(it.cookie).getType() == cookieType }
+    List<FlowRuleEntity> getRulesByCookieType(CookieType cookieType) {
+       getRules().findAll { new Cookie(it.cookie).getType() == cookieType }
     }
 
-    List<FlowEntry> getServer42FlowRules() {
-        northboundService.getSwitchRules(switchId).flowEntries
-                .findAll { new Cookie(it.cookie).getType() in [CookieType.SERVER_42_FLOW_RTT_INPUT,
+    List<FlowRuleEntity> getServer42FlowRules() {
+        getRules().findAll { new Cookie(it.cookie).getType() in [CookieType.SERVER_42_FLOW_RTT_INPUT,
                                                                CookieType.SERVER_42_FLOW_RTT_INGRESS] }
     }
 
-    List<FlowEntry> getRules() {
-        northboundService.getSwitchRules(switchId).flowEntries
+    List<FlowRuleEntity> getServer42ISLRules() {
+        getRules().findAll { (new Cookie(it.cookie).getType() in [CookieType.SERVER_42_ISL_RTT_INPUT] ||
+                it.cookie in [Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE, Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE]) }
+    }
+
+    List<FlowRuleEntity> getRules() {
+        northboundService.getSwitchRules(switchId).flowEntries.collect { new FlowRuleEntity(it) }
     }
 }
