@@ -857,7 +857,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 "Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
 
         given: "Two switches connected to traffgen"
-        def switchPair = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
+        def swPairs = switchPairs.all().neighbouring().withTraffgensOnBothEnds()
+        // there is an issue with physical switch (lldp traffic)
+        profile == "virtual" ?: swPairs.excludeSwitches(topology.activeSwitches.findAll { it.dpId.toString().contains("40") })
+        def switchPair = switchPairs.random()
 
         and: "A QinQ flow with enabled connected devices on src has been created"
         def flow = flowFactory.getBuilder(switchPair)
