@@ -17,7 +17,7 @@ import org.openkilda.functionaltests.helpers.builder.YFlowBuilder
 import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowActionType
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest
 import org.openkilda.testing.service.traffexam.TraffExamService

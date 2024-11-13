@@ -7,7 +7,7 @@ import org.openkilda.functionaltests.error.yflow.YFlowNotFoundExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.FlowDirection
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.payload.flow.FlowState
 import org.springframework.beans.factory.annotation.Autowired

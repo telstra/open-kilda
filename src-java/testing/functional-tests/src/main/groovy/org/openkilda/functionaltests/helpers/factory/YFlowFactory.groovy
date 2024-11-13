@@ -1,4 +1,8 @@
-package org.openkilda.functionaltests.helpers.model
+package org.openkilda.functionaltests.helpers.factory
+
+import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
+import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.functionaltests.helpers.model.YFlowExtended
 
 import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.helpers.builder.YFlowBuilder

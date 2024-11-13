@@ -1,8 +1,7 @@
-package org.openkilda.functionaltests.helpers
+package org.openkilda.functionaltests.helpers.factory
 
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 
-import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 import org.openkilda.functionaltests.helpers.builder.HaFlowBuilder

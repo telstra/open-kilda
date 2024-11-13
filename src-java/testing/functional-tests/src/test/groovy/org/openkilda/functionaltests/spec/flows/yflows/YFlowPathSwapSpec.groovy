@@ -4,7 +4,7 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.yflow.YFlowPathNotSwappedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl

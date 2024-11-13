@@ -16,8 +16,7 @@ import org.openkilda.functionaltests.error.yflow.YFlowRerouteExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.YFlowActionType
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
-import org.openkilda.functionaltests.model.stats.Direction
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult

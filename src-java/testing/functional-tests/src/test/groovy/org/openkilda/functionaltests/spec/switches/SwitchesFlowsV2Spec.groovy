@@ -12,7 +12,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.model.FlowPathDirection
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.functionaltests.helpers.factory.FlowFactory

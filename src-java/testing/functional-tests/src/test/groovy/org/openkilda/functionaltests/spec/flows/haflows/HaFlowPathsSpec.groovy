@@ -2,7 +2,7 @@ package org.openkilda.functionaltests.spec.flows.haflows
 
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 
 import groovy.util.logging.Slf4j

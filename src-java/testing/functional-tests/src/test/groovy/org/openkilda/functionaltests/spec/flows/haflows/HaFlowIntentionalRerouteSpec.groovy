@@ -9,7 +9,7 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.IslHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath

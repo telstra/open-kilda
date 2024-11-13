@@ -5,7 +5,7 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.haflow.HaFlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.haflow.HaFlowNotCreatedWithConflictExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.builder.HaFlowBuilder
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.testing.service.traffexam.TraffExamService
