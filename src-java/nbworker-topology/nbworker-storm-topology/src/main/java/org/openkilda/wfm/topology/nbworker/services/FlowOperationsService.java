@@ -24,6 +24,7 @@ import org.openkilda.messaging.command.BaseRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
 import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.haflow.HaFlowRerouteRequest;
+import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.ErrorType;
 import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.messaging.error.MessageException;
@@ -83,6 +84,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.RetryPolicy;
+import org.apache.commons.lang3.StringUtils;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -713,10 +715,20 @@ public class FlowOperationsService {
                     }
                 }
             } else {
-                if (processed.add(flow.getFlowId())) {
-                    FlowRerouteRequest request = new FlowRerouteRequest(
-                            flow.getFlowId(), false, false, affectedIslEndpoints, reason, false);
-                    results.add(request);
+                if (StringUtils.isNotBlank(flow.getYFlowId())) {
+                    if (yFlowRepository.exists(flow.getYFlowId())) {
+                        if (processed.add(flow.getYFlowId())) {
+                            YFlowRerouteRequest req = new YFlowRerouteRequest(flow.getYFlowId(), affectedIslEndpoints,
+                                    reason, false);
+                            results.add(req);
+                        }
+                    }
+                } else {
+                    if (processed.add(flow.getFlowId())) {
+                        FlowRerouteRequest request = new FlowRerouteRequest(
+                                flow.getFlowId(), false, false, affectedIslEndpoints, reason, false);
+                        results.add(request);
+                    }
                 }
             }
         }
