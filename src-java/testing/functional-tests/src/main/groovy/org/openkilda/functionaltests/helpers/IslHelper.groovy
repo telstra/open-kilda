@@ -159,6 +159,7 @@ class IslHelper {
      */
     void updateIslsCost(List<Isl> isls, Integer newCost) {
         cleanupManager.addAction(DELETE_ISLS_PROPERTIES,{ northbound.deleteLinkProps(northbound.getLinkProps(topology.isls)) })
+        cleanupManager.addAction(RESET_ISLS_COST,{ database.resetCosts(topology.isls) })
         northbound.updateLinkProps(isls.collectMany { isl ->
             [islUtils.toLinkProps(isl, ["cost": (newCost).toString()])]
         })
