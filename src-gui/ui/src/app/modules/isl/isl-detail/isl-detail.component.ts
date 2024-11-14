@@ -42,7 +42,6 @@ export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     state = '';
     bfd_session_status = '';
     enable_bfd = false;
-    evacuate = false;
     under_maintenance = false;
     loadingData = true;
     isBFDEdit: any = false;
@@ -187,7 +186,6 @@ export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
                 this.bfd_session_status = retrievedObject.bfd_session_status;
                 this.available_bandwidth = retrievedObject.available_bandwidth;
                 this.under_maintenance = retrievedObject.under_maintenance;
-                this.evacuate = retrievedObject.evacuate;
                 this.enable_bfd = retrievedObject.enable_bfd;
                 this.clipBoardItems = Object.assign(this.clipBoardItems, {
                     sourceSwitchName: retrievedObject.source_switch_name,
@@ -413,14 +411,13 @@ export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     evacuateIsl(e) {
+        if (!this.under_maintenance) {
+            this.toastr.info(MessageObj.info_cannot_evacuate_flows_from_isl, 'Can not evacuate');
+            return;
+        }
         const modalRef = this.modalService.open(ModalconfirmationComponent);
         modalRef.componentInstance.title = 'Confirmation';
-        this.evacuate = e.target.checked;
-        if (this.evacuate) {
-            modalRef.componentInstance.content = 'Are you sure you want to evacuate all flows?';
-        } else {
-            modalRef.componentInstance.content = 'Are you sure ?';
-        }
+        modalRef.componentInstance.content = 'Are you sure you want to evacuate all flows?';
         modalRef.result.then((response) => {
             if (response && response == true) {
                 const data = {
@@ -429,7 +426,7 @@ export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
                     dst_switch: this.dst_switch,
                     dst_port: this.dst_port,
                     under_maintenance: this.under_maintenance,
-                    evacuate: e.target.checked
+                    evacuate: true
                 };
                 this.islListService.islUnderMaintenance(data).subscribe(response => {
                     this.toastr.success(MessageObj.flows_evacuated, 'Success');
@@ -437,11 +434,7 @@ export class IslDetailComponent implements OnInit, AfterViewInit, OnDestroy {
                 }, error => {
                     this.toastr.error(MessageObj.error_flows_evacuated, 'Error');
                 });
-            } else {
-                this.evacuate = false;
             }
-        }, error => {
-            this.evacuate = false;
         });
     }
 
