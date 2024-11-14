@@ -17,7 +17,7 @@ package org.openkilda.wfm.topology.nbworker.bolts;
 
 import org.openkilda.messaging.Message;
 import org.openkilda.messaging.MessageData;
-import org.openkilda.messaging.command.BaseRerouteRequest;
+import org.openkilda.messaging.command.flow.FlowRerouteRequest;
 import org.openkilda.messaging.command.switches.SwitchValidateRequest;
 import org.openkilda.messaging.error.ErrorData;
 import org.openkilda.wfm.CommandContext;
@@ -38,7 +38,7 @@ public class MessageEncoder extends KafkaEncoder {
             CommandContext commandContext = pullContext(input);
             Message message = wrap(commandContext, payload);
 
-            if (payload instanceof BaseRerouteRequest) {
+            if (payload instanceof FlowRerouteRequest) {
                 getOutput().emit(input.getSourceStreamId(), input, new Values(message));
             } else if (payload instanceof SwitchValidateRequest) {
                 getOutput().emit(input.getSourceStreamId(), input,
