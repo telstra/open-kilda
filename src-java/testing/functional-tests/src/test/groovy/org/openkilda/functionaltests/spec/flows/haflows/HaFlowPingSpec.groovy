@@ -2,7 +2,7 @@ package org.openkilda.functionaltests.spec.flows.haflows
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory

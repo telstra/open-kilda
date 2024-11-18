@@ -8,7 +8,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload

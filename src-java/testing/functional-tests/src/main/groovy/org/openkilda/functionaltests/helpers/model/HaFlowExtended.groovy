@@ -304,8 +304,10 @@ class HaFlowExtended {
     }
 
     HaFlow delete() {
-        Wrappers.wait(WAIT_OFFSET * 2) {
-            assert !(FlowState.getByValue(northboundV2.getHaFlow(haFlowId)?.status) in [FlowState.IN_PROGRESS, FlowState.DOWN])
+        if (haFlowId in northboundV2.getAllHaFlows().haFlowId) {
+            Wrappers.wait(WAIT_OFFSET * 2) {
+                assert !(FlowState.getByValue(northboundV2.getHaFlow(haFlowId)?.status) in [FlowState.IN_PROGRESS, FlowState.DOWN])
+            }
         }
         log.debug("Deleting ha-flow '$haFlowId'")
         def response = northboundV2.deleteHaFlow(haFlowId)

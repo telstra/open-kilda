@@ -4,9 +4,8 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.yflow.YFlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.error.yflow.YFlowNotUpdatedWithConflictExpectedError
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
-import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.PathComputationStrategy
 import org.openkilda.model.SwitchId
