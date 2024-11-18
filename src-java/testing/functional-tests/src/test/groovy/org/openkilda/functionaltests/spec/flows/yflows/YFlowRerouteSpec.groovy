@@ -50,7 +50,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     def "Valid y-flow can be rerouted"() {
         given: "A qinq y-flow"
         def swT = switchTriplets.all().withAllDifferentEndpoints().withoutWBSwitch().getSwitchTriplets().find {
-            def yPoints = topologyHelper.findPotentialYPoints(it)
+            def yPoints = it.findPotentialYPoints()
              yPoints.size() == 1 && yPoints[0] != it.shared.dpId
         }
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")

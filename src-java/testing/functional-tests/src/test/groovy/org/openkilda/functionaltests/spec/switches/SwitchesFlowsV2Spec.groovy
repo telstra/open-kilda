@@ -60,8 +60,8 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
                                    usual flow protected path           subflow 2 ends on the switch that is not used by other flows
          */
         switchTriplet = switchTriplets.all(true, false).nonNeighbouring().getSwitchTriplets().find {
-            def yPoints = topologyHelper.findPotentialYPoints(it)
-            yPoints[0] != it.shared
+            def yPoints = it.findPotentialYPoints()
+            yPoints[0] != it.shared.dpId
         }
         assumeTrue(switchTriplet != null, "Couldn't find appropriate switch triplet")
 

@@ -2,7 +2,6 @@ package org.openkilda.functionaltests.helpers.model
 
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
-import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -28,8 +27,6 @@ import org.springframework.stereotype.Component
 @Scope(SCOPE_PROTOTYPE)
 class SwitchTriplets {
     List<SwitchTriplet> switchTriplets
-    @Autowired
-    TopologyHelper topologyHelper
     @Autowired
     TopologyDefinition topology
 
@@ -147,7 +144,7 @@ class SwitchTriplets {
                     .unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
             def ep2paths = it.pathsEp2.findAll { path -> !path.any { node -> node.switchId == it.ep1.dpId } }
                     .unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            def yPoints = topologyHelper.findPotentialYPoints(it)
+            def yPoints = it.findPotentialYPoints()
 
             yPoints.size() == 1 && (isYPointOnSharedEp ? yPoints[0] == it.shared.dpId : yPoints[0] != it.shared.dpId) && yPoints[0] != it.ep1.dpId && yPoints[0] != it.ep2.dpId &&
                     ep1paths.size() >= 2 && ep2paths.size() >= 2
@@ -184,7 +181,7 @@ class SwitchTriplets {
 
     SwitchTriplet findSwitchTripletWithYPointOnSharedEp() {
         return switchTriplets.find {
-            topologyHelper.findPotentialYPoints(it).size() == 1 && it.getShared().getDpId() == topologyHelper.findPotentialYPoints(it).get(0)
+            it.findPotentialYPoints().size() == 1 && it.shared.dpId == it.findPotentialYPoints().get(0)
         }
     }
 
@@ -227,7 +224,7 @@ class SwitchTriplets {
                             ep2: ep2,
                             pathsEp1: retrievePairPathNode(shared.dpId, ep1.dpId),
                             pathsEp2: retrievePairPathNode(shared.dpId, ep2.dpId),
-                            topologyDefinition: topology)
+                            topology: topology)
                 }
     }
 

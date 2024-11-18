@@ -167,7 +167,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
     def "HA-flow goes to 'Down' status when ISl of the HA-flow fails and there is no alt path to reroute"() {
         given: "An HA-flow without alternative paths"
         def swT = switchTriplets.all().withAllDifferentEndpoints().switchTriplets.find {
-            def yPoints = topologyHelper.findPotentialYPoints(it)
+            def yPoints = it.findPotentialYPoints()
             yPoints.size() == 1 && yPoints[0] != it.shared.dpId
         }
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
