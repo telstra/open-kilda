@@ -134,18 +134,18 @@ export class DatatableComponent implements OnDestroy, OnInit, AfterViewInit, OnC
           jQuery('#isl-list-table_next').removeClass('disabled');
         }
       }, 'aoColumns': [
-        { sWidth: '14%', 'sType': 'name', 'bSortable': true },
+        { sWidth: '20%', 'sType': 'name', 'bSortable': true },
         { sWidth:  '8%' },
         { sWidth: '8%' },
-        { sWidth: '14%' },
+        { sWidth: '19%' },
         { sWidth: '8%' },
         { sWidth: '8%' },
         { sWidth: '7%' },
         { sWidth: '12%' },
-        { sWidth: '12%' },
-        { sWidth: '12%' },
-        { sWidth: '12%' },
         { sWidth: '8%' },
+        { sWidth: '8%' },
+        { sWidth: '8%' },
+        { sWidth: '9%' },
         { sWidth: '8%' },
         { sWidth: '8%' }
       ],
