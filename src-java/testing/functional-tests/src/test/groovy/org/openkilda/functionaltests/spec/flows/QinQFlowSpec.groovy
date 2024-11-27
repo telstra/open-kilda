@@ -182,9 +182,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def allSwitches = topology.activeSwitches
         involvedSwitchesforBothFlows.each { swId ->
             def sw = allSwitches.find { item -> item.dpId == swId }
+            def defaultCookies = sw.defaultCookies
             Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
                 assertThat(switchRulesFactory.get(swId).getRules()*.cookie.toArray()).as(swId.toString())
-                        .containsExactlyInAnyOrder(*sw.defaultCookies)
+                        .containsExactlyInAnyOrder(*defaultCookies)
             }
         }
 
@@ -206,6 +207,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
     def "System allows to create a single switch QinQ flow\
 [srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.src.hwSwString]#trafficDisclaimer"() {
+        given: "Switch default cookies before flow creation have been collected"
+        def defaultCookies = swPair.src.defaultCookies
+
         when: "Create a single switch QinQ flow"
         def qinqFlow = flowFactory.getBuilder(swPair)
                 .withSourceVlan(srcVlanId)
@@ -256,7 +260,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Flow rules are deleted"
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
             assertThat(switchRulesFactory.get(swPair.src.dpId).getRules()*.cookie.toArray())
-                    .containsExactlyInAnyOrder(*swPair.src.defaultCookies)
+                    .containsExactlyInAnyOrder(*defaultCookies)
         }
         switchRulesFactory.get(swPair.src.dpId).getRules().findAll {
             new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
@@ -319,6 +323,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
     def "System allow to create/update/delete a protected QinQ flow via APIv1"() {
         given: "Two switches with enabled multi table mode"
         def swP = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
+        def srcDefaultCookies = swP.src.defaultCookies
+        def dstDefaultCookies = swP.dst.defaultCookies
 
         when: "Create a QinQ flow"
         def flowEntity = flowFactory.getBuilder(swP)
@@ -363,11 +369,12 @@ class QinQFlowSpec extends HealthCheckSpecification {
         flow.deleteV1()
 
         then: "Flows rules are deleted"
-        [swP.src, swP.dst].each { sw ->
-            Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-                assertThat(switchRulesFactory.get(sw.dpId).getRules()*.cookie.toArray())
-                        .containsExactlyInAnyOrder(*sw.defaultCookies)
-            }
+        Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
+            assertThat(switchRulesFactory.get(swP.src.dpId).getRules()*.cookie.toArray())
+                    .containsExactlyInAnyOrder(*srcDefaultCookies)
+            assertThat(switchRulesFactory.get(swP.dst.dpId).getRules()*.cookie.toArray())
+                    .containsExactlyInAnyOrder(*dstDefaultCookies)
+
         }
 
         and: "Shared rule of flow is deleted"
@@ -478,9 +485,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
 (srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
         given: "A switch with enabled multiTable mode"
         def sw = topology.activeSwitches[0]
+        def defaultCookies = sw.defaultCookies
 
         when: "Create a single switch QinQ flow"
-        def qinqFlow = flowFactory.getBuilder(sw, sw)
+        def qinqFlow = flowFactory.getBuilder(sw, sw, false)
                 .withSourceVlan(srcVlanId)
                 .withSourceInnerVlan(srcInnerVlanId)
                 .withDestinationVlan(dstVlanId)
@@ -514,10 +522,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
         qinqFlow.delete()
 
         then: "Flow rules are deleted"
-        def singleSw = topology.getActiveSwitches().find { it.dpId == sw.dpId }
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-            assertThat(switchRulesFactory.get(singleSw.dpId).getRules()*.cookie.toArray()).as(singleSw.dpId.toString())
-                    .containsExactlyInAnyOrder(*singleSw.defaultCookies)
+            assertThat(switchRulesFactory.get(sw.dpId).getRules()*.cookie.toArray()).as(sw.dpId.toString())
+                    .containsExactlyInAnyOrder(*defaultCookies)
         }
 
         where:
@@ -650,9 +657,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Flows rules are deleted"
         involvedSwitchesforBothFlows.each { swId ->
             def sw = topology.getActiveSwitches().find { it.dpId == swId }
+            def defaultCookies = sw.defaultCookies
             Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
                 assertThat(switchRulesFactory.get(swId).getRules()*.cookie.toArray()).as(swId.toString())
-                        .containsExactlyInAnyOrder(*sw.defaultCookies)
+                        .containsExactlyInAnyOrder(*defaultCookies)
             }
         }
 

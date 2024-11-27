@@ -226,74 +226,69 @@ class SwitchHelper {
                            MULTITABLE_POST_INGRESS_DROP_COOKIE, MULTITABLE_EGRESS_PASS_THROUGH_COOKIE,
                            MULTITABLE_TRANSIT_DROP_COOKIE, LLDP_POST_INGRESS_COOKIE, LLDP_POST_INGRESS_ONE_SWITCH_COOKIE,
                            ARP_POST_INGRESS_COOKIE, ARP_POST_INGRESS_ONE_SWITCH_COOKIE]
-        if (sw.features.contains(NOVIFLOW_PUSH_POP_VXLAN) || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
+        def unifiedCookies = [DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
+                              VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE]
+
+
+        boolean isVxlanSupported = sw.features.contains(NOVIFLOW_PUSH_POP_VXLAN) || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)
+
+        if (isVxlanSupported) {
             multiTableRules.addAll([LLDP_POST_INGRESS_VXLAN_COOKIE, ARP_POST_INGRESS_VXLAN_COOKIE])
+            vxlanRules << VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
         }
-        northbound.get().getLinks(sw.dpId, null, null, null).each {
-            if (sw.features.contains(NOVIFLOW_PUSH_POP_VXLAN) || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-                multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES, it.source.portNo).getValue())
-                multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES, it.source.portNo).getValue())
-            }
-            multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES, it.source.portNo).getValue())
-            multiTableRules.add(new PortColourCookie(CookieType.PING_INPUT, it.source.portNo).getValue())
-        }
-        northbound.get().getSwitchFlows(sw.dpId).each {
-            if (it.source.datapath.equals(sw.dpId)) {
-                multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_INGRESS_RULES, it.source.portNumber).getValue())
-                if (swProps.switchLldp || it.source.detectConnectedDevices.lldp) {
-                    devicesRules.add(new PortColourCookie(CookieType.LLDP_INPUT_CUSTOMER_TYPE, it.source.portNumber).getValue())
-                }
-                if (swProps.switchArp || it.source.detectConnectedDevices.arp) {
-                    devicesRules.add(new PortColourCookie(CookieType.ARP_INPUT_CUSTOMER_TYPE, it.source.portNumber).getValue())
-                }
-            }
-            if (it.destination.datapath.equals(sw.dpId)) {
-                multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_INGRESS_RULES, it.destination.portNumber).getValue())
-                if (swProps.switchLldp || it.destination.detectConnectedDevices.lldp) {
-                    devicesRules.add(new PortColourCookie(CookieType.LLDP_INPUT_CUSTOMER_TYPE, it.destination.portNumber).getValue())
-                }
-                if (swProps.switchArp || it.destination.detectConnectedDevices.arp) {
-                    devicesRules.add(new PortColourCookie(CookieType.ARP_INPUT_CUSTOMER_TYPE, it.destination.portNumber).getValue())
-                }
-            }
-        }
+
         if (swProps.switchLldp) {
             devicesRules.addAll([LLDP_INPUT_PRE_DROP_COOKIE, LLDP_TRANSIT_COOKIE, LLDP_INGRESS_COOKIE])
         }
         if (swProps.switchArp) {
             devicesRules.addAll([ARP_INPUT_PRE_DROP_COOKIE, ARP_TRANSIT_COOKIE, ARP_INGRESS_COOKIE])
         }
+
+        northbound.get().getSwitchFlows(sw.dpId).each { flow ->
+            [flow.source, flow.destination].findAll { ep -> ep.datapath == sw.dpId }.each { ep ->
+                multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_INGRESS_RULES, ep.portNumber).getValue())
+                if (swProps.switchLldp || ep.detectConnectedDevices.lldp) {
+                    devicesRules.add(new PortColourCookie(CookieType.LLDP_INPUT_CUSTOMER_TYPE, ep.portNumber).getValue())
+                }
+                if (swProps.switchArp || ep.detectConnectedDevices.arp) {
+                    devicesRules.add(new PortColourCookie(CookieType.ARP_INPUT_CUSTOMER_TYPE, ep.portNumber).getValue())
+                }
+            }
+        }
+
+        def relatedLinks =  northbound.get().getLinks(sw.dpId, null, null, null)
+        relatedLinks.each {
+            if (isVxlanSupported) {
+                multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_EGRESS_RULES, it.source.portNo).getValue())
+                multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VXLAN_TRANSIT_RULES, it.source.portNo).getValue())
+            }
+            multiTableRules.add(new PortColourCookie(CookieType.MULTI_TABLE_ISL_VLAN_EGRESS_RULES, it.source.portNo).getValue())
+            multiTableRules.add(new PortColourCookie(CookieType.PING_INPUT, it.source.portNo).getValue())
+        }
+
+        if ((toggles.server42IslRtt && doesSwSupportS42(swProps) &&
+                swProps.server42IslRtt in ["ENABLED", "AUTO"] && !sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD))) {
+            devicesRules.add(SERVER_42_ISL_RTT_TURNING_COOKIE)
+            devicesRules.add(SERVER_42_ISL_RTT_OUTPUT_COOKIE)
+            relatedLinks.each {
+                devicesRules.add(new PortColourCookie(CookieType.SERVER_42_ISL_RTT_INPUT, it.source.portNo).getValue())
+            }
+        }
+
         if (swProps.server42FlowRtt) {
             server42Rules << SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE
-            if (sw.features.contains(NOVIFLOW_PUSH_POP_VXLAN) || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
+            if (isVxlanSupported) {
                 server42Rules << SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE
             }
         }
         if (toggles.server42FlowRtt) {
-            if (sw.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST) ||
-                    sw.features.contains(SwitchFeature.KILDA_OVS_SWAP_FIELD)) {
+            if (sw.features.contains(SwitchFeature.NOVIFLOW_SWAP_ETH_SRC_ETH_DST) || sw.features.contains(SwitchFeature.KILDA_OVS_SWAP_FIELD)) {
                 server42Rules << SERVER_42_FLOW_RTT_TURNING_COOKIE
                 server42Rules << SERVER_42_FLOW_RTT_VXLAN_TURNING_COOKIE
             }
         }
-        if (toggles.server42IslRtt &&
-                swProps.server42Port != null && swProps.server42MacAddress != null && swProps.server42Vlan != null &&
-                ("ENABLED".equals(swProps.server42IslRtt) ||
-                        "AUTO".equals(swProps.server42IslRtt) &&
-                        !sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD))) {
-            devicesRules.add(SERVER_42_ISL_RTT_TURNING_COOKIE)
-            devicesRules.add(SERVER_42_ISL_RTT_OUTPUT_COOKIE)
 
-            northbound.get().getLinks(sw.dpId, null, null, null).each {
-                devicesRules.add(new PortColourCookie(CookieType.SERVER_42_ISL_RTT_INPUT, it.source.portNo).getValue())
-            }
-        }
-        if (sw.features.contains(NOVIFLOW_PUSH_POP_VXLAN) || sw.features.contains(KILDA_OVS_PUSH_POP_MATCH_VXLAN)) {
-            vxlanRules << VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
-        }
-        def lacpPorts = northboundV2.get().getLagLogicalPort(sw.dpId).findAll {
-            it.lacpReply
-        }
+        def lacpPorts = northboundV2.get().getLagLogicalPort(sw.dpId).findAll { it.lacpReply }
         if (!lacpPorts.isEmpty()) {
             lacpRules << new ServiceCookie(ServiceCookieTag.DROP_SLOW_PROTOCOLS_LOOP_COOKIE).getValue()
             lacpPorts.each {
@@ -301,21 +296,20 @@ class SwitchHelper {
             }
         }
         if (sw.noviflow && !sw.wb5164) {
-            return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
-                     VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE,
-                     CATCH_BFD_RULE_COOKIE, ROUND_TRIP_LATENCY_RULE_COOKIE]
-                     + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
+            return ([CATCH_BFD_RULE_COOKIE, ROUND_TRIP_LATENCY_RULE_COOKIE]
+                    + unifiedCookies + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
         } else if ((sw.noviflow || sw.nbFormat().manufacturer == "E") && sw.wb5164) {
-            return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
-                     VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE, CATCH_BFD_RULE_COOKIE]
-                     + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
+            return ([CATCH_BFD_RULE_COOKIE]
+                    + unifiedCookies + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
         } else if (sw.ofVersion == "OF_12") {
             return [VERIFICATION_BROADCAST_RULE_COOKIE]
         } else {
-            return ([DROP_RULE_COOKIE, VERIFICATION_BROADCAST_RULE_COOKIE,
-                     VERIFICATION_UNICAST_RULE_COOKIE, DROP_VERIFICATION_LOOP_RULE_COOKIE]
-                    + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
+            return (unifiedCookies + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
         }
+    }
+
+    static boolean doesSwSupportS42(SwitchPropertiesDto swProps) {
+        swProps.server42Port != null && swProps.server42MacAddress != null && swProps.server42Vlan != null
     }
 
     static List<Long> getDefaultMeters(Switch sw) {
