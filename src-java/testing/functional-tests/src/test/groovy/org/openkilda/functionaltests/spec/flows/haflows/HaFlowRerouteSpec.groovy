@@ -45,7 +45,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
-    @Tags([TOPOLOGY_DEPENDENT, ISL_RECOVER_ON_FAIL])
+    @Tags([ISL_RECOVER_ON_FAIL])
     @Issue("https://github.com/telstra/open-kilda/issues/5647 (hardware)")
     def "Valid HA-flow can be rerouted"() {
         given: "An HA-flow"

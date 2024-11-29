@@ -34,7 +34,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         given: "Switches with three not overlapping paths at least"
         def swT = switchTriplets.all(false, false).withAllDifferentEndpoints()
                 .withAtLeastNNonOverlappingPaths(4).random()
-        println("[" + swT.shared.dpId + "] " + swT.ep1.dpId + "---" + swT.ep2.dpId )
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create three Y-Flows with diversity enabled"
