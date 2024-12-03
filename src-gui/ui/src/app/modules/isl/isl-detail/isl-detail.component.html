@@ -242,18 +242,13 @@
                 </div>
               </div>
               <div class='row isl_sbl_details mt-3' *ngIf="commonService.hasPermission('isl_update_maintenance')">
-                <label class='col-sm-6 col-form-label'>Evacuate All Flows:
-                </label>
+                <label class='col-sm-6 col-form-label'>Evacuate All Flows:</label>
                 <div class='col-sm-6'>
                   <div class="pull-left">
-                    <div class="onoffswitch">
-                      <input type="checkbox" (change)="evacuateIsl($event)" name="isl-evacuate"
-                        class="onoffswitch-checkbox" id="onoffevacuateisl" [checked]="evacuate">
-                      <label class="onoffswitch-label" for="onoffevacuateisl">
-                        <span class="onoffswitch-inner onoffswitch-inner-maintenance-switch"></span>
-                        <span class="onoffswitch-switch" id="onoffswitch-switch"></span>
-                      </label>
-                    </div>
+                      <button type="button" class="btn pull-left kilda_btn"
+                              style="padding: 0px 9px!important;"
+                              (click)="evacuateIsl($event)">Evacuate
+                      </button> &nbsp;
                   </div>
                 </div>
               </div>

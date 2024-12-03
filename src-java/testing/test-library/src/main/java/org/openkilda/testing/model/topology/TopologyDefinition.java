@@ -229,16 +229,21 @@ public class TopologyDefinition {
      * actual ISLs.
      */
     @JsonIgnore
-    public List<Isl> getRelatedIsls(Switch sw) {
+    public List<Isl> getRelatedIsls(SwitchId swId) {
         List<Isl> isls = getIslsForActiveSwitches().stream().filter(isl ->
-                isl.getSrcSwitch().getDpId().equals(sw.getDpId()) || isl.getDstSwitch().getDpId().equals(sw.getDpId()))
+                isl.getSrcSwitch().getDpId().equals(swId) || isl.getDstSwitch().getDpId().equals(swId))
                 .collect(toList());
         for (Isl isl : isls) {
-            if (isl.getDstSwitch().getDpId().equals(sw.getDpId())) {
+            if (isl.getDstSwitch().getDpId().equals(swId)) {
                 isls.set(isls.indexOf(isl), isl.getReversed());
             }
         }
         return isls;
+    }
+
+    @JsonIgnore
+    public List<Isl> getRelatedIsls(Switch sw) {
+        return getRelatedIsls(sw.getDpId());
     }
 
     /**

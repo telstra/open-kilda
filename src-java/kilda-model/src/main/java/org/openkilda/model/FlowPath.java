@@ -88,13 +88,14 @@ public class FlowPath implements CompositeDataEntity<FlowPath.FlowPathData> {
                     long latency, long bandwidth,
                     boolean ignoreBandwidth, FlowPathStatus status, List<PathSegment> segments,
                     Set<FlowApplication> applications,
-                    String sharedBandwidthGroupId, HaFlowPath haFlowPath) {
+                    String sharedBandwidthGroupId, HaFlowPath haFlowPath, Flow flow) {
         data = FlowPathDataImpl.builder().pathId(pathId).srcSwitch(srcSwitch).destSwitch(destSwitch)
                 .cookie(cookie).meterId(meterId).ingressMirrorGroupId(ingressMirrorGroupId)
                 .latency(latency).bandwidth(bandwidth)
                 .ignoreBandwidth(ignoreBandwidth).status(status)
                 .applications(applications)
                 .sharedBandwidthGroupId(sharedBandwidthGroupId).haFlowPath(haFlowPath)
+                .flow(flow)
                 .build();
         // The reference is used to link path segments back to the path. See {@link #setSegments(List)}.
         ((FlowPathDataImpl) data).flowPath = this;
