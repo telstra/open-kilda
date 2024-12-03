@@ -765,6 +765,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     }
 
     List<FlowRuleEntity> getFlowRules(Switch sw) {
-        switchRulesFactory.get(sw.dpId).getRules().findAll { !(it.cookie in sw.defaultCookies) }.sort()
+        def defaultCookies = sw.defaultCookies
+        switchRulesFactory.get(sw.dpId).getRules().findAll { !(it.cookie in defaultCookies) }.sort()
     }
 }

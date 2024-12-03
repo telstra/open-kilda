@@ -212,7 +212,8 @@ class DefaultRulesSpec extends HealthCheckSpecification {
             Map data, Switch sw) {
         when: "Delete rules from the switch"
         def defaultRules = switchRulesFactory.get(sw.dpId).getRules()
-        assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
+        def expectedDefaultCookies = sw.defaultCookies
+        assert defaultRules*.cookie.sort() == expectedDefaultCookies.sort()
         def deletedRules = switchHelper.deleteSwitchRules(sw.dpId, data.deleteRulesAction)
 
         then: "The corresponding rules are really deleted"
@@ -226,13 +227,13 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         verifyAll(northbound.validateSwitchRules(sw.dpId)) {
             missingRules == deletedRules
             excessRules.empty
-            properRules.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
+            properRules.sort() == expectedDefaultCookies.findAll { it != data.cookie }.sort()
         }
         verifyAll(switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get()) {
             rules.missing*.getCookie() == deletedRules
             rules.misconfigured.empty
             rules.excess.empty
-            rules.proper*.getCookie().sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
+            rules.proper*.getCookie().sort() == expectedDefaultCookies.findAll { it != data.cookie }.sort()
         }
 
         where:
@@ -268,9 +269,10 @@ class DefaultRulesSpec extends HealthCheckSpecification {
     def "Able to delete default rule from #sw.hwSwString [delete-action=#data.deleteRulesAction]"(Map data, Switch sw) {
         when: "Delete rule from the switch"
         def defaultRules
+        def expectedDefaultCookies = sw.defaultCookies
         wait(RULES_INSTALLATION_TIME) {
             defaultRules = switchRulesFactory.get(sw.dpId).getRules()
-            assert defaultRules*.cookie.sort() == sw.defaultCookies.sort()
+            assert defaultRules*.cookie.sort() == expectedDefaultCookies.sort()
         }
         def deletedRules = switchHelper.deleteSwitchRules(sw.dpId, data.deleteRulesAction)
 
@@ -285,13 +287,13 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         verifyAll(northbound.validateSwitchRules(sw.dpId)) {
             missingRules == deletedRules
             excessRules.empty
-            properRules.sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
+            properRules.sort() == expectedDefaultCookies.findAll { it != data.cookie }.sort()
         }
         verifyAll(switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get()) {
             rules.missing*.getCookie() == deletedRules
             rules.misconfigured.empty
             rules.excess.empty
-            rules.proper*.getCookie().sort() == sw.defaultCookies.findAll { it != data.cookie }.sort()
+            rules.proper*.getCookie().sort() == expectedDefaultCookies.findAll { it != data.cookie }.sort()
         }
 
         where:
@@ -346,16 +348,17 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         }
 
         and: "Switch and rules validation shows that corresponding rule is missing"
+        def defaultCookiesWithoutMissingS42Rule = sw.defaultCookies.findAll { it != SERVER_42_FLOW_RTT_TURNING_COOKIE }.sort()
         verifyAll(northbound.validateSwitchRules(sw.dpId)) {
             missingRules == [SERVER_42_FLOW_RTT_TURNING_COOKIE]
             excessRules.empty
-            properRules.sort() == sw.defaultCookies.findAll { it != SERVER_42_FLOW_RTT_TURNING_COOKIE }.sort()
+            properRules.sort() == defaultCookiesWithoutMissingS42Rule
         }
         verifyAll(switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get()) {
             rules.missing*.getCookie() == [SERVER_42_FLOW_RTT_TURNING_COOKIE]
             rules.misconfigured.empty
             rules.excess.empty
-            rules.proper*.getCookie().sort() == sw.defaultCookies.findAll { it != SERVER_42_FLOW_RTT_TURNING_COOKIE }.sort()
+            rules.proper*.getCookie().sort() == defaultCookiesWithoutMissingS42Rule
         }
 
         when: "Install the server42 turning rule"

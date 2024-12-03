@@ -101,8 +101,9 @@ class SwitchSyncSpec extends HealthCheckSpecification {
                 .collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique() as List<Switch>
         def involvedSwitchIds = involvedSwitches*.getDpId()
         def cookiesMap = involvedSwitches.collectEntries { sw ->
+            def defaultCookies = sw.defaultCookies
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                !(it.cookie in sw.defaultCookies)
+                !(it.cookie in defaultCookies)
             }*.cookie]
         }
         Map<SwitchId, List<Long>> metersMap = involvedSwitches.collectEntries { sw ->
@@ -238,8 +239,9 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         def involvedSwitchIds = involvedSwitches*.getDpId()
         def transitSwitchIds = involvedSwitches[1..-2]*.dpId
         def cookiesMap = involvedSwitches.collectEntries { sw ->
+            def defaultCookies = sw.defaultCookies
             [sw.dpId, northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                !(it.cookie in sw.defaultCookies) && !new Cookie(it.cookie).serviceFlag
+                !(it.cookie in defaultCookies) && !new Cookie(it.cookie).serviceFlag
             }*.cookie]
         }
         def metersMap = involvedSwitches.collectEntries { sw ->
