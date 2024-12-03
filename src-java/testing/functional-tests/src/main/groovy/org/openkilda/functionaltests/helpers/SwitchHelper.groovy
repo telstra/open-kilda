@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
 import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
+import org.openkilda.testing.service.northbound.payloads.SwitchSyncExtendedResult
 
 import groovy.transform.Memoized
 import org.openkilda.functionaltests.helpers.model.SwitchDbData
@@ -22,7 +23,6 @@ import org.openkilda.model.cookie.ServiceCookie.ServiceCookieTag
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
-import org.openkilda.northbound.dto.v1.switches.SwitchSyncResult
 import org.openkilda.northbound.dto.v2.flows.FlowMirrorPointPayload
 import org.openkilda.northbound.dto.v2.switches.LagPortRequest
 import org.openkilda.northbound.dto.v2.switches.LagPortResponse
@@ -695,20 +695,20 @@ class SwitchHelper {
         assert result == switchValidateInfo.asExpected
     }
 
-    static SwitchSyncResult synchronize(SwitchId switchId, boolean removeExcess=true) {
+    static SwitchSyncExtendedResult synchronize(SwitchId switchId, boolean removeExcess=true) {
         return northbound.get().synchronizeSwitch(switchId, removeExcess)
     }
 
     /**
-     * Synchronizes each switch from the list and returns a map of SwitchSyncResults, where the key is
+     * Synchronizes each switch from the list and returns a map of SwitchSyncExtendedResults, where the key is
      * SwitchId and the value is result of synchronization if there were entries which had to be fixed.
      * I.e. if all the switches were in expected state, then empty list is returned. If there were only
      * two switches in unexpected state, than resulting map will have only two entries, etc.
      * @param switchesToSynchronize SwitchIds which should be synchronized
-     * @return Map of SwitchIds and SwitchSyncResults for switches which weren't in expected state before
+     * @return Map of SwitchIds and SwitchSyncExtendedResult for switches which weren't in expected state before
      * the synchronization
      */
-    static Map<SwitchId, SwitchSyncResult> synchronizeAndCollectFixedDiscrepancies(List<SwitchId> switchesToSynchronize) {
+    static Map<SwitchId, SwitchSyncExtendedResult> synchronizeAndCollectFixedDiscrepancies(List<SwitchId> switchesToSynchronize) {
         return withPool {
             switchesToSynchronize.collectParallel { [it, northbound.get().synchronizeSwitch(it, true)] }
             .collectEntries { [(it[0]): it[1]] }
@@ -724,13 +724,13 @@ class SwitchHelper {
     }
 
     /**
-     * Synchronizes the switch and returns an optional SwitchSyncResult if the switch was in an unexpected state
+     * Synchronizes the switch and returns an optional SwitchSyncExtendedResult if the switch was in an unexpected state
      * before the synchronization.
      * @param switchToSynchronize SwitchId to synchronize
-     * @return optional SwitchSyncResult if the switch was in an unexpected state
+     * @return optional SwitchSyncExtendedResult if the switch was in an unexpected state
      * before the synchronization
      */
-    static Optional<SwitchSyncResult> synchronizeAndCollectFixedDiscrepancies(SwitchId switchToSynchronize) {
+    static Optional<SwitchSyncExtendedResult> synchronizeAndCollectFixedDiscrepancies(SwitchId switchToSynchronize) {
         return Optional.ofNullable(synchronizeAndCollectFixedDiscrepancies([switchToSynchronize]).get(switchToSynchronize))
     }
 
@@ -739,7 +739,7 @@ class SwitchHelper {
      * @param switchesToSynchronize
      * @return
      */
-    static Map<SwitchId, SwitchSyncResult> synchronizeAndCollectFixedDiscrepancies(Set<SwitchId> switchesToSynchronize) {
+    static Map<SwitchId, SwitchSyncExtendedResult> synchronizeAndCollectFixedDiscrepancies(Set<SwitchId> switchesToSynchronize) {
         return synchronizeAndCollectFixedDiscrepancies(switchesToSynchronize as List)
     }
 

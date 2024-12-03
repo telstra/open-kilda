@@ -246,6 +246,11 @@ class SwitchPairs {
         return this
     }
 
+    SwitchPairs withoutWBSwitch() {
+        switchPairs = switchPairs.findAll { SwitchPair.NOT_WB_ENDPOINTS(it) }
+        return this
+    }
+
     private void assertAllSwitchPairsAreNeighbouring() {
         assert switchPairs.size() == this.neighbouring().getSwitchPairs().size(),
                 "This method is applicable only to the neighbouring switch pairs"

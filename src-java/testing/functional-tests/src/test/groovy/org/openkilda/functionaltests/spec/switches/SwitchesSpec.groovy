@@ -5,7 +5,10 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_SWITCH_PROPERTIES
+import static org.openkilda.functionaltests.helpers.model.FlowActionType.REROUTE_FAILED
+import static org.openkilda.messaging.command.switches.DeleteRulesAction.DROP_ALL_ADD_DEFAULTS
+import static org.openkilda.messaging.command.switches.InstallRulesAction.INSTALL_DEFAULTS
+import static org.openkilda.messaging.payload.flow.FlowState.DOWN
 import static org.openkilda.testing.Constants.NON_EXISTENT_SWITCH_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
@@ -16,7 +19,6 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
@@ -28,14 +30,11 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
 import spock.lang.Shared
 
-
 class SwitchesSpec extends HealthCheckSpecification {
     @Shared
     SwitchNotFoundExpectedError switchNotFoundExpectedError = new SwitchNotFoundExpectedError(
             "Switch $NON_EXISTENT_SWITCH_ID not found", ~/Switch $NON_EXISTENT_SWITCH_ID not found/)
-    @Autowired
-    @Shared
-    CleanupManager cleanupManager
+
     @Autowired
     @Shared
     FlowFactory flowFactory
@@ -48,11 +47,11 @@ class SwitchesSpec extends HealthCheckSpecification {
     @Tags([SMOKE, SMOKE_SWITCHES])
     def "System is able to return a certain switch info by its id"() {
         when: "Request info about certain switch from Northbound"
-        def sw = topology.activeSwitches[0]
-        def response = northbound.getSwitch(sw.dpId)
+        def sw = switches.all().random()
+        def response = sw.getDetails()
 
         then: "Switch information is returned"
-        response.switchId == sw.dpId
+        response.switchId == sw.switchId
         !response.hostname.empty
         !response.address.empty
         !response.description.empty
@@ -76,7 +75,8 @@ class SwitchesSpec extends HealthCheckSpecification {
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Systems allows to get a flow that goes through a switch"() {
         given: "Two active not neighboring switches with two diverse paths at least"
-        def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNNonOverlappingPaths(2).random()
+        def switchPair = switchPairs.all().nonNeighbouring()
+                .withAtLeastNNonOverlappingPaths(2).random()
 
         and: "A protected flow"
         def protectedFlow = flowFactory.getBuilder(switchPair)
@@ -84,7 +84,8 @@ class SwitchesSpec extends HealthCheckSpecification {
                 .build().create()
 
         and: "A single switch flow"
-        def allowedPorts = topology.getAllowedPortsForSwitch(switchPair.src).findAll {
+        def srcSwitch = switches.all().findSpecific(switchPair.src.dpId)
+        def allowedPorts = srcSwitch.getPorts().findAll {
             it != protectedFlow.source.portNumber
         }
         def r = new Random()
@@ -100,40 +101,40 @@ class SwitchesSpec extends HealthCheckSpecification {
         def involvedSwitchIds = flowPathInfo.getInvolvedSwitches()
 
         then: "The created flows are in the response list from the src switch"
-        def switchFlowsResponseSrcSwitch = northbound.getSwitchFlows(switchPair.src.dpId)
+        def switchFlowsResponseSrcSwitch = srcSwitch.getFlows()
         switchFlowsResponseSrcSwitch*.id.sort() == [protectedFlow.flowId, singleFlow.flowId].sort()
 
         and: "Only the protectedFlow is in the response list from the involved switch(except the src switch)"
         involvedSwitchIds.findAll { it != switchPair.src.dpId }.each { switchId ->
-            def getSwitchFlowsResponse = northbound.getSwitchFlows(switchId)
+            def getSwitchFlowsResponse = switches.all().findSpecific(switchId).getFlows()
             assert getSwitchFlowsResponse.size() == 1
             assert getSwitchFlowsResponse[0].id == protectedFlow.flowId
         }
 
         when: "Get all flows going through the src switch based on the port of the main path"
-        def getSwitchFlowsResponse1 = northbound.getSwitchFlows(switchPair.src.dpId, mainPath[0].portNo)
+        def getSwitchFlowsResponse1 = srcSwitch.getFlows(mainPath[0].portNo)
 
         then: "Only the protected flow is in the response list"
         getSwitchFlowsResponse1.size() == 1
         getSwitchFlowsResponse1[0].id == protectedFlow.flowId
 
         when: "Get all flows going through the src switch based on the port of the protected path"
-        def getSwitchFlowsResponse2 = northbound.getSwitchFlows(switchPair.src.dpId, protectedPath[0].portNo)
+        def getSwitchFlowsResponse2 = srcSwitch.getFlows(protectedPath[0].portNo)
 
         then: "Only the protected flow is in the response list"
         getSwitchFlowsResponse2.size() == 1
         getSwitchFlowsResponse2[0].id == protectedFlow.flowId
 
         when: "Get all flows going through the src switch based on the dstPort of the single switch flow"
-        def getSwitchFlowsResponse3 = northbound.getSwitchFlows(switchPair.src.dpId, singleFlow.destination.portNumber)
+        def getSwitchFlowsResponse3 = srcSwitch.getFlows(singleFlow.destination.portNumber)
 
         then: "Only the single switch flow is in the response list"
         getSwitchFlowsResponse3.size() == 1
         getSwitchFlowsResponse3[0].id == singleFlow.flowId
 
         when: "Get all flows going through the dst switch based on the dstPort of the protected flow"
-        def getSwitchFlowsResponse4 = northbound.getSwitchFlows(switchPair.dst.dpId,
-                protectedFlow.destination.portNumber)
+        def dstSwitch = switches.all().findSpecific(switchPair.dst.dpId)
+        def getSwitchFlowsResponse4 = dstSwitch.getFlows(protectedFlow.destination.portNumber)
 
         then: "Only the protected flow is in the response list"
         getSwitchFlowsResponse4.size() == 1
@@ -146,7 +147,7 @@ class SwitchesSpec extends HealthCheckSpecification {
                 .build().create()
 
         and: "Get all flows going through the src switch"
-        def getSwitchFlowsResponse5 = northbound.getSwitchFlows(switchPair.src.dpId)
+        def getSwitchFlowsResponse5 = srcSwitch.getFlows()
 
         then: "The created flows are in the response list"
         getSwitchFlowsResponse5.size() == 3
@@ -158,14 +159,14 @@ class SwitchesSpec extends HealthCheckSpecification {
 
         and: "Get all flows going through the src switch"
         Wrappers.wait(WAIT_OFFSET * 2) {
-            assert protectedFlow.retrieveFlowStatus().status == FlowState.DOWN
-            assert protectedFlow.retrieveFlowHistory().getEntriesByType(FlowActionType.REROUTE_FAILED).last()
-                    .payload.find { it.action == FlowActionType.REROUTE_FAILED.payloadLastAction }
-            assert defaultFlow.retrieveFlowStatus().status == FlowState.DOWN
-            assert defaultFlow.retrieveFlowHistory().getEntriesByType(FlowActionType.REROUTE_FAILED).last()
-                    .payload.find { it.action == FlowActionType.REROUTE_FAILED.payloadLastAction }
+            assert protectedFlow.retrieveFlowStatus().status == DOWN
+            assert protectedFlow.retrieveFlowHistory().getEntriesByType(REROUTE_FAILED).last()
+                    .payload.find { it.action == REROUTE_FAILED.payloadLastAction }
+            assert defaultFlow.retrieveFlowStatus().status == DOWN
+            assert defaultFlow.retrieveFlowHistory().getEntriesByType(REROUTE_FAILED).last()
+                    .payload.find { it.action == REROUTE_FAILED.payloadLastAction }
         }
-        def getSwitchFlowsResponse6 = northbound.getSwitchFlows(switchPair.src.dpId)
+        def getSwitchFlowsResponse6 = srcSwitch.getFlows()
 
         then: "The created flows are in the response list"
         getSwitchFlowsResponse6*.id.sort() == [protectedFlow.flowId, singleFlow.flowId, defaultFlow.flowId].sort()
@@ -191,11 +192,11 @@ class SwitchesSpec extends HealthCheckSpecification {
         def singleFlow = flowFactory.getRandom(switchPair.src, switchPair.src)
 
         when: "Deactivate the src switch"
-        def switchToDisconnect = topology.switches.find { it.dpId == switchPair.src.dpId }
-        switchHelper.knockoutSwitch(switchToDisconnect, RW)
+        def switchToDisconnect = switches.all().findSpecific(switchPair.src.dpId)
+        switchToDisconnect.knockout(RW)
 
         and: "Get all flows going through the deactivated src switch"
-        def switchFlowsResponseSrcSwitch = northbound.getSwitchFlows(switchPair.src.dpId)
+        def switchFlowsResponseSrcSwitch = switchToDisconnect.getFlows()
 
         then: "The created flows are in the response list from the deactivated src switch"
         switchFlowsResponseSrcSwitch*.id.sort() == [simpleFlow.flowId, singleFlow.flowId].sort()
@@ -222,7 +223,7 @@ class SwitchesSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "System returns human readable error when installing switch rules on non-existing switch"() {
         when: "Install switch rules on non-existing switch"
-        northbound.installSwitchRules(NON_EXISTENT_SWITCH_ID, InstallRulesAction.INSTALL_DEFAULTS)
+        northbound.installSwitchRules(NON_EXISTENT_SWITCH_ID, INSTALL_DEFAULTS)
 
         then: "Not Found error is returned"
         def e = thrown(HttpClientErrorException)
@@ -232,7 +233,7 @@ class SwitchesSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "System returns human readable error when deleting switch rules on non-existing switch"() {
         when: "Delete switch rules on non-existing switch"
-        switchHelper.deleteSwitchRules(NON_EXISTENT_SWITCH_ID, DeleteRulesAction.DROP_ALL_ADD_DEFAULTS)
+        northbound.deleteSwitchRules(NON_EXISTENT_SWITCH_ID, DROP_ALL_ADD_DEFAULTS)
 
         then: "Not Found error is returned"
         def e = thrown(HttpClientErrorException)
@@ -301,25 +302,17 @@ class SwitchesSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Able to partially update switch a 'location.#data.field' field"() {
         given: "A switch"
-        def sw = topology.activeSwitches.first()
-        def initConf = northbound.getSwitch(sw.dpId)
+        def sw = switches.all().random()
 
         when: "Request a switch partial update for a #data.field field"
         SwitchPatchDto updateRequest = [location: [(data.field): data.newValue]] as SwitchPatchDto
-        cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {northboundV2.partialSwitchUpdate(sw.dpId, [location: [
-                latitude: initConf.location.latitude ?: 0,
-                longitude: initConf.location.longitude ?: 0,
-                city: initConf.location.city ?: "",
-                country: initConf.location.country ?: "",
-                street: initConf.location.street ?: ""
-        ]] as SwitchPatchDto)})
-        def response = northboundV2.partialSwitchUpdate(sw.dpId, updateRequest)
+        def response = sw.partialUpdate(updateRequest)
 
         then: "Update response reflects the changes"
         response.location."$data.field" == data.newValue
 
         and: "Changes actually took place"
-        northbound.getSwitch(sw.dpId).location."$data.field" == data.newValue
+        sw.getDetails().location."$data.field" == data.newValue
 
         where:
         data << [
@@ -348,19 +341,16 @@ class SwitchesSpec extends HealthCheckSpecification {
 
     def "Able to partially update switch a 'pop' field"() {
         given: "A switch"
-        def sw = topology.activeSwitches.first()
-        def initConf = northbound.getSwitch(sw.dpId)
+        def sw = switches.all().random()
 
         when: "Request a switch partial update for a 'pop' field"
         def newPopValue = "test_POP"
-        cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES,
-                {northboundV2.partialSwitchUpdate(sw.dpId, new SwitchPatchDto().tap { it.pop = initConf.pop ?: "" })})
-        def response = northboundV2.partialSwitchUpdate(sw.dpId, new SwitchPatchDto().tap { it.pop = newPopValue })
+        def response = sw.partialUpdate(new SwitchPatchDto().tap { it.pop = newPopValue })
 
         then: "Update response reflects the changes"
         response.pop == newPopValue
 
         and: "Changes actually took place"
-        northbound.getSwitch(sw.dpId).pop == newPopValue
+        sw.getDetails().pop == newPopValue
     }
 }

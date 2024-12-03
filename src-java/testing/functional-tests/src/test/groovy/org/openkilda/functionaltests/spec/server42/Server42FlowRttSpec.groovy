@@ -149,7 +149,7 @@ class Server42FlowRttSpec extends HealthCheckSpecification {
                  * (if there are 10 flows on port number 5, then there will be installed one INPUT rule);
                  * - SERVER_42_FLOW_RTT_INGRESS is installed for each flow.
                  */
-                assert switchRulesFactory.get(sw.dpId).getServer42FlowRules().cookie.size() == 4
+                assert switchRulesFactory.get(sw.dpId).getServer42FlowRelatedRules().cookie.size() == 4
             }
         }
 

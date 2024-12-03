@@ -4,8 +4,9 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.testing.Constants
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+
 import spock.lang.Narrative
 
 import static org.hamcrest.Matchers.containsInAnyOrder
@@ -28,30 +29,30 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
 
     @Tags(SMOKE)
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /single-table/)
-    def "Switch and rule validation can properly detect default rules to 'proper' section (#sw.hwSwString #propsDescr)"(
-            Map swProps, Switch sw, String propsDescr) {
+    def "Switch and rule validation can properly detect default rules to 'proper' section (#sw.hwSwString() #propsDescr)"(
+            Map swProps, SwitchExtended sw) {
         given: "Clean switch without customer flows and with the given switchProps"
-        def originalProps = switchHelper.getCachedSwProps(sw.dpId)
-        switchHelper.updateSwitchProperties(sw, originalProps.jacksonCopy().tap({
+        def originalProps = sw.getCashedProps()
+        sw.updateProperties(originalProps.jacksonCopy().tap({
             it.switchLldp = swProps.switchLldp
             it.switchArp = swProps.switchArp
         }))
 
         expect: "Switch validation shows all expected default rules in 'proper' section"
         Wrappers.wait(Constants.RULES_INSTALLATION_TIME) {
-            verifyAll(northbound.validateSwitchRules(sw.dpId)) {
+            verifyAll(sw.rulesManager.validate()) {
                 missingRules.empty
                 excessRules.empty
-                properRules.sort() == sw.defaultCookies.sort()
+                properRules.sort() == sw.collectDefaultCookies().sort()
             }
         }
 
         and: "Rule validation shows all expected default rules in 'proper' section"
-        verifyAll(switchHelper.validate(sw.dpId)) {
+        verifyAll(sw.validate()) {
             rules.missing.empty
             rules.misconfigured.empty
             rules.excess.empty
-            assertThat sw.toString(), rules.proper*.cookie, containsInAnyOrder(sw.defaultCookies.toArray())
+            assertThat sw.toString(), rules.proper*.cookie, containsInAnyOrder(sw.collectDefaultCookies().toArray())
         }
 
         where: "Run for all combinations of unique switches and switch modes"
@@ -65,7 +66,8 @@ class DefaultRulesValidationSpec extends HealthCheckSpecification {
                         switchLldp: true,
                         switchArp: true
                     ]
-                ], getTopology().getActiveSwitches().unique { activeSw -> activeSw.hwSwString }
+                ],
+                 switches.all().uniqueByHw()
                 ].combinations()
         propsDescr = getDescr(swProps.switchLldp, swProps.switchArp)
     }

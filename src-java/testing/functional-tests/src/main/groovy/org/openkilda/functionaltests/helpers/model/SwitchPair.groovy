@@ -88,6 +88,10 @@ class SwitchPair {
         return !(src.getTraffGens().isEmpty() || dst.getTraffGens().isEmpty())
     }
 
+    static Closure NOT_WB_ENDPOINTS = {
+        SwitchPair swP-> !swP.src.wb5164 && !swP.dst.wb5164
+    }
+
     List<Path> retrieveAvailablePaths(){
        convertToPathNodePayload(paths).collect{
            new Path(it, topologyDefinition)
