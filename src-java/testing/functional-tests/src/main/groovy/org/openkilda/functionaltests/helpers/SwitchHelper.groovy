@@ -266,8 +266,8 @@ class SwitchHelper {
             multiTableRules.add(new PortColourCookie(CookieType.PING_INPUT, it.source.portNo).getValue())
         }
 
-        if ((toggles.server42IslRtt && doesSwSupportS42(swProps) &&
-                swProps.server42IslRtt in ["ENABLED", "AUTO"] && !sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD))) {
+        if (toggles.server42IslRtt && doesSwSupportS42(swProps) && (swProps.server42IslRtt == "ENABLED" ||
+                swProps.server42IslRtt == "AUTO" && !sw.features.contains(SwitchFeature.NOVIFLOW_COPY_FIELD))) {
             devicesRules.add(SERVER_42_ISL_RTT_TURNING_COOKIE)
             devicesRules.add(SERVER_42_ISL_RTT_OUTPUT_COOKIE)
             relatedLinks.each {
