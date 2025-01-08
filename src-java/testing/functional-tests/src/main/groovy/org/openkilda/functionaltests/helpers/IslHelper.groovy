@@ -204,11 +204,13 @@ class IslHelper {
             [newIsl, newIsl.reversed].each { assert northbound.getLink(it).state == expectedRepluggedIslState }
         }
         cleanupManager.addAction(RESTORE_ISL, {
-                    islUtils.replug(newIsl, true, srcIsl, !plugIntoSource, portDown)
-                    islUtils.waitForIslStatus([srcIsl, srcIsl.reversed], DISCOVERED)
-                    islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
-                    northbound.deleteLink(islUtils.toLinkParameters(newIsl))
-                    wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
+                    if(islUtils.getIslInfo(newIsl).isPresent()) {
+                        islUtils.replug(newIsl, true, srcIsl, !plugIntoSource, portDown)
+                        islUtils.waitForIslStatus([srcIsl, srcIsl.reversed], DISCOVERED)
+                        islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
+                        northbound.deleteLink(islUtils.toLinkParameters(newIsl))
+                        wait(WAIT_OFFSET) { assert !islUtils.getIslInfo(newIsl).isPresent() }
+                    }
                     database.resetCosts(topology.isls)
                 }
         )
