@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.helpers
 
+import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
+
 import groovy.transform.Memoized
 import org.openkilda.functionaltests.helpers.model.SwitchDbData
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
@@ -875,6 +877,34 @@ class SwitchHelper {
         return originalProps.server42FlowRtt
     }
 
+    def setServer42IslRttForSwitch(Switch sw, boolean isServer42IslRttEnabled) {
+        String requiredState = isServer42IslRttEnabled ? RttState.ENABLED.toString() : RttState.DISABLED.toString()
+        def originalProps = getCachedSwProps(sw.dpId)
+        if (originalProps.server42IslRtt != requiredState) {
+            def requiredProps = originalProps.jacksonCopy().tap {
+                server42IslRtt = requiredState
+                def props = sw.prop ?: dummyServer42Props
+                server42MacAddress = props.server42MacAddress
+                server42Port = props.server42Port
+                server42Vlan = props.server42Vlan
+            }
+
+            cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {
+                northbound.get().updateSwitchProperties(sw.dpId, requiredProps.jacksonCopy().tap {
+                    server42IslRtt = (sw?.prop?.server42IslRtt == null ? "AUTO" : (sw?.prop?.server42IslRtt ? "ENABLED" : "DISABLED"))
+                })
+            })
+
+            northbound.get().updateSwitchProperties(sw.dpId, requiredProps)
+        }
+
+        return originalProps.server42IslRtt
+    }
+
+    def setServer42IslRttAndWaitForRulesInstallation(Switch sw, boolean isServer42IslRttEnabled, boolean isS42ToggleOn) {
+        setServer42IslRttForSwitch(sw, isServer42IslRttEnabled)
+        waitForS42IslRulesSetUp(sw, isServer42IslRttEnabled, isS42ToggleOn)
+    }
     static List<FlowEntry> getS42SwitchRules(SwitchId swId) {
         northbound.get().getSwitchRules(swId).flowEntries
                 .findAll { it.cookie in [SERVER_42_FLOW_RTT_OUTPUT_VLAN_COOKIE, SERVER_42_FLOW_RTT_OUTPUT_VXLAN_COOKIE] }
@@ -895,6 +925,18 @@ class SwitchHelper {
                     assert getS42SwitchRules(sw.switchId).size() == expectedRulesNumber
                 }
             }
+        }
+    }
+
+    static void waitForS42IslRulesSetUp(Switch sw, boolean isServer42IslRttEnabled, boolean isS42ToggleOn) {
+        def countOfRules = isS42ToggleOn && isServer42IslRttEnabled ?
+                (northbound.get().getLinks(sw.dpId, null, null, null).size() + 2) : 0
+
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            def actualS42IslRulesOnSwitch = northbound.get().getSwitchRules(sw.dpId).flowEntries
+                    .findAll {(new Cookie(it.cookie).getType() in [CookieType.SERVER_42_ISL_RTT_INPUT] ||
+                                it.cookie in [SERVER_42_ISL_RTT_TURNING_COOKIE, SERVER_42_ISL_RTT_OUTPUT_COOKIE])}
+            assert actualS42IslRulesOnSwitch.size() == countOfRules
         }
     }
 
