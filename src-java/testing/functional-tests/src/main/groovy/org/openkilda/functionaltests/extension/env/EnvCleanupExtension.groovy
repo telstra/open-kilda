@@ -6,6 +6,7 @@ import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import org.openkilda.functionaltests.exception.IslNotFoundException
 import org.openkilda.functionaltests.extension.spring.SpringContextListener
 import org.openkilda.functionaltests.extension.spring.SpringContextNotifier
+import org.openkilda.functionaltests.helpers.model.SwitchOfVersion
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.IslInfoData
@@ -138,7 +139,7 @@ abstract class EnvCleanupExtension extends AbstractGlobalExtension implements Sp
     def removeExcessMeters(List<SwitchDto> switches) {
         log.info("Remove excess meters from switches")
         switches.each { sw ->
-            if (!sw.description.contains("OF_12")) {
+            if (!sw.description.contains(SwitchOfVersion.OF_12.toString())) {
                 northbound.getAllMeters(sw.switchId).meterEntries.each { meter ->
                     if (meter.meterId > MAX_SYSTEM_RULE_METER_ID) {
                         northbound.deleteMeter(sw.switchId, meter.meterId)

@@ -3,10 +3,14 @@ package org.openkilda.functionaltests.helpers.model
 import static groovyx.gpars.GParsPool.withPool
 import static org.hamcrest.MatcherAssert.assertThat
 import static org.hamcrest.Matchers.hasItem
+import static org.hamcrest.Matchers.notNullValue
+import static org.openkilda.functionaltests.helpers.model.SwitchOfVersion.OF_12
+import static org.openkilda.functionaltests.helpers.model.SwitchOfVersion.OF_13
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_SWITCH_MAINTENANCE
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_SWITCH_PROPERTIES
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.REVIVE_SWITCH
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.SYNCHRONIZE_SWITCH
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.SwitchChangeType.ACTIVATED
@@ -210,6 +214,11 @@ class SwitchExtended {
         return new PortExtended(sw, portNo, northbound, northboundV2, cleanupManager)
     }
 
+    PortExtended getPortInStatus(PortStatus status) {
+        Integer portNo = northbound.getPorts(switchId).find { status.toString() in it.state }.portNumber
+        return new PortExtended(sw, portNo, northbound, northboundV2, cleanupManager)
+    }
+
     LagPort getLagPort(Set<Integer> portNumbers) {
         new LagPort(switchId, portNumbers, northboundV2, cleanupManager)
     }
@@ -234,6 +243,16 @@ class SwitchExtended {
     boolean isVxlanEnabled() {
         return getProps().supportedTransitEncapsulation
                 .contains(org.openkilda.model.FlowEncapsulationType.VXLAN.toString().toLowerCase())
+    }
+
+    @Memoized
+    boolean isOf12Version() {
+        return getOfVersion() == OF_12.toString()
+    }
+
+    @Memoized
+    boolean isOf13Version() {
+        return getOfVersion() == OF_13.toString()
     }
 
     String hwSwString() {
@@ -347,7 +366,7 @@ class SwitchExtended {
         } else if ((isNoviflow() || nbFormat().manufacturer == "E") && isWb5164()) {
             return ([CATCH_BFD_RULE_COOKIE]
                     + unifiedCookies + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
-        } else if (sw.ofVersion == "OF_12") {
+        } else if (isOf12Version()) {
             return [VERIFICATION_BROADCAST_RULE_COOKIE]
         } else {
             return (unifiedCookies + vxlanRules + multiTableRules + devicesRules + server42Rules + lacpRules)
@@ -355,7 +374,7 @@ class SwitchExtended {
     }
 
     List<Long> collectDefaultMeters() {
-        if (sw.ofVersion == "OF_12") {
+        if (isOf12Version()) {
             return []
         }
         def swProps = northbound.getSwitchProperties(sw.dpId)
@@ -413,7 +432,8 @@ class SwitchExtended {
      * reinstalled according to config
      */
     SwitchPropertiesDto updateProperties(SwitchPropertiesDto switchProperties) {
-        cleanupManager.addAction(OTHER, { northbound.updateSwitchProperties(sw.dpId, getCashedProps()) })
+        def initialProps = getCachedProps()
+        cleanupManager.addAction(OTHER, { northbound.updateSwitchProperties(sw.dpId, initialProps) })
         def response = northbound.updateSwitchProperties(sw.dpId, switchProperties)
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             def actualHexCookie = []
@@ -441,7 +461,7 @@ class SwitchExtended {
     }
 
     @Memoized
-    SwitchPropertiesDto getCashedProps() {
+    SwitchPropertiesDto getCachedProps() {
         getProps()
     }
 
@@ -526,6 +546,10 @@ class SwitchExtended {
 
     def delete(Boolean force = false) {
         return northbound.deleteSwitch(sw.dpId, force)
+    }
+
+    SwitchPropertiesDto getPropsV1() {
+        northbound.getSwitchProperties(sw.dpId)
     }
 
     SwitchConnectedDevicesResponse getConnectedDevices() {
@@ -633,6 +657,11 @@ class SwitchExtended {
         revive(flResourceAddress, false)
     }
 
+    void updateBurstSizeAndRate(Long meterId, Long newBurstSize, Long newRate) {
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, { synchronize() })
+        lockKeeper.updateBurstSizeAndRate(sw, meterId, newBurstSize, newRate)
+    }
+
     void verifyRelatedLinksState(IslChangeType expectedState) {
         def relatedLinks = collectForwardAndReverseRelatedLinks()
         assert relatedLinks.size() == islPorts.size() * 2
@@ -700,6 +729,11 @@ class SwitchExtended {
     @Memoized
     Set<SwitchFeature> getDbFeatures() {
         database.getSwitch(sw.dpId).features
+    }
+
+    void setFeaturesInDb(Set<SwitchFeature> features) {
+        cleanupManager.addAction(OTHER, { database.setSwitchFeatures(sw.dpId, getDbFeatures())})
+        database.setSwitchFeatures(sw.dpId, features)
     }
 
     boolean isVxlanFeatureEnabled() {
@@ -895,5 +929,23 @@ class SwitchExtended {
             }
         }
         assertions.verify()
+    }
+
+    static void verifySectionInSwitchValidationInfo(SwitchValidationV2ExtendedResult switchValidateInfo,
+                                                    List<String> sections = ["groups", "meters", "logical_ports", "rules"]) {
+        sections.each { String section ->
+            assertThat(switchValidateInfo."$section", notNullValue())
+        }
+    }
+
+    static void verifySectionsAsExpectedFields(SwitchValidationV2ExtendedResult switchValidateInfo,
+                                               List<String> sections = ["groups", "meters", "logical_ports", "rules"]) {
+        boolean result = true;
+        sections.each { String section ->
+            if (!switchValidateInfo."$section".asExpected) {
+                result = false
+            }
+        }
+        assert result == switchValidateInfo.asExpected
     }
 }
