@@ -1,4 +1,37 @@
 # Changelog
+## v1.162.0 (22/01/2025)
+
+### Features:
+-  [#5751](https://github.com/telstra/open-kilda/pull/5751) nbworker add feature to reroute y-flow for switch/link evacuation process
+
+### Improvements:
+-  [#5760](https://github.com/telstra/open-kilda/pull/5760) [TEST]: Improvement: Minor fix: Collecting default rules(s42:isl) [**tests**]
+-  [#5761](https://github.com/telstra/open-kilda/pull/5761) [TEST]: Improvement: Server42: Isl Rtt [**tests**]
+-  [#5725](https://github.com/telstra/open-kilda/pull/5725) [TEST]: Improvement: SwitchTriplets [**tests**]
+-  [#5729](https://github.com/telstra/open-kilda/pull/5729) use docker compose command instead of docker-compose
+-  [#5732](https://github.com/telstra/open-kilda/pull/5732) [TEST]: Improvement: Paths manipulation: Regular flow [**tests**]
+-  [#5733](https://github.com/telstra/open-kilda/pull/5733) [TEST]: Improvement: Regular Flow: Getting Isls [**tests**]
+-  [#5734](https://github.com/telstra/open-kilda/pull/5734) [TEST]: Improvement: Path Manipulation: Complex Flow(switch triplet) [**tests**]
+-  [#5737](https://github.com/telstra/open-kilda/pull/5737) [TEST]: Improvement: Verification of flows on the switch [**tests**]
+-  [#5738](https://github.com/telstra/open-kilda/pull/5738) [TEST]: Refactoring: Verification of the ping operation [**tests**]
+-  [#5739](https://github.com/telstra/open-kilda/pull/5739) [TEST]: Improvement: DB calls optimization(ISLs bandwidth updating) [**tests**]
+-  [#5740](https://github.com/telstra/open-kilda/pull/5740) [TEST]: Improvement: Switch rules/meters comparison [**tests**]
+-  [#5741](https://github.com/telstra/open-kilda/pull/5741) [TEST]: Improvement: Verification of validation response [**tests**]
+-  [#5742](https://github.com/telstra/open-kilda/pull/5742) [TEST]: Improvement: Verification of switches and relations dump after WFM restarting [**tests**]
+-  [#5744](https://github.com/telstra/open-kilda/pull/5744) [TEST]: Improvement: HW: Path: Collecting path nodes between switches [**tests**]
+-  [#5748](https://github.com/telstra/open-kilda/pull/5748) [TEST]: Improvement: Ha-Flow: Reroute to better path [**tests**]
+-  [#5749](https://github.com/telstra/open-kilda/pull/5749) [TEST]: Improvement: Flaky test: Reroute with global timeout [**tests**]
+-  [#5750](https://github.com/telstra/open-kilda/pull/5750) [TEST]: Improvement: Moving factory classes to the appropriate folder, ha-flow deletion [**tests**]
+-  [#5752](https://github.com/telstra/open-kilda/pull/5752) [TEST]: Improvement: SwT: Y-Point selection [**tests**]
+-  [#5755](https://github.com/telstra/open-kilda/pull/5755) [TEST]: Flaky tests: Hardware environment issue [**tests**]
+-  [#5756](https://github.com/telstra/open-kilda/pull/5756) [TEST]: Improvement: Switch default cookies [**tests**]
+-  [#5758](https://github.com/telstra/open-kilda/pull/5758) GUI improvement for tables
+
+
+For the complete list of changes, check out [the commit log](https://github.com/telstra/open-kilda/compare/v1.161.0...v1.162.0).
+
+---
+
 ## v1.161.0 (08/08/2024)
 
 ### Bug Fixes:
