@@ -7,6 +7,7 @@ import static org.openkilda.functionaltests.model.switches.Manufacturer.CENTEC
 import static org.openkilda.functionaltests.model.switches.Manufacturer.NOVIFLOW
 import static org.openkilda.functionaltests.model.switches.Manufacturer.OVS
 import static org.openkilda.functionaltests.model.switches.Manufacturer.WB5164
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
 import org.openkilda.functionaltests.helpers.factory.SwitchFactory
@@ -14,6 +15,7 @@ import org.openkilda.functionaltests.model.switches.Manufacturer
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.northbound.payloads.SwitchSyncExtendedResult
@@ -37,6 +39,8 @@ class Switches {
     @Autowired
     @Qualifier("islandNbV2")
     NorthboundServiceV2 northboundV2
+    @Autowired
+    FloodlightsHelper flHelper
     @Autowired
     SwitchFactory switchFactory
 
@@ -76,6 +80,27 @@ class Switches {
     Switches withS42Support(){
         def swsProps =  northboundV2.getAllSwitchProperties().switchProperties
         switches = switches.findAll { sw -> isS42Supported(swsProps.find { it.switchId == sw.switchId}) }
+        return this
+    }
+
+
+    Switches withConnectedToExactlyNManagementFls(int flAmount) {
+        switches = switches.findAll { flHelper.filterRegionsByMode(it.regions, RW).size() == flAmount }
+        return this
+    }
+
+    Switches withConnectedToAtLeastNFls(int flAmount) {
+        switches = switches.findAll { flHelper.filterRegionsByMode(it.sw.regions, RW).size() >= flAmount }
+        return this
+    }
+
+    Switches withVxlanEnabled() {
+        switches = switches.findAll { it.isVxlanEnabled() }
+        return this
+    }
+
+    Switches withTraffGens() {
+        switches = switches.findAll { !it.traffGenPorts.isEmpty() }
         return this
     }
 
