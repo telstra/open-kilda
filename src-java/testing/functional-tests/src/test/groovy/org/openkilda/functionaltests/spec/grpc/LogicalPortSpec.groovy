@@ -25,7 +25,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
     @Autowired @Shared
     CleanupManager cleanupManager
 
-    def "Able to create/read/delete logicalport on the #sw.hwSwString switch"() {
+    def "Able to create/read/delete logicalport on the #sw.hardware-#sw.software switch"() {
         when: "Create logical port"
         def switchPort
         if (profile == "virtual") {
@@ -63,7 +63,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        new LogicalPortNotFoundExpectedError()
+        new LogicalPortNotFoundExpectedError(~/.*/).matches(exc)
 
         where:
         sw << getNoviflowSwitches()
@@ -71,7 +71,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
 
     @Tags(HARDWARE)
     def "Not able to create logical port with incorrect port number(lPort/sPort): \
-#data.logicalPortNumber/#data.portNumber on the #sw.hwSwString switch"() {
+#data.logicalPortNumber/#data.portNumber on the #sw.hardware-#sw.software switch"() {
         when:
         "Try to create logical port: #logicalPortNumber/#portNumber"
         def switchPort = northbound.getPorts(sw.switchId).find { it.state[0] == "LINK_DOWN" }.portNumber
@@ -100,7 +100,7 @@ class LogicalPortSpec extends GrpcBaseSpecification {
     }
 
     @Tags(HARDWARE)
-    def "Not able to delete non-existent logical port number on the #sw.hwSwString switch"() {
+    def "Not able to delete non-existent logical port number on the #sw.hardware-#sw.software switch"() {
         when: "Try to delete incorrect logicalPortNumber"
         /** info from manual:
          *  Value between 100 and 63487except for the NS-21100 where the value must be between 113 and 63487

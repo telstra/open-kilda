@@ -28,7 +28,6 @@ import org.openkilda.northbound.dto.v2.switches.LagPortRequest
 import org.openkilda.northbound.dto.v2.switches.LagPortResponse
 import org.openkilda.northbound.dto.v2.switches.MeterInfoDtoV2
 import org.openkilda.northbound.dto.v2.switches.PortPropertiesDto
-import org.openkilda.northbound.dto.v2.switches.SwitchDtoV2
 import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
 import org.openkilda.northbound.dto.v2.switches.SwitchLocationDtoV2
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
@@ -56,12 +55,9 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
-import java.math.RoundingMode
-
 import static groovyx.gpars.GParsPool.withPool
 import static org.hamcrest.MatcherAssert.assertThat
 import static org.hamcrest.Matchers.hasItem
-import static org.hamcrest.Matchers.notNullValue
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_LAG_LOGICAL_PORT
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_MIRROR
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
@@ -163,16 +159,6 @@ class SwitchHelper {
     @Memoized
     static String getHwSwString(Switch sw) {
         "${sw.nbFormat().hardware} ${sw.nbFormat().software}"
-    }
-
-    @Memoized
-    static String getHwSwString(SwitchDto sw) {
-        "${sw.hardware} ${sw.software}"
-    }
-
-    @Memoized
-    static String getHwSwString(SwitchDtoV2 sw) {
-        "${sw.hardware} ${sw.software}"
     }
 
     static List<TraffGen> getTraffGens(Switch sw) {
@@ -415,39 +401,6 @@ class SwitchHelper {
     }
 
     /**
-     * This method calculates expected burst for different types of switches. The common burst equals to
-     * `rate * burstCoefficient`. There are couple exceptions though:<br>
-     * <b>Noviflow</b>: Does not use our common burst coefficient and overrides it with its own coefficient (see static
-     * variables at the top of the class).<br>
-     * <b>Centec</b>: Follows our burst coefficient policy, except for restrictions for the minimum and maximum burst.
-     * In cases when calculated burst is higher or lower of the Centec max/min - the max/min burst value will be used
-     * instead.
-     *
-     * @param sw switchId where burst is being calculated. Needed to get the switch manufacturer and apply special
-     * calculations if required
-     * @param rate meter rate which is used to calculate burst
-     * @return the expected burst value for given switch and rate
-     */
-    def getExpectedBurst(SwitchId sw, long rate) {
-        def descr = getDescription(sw).toLowerCase()
-        def hardware = northbound.get().getSwitch(sw).hardware
-        if (descr.contains("noviflow") || hardware =~ "WB5164") {
-            return (rate * NOVIFLOW_BURST_COEFFICIENT - 1).setScale(0, RoundingMode.CEILING)
-        } else if (descr.contains("centec")) {
-            def burst = (rate * burstCoefficient).toBigDecimal().setScale(0, RoundingMode.FLOOR)
-            if (burst <= CENTEC_MIN_BURST) {
-                return CENTEC_MIN_BURST
-            } else if (burst > CENTEC_MIN_BURST && burst <= CENTEC_MAX_BURST) {
-                return burst
-            } else {
-                return CENTEC_MAX_BURST
-            }
-        } else {
-            return (rate * burstCoefficient).round(0)
-        }
-    }
-
-    /**
      * Verifies that specified meter sections in the validation response are empty.
      * NOTE: will filter out default meters for 'proper' section, so that switch without flow meters, but only with
      * default meters in 'proper' section is considered 'empty'
@@ -468,24 +421,6 @@ class SwitchHelper {
         }
         assertions.verify()
     }
-
-    static void verifyMeterSectionsAreEmpty(SwitchValidationV2ExtendedResult switchValidateInfo,
-                                            List<String> sections = ["missing", "misconfigured", "proper", "excess"]) {
-        def assertions = new SoftAssertions()
-        if (switchValidateInfo.meters) {
-            sections.each { section ->
-                if (section == "proper") {
-                    assertions.checkSucceeds {
-                        assert switchValidateInfo.meters.proper.findAll { !it.defaultMeter }.empty
-                    }
-                } else {
-                    assertions.checkSucceeds { assert switchValidateInfo.meters."$section".empty }
-                }
-            }
-        }
-        assertions.verify()
-    }
-
 
     /**
      * Verifies that specified rule sections in the validation response are empty.
@@ -511,79 +446,12 @@ class SwitchHelper {
         assertions.verify()
     }
 
-    static void verifyRuleSectionsAreEmpty(SwitchValidationV2ExtendedResult switchValidateInfo,
-                                           List<String> sections = ["missing", "proper", "excess", "misconfigured"]) {
-        def assertions = new SoftAssertions()
-        sections.each { String section ->
-            if (section == "proper") {
-                assertions.checkSucceeds {
-                    assert switchValidateInfo.rules.proper.findAll {
-                        def cookie = new Cookie(it.cookie)
-                        !cookie.serviceFlag && cookie.type != CookieType.SHARED_OF_FLOW
-                    }.empty
-                }
-            } else {
-                assertions.checkSucceeds { assert switchValidateInfo.rules."$section".empty }
-            }
-        }
-        assertions.verify()
-    }
-
-    /**
-     * Verifies that specified hexRule sections in the validation response are empty.
-     * NOTE: will filter out default rules, except default flow rules(multiTable flow)
-     * Default flow rules for the system looks like as a simple default rule.
-     * Based on that you have to use extra filter to detect these rules in
-     * missingHex/excessHex/misconfiguredHex sections.
-     */
-    static void verifyHexRuleSectionsAreEmpty(SwitchValidationExtendedResult switchValidateInfo,
-                                              List<String> sections = ["properHex", "excessHex", "missingHex",
-                                                                       "misconfiguredHex"]) {
-        def assertions = new SoftAssertions()
-        sections.each { String section ->
-            if (section == "properHex") {
-                def defaultCookies = switchValidateInfo.rules.proper.findAll {
-                    def cookie = new Cookie(it)
-                    cookie.serviceFlag || cookie.type == CookieType.SHARED_OF_FLOW
-                }
-
-                def defaultHexCookies = []
-                defaultCookies.each { defaultHexCookies.add(Long.toHexString(it)) }
-                assertions.checkSucceeds {
-                    assert switchValidateInfo.rules.properHex.findAll { !(it in defaultHexCookies) }.empty
-                }
-            } else {
-                assertions.checkSucceeds { assert switchValidateInfo.rules."$section".empty }
-            }
-        }
-        assertions.verify()
-    }
-
     static boolean isDefaultMeter(MeterInfoDto dto) {
         return MeterId.isMeterIdOfDefaultRule(dto.getMeterId())
     }
 
     static boolean isDefaultMeter(MeterInfoDtoV2 dto) {
         return MeterId.isMeterIdOfDefaultRule(dto.getMeterId())
-    }
-
-    /**
-     * Verifies that actual and expected burst size are the same.
-     */
-    static void verifyBurstSizeIsCorrect(Switch sw, Long expected, Long actual) {
-        if (sw.isWb5164()) {
-            assert Math.abs(expected - actual) <= expected * 0.01
-        } else {
-            assert Math.abs(expected - actual) <= 1
-        }
-    }
-
-    static void verifyRateSizeIsCorrect(Switch sw, Long expected, Long actual) {
-        if (sw.isWb5164()) {
-            assert Math.abs(expected - actual) <= expected * 0.01
-        } else {
-            assert Math.abs(expected - actual) <= 1
-        }
     }
 
     static SwitchProperties getDummyServer42Props() {
@@ -676,25 +544,6 @@ class SwitchHelper {
         reviveSwitch(sw, flResourceAddress, false)
     }
 
-    static void verifySectionInSwitchValidationInfo(SwitchValidationV2ExtendedResult switchValidateInfo,
-                                                    List<String> sections = ["groups", "meters", "logical_ports", "rules"]) {
-        sections.each { String section ->
-            assertThat(switchValidateInfo."$section", notNullValue())
-        }
-
-    }
-
-    static void verifySectionsAsExpectedFields(SwitchValidationV2ExtendedResult switchValidateInfo,
-                                               List<String> sections = ["groups", "meters", "logical_ports", "rules"]) {
-        boolean result = true;
-        sections.each { String section ->
-            if (!switchValidateInfo."$section".asExpected) {
-                result = false
-            }
-        }
-        assert result == switchValidateInfo.asExpected
-    }
-
     static SwitchSyncExtendedResult synchronize(SwitchId switchId, boolean removeExcess=true) {
         return northbound.get().synchronizeSwitch(switchId, removeExcess)
     }
@@ -753,15 +602,6 @@ class SwitchHelper {
 
     static Optional<SwitchValidationV2ExtendedResult> validateAndCollectFoundDiscrepancies(SwitchId switchToValidate) {
         return Optional.ofNullable(validateAndCollectFoundDiscrepancies([switchToValidate]).get(switchToValidate))
-    }
-
-    static void synchronizeAndValidateRulesInstallation(Switch srcSwitch, Switch dstSwitch) {
-        synchronizeAndCollectFixedDiscrepancies([srcSwitch.dpId, dstSwitch.dpId])
-        [srcSwitch, dstSwitch].each { sw ->
-            Wrappers.wait(RULES_INSTALLATION_TIME) {
-                validate(sw.dpId).verifyRuleSectionsAreEmpty()
-            }
-        }
     }
 
     static SwitchValidationV2ExtendedResult validate(SwitchId switchId, String include = null, String exclude = null) {
@@ -964,13 +804,6 @@ class SwitchHelper {
                 }
         )
         return northboundV2.get().partialSwitchUpdate(switchId, updateDto)
-    }
-
-    static boolean isServer42Supported(SwitchId switchId) {
-        def swProps = northbound.get().getSwitchProperties(switchId)
-        def featureToggles = northbound.get().getFeatureToggles()
-        def isServer42 = swProps.server42FlowRtt && featureToggles.server42FlowRtt
-        return isServer42
     }
 
     static int randomVlan() {
