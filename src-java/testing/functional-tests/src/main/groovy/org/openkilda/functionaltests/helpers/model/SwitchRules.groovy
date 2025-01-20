@@ -112,6 +112,10 @@ class SwitchRules {
         }
     }
 
+    List<FlowRuleEntity> getNotDefaultRules() {
+        getRules().findAll { !new Cookie(it.cookie).serviceFlag }
+    }
+
     List<FlowRuleEntity> getRulesByCookieType(CookieType cookieType) {
        getRules().findAll { new Cookie(it.cookie).getType() == cookieType }
     }

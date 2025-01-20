@@ -178,6 +178,10 @@ class SwitchExtended {
         sw.dpId
     }
 
+    String getName() {
+        sw.name
+    }
+
     String getOfVersion() {
         sw.ofVersion
     }
@@ -456,6 +460,36 @@ class SwitchExtended {
         return response
     }
 
+    def setServer42FlowRttForSwitch(boolean isServer42FlowRttEnabled, boolean isS42ToggleOn = true) {
+        def originalProps = northbound.getSwitchProperties(sw.dpId)
+        if (originalProps.server42FlowRtt != isServer42FlowRttEnabled) {
+            def s42Config = sw.prop
+            def requiredProps = originalProps.jacksonCopy().tap {
+                server42FlowRtt = isServer42FlowRttEnabled
+                server42MacAddress = s42Config ? s42Config.server42MacAddress : null
+                server42Port = s42Config ? s42Config.server42Port : null
+                server42Vlan = s42Config ? s42Config.server42Vlan : null
+            }
+
+            cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {
+                northbound.updateSwitchProperties(sw.dpId, requiredProps.jacksonCopy().tap { server42FlowRtt = sw?.prop?.server42FlowRtt })
+            })
+
+            northbound.updateSwitchProperties(sw.dpId, requiredProps)
+        }
+        int expectedNumberOfS42Rules = (isS42ToggleOn && isServer42FlowRttEnabled) ? getExpectedS42SwitchRulesBasedOnVxlanSupport() : 0
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            assert rulesManager.getServer42SwitchRelatedRules().size() == expectedNumberOfS42Rules
+        }
+
+        return originalProps.server42FlowRtt
+    }
+
+    int getExpectedS42SwitchRulesBasedOnVxlanSupport() {
+        //one rule per vlan/vxlan
+        isVxlanEnabled() ? 2 : 1
+    }
+
     SwitchPropertiesDto getProps() {
         northboundV2.getAllSwitchProperties().switchProperties.find { it.switchId == sw.dpId }
     }
@@ -606,6 +640,7 @@ class SwitchExtended {
             assert northbound.getSwitch(sw.dpId).state == DEACTIVATED
         }
         if (waitForRelatedLinks) {
+            //verification of link 'state' works for virtual env ('actualState' of the ISL should be checked for hw env)
             Wrappers.wait(KildaProperties.DISCOVERY_TIMEOUT + timeout * 2) {
                 verifyRelatedLinksState(FAILED )
             }

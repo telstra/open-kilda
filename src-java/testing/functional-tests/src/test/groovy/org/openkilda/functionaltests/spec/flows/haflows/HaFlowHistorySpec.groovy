@@ -3,8 +3,10 @@ package org.openkilda.functionaltests.spec.flows.haflows
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
+import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
+import static org.openkilda.testing.service.northbound.model.HaFlowActionType.REROUTE_FAIL
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.HistoryMaxCountExpectedError
@@ -12,7 +14,6 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
-import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.history.DumpType
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchPayload
@@ -144,32 +145,30 @@ class HaFlowHistorySpec extends HealthCheckSpecification {
         HaFlowExtended haFlow = haFlowFactory.getRandom(swT)
 
         when: "Deactivate the shared switch"
-        switchHelper.knockoutSwitch(swT.shared, RW)
+        swT.shared.knockout(RW)
 
         and: "Related ISLs are FAILED"
-        def isls = topology.getRelatedIsls(swT.shared)
         Wrappers.wait(discoveryTimeout + WAIT_OFFSET / 2) {
-            def allIsls = northbound.getAllLinks()
-            isls.each { assert islUtils.getIslInfo(allIsls, it).get().actualState == IslChangeType.FAILED }
+            swT.shared.collectForwardAndReverseRelatedLinks().each { assert it.actualState == FAILED }
         }
 
         and: "HA-Flow goes DOWN"
         haFlow.waitForBeingInState(FlowState.DOWN)
 
         then: "Correct event appears in HA-Flow history and can be retrieved without specifying timeline"
-        haFlow.waitForHistoryEvent(HaFlowActionType.REROUTE_FAIL)
+        haFlow.waitForHistoryEvent(REROUTE_FAIL)
 
-        def historyRecordWithoutTimeline = haFlow.getHistory().getEntriesByType(HaFlowActionType.REROUTE_FAIL)
+        def historyRecordWithoutTimeline = haFlow.getHistory().getEntriesByType(REROUTE_FAIL)
         historyRecordWithoutTimeline.size() == 1
 
         and: "All basic fields are correct and rerouting failure details are available"
-        historyRecordWithoutTimeline[0].verifyBasicFields(haFlow.haFlowId, HaFlowActionType.REROUTE_FAIL)
-        historyRecordWithoutTimeline[0].payloads[-1].details == "ValidateHaFlowAction failed: HA-flow's $haFlow.haFlowId src switch ${swT.shared.dpId} is not active"
+        historyRecordWithoutTimeline[0].verifyBasicFields(haFlow.haFlowId, REROUTE_FAIL)
+        historyRecordWithoutTimeline[0].payloads[-1].details == "ValidateHaFlowAction failed: HA-flow's $haFlow.haFlowId src switch ${swT.shared.switchId} is not active"
         historyRecordWithoutTimeline[0].verifyDumpSection(DumpType.STATE_BEFORE, haFlow)
 
         and: "Correct event appears in HA-Flow history and can be retrieved with specifying timeline"
         def historyRecordsWithTimeline = haFlow.getHistory(timeBeforeOperation, System.currentTimeSeconds() + 2)
-                .getEntriesByType(HaFlowActionType.REROUTE_FAIL)
+                .getEntriesByType(REROUTE_FAIL)
 
         and: "Both retrieved history records are identical"
         historyRecordWithoutTimeline == historyRecordsWithTimeline

@@ -59,7 +59,7 @@ class HaFlowStatSpec extends HealthCheckSpecification {
     def setupSpec() {
         switchTriplet = switchTriplets.all(true, false).withAllDifferentEndpoints()
                 .withTraffgensOnEachEnd().getSwitchTriplets().find {
-            it.ep2.getTraffGens().size() > 1 // needed for update flow test
+            it.ep2.traffGenPorts.size() > 1 // needed for update flow test
         }
         assumeTrue(switchTriplet != null, "No suiting switches found")
         // Flow with low maxBandwidth to make meters to drop packets when traffgens can't generate high load

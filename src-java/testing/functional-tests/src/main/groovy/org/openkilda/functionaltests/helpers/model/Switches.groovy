@@ -8,14 +8,18 @@ import static org.openkilda.functionaltests.model.switches.Manufacturer.CENTEC
 import static org.openkilda.functionaltests.model.switches.Manufacturer.NOVIFLOW
 import static org.openkilda.functionaltests.model.switches.Manufacturer.OVS
 import static org.openkilda.functionaltests.model.switches.Manufacturer.WB5164
+import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.SwitchFactory
 import org.openkilda.functionaltests.model.switches.Manufacturer
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
+import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.northbound.NorthboundService
@@ -46,11 +50,15 @@ class Switches {
     @Autowired
     SwitchFactory switchFactory
 
-    List<SwitchExtended> switches
+    private List<SwitchExtended> switches
 
     Switches all() {
         switches = collectSwitches()
         return this
+    }
+
+    List<SwitchExtended> getListOfSwitches(){
+        return switches.findAll()
     }
 
     Switches withManufacturer(Manufacturer type) {
@@ -150,6 +158,18 @@ class Switches {
         desiredSwitches
     }
 
+    /**
+     * Find all switches that are involved in a complex flow path
+     * @param complexFlowPath is a path of Y-Flow/HA-Flow to collect switchesIds
+     * @return list of SwitchExtended objects for further manipulation
+     */
+    List<SwitchExtended> findSwitchesInPath(FlowWithSubFlowsEntityPath complexFlowPath) {
+        def switchesToFind = complexFlowPath.getInvolvedSwitches()
+        def desiredSwitches = switches.findAll { it.switchId in switchesToFind }
+        assert desiredSwitches.size() == switchesToFind.size()
+        desiredSwitches
+    }
+
     SwitchExtended findWithVxlanFeatureEnabled() {
         def sw = switches.find { it.isVxlanFeatureEnabled() }
         assumeTrue(sw as Boolean, "No suiting switch(vxlan-enabled) found")
@@ -165,6 +185,20 @@ class Switches {
             return sw
         }
         return switches
+    }
+
+    void waitForS42SwRulesSetup(boolean isS42ToggleOn = true) {
+        assert !switches.isEmpty()
+        List<SwitchPropertiesDto> switchProps = northboundV2.getAllSwitchProperties().switchProperties
+        withPool {
+            Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
+                switches.eachParallel { sw ->
+                    def expectedRulesNumber = (isS42ToggleOn && switchProps.find { it.switchId == sw.switchId }.server42FlowRtt) ?
+                            sw.getExpectedS42SwitchRulesBasedOnVxlanSupport() : 0
+                    assert sw.rulesManager.getServer42SwitchRelatedRules().size() == expectedRulesNumber
+                }
+            }
+        }
     }
 
     /**

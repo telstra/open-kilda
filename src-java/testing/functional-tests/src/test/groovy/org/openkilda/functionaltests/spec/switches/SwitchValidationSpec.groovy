@@ -801,7 +801,7 @@ misconfigured"
         def protectedPath = flowPathInfo.flowPath.protectedPath.forward.nodes.nodes
 
         def srcSwitch = allSwitches.find { it.switchId == swPair.src.dpId }
-        def srcSwitchRules = srcSwitch.rulesManager.getRules().findAll { !new Cookie(it.cookie).serviceFlag }
+        def srcSwitchRules = srcSwitch.rulesManager.getNotDefaultRules()
         def ruleToDelete = srcSwitchRules.find {
             //specifying protectedPath[0](src.inputPort) and protectedPath[1](src.outputPort) as protected path for FORWARD direction is used
             it.instructions?.applyActions?.flowOutput == protectedPath[0].portNo.toString() &&

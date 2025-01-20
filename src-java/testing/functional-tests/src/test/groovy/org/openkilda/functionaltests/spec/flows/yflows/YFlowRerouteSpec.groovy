@@ -6,6 +6,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FA
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.functionaltests.model.stats.Direction.*
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
 import static org.openkilda.testing.Constants.FLOW_CRUD_TIMEOUT
@@ -43,7 +44,8 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     Provider<TraffExamService> traffExamProvider
-    @Autowired @Shared
+    @Autowired
+    @Shared
     FlowStats flowStats
 
     @Tags([TOPOLOGY_DEPENDENT, ISL_RECOVER_ON_FAIL])
@@ -51,7 +53,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         given: "A qinq y-flow"
         def swT = switchTriplets.all().withAllDifferentEndpoints().withoutWBSwitch().getSwitchTriplets().find {
             def yPoints = it.findPotentialYPoints()
-             yPoints.size() == 1 && yPoints[0] != it.shared.dpId
+             yPoints.size() == 1 && yPoints[0] != it.shared.switchId
         }
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
 
@@ -93,7 +95,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
         }
 
         and: "All involved switches pass switch validation"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(newPath.getInvolvedSwitches()).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(switches.all().findSwitchesInPath(newPath)).isEmpty()
 
         when: "Traffic starts to flow on both sub-flows with maximum bandwidth (if applicable)"
         def traffExam = traffExamProvider.get()
