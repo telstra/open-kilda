@@ -23,13 +23,15 @@ namespace org::openkilda {
     bool read_thread(
             boost::atomic<bool> &alive,
             pcpp::DpdkDevice *device,
-            boost::shared_ptr<rte_ring> ring);
+            boost::shared_ptr<rte_ring> ring,
+            int mbuf_dyn_timestamp_offset);
 
     bool process_thread(uint32_t core_id,
                         boost::atomic<bool> &alive,
                         boost::shared_ptr<rte_ring> rx_ring,
                         uint16_t zmq_port,
-                        const pcpp::MacAddress &src_mac);
+                        const pcpp::MacAddress &src_mac,
+                        int mbuf_dyn_timestamp_offset);
 
     bool echo_thread(boost::atomic<bool> &alive,
                      pcpp::DpdkDevice* device);
