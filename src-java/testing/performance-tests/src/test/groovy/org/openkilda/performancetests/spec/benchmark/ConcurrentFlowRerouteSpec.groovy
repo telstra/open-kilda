@@ -19,17 +19,17 @@ class ConcurrentFlowRerouteSpec extends BaseSpecification {
         def topo = new TopologyBuilder(flHelper.fls,
                 preset.islandCount, preset.regionsPerIsland, preset.switchesPerRegion).buildMeshes()
         topoHelper.createTopology(topo)
-        flowFactory.setTopology(topoHelper.topology)
+        setTopologyInContext(topoHelper.topology)
 
         when: "A source switch"
-        def srcSw = topo.switches.first()
-        def busyPorts = topo.getBusyPortsForSwitch(srcSw)
+        def srcSw = switches.all().first()
+        def busyPorts = srcSw.getServicePorts()
         def allowedPorts = (1..(preset.flowCount + busyPorts.size())) - busyPorts
         def busyPortsFirstHalf = busyPorts.chop((int) (busyPorts.size() / 2))[0]
 
         and: "Create flows"
         northbound.updateLinkProps(topo.isls.findAll { isl ->
-            isl.srcSwitch.dpId == srcSw.dpId
+            isl.srcSwitch.dpId == srcSw.switchId
         }.collect { isl ->
             islUtils.toLinkProps(isl, [cost: busyPortsFirstHalf.contains(isl.srcPort) ? "1" : "5000"])
         })
@@ -37,7 +37,8 @@ class ConcurrentFlowRerouteSpec extends BaseSpecification {
         List<FlowExtended> flows = []
         List<SwitchPortVlan> busyEndpoints = []
         allowedPorts.each { port ->
-            def flow = flowFactory.getBuilder(srcSw, pickRandom(topo.switches - srcSw), false, busyEndpoints)
+            def dstSw = pickRandom(switches.all().getListOfSwitches() - srcSw)
+            def flow = flowFactory.getBuilder(srcSw, dstSw, false, busyEndpoints)
                     .withProtectedPath(false).withSourcePort(port).build().create()
             busyEndpoints.addAll(flow.occupiedEndpoints())
             flows << flow
@@ -56,7 +57,7 @@ class ConcurrentFlowRerouteSpec extends BaseSpecification {
             log.info("Running reroutes with #$concurrentReroutes concurrent requests")
             (1..preset.rerouteAttempts).each { attempt ->
                 northbound.updateLinkProps(topo.isls.findAll { isl ->
-                    isl.srcSwitch.dpId == srcSw.dpId
+                    isl.srcSwitch.dpId == srcSw.switchId
                 }.collect { isl ->
                     islUtils.toLinkProps(isl, [cost: (busyPortsFirstHalf.contains(isl.srcPort) ^ attempt % 2 != 0) ? "1" : "5000"])
                 })

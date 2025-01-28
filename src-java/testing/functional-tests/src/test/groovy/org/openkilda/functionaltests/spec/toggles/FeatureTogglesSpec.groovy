@@ -35,13 +35,14 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
 
     def "System forbids creating new flows when 'create_flow' toggle is set to false"() {
         given: "Existing flow"
-        def flow = flowFactory.getRandomV1(topology.activeSwitches[0], topology.activeSwitches[1])
+        def swPair = switchPairs.all().random()
+        def flow = flowFactory.getRandomV1(swPair)
 
         when: "Set create_flow toggle to false"
         featureToggles.createFlowEnabled(false)
 
         and: "Try to create a new flow"
-        flowFactory.getBuilder(topology.activeSwitches[0], topology.activeSwitches[1]).build().sendCreateRequestV1()
+        flowFactory.getBuilder(swPair).build().sendCreateRequestV1()
 
         then: "Error response is returned, explaining that feature toggle doesn't allow such operation"
         def e = thrown(HttpClientErrorException)
@@ -56,7 +57,8 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
 
     def "System forbids updating flows when 'update_flow' toggle is set to false"() {
         given: "Existing flow"
-        def flow = flowFactory.getRandomV1(topology.activeSwitches[0], topology.activeSwitches[1])
+        def swPair = switchPairs.all().random()
+        def flow = flowFactory.getRandomV1(swPair)
 
         when: "Set update_flow toggle to false"
         featureToggles.updateFlowEnabled(false)
@@ -69,12 +71,13 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         new FlowForbiddenToUpdateExpectedError(~/Flow update feature is disabled/).matches(e)
 
         and: "Creating new flow is still possible"
-        flowFactory.getRandomV1(topology.activeSwitches[0], topology.activeSwitches[1])
+        flowFactory.getRandomV1(swPair)
     }
 
     def "System forbids deleting flows when 'delete_flow' toggle is set to false"() {
         given: "Existing flow"
-        def flow = flowFactory.getRandomV1(topology.activeSwitches[0], topology.activeSwitches[1])
+        def swPair = switchPairs.all().random()
+        def flow = flowFactory.getRandomV1(swPair)
 
         when: "Set delete_flow toggle to false"
         featureToggles.deleteFlowEnabled(false)
@@ -87,7 +90,7 @@ class FeatureTogglesSpec extends HealthCheckSpecification {
         new FlowForbiddenToDeleteExpectedError(~/Flow delete feature is disabled/).matches(e)
 
         and: "Creating new flow is still possible"
-        def newFlow = flowFactory.getRandomV1(topology.activeSwitches[0], topology.activeSwitches[1])
+        def newFlow = flowFactory.getRandomV1(swPair)
 
         and: "Updating of flow is still possible"
         flow.updateV1(flow.tap { it.description = it.description + "updated" })

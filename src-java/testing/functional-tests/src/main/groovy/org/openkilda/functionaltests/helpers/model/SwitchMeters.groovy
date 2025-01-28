@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.helpers.model
 
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
+import static org.openkilda.model.MeterId.isMeterIdOfDefaultRule
 
 import org.openkilda.messaging.info.meter.MeterEntry
 import org.openkilda.model.FlowMeter
@@ -36,6 +37,10 @@ class SwitchMeters {
 
     List<Long> getCreatedMeterIds() {
         return getMeters().findAll { it.meterId > MAX_SYSTEM_RULE_METER_ID }*.meterId
+    }
+
+    List<Long> getNotDefaultMeters() {
+        getMeters().findAll { !isMeterIdOfDefaultRule(it.meterId) }.meterId
     }
 
     DeleteMeterResult delete(FlowMeter flowMeter) {

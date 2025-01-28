@@ -48,9 +48,9 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         given: "A flow"
         def isl = topology.getIslsForActiveSwitches().find { it.aswitch && it.dstSwitch }
         assumeTrue(isl.asBoolean(), "No a-switch ISL found for the test")
-        def flow = flowFactory.getRandom(isl.srcSwitch, isl.dstSwitch)
-        def srcSw = switches.all().findSpecific(flow.source.switchId)
-        def dstSw = switches.all().findSpecific(flow.destination.switchId)
+        def srcSw = switches.all().findSpecific(isl.srcSwitch.dpId)
+        def dstSw = switches.all().findSpecific(isl.dstSwitch.dpId)
+        def flow = flowFactory.getRandom(srcSw, dstSw)
 
         when: "Two neighbouring switches of the flow go down simultaneously"
         def srcBlockData = srcSw.knockoutWithoutLinksCheckWhenRecover(RW)
@@ -93,11 +93,9 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         given: "A flow"
         def swPair = switchPairs.all().nonNeighbouring().withAtLeastNPaths(2).random()
         def flow = flowFactory.getRandom(swPair)
-        def srcSw = switches.all().findSpecific(flow.source.switchId)
-        def dstSw = switches.all().findSpecific(flow.destination.switchId)
 
         when: "Current path breaks and reroute starts"
-        dstSw.shapeTraffic(new TrafficControlData(3000))
+        swPair.dst.shapeTraffic(new TrafficControlData(3000))
         def islToBreak = flow.retrieveAllEntityPaths().getInvolvedIsls().first()
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
@@ -106,7 +104,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
             def reroute = flow.retrieveFlowHistory().getEntriesByType(FlowActionType.REROUTE).first()
             assert reroute.payload.last().action == "Started validation of installed non ingress rules"
         }
-        srcSw.revive(lockKeeper.knockoutSwitch(swPair.src, RW))
+        swPair.src.revive(lockKeeper.knockoutSwitch(swPair.src.sw, RW))
 
         then: "Flow reroute is successful"
         Wrappers.wait(PATH_INSTALLATION_TIME * 2) { //double timeout since rerouted is slowed by delay
@@ -115,7 +113,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         }
 
         and: "Blinking switch has no rule anomalies"
-        !srcSw.validateAndCollectFoundDiscrepancies().isPresent()
+        !swPair.src.validateAndCollectFoundDiscrepancies().isPresent()
 
         and: "Flow validation is OK"
         flow.validateAndCollectDiscrepancies().isEmpty()

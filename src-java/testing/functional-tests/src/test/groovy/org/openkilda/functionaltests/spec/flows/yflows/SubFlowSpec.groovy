@@ -1,7 +1,7 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
 import static org.openkilda.functionaltests.helpers.FlowNameGenerator.FLOW
-import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.randomVlan
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 
 import org.openkilda.functionaltests.HealthCheckSpecification

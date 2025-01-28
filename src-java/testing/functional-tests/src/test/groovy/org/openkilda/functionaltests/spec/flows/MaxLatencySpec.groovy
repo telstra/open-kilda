@@ -74,7 +74,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(10, 15)
 
         when: "Create a flow with protected path, max_latency 16 and max_latency_tier_2 18"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(true)
                 .withMaxLatency(16)
                 .withMaxLatencyTier2(18)
@@ -93,7 +93,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(10, 9)
 
         when: "Create a flow with protected path and max_latency #testMaxLatency"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(true)
                 .withMaxLatency(testMaxLatency)
                 .withPathComputationStrategy(PathComputationStrategy.MAX_LATENCY)
@@ -114,7 +114,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(10, 15)
 
         when: "Create a flow with protected path, maxLatency 11 and maxLatencyTier2 16"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(true)
                 .withMaxLatency(11)
                 .withMaxLatencyTier2(16) // maxLatency < pathLatency < maxLatencyTier2
@@ -134,7 +134,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(11, 15)
 
         when: "Create a flow with max_latency 11 and max_latency_tier2 16"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(false)
                 .withMaxLatency(11)
                 .withMaxLatencyTier2(16)
@@ -151,7 +151,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(10, 15)
 
         when: "Create a flow with max_latency 11 and max_latency_tier2 16"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(false)
                 .withMaxLatency(11)
                 .withMaxLatencyTier2(16)
@@ -183,7 +183,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(10, 15)
 
         when: "Create a flow with max_latency 11 and max_latency_tier2 16"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(false)
                 .withMaxLatency(11)
                 .withMaxLatencyTier2(16)
@@ -215,7 +215,7 @@ class MaxLatencySpec extends HealthCheckSpecification {
         setLatencyForPaths(11, 15)
 
         when: "Create a flow, maxLatency 10 and maxLatencyTier2 12"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(false)
                 .withMaxLatency(10)
                 .withMaxLatencyTier2(12)
@@ -233,7 +233,7 @@ but satisfies max_latency_tier2"
         setLatencyForPaths(9, 15)
 
         when: "Create a flow, maxLatency 9 and maxLatencyTier2 12"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(false)
                 .withMaxLatency(9)
                 .withMaxLatencyTier2(12)
@@ -250,7 +250,7 @@ but satisfies max_latency_tier2"
         setLatencyForPaths(12, 13)
 
         when: "Create a flow, maxLatency 10 and maxLatencyTier2 11"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(false)
                 .withMaxLatency(10)
                 .withMaxLatencyTier2(11)
@@ -268,7 +268,7 @@ but satisfies max_latency_tier2"
         setLatencyForPaths(11, 15)
 
         and: "A flow with maxLatency 11 and maxLatencyTier2 14 on the path with 11 latency"
-        def flow = flowFactory.getBuilder(switchPair.src, switchPair.dst)
+        def flow = flowFactory.getBuilder(switchPair)
                 .withProtectedPath(false)
                 .withMaxLatency(11)
                 .withMaxLatencyTier2(14)

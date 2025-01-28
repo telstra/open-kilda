@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.stats
 
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 
 import groovy.time.TimeCategory
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -71,20 +72,17 @@ class SimulateStatsSpec extends HealthCheckSpecification {
     final int outPort = 10
     @Shared
     final int tableId = 0
-    @Shared
-    Switch sw
     @Autowired
     @Shared
     FlowFactory flowFactory
 
     @Override
     def setupSpec() {
-        def (Switch src, Switch dst) = topology.activeSwitches
+        def (SwitchExtended src, SwitchExtended dst) = switches.all().getListOfSwitches()
         flow = flowFactory.getRandom(src, dst)
-        def srcRules = northbound.getSwitchRules(src.dpId).flowEntries.findAll { !new Cookie(it.cookie).serviceFlag }
+        def srcRules = src.rulesManager.getNotDefaultRules()
         producer = new KafkaProducer(producerProps)
-        sw = topology.activeSwitches.first()
-        def data = new FlowStatsData(sw.dpId, srcRules.collect {
+        def data = new FlowStatsData(src.switchId, srcRules.collect {
             /*For noviflow we assume that packet counter will always roll over BEFORE byte count, so not testing
             Long.MAX_VALUE for bytes. That's fine, since packets should be 4G+ for bytes to roll over before packets
             on Novis, which is unlikely.
@@ -100,7 +98,7 @@ class SimulateStatsSpec extends HealthCheckSpecification {
                     inPort,
                     outPort)
         })
-        producer.send(new ProducerRecord(statsTopic, sw.dpId.toString(), buildMessage(data).toJson())).get()
+        producer.send(new ProducerRecord(statsTopic, src.switchId.toString(), buildMessage(data).toJson())).get()
         producer.flush()
         wait(statsRouterRequestInterval + WAIT_OFFSET) {
             stats = flowStats.of(flow.flowId)

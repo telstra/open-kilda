@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.spec.flows
 
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
+import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 import static org.openkilda.model.cookie.CookieBase.CookieType.SERVICE_OR_FLOW_SEGMENT
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -13,7 +14,6 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.helpers.model.PathComputationStrategy
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.messaging.payload.flow.FlowState
@@ -47,9 +47,6 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     FlowFactory flowFactory
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
 
     def amountOfFlowRules = 2
 
@@ -61,7 +58,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                 .withMaxLatency(1000)
                 .build().create()
 
-        def originalCookies = switchRulesFactory.get(swPair.src.dpId).getRules().findAll {
+        def originalCookies = swPair.src.rulesManager.getRules().findAll {
             def cookie = new Cookie(it.cookie)
             !cookie.serviceFlag || cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES
         }*.cookie
@@ -80,7 +77,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         assert flowInfo."$data.field" == data.newValue
 
         and: "Flow rules have not been reinstalled"
-        assertThat(switchRulesFactory.get(swPair.src.dpId).getRules()*.cookie.toArray()).containsAll(originalCookies)
+        assertThat(swPair.src.rulesManager.getRules()*.cookie.toArray()).containsAll(originalCookies)
 
         where:
         data << [
@@ -124,7 +121,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         given: "A flow"
         def swPair = switchPairs.all().random()
         def flow = flowFactory.getRandom(swPair)
-        def originalCookies = switchRulesFactory.get(swPair.src.dpId).getRules().findAll {
+        def originalCookies = swPair.src.rulesManager.getRules().findAll {
             def cookie = new Cookie(it.cookie)
             !cookie.serviceFlag || cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES
         }*.cookie
@@ -141,7 +138,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flow.retrieveDetails()."$data.field" == data.newValue
 
         and: "Flow rules have not been reinstalled"
-        switchRulesFactory.get(swPair.src.dpId).getRules()*.cookie.containsAll(originalCookies)
+        swPair.src.rulesManager.getRules()*.cookie.containsAll(originalCookies)
 
         where:
         data << [
@@ -168,7 +165,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         given: "A flow"
         def swPair = switchPairs.all().random()
         def flow = flowFactory.getRandom(swPair)
-        def originalCookies = switchRulesFactory.get(swPair.src.dpId).getRules().findAll { !new Cookie(it.cookie).serviceFlag }
+        def originalCookies = swPair.src.rulesManager.getNotDefaultRules()
 
         when: "Request a flow partial update for a #data.field field"
         def newValue = data.getNewValue(flow."$data.field")
@@ -184,11 +181,13 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "Flow rules have been reinstalled"
         //system doesn't reinstall shared rule on reroute action
-        def newCookies = switchRulesFactory.get(swPair.src.dpId).getRules().findAll { !new Cookie(it.cookie).serviceFlag }
+        def newCookies = swPair.src.rulesManager.getNotDefaultRules()
         newCookies.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW } ==
                 originalCookies.find { new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW }
+
+        def originalNotSharedOfFlowCookies = originalCookies.findAll { new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW }
         !newCookies.findAll { new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW }
-                .any { it in originalCookies.findAll { new Cookie(it.cookie).getType() != CookieType.SHARED_OF_FLOW } }
+                .any { it in  originalNotSharedOfFlowCookies }
 
         where:
         data << [
@@ -230,7 +229,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         given: "A single-switch flow"
         def swPair = switchPairs.singleSwitch().random()
         def flow = flowFactory.getRandom(swPair)
-        def originalCookies = switchRulesFactory.get(swPair.src.dpId).getRules().findAll {
+        def originalCookies = swPair.src.rulesManager.getRules().findAll {
             def cookie = new Cookie(it.cookie)
             !cookie.serviceFlag || cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES
         }*.cookie
@@ -248,12 +247,12 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flow.retrieveDetails().priority == newPriority
 
         and: "Flow rules have not been reinstalled"
-        switchRulesFactory.get(swPair.src.dpId).getRules()*.cookie.containsAll(originalCookies)
+        swPair.src.rulesManager.getRules()*.cookie.containsAll(originalCookies)
     }
 
     def "Able to update a flow port and vlan using partial update"() {
         given: "Three active switches"
-        def allSwitches = topology.activeSwitches
+        def allSwitches = switches.all().getListOfSwitches()
         assumeTrue(allSwitches.size() >= 3, "Unable to find three active switches")
         def srcSwitch = allSwitches[0]
         def dstSwitch = allSwitches[1]
@@ -262,9 +261,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         def flow = flowFactory.getRandom(srcSwitch, dstSwitch, false)
 
         when: "Update the flow: port number and vlan id on the src endpoint"
-        def newPortNumber = topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
-            it.dpId == flow.source.switchId
-        }).last()
+        def newPortNumber = srcSwitch.getPorts().last()
         def newVlanId = flow.destination.vlanId + 1
         def updateRequest = new FlowPatchV2().tap {
             source = new FlowPatchEndpoint().tap {
@@ -285,12 +282,12 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The src switch passes switch validation"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(srcSwitch.dpId).isPresent()
+        !srcSwitch.synchronizeAndCollectFixedDiscrepancies().isPresent()
     }
 
     def "Able to update a flow endpoint using partial update"() {
         given: "Three active switches"
-        def allSwitches = topology.activeSwitches
+        def allSwitches = switches.all().getListOfSwitches()
         assumeTrue(allSwitches.size() >= 3, "Unable to find three active switches")
         def srcSwitch = allSwitches[0]
         def dstSwitch = allSwitches[1]
@@ -298,8 +295,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "A vlan flow"
         //pick a port that is free both on current dst switch and on future updated dst switch
-        def port = topology.getAllowedPortsForSwitch(dstSwitch)
-                .intersect(topology.getAllowedPortsForSwitch(newDstSwitch)).first()
+        def port = dstSwitch.getPorts().intersect(newDstSwitch.getPorts()).first()
         def flow = flowFactory.getBuilder(srcSwitch, dstSwitch, false)
                 .withDestinationPort(port)
                 .build().create()
@@ -307,19 +303,19 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         when: "Update the flow: switch id on the dst endpoint"
         def updateRequest = new FlowPatchV2().tap {
             destination = new FlowPatchEndpoint().tap {
-                switchId = newDstSwitch.dpId
+                switchId = newDstSwitch.switchId
             }
         }
         flow.partialUpdate(updateRequest)
 
         then: "Flow is really updated"
         with(flow.retrieveDetails()) {
-            it.destination.switchId == newDstSwitch.dpId
+            it.destination.switchId == newDstSwitch.switchId
         }
 
         and: "Flow rules are installed on the new dst switch"
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            assert switchRulesFactory.get(newDstSwitch.dpId).getRules().findAll { def cookie = new Cookie(it.cookie)
+            assert newDstSwitch.rulesManager.getRules().findAll { def cookie = new Cookie(it.cookie)
                 !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT
             }.size() == amountOfFlowRules
         }
@@ -330,7 +326,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "The new and old dst switches pass switch validation"
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert switchHelper.validateAndCollectFoundDiscrepancies([dstSwitch, newDstSwitch]*.dpId).isEmpty()
+            assert validateAndCollectFoundDiscrepancies([dstSwitch, newDstSwitch]).isEmpty()
         }
     }
 
@@ -341,7 +337,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                 .withEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build().create()
 
-        def originalCookies = switchRulesFactory.get(switchPair.src.dpId).getRules().findAll {
+        def originalCookies = switchPair.src.rulesManager.getRules().findAll {
             def cookie = new Cookie(it.cookie)
             !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT
         }
@@ -359,7 +355,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flow.retrieveDetails().encapsulationType == newEncapsulationTypeValue
 
         and: "Flow rules have been reinstalled"
-        !switchRulesFactory.get(switchPair.src.dpId).getRules().findAll {
+        !switchPair.src.rulesManager.getRules().findAll {
             def cookie = new Cookie(it.cookie)
             !cookie.serviceFlag && cookie.type == SERVICE_OR_FLOW_SEGMENT
         }.any { it in originalCookies }
@@ -368,16 +364,14 @@ class PartialUpdateSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Able to update a flow port and vlan for a single-switch flow using partial update"() {
         given: "An active single-switch flow (different ports)"
-        def sw = topology.activeSwitches.first()
-        def flow = flowFactory.getRandom(sw, sw)
+        def sw = switches.all().random()
+        def flow = flowFactory.getSingleSwRandom(sw)
 
         when: "Update the flow: port number and vlanId on the src endpoint"
         def flowInfoFromDb = flow.retrieveDetailsFromDB()
         def ingressCookie = flowInfoFromDb.forwardPath.cookie.value
         def egressCookie = flowInfoFromDb.reversePath.cookie.value
-        def newPortNumber = (topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
-            it.dpId == flow.source.switchId
-        }) - flow.source.portNumber - flow.destination.portNumber).last()
+        def newPortNumber = (sw.getPorts() - flow.source.portNumber - flow.destination.portNumber).last()
         def newVlanId = flow.source.vlanId - 1
         def updateRequest = new FlowPatchV2().tap {
             source = new FlowPatchEndpoint().tap {
@@ -398,7 +392,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "The ingress/egress rules are really updated"
         Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
-            def swRules = switchRulesFactory.get(flow.source.switchId).getRules()
+            def swRules = sw.rulesManager.getRules()
             with(swRules.find { it.cookie == ingressCookie }) {
                 it.match.inPort == newPortNumber.toString()
                 it.instructions.applyActions.flowOutput == flow.destination.portNumber.toString()
@@ -412,22 +406,20 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         }
 
         and: "The switch passes switch validation"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.source.switchId).isPresent()
+        !sw.synchronizeAndCollectFixedDiscrepancies().isPresent()
     }
 
     @Tags(LOW_PRIORITY)
     def "Able to update a flow port and vlan for a single-switch single-port flow using partial update"() {
         given: "An active single-switch single-port flow"
-        def sw = topology.activeSwitches.first()
-        def flow = flowFactory.getRandom(sw, sw)
+        def sw = switches.all().random()
+        def flow = flowFactory.getSingleSwRandom(sw)
 
         when: "Update the flow: new port number on src+dst and new vlanId on the src endpoint"
         def flowInfoFromDb = flow.retrieveDetailsFromDB()
         def ingressCookie = flowInfoFromDb.forwardPath.cookie.value
         def egressCookie = flowInfoFromDb.reversePath.cookie.value
-        def newPortNumber = (topology.getAllowedPortsForSwitch(topology.activeSwitches.find {
-            it.dpId == flow.source.switchId
-        }) - flow.source.portNumber).last()
+        def newPortNumber = (sw.getPorts() - flow.source.portNumber).last()
         def newVlanId = flow.source.vlanId - 1
         def updateRequest = new FlowPatchV2().tap {
             source = new FlowPatchEndpoint().tap {
@@ -452,7 +444,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "The ingress/egress rules are really updated"
         Wrappers.wait(RULES_INSTALLATION_TIME + WAIT_OFFSET) {
-            def swRules = switchRulesFactory.get(flow.source.switchId).getRules()
+            def swRules = sw.rulesManager.getRules()
             with(swRules.find { it.cookie == ingressCookie }) {
                 it.match.inPort == newPortNumber.toString()
                 it.instructions.applyActions.flowOutput == "in_port"
@@ -466,7 +458,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         }
 
         and: "The switch passes switch validation"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(flow.source.switchId).isPresent()
+        !sw.synchronizeAndCollectFixedDiscrepancies().isPresent()
     }
 
     @Tags([LOW_PRIORITY])
@@ -474,7 +466,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         given: "A flow"
         def swPair = switchPairs.all().random()
         def flow = flowFactory.getRandom(swPair)
-        def originalCookies = switchRulesFactory.get(swPair.src.dpId).getRules().findAll {
+        def originalCookies = swPair.src.rulesManager.getRules().findAll {
             def cookie = new Cookie(it.cookie)
             !cookie.serviceFlag || cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES
         }*.cookie
@@ -487,7 +479,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flow.retrieveDetails().hasTheSamePropertiesAs(flowBeforeUpdate)
 
         and: "Flow rules have not been reinstalled"
-        switchRulesFactory.get(swPair.src.dpId).getRules()*.cookie.containsAll(originalCookies)
+        swPair.src.rulesManager.getRules()*.cookie.containsAll(originalCookies)
     }
 
     def "Partial update with empty body does not actually update flow in any way"() {
@@ -500,7 +492,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
                 .withDiverseFlow(helperFlow.flowId)
                 .build().create()
 
-        def originalCookies = switchRulesFactory.get(swPair.src.dpId).getRules().findAll {
+        def originalCookies = swPair.src.rulesManager.getRules().findAll {
             def cookie = new Cookie(it.cookie)
             !cookie.serviceFlag || cookie.type == CookieType.MULTI_TABLE_INGRESS_RULES
         }*.cookie
@@ -513,16 +505,16 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flow.retrieveDetails().hasTheSamePropertiesAs(flowBeforeUpdate)
 
         and: "Flow rules have not been reinstalled"
-        switchRulesFactory.get(swPair.src.dpId).getRules()*.cookie.containsAll(originalCookies)
+        swPair.src.rulesManager.getRules()*.cookie.containsAll(originalCookies)
     }
 
     def "Unable to partial update a flow in case new port is an isl port on a #data.switchType switch"() {
-        given: "An isl"
-        Isl isl = topology.islsForActiveSwitches.find { it.aswitch && it.dstSwitch }
-        assumeTrue(isl as boolean, "Unable to find required isl")
+        given: "Neighbouring switch pair"
+        def swPair = switchPairs.neighbouring().random()
+        def isl = topology.getIslBetween(swPair.src.sw, swPair.dst.sw).get()
 
         and: "A flow"
-        def flow = flowFactory.getRandom(isl.srcSwitch, isl.dstSwitch)
+        def flow = flowFactory.getRandom(swPair)
 
         when: "Try to edit port to isl port"
         def updateRequest = new FlowPatchV2().tap {

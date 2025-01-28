@@ -2,15 +2,19 @@ package org.openkilda.functionaltests.helpers.model
 
 import static org.openkilda.model.cookie.Cookie.*
 import static org.openkilda.model.cookie.CookieBase.CookieType.*
+import static org.openkilda.testing.Constants.WAIT_OFFSET
 
+import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.command.switches.DeleteRulesAction
 import org.openkilda.messaging.command.switches.InstallRulesAction
 import org.openkilda.model.FlowEncapsulationType
 import org.openkilda.model.FlowMeter
+import org.openkilda.model.FlowPathDirection
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
+import org.openkilda.model.cookie.FlowSegmentCookie
 import org.openkilda.northbound.dto.v1.flows.PathDiscrepancyDto
 import org.openkilda.northbound.dto.v1.switches.RulesSyncResult
 import org.openkilda.northbound.dto.v1.switches.RulesValidationResult
@@ -106,6 +110,20 @@ class SwitchRules {
         }
     }
 
+    List<FlowRuleEntity> getFlowLoopRules() {
+        getRules().findAll {
+            def hexCookie = Long.toHexString(it.cookie)
+            return hexCookie.startsWith("40080000") || hexCookie.startsWith("20080000")
+        }
+    }
+
+    FlowRuleEntity getFlowRules(FlowPathDirection direction, boolean isMirror = false) {
+        getRules().find {
+            def cookie = new FlowSegmentCookie(it.cookie)
+            cookie.direction == direction && cookie.isMirror() == isMirror
+        }
+    }
+
     List<FlowRuleEntity> getRulesWithMeter() {
         return getRules().findAll {
             !new Cookie(it.cookie).serviceFlag && it.instructions.goToMeter
@@ -118,6 +136,13 @@ class SwitchRules {
 
     List<FlowRuleEntity> getRulesByCookieType(CookieType cookieType) {
        getRules().findAll { new Cookie(it.cookie).getType() == cookieType }
+    }
+
+    List<FlowRuleEntity> getNotDefaultRulesByCookieType(CookieType cookieType) {
+        getRules().findAll {
+            def cookie = new Cookie(it.cookie)
+            cookie.type == cookieType && !cookie.serviceFlag
+        }.sort()
     }
 
     List<FlowRuleEntity> getServer42FlowRelatedRules() {
@@ -136,5 +161,13 @@ class SwitchRules {
 
     List<FlowRuleEntity> getRules() {
         northboundService.getSwitchRules(switchId).flowEntries.collect { new FlowRuleEntity(it) }
+    }
+
+    def waitForDeviceRelatedInputRules(boolean arp, boolean lldp) {
+        def ruleTypes = getRules().collect { new Cookie(it.cookie).type }
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            assert !arp ^ ruleTypes.contains(ARP_INPUT_CUSTOMER_TYPE)
+            assert !lldp ^ ruleTypes.contains(LLDP_INPUT_CUSTOMER_TYPE)
+        }
     }
 }

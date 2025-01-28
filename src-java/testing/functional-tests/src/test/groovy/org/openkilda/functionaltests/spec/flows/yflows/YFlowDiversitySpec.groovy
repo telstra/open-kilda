@@ -157,11 +157,11 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).random()
 
         and: "Simple multiSwitch flow"
-        def flow = flowFactory.getRandom(switchPair.src, switchPair.dst, false)
+        def flow = flowFactory.getRandom(switchPair, false)
 
         when: "Create a Y-Flow with one switch sub flow and diversity with simple flow"
         def swT = switchTriplets.all(true, true)
-                .findSpecificSwitchTriplet(switchPair.src.dpId, switchPair.src.dpId, switchPair.dst.dpId)
+                .findSpecificSwitchTriplet(switchPair.src, switchPair.src, switchPair.dst)
         def yFlow = yFlowFactory.getBuilder(swT, false).withDiverseFlow(flow.flowId).build().create()
 
         then: "Create response contains information about diverse flow"

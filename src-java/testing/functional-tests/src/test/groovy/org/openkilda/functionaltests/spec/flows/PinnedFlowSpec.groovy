@@ -12,12 +12,9 @@ import org.openkilda.functionaltests.error.PinnedFlowNotReroutedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.cookie.Cookie
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.client.HttpClientErrorException
@@ -38,15 +35,11 @@ class PinnedFlowSpec extends HealthCheckSpecification {
     @Autowired
     @Shared
     FlowFactory flowFactory
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
-
 
     def "Able to CRUD pinned flow"() {
         when: "Create a flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def flow = flowFactory.getBuilder(srcSwitch, dstSwitch)
+        def swPair = switchPairs.all().neighbouring().random()
+        def flow = flowFactory.getBuilder(swPair)
                 .withPinned(true).build().create()
 
         then: "Pinned flow is created"
@@ -64,8 +57,8 @@ class PinnedFlowSpec extends HealthCheckSpecification {
 
     def "Able to CRUD unmetered one-switch pinned flow"() {
         when: "Create a flow"
-        def sw = topology.getActiveSwitches().first()
-        def flow = flowFactory.getBuilder(sw, sw)
+        def sw = switches.all().first()
+        def flow = flowFactory.getSingleSwBuilder(sw)
         .withBandwidth(0)
         .withIgnoreBandwidth(true)
         .withPinned(true).build().create()
@@ -98,7 +91,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         def allEntityPath = flow.retrieveAllEntityPaths()
         def initialPathIsls = allEntityPath.getInvolvedIsls()
         List<Isl> altPathIsls = allPaths.findAll { it != initialPathIsls }.min { it.size() }
-        def involvedSwitches = allEntityPath.getInvolvedSwitches()
+        def involvedSwitches = switches.all().findSwitchesInPath(allEntityPath)
 
         when: "Make alt path more preferable than current path"
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
@@ -108,15 +101,10 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         def islsToBreak = initialPathIsls.findAll { !altPathIsls.contains(it) }
 
         def cookiesMap = involvedSwitches.collectEntries { sw ->
-            [sw.id, switchRulesFactory.get(sw).getRules().findAll {
-                !new Cookie(it.cookie).serviceFlag
-            }*.cookie]
+            [sw.switchId, sw.rulesManager.getNotDefaultRules()*.cookie]
         }
-        def metersMap = involvedSwitches
-                .findAll { northbound.getSwitch(it).ofVersion != "OF_12" }.collectEntries { sw ->
-            [sw.id, northbound.getAllMeters(sw).meterEntries.findAll {
-                it.meterId > MAX_SYSTEM_RULE_METER_ID
-            }*.meterId]
+        def metersMap = involvedSwitches.findAll { !it.isOf12Version() }.collectEntries { sw ->
+            [sw.switchId, sw.metersManager.getMeters().findAll { it.meterId > MAX_SYSTEM_RULE_METER_ID }*.meterId]
         }
 
         islHelper.breakIsl(islsToBreak[0])
@@ -133,16 +121,11 @@ class PinnedFlowSpec extends HealthCheckSpecification {
 
         and: "Rules and meters are not changed"
         def cookiesMapAfterReroute = involvedSwitches.collectEntries { sw ->
-            [sw.id, switchRulesFactory.get(sw).getRules().findAll {
-                !new Cookie(it.cookie).serviceFlag
-            }*.cookie]
+            [sw.switchId, sw.rulesManager.getNotDefaultRules()*.cookie]
         }
 
-        def metersMapAfterReroute = involvedSwitches.findAll {
-            northbound.getSwitch(it).ofVersion != "OF_12" }.collectEntries { sw ->
-            [sw.id, northbound.getAllMeters(sw).meterEntries.findAll {
-                it.meterId > MAX_SYSTEM_RULE_METER_ID
-            }*.meterId]
+        def metersMapAfterReroute = involvedSwitches.findAll { !it.isOf12Version() }.collectEntries { sw ->
+            [sw.switchId, sw.metersManager.getMeters().findAll { it.meterId > MAX_SYSTEM_RULE_METER_ID }*.meterId]
         }
 
         cookiesMap.sort() == cookiesMapAfterReroute.sort()

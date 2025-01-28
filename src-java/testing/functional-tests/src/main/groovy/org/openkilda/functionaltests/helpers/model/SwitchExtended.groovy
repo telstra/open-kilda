@@ -4,6 +4,10 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.hamcrest.MatcherAssert.assertThat
 import static org.hamcrest.Matchers.hasItem
 import static org.hamcrest.Matchers.notNullValue
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.convertToUpdateRequest
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.findMgmtFls
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.findStatFls
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.isDefaultMeter
 import static org.openkilda.functionaltests.helpers.model.SwitchOfVersion.OF_12
 import static org.openkilda.functionaltests.helpers.model.SwitchOfVersion.OF_13
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
@@ -62,10 +66,13 @@ import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.messaging.info.event.IslInfoData
+import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
 import org.openkilda.messaging.payload.flow.FlowPayload
 import org.openkilda.model.MeterId
+import org.openkilda.model.SwitchConnectMode
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
+import org.openkilda.model.SwitchStatus
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.model.cookie.PortColourCookie
@@ -74,6 +81,7 @@ import org.openkilda.model.cookie.ServiceCookie.ServiceCookieTag
 import org.openkilda.northbound.dto.v1.switches.MeterInfoDto
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
+import org.openkilda.northbound.dto.v2.flows.FlowLoopResponse
 import org.openkilda.northbound.dto.v2.switches.LagPortResponse
 import org.openkilda.northbound.dto.v2.switches.MeterInfoDtoV2
 import org.openkilda.northbound.dto.v2.switches.SwitchConnectEntry
@@ -82,6 +90,8 @@ import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
 import org.openkilda.northbound.dto.v2.switches.SwitchLocationDtoV2
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
+import org.openkilda.testing.model.topology.TopologyDefinition.SwitchProperties
+import org.openkilda.testing.model.topology.TopologyDefinition.TraffGen
 import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.model.Floodlight
 import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode
@@ -93,6 +103,8 @@ import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.northbound.payloads.SwitchSyncExtendedResult
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtendedResult
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationV2ExtendedResult
+import org.openkilda.testing.service.traffexam.TraffExamService
+import org.openkilda.testing.tools.ConnectedDevice
 import org.openkilda.testing.tools.SoftAssertions
 
 import com.fasterxml.jackson.annotation.JsonIdentityInfo
@@ -201,12 +213,21 @@ class SwitchExtended {
         allPorts.removeAll([sw?.prop?.server42Port])
         allPorts.unique()
     }
+
+    /**
+     *
+     * Get list of switch ports which are busy with ISLs and s42.
+     */
+    List<Integer> getServicePorts() {
+        sw.prop?.server42Port ? islPorts + sw?.prop?.server42Port : islPorts
+    }
+
     /***
      *
      * @param useTraffgenPorts allows us to select random TraffGen port for further traffic verification
      * @return random port for further interaction
      */
-    PortExtended getRandomPort(boolean useTraffgenPorts = true, List<Integer> busyPort = []) {
+    Integer getRandomPortNumber(boolean useTraffgenPorts = true, List<Integer> busyPort = []) {
         List<Integer> allPorts = useTraffgenPorts ? traffGenPorts : getPorts()
         def availablePorts = allPorts - busyPort
         if(!availablePorts) {
@@ -214,13 +235,21 @@ class SwitchExtended {
             //this is a rare case for the situation when we need to create more than 20 flows in a row
             availablePorts = allPorts
         }
-        Integer portNo = availablePorts.shuffled().first()
-        return new PortExtended(sw, portNo, northbound, northboundV2, cleanupManager)
+        return availablePorts.get(new Random().nextInt(availablePorts.size()))
     }
 
     PortExtended getPortInStatus(PortStatus status) {
         Integer portNo = northbound.getPorts(switchId).find { status.toString() in it.state }.portNumber
         return new PortExtended(sw, portNo, northbound, northboundV2, cleanupManager)
+    }
+
+    Integer getTgPortIfPresentOrRandom(List<Integer> occupiedPorts) {
+        if(traffGenPorts.size() > 1) {
+            traffGenPorts.find { !(it in occupiedPorts) }
+        } else {
+            def ports = getPorts() - occupiedPorts
+            ports.get(new Random().nextInt(ports.size()))
+        }
     }
 
     LagPort getLagPort(Set<Integer> portNumbers) {
@@ -230,6 +259,10 @@ class SwitchExtended {
     @Memoized
     PortExtended getPort(Integer portNo) {
         return new PortExtended(sw, portNo, northbound, northboundV2, cleanupManager)
+    }
+
+    static SwitchProperties getDummyServer42Props() {
+        return new SwitchProperties(true, 33, "00:00:00:00:00:00", 1, null)
     }
 
     String getDescription() {
@@ -336,7 +369,7 @@ class SwitchExtended {
         }
 
         if ((toggles.server42IslRtt && isS42Supported(swProps) && (swProps.server42IslRtt == "ENABLED" ||
-                swProps.server42IslRtt == "AUTO" && !sw.features.contains(NOVIFLOW_COPY_FIELD)))) {
+                swProps.server42IslRtt == "AUTO" && !getDbFeatures().contains(NOVIFLOW_COPY_FIELD)))) {
             devicesRules.add(SERVER_42_ISL_RTT_TURNING_COOKIE)
             devicesRules.add(SERVER_42_ISL_RTT_OUTPUT_COOKIE)
             relatedLinks.each {
@@ -490,6 +523,46 @@ class SwitchExtended {
         isVxlanEnabled() ? 2 : 1
     }
 
+    void waitForS42IslRulesSetUp(boolean isServer42IslRttEnabled, boolean isS42ToggleOn) {
+        def countOfRules = isS42ToggleOn && isServer42IslRttEnabled ? getRelatedLinks().size() + 2 : 0
+
+        Wrappers.wait(RULES_INSTALLATION_TIME) {
+            def actualS42IslRulesOnSwitch = rulesManager.getRules()
+                    .findAll {(new Cookie(it.cookie).getType() in [SERVER_42_ISL_RTT_INPUT] ||
+                            it.cookie in [SERVER_42_ISL_RTT_TURNING_COOKIE, SERVER_42_ISL_RTT_OUTPUT_COOKIE])}
+            assert actualS42IslRulesOnSwitch.size() == countOfRules
+        }
+    }
+
+    def setServer42IslRttForSwitch(boolean isServer42IslRttEnabled) {
+        String requiredState = isServer42IslRttEnabled ? RttState.ENABLED.toString() : RttState.DISABLED.toString()
+        def originalProps = getCachedProps()
+        if (originalProps.server42IslRtt != requiredState) {
+            def requiredProps = originalProps.jacksonCopy().tap {
+                server42IslRtt = requiredState
+                def props = sw.prop ?: dummyServer42Props
+                server42MacAddress = props.server42MacAddress
+                server42Port = props.server42Port
+                server42Vlan = props.server42Vlan
+            }
+
+            cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {
+                northbound.updateSwitchProperties(sw.dpId, requiredProps.jacksonCopy().tap {
+                    server42IslRtt = (sw?.prop?.server42IslRtt == null ? "AUTO" : (sw?.prop?.server42IslRtt ? "ENABLED" : "DISABLED"))
+                })
+            })
+
+            northbound.updateSwitchProperties(sw.dpId, requiredProps)
+        }
+
+        return originalProps.server42IslRtt
+    }
+
+    def setServer42IslRttAndWaitForRulesInstallation(boolean isServer42IslRttEnabled, boolean isS42ToggleOn) {
+        setServer42IslRttForSwitch(isServer42IslRttEnabled)
+        waitForS42IslRulesSetUp(isServer42IslRttEnabled, isS42ToggleOn)
+    }
+
     SwitchPropertiesDto getProps() {
         northboundV2.getAllSwitchProperties().switchProperties.find { it.switchId == sw.dpId }
     }
@@ -517,6 +590,14 @@ class SwitchExtended {
 
     List<Integer> getUsedPorts() {
         return northboundV2.getSwitchFlows(sw.dpId, []).flowsByPort.keySet().asList()
+    }
+
+    List<FlowLoopResponse> getFlowLoop() {
+        return  northboundV2.getFlowLoop(sw.dpId)
+    }
+
+    List<FlowLoopResponse> getFlowLoop(String flowId) {
+        return  northboundV2.getFlowLoop(flowId, sw.dpId)
     }
 
     SwitchValidationV2ExtendedResult validate(String include = null, String exclude = null) {
@@ -602,6 +683,26 @@ class SwitchExtended {
      */
     List<SwitchConnectEntry> getConnectedFloodLights() {
         northboundV2.getSwitchConnections(sw.dpId).connections
+    }
+
+    static List<SwitchConnectEntry> findStatFls(List<SwitchConnectEntry> switchConnections) {
+        return switchConnections.findAll {
+            it.connectMode == SwitchConnectMode.READ_ONLY.toString()
+        }
+    }
+
+    static List<SwitchConnectEntry> findMgmtFls(List<SwitchConnectEntry> switchConnections) {
+        return switchConnections.findAll {
+            it.connectMode == SwitchConnectMode.READ_WRITE.toString()
+        }
+    }
+
+    void waitForFlRegionsConnectivity(Boolean isMgmtRegionPresent, Boolean isStatsRegionPresent) {
+        Wrappers.wait(WAIT_OFFSET / 2) {
+            def connections = getConnectedFloodLights()
+            assert !findMgmtFls(connections).isEmpty() == isMgmtRegionPresent
+            assert !findStatFls(connections).isEmpty() == isStatsRegionPresent
+        }
     }
 
     /***
@@ -757,13 +858,29 @@ class SwitchExtended {
         }
     }
 
+    def addConnectedDevice(TraffExamService examService, TraffGen tg, List<Integer> vlanId) {
+        assert switchId == tg.getSwitchConnected().dpId
+        cleanupManager.addAction(OTHER, {database.removeConnectedDevices(switchId)})
+        def device = new ConnectedDevice(examService, tg, vlanId)
+        cleanupManager.addAction(OTHER, {device.close()})
+        return device
+    }
+
     /***
      * Database interaction
      */
 
+    def getDbDetails() {
+        database.getSwitch(sw.dpId)
+    }
+
     @Memoized
     Set<SwitchFeature> getDbFeatures() {
-        database.getSwitch(sw.dpId).features
+        getDbDetails().features
+    }
+
+    void setStatusInDb(SwitchStatus status) {
+        database.setSwitchStatus(sw.dpId, status)
     }
 
     void setFeaturesInDb(Set<SwitchFeature> features) {
@@ -780,7 +897,8 @@ class SwitchExtended {
     }
 
     static int randomVlan(List<Integer> exclusions) {
-        return (KILDA_ALLOWED_VLANS - exclusions).shuffled().first()
+        def vlans = KILDA_ALLOWED_VLANS - exclusions
+        return vlans.get(new Random().nextInt(vlans.size()))
     }
 
     static List<Integer> availableVlanList(List<Integer> exclusions) {
@@ -910,7 +1028,7 @@ class SwitchExtended {
             sections.each { section ->
                 if (section == "proper") {
                     assertions.checkSucceeds {
-                        assert switchValidateInfo.meters.proper.findAll { !it.defaultMeter }.empty
+                        assert switchValidateInfo.meters.proper.findAll { !isDefaultMeter(it) }.empty
                     }
                 } else {
                     assertions.checkSucceeds { assert switchValidateInfo.meters."$section".empty }
@@ -927,7 +1045,7 @@ class SwitchExtended {
             sections.each { section ->
                 if (section == "proper") {
                     assertions.checkSucceeds {
-                        assert switchValidateInfo.meters.proper.findAll { !it.defaultMeter }.empty
+                        assert switchValidateInfo.meters.proper.findAll { !isDefaultMeter(it)}.empty
                     }
                 } else {
                     assertions.checkSucceeds { assert switchValidateInfo.meters."$section".empty }

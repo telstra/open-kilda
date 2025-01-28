@@ -44,15 +44,15 @@ class YFlowBuilder {
 
         yFlow.sharedEndpoint = YFlowSharedEndpoint.builder()
                 .switchId(swT.shared.switchId)
-                .portNumber(swT.shared.getRandomPort(useTraffgenPorts, busyEndpoints.findAll { it.sw == swT.shared.switchId }*.port).port)
+                .portNumber(swT.shared.getRandomPortNumber(useTraffgenPorts, busyEndpoints.findAll { it.sw == swT.shared.switchId }*.port))
                 .build()
 
         def subFlows
         //single switch Y-Flow
         if (swT.isSingleSwitch()) {
             busyEndpoints << new SwitchPortVlan(yFlow.sharedEndpoint.switchId, yFlow.sharedEndpoint.portNumber)
-            def epPort = swT.shared.getRandomPort(useTraffgenPorts, busyEndpoints.findAll { it.sw == swT.shared.switchId }*.port).port
-            def availableVlanList = availableVlanList(busyEndpoints*.vlan).shuffled()
+            def epPort = swT.shared.getRandomPortNumber(useTraffgenPorts, busyEndpoints.findAll { it.sw == swT.shared.switchId }*.port)
+            def availableVlanList = availableVlanList(busyEndpoints*.vlan)
             subFlows = [swT.ep1, swT.ep2].collect { sw ->
                 def seVlan = availableVlanList.get(new Random().nextInt(availableVlanList.size()))
                 def ep = SubFlow.builder()
@@ -73,7 +73,7 @@ class YFlowBuilder {
                         .sharedEndpoint(YFlowSharedEndpointEncapsulation.builder().vlanId(seVlan).build())
                         .endpoint(FlowEndpointV2.builder()
                                 .switchId(sw.switchId)
-                                .portNumber(sw.getRandomPort(useTraffgenPorts, busyEndpoints.findAll { it.sw == sw.switchId }*.port).port)
+                                .portNumber(sw.getRandomPortNumber(useTraffgenPorts, busyEndpoints.findAll { it.sw == sw.switchId }*.port))
                                 .vlanId(randomVlan(busyEndpoints*.vlan))
                                 .build())
                         .build()

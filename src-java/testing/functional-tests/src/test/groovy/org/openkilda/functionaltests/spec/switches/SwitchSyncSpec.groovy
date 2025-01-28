@@ -4,7 +4,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
-import static org.openkilda.functionaltests.helpers.SwitchHelper.isDefaultMeter
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.isDefaultMeter
 import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.SYNCHRONIZE_SWITCH
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
@@ -115,7 +115,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         Wrappers.wait(RULES_DELETION_TIME) {
             involvedSwitches.each { sw ->
                 def validationResponse = sw.validate()
-                if (sw.switchId in switchPair.toList().dpId) {
+                if (sw in switchPair.toList()) {
                     /**
                      * s42Rules: SERVER_42_FLOW_RTT_INGRESS_REVERSE, SERVER_42_FLOW_RTT_INPUT, SERVER_42_FLOW_RTT_TURNING_COOKIE,
                      * SERVER42_QINQ_OUTER_VLAN (for QinQ flows, should not present in this test)
@@ -144,7 +144,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
             assert syncResponse.rules.removed.size() == 0
             assert syncResponse.rules.installed.containsAll(cookiesMap[sw.switchId])
 
-            if (sw.switchId in switchPair.toList().dpId) {
+            if (sw in switchPair.toList()) {
                 assert syncResponse.meters.proper.size() == 0
                 assert syncResponse.meters.excess.size() == 0
                 assert syncResponse.meters.missing*.meterId == metersMap[sw.switchId].sort()
@@ -231,8 +231,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         def flowInfoFromDb = flow.retrieveDetailsFromDB()
         List<SwitchExtended> involvedSwitches = switches.all().findSwitchesInPath(flow.retrieveAllEntityPaths())
 
-        def transitSwitches = involvedSwitches.findAll { !(it.switchId in switchPair.toList().dpId) }
-        def terminalSwitches = involvedSwitches.findAll { it.switchId in switchPair.toList().dpId }
+        def transitSwitches = involvedSwitches.findAll { !(it in switchPair.toList()) }
 
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             def defaultCookies = sw.collectDefaultCookies()
@@ -245,14 +244,14 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         }
 
         involvedSwitches.each { sw ->  sw.rulesManager.delete(DeleteRulesAction.IGNORE_DEFAULTS) }
-        terminalSwitches.each { sw -> sw.metersManager.delete(metersMap[sw.switchId][0]) }
+        switchPair.toList().each { sw -> sw.metersManager.delete(metersMap[sw.switchId][0]) }
 
         Wrappers.wait(RULES_DELETION_TIME) {
             involvedSwitches.each { sw ->
                 def validationResponse = sw.validate()
                 def rulesCount = sw.collectFlowRelatedRulesAmount(flow)
                 assert validationResponse.rules.missing.size() == rulesCount
-                if(sw in terminalSwitches) {
+                if(sw in switchPair.toList()) {
                     assert validationResponse.meters.missing.size() == 1
                 }
             }
@@ -267,8 +266,8 @@ class SwitchSyncSpec extends HealthCheckSpecification {
             assert syncResponse.rules.missing.containsAll(cookiesMap[sw.switchId])
             assert syncResponse.rules.removed.size() == 0
             assert syncResponse.rules.installed.containsAll(cookiesMap[sw.switchId])
-            if(sw in terminalSwitches) {
-                assert syncResponse.meters.proper.findAll { !it.defaultMeter }.size() == 0
+            if(sw in switchPair.toList()) {
+                assert syncResponse.meters.proper.findAll { !isDefaultMeter(it) }.size() == 0
                 assert syncResponse.meters.excess.size() == 0
                 assert syncResponse.meters.missing*.meterId == metersMap[sw.switchId]
                 assert syncResponse.meters.removed.size() == 0
@@ -285,7 +284,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
         and: "Rules are synced correctly"
         // ingressRule should contain "pushVxlan"
         // egressRule should contain "tunnel-id"
-        with(terminalSwitches.find { it.switchId == switchPair.src.dpId}.rulesManager.getRules()) { rules ->
+        with(switchPair.src.rulesManager.getRules()) { rules ->
             assert rules.find {
                 it.cookie == flowInfoFromDb.forwardPath.cookie.value
             }.instructions.applyActions.pushVxlan
@@ -294,7 +293,7 @@ class SwitchSyncSpec extends HealthCheckSpecification {
             }.match.tunnelId
         }
 
-        with(terminalSwitches.find { it.switchId == switchPair.dst.dpId}.rulesManager.getRules()) { rules ->
+        with(switchPair.dst.rulesManager.getRules()) { rules ->
             assert rules.find {
                 it.cookie == flowInfoFromDb.forwardPath.cookie.value
             }.match.tunnelId

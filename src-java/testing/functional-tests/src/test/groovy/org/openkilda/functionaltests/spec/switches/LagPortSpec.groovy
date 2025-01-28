@@ -138,10 +138,9 @@ class LagPortSpec extends HealthCheckSpecification {
     def "Able to create a flow on a LAG port"() {
         given: "A switchPair with a LAG port on the src switch"
         def switchPair = switchPairs.all().withTraffgensOnBothEnds().random()
-        def srcSwitch = switches.all().findSpecific(switchPair.src.dpId)
-        def traffgenSrcSwPort = srcSwitch.traffGenPorts.first()
-        def portsArray = (srcSwitch.getPorts()[-2, -1] + [traffgenSrcSwPort]) as Set<Integer>
-        def lagPortNumber = srcSwitch.getLagPort(portsArray).create().logicalPortNumber
+        def traffgenSrcSwPort = switchPair.src.traffGenPorts.first()
+        def portsArray = (switchPair.src.getPorts()[-2, -1] + [traffgenSrcSwPort]) as Set<Integer>
+        def lagPortNumber = switchPair.src.getLagPort(portsArray).create().logicalPortNumber
 
         when: "Create a flow"
         def flow = flowFactory.getBuilder(switchPair)
@@ -170,10 +169,9 @@ class LagPortSpec extends HealthCheckSpecification {
         and: "A flow on the LAG port"
         def swPair = switchPairs.singleSwitch()
                 .withAtLeastNTraffgensOnSource(2).random()
-        def sw = switches.all().findSpecific(swPair.src.dpId)
-        Integer traffgenSrcSwPort = sw.traffGenPorts.first()
-        Integer traffgenDstSwPort = sw.traffGenPorts.last()
-        def lagPortNumber = sw.getLagPort([traffgenSrcSwPort] as Set<Integer>).create().logicalPortNumber
+        Integer traffgenSrcSwPort = swPair.src.traffGenPorts.first()
+        Integer traffgenDstSwPort = swPair.src.traffGenPorts.last()
+        def lagPortNumber = swPair.src.getLagPort([traffgenSrcSwPort] as Set<Integer>).create().logicalPortNumber
 
         when: "Create a flow"
         def flow = flowFactory.getBuilder(swPair)
@@ -223,9 +221,8 @@ class LagPortSpec extends HealthCheckSpecification {
     def "Unable to delete a LAG port in case flow on it"() {
         given: "A flow on a LAG port"
         def switchPair = switchPairs.all().random()
-        def srcSw = switches.all().findSpecific(switchPair.src.dpId)
-        def portsArray = srcSw.getPorts()[-2, -1]
-        def lagPort = srcSw.getLagPort(portsArray as Set).create()
+        def portsArray = switchPair.src.getPorts()[-2, -1]
+        def lagPort = switchPair.src.getLagPort(portsArray as Set).create()
         def flow = flowFactory.getBuilder(switchPair).withSourcePort(lagPort.logicalPortNumber).build().create()
 
         when: "When delete LAG port"
@@ -233,7 +230,7 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
-        new LagNotDeletedExpectedError(~/Couldn\'t delete LAG port \'$lagPort.logicalPortNumber\' from switch $switchPair.src.dpId \
+        new LagNotDeletedExpectedError(~/Couldn\'t delete LAG port \'$lagPort.logicalPortNumber\' from switch $switchPair.src.switchId \
 because flows \'\[$flow.flowId\]\' use it as endpoint/).matches(exc)
     }
 
@@ -275,12 +272,11 @@ on switch $sw.switchId is used as part of LAG port $lagPort.logicalPortNumber/).
         given: "A flow with mirrorPoint"
         def swP = switchPairs.all().neighbouring().random()
         def flow = flowFactory.getRandom(swP, false)
-        def srcToInteract = switches.all().findSpecific(swP.src.dpId)
-        def mirrorPort = srcToInteract.getPorts().last()
-        def mirrorEndpoint = flow.createMirrorPoint(swP.src.dpId, mirrorPort, randomVlan())
+        def mirrorPort = swP.src.getPorts().last()
+        def mirrorEndpoint = flow.createMirrorPoint(swP.src.switchId, mirrorPort, randomVlan())
 
         when: "Create a LAG port with port which is used as mirrorPort"
-        srcToInteract.getLagPort([mirrorPort] as Set).create()
+        swP.src.getLagPort([mirrorPort] as Set).create()
 
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
@@ -802,11 +798,10 @@ occupied by other LAG group\(s\)./).matches(exc)
     def "Unable decrease bandwidth on LAG port lower than connected flows bandwidth sum"() {
         given: "Flows on a LAG port with switch ports"
         def switchPair = switchPairs.all().withoutWBSwitch().random()
-        def srcSw = switches.all().findSpecific(switchPair.src.dpId)
-        def testPorts = srcSw.getPorts().takeRight(2).sort()
+        def testPorts = switchPair.src.getPorts().takeRight(2).sort()
         assert testPorts.size > 1
-        def maximumBandwidth = testPorts.sum { srcSw.getPort(it).retrieveDetails().currentSpeed }
-        def lagPort = srcSw.getLagPort(testPorts as Set).create()
+        def maximumBandwidth = testPorts.sum { switchPair.src.getPort(it).retrieveDetails().currentSpeed }
+        def lagPort = switchPair.src.getLagPort(testPorts as Set).create()
 
         flowFactory.getBuilder(switchPair)
                 .withSourcePort(lagPort.logicalPortNumber)
@@ -820,9 +815,9 @@ occupied by other LAG group\(s\)./).matches(exc)
         then: "Human readable error is returned"
         def exc = thrown(HttpClientErrorException)
         new LagNotUpdatedExpectedError(
-                srcSw.switchId, lagPort.logicalPortNumber, ~/Not enough bandwidth for LAG port $lagPort.logicalPortNumber./).matches(exc)
+                switchPair.src.switchId, lagPort.logicalPortNumber, ~/Not enough bandwidth for LAG port $lagPort.logicalPortNumber./).matches(exc)
         then: "No bandwidth changed for LAG port and all connected ports are in place"
-        verifyAll(srcSw.getAllLogicalPorts()[0]) {
+        verifyAll(switchPair.src.getAllLogicalPorts()[0]) {
             logicalPortNumber == lagPort.logicalPortNumber
             portNumbers == testPorts
         }

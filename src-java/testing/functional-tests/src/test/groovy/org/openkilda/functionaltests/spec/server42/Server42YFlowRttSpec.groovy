@@ -28,13 +28,11 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.builder.YFlowBuilder
 import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
 import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.yflows.SubFlowPatchPayload
@@ -61,10 +59,6 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
     @Shared
     @Value('${flow.sla.check.interval.seconds}')
     Integer flowSlaCheckIntervalSeconds
-
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
 
     @Shared
     SwitchTriplet switchTripletWithYPointOnSharedEp
@@ -157,9 +151,9 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         assert isSharedEndpointYPoint ? yFlow.sharedEndpoint.switchId == yFlow.yPoint : yFlow.sharedEndpoint.switchId != yFlow.yPoint
 
         then: "Involved switches pass switch validation"
-        List<SwitchId> involvedSwitches = yFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+        def involvedSwitches = switches.all().findSwitchesInPath(yFlow.retrieveAllEntityPaths())
         Wrappers.wait(RULES_INSTALLATION_TIME) {
-            switchHelper.validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
+            validateAndCollectFoundDiscrepancies(involvedSwitches).isEmpty()
         }
 
         and: "Stats for both directions are available for the first sub-flow"

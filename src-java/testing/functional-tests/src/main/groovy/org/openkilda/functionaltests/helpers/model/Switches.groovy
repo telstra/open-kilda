@@ -10,6 +10,7 @@ import static org.openkilda.functionaltests.model.switches.Manufacturer.OVS
 import static org.openkilda.functionaltests.model.switches.Manufacturer.WB5164
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
+import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RO
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE
 
@@ -18,9 +19,12 @@ import org.openkilda.functionaltests.helpers.factory.SwitchFactory
 import org.openkilda.functionaltests.model.switches.Manufacturer
 import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
+import org.openkilda.model.cookie.Cookie
+import org.openkilda.model.cookie.CookieBase.CookieType
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 import org.openkilda.testing.service.floodlight.FloodlightsHelper
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
@@ -84,11 +88,18 @@ class Switches {
     }
 
     List<SwitchExtended> uniqueByHw() {
-        switches.findAll().unique { it.hwSwString()}
+        switches.findAll().unique { it.hwSwString() }
     }
 
     List<SwitchExtended> notOF12Version() {
         switches.findAll { !it.isOf12Version() }
+    }
+
+    Switches withConnectedToExactlyNManagementAndStatsFls(int flAmount) {
+        switches = switches.findAll { flHelper.filterRegionsByMode(it.regions, RW).size() == flAmount
+                &&  flHelper.filterRegionsByMode(it.regions, RO).size() == flAmount
+        }
+        return this
     }
 
     Switches withS42Support(){
@@ -96,7 +107,6 @@ class Switches {
         switches = switches.findAll { sw -> isS42Supported(swsProps.find { it.switchId == sw.switchId}) }
         return this
     }
-
 
     Switches withConnectedToExactlyNManagementFls(int flAmount) {
         switches = switches.findAll { flHelper.filterRegionsByMode(it.regions, RW).size() == flAmount }
@@ -125,7 +135,7 @@ class Switches {
 
     SwitchExtended random() {
         assumeFalse(switches.isEmpty(), "No suiting switch found")
-        switches.shuffled().first()
+        switches.get(new Random().nextInt(switches.size()))
     }
 
     SwitchExtended first() {

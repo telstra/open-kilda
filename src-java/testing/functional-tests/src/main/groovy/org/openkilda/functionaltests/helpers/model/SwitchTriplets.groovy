@@ -132,11 +132,11 @@ class SwitchTriplets {
         }
     }
 
-    SwitchTriplet findSpecificSwitchTriplet(SwitchId shared, SwitchId ep1, SwitchId ep2) {
+    SwitchTriplet findSpecificSwitchTriplet(SwitchExtended shared, SwitchExtended ep1, SwitchExtended ep2) {
         return switchTriplets.find {
-            it.shared.switchId == shared
-                    && it.ep1.switchId == ep1
-                    && it.ep2.switchId == ep2
+            it.shared == shared
+                    && it.ep1 == ep1
+                    && it.ep2 == ep2
         }
     }
 

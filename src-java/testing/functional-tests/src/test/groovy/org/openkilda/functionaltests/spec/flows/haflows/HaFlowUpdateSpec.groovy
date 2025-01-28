@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.flows.haflows
 
-import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
+import static org.openkilda.functionaltests.helpers.model.SwitchExtended.randomVlan
 import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.functionaltests.helpers.model.Switches.validateAndCollectFoundDiscrepancies
 
