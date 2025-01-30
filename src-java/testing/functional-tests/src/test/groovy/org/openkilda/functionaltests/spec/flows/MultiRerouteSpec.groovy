@@ -11,7 +11,7 @@ import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
-import org.openkilda.testing.tools.SoftAssertionsWrapper
+import org.openkilda.testing.tools.SoftAssertions
 
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Shared
@@ -68,7 +68,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         then: "Half of the flows are hosted on the preferable path"
         def flowsOnPrefPath
         wait(WAIT_OFFSET * 3) {
-            def assertions = new SoftAssertionsWrapper()
+            def assertions = new SoftAssertions()
             flowsOnPrefPath = flows.findAll {
                 it.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == prefPathIsls
             }
@@ -82,7 +82,7 @@ class MultiRerouteSpec extends HealthCheckSpecification {
         and: "Rest of the flows are hosted on another alternative paths"
         def restFlows = flows.findAll { !flowsOnPrefPath*.flowId.contains(it.flowId) }
         wait(WAIT_OFFSET * 2) {
-            def assertions = new SoftAssertionsWrapper()
+            def assertions = new SoftAssertions()
             restFlows.each { flow ->
                 assertions.checkSucceeds { assert flow.retrieveFlowStatus().status == FlowState.UP }
                 assertions.checkSucceeds { assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() != prefPathIsls }
