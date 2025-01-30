@@ -98,7 +98,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def flow = flowFactory.getRandom(swT.shared, swT.ep1, false)
         def subFlowId = yFlow.subFlows.first().flowId
         def involvedIslSubFlow = yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == subFlowId }.getInvolvedIsls()
-        def involvedIslSimpleFlow = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def involvedIslSimpleFlow = flow.retrieveAllEntityPaths().getInvolvedIsls()
         assert involvedIslSubFlow == involvedIslSimpleFlow
 
         when: "Update Y-Flow to become diverse with simple multiSwitch flow"

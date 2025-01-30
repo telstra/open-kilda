@@ -1,8 +1,7 @@
 package org.openkilda.functionaltests.spec.server42
 
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
-import static groovyx.gpars.GParsPool.withPool
 import static org.assertj.core.api.Assertions.assertThat
+import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.ResourceLockConstants.S42_TOGGLE
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -20,11 +19,12 @@ import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMode.RW
-import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.SwitchHelper
+import org.openkilda.functionaltests.helpers.model.FlowRuleEntity
+import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.model.stats.IslStats
 import org.openkilda.messaging.model.SwitchPropertiesDto.RttState
 import org.openkilda.model.SwitchFeature
@@ -53,6 +53,9 @@ class Server42IslRttSpec extends HealthCheckSpecification {
     @Shared
     @Value('${latency.update.interval}')
     Integer latencyUpdateInterval
+    @Autowired
+    @Shared
+    SwitchRulesFactory switchRulesFactory
 
     int islSyncWaitSeconds = 60 //server42.control.rtt.sync.interval.seconds
     int statsWaitSeconds = 4
@@ -163,10 +166,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         and: "ISL RTT rules are not installed for the new link because it is the same as moved(portNumber)"
         wait(RULES_INSTALLATION_TIME) {
             // newIsl.srcSwitch == isl.srcSwitch
-            assert northbound.getSwitchRules(newIsl.srcSwitch.dpId).flowEntries.findAll {
-                (it.cookie in [Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE, Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE]) ||
-                        (new Cookie(it.cookie).getType() in [CookieType.SERVER_42_ISL_RTT_INPUT])
-            }.size() == (northbound.getLinks(newIsl.srcSwitch.dpId, null, null, null).size() - 1 + 2)
+            assert switchRulesFactory.get(newIsl.srcSwitch.dpId).getServer42ISLRules().size() ==
+                    (northbound.getLinks(newIsl.srcSwitch.dpId, null, null, null).size() - 1 + 2)
             // -1 = moved link, 2 = SERVER_42_ISL_RTT_TURNING_COOKIE + SERVER_42_ISL_RTT_OUTPUT_COOKIE
         }
 
@@ -193,12 +194,10 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         when: "Replug the link back where it was"
         islUtils.replug(newIsl, true, isl, false, false)
         islUtils.waitForIslStatus([isl, isl.reversed], DISCOVERED)
-        def originIslIsUp = true
         islUtils.waitForIslStatus([newIsl, newIsl.reversed], MOVED)
 
         and: "Remove the MOVED ISL"
         assert northbound.deleteLink(islUtils.toLinkParameters(newIsl)).size() == 2
-        def newIslIsRemoved = true
 
         then: "Server42 ISL RTT rules are deleted on the dst switch of the moved link"
         wait(RULES_DELETION_TIME) { checkIslRttRules(newIsl.dstSwitch.dpId, true) }
@@ -298,12 +297,9 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         changeIslRttToggle(true)
 
         then: "IslRtt rules are installed on the switch"
-        def s42IslRttTurningRule
+        FlowRuleEntity s42IslRttTurningRule
         wait(RULES_INSTALLATION_TIME) {
-            def s42IslRttRules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                (it.cookie in [Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE, Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE]) ||
-                        (new Cookie(it.cookie).getType() in [CookieType.SERVER_42_ISL_RTT_INPUT])
-            }
+            def s42IslRttRules = switchRulesFactory.get(sw.dpId).getServer42ISLRules()
             assert s42IslRttRules.size() == (northbound.getLinks(sw.dpId, null, null, null).size() + 2)
             s42IslRttTurningRule = s42IslRttRules.find { it.cookie == Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE }
         }
@@ -317,10 +313,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         then: "SERVER_42_ISL_RTT_OUTPUT_COOKIE and SERVER_42_ISL_RTT_INPUT rules updated according to the changes"
         and: "SERVER_42_ISL_RTT_TURNING_COOKIE is not changed"
         wait(RULES_INSTALLATION_TIME) {
-            def rules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                (it.cookie in [Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE, Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE]) ||
-                        (new Cookie(it.cookie).getType() in [CookieType.SERVER_42_ISL_RTT_INPUT])
-            }
+            def rules = switchRulesFactory.get(sw.dpId).getServer42ISLRules()
             assert rules.size() == northbound.getLinks(sw.dpId, null, null, null).size() + 2
             assert rules.findAll {
                 new Cookie(it.cookie).getType() == CookieType.SERVER_42_ISL_RTT_INPUT
@@ -328,11 +321,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
             assert rules.find {
                 it.cookie == Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE
             }.instructions.applyActions.flowOutput == newS42Port.toString()
-            assert expect(rules.find { it.cookie == Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE }, sameBeanAs(s42IslRttTurningRule)
-                    .ignoring("byteCount")
-                    .ignoring("packetCount")
-                    .ignoring("durationSeconds")
-                    .ignoring("durationNanoSeconds"))
+            assert rules.find { it.cookie == Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE } == s42IslRttTurningRule
         }
 
         when: "server42IslRtt feature toggle is set to false"
@@ -358,10 +347,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         then: "SERVER_42_ISL_RTT_OUTPUT_COOKIE and SERVER_42_ISL_RTT_INPUT rules updated according to the changes"
         and: "SERVER_42_ISL_RTT_TURNING_COOKIE is not changed"
         wait(RULES_INSTALLATION_TIME) {
-            def rules = northbound.getSwitchRules(sw.dpId).flowEntries.findAll {
-                (it.cookie in [Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE, Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE]) ||
-                        (new Cookie(it.cookie).getType() in [CookieType.SERVER_42_ISL_RTT_INPUT])
-            }
+            def rules = switchRulesFactory.get(sw.dpId).getServer42ISLRules()
             assert rules.size() == northbound.getLinks(sw.dpId, null, null, null).size() + 2
             assert rules.findAll {
                 new Cookie(it.cookie).getType() == CookieType.SERVER_42_ISL_RTT_INPUT
@@ -369,11 +355,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
             assert rules.find {
                 it.cookie == Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE
             }.instructions.applyActions.flowOutput == originSwProps.server42Port.toString()
-            assert expect(rules.find { it.cookie == Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE }, sameBeanAs(s42IslRttTurningRule)
-                    .ignoring("byteCount")
-                    .ignoring("packetCount")
-                    .ignoring("durationSeconds")
-                    .ignoring("durationNanoSeconds"))
+            assert  rules.find { it.cookie == Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE } == s42IslRttTurningRule
         }
     }
 
@@ -478,10 +460,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         wait(RULES_INSTALLATION_TIME) { checkIslRttRules(isl.srcSwitch.dpId, true) }
 
         when: "Delete ISL Rtt rules on the src switch"
-        def rulesToDelete = northbound.getSwitchRules(isl.srcSwitch.dpId).flowEntries.findAll {
-            (it.cookie in [Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE, Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE]) ||
-                    (new Cookie(it.cookie).getType() in [CookieType.SERVER_42_ISL_RTT_INPUT])
-        }
+        def rulesToDelete = switchRulesFactory.get(isl.srcSwitch.dpId).getServer42ISLRules()
         withPool {
             rulesToDelete.eachParallel { switchHelper.deleteSwitchRules(isl.srcSwitch.dpId, it.cookie) }
         }
@@ -510,15 +489,8 @@ class Server42IslRttSpec extends HealthCheckSpecification {
 
         and: "ISL Rtt rules are really installed"
         wait(RULES_INSTALLATION_TIME) {
-            def installedRules = northbound.getSwitchRules(isl.srcSwitch.dpId).flowEntries.findAll {
-                (it.cookie in [Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE, Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE]) ||
-                        (new Cookie(it.cookie).getType() in [CookieType.SERVER_42_ISL_RTT_INPUT])
-            }
-            assert expect(installedRules.sort { it.cookie }, sameBeanAs(rulesToDelete.sort { it.cookie })
-                    .ignoring("byteCount")
-                    .ignoring("packetCount")
-                    .ignoring("durationNanoSeconds")
-                    .ignoring("durationSeconds"))
+            def installedRules = switchRulesFactory.get(isl.srcSwitch.dpId).getServer42ISLRules()
+            assertThat(installedRules).containsExactlyInAnyOrder(*rulesToDelete)
         }
 
         and: "ISL Rtt stats are available in both directions"
@@ -556,23 +528,9 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         return originalState
     }
 
-    def revertToOrigin(islRttFeatureStartState, initialSwitchRtt) {
-        islRttFeatureStartState != null && changeIslRttToggle(islRttFeatureStartState)
-        initialSwitchRtt.each { sw, state -> changeIslRttSwitch(sw, state) }
-        initialSwitchRtt.keySet().each { sw ->
-            wait(RULES_INSTALLATION_TIME) {
-                assertThat(northbound.getSwitchRules(sw.dpId).flowEntries*.cookie.toArray()).as(sw.dpId.toString())
-                        .containsExactlyInAnyOrder(*sw.defaultCookies)
-            }
-        }
-    }
-
     void checkIslRttRules(SwitchId switchId, Boolean rulesExist) {
         def countOfRules = rulesExist ? (northbound.getLinks(switchId, null, null, null).size() + 2) : 0
-        assert northbound.getSwitchRules(switchId).flowEntries.findAll {
-            (it.cookie in [Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE, Cookie.SERVER_42_ISL_RTT_OUTPUT_COOKIE]) ||
-                    (new Cookie(it.cookie).getType() in [CookieType.SERVER_42_ISL_RTT_INPUT])
-        }.size() == countOfRules
+        assert switchRulesFactory.get(switchId).getServer42ISLRules().size() == countOfRules
     }
 
     void checkIslRttStats(Isl isl, Date checkpointTime, Boolean statExist) {

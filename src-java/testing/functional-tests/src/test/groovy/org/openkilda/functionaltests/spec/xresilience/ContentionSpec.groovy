@@ -69,9 +69,9 @@ class ContentionSpec extends BaseSpecification {
         }
         createTasks*.join()
         assert createTasks.findAll { it.isError() }.empty
-        def relatedIsls = flows[0].retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def relatedIsls = flows[0].retrieveAllEntityPaths().getInvolvedIsls()
         //all flows use same isls
-        flows[1..-1].each { assert it.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == relatedIsls }
+        flows[1..-1].each { assert it.retrieveAllEntityPaths().getInvolvedIsls() == relatedIsls }
 
         then: "Available bandwidth on related isls is reduced based on bandwidth of created flows"
         relatedIsls.each { isl ->
@@ -106,7 +106,7 @@ class ContentionSpec extends BaseSpecification {
         def flow = flowFactory.getRandom(swPair)
 
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def mainPathIsls = flowPathInfo.flowPath.getInvolvedIsls()
+        def mainPathIsls = flowPathInfo.getInvolvedIsls()
         def newPathIsls = availablePaths.find { it != mainPathIsls }
         availablePaths.findAll { it != newPathIsls }.each { islHelper.makePathIslsMorePreferable(newPathIsls, it) }
 
@@ -123,7 +123,7 @@ class ContentionSpec extends BaseSpecification {
         then: "Flow is Up and path has changed"
         Wrappers.wait(WAIT_OFFSET) {
             assert flow.retrieveFlowStatus().status == FlowState.UP
-            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == newPathIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == newPathIsls
         }
 
         and: "Related switches have no rule discrepancies"

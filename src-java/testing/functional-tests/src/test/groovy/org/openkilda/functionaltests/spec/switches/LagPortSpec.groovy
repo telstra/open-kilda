@@ -157,10 +157,7 @@ class LagPortSpec extends HealthCheckSpecification {
 
         then: "Flow is valid and pingable"
         flow.validateAndCollectDiscrepancies().isEmpty()
-        verifyAll(flow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        flow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "System allows traffic on the flow"
         def traffExam = traffExamProvider.get()

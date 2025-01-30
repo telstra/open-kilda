@@ -279,9 +279,15 @@ class HaFlowExtended {
         return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, cleanupManager)
     }
 
-    HaFlowPingResult ping(int timeoutMillis) {
+    HaFlowPingResult ping(HaFlowPingPayload haFlowPingPayload = new HaFlowPingPayload(2000)) {
         log.debug("Ping ha-flow '${haFlowId}'")
-        northboundV2.pingHaFlow(haFlowId, new HaFlowPingPayload(timeoutMillis))
+        northboundV2.pingHaFlow(haFlowId, haFlowPingPayload)
+    }
+
+    ComplexFlowPingResponse pingAndCollectDiscrepancies(HaFlowPingPayload haFlowPingPayload = new HaFlowPingPayload(2000)) {
+        def response = ping(haFlowPingPayload)
+        assert response.haFlowId == haFlowId, "Ping response for an incorrect ha-flow"
+        new ComplexFlowPingResponse(response)
     }
 
     List<SwitchPortVlan> occupiedEndpoints() {
@@ -293,6 +299,11 @@ class HaFlowExtended {
     HaFlowValidationResult validate() {
         log.debug("Validate ha-flow '${haFlowId}'")
         northboundV2.validateHaFlow(haFlowId)
+    }
+
+    ComplexFlowValidationResponse validateAndCollectDiscrepancy() {
+        def validationResponse = validate()
+        new ComplexFlowValidationResponse(validationResponse)
     }
 
     HaFlowSyncResult sync() {

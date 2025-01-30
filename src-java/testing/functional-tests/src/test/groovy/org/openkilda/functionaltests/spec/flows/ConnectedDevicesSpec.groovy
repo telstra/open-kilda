@@ -509,10 +509,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Flow is valid and pingable"
         flow.validateAndCollectDiscrepancies().isEmpty()
-        verifyAll(flow.ping()) {
-            assert it.forward.pingSuccess
-            assert it.reverse.pingSuccess
-        }
+        flow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "Device sends an lldp+arp packet into a flow port on that switch (with a correct flow vlan)"
         device.sendLldp(lldpData)

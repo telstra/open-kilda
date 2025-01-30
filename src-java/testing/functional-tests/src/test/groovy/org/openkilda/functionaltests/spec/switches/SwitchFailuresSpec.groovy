@@ -75,7 +75,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         //depends whether there are alt paths available
         and: "The flow goes down OR changes path to avoid failed ISL after reroute timeout"
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
-            def currentIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+            def currentIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
             def pathChanged = !currentIsls.contains(isl) && !currentIsls.contains(isl.reversed)
             assert pathChanged || (flow.retrieveFlowStatus().status == FlowState.DOWN &&
                     flow.retrieveFlowHistory().getEntriesByType(FlowActionType.REROUTE_FAILED).find {
@@ -92,7 +92,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
         when: "Current path breaks and reroute starts"
         switchHelper.shapeSwitchesTraffic([swPair.dst], new TrafficControlData(3000))
-        def islToBreak = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls().first()
+        def islToBreak = flow.retrieveAllEntityPaths().getInvolvedIsls().first()
         antiflap.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         and: "Switch reconnects in the middle of reroute"

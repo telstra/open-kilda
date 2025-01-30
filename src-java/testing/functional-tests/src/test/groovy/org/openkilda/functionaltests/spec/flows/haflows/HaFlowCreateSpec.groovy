@@ -56,12 +56,11 @@ class HaFlowCreateSpec extends HealthCheckSpecification {
         // Ping operation is temporary allowed only for multi switch HA-Flows https://github.com/telstra/open-kilda/issues/5224
         //Ping operation is temporary disabled when one of the sub-flows' ends is Y-Point https://github.com/telstra/open-kilda/pull/5381
         if (SwitchTriplet.ALL_ENDPOINTS_DIFFERENT(swT) && !isOneSubFlowEndpointYPoint) {
-            def response = haFlow.ping(2000)
+            def response = haFlow.pingAndCollectDiscrepancies()
+            assert response.pingSuccess
             assert !response.error
-            response.subFlows.each {
-                assert it.forward.pingSuccess
-                assert it.reverse.pingSuccess
-            }
+            assert response.subFlowsDiscrepancies.isEmpty()
+
         }
 
         and: "HA-Flow has been successfully deleted"

@@ -73,9 +73,9 @@ class YFlowCreateSpec extends HealthCheckSpecification {
         def paths = yFlow.retrieveAllEntityPaths()
 
         and: "Y-Flow passes flow validation"
-        with(yFlow.validate()) {
+        with(yFlow.validateAndCollectDiscrepancy()) {
             it.asExpected
-            it.subFlowValidationResults.each { assert it.asExpected }
+            it.subFlowsDiscrepancies.isEmpty()
         }
 
         and: "Both sub-flows pass flow validation"
@@ -85,12 +85,9 @@ class YFlowCreateSpec extends HealthCheckSpecification {
 
         and: "YFlow is pingable"
         if (swT.shared != swT.ep1 || swT.shared != swT.ep2) {
-            def response = yFlow.ping()
+            def response = yFlow.pingAndCollectDiscrepancies()
             !response.error
-            response.subFlows.each {
-                assert it.forward.pingSuccess
-                assert it.reverse.pingSuccess
-            }
+            response.subFlowsDiscrepancies.isEmpty()
         }
 
         and: "All involved switches pass switch validation"
