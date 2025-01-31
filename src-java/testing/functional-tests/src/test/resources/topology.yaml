@@ -151,6 +151,11 @@ isls:
     dst_switch: ofsw8
     dst_port: 7
 
+  - src_switch: ofsw7
+    src_port: 18
+    a_switch:
+      in_port: 55
+
   - src_switch: ofsw3
     src_port: 6
     dst_switch: ofsw8

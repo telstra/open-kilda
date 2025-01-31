@@ -464,14 +464,14 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
                 .createV1()
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
-        def flowPathIsl = flow.retrieveAllEntityPaths().flowPath.getMainPathInvolvedIsls()
+        def flowPathIsl = flow.retrieveAllEntityPaths().getMainPathInvolvedIsls()
         def broughtDownIsls = topology.getRelatedIsls(switchPair.src) - flowPathIsl
         islHelper.breakIsls(broughtDownIsls)
 
         when: "Break ISL on a protected path (bring port down) for changing the flow state to DEGRADED"
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def protectedIsls = flowPathInfo.flowPath.getProtectedPathInvolvedIsls()
-        def currentIsls = flowPathInfo.flowPath.getMainPathInvolvedIsls()
+        def protectedIsls = flowPathInfo.getProtectedPathInvolvedIsls()
+        def currentIsls = flowPathInfo.getMainPathInvolvedIsls()
         islHelper.breakIsl(protectedIsls[0])
 
         then: "Flow state is changed to DEGRADED"

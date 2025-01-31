@@ -14,11 +14,11 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.FlowRuleEntity
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
-import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 
@@ -54,7 +54,7 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         assert !haFlowRulesToDelete.isEmpty()
 
         withPool {
-            haFlowRulesToDelete.eachParallel { FlowEntry rule ->
+            haFlowRulesToDelete.eachParallel { FlowRuleEntity rule ->
                 switchRules.delete(rule)
             }
         }

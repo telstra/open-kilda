@@ -3,7 +3,7 @@ package org.openkilda.functionaltests.spec.flows.yflows
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload
 
 import groovy.util.logging.Slf4j

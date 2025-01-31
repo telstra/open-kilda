@@ -82,7 +82,7 @@ and at least 1 path must remain safe"
         def availablePathsIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
         availablePathsIsls.findAll { it != mainPathIsls }.each { islHelper.makePathIslsMorePreferable(mainPathIsls, it) }
         def flow = flowFactory.getRandom(switchPair)
-        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainPathIsls
+        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainPathIsls
 
         and: "Switch on the preferred failover path will suddenly be unavailable for rules installation when the reroute starts"
         //select a required failover path beforehand
@@ -110,12 +110,12 @@ and at least 1 path must remain safe"
             assert flow.retrieveFlowStatus().status == UP
         }
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def flowPathIsls = flowPathInfo.flowPath.getInvolvedIsls()
+        def flowPathIsls = flowPathInfo.getInvolvedIsls()
         flowPathIsls != mainPathIsls
         flowPathIsls != failoverPathIsls
         !flowPathInfo.getInvolvedSwitches().contains(switchIdToBreak)
-        !flowPathInfo.flowPath.getInvolvedIsls().contains(islToBreak)
-        !flowPathInfo.flowPath.getInvolvedIsls().contains(islToBreak.reversed)
+        !flowPathInfo.getInvolvedIsls().contains(islToBreak)
+        !flowPathInfo.getInvolvedIsls().contains(islToBreak.reversed)
 
         and: "All related switches have no rule anomalies"
         def switchesToVerify = islHelper.retrieveInvolvedSwitches((mainPathIsls + failoverPathIsls + flowPathIsls).unique())
@@ -156,8 +156,8 @@ and at least 1 path must remain safe"
          **/
         def flow = flowFactory.getBuilder(swPair).withProtectedPath(true).build().create()
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        assert flowPathInfo.flowPath.getMainPathInvolvedIsls() == mainPathIsls
-        assert flowPathInfo.flowPath.getProtectedPathInvolvedIsls() == protectedPathIsls
+        assert flowPathInfo.getMainPathInvolvedIsls() == mainPathIsls
+        assert flowPathInfo.getProtectedPathInvolvedIsls() == protectedPathIsls
 
         when: "Disconnect dst switch on protected path"
         def swToManipulate = swPair.dst
@@ -183,8 +183,8 @@ and at least 1 path must remain safe"
 
         and: "Flow is not rerouted"
         def flowPathInfoAfterSwap = flow.retrieveAllEntityPaths()
-        flowPathInfoAfterSwap.flowPath.getMainPathInvolvedIsls() == mainPathIsls
-        flowPathInfoAfterSwap.flowPath.getProtectedPathInvolvedIsls() == protectedPathIsls
+        flowPathInfoAfterSwap.getMainPathInvolvedIsls() == mainPathIsls
+        flowPathInfoAfterSwap.getProtectedPathInvolvedIsls() == protectedPathIsls
 
 
         and: "All involved switches pass switch validation(except dst switch)"
@@ -279,7 +279,7 @@ and at least 1 path must remain safe"
 
         and: "A flow on the main path"
         def flow = flowFactory.getRandom(swPair)
-        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainPathIsls
+        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainPathIsls
 
         when: "Make backupPath more preferable than mainPath"
         islHelper.makePathIslsMorePreferable(backupPathIsls, mainPathIsls)
@@ -304,7 +304,7 @@ and at least 1 path must remain safe"
         }
 
         then: "Flow is not rerouted"
-        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainPathIsls
+        flow.retrieveAllEntityPaths().getInvolvedIsls() == mainPathIsls
 
         and: "All involved switches pass switch validation(except dst switch)"
         def involvedSwitchIds = islHelper.retrieveInvolvedSwitches(backupPathIsls)[0..-2]*.dpId
@@ -359,38 +359,50 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
         def swPair = switchPairs.all().nonNeighbouring().switchPairs
                 .find { it.src.dpId.toString().contains("03") && it.dst.dpId.toString().contains("07")}
         def availablePaths = swPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
-        def preferableIsls = availablePaths.find{ it.size() >= 5 }
-        availablePaths.findAll { it != preferableIsls }.each { islHelper.makePathIslsMorePreferable(preferableIsls, it) }
+
+        def expectedInitialPath = availablePaths.find { it.size() >= 5 }
+        availablePaths.findAll { it != expectedInitialPath }.each { islHelper.makePathIslsMorePreferable(expectedInitialPath, it) }
 
         def flow = flowFactory.getRandom(swPair)
-        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == preferableIsls
+        assert  expectedInitialPath == flow.retrieveAllEntityPaths().getInvolvedIsls()
+
+        def flowInvolvedSwitches = islHelper.retrieveInvolvedSwitches(expectedInitialPath)
+        switchHelper.shapeSwitchesTraffic(flowInvolvedSwitches[1..-1], new TrafficControlData(8000))
 
         when: "Break current path to trigger a reroute"
-        def islToBreak = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls().first()
+        def islToBreak = flow.retrieveAllEntityPaths().getInvolvedIsls().first()
         cleanupManager.addAction(RESTORE_ISL, {islHelper.restoreIsl(islToBreak)})
         cleanupManager.addAction(RESET_ISLS_COST,{database.resetCosts(topology.isls)})
         northbound.portDown(islToBreak.srcSwitch.dpId, islToBreak.srcPort)
 
         and: "Connection to src switch is slow in order to simulate a global timeout on reroute operation"
-        switchHelper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(9200))
+        switchHelper.shapeSwitchesTraffic([swPair.src], new TrafficControlData(8500))
 
         then: "After global timeout expect flow reroute to fail and flow to become DOWN"
         TimeUnit.SECONDS.sleep(globalTimeout)
-        int eventsAmount
+        // 1 reroute event: main ISL break -> GlobalTimeout
+        // 1 reroute event: delay on the src(new path in the scope of triggered reroute)
+        int rerouteEventsAmount = 2
         wait(globalTimeout + WAIT_OFFSET, 1) { //long wait, may be doing some revert actions after global t/o
             def history = flow.retrieveFlowHistory()
             def rerouteEvent = history.getEntriesByType(REROUTE).first()
             assert rerouteEvent.payload.find { it.action == sprintf('Global timeout reached for reroute operation on flow "%s"', flow.flowId) }
             assert rerouteEvent.payload.last().action == REROUTE_FAILED.payloadLastAction
             assert flow.retrieveFlowStatus().status == DOWN
-            eventsAmount = history.entries.size()
+            assert history.getEntriesByType(REROUTE).size() == rerouteEventsAmount
         }
 
-        and: "Flow remains down and no new history events appear for the next 3 seconds (no retry happens)"
-        timedLoop(3) {
+        and: "Flow remains down and no new history events appear for the next 5 seconds (no retry happens)"
+        timedLoop(5) {
             assert flow.retrieveFlowStatus().status == DOWN
-            assert flow.retrieveFlowHistory().entries.size() == eventsAmount
+            assert flow.retrieveFlowHistory().entries.size() == rerouteEventsAmount + 1 // +1 creation event
         }
+
+        and: "The last reroute event was caused by delay on src for the alternative path"
+        def rerouteEvents = flow.retrieveFlowHistory().getEntriesByType(REROUTE).last()
+        rerouteEvents.payload.last().action == REROUTE_FAILED.payloadLastAction
+        rerouteEvents.payload.last().details.toString().contains(
+                "No paths of the flow ${flow.flowId} are affected by failure on IslEndpoint")
 
         and: "Src/dst switches are valid"
         switchHelper.cleanupTrafficShaperRules([swPair.src])
@@ -400,6 +412,7 @@ class RetriesIsolatedSpec extends HealthCheckSpecification {
         }
 
         cleanup:
-        !isTrafficShaperRulesCleanedUp && switchHelper.cleanupTrafficShaperRules([swPair.src])
+        //should be called here as flow deletion is called before removing delay on the switch in our cleanup manager
+        !isTrafficShaperRulesCleanedUp && switchHelper.cleanupTrafficShaperRules(flowInvolvedSwitches)
     }
 }

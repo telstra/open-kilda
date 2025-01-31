@@ -152,7 +152,7 @@ class SwitchValidationSpec extends HealthCheckSpecification {
         when: "Create an intermediate-switch flow"
         def flow = flowFactory.getRandom(switchPair)
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        List<Switch> involvedSwitches = flowPathInfo.flowPath.getInvolvedIsls()
+        List<Switch> involvedSwitches = flowPathInfo.getInvolvedIsls()
                 .collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique() as List<Switch>
 
         then: "The intermediate switch does not contain any information about meter"
@@ -685,12 +685,13 @@ misconfigured"
 
         and: "Remove required rules and meters from switches"
         def flowInfoFromDb = flow.retrieveDetailsFromDB()
-        List<Switch> involvedSwitches = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        List<Switch> involvedSwitches = flow.retrieveAllEntityPaths().getInvolvedIsls()
                 .collect { [it.srcSwitch, it.dstSwitch] }.flatten().unique() as List<Switch>
         def transitSwitchIds = involvedSwitches[1..-2].dpId
         def cookiesMap = involvedSwitches.collectEntries { sw ->
+            def defaultCookies = sw.defaultCookies
             [sw.dpId, switchRulesFactory.get(sw.dpId).getRules().findAll {
-                !(it.cookie in sw.defaultCookies) && !new Cookie(it.cookie).serviceFlag
+                !(it.cookie in defaultCookies) && !new Cookie(it.cookie).serviceFlag
             }*.cookie]
         }
         def metersMap = involvedSwitches.collectEntries { sw ->

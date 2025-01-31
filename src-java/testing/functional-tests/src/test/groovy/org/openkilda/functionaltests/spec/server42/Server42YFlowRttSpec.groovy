@@ -13,6 +13,7 @@ import static org.openkilda.functionaltests.model.stats.Direction.REVERSE
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RTT
 import static org.openkilda.functionaltests.model.stats.Origin.FLOW_MONITORING
 import static org.openkilda.functionaltests.model.stats.Origin.SERVER_42
+import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.PROTECTED_PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 import static org.openkilda.testing.Constants.RULES_INSTALLATION_TIME
@@ -24,11 +25,12 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.builder.YFlowBuilder
+import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
@@ -75,7 +77,6 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
                 .withSharedEpInTheMiddleOfTheChain().random()
         switchTripletWithYPointOnSubFlowEnd = switchTriplets.all().withAllDifferentEndpoints().withS42Support()
                 .withSharedEpEp1Ep2InChain().random()
-
     }
 
     @Tags(TOPOLOGY_DEPENDENT)
@@ -85,6 +86,7 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
 
         def swT = isSharedEndpointYPoint ? switchTripletWithYPointOnSharedEp : switchTripletWithYPointOnSubFlowEnd
         assert swT, "There is no switch triplet for the further Y-Flow creation"
+        isSharedEndpointYPoint ?: makeBothYFlowSubFlowsHaveTheLongestSharedPath(swT)
 
         when: "Set server42FlowRtt toggle to true"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
@@ -145,6 +147,7 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
 
         def swT = isSharedEndpointYPoint ? switchTripletWithYPointOnSharedEp : switchTripletWithYPointOnSubFlowEnd
+        isSharedEndpointYPoint ?: makeBothYFlowSubFlowsHaveTheLongestSharedPath(swT)
 
         and: "server42FlowRtt feature enabled globally and on src/dst switch"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
@@ -155,7 +158,6 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         when: "Create a Y-Flow"
         def yFlow = yFlowFactory.getRandom(swT)
         assert isSharedEndpointYPoint ? yFlow.sharedEndpoint.switchId == yFlow.yPoint : yFlow.sharedEndpoint.switchId != yFlow.yPoint
-
 
         then: "Involved switches pass switch validation"
         List<SwitchId> involvedSwitches = yFlow.retrieveAllEntityPaths().getInvolvedSwitches()
@@ -372,6 +374,7 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
 
         def swT = isSharedEndpointYPoint ? switchTripletWithYPointOnSharedEp : switchTripletWithYPointOnSubFlowEnd
+        isSharedEndpointYPoint ?: makeBothYFlowSubFlowsHaveTheLongestSharedPath(swT)
 
         and: "server42FlowRtt feature enabled globally and switch ON for appropriate switches(swT)"
         !featureToggles.getFeatureToggles().server42FlowRtt && featureToggles.server42FlowRtt(true)
@@ -412,13 +415,10 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "Y-Flow is valid and UP"
-        verifyAll(yFlow.validate()) { validationResult ->
+        verifyAll(yFlow.validateAndCollectDiscrepancy()) { validationResult ->
             assert !validationResult.asExpected
-            validationResult.getSubFlowValidationResults().findAll { it.direction == "FORWARD" }.each {
-                assert !it.asExpected
-            }
-            validationResult.getSubFlowValidationResults().findAll { it.direction == "REVERSE" }.each {
-                assert it.asExpected
+            validationResult.subFlowsDiscrepancies.each {
+                assert it.flowDiscrepancies.get(FlowDirection.FORWARD) && !it.flowDiscrepancies.get(FlowDirection.REVERSE)
             }
         }
 
@@ -563,6 +563,7 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
         assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
 
         def swT = isSharedEndpointYPoint ? switchTripletWithYPointOnSharedEp : switchTripletWithYPointOnSubFlowEnd
+        isSharedEndpointYPoint ?: makeBothYFlowSubFlowsHaveTheLongestSharedPath(swT)
         def statsWaitSeconds = 4
 
         and: "server42FlowRtt toggle is turned off"
@@ -660,6 +661,12 @@ class Server42YFlowRttSpec extends HealthCheckSpecification {
 
         where:
         isSharedEndpointYPoint << [true, false]
+    }
+
+    private void makeBothYFlowSubFlowsHaveTheLongestSharedPath(SwitchTriplet swT) {
+        def pathToManipulate = swT.pathsEp1[0].size() >  swT.pathsEp2[0].size()
+                ? swT.retrieveAvailablePathsEp2().first() : swT.retrieveAvailablePathsEp1().first()
+        islHelper.updateIslsCost(pathToManipulate.getInvolvedIsls(), DEFAULT_COST - 5)
     }
 
 }

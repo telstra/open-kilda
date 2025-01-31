@@ -279,9 +279,15 @@ class HaFlowExtended {
         return new HaFlowExtended(haFlow, northboundV2, topologyDefinition, cleanupManager)
     }
 
-    HaFlowPingResult ping(int timeoutMillis) {
+    HaFlowPingResult ping(HaFlowPingPayload haFlowPingPayload = new HaFlowPingPayload(2000)) {
         log.debug("Ping ha-flow '${haFlowId}'")
-        northboundV2.pingHaFlow(haFlowId, new HaFlowPingPayload(timeoutMillis))
+        northboundV2.pingHaFlow(haFlowId, haFlowPingPayload)
+    }
+
+    ComplexFlowPingResponse pingAndCollectDiscrepancies(HaFlowPingPayload haFlowPingPayload = new HaFlowPingPayload(2000)) {
+        def response = ping(haFlowPingPayload)
+        assert response.haFlowId == haFlowId, "Ping response for an incorrect ha-flow"
+        new ComplexFlowPingResponse(response)
     }
 
     List<SwitchPortVlan> occupiedEndpoints() {
@@ -295,14 +301,21 @@ class HaFlowExtended {
         northboundV2.validateHaFlow(haFlowId)
     }
 
+    ComplexFlowValidationResponse validateAndCollectDiscrepancy() {
+        def validationResponse = validate()
+        new ComplexFlowValidationResponse(validationResponse)
+    }
+
     HaFlowSyncResult sync() {
         log.debug("Sync ha-flow '${haFlowId}'")
         northboundV2.syncHaFlow(haFlowId)
     }
 
     HaFlow delete() {
-        Wrappers.wait(WAIT_OFFSET * 2) {
-            assert !(FlowState.getByValue(northboundV2.getHaFlow(haFlowId)?.status) in [FlowState.IN_PROGRESS, FlowState.DOWN])
+        if (haFlowId in northboundV2.getAllHaFlows().haFlowId) {
+            Wrappers.wait(WAIT_OFFSET * 2) {
+                assert !(FlowState.getByValue(northboundV2.getHaFlow(haFlowId)?.status) in [FlowState.IN_PROGRESS, FlowState.DOWN])
+            }
         }
         log.debug("Deleting ha-flow '$haFlowId'")
         def response = northboundV2.deleteHaFlow(haFlowId)

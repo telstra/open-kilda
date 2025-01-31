@@ -96,7 +96,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
                 .build().create()
 
         def allEntityPath = flow.retrieveAllEntityPaths()
-        def initialPathIsls = allEntityPath.flowPath.getInvolvedIsls()
+        def initialPathIsls = allEntityPath.getInvolvedIsls()
         List<Isl> altPathIsls = allPaths.findAll { it != initialPathIsls }.min { it.size() }
         def involvedSwitches = allEntityPath.getInvolvedSwitches()
 
@@ -126,14 +126,14 @@ class PinnedFlowSpec extends HealthCheckSpecification {
             Wrappers.timedLoop(2) {
                 assert flow.retrieveFlowStatus().status == FlowState.DOWN
                 //do not check history here. In parallel environment it may be overriden by 'up' event on another island
-                assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialPathIsls
+                assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialPathIsls
             }
         }
         islHelper.breakIsls(islsToBreak[1..-1])
 
         and: "Rules and meters are not changed"
         def cookiesMapAfterReroute = involvedSwitches.collectEntries { sw ->
-            [sw.id, northbound.getSwitchRules(sw).flowEntries.findAll {
+            [sw.id, switchRulesFactory.get(sw).getRules().findAll {
                 !new Cookie(it.cookie).serviceFlag
             }*.cookie]
         }
@@ -154,7 +154,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             islsToBreak[0..-2].each { assert islUtils.getIslInfo(it).get().state == IslChangeType.DISCOVERED }
             assert flow.retrieveFlowStatus().status == FlowState.DOWN
-            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialPathIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialPathIsls
         }
 
         and: "Restore the last ISL"
@@ -163,7 +163,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         then: "Flow is marked as UP when the last ISL is restored"
         Wrappers.wait(WAIT_OFFSET * 2) {
             assert flow.retrieveFlowStatus().status == FlowState.UP
-            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialPathIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialPathIsls
         }
     }
 
@@ -174,7 +174,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         def flow = flowFactory.getBuilder(switchPair)
                 .withPinned(true)
                 .build().create()
-        def initialPathIsls =  flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def initialPathIsls =  flow.retrieveAllEntityPaths().getInvolvedIsls()
 
         when: "Make another path more preferable"
         def newPathIsls = availablePaths.find { it != initialPathIsls }
@@ -188,7 +188,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         affectedFlows == [flow.flowId]
         Wrappers.timedLoop(4) {
             assert flow.retrieveFlowStatus().status == FlowState.UP
-            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialPathIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialPathIsls
         }
     }
 
@@ -199,7 +199,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         def flow = flowFactory.getBuilder(switchPair)
                 .withPinned(true)
                 .build().create()
-        def initialPathIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def initialPathIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
 
         when: "Make another path more preferable"
         def newPath = availablePaths.find { it != initialPathIsls }
