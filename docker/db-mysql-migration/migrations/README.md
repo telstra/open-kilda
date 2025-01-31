@@ -2,10 +2,10 @@
 
 ## migrations concepts
 * use `yaml` format
-* do not include `changeSet` entries directly into `root.yaml` - create a separate migration file for each migration and 
+* do not include `changeSet` entries directly into `root.yaml` - create a separate migration file for each migration and
   include it into `root.yaml`
 * put all request that must be applied as one transaction inside one `changeSet`
-* prefer liquibase "change types" over plain SQL requests 
+* prefer liquibase "change types" over plain SQL requests
 * filename + changeSet id + author together represents a unique identifier for changeSet, used by `liquibase` to track
   the history of migration, so you `id` records must be unique for the migration file
 * name migration files as `NNN-human-readable-description.yaml`, where `NNN` is a decimal digit with leading zeros (for
@@ -49,7 +49,7 @@ can execute liquibase with arbitrary parameters.
 
 To create an image, navigate to the root of the OpenKilda project and execute:
 ```shell script
-docker-compose build db_mysql_migration
+docker compose build db_mysql_migration
 ```
 
 For executing a migration script (you can override other environment variables as well). `NO_SLEEP` parameter will exit the

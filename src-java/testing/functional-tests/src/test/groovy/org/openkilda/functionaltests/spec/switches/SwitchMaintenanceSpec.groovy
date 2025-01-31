@@ -3,6 +3,7 @@ package org.openkilda.functionaltests.spec.switches
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
+import static org.openkilda.functionaltests.helpers.Wrappers.timedLoop
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.PATH_INSTALLATION_TIME
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -11,10 +12,12 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.Path
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.model.SwitchId
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Shared
@@ -24,6 +27,9 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
     @Shared
     @Autowired
     FlowFactory flowFactory
+    @Shared
+    @Autowired
+    YFlowFactory yFlowFactory
 
     @Tags(SMOKE)
     def "Maintenance mode can be set/unset for a particular switch"() {
@@ -67,52 +73,132 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         }
     }
 
-    @Tags(SMOKE)
-    def "Flows can be evacuated (rerouted) from a particular switch when setting maintenance mode for it"() {
+    def "Flows can be evacuated (rerouted) from a particular switch(several Isls are in use) when setting maintenance mode for it"() {
         given: "Two active not neighboring switches and a switch to be maintained"
-        TopologyDefinition.Switch sw
-        List<PathNode> path
+        SwitchId swId
+        List<Isl> intermediateSwIsls
+        List<Isl> flow1PathIsls
         def switchPair = switchPairs.all().nonNeighbouring().getSwitchPairs().find {
-            path = it.paths.find { aPath ->
-                sw = pathHelper.getInvolvedSwitches(aPath).find { aSw ->
-                    it.paths.findAll { it != aPath }.find { !pathHelper.getInvolvedSwitches(it).contains(aSw) }
+            List<Path> availablePath = it.retrieveAvailablePaths()
+            flow1PathIsls = availablePath.find { Path aPath ->
+                swId = aPath.getInvolvedSwitches().find { aSw ->
+                    intermediateSwIsls = topology.getRelatedIsls(aSw)
+                    availablePath.findAll { it != aPath }.find { !it.getInvolvedSwitches().contains(aSw) && intermediateSwIsls.size() > 2 }
                 }
-            }
+        }.getInvolvedIsls()
         } ?: assumeTrue(false, "No suiting switches found. Need a switch pair with at least 2 paths and one of the " +
         "paths should not use the maintenance switch")
-        switchPair.paths.findAll { it != path }.each { pathHelper.makePathMorePreferable(path, it) }
+        switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { it != flow1PathIsls }
+                .each { islHelper.makePathIslsMorePreferable(flow1PathIsls, it) }
 
-        and: "Create a couple of flows going through these switches"
+        and: "Create a Flow going through these switches"
         def flow1 = flowFactory.getRandom(switchPair)
-        def flow2 = flowFactory.getRandom(switchPair, false, FlowState.UP, flow1.occupiedEndpoints())
-        flow1.retrieveAllEntityPaths().getPathNodes() == path
-        flow2.retrieveAllEntityPaths().getPathNodes() == path
+        def flow1Path = flow1.retrieveAllEntityPaths()
+        def flow1IntermediateSwIsl = flow1PathIsls.findAll { it in intermediateSwIsls  || it.reversed in intermediateSwIsls }
+        assert flow1Path.getInvolvedIsls().containsAll(flow1IntermediateSwIsl)
+
+        and: "Create an additional Flow that has the same intermediate switch, but other ISLs are involved into a path"
+        def additionalSwitchPair = switchPairs.all().nonNeighbouring()
+                .excludeSwitches([switchPair.src, topology.switches.find { it.dpId == swId }]).random()
+
+        def flow2PathIsls = additionalSwitchPair.retrieveAvailablePaths()
+                .find { it.getInvolvedSwitches().contains(swId) && it.getInvolvedIsls().intersect(flow1PathIsls).isEmpty() }.getInvolvedIsls()
+
+        additionalSwitchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { it != flow2PathIsls }
+                .each { islHelper.makePathIslsMorePreferable(flow2PathIsls, it) }
+
+        def flow2 = flowFactory.getRandom(additionalSwitchPair, false)
+        def flow2Path = flow2.retrieveAllEntityPaths()
+        def flow2IntermediateSwIsl = flow2PathIsls.findAll { it in intermediateSwIsls  || it.reversed in intermediateSwIsls }
+        assert flow2Path.getInvolvedIsls().containsAll(flow2IntermediateSwIsl)
+        assert flow2IntermediateSwIsl.intersect(flow1IntermediateSwIsl).isEmpty()
 
         when: "Set maintenance mode without flows evacuation flag for some intermediate switch involved in flow paths"
-        switchHelper.setSwitchMaintenance(sw.dpId, true, false)
+        switchHelper.setSwitchMaintenance(swId, true, false)
 
         then: "Flows are not evacuated (rerouted) and have the same paths"
-        flow1.retrieveAllEntityPaths().getPathNodes() == path
-        flow2.retrieveAllEntityPaths().getPathNodes() == path
+        timedLoop(3) {
+            assert flow1.retrieveAllEntityPaths() == flow1Path
+            assert flow2.retrieveAllEntityPaths() == flow2Path
+        }
 
         when: "Set maintenance mode again with flows evacuation flag for the same switch"
-        northbound.setSwitchMaintenance(sw.dpId, true, true)
+        northbound.setSwitchMaintenance(swId, true, true)
 
         then: "Flows are evacuated (rerouted)"
-        def flow1PathUpdated, flow2PathUpdated
         Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
             [flow1, flow2].each { assert it.retrieveFlowStatus().status == FlowState.UP }
-
-            flow1PathUpdated = flow1.retrieveAllEntityPaths()
-            flow2PathUpdated = flow2.retrieveAllEntityPaths()
-
-            assert flow1PathUpdated.getPathNodes() != path
-            assert flow2PathUpdated.getPathNodes() != path
+            assert flow1.retrieveAllEntityPaths() != flow1Path
+            assert flow2.retrieveAllEntityPaths() != flow2Path
         }
 
         and: "Switch under maintenance is not involved in new flow paths"
-        !(sw in flow1PathUpdated.getInvolvedSwitches())
-        !(sw in flow2PathUpdated.getInvolvedSwitches())
+        !flow1.retrieveAllEntityPaths().getInvolvedSwitches().contains(swId)
+        !flow2.retrieveAllEntityPaths().getInvolvedSwitches().contains(swId)
+
+    }
+
+    @Tags(SMOKE)
+    def "Both Y-Flow and Flow can be evacuated (rerouted) from a particular switch when setting maintenance mode for it"() {
+        given: "Switch triplet has been selected"
+        def swTriplet = profile == "hardware" ? switchTriplets.all().withSharedEpEp1Ep2InChain().random()
+                : switchTriplets.all().nonNeighbouring().random() ?: assumeTrue(false, "No suiting switches found.")
+
+        and: "Create a Y-Flow going through selected switches and has intermediate switch in a path"
+        if (profile == "hardware") {
+            //additional steps due to the HW limitation
+            def availablePaths = swTriplet.pathsEp1[0].size() == 2 ?
+                    swTriplet.retrieveAvailablePathsEp1().collect { it.getInvolvedIsls() } :
+                    swTriplet.retrieveAvailablePathsEp2().collect { it.getInvolvedIsls() }
+            // 1 isl is equal to 2 pathNodes
+            def preferablePath = availablePaths.find { it.size() > 1 }
+            availablePaths.findAll { it != preferablePath }.each {
+                islHelper.makePathIslsMorePreferable(preferablePath, it)
+            }
+        }
+        def yFlow = yFlowFactory.getRandom(swTriplet, false)
+        def yFlowPath = yFlow.retrieveAllEntityPaths()
+        def intermediateSwId = yFlowPath.getInvolvedSwitches()
+                .find { !(it in [swTriplet.shared.dpId, swTriplet.ep1.dpId, swTriplet.ep2.dpId]) }
+        assert intermediateSwId
+
+        and: "Two active not neighboring switches and preferable path with intermediate switch"
+        def dstSw = swTriplet.pathsEp1[0].size() == 4 ? swTriplet.ep1 : swTriplet.ep2
+        def swPair = switchPairs.all().specificPair(swTriplet.shared, dstSw)
+        def availablePaths = swPair.retrieveAvailablePaths()
+        List<Isl> pathIsls = availablePaths.find { path -> intermediateSwId in path.getInvolvedSwitches() }.getInvolvedIsls()
+        availablePaths.collect { it.getInvolvedIsls() }.findAll { it != pathIsls }
+                .each { islHelper.makePathIslsMorePreferable(pathIsls, it) }
+
+        and: "Create a Flow going through these switches"
+        def flow = flowFactory.getRandom(swPair)
+        def flowPath = flow.retrieveAllEntityPaths()
+        assert flowPath.getInvolvedSwitches().contains(intermediateSwId)
+
+        when: "Set maintenance mode without flows evacuation flag for some intermediate switch involved in flow paths"
+        switchHelper.setSwitchMaintenance(intermediateSwId, true, false)
+
+        then: "Both Flow and Y-Flow are not evacuated (rerouted) and have the same paths"
+        timedLoop(3) {
+            assert flow.retrieveAllEntityPaths() == flowPath
+            assert yFlow.retrieveAllEntityPaths() == yFlowPath
+        }
+
+        when: "Set maintenance mode again with flows evacuation flag for the same switch"
+        northbound.setSwitchMaintenance(intermediateSwId, true, true)
+
+        then: "Both Flow and Y-Flow are evacuated (rerouted)"
+        Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
+            assert flow.retrieveFlowStatus().status == FlowState.UP
+            assert yFlow.retrieveDetails().status == FlowState.UP
+
+            assert flow.retrieveAllEntityPaths() != flowPath
+            assert yFlow.retrieveAllEntityPaths() != yFlowPath
+        }
+
+        and: "Switch under maintenance is not involved in new flow paths"
+        !flow.retrieveAllEntityPaths().getInvolvedSwitches().contains(intermediateSwId)
+        !yFlow.retrieveAllEntityPaths().getInvolvedSwitches().contains(intermediateSwId)
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)

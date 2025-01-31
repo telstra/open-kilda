@@ -8,7 +8,6 @@ import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.extension.tags.Tag.TOPOLOGY_DEPENDENT
 import static org.openkilda.functionaltests.extension.tags.Tag.VIRTUAL
-import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_ISLS_COST
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.MOVED
 import static org.openkilda.messaging.payload.flow.FlowState.UP
@@ -31,9 +30,8 @@ import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
-import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.Direction
-import org.openkilda.messaging.info.event.PathNode
+
 import org.openkilda.model.MeterId
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
@@ -433,29 +431,26 @@ class FlowCrudV1Spec extends HealthCheckSpecification {
 
     def "A flow cannot be created with asymmetric forward and reverse paths"() {
         given: "Two active neighboring switches with two possible flow paths at least and different number of hops"
-        List<List<PathNode>> possibleFlowPaths = []
-        int pathNodeCount = 2
-        def (Switch srcSwitch, Switch dstSwitch) = topology.getIslsForActiveSwitches().find {
-            possibleFlowPaths = database.getPaths(it.srcSwitch.dpId, it.dstSwitch.dpId)*.path.sort { it.size() }
-            possibleFlowPaths.size() > 1 && possibleFlowPaths.max { it.size() }.size() > pathNodeCount
-        }.collect {
-            [it.srcSwitch, it.dstSwitch]
-        }.flatten() ?: assumeTrue(false, "No suiting active neighboring switches with two possible flow paths at least and " +
+        List<List<Isl>> availablePathsIsls
+        //the shortest path between neighboring switches is 1 ISL(2 nodes: src_sw-port<--->port-dst_sw)
+        int shortestIslCountPath = 1
+        def swPair = switchPairs.all().neighbouring().withAtLeastNNonOverlappingPaths(2).getSwitchPairs().find {
+            availablePathsIsls = it.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+            availablePathsIsls.size() > 1 && availablePathsIsls.find { it.size() > shortestIslCountPath }
+        } ?: assumeTrue(false, "No suiting active neighboring switches with two possible flow paths at least and " +
                 "different number of hops found")
 
         and: "Make all shorter forward paths not preferable. Shorter reverse paths are still preferable"
-        def modifiedIsls = possibleFlowPaths.findAll { it.size() == pathNodeCount }.collect {
-            pathHelper.getInvolvedIsls(it)
-        }.flatten().unique()
-        pathHelper.updateIslsCostInDatabase(modifiedIsls, Integer.MAX_VALUE)
+        List<Isl> modifiedIsls = availablePathsIsls.findAll { it.size() == shortestIslCountPath }.flatten().unique() as List<Isl>
+        islHelper.updateIslsCostInDatabase(modifiedIsls, Integer.MAX_VALUE)
 
         when: "Create a flow"
-        def flow = flowFactory.getRandomV1(srcSwitch, dstSwitch)
+        def flow = flowFactory.getRandomV1(swPair)
 
         then: "The flow is built through one of the long paths"
         def fullFlowPath = flow.retrieveAllEntityPaths()
-        def forwardIsls = fullFlowPath.flowPath.getInvolvedIsls(Direction.FORWARD)
-        def reverseIsls = fullFlowPath.flowPath.getInvolvedIsls(Direction.REVERSE)
+        def forwardIsls = fullFlowPath.getInvolvedIsls(Direction.FORWARD)
+        def reverseIsls = fullFlowPath.getInvolvedIsls(Direction.REVERSE)
         assert forwardIsls.intersect(modifiedIsls).isEmpty()
 
 
@@ -507,12 +502,13 @@ Failed to find path with requested bandwidth=$invalidFlow.maximumBandwidth/).mat
 
     def "Removing flow while it is still in progress of being created should not cause rule discrepancies"() {
         given: "A potential flow"
-        def (Switch srcSwitch, Switch dstSwitch) = topology.activeSwitches
-        def paths = database.getPaths(srcSwitch.dpId, dstSwitch.dpId)*.path
-        def switches = pathHelper.getInvolvedSwitches(paths.min { pathHelper.getCost(it) })
+        def switchPair = switchPairs.all().neighbouring().random()
+        def availablePaths = switchPair.retrieveAvailablePaths()
+        def flowExpectedPath = availablePaths.min { islHelper.getCost(it.getInvolvedIsls()) }
+        def switchesId = flowExpectedPath.getInvolvedSwitches()
 
         when: "Init creation of a new flow"
-        def flow = flowFactory.getBuilder(srcSwitch, dstSwitch).build().sendCreateRequestV1()
+        def flow = flowFactory.getBuilder(switchPair).build().sendCreateRequestV1()
 
         and: "Immediately remove the flow"
         flow.sendDeleteRequestV1()
@@ -526,20 +522,21 @@ Failed to find path with requested bandwidth=$invalidFlow.maximumBandwidth/).mat
 
         and: "Flow eventually gets into UP state"
         flow.waitForBeingInState(UP)
+        flow.retrieveAllEntityPaths().getInvolvedIsls() == flowExpectedPath.getInvolvedIsls()
 
         and: "All related switches have no discrepancies in rules"
-        switches.each {
-            def syncResult = switchHelper.synchronize(it.getDpId())
+        switchesId.each {
+            def syncResult = switchHelper.synchronize(it)
             assert syncResult.rules.installed.isEmpty() && syncResult.rules.removed.isEmpty()
             assert syncResult.meters.installed.isEmpty() && syncResult.meters.removed.isEmpty()
 
-            def swProps = switchHelper.getCachedSwProps(it.dpId)
+            def swProps = switchHelper.getCachedSwProps(it)
             def amountOfServer42Rules = 0
 
-            if(swProps.server42FlowRtt && it.dpId in [srcSwitch.dpId, dstSwitch.dpId]) {
+            if(swProps.server42FlowRtt && it in [switchPair.src.dpId, switchPair.dst.dpId]) {
                 amountOfServer42Rules +=1
-                it.dpId == srcSwitch.dpId && flow.source.vlanId && ++amountOfServer42Rules
-                it.dpId == dstSwitch.dpId && flow.destination.vlanId && ++amountOfServer42Rules
+                it == switchPair.src.dpId && flow.source.vlanId && ++amountOfServer42Rules
+                it == switchPair.dst.dpId && flow.destination.vlanId && ++amountOfServer42Rules
             }
 
             def amountOfFlowRules = 3 + amountOfServer42Rules
@@ -764,26 +761,22 @@ are not connected to the controller/).matches(exc)
         def switchPair = switchPairs.all().nonNeighbouring().withPathHavingAtLeastNSwitches(4).random()
 
         and: "Select path for further manipulation with it"
-        def selectedPath = switchPair.paths.max { it.size() }
+        def availablePathsIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+        def desiredPathMaxIsls = availablePathsIsls.max { it.size() }
 
         and: "Make all alternative paths unavailable (bring links down on the src/intermediate switches)"
-        def involvedIsls = pathHelper.getInvolvedIsls(selectedPath)
-        def untouchableIsls = involvedIsls.collectMany { [it, it.reversed] }
-        def altPaths = switchPair.paths.findAll { [it, it.reverse()].every { it != selectedPath }}
-        def islsToBreak = altPaths.collectMany { pathHelper.getInvolvedIsls(it) }
-                .collectMany { [it, it.reversed] }.unique()
-                .findAll { !untouchableIsls.contains(it) }.unique { [it, it.reversed].sort() }
+        def untouchableIsls = desiredPathMaxIsls.collectMany { [it, it.reversed] }
+        def altPaths = availablePathsIsls.findAll { !it.containsAll(desiredPathMaxIsls)}
+        def islsToBreak = altPaths.flatten().unique().collectMany { [it, it.reversed] }
+                .findAll { !untouchableIsls.contains(it) }.unique { [it, it.reversed].sort() } as List<Isl>
         islHelper.breakIsls(islsToBreak)
 
         and: "Update reverse path to have not enough bandwidth to handle the flow"
         //Forward path is still have enough bandwidth
         def flowBandwidth = 500
-        def islsToModify = involvedIsls[1]
+        Isl islsToModify = desiredPathMaxIsls[1]
         def newIslBandwidth = flowBandwidth - 1
-        islsToModify.each {
-            islHelper.setAvailableBandwidth(it.reversed, newIslBandwidth)
-            database.updateIslMaxBandwidth(it.reversed, newIslBandwidth)
-        }
+        islHelper.setAvailableAndMaxBandwidth([islsToModify.reversed], newIslBandwidth)
 
         when: "Create a flow"
         flowFactory.getBuilder(switchPair).withBandwidth(flowBandwidth).build().createV1()

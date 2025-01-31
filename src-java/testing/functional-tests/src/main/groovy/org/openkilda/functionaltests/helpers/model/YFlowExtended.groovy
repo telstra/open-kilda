@@ -262,6 +262,11 @@ class YFlowExtended {
         northboundV2.validateYFlow(yFlowId)
     }
 
+    ComplexFlowValidationResponse validateAndCollectDiscrepancy() {
+       def validationResponse = validate()
+        new ComplexFlowValidationResponse(validationResponse)
+    }
+
     YFlowSyncResult sync() {
         log.debug("Synchronize Y-Flow '${yFlowId}'")
         northboundV2.synchronizeYFlow(yFlowId)
@@ -273,6 +278,12 @@ class YFlowExtended {
 
     YFlowPingResult ping(YFlowPingPayload payload = new YFlowPingPayload(2000)) {
         northboundV2.pingYFlow(yFlowId, payload)
+    }
+
+    ComplexFlowPingResponse pingAndCollectDiscrepancies(YFlowPingPayload payload = new YFlowPingPayload(2000)) {
+        def response = ping(payload)
+        assert response.getYFlowId() == yFlowId, "Ping response for an incorrect Y-Flow"
+        new ComplexFlowPingResponse(response)
     }
 
     YFlowRerouteResult reroute() {

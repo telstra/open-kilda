@@ -442,31 +442,24 @@ export class SwitchDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     evacuateSwitch(e) {
+        if (!this.underMaintenance) {
+            this.toastr.info(MessageObj.info_cannot_evacuate_flows_from_switch, 'Can not evacuate');
+            return;
+        }
         const modalRef = this.modalService.open(ModalconfirmationComponent);
         modalRef.componentInstance.title = 'Confirmation';
-        this.evacuate = e.target.checked;
-        if (this.evacuate) {
-            modalRef.componentInstance.content = 'Are you sure you want to evacuate all flows?';
-        } else {
-            modalRef.componentInstance.content = 'Are you sure ?';
-        }
+        modalRef.componentInstance.content = 'Are you sure you want to evacuate all flows?';
         modalRef.result.then((response) => {
             if (response && response == true) {
-                const data = {'under_maintenance': this.underMaintenance, 'evacuate': e.target.checked};
+                const data = {'under_maintenance': this.underMaintenance, 'evacuate': true};
                 this.switchService.switchMaintenance(data, this.switchId).subscribe((serverResponse) => {
                     this.toastr.success(MessageObj.flows_evacuated, 'Success');
                     location.reload();
                 }, error => {
                     this.toastr.error(MessageObj.error_flows_evacuated, 'Error');
                 });
-            } else {
-                this.evacuate = false;
             }
-        }, error => {
-            this.evacuate = false;
         });
-
-
     }
 
     ngOnDestroy() {

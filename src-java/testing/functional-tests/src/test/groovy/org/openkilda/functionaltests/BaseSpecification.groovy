@@ -6,12 +6,12 @@ import org.openkilda.functionaltests.helpers.model.ASwitchPorts
 import org.openkilda.functionaltests.helpers.model.KildaConfiguration
 import org.openkilda.functionaltests.helpers.model.FeatureToggles
 import org.openkilda.functionaltests.helpers.model.SwitchPairs
+import org.openkilda.functionaltests.helpers.model.SwitchTriplets
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 
-import org.openkilda.functionaltests.helpers.PathHelper
 import org.openkilda.functionaltests.helpers.PortAntiflapHelper
 import org.openkilda.functionaltests.helpers.StatsHelper
 import org.openkilda.functionaltests.helpers.SwitchHelper
@@ -61,8 +61,6 @@ class BaseSpecification extends Specification {
     @Autowired @Shared
     TopologyHelper topologyHelper
     @Autowired @Shared
-    PathHelper pathHelper
-    @Autowired @Shared
     SwitchHelper switchHelper
     @Autowired @Shared
     PortAntiflapHelper antiflap
@@ -73,6 +71,8 @@ class BaseSpecification extends Specification {
     StatsHelper statsHelper
     @Autowired @Shared
     SwitchPairs switchPairs
+    @Autowired @Shared
+    SwitchTriplets switchTriplets
     @Autowired @Shared
     IslHelper islHelper
     @Autowired @Shared

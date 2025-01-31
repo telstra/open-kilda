@@ -1,7 +1,12 @@
 package org.openkilda.functionaltests.helpers.model
 
+import static org.openkilda.functionaltests.helpers.TopologyHelper.convertToPathNodePayload
+
+import org.openkilda.functionaltests.helpers.TopologyHelper
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.messaging.payload.flow.PathNodePayload
 import org.openkilda.testing.model.topology.TopologyDefinition
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import com.fasterxml.jackson.annotation.JsonIgnore
@@ -81,5 +86,11 @@ class SwitchPair {
     @JsonIgnore
     Boolean isTraffExamCapable() {
         return !(src.getTraffGens().isEmpty() || dst.getTraffGens().isEmpty())
+    }
+
+    List<Path> retrieveAvailablePaths(){
+       convertToPathNodePayload(paths).collect{
+           new Path(it, topologyDefinition)
+       }
     }
 }

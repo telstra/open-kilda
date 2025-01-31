@@ -3,7 +3,7 @@ package org.openkilda.functionaltests.spec.flows.haflows
 import groovy.util.logging.Slf4j
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.model.stats.HaFlowStats
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowStatus
@@ -45,11 +45,11 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
     @Autowired
     Provider<TraffExamService> traffExamProvider
 
-    @Tags([TOPOLOGY_DEPENDENT, ISL_RECOVER_ON_FAIL])
+    @Tags([ISL_RECOVER_ON_FAIL])
     @Issue("https://github.com/telstra/open-kilda/issues/5647 (hardware)")
     def "Valid HA-flow can be rerouted"() {
         given: "An HA-flow"
-        def swT = topologyHelper.findSwitchTripletWithAlternativePaths()
+        def swT = switchTriplets.all().findSwitchTripletWithAlternativePaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         def haFlow = haFlowFactory.getRandom(swT)
 
@@ -96,13 +96,13 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
 
         and: "Traffic passes through HA-Flow"
-        if (swT.isHaTraffExamAvailable()) {
+        if (swT.isTraffExamAvailable()) {
             assert haFlow.traffExam(traffExamProvider.get()).run().hasTraffic()
             statsHelper."force kilda to collect stats"()
         }
 
         then: "Stats are collected"
-        if (swT.isHaTraffExamAvailable()) {
+        if (swT.isTraffExamAvailable()) {
             wait(STATS_LOGGING_TIMEOUT) {
                 assert haFlowStats.of(haFlow.haFlowId).get(HA_FLOW_RAW_BITS,
                         REVERSE,
@@ -117,7 +117,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "HA-flow in 'Down' status is rerouted when discovering a new ISL"() {
         given: "An HA-flow"
-        def swT = topologyHelper.findSwitchTripletWithAlternativeFirstPortPaths()
+        def swT = switchTriplets.all().findSwitchTripletWithAlternativeFirstPortPaths()
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         def haFlow = haFlowFactory.getRandom(swT)
 
@@ -126,10 +126,9 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         assert subFlowsFirstIsls.size() == 1, "Selected ISL is not common for both sub-flows (not shared switch)"
 
         when: "Bring all ports down on the shared switch that are involved in the current and alternative paths"
-        def initialPathNodesView = initialPaths.subFlowPaths.collect { it.path.forward.nodes.toPathNode().first() } as Set
-        def alternativePaths = (swT.pathsEp1 + swT.pathsEp2).unique { it.first() }
-                .findAll { !initialPathNodesView.contains(it.first()) }
-        def alternativeIsls = alternativePaths.collect { pathHelper.getInvolvedIsls(it).first() }
+        def alternativeIsls = (swT.retrieveAvailablePathsEp1() + swT.retrieveAvailablePathsEp2())
+                .collect { it.getInvolvedIsls().first() }.unique().findAll { !subFlowsFirstIsls.contains(it) }
+
         islHelper.breakIsls(alternativeIsls)
         assert haFlow.retrieveDetails().status == FlowState.UP
 
@@ -140,7 +139,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         haFlow.waitForBeingInState(FlowState.DOWN, rerouteDelay + WAIT_OFFSET)
 
         when: "Bring all ports up on the shared switch that are involved in the alternative paths"
-        alternativeIsls.each {islHelper.restoreIsl(it)} //fails on jenkins if do it asynchronously
+        alternativeIsls.each { islHelper.restoreIsl(it) } //fails on jenkins if do it asynchronously
 
         then: "The HA-flow goes to 'Up' state and the HA-flow was rerouted"
         def newPaths = null
@@ -152,7 +151,7 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
             assert newPaths != initialPaths
         }
 
-        and: "The first (shared) subFlow's ISl  has been chnaged due to the ha-Flow reroute"
+        and: "The first (shared) subFlow's ISl  has been changed due to the ha-Flow reroute"
         def newPathSubFlowsFirstIsls = newPaths.subFlowPaths.collect{ it.getInvolvedIsls().first()} as Set
         newPathSubFlowsFirstIsls != subFlowsFirstIsls
 
@@ -160,14 +159,17 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         haFlow.validate().asExpected
 
         and: "All involved switches pass switch validation"
-        def allInvolvedSwitchIds = initialPaths.getInvolvedSwitches()+ newPaths.getInvolvedSwitches()
+        def allInvolvedSwitchIds = (initialPaths.getInvolvedSwitches() + newPaths.getInvolvedSwitches()).unique()
         switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
     }
 
     @Tags([SMOKE, ISL_RECOVER_ON_FAIL])
     def "HA-flow goes to 'Down' status when ISl of the HA-flow fails and there is no alt path to reroute"() {
         given: "An HA-flow without alternative paths"
-        def swT = topologyHelper.findSwitchTripletWithDifferentEndpoints()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().switchTriplets.find {
+            def yPoints = it.findPotentialYPoints()
+            yPoints.size() == 1 && yPoints[0] != it.shared.dpId
+        }
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
         def haFlow = haFlowFactory.getRandom(swT)
 
@@ -176,10 +178,8 @@ class HaFlowRerouteSpec extends HealthCheckSpecification {
         assert subFlowsFirstIsls.size() == 1, "Selected ISL is not common for both sub-flows (not shared switch)"
 
         and: "All ISL ports on the shared switch that are involved in the alternative HA-flow paths are down"
-        def initialPathNodesView = initialPaths.subFlowPaths.collect { it.path.forward.nodes.toPathNode().first() } as Set
-        def alternativePaths = (swT.pathsEp1 + swT.pathsEp2).unique { it.first() }
-                .findAll { !initialPathNodesView.contains(it.first()) }
-        def alternativeIsls = alternativePaths.collect { pathHelper.getInvolvedIsls(it).first() }
+        def alternativeIsls = (swT.retrieveAvailablePathsEp1() + swT.retrieveAvailablePathsEp2())
+                .collect { it.getInvolvedIsls().first() }.unique().findAll { !subFlowsFirstIsls.contains(it) }
         islHelper.breakIsls(alternativeIsls)
         assert haFlow.retrieveDetails().status == FlowState.UP
 

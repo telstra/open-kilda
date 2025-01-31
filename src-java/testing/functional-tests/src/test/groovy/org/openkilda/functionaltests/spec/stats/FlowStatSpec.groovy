@@ -133,8 +133,8 @@ class FlowStatSpec extends HealthCheckSpecification {
 
         def flowPathInfo = flow.retrieveAllEntityPaths()
         assert !flowPathInfo.flowPath.protectedPath.isPathAbsent()
-        def mainPath = flowPathInfo.getPathNodes(FORWARD, false)
-        def protectedPath = flowPathInfo.getPathNodes(FORWARD, true)
+        def mainPathIsls = flowPathInfo.getMainPathInvolvedIsls()
+        def protectedPathIsls = flowPathInfo.getProtectedPathInvolvedIsls()
 
         when: "Generate traffic on the given flow"
         def traffExam = traffExamProvider.get()
@@ -159,9 +159,10 @@ class FlowStatSpec extends HealthCheckSpecification {
         !stats.get(FLOW_RAW_BYTES, srcSwitchId, protectedReverseCookie).hasNonZeroValues()
 
         when: "Make the current and protected path less preferable than alternatives"
-        def alternativePaths = switchPair.paths.findAll { it != mainPath && it != protectedPath }
-        alternativePaths.each { pathHelper.makePathMorePreferable(it, mainPath) }
-        alternativePaths.each { pathHelper.makePathMorePreferable(it, protectedPath) }
+        def alternativePaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+                .findAll { it != mainPathIsls && it != protectedPathIsls }
+        alternativePaths.each { islHelper.makePathIslsMorePreferable(it, mainPathIsls) }
+        alternativePaths.each { islHelper.makePathIslsMorePreferable(it, protectedPathIsls) }
 
         and: "Init intentional reroute"
         def rerouteResponse = flow.reroute()
@@ -169,9 +170,9 @@ class FlowStatSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == UP }
 
         def flowPathInfoAfterRerouting = flow.retrieveAllEntityPaths()
-        def newMainPath = flowPathInfoAfterRerouting.getPathNodes(FORWARD, false)
-        newMainPath != mainPath
-        newMainPath != protectedPath
+        def newMainPath = flowPathInfoAfterRerouting.getMainPathInvolvedIsls()
+        newMainPath != mainPathIsls
+        newMainPath != protectedPathIsls
 
         and: "Generate traffic on the flow"
         exam.setResources(traffExam.startExam(exam))

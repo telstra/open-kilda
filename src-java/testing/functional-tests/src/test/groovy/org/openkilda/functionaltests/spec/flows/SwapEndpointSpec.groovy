@@ -665,7 +665,6 @@ switches"() {
         flow3 = data.flow3 as FlowExtended
     }
 
-    //start from here tomorrow
     @IterationTag(tags = [LOW_PRIORITY], iterationNameRegex = /the same src endpoint for flows/)
     def "Unable to swap endpoints for two flows (#data.description)"() {
         given: "Two active flows"
@@ -751,7 +750,7 @@ switches"() {
         def flow2 = getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1).create()
 
         and: "Update the first flow so that it consumes all bandwidth on the link"
-        def flow1Isl = flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls().first()
+        def flow1Isl = flow1.retrieveAllEntityPaths().getInvolvedIsls().first()
         def flow1IslMaxBw = islUtils.getIslInfo(flow1Isl).get().maxBandwidth
 
         flow1.update(flow1.tap { it.maximumBandwidth = flow1IslMaxBw })
@@ -761,7 +760,7 @@ switches"() {
         islHelper.breakIsls(broughtDownIsls)
 
         and: "Update max bandwidth for the second flow's link so that it is equal to max bandwidth of the first flow"
-        def flow2Isl = flow2.retrieveAllEntityPaths().flowPath.getInvolvedIsls().first()
+        def flow2Isl = flow2.retrieveAllEntityPaths().getInvolvedIsls().first()
         islHelper.updateLinkMaxBandwidthUsingApi(flow2Isl, flow1IslMaxBw)
 
         and: "Break all alternative paths for the second flow"
@@ -807,7 +806,7 @@ switches"() {
         def flow2 = getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1).create()
 
         and: "Update the first flow so that it consumes all bandwidth on the link"
-        def flow1Isl = flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls().first()
+        def flow1Isl = flow1.retrieveAllEntityPaths().getInvolvedIsls().first()
         def flow1IslMaxBw = islUtils.getIslInfo(flow1Isl).get().maxBandwidth
 
         flow1.update(flow1.tap { it.maximumBandwidth = flow1IslMaxBw })
@@ -817,7 +816,7 @@ switches"() {
         islHelper.breakIsls(broughtDownIsls)
 
         and: "Update max bandwidth for the second flow's link so that it is not enough bandwidth for the first flow"
-        def flow2Isl = flow2.retrieveAllEntityPaths().flowPath.getInvolvedIsls().first()
+        def flow2Isl = flow2.retrieveAllEntityPaths().getInvolvedIsls().first()
         islHelper.updateLinkMaxBandwidthUsingApi(flow2Isl, flow1IslMaxBw - 1)
 
         and: "Break all alternative paths for the second flow"
@@ -856,7 +855,7 @@ switches"() {
         def flow2 = getSecondFlow(flow1SwitchPair, flow2SwitchPair, flow1).create()
 
         and: "Update the first flow so that it consumes all bandwidth on the link"
-        def flow1Isl = flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls().first()
+        def flow1Isl = flow1.retrieveAllEntityPaths().getInvolvedIsls().first()
         def flow1IslMaxBw = islUtils.getIslInfo(flow1Isl).get().maxBandwidth
 
         flow1.update(flow1.tap { it.maximumBandwidth = flow1IslMaxBw })
@@ -866,7 +865,7 @@ switches"() {
         islHelper.breakIsls(broughtDownIsls)
 
         and: "Update max bandwidth for the second flow's link so that it is not enough bandwidth for the first flow"
-        def flow2Isl = flow2.retrieveAllEntityPaths().flowPath.getInvolvedIsls().first()
+        def flow2Isl = flow2.retrieveAllEntityPaths().getInvolvedIsls().first()
         islHelper.updateLinkMaxBandwidthUsingApi(flow2Isl, flow1IslMaxBw - 1)
 
         and: "Break all alternative paths for the second flow"

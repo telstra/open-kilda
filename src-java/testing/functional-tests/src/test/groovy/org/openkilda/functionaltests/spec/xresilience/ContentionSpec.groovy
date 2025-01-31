@@ -9,6 +9,7 @@ import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchPortVlan
 import org.openkilda.messaging.payload.flow.FlowState
+import org.openkilda.model.SwitchId
 
 import groovyx.gpars.group.DefaultPGroup
 import org.springframework.beans.factory.annotation.Autowired
@@ -68,9 +69,9 @@ class ContentionSpec extends BaseSpecification {
         }
         createTasks*.join()
         assert createTasks.findAll { it.isError() }.empty
-        def relatedIsls = flows[0].retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def relatedIsls = flows[0].retrieveAllEntityPaths().getInvolvedIsls()
         //all flows use same isls
-        flows[1..-1].each { assert it.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == relatedIsls }
+        flows[1..-1].each { assert it.retrieveAllEntityPaths().getInvolvedIsls() == relatedIsls }
 
         then: "Available bandwidth on related isls is reduced based on bandwidth of created flows"
         relatedIsls.each { isl ->
@@ -100,15 +101,17 @@ class ContentionSpec extends BaseSpecification {
 
     def "Reroute can be simultaneously performed with sync rules requests, removeExcess=#removeExcess"() {
         given: "A flow with reroute potential"
-        def switches = switchPairs.all().nonNeighbouring().random()
-        def flow = flowFactory.getRandom(switches)
+        def swPair = switchPairs.all().nonNeighbouring().random()
+        def availablePaths = swPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+        def flow = flowFactory.getRandom(swPair)
 
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def mainPath = flowPathInfo.getPathNodes()
-        def newPath = switches.paths.find { it != mainPath }
-        switches.paths.findAll { it != newPath }.each { pathHelper.makePathMorePreferable(newPath, it) }
-        def relatedSwitches = (flowPathInfo.getInvolvedSwitches() +
-                pathHelper.getInvolvedSwitches(newPath).dpId).unique()
+        def mainPathIsls = flowPathInfo.getInvolvedIsls()
+        def newPathIsls = availablePaths.find { it != mainPathIsls }
+        availablePaths.findAll { it != newPathIsls }.each { islHelper.makePathIslsMorePreferable(newPathIsls, it) }
+
+        List<SwitchId> relatedSwitches = (flowPathInfo.getInvolvedSwitches()
+                + islHelper.retrieveInvolvedSwitches(newPathIsls).dpId).unique() as List<SwitchId>
 
         when: "Flow reroute is simultaneously requested together with sync rules requests for all related switches"
         withPool {
@@ -120,7 +123,7 @@ class ContentionSpec extends BaseSpecification {
         then: "Flow is Up and path has changed"
         Wrappers.wait(WAIT_OFFSET) {
             assert flow.retrieveFlowStatus().status == FlowState.UP
-            assert flow.retrieveAllEntityPaths().getPathNodes() == newPath
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == newPathIsls
         }
 
         and: "Related switches have no rule discrepancies"

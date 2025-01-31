@@ -88,6 +88,10 @@ class FlowWithSubFlowsEntityPath {
         subFlowPaths.collect { it.getInvolvedIsls(direction) }.flatten().unique() as List<Isl>
     }
 
+    List<Isl> getSubFlowIsls(String subFlowId, Direction direction = Direction.FORWARD) {
+        subFlowPaths.find { it.flowId == subFlowId}.getInvolvedIsls(direction)
+    }
+
     List<SwitchId> getInvolvedSwitches(Direction direction = Direction.FORWARD) {
         List<SwitchId> switches = []
         if (direction == Direction.FORWARD) {

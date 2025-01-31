@@ -43,4 +43,15 @@ class PathNodes {
         }
         pathView
     }
+
+    List<PathNodePayload> toPathNodePayload() {
+        def result = [new PathNodePayload(nodes[0].getSwitchId(), null, nodes[0].getPortNo())]
+        for (int i = 1; i < nodes.size() - 1; i += 2) {
+            result.add(new PathNodePayload(nodes.get(i).getSwitchId(),
+                    nodes.get(i).getPortNo(),
+                    nodes.get(i + 1).getPortNo()))
+        }
+        result.add(new PathNodePayload(nodes[-1].getSwitchId(), nodes[-1].getPortNo(), null))
+        return result
+    }
 }

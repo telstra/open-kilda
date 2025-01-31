@@ -13,10 +13,9 @@ import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.haflow.HaFlowPathNotSwappedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.model.stats.HaFlowStats
-import org.openkilda.messaging.error.MessageError
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.service.traffexam.TraffExamService
 
@@ -46,7 +45,7 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
 
     def "Able to swap main and protected paths manually"() {
         given: "An HA-Flow with protected paths"
-        def swT = topologyHelper.findSwitchTripletForHaFlowWithProtectedPaths()
+        def swT = switchTriplets.all().findSwitchTripletForHaFlowWithProtectedPaths()
         assumeTrue(swT != null, "No suiting switches found.")
         def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(true)
                 .build().create()
@@ -84,13 +83,13 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
         }
 
         and: "Traffic passes through HA-Flow"
-        if (swT.isHaTraffExamAvailable()) {
+        if (swT.isTraffExamAvailable()) {
             assert haFlow.traffExam(traffExamProvider.get()).run().hasTraffic()
             statsHelper."force kilda to collect stats"()
         }
 
         then: "Stats are collected"
-        if (swT.isHaTraffExamAvailable()) {
+        if (swT.isTraffExamAvailable()) {
             Wrappers.wait(STATS_LOGGING_TIMEOUT) {
                 assert haFlowStats.of(haFlow.haFlowId).get(HA_FLOW_RAW_BITS,
                         REVERSE, haFlow.subFlows.shuffled().first()).hasNonZeroValuesAfter(timeAfterSwap)
@@ -103,7 +102,7 @@ class HaFlowPathSwapSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Unable to perform the 'swap' request for an HA-Flow without protected path"() {
         given: "An HA-Flow without protected path"
-        def swT = topologyHelper.switchTriplets[0]
+        def swT = switchTriplets.all().first()
         assumeTrue(swT != null, "No suiting switches found.")
         def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(false)
                 .build().create()

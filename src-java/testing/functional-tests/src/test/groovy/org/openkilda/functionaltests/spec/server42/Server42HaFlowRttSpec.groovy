@@ -15,8 +15,9 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
+import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
@@ -51,7 +52,8 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
         given: "Three active switches with server42 connected"
         assumeTrue((topology.getActiveServer42Switches().size() >= 3), "Unable to find active server42")
 
-        def swT = topologyHelper.findSwitchTripletWithSharedEpInTheMiddleOfTheChainServer42Support()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().withS42Support()
+                .withSharedEpInTheMiddleOfTheChain().random()
         assert swT, "There is no switch triplet for the further ha-flow creation"
 
         when: "Set server42FlowRtt toggle to true"
@@ -134,11 +136,10 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
         }
 
         and: "Ha-Flow is valid and UP"
-        haFlow.validate().subFlowValidationResults.each { validationInfo ->
-            if (validationInfo.direction == "forward") {
-                assert !validationInfo.asExpected
-            } else {
-                assert validationInfo.asExpected
+        verifyAll(haFlow.validateAndCollectDiscrepancy()) { validationResult ->
+            assert !validationResult.asExpected
+            validationResult.subFlowsDiscrepancies.each {
+                assert it.flowDiscrepancies.get(FlowDirection.FORWARD) && !it.flowDiscrepancies.get(FlowDirection.REVERSE)
             }
         }
         haFlow.retrieveDetails().status == FlowState.UP
@@ -187,7 +188,7 @@ class Server42HaFlowRttSpec extends HealthCheckSpecification {
         where:
         isHaFlowWithSharedPath | swT
 //        This case is disabled due to changes in hardware env (switch replacement is required).
-//        true                   | topologyHelper.findSwitchTripletWithSharedEpThatIsNotNeighbourToEp1AndEp2Server42Support()
-        false                  | topologyHelper.findSwitchTripletWithSharedEpInTheMiddleOfTheChainServer42Support()
+//        true                   | switchTriplets.all().withAllDifferentEndpoints().withS42Support().findSwitchTripletWithSharedEpThatIsNotNeighbourToEp1AndEp2()
+        false                  | switchTriplets.all().withAllDifferentEndpoints().withS42Support().withSharedEpInTheMiddleOfTheChain().random()
     }
 }

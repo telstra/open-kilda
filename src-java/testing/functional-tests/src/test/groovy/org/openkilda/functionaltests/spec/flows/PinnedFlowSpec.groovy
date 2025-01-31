@@ -14,9 +14,9 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.messaging.info.event.IslChangeType
-import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.cookie.Cookie
+import org.openkilda.testing.model.topology.TopologyDefinition.Isl
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import org.springframework.beans.factory.annotation.Autowired
@@ -88,26 +88,24 @@ class PinnedFlowSpec extends HealthCheckSpecification {
     def "System doesn't reroute(automatically) pinned flow when flow path is partially broken"() {
         given: "A pinned flow going through a long not preferable path"
         def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNPaths(2).random()
-        List<List<PathNode>> allPaths = database.getPaths(switchPair.src.dpId, switchPair.dst.dpId)*.path
-        def longestPath = allPaths.max { it.size() }
-        allPaths.findAll { it != longestPath }.collect { pathHelper.makePathMorePreferable(longestPath, it) }
+        def allPaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+        def longestPathIsls = allPaths.max { it.size() }
+        allPaths.findAll { it != longestPathIsls }.each { islHelper.makePathIslsMorePreferable(longestPathIsls, it)}
         def flow = flowFactory.getBuilder(switchPair)
                 .withPinned(true)
                 .build().create()
 
         def allEntityPath = flow.retrieveAllEntityPaths()
-        def currentPath = allEntityPath.getPathNodes()
-        def altPath = switchPair.paths.findAll { it != currentPath }.min { it.size() }
+        def initialPathIsls = allEntityPath.getInvolvedIsls()
+        List<Isl> altPathIsls = allPaths.findAll { it != initialPathIsls }.min { it.size() }
         def involvedSwitches = allEntityPath.getInvolvedSwitches()
 
         when: "Make alt path more preferable than current path"
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
-        switchPair.paths.findAll { it != altPath }.each { pathHelper.makePathMorePreferable(altPath, it) }
+        allPaths.findAll { it != altPathIsls }.each { islHelper.makePathIslsMorePreferable(altPathIsls, it) }
 
         and: "Init reroute by bringing current path's ISL down one by one"
-        def currentIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
-        def newIsls = pathHelper.getInvolvedIsls(altPath)
-        def islsToBreak = currentIsls.findAll { !newIsls.contains(it) }
+        def islsToBreak = initialPathIsls.findAll { !altPathIsls.contains(it) }
 
         def cookiesMap = involvedSwitches.collectEntries { sw ->
             [sw.id, switchRulesFactory.get(sw).getRules().findAll {
@@ -128,14 +126,14 @@ class PinnedFlowSpec extends HealthCheckSpecification {
             Wrappers.timedLoop(2) {
                 assert flow.retrieveFlowStatus().status == FlowState.DOWN
                 //do not check history here. In parallel environment it may be overriden by 'up' event on another island
-                assert flow.retrieveAllEntityPaths().getPathNodes() == currentPath
+                assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialPathIsls
             }
         }
         islHelper.breakIsls(islsToBreak[1..-1])
 
         and: "Rules and meters are not changed"
         def cookiesMapAfterReroute = involvedSwitches.collectEntries { sw ->
-            [sw.id, northbound.getSwitchRules(sw).flowEntries.findAll {
+            [sw.id, switchRulesFactory.get(sw).getRules().findAll {
                 !new Cookie(it.cookie).serviceFlag
             }*.cookie]
         }
@@ -156,7 +154,7 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET + discoveryInterval) {
             islsToBreak[0..-2].each { assert islUtils.getIslInfo(it).get().state == IslChangeType.DISCOVERED }
             assert flow.retrieveFlowStatus().status == FlowState.DOWN
-            assert flow.retrieveAllEntityPaths().getPathNodes() == currentPath
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialPathIsls
         }
 
         and: "Restore the last ISL"
@@ -165,45 +163,47 @@ class PinnedFlowSpec extends HealthCheckSpecification {
         then: "Flow is marked as UP when the last ISL is restored"
         Wrappers.wait(WAIT_OFFSET * 2) {
             assert flow.retrieveFlowStatus().status == FlowState.UP
-            assert flow.retrieveAllEntityPaths().getPathNodes() == currentPath
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialPathIsls
         }
     }
 
     def "System is not rerouting pinned flow when 'reroute link flows' is called"() {
         given: "A pinned flow with alt path available"
         def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
+        def availablePaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
         def flow = flowFactory.getBuilder(switchPair)
                 .withPinned(true)
                 .build().create()
-        def initialPath =  flow.retrieveAllEntityPaths()
+        def initialPathIsls =  flow.retrieveAllEntityPaths().getInvolvedIsls()
 
         when: "Make another path more preferable"
-        def newPath = switchPair.paths.find { it != initialPath.getPathNodes() }
-        switchPair.paths.findAll { it != newPath }.each { pathHelper.makePathMorePreferable(newPath, it) }
+        def newPathIsls = availablePaths.find { it != initialPathIsls }
+        availablePaths.findAll { it != newPathIsls }.each { islHelper.makePathIslsMorePreferable(newPathIsls, it) }
 
         and: "Init reroute of all flows that go through pinned flow's isl"
-        def isl = initialPath.flowPath.getInvolvedIsls().first()
+        def isl = initialPathIsls.first()
         def affectedFlows = northbound.rerouteLinkFlows(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flow is not rerouted (but still present in reroute response)"
         affectedFlows == [flow.flowId]
         Wrappers.timedLoop(4) {
             assert flow.retrieveFlowStatus().status == FlowState.UP
-            assert flow.retrieveAllEntityPaths().getPathNodes() == initialPath.getPathNodes()
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialPathIsls
         }
     }
 
     def "System returns error if trying to intentionally reroute a pinned flow"() {
         given: "A pinned flow with alt path available"
         def switchPair = switchPairs.all().neighbouring().withAtLeastNPaths(2).random()
+        def availablePaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
         def flow = flowFactory.getBuilder(switchPair)
                 .withPinned(true)
                 .build().create()
-        def currentPath = flow.retrieveAllEntityPaths().getPathNodes()
+        def initialPathIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
 
         when: "Make another path more preferable"
-        def newPath = switchPair.paths.find { it != currentPath }
-        switchPair.paths.findAll { it != newPath }.each { pathHelper.makePathMorePreferable(newPath, it) }
+        def newPath = availablePaths.find { it != initialPathIsls }
+        availablePaths.findAll { it != newPath }.each { islHelper.makePathIslsMorePreferable(newPath, it) }
 
         and: "Init manual reroute"
         flow.reroute()

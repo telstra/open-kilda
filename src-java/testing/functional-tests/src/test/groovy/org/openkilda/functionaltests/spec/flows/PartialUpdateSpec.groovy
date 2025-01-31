@@ -221,8 +221,8 @@ class PartialUpdateSpec extends HealthCheckSpecification {
         flow2.partialUpdate(updateRequest)
 
         then: "Flows use diverse paths"
-        def flow1InvolvedIsls = flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
-        def flow2InvolvedIsls = flow2.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def flow1InvolvedIsls = flow1.retrieveAllEntityPaths().getInvolvedIsls()
+        def flow2InvolvedIsls = flow2.retrieveAllEntityPaths().getInvolvedIsls()
         flow1InvolvedIsls.intersect(flow2InvolvedIsls).empty
     }
 
@@ -282,10 +282,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "Flow is valid and pingable"
         flow.validateAndCollectDiscrepancies().isEmpty()
-        with(flow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        flow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The src switch passes switch validation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(srcSwitch.dpId).isPresent()
@@ -329,10 +326,7 @@ class PartialUpdateSpec extends HealthCheckSpecification {
 
         and: "Flow is valid and pingable"
         flow.validateAndCollectDiscrepancies().isEmpty()
-        with(flow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        flow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The new and old dst switches pass switch validation"
         Wrappers.wait(RULES_DELETION_TIME) {

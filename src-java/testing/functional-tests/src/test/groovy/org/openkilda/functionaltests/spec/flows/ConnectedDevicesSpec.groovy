@@ -509,10 +509,7 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 
         and: "Flow is valid and pingable"
         flow.validateAndCollectDiscrepancies().isEmpty()
-        verifyAll(flow.ping()) {
-            assert it.forward.pingSuccess
-            assert it.reverse.pingSuccess
-        }
+        flow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "Device sends an lldp+arp packet into a flow port on that switch (with a correct flow vlan)"
         device.sendLldp(lldpData)
@@ -860,7 +857,10 @@ srcDevices=#newSrcEnabled, dstDevices=#newDstEnabled"() {
 "Devices+VXLAN problem https://github.com/telstra/open-kilda/issues/3199")
 
         given: "Two switches connected to traffgen"
-        def switchPair = switchPairs.all().neighbouring().withTraffgensOnBothEnds().random()
+        def swPairs = switchPairs.all().neighbouring().withTraffgensOnBothEnds()
+        // there is an issue with physical switch (lldp traffic)
+        profile == "virtual" ?: swPairs.excludeSwitches(topology.activeSwitches.findAll { it.dpId.toString().contains("40") })
+        def switchPair = switchPairs.random()
 
         and: "A QinQ flow with enabled connected devices on src has been created"
         def flow = flowFactory.getBuilder(switchPair)

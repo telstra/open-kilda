@@ -3,7 +3,7 @@ package org.openkilda.functionaltests.spec.flows.yflows
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 
 import org.openkilda.functionaltests.HealthCheckSpecification
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload
 
 import groovy.util.logging.Slf4j
@@ -20,14 +20,8 @@ class YFlowProtectedSpec extends HealthCheckSpecification {
 
     def "Able to enable/disable protected path on a flow"() {
         given: "A simple y-flow"
-        def swT = topologyHelper.switchTriplets.find {
-            def ep1paths = it.pathsEp1.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            def ep2paths = it.pathsEp2.unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            def yPoints = topologyHelper.findPotentialYPoints(it)
-            //se == yp
-            yPoints.size() == 1 && yPoints[0] == it.shared && yPoints[0] != it.ep1 && yPoints[0] != it.ep2 &&
-                    it.ep1 != it.ep2 && ep1paths.size() >= 2 && ep2paths.size() >= 2
-        }
+        def swT = switchTriplets.all().withAtLeastNNonOverlappingPaths(4)
+                .findSwitchTripletForYFlowWithProtectedPaths(true)
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")
 
         def yFlow = yFlowFactory.getRandom(swT)

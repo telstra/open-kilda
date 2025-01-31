@@ -90,22 +90,38 @@
         <td>
           <input type="checkbox" class="large-checkbox" name="switchFlow[row.flowid]" [checked]="switchFlow[row.flowid]" (click) = "toggleSelection(row)" />
         </td>
-        <td (click)="showFlow(row)" class="divTableCell" title="{{row.flowid }}"> 
-          {{row.flowid || "-"}} 
-        
+        <td (click)="showFlow(row)" class="divTableCell" title="{{row.flowid }}" [contextMenu]="copyFlowId">
+          {{row.flowid || "-"}}
+            <context-menu #copyFlowId>
+                <ng-template contextMenuItem (execute)="copyToClip($event,'flowid',i);">
+                    Copy to Clipboard
+                </ng-template>
+            </context-menu>
          </td>
-        <td (click)="showFlow(row)" title="{{row.source_switch_name}}" >
+        <td (click)="showFlow(row)" title="{{row.source_switch_name}}" [contextMenu]="copySourceSwitch" >
           {{row.source_switch_name || "-"}}
-        
+            <context-menu #copySourceSwitch>
+                <ng-template contextMenuItem (execute)="copyToClip($event,'source_switch_name',i);">
+                    Copy to Clipboard
+                </ng-template>
+            </context-menu>
         </td>
-        <td (click)="showFlow(row)" title="{{row.src_switch}}">{{row.source_switch || "-"}}</td>
+        <td (click)="showFlow(row)" title="{{row.src_switch}}">
+            {{row.source_switch || "-"}}
+        </td>
         <td (click)="showFlow(row)" title="{{row.src_port}}">{{row.src_port || "-"}}</td>
         <td (click)="showFlow(row)">{{row.src_vlan || "-"}}</td>
-        <td (click)="showFlow(row)" title="{{row.target_switch_name}}">
+        <td (click)="showFlow(row)" title="{{row.target_switch_name}}" [contextMenu]="copyTargetSwitch">
           {{row.target_switch_name || "-"}}
-          
+            <context-menu #copyTargetSwitch>
+                <ng-template contextMenuItem (execute)="copyToClip($event,'target_switch_name',i);">
+                    Copy to Clipboard
+                </ng-template>
+            </context-menu>
         </td>
-         <td (click)="showFlow(row)" title="{{row.target_switch}}">{{row.target_switch || "-"}}</td>
+         <td (click)="showFlow(row)" title="{{row.target_switch}}">
+             {{row.target_switch || "-"}}
+         </td>
         <td (click)="showFlow(row)">{{row.dst_port || "-"}}</td>
         <td (click)="showFlow(row)">{{row.dst_vlan || "-"}}</td>
         <td (click)="showFlow(row)" >{{row.maximum_bandwidth / 1000  || "-"}}</td>

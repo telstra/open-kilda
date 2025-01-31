@@ -26,8 +26,8 @@ sudo ./pipework br_kilda_int  -i eth1 server42-stats   10.0.77.3/24
 
 # local loop inside container
 
-- shutdown container `docker-compose stop server42-server`
-- up container with bash `docker-compose run --use-aliases server42-server bash`
+- shutdown container `docker compose stop server42-server`
+- up container with bash `docker compose run --use-aliases server42-server bash`
 
 - setup veth pair
 `ip link add eth42 type veth peer name eth24

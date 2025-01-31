@@ -146,7 +146,7 @@ class LinkSpec extends HealthCheckSpecification {
         busyEndpoints.addAll(flow2.occupiedEndpoints())
 
         and: "Forward flow from source switch to some 'internal' switch"
-        def islToInternal = flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls().first()
+        def islToInternal = flow1.retrieveAllEntityPaths().getInvolvedIsls().first()
         def flow3 = flowFactory.getBuilder(islToInternal.srcSwitch, islToInternal.dstSwitch, false, busyEndpoints)
                 .withPinned(true).build()
                 .create()
@@ -165,7 +165,7 @@ class LinkSpec extends HealthCheckSpecification {
         [flow1, flow2, flow3, flow4].each { assert it.flowId in linkFlows*.id }
 
         when: "Get all flows going through the link from some 'internal' switch to destination switch"
-        def islFromInternal = flow1.retrieveAllEntityPaths().flowPath.getInvolvedIsls().last()
+        def islFromInternal = flow1.retrieveAllEntityPaths().getInvolvedIsls().last()
         linkFlows = northbound.getLinkFlows(islFromInternal.srcSwitch.dpId, islFromInternal.srcPort,
                 islFromInternal.dstSwitch.dpId, islFromInternal.dstPort)
 
@@ -181,7 +181,7 @@ class LinkSpec extends HealthCheckSpecification {
         Wrappers.wait(rerouteDelay + WAIT_OFFSET) {
             [flow1, flow2, flow3, flow4].each { flow ->
                 assert flow.retrieveFlowStatus().status == FlowState.DOWN
-                def isls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+                def isls = flow.retrieveAllEntityPaths().getInvolvedIsls()
                 assert isls.contains(islToInternal) || isls.contains(islToInternal.reversed)
             }
 
@@ -360,36 +360,38 @@ class LinkSpec extends HealthCheckSpecification {
     def "Reroute all flows going through a particular link"() {
         given: "Two active not neighboring switches with two possible paths at least"
         def switchPair = switchPairs.all().nonNeighbouring().withAtLeastNPaths(2).random()
+        def availablePaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
 
         and: "Make the first path more preferable than others by setting corresponding link props"
-        switchPair.paths[1..-1].each { pathHelper.makePathMorePreferable(switchPair.paths.first(), it) }
+        def preferablePath = availablePaths[0]
+        availablePaths[1..-1].each { islHelper.makePathIslsMorePreferable(preferablePath, it) }
 
         and: "Create a couple of flows going through these switches"
         def flow1 = flowFactory.getRandom(switchPair)
-        def flow1Path = flow1.retrieveAllEntityPaths()
+        def flow1PathIsls = flow1.retrieveAllEntityPaths().getInvolvedIsls()
 
         def flow2 = flowFactory.getRandom(switchPair, false, FlowState.UP, flow1.occupiedEndpoints())
-        def flow2Path = flow2.retrieveAllEntityPaths()
+        def flow2PathIsls = flow2.retrieveAllEntityPaths().getInvolvedIsls()
 
-        assert flow1Path.getPathNodes() == switchPair.paths.first()
-        assert flow2Path.getPathNodes() == switchPair.paths.first()
+        assert flow1PathIsls == preferablePath
+        assert flow2PathIsls == preferablePath
 
         and: "Delete link props from all links of alternative paths to allow rerouting flows"
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
 
         and: "Make the current flows path not preferable"
-        switchPair.paths[1..-1].each { pathHelper.makePathMorePreferable(it, switchPair.paths.first()) }
+        availablePaths[1..-1].each { islHelper.makePathIslsMorePreferable(it, preferablePath) }
 
         when: "Submit request for rerouting flows"
-        def isl = flow1Path.flowPath.getInvolvedIsls().first()
+        def isl = flow1PathIsls.first()
         def response = northbound.rerouteLinkFlows(isl.srcSwitch.dpId, isl.srcPort, isl.dstSwitch.dpId, isl.dstPort)
 
         then: "Flows are rerouted"
         response.containsAll([flow1, flow2]*.flowId)
         Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
             [flow1, flow2].each { flow -> assert flow.retrieveFlowStatus().status == FlowState.UP }
-            assert flow1.retrieveAllEntityPaths() != flow1Path
-            assert flow2.retrieveAllEntityPaths() != flow2Path
+            assert flow1.retrieveAllEntityPaths().getInvolvedIsls() != flow1PathIsls
+            assert flow2.retrieveAllEntityPaths().getInvolvedIsls() != flow2PathIsls
         }
     }
 
@@ -639,7 +641,7 @@ class LinkSpec extends HealthCheckSpecification {
         def switchPair = switchPairs.all().neighbouring().random()
         def flow = flowFactory.getBuilder(switchPair).withPinned(true).build().create()
 
-        def isl = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls().first()
+        def isl = flow.retrieveAllEntityPaths().getInvolvedIsls().first()
         islHelper.breakIsl(isl)
 
         when: "Try to delete the link"
@@ -660,7 +662,7 @@ class LinkSpec extends HealthCheckSpecification {
         and: "An active link with flow on it"
         def flow = flowFactory.getRandom(switchPair)
         def flowPath = flow.retrieveAllEntityPaths()
-        def isl = flowPath.flowPath.getInvolvedIsls().first()
+        def isl = flowPath.getInvolvedIsls().first()
 
         when: "Delete the link using force"
         def response = islHelper.deleteIsl(isl, true)

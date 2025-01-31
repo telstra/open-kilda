@@ -1,16 +1,13 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue
-import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
-import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.yflow.YFlowNotFoundExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.SwitchTriplet
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowDirection
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.messaging.payload.flow.FlowState
 import org.springframework.beans.factory.annotation.Autowired
@@ -19,10 +16,8 @@ import spock.lang.Narrative
 import spock.lang.Shared
 
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
-import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.testing.Constants.NON_EXISTENT_FLOW_ID
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
-import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 @Narrative("""Verify that missing yFlow rule is detected by switch/flow validations.
 And make sure that the yFlow rule can be installed by syncSw/syncYFlow endpoints.""")
@@ -77,12 +72,11 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         data << [
                 [
                         description: "multiSwitch Y-Flow",
-                        swT: topologyHelper.getSwitchTriplets().find(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT)
+                        swT: switchTriplets.all().withAllDifferentEndpoints().random()
                 ],
                 [
                         description: "one-switch Y-Flow",
-                        swT: topologyHelper.getSwitchTriplets(false, true)
-                                    .find(SwitchTriplet.ONE_SWITCH_FLOW)
+                        swT: switchTriplets.all(false, true).singleSwitch().random()
 
                 ]
         ]
@@ -101,25 +95,17 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         switchHelper.deleteSwitchRules(swIdToManipulate, cookieToDelete)
 
         then: "Y-Flow is not valid"
-        def validateYFlowInfo = yFlow.validate()
-        !validateYFlowInfo.asExpected
+        def discrepancies = yFlow.validateAndCollectDiscrepancy()
+        !discrepancies.asExpected
 
         and: "Discrepancies has been detected for broken sub-flow REVERSE direction"
-        def reverseBrokenSubFlow = validateYFlowInfo.subFlowValidationResults
-                .find { it.flowId == subFl_1.flowId && it.direction == Direction.REVERSE.name() }
-        assert !reverseBrokenSubFlow.asExpected && reverseBrokenSubFlow.discrepancies
+        assert discrepancies.subFlowsDiscrepancies.find { it.subFlowId == subFl_1.flowId }.flowDiscrepancies.get(FlowDirection.REVERSE)
 
         and: "No discrepancies has been detected for broken sub-flow FORWARD direction"
-        def forwardBrokenSubFlow =  validateYFlowInfo.subFlowValidationResults
-                .find { it.flowId == subFl_1.flowId && it.direction == Direction.FORWARD.name() }
-        assert forwardBrokenSubFlow.asExpected && forwardBrokenSubFlow.discrepancies.empty
-
+        assert !discrepancies.subFlowsDiscrepancies.find { it.subFlowId == subFl_1.flowId }.flowDiscrepancies.get(FlowDirection.FORWARD)
 
         and: "No discrepancies has been detected for another sub-flow"
-        validateYFlowInfo.subFlowValidationResults
-                .findAll { it.flowId != subFl_1.flowId }.each {
-            assert it.asExpected && it.discrepancies.empty
-        }
+        assert !discrepancies.subFlowsDiscrepancies.find { it.subFlowId != subFl_1.flowId }
 
         and: "Simple flow validation detects discrepancies for the subFlow_1 REVERSE direction only"
         verifyAll(northbound.validateFlow(subFl_1.flowId)) { subFlow1 ->
@@ -145,7 +131,8 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         yFlow.waitForBeingInState(FlowState.UP)
 
         then: "Y-Flow/subFlow passes flow validation"
-        yFlow.validate().asExpected
+        def discrepanciesAfterSync = yFlow.validateAndCollectDiscrepancy()
+        discrepanciesAfterSync.asExpected && discrepanciesAfterSync.subFlowsDiscrepancies.isEmpty()
         yFlow.subFlows.each {
             northbound.validateFlow(it.flowId).each { direction -> assert direction.asExpected }
         }
@@ -157,13 +144,12 @@ class YFlowValidationSpec extends HealthCheckSpecification {
         data << [
                 [
                         description: "multiSwitch Y-Flow",
-                        swT: topologyHelper.getSwitchTriplets().find(SwitchTriplet.ALL_ENDPOINTS_DIFFERENT)
+                        swT: switchTriplets.all().withAllDifferentEndpoints().random()
 
                 ],
                 [
                         description: "one-switch Y-Flow",
-                        swT: topologyHelper.getSwitchTriplets(false, true)
-                                .find(SwitchTriplet.ONE_SWITCH_FLOW)
+                        swT: switchTriplets.all(false, true).singleSwitch().random()
 
                 ]
         ]

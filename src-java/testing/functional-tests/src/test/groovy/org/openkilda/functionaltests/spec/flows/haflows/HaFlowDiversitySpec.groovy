@@ -6,10 +6,10 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
@@ -34,14 +34,8 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
 
     def "Able to create diverse HA-Flows"() {
         given: "Switches with three not overlapping paths at least"
-        def swT = topologyHelper.switchTriplets.findAll {
-            [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
-                    [it.pathsEp1, it.pathsEp2].every {
-                        it.collect { pathHelper.getInvolvedIsls(it) }
-                                .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 3
-                    } &&
-                    topology.getRelatedIsls(it.shared).size() >= 5
-        }.shuffled().first()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().withTraffgensOnEachEnd()
+                .withAtLeastNNonOverlappingPaths(3).withAtLeastNIslOnSharedEndpoint(5).random()
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create three Ha-Flows with diversity enabled"
@@ -78,20 +72,15 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         and: "HA-Flow passes flow validation"
         withPool {
             [haFlow1, haFlow2, haFlow3].eachParallel { HaFlowExtended haFlow ->
-                def validationResponse = haFlow.validate()
-                assert validationResponse.asExpected
-                assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty() }
+                def validationResponse = haFlow.validateAndCollectDiscrepancy()
+                assert validationResponse.asExpected && validationResponse.subFlowsDiscrepancies.isEmpty()
             }
         }
     }
 
     def "Able to create HA-Flow diverse with regular flow that is already in diverse group with another HA-Flow"() {
         given: "Switches with two not overlapping paths at least"
-        def swT = topologyHelper.switchTriplets.find {
-            [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
-                    it.pathsEp1.collect { pathHelper.getInvolvedIsls(it) }
-                            .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 2
-        }
+        def swT = switchTriplets.all().withAllDifferentEndpoints().withAtLeastNNonOverlappingPaths(2).random()
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create an HA-Flow without diversity"
@@ -137,22 +126,15 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         and: "HA-Flow passes flow validation"
         withPool {
             [haFlow1, haFlow2].eachParallel { HaFlowExtended haFlow ->
-                def validationResponse = haFlow.validate()
-                assert validationResponse.asExpected
-                assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty()}
+                def validationResponse = haFlow.validateAndCollectDiscrepancy()
+                assert validationResponse.asExpected && validationResponse.subFlowsDiscrepancies.isEmpty()
             }
         }
     }
 
     def "Able to create HA-Flow diverse with Y-Flow that is in diverse group with another HA-Flow"() {
         given: "Switches with three not overlapping paths at least"
-        def swT = topologyHelper.switchTriplets.find {
-            [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
-                    [it.pathsEp1, it.pathsEp2].every {
-                        it.collect { pathHelper.getInvolvedIsls(it) }
-                                .unique { a, b -> a.intersect(b) ? 0 : 1 }.size() >= 3
-                    }
-        }
+        def swT = switchTriplets.all().withAllDifferentEndpoints().withAtLeastNNonOverlappingPaths(3).random()
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create an HA-Flow without diversity"
@@ -197,9 +179,8 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         and: "HA-Flow passes flow validation"
         withPool {
             [haFlow1, haFlow2].eachParallel { HaFlowExtended haFlow ->
-                def validationResponse = haFlow.validate()
-                assert validationResponse.asExpected
-                assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty()}
+                def validationResponse = haFlow.validateAndCollectDiscrepancy()
+                assert validationResponse.asExpected && validationResponse.subFlowsDiscrepancies.isEmpty()
             }
         }
     }

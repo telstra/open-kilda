@@ -77,7 +77,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         and: "All flows have different paths"
         def allInvolvedIsls = [flow1, flow2, flow3].collectMany { flow ->
-           flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+           flow.retrieveAllEntityPaths().getInvolvedIsls()
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
 
@@ -149,7 +149,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         [flow1Path.getPathNodes(), flow2PathUpdated.getPathNodes(), flow3PathUpdated.getPathNodes()].toSet().size() == 3
 
         def allInvolvedIsls = [flow1Path, flow2PathUpdated, flow3PathUpdated].collectMany { path ->
-            path.flowPath.getInvolvedIsls()
+            path.getInvolvedIsls()
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
     }
@@ -171,12 +171,13 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def (flow1Path, flow2Path, flow3Path) = [flow1, flow2, flow3].collect {flow ->
            flow.retrieveAllEntityPaths()
         }
-        def allInvolvedIsls = [flow1Path, flow2Path, flow3Path].collectMany { path -> path.flowPath.getInvolvedIsls()}
+        def allInvolvedIsls = [flow1Path, flow2Path, flow3Path].collectMany { path -> path.getInvolvedIsls()}
         assert allInvolvedIsls.unique(false) == allInvolvedIsls
 
         and: "Flow1 path is the most preferable"
-        switchPair.paths.findAll { it != flow1Path.getPathNodes() }
-                .each { pathHelper.makePathMorePreferable(flow1Path.getPathNodes(), it) }
+        def flow1Isls = flow1Path.getInvolvedIsls()
+        switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { !it.containsAll(flow1Isls) }
+                .each { islHelper.makePathIslsMorePreferable(flow1Isls, it) }
 
         when: "Update the second flow to become not diverse"
         flow2.update(flow2.deepCopy().tap { it.diverseWith = [""]})
@@ -184,8 +185,8 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         then: "The flow became not diverse and rerouted to the more preferable path (path of the first flow)"
         def flow2PathUpdated = flow2.retrieveAllEntityPaths()
-        flow2PathUpdated.getPathNodes() != flow2Path.getPathNodes()
-        flow2PathUpdated.getPathNodes() == flow1Path.getPathNodes()
+        flow2PathUpdated.getInvolvedIsls() != flow2Path.getInvolvedIsls()
+        flow2PathUpdated.getInvolvedIsls() == flow1Path.getInvolvedIsls()
 
         and: "The 'diverse_with' field is removed"
         !flow2.retrieveDetails().diverseWith
@@ -203,8 +204,8 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         then: "The flow became not diverse and rerouted to the more preferable path (path of the first flow)"
         def flow3PathUpdated = flow3.retrieveAllEntityPaths()
-        flow3PathUpdated.getPathNodes() != flow3Path.getPathNodes()
-        flow3PathUpdated.getPathNodes() == flow1Path.getPathNodes()
+        flow3PathUpdated.getInvolvedIsls() != flow3Path.getInvolvedIsls()
+        flow3PathUpdated.getInvolvedIsls() == flow1Path.getInvolvedIsls()
 
         and: "The 'diverse_with' field is removed"
         !flow3.retrieveDetails().diverseWith
@@ -245,19 +246,19 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         and: "Create a flow going through these switches"
         def flow1 = flowFactory.getRandom(switchPair, false)
-        def flow1PathNodes = flow1.retrieveAllEntityPaths().getPathNodes()
+        def initialFlowIsls = flow1.retrieveAllEntityPaths().getInvolvedIsls()
 
         and: "Make each alternative path less preferable than the first flow path"
-        def altPaths = switchPair.paths
-        altPaths.remove(flow1PathNodes)
+        def altPaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
+                .findAll { !it.containsAll(initialFlowIsls)}
 
-        def flow1PathCost = pathHelper.getCost(flow1PathNodes) + diversityIslCost + diversitySwitchCost * 2
+        def flow1PathCost = islHelper.getCost(initialFlowIsls) + diversityIslCost + diversitySwitchCost * 2
         altPaths.each { altPath ->
-            def altPathCost = pathHelper.getCost(altPath) + diversitySwitchCost * 2
+            def altPathCost = islHelper.getCost(altPath) + diversitySwitchCost * 2
             int difference = flow1PathCost - altPathCost
-            def firstAltPathIsl = pathHelper.getInvolvedIsls(altPath)[0]
-            int firstAltPathIslCost = database.getIslCost(firstAltPathIsl)
-            pathHelper.updateIslsCost([firstAltPathIsl], (firstAltPathIslCost + Math.abs(difference) + 1))
+            def firstAltPathIsl = altPath[0]
+            int firstAltPathIslCost = islHelper.getCost([firstAltPathIsl])
+            islHelper.updateIslsCost([firstAltPathIsl], (firstAltPathIslCost + Math.abs(difference) + 1))
         }
 
         when: "Create the second flow with diversity enabled"
@@ -266,7 +267,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def flow2Path = flow2.retrieveAllEntityPaths()
 
         then: "The flow is built through the most preferable path (path of the first flow)"
-        flow2Path.getPathNodes() == flow1PathNodes
+        flow2Path.getInvolvedIsls() == initialFlowIsls
 
         when: "Create the third flow with diversity enabled"
         def flow3 = flowFactory.getBuilder(switchPair, false, (flow1.occupiedEndpoints() + flow2.occupiedEndpoints()))
@@ -275,8 +276,8 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def flow3Path = flow3.retrieveAllEntityPaths()
 
         then: "The flow is built through one of alternative paths because they are preferable already"
-        def involvedIsls = [flow2Path, flow3Path].collectMany {path -> path.flowPath.getInvolvedIsls() }
-        flow3Path.getPathNodes() != flow2Path.getPathNodes()
+        def involvedIsls = [flow2Path, flow3Path].collectMany {path -> path.getInvolvedIsls() }
+        flow3Path.getInvolvedIsls() != flow2Path.getInvolvedIsls()
         involvedIsls.unique(false) == involvedIsls
     }
 
@@ -335,18 +336,19 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
     @Tags([LOW_PRIORITY])
     def "Able to update flow to become diverse and single-switch"() {
-        given: "Three switches"
-        def switches = topologyHelper.getSwitchTriplets().find {it.shared != it.ep1 && it.shared != it.ep2 && it.ep1 != it.ep2}
+        given: "Both switch pairs are with the same source switch"
+        def switchPair1 = switchPairs.all().neighbouring().random()
+        def switchPair2 = switchPairs.all().neighbouring().excludePairs([switchPair1]).includeSourceSwitch(switchPair1.src).random()
 
         and: "Create two flows starting from the same switch"
-        def flow1 = flowFactory.getRandom(switches.shared, switches.ep1, false)
-        def flow2 = flowFactory.getRandom(switches.shared, switches.ep2, false, UP, flow1.occupiedEndpoints())
+        def flow1 = flowFactory.getRandom(switchPair1, false)
+        def flow2 = flowFactory.getRandom(switchPair2, false, UP, flow1.occupiedEndpoints())
 
         when: "Update the second flow to become diverse and single-switch"
        def updatedFlow2 = flow2.update(flow2.deepCopy().tap {
             it.diverseWith = [flow1.flowId]
-            it.destination.switchId = switches.shared.dpId
-            it.destination.portNumber = getRandomAvailablePort(switches.shared, topologyDefinition, false,
+            it.destination.switchId = switchPair1.src.dpId
+            it.destination.portNumber = getRandomAvailablePort(switchPair1.src, topologyDefinition, false,
                     [flow1.source.portNumber, flow2.source.portNumber])
         })
         updatedFlow2.waitForHistoryEvent(FlowActionType.UPDATE)
@@ -378,7 +380,7 @@ class FlowDiversitySpec extends HealthCheckSpecification {
 
         and: "All flows have different paths"
         def allInvolvedIsls = [flow1, flow2, flow3].collectMany {flow ->
-            flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+            flow.retrieveAllEntityPaths().getInvolvedIsls()
         }
         allInvolvedIsls.unique(false) == allInvolvedIsls
     }

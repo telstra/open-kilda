@@ -12,6 +12,7 @@ import org.openkilda.functionaltests.extension.spring.SpringContextNotifier
 import org.openkilda.functionaltests.helpers.SwitchHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.messaging.info.event.IslChangeType
+import org.openkilda.messaging.info.event.PathNode
 import org.openkilda.messaging.info.event.SwitchChangeType
 import org.openkilda.messaging.model.system.FeatureTogglesDto
 import org.openkilda.model.FlowEncapsulationType
@@ -19,6 +20,7 @@ import org.openkilda.model.SwitchFeature
 import org.openkilda.northbound.dto.v1.links.LinkParametersDto
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Status
+import org.openkilda.testing.service.database.Database
 import org.openkilda.testing.service.floodlight.model.Floodlight
 import org.openkilda.testing.service.labservice.LabService
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
@@ -70,6 +72,9 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
     @Autowired @Shared
     IslUtils islUtils
 
+    @Autowired
+    Database database
+
     @Value('${spring.profiles.active}')
     String profile
 
@@ -92,9 +97,11 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
         applicationContext.autowireCapableBeanFactory.autowireBean(this)
         if (profile == "virtual") {
             isTopologyRebuildRequired ? buildVirtualEnvironment() : topology.setLabId(labService.getLabs().first().labId)
+            isTopologyRebuildRequired ?: collectSwitchesPathsFromDb(topology)
             log.info("Virtual topology is successfully created")
         } else if (profile == "hardware") {
             labService.createHwLab(topology)
+            collectSwitchesPathsFromDb(topology)
             log.info("Successfully redirected to hardware topology")
         } else {
             throw new RuntimeException("Provided profile '$profile' is unknown. Select one of the following profiles:" +
@@ -195,6 +202,7 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
                 })
             }
             verifyTopologyReadiness(topo)
+            collectSwitchesPathsFromDb(topo)
         }
     }
 
@@ -281,5 +289,17 @@ class EnvExtension extends AbstractGlobalExtension implements SpringContextListe
                 }
             }
             log.info("Topology-related HC passed: lab_id=" + topologyDefinition.labId)
+    }
+
+    def collectSwitchesPathsFromDb(TopologyDefinition topo) {
+        def switchesPaths = [topo.switches.dpId, topo.switches.dpId].combinations()
+                .findAll { src, dst -> src != dst } //non-single-switch
+                .unique { it.sort() }//no reversed versions of same flows
+                .collectEntries{  src, dst ->
+                    def paths = database.getPaths(src, dst)*.path
+                    [(src.toString() + "-" + dst.toString()):  paths]}
+                as HashMap<String, List<List<PathNode>>>
+
+        topo.setSwitchesDbPathsNodes(switchesPaths)
     }
 }

@@ -18,7 +18,7 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.functionaltests.model.stats.Direction
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.functionaltests.model.stats.YFlowStats
@@ -59,10 +59,9 @@ class YFlowStatSpec extends HealthCheckSpecification {
     FlowStats flowStats
 
     def setupSpec() {
-        def switchTriplet = topologyHelper.getSwitchTriplets(false, false).find {
-            it.ep1 != it.ep2 && it.ep1 != it.shared && it.ep2 != it.shared &&
-                    [it.shared, it.ep1, it.ep2].every { it.traffGens }
-        } ?: assumeTrue(false, "No suiting switches found")
+        def switchTriplet = switchTriplets.all().withAllDifferentEndpoints().withTraffgensOnEachEnd().random()
+        assumeTrue(switchTriplet != null, "No suiting switches found")
+
         yFlow = yFlowFactory.getBuilder(switchTriplet).withBandwidth(10).build()
                 .create(FlowState.UP, CleanupAfter.CLASS)
         def traffExam = traffExamProvider.get()

@@ -4,8 +4,7 @@ import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.yflow.YFlowPathNotSwappedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
-import org.openkilda.functionaltests.helpers.model.SwitchTriplet
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.testing.model.topology.TopologyDefinition.Isl
@@ -54,7 +53,8 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
 
     def "Able to swap main and protected paths manually"() {
         given: "A Y-Flow with protected paths"
-        def swT = findSwitchTripletForYFlowWithProtectedPaths()
+        def swT = switchTriplets.all().withTraffgensOnEachEnd().withAllDifferentEndpoints()
+                .findSwitchTripletForYFlowWithProtectedPaths()
         assumeTrue(swT != null, "No suiting switches found.")
 
         def yFlow = yFlowFactory.getBuilder(swT).withProtectedPath(true).build().create()
@@ -126,7 +126,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
     @Tags([ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "System is able to switch a y-flow to protected paths"() {
         given: "A y-flow with protected paths"
-        def swT = findSwitchTripletForYFlowWithProtectedPaths()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().findSwitchTripletForYFlowWithProtectedPaths()
         assumeTrue(swT != null, "No suiting switches found.")
         def yFlow = yFlowFactory.getBuilder(swT).withProtectedPath(true).build().create()
         assert yFlow.protectedPathYPoint
@@ -141,15 +141,13 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         List<Isl> yFlowIsls = initialPath.subFlowPaths.collectMany { subFlow ->
             subFlow.getInvolvedIsls().collectMany {[it, it.reversed] }}.unique()
 
-        database.updateIslsMaxBandwidth(yFlowIsls, yFlow.maximumBandwidth)
-        islHelper.setAvailableBandwidth(yFlowIsls, 0)
+        islHelper.setAvailableAndMaxBandwidth(yFlowIsls, 0, yFlow.maximumBandwidth)
 
-        List<Isl> alternativeIsls = (swT.pathsEp1 + swT.pathsEp2).collectMany { pathHelper.getInvolvedIsls(it) }
-                .collectMany { [it, it.reversed] }.unique()
+        List<Isl> alternativeIsls = (swT.retrieveAvailablePathsEp1() + swT.retrieveAvailablePathsEp2())
+                .collectMany { it.getInvolvedIsls() }.unique().collectMany { [it, it.reversed] }
         alternativeIsls.removeAll(yFlowIsls)
 
-        database.updateIslsMaxBandwidth(alternativeIsls, yFlow.maximumBandwidth - 1)
-        islHelper.setAvailableBandwidth(alternativeIsls, 0)
+        islHelper.setAvailableAndMaxBandwidth(alternativeIsls, 0, yFlow.maximumBandwidth - 1)
 
         when: "Break ISL on the main path (bring port down) to init auto swap"
         def islToBreak = initialPath.subFlowPaths.first().path.forward.getInvolvedIsls().last()
@@ -218,7 +216,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
     @Tags(LOW_PRIORITY)
     def "Unable to perform the 'swap' request for a flow without protected path"() {
         given: "A y-flow without protected path"
-        def swT = topologyHelper.switchTriplets[0]
+        def swT = switchTriplets.all().first()
         assumeTrue(swT != null, "No suiting switches found.")
 
         def yFlow = yFlowFactory.getRandom(swT)
@@ -246,7 +244,7 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
     @Tags([LOW_PRIORITY, ISL_RECOVER_ON_FAIL, ISL_PROPS_DB_RESET])
     def "Unable to swap paths for an inactive y-flow"() {
         given: "A y-flow with protected paths"
-        def swT = findSwitchTripletForYFlowWithProtectedPaths()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().findSwitchTripletForYFlowWithProtectedPaths()
         assumeTrue(swT != null, "No suiting switches found.")
 
         def yFlow = yFlowFactory.getBuilder(swT).withProtectedPath(true).build().create()
@@ -261,14 +259,12 @@ class YFlowPathSwapSpec extends HealthCheckSpecification {
         and: "Other ISLs have not enough bandwidth to host the flows in case of reroute"
         List<Isl> yFlowIsls = initialPath.subFlowPaths.collectMany { subFlow ->
             subFlow.getInvolvedIsls().collectMany {[it, it.reversed] }}.unique()
-        database.updateIslsMaxBandwidth(yFlowIsls, yFlow.maximumBandwidth)
-        islHelper.setAvailableBandwidth(yFlowIsls, 0)
+        islHelper.setAvailableAndMaxBandwidth(yFlowIsls, 0, yFlow.maximumBandwidth)
 
-        List<Isl> alternativeIsls = (swT.pathsEp1 + swT.pathsEp2).collectMany { pathHelper.getInvolvedIsls(it) }
-                .collectMany { [it, it.reversed] }.unique()
+        List<Isl> alternativeIsls = (swT.retrieveAvailablePathsEp1() + swT.retrieveAvailablePathsEp2())
+                .collectMany { it.getInvolvedIsls()}.unique().collectMany { [it, it.reversed] }
         alternativeIsls.removeAll(yFlowIsls)
-        database.updateIslsMaxBandwidth(alternativeIsls, yFlow.maximumBandwidth - 1)
-        islHelper.setAvailableBandwidth(alternativeIsls, 0)
+        islHelper.setAvailableAndMaxBandwidth(alternativeIsls, 0, yFlow.maximumBandwidth - 1)
 
         when: "Break ISL on the protected path (bring port down) to make it INACTIVE"
         def islToBreak = initialPath.subFlowPaths.first().path.forward.getInvolvedIsls().last()
@@ -327,20 +323,6 @@ is not in ACTIVE state, but in INACTIVE\\/INACTIVE \(forward\\/reverse\) state/)
             assert subFlowPath.path.forward == updatedPathAfterPortDown.subFlowPaths.find { it.flowId == subFlowPath.flowId }.path.forward
             assert subFlowPath.protectedPath.forward == updatedPathAfterPortDown.subFlowPaths.find { it.flowId == subFlowPath.flowId }.protectedPath.forward
             assert subFlowPath.getCommonIslsWithProtected().isEmpty()
-        }
-    }
-
-    SwitchTriplet findSwitchTripletForYFlowWithProtectedPaths() {
-        return topologyHelper.getAllNotNeighbouringSwitchTriplets().find {
-            def ep1paths = it.pathsEp1.findAll { path -> !path.any { node -> node.switchId == it.ep2.dpId } }
-                    .unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            def ep2paths = it.pathsEp2.findAll { path -> !path.any { node -> node.switchId == it.ep1.dpId } }
-                    .unique(false) { a, b -> a.intersect(b) == [] ? 1 : 0 }
-            def yPoints = topologyHelper.findPotentialYPoints(it)
-
-            yPoints.size() == 1 && yPoints[0] != it.shared && yPoints[0] != it.ep1 && yPoints[0] != it.ep2 &&
-                    [it.shared, it.ep1, it.ep2].every { it.traffGens } &&
-                    ep1paths.size() >= 2 && ep2paths.size() >= 2
         }
     }
 }

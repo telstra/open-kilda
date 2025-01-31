@@ -6,7 +6,7 @@ import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotModifiedExpectedError
 import org.openkilda.functionaltests.helpers.model.YFlowActionType
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowPathDirection
 import org.openkilda.northbound.dto.v1.flows.PingInput
@@ -29,7 +29,7 @@ class SubFlowSpec extends HealthCheckSpecification {
 
     def "Unable to #data.action a sub-flow"() {
         given: "Existing Y-Flow"
-        def swT = topologyHelper.switchTriplets[0]
+        def swT = switchTriplets.all().first()
         def yFlow = yFlowFactory.getRandom(swT)
 
         when: "Invoke a certain action for a sub-flow"
