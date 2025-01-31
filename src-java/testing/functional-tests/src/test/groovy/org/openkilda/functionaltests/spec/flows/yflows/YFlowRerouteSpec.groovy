@@ -16,8 +16,7 @@ import org.openkilda.functionaltests.error.yflow.YFlowRerouteExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.YFlowActionType
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
-import org.openkilda.functionaltests.model.stats.Direction
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.functionaltests.model.stats.FlowStats
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.yflows.YFlowRerouteResult
@@ -51,7 +50,7 @@ class YFlowRerouteSpec extends HealthCheckSpecification {
     def "Valid y-flow can be rerouted"() {
         given: "A qinq y-flow"
         def swT = switchTriplets.all().withAllDifferentEndpoints().withoutWBSwitch().getSwitchTriplets().find {
-            def yPoints = topologyHelper.findPotentialYPoints(it)
+            def yPoints = it.findPotentialYPoints()
              yPoints.size() == 1 && yPoints[0] != it.shared.dpId
         }
         assumeTrue(swT != null, "These cases cannot be covered on given topology:")

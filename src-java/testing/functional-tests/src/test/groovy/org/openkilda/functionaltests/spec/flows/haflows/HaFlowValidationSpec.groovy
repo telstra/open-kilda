@@ -2,12 +2,11 @@ package org.openkilda.functionaltests.spec.flows.haflows
 
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
-import static org.openkilda.functionaltests.helpers.model.SwitchRules.missingRuleCookieIds
 import static org.openkilda.testing.Constants.RULES_DELETION_TIME
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.functionaltests.helpers.model.SwitchMetersFactory
@@ -39,11 +38,11 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Validate HA-Flow"
-        def validationResult = haFlow.validate()
+        def validationResult = haFlow.validateAndCollectDiscrepancy()
 
         then: "HA-Flow is validated successfully"
         validationResult.asExpected
-        validationResult.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty() }
+        validationResult.subFlowsDiscrepancies.isEmpty()
     }
 
     def "HA-Flow validation should fail in case of missing rule on #switchRole switch"() {
@@ -59,11 +58,11 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
 
         then: "HA-Flow validation returns deleted rule in 'Discrepancies' section"
         Wrappers.wait(RULES_DELETION_TIME) {
-            def validationResponse = haFlow.validate()
-            assert !validationResponse.asExpected
-            def missingRules = validationResponse.getSubFlowValidationResults().collect { it.getDiscrepancies() }.flatten()
+            def discrepancies = haFlow.validateAndCollectDiscrepancy()
+            assert !discrepancies.asExpected
+            def missingRules = discrepancies.retrieveAllRulesCookieFromDiscrepancy()
             assert missingRules.size() == 1, "We deleted only one rule"
-            assert missingRules.get(0).getRule().contains(haFlowRuleToDelete.getCookie().toString())
+            assert missingRules.first() == haFlowRuleToDelete.getCookie()
         }
 
         where:
@@ -91,11 +90,10 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
 
         then: "HA-Flow validation returns rules related to deleted meter in 'Discrepancies' section"
         Wrappers.wait(RULES_DELETION_TIME) {
-            def validationResponse = haFlow.validate()
-            assert !validationResponse.asExpected
-            def missingMeters = validationResponse.getSubFlowValidationResults().collect { it.getDiscrepancies() }.flatten()
-            assert missingMeters.size() == expectedDeletedSwitchRules.size()
-            assert missingRuleCookieIds(missingMeters) == expectedDeletedSwitchRules.collect { it.getCookie() } as Set
+            def discrepancies = haFlow.validateAndCollectDiscrepancy()
+            assert !discrepancies.asExpected
+            def missingMeters = discrepancies.retrieveAllRulesCookieFromDiscrepancy()
+            assert missingMeters == expectedDeletedSwitchRules.collect { it.getCookie() } as Set
         }
 
         where:

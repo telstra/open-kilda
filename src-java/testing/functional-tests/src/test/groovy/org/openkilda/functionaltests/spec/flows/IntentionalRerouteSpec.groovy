@@ -46,7 +46,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
                 .build().create()
 
         def initialFlowPath = flow.retrieveAllEntityPaths()
-        def initialFlowIsls = initialFlowPath.flowPath.getInvolvedIsls()
+        def initialFlowIsls = initialFlowPath.getInvolvedIsls()
 
         when: "Make the current path less preferable than alternatives"
         def alternativePathsIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
@@ -68,7 +68,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
         !rerouteResponse.rerouted
         rerouteResponse.path.nodes == initialFlowPath.flowPath.path.forward.nodes.toPathNodeV2()
-        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialFlowIsls
+        flow.retrieveAllEntityPaths().getInvolvedIsls() == initialFlowIsls
     }
 
     @Tags(ISL_PROPS_DB_RESET)
@@ -80,7 +80,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
                 .withEncapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
                 .build().create()
         def initialPathEntities = flow.retrieveAllEntityPaths()
-        def initialFlowIsls = initialPathEntities.flowPath.getInvolvedIsls()
+        def initialFlowIsls = initialPathEntities.getInvolvedIsls()
 
         when: "Make one of the alternative paths to be the most preferable among all others"
         List<List<Isl>> availablePathsIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
@@ -102,7 +102,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
 
         then: "The flow is successfully rerouted and goes through the preferable path"
         def newPathEntities = flow.retrieveAllEntityPaths()
-        def flowNewPathIsls = newPathEntities.flowPath.getInvolvedIsls()
+        def flowNewPathIsls = newPathEntities.getInvolvedIsls()
 
         rerouteResponse.rerouted
         rerouteResponse.path.nodes == newPathEntities.flowPath.path.forward.nodes.toPathNodeV2()
@@ -139,7 +139,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
                 .withBandwidth(0)
                 .withIgnoreBandwidth(true)
         def flow = flowEntity.build().create()
-        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == longestPathIsls
+        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == longestPathIsls
         //now make another long path more preferable, for reroute to rebuild the rules on other switches in the future
         islHelper.updateIslsCost((changedIsls + changedIsls*.reversed) as List<Isl>, DEFAULT_COST)
 
@@ -187,7 +187,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
                 .build().create()
 
         def initialFlowPath = flow.retrieveAllEntityPaths()
-        def initialFlowIsls = initialFlowPath.flowPath.getInvolvedIsls()
+        def initialFlowIsls = initialFlowPath.getInvolvedIsls()
 
         when: "Make the current path less preferable than alternatives"
         def alternativePathsIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
@@ -211,7 +211,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
 
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
 
-        def newFlowIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def newFlowIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
         newFlowIsls != initialFlowIsls
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
 
@@ -238,7 +238,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
                 .withIgnoreBandwidth(true)
                 .withEncapsulationType(FlowEncapsulationType.VXLAN)
                 .build().create()
-        def initialFlowIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def initialFlowIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
         def potentialNewPath = availablePathsIsls.findAll { it != initialFlowIsls }.first()
         availablePathsIsls.findAll { it != potentialNewPath }.each { islHelper.makePathIslsMorePreferable(potentialNewPath, it) }
 
@@ -279,7 +279,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
                 .withBandwidth(10000)
                 .build().create()
         def initialFlowPath = flow.retrieveAllEntityPaths()
-        def initialFlowIsls = initialFlowPath.flowPath.getInvolvedIsls()
+        def initialFlowIsls = initialFlowPath.getInvolvedIsls()
 
         when: "Make the current path less preferable than alternatives"
         def alternativePaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
@@ -305,7 +305,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
         rerouteResponse.path.path == initialFlowPath.flowPath.path.forward.nodes.toPathNode()
         int seqId = 0
         rerouteResponse.path.path.each { assert it.seqId == seqId++ }
-        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialFlowIsls
+        flow.retrieveAllEntityPaths().getInvolvedIsls() == initialFlowIsls
     }
 
     @Tags([LOW_PRIORITY, ISL_PROPS_DB_RESET])
@@ -316,7 +316,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
                 .withBandwidth(10000)
                 .build().create()
         def initialFlowPath = flow.retrieveAllEntityPaths()
-        def initialFlowIsls = initialFlowPath.flowPath.getInvolvedIsls()
+        def initialFlowIsls = initialFlowPath.getInvolvedIsls()
 
         when: "Make one of the alternative paths to be the most preferable among all others"
         def availablePathsIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
@@ -337,7 +337,7 @@ class IntentionalRerouteSpec extends HealthCheckSpecification {
 
         then: "The flow is successfully rerouted and goes through the preferable path"
         def newFlowPath = flow.retrieveAllEntityPaths()
-        def newFlowIsls = newFlowPath.flowPath.getInvolvedIsls()
+        def newFlowIsls = newFlowPath.getInvolvedIsls()
         int seqId = 0
 
         rerouteResponse.rerouted

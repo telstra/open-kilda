@@ -61,7 +61,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         def initialPath = flow.retrieveAllEntityPaths()
 
         when: "Fail a flow ISL (bring switch port down)"
-        def flowIsls = initialPath.flowPath.getInvolvedIsls()
+        def flowIsls = initialPath.getInvolvedIsls()
         List<Isl> altFlowIsls = availablePaths.findAll { !it.containsAll(flowIsls) }.flatten().unique() as List<Isl>
         def islToFail = flowIsls.find { !(it in altFlowIsls) && !(it.reversed in altFlowIsls) }
         islHelper.breakIsl(islToFail)
@@ -87,7 +87,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
                 .withStrictBandwidth(true).build()
                 .create()
         def initialPath = flow.retrieveAllEntityPaths()
-        def flowIsls = initialPath.flowPath.getInvolvedIsls(Direction.FORWARD) + initialPath.flowPath.getInvolvedIsls(Direction.REVERSE)
+        def flowIsls = initialPath.getInvolvedIsls(Direction.FORWARD) + initialPath.getInvolvedIsls(Direction.REVERSE)
 
         and: "Alt path ISLs have not enough bandwidth to host the flow"
         def altIsls = topology.getRelatedIsls(switchPair.src) + topology.getRelatedIsls(switchPair.dst)
@@ -209,7 +209,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
                 .create()
 
         def initialPath = flow.retrieveAllEntityPaths()
-        def initialFlowIsls = initialPath.flowPath.getInvolvedIsls()
+        def initialFlowIsls = initialPath.getInvolvedIsls()
 
         List<List<Isl>> altFlowIsls = availablePaths.findAll { !it.containsAll(initialFlowIsls) }
         List<Isl> broughtDownIsls = altFlowIsls.collectMany { isls ->
@@ -281,7 +281,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
             }
         }
         when: "Bring all ports up on the source switch that are involved in the alternative paths"
-        islHelper.restoreIsls(broughtDownIsls.findAll {it.srcPort != initialPath.flowPath.getInvolvedIsls().first().srcPort})
+        islHelper.restoreIsls(broughtDownIsls.findAll {it.srcPort != initialPath.getInvolvedIsls().first().srcPort})
 
         then: "The flow goes to 'Up' status"
         and: "The flow was rerouted"
@@ -300,7 +300,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         def flow = flowFactory.getRandom(switchPair)
         def initialPath = flow.retrieveAllEntityPaths()
-        def initialFlowIsls = initialPath.flowPath.getInvolvedIsls()
+        def initialFlowIsls = initialPath.getInvolvedIsls()
 
         and: "Make the current flow path less preferable than others"
         allFlowPaths.findAll { it != initialFlowIsls }.each { islHelper.makePathIslsMorePreferable(it, initialFlowIsls) }
@@ -328,7 +328,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         def flow = flowFactory.getRandom(switchPair)
         def initialPath = flow.retrieveAllEntityPaths()
-        def initialFlowIsls = initialPath.flowPath.getInvolvedIsls()
+        def initialFlowIsls = initialPath.getInvolvedIsls()
 
         and: "Make the current flow path less preferable than others"
         allFlowPathsIsls.findAll { it != initialFlowIsls }.each { islHelper.makePathIslsMorePreferable(it, initialFlowIsls) }
@@ -364,7 +364,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         def flow = flowFactory.getRandom(switchPair)
         def initialPath = flow.retrieveAllEntityPaths()
-        def flowIsls = initialPath.flowPath.getInvolvedIsls()
+        def flowIsls = initialPath.getInvolvedIsls()
 
         and: "Make the current flow path less preferable than others"
         allFlowPathsIsls.findAll { it != flowIsls }.each { islHelper.makePathIslsMorePreferable(it, flowIsls) }
@@ -426,7 +426,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
 
         def flow = flowFactory.getRandom(switchPair)
         def initialPath = flow.retrieveAllEntityPaths()
-        assert initialPath.flowPath.getInvolvedIsls() == expectedFlowIsls
+        assert initialPath.getInvolvedIsls() == expectedFlowIsls
 
         //All alternative paths for both flows are unavailable
         def untouchableIsls = expectedFlowIsls.collectMany { [it, it.reversed] }
@@ -435,7 +435,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
                 .unique { [it, it.reversed].sort() }
         islHelper.breakIsls(islsToBreak)
         //move the flow to DOWN status
-        def flowIslToBreak = initialPath.flowPath.getInvolvedIsls().first()
+        def flowIslToBreak = initialPath.getInvolvedIsls().first()
         islHelper.breakIsl(flowIslToBreak)
 
         when: "Generate switchUp event on switch which is not related to the flow"
@@ -487,7 +487,7 @@ class AutoRerouteSpec extends HealthCheckSpecification {
         and: "A flow over these switches that uses one of the desired paths that have common ISL"
         availablePathsIsls.findAll { it != mainIsls }.each { islHelper.makePathIslsMorePreferable(mainIsls, it) }
         def flow = flowFactory.getRandom(swPair)
-        assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == mainIsls
+        assert flow.retrieveAllEntityPaths().getInvolvedIsls() == mainIsls
 
         and: "A potential 'backup' path that shares common isl has the preferred cost (will be preferred during reroute)"
         northbound.deleteLinkProps(northbound.getLinkProps(topology.isls))
@@ -522,18 +522,14 @@ triggering one more reroute of the current path"
         }
 
         and: "New flow path avoids both main and backup paths as well as broken ISLs"
-        def actualIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def actualIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
         [commonIsl, commonIsl.reversed, mainPathUniqueIsl, mainPathUniqueIsl.reversed].each {
             assert !actualIsls.contains(it)
         }
 
         and: "Flow is pingable"
         retry(3, 0) { //Was unstable on Jenkins builds. Fresh env problem?
-            with(flow.ping()) {
-                it.forward.pingSuccess
-                it.reverse.pingSuccess
-            }
-            true
+            flow.pingAndCollectDiscrepancies().isEmpty()
         }
     }
 
@@ -599,7 +595,7 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
         and: "First flow without transit switches"
         def firstFlow = flowFactory.getRandom(switchPair1)
         def initialFirstFlowPath = firstFlow.retrieveAllEntityPaths()
-        assert initialFirstFlowPath.flowPath.getInvolvedIsls() == firstFlowMainPath.getInvolvedIsls()
+        assert initialFirstFlowPath.getInvolvedIsls() == firstFlowMainPath.getInvolvedIsls()
 
         and: "Second flow with transit switch"
         def secondFlow = flowFactory.getRandom(switchPair2)
@@ -607,7 +603,7 @@ class AutoRerouteIsolatedSpec extends HealthCheckSpecification {
         def initialSecondFlowPath = secondFlow.retrieveAllEntityPaths()
 
         when: "Disconnect the src switch of the first flow from the controller"
-        def islToBreak = initialFirstFlowPath.flowPath.getInvolvedIsls().first()
+        def islToBreak = initialFirstFlowPath.getInvolvedIsls().first()
         def blockData = switchHelper.knockoutSwitch(switchPair1.src, RW)
 
         and: "Mark the switch as ACTIVE in db" // just to reproduce #3131
@@ -696,7 +692,7 @@ Failed to find path with requested bandwidth= ignored"
         def initialPath = flow.retrieveAllEntityPaths()
 
         and: "Alt path ISLs have not enough bandwidth to host the flow"
-        def initialFlowIsls = initialPath.flowPath.getInvolvedIsls()
+        def initialFlowIsls = initialPath.getInvolvedIsls()
         def altIsls = topology.getRelatedIsls(topologyHelper.getSwitch(flow.getSource().getSwitchId())) - initialFlowIsls
         List<SwitchPortVlan> busyEndpoints = flow.occupiedEndpoints()
         altIsls.each {isl ->

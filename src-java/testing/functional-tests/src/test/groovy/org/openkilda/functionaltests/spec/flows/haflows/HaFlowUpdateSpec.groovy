@@ -9,7 +9,7 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.haflow.HaFlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.haflows.HaFlowPatchEndpoint

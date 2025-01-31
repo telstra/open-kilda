@@ -9,7 +9,7 @@ import static org.openkilda.testing.service.floodlight.model.FloodlightConnectMo
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.HistoryMaxCountExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
 import org.openkilda.messaging.info.event.IslChangeType

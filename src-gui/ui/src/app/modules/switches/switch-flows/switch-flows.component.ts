@@ -8,6 +8,7 @@ import { MessageObj } from 'src/app/common/constants/constants';
 import { FlowsService } from 'src/app/common/services/flows.service';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ToastrService } from 'ngx-toastr';
+import {ClipboardService} from "ngx-clipboard";
 declare var jQuery: any;
 
 @Component({
@@ -46,6 +47,8 @@ export class SwitchFlowsComponent implements OnDestroy, OnInit, OnChanges, After
   expandedState = false;
   expandedStatus = false;
   expandedDescription = false;
+  clipBoardItems = [];
+
   constructor(
               private renderer: Renderer2,
               private loaderService: LoaderService,
@@ -53,6 +56,7 @@ export class SwitchFlowsComponent implements OnDestroy, OnInit, OnChanges, After
               private route: ActivatedRoute,
               private flowService: FlowsService,
               private toaster: ToastrService,
+              private clipboardService: ClipboardService,
               private modalService: NgbModal
               ) { }
 
@@ -90,17 +94,17 @@ export class SwitchFlowsComponent implements OnDestroy, OnInit, OnChanges, After
       },
       'aoColumns': [
         { sWidth: '5%' , 'bSortable': false},
-        { sWidth: '10%' },
-        { sWidth:  '13%', 'sType': 'name', 'bSortable': true },
+        { sWidth: '14%' },
+        { sWidth:  '14%', 'sType': 'name', 'bSortable': true },
         { sWidth: '8%' },
         { sWidth: '8%' },
         { sWidth: '9%' },
-        { sWidth: '13%', 'sType': 'name', 'bSortable': true },
+        { sWidth: '14%', 'sType': 'name', 'bSortable': true },
         { sWidth: '8%' },
         { sWidth: '8%' },
         { sWidth: '9%' },
-        { sWidth: '10%' },
-        { sWidth: '10%' },
+        { sWidth: '8%' },
+        { sWidth: '8%' },
         { sWidth: '10%' },
         { sWidth: '1%' , 'bSortable': false},
        ],
@@ -190,6 +194,7 @@ export class SwitchFlowsComponent implements OnDestroy, OnInit, OnChanges, After
           this.data.forEach(function(d) {
             ref.switchFlow[d.flowid] = false;
           });
+          this.clipBoardItems = this.data;
         }
       }
     }
@@ -369,6 +374,11 @@ refreshList() {
       });
     });
 
+  }
+
+  copyToClip(event, copyItem, index) {
+    copyItem = this.clipBoardItems[index][copyItem];
+    this.clipboardService.copyFromContent(copyItem);
   }
 
 }

@@ -23,7 +23,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.openkilda.messaging.command.BaseRerouteRequest;
 import org.openkilda.messaging.command.flow.FlowRequest;
+import org.openkilda.messaging.command.flow.FlowRerouteRequest;
+import org.openkilda.messaging.command.yflow.YFlowRerouteRequest;
 import org.openkilda.messaging.error.InvalidFlowException;
 import org.openkilda.messaging.info.InfoData;
 import org.openkilda.messaging.model.FlowPatch;
@@ -39,12 +42,15 @@ import org.openkilda.model.PathSegment;
 import org.openkilda.model.Switch;
 import org.openkilda.model.SwitchId;
 import org.openkilda.model.SwitchStatus;
+import org.openkilda.model.YFlow;
+import org.openkilda.model.YFlow.SharedEndpoint;
 import org.openkilda.model.cookie.FlowSegmentCookie;
 import org.openkilda.persistence.inmemory.InMemoryGraphBasedTest;
 import org.openkilda.persistence.repositories.FlowPathRepository;
 import org.openkilda.persistence.repositories.FlowRepository;
 import org.openkilda.persistence.repositories.PathSegmentRepository;
 import org.openkilda.persistence.repositories.SwitchRepository;
+import org.openkilda.persistence.repositories.YFlowRepository;
 import org.openkilda.wfm.error.FlowNotFoundException;
 import org.openkilda.wfm.error.SwitchNotFoundException;
 import org.openkilda.wfm.share.flow.TestFlowBuilder;
@@ -71,6 +77,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     private static final String FLOW_ID_1 = "flow_1";
     private static final String FLOW_ID_2 = "flow_2";
     private static final String FLOW_ID_3 = "flow_3";
+    private static final String Y_FLOW_ID_1 = "y_flow_1";
     private static final PathId FORWARD_PATH_1 = new PathId("forward_path_1");
     private static final PathId FORWARD_PATH_2 = new PathId("forward_path_2");
     private static final PathId FORWARD_PATH_3 = new PathId("forward_path_3");
@@ -91,6 +98,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
 
     private static FlowOperationsService flowOperationsService;
     private static FlowRepository flowRepository;
+    private static YFlowRepository yFlowRepository;
     private static FlowPathRepository flowPathRepository;
     private static PathSegmentRepository pathSegmentRepository;
     private static SwitchRepository switchRepository;
@@ -103,6 +111,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     @BeforeAll
     public static void setUpOnce() {
         flowRepository = persistenceManager.getRepositoryFactory().createFlowRepository();
+        yFlowRepository = persistenceManager.getRepositoryFactory().createYFlowRepository();
         flowPathRepository = persistenceManager.getRepositoryFactory().createFlowPathRepository();
         pathSegmentRepository = persistenceManager.getRepositoryFactory().createPathSegmentRepository();
         switchRepository = persistenceManager.getRepositoryFactory().createSwitchRepository();
@@ -789,7 +798,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    void whenPartialUpdate_dumpBeforeAndDumpAfterIsSaved() throws FlowNotFoundException, InvalidFlowException {
+    public void whenPartialUpdate_dumpBeforeAndDumpAfterIsSaved() throws FlowNotFoundException, InvalidFlowException {
         Flow createdFlow = createFlow(FLOW_ID_1, switchA, 1, switchC, 2,
                 FORWARD_PATH_1, REVERSE_PATH_1, switchB, false,
                 100_500L, 0L);
@@ -815,7 +824,7 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
     }
 
     @Test
-    void whenFullUpdateIsRequired_historyActionIsSaved() throws FlowNotFoundException, InvalidFlowException {
+    public void whenFullUpdateIsRequired_historyActionIsSaved() throws FlowNotFoundException, InvalidFlowException {
         Flow createdFlow = createFlow(FLOW_ID_1, switchA, 1, switchC, 2,
                 FORWARD_PATH_1, REVERSE_PATH_1, switchB, false,
                 100_500L, 0L);
@@ -837,6 +846,91 @@ public class FlowOperationsServiceTest extends InMemoryGraphBasedTest {
 
         String action = "Full update is required. Executing the UPDATE operation.";
         assertEquals(action, carrier.getHistoryHolderList().get(2).getFlowHistoryData().getAction());
+    }
+
+    @Test
+    public void makeRerouteRequests() {
+        YFlow yFlow = buildYFlow(Y_FLOW_ID_1, switchA, 1, switchD);
+        yFlowRepository.add(yFlow);
+
+        Flow ySubflow1 = buildFlow(null, Y_FLOW_ID_1, switchA, 1, 10,
+                switchB, 2, 11, "subFlow1", yFlow);
+        FlowPath yFlowForwardPath1 = FlowPath.builder()
+                .pathId(new PathId("subPath1"))
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .flow(ySubflow1)
+                .build();
+
+        Flow ySubflow2 = buildFlow(null, Y_FLOW_ID_1, switchA, 1, 20,
+                switchC, 2, 22, "subFlow2", yFlow);
+        FlowPath yFlowForwardPath2 = FlowPath.builder()
+                .pathId(new PathId("subPath2"))
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .flow(ySubflow2)
+                .build();
+
+        Flow flow1 = buildFlow(FLOW_ID_1, null, switchA, 1, 100, switchB,
+                2, 111, "regularFlow", null);
+        FlowPath flowPath1 = FlowPath.builder()
+                .pathId(new PathId("path1"))
+                .srcSwitch(switchA)
+                .destSwitch(switchB)
+                .flow(flow1)
+                .build();
+
+        List<FlowPath> flowPaths = Arrays.asList(yFlowForwardPath1, flowPath1, yFlowForwardPath2);
+
+        // 3 flow path: 1 for regular flow and 2 for y-flow
+        List<BaseRerouteRequest> actualResult =
+                flowOperationsService.makeRerouteRequests(flowPaths, new HashSet<>(), "Great reason to reroute");
+
+        Assertions.assertEquals(2, actualResult.size());
+        Assertions.assertInstanceOf(YFlowRerouteRequest.class, actualResult.get(0));
+        Assertions.assertEquals(Y_FLOW_ID_1, actualResult.get(0).getFlowId());
+        Assertions.assertInstanceOf(FlowRerouteRequest.class, actualResult.get(1));
+        Assertions.assertEquals(FLOW_ID_1, actualResult.get(1).getFlowId());
+
+        // y-flow does not exist in the repository
+        transactionManager.doInTransaction(() -> yFlowRepository.remove(yFlow));
+        actualResult = flowOperationsService.makeRerouteRequests(flowPaths, new HashSet<>(), "Great reason to reroute");
+        Assertions.assertEquals(1, actualResult.size());
+        Assertions.assertInstanceOf(FlowRerouteRequest.class, actualResult.get(0));
+        Assertions.assertEquals(FLOW_ID_1, actualResult.get(0).getFlowId());
+    }
+
+    private YFlow buildYFlow(String yFlowId, Switch sharedEndpoint, int portNumber, Switch yPoint) {
+        return YFlow.builder()
+                .yFlowId(yFlowId)
+                .sharedEndpoint(new SharedEndpoint(sharedEndpoint.getSwitchId(), portNumber))
+                .yPoint(yPoint.getSwitchId())
+                .status(FlowStatus.UP)
+                .build();
+    }
+
+    private Flow buildFlow(String flowId, String yflowId, Switch srcSwitch, int srcPort, int srcVlan, Switch destSwitch,
+                           int destPort, int destVlan, String desc, YFlow yflow) {
+        TestFlowBuilder builder = new TestFlowBuilder()
+                .yFlow(yflow)
+                .srcSwitch(srcSwitch)
+                .srcPort(srcPort)
+                .srcVlan(srcVlan)
+                .destSwitch(destSwitch)
+                .destPort(destPort)
+                .destVlan(destVlan)
+                .encapsulationType(FlowEncapsulationType.TRANSIT_VLAN)
+                .pathComputationStrategy(PathComputationStrategy.COST)
+                .description(desc)
+                .status(FlowStatus.UP);
+
+        if (flowId != null) {
+            builder.flowId(flowId);
+        }
+        if (yflowId != null) {
+            builder.yFlowId(yflowId);
+        }
+        return builder.build();
     }
 
     private void assertFlows(Collection<Flow> actualFlows, String... expectedFlowIds) {

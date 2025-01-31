@@ -84,26 +84,6 @@ class TopologyHelper {
         }
     }
 
-    @Memoized
-    List<SwitchId> findPotentialYPoints(SwitchTriplet swT) {
-        def sortedEp1Paths = swT.pathsEp1.sort { it.size() }
-        def potentialEp1Paths = sortedEp1Paths.takeWhile { it.size() == sortedEp1Paths[0].size() }
-        def potentialEp2Paths = potentialEp1Paths.collect { potentialEp1Path ->
-            def sortedEp2Paths = swT.pathsEp2.sort {
-                it.size() - it.intersect(potentialEp1Path).size()
-            }
-            [path1: potentialEp1Path,
-             potentialPaths2: sortedEp2Paths.takeWhile {it.size() == sortedEp2Paths[0].size() }]
-        }
-        return potentialEp2Paths.collectMany {path1WithPath2 ->
-            path1WithPath2.potentialPaths2.collect { List<PathNode> potentialPath2 ->
-                def switches = path1WithPath2.path1.switchId
-                        .intersect(potentialPath2.switchId)
-                switches ? switches[-1] : null
-            }
-        }.findAll().unique()
-    }
-
     List<List<PathNode>> getDbPathsNodes(SwitchId src, SwitchId dst) {
         database.getPaths(src, dst)*.path
     }

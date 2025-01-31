@@ -8,7 +8,7 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.messaging.payload.flow.FlowPathPayload
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload
@@ -34,7 +34,6 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         given: "Switches with three not overlapping paths at least"
         def swT = switchTriplets.all(false, false).withAllDifferentEndpoints()
                 .withAtLeastNNonOverlappingPaths(4).random()
-        println("[" + swT.shared.dpId + "] " + swT.ep1.dpId + "---" + swT.ep2.dpId )
         assumeTrue(swT != null, "Unable to find suitable switches")
 
         when: "Create three Y-Flows with diversity enabled"
@@ -98,7 +97,7 @@ class YFlowDiversitySpec extends HealthCheckSpecification {
         def flow = flowFactory.getRandom(swT.shared, swT.ep1, false)
         def subFlowId = yFlow.subFlows.first().flowId
         def involvedIslSubFlow = yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == subFlowId }.getInvolvedIsls()
-        def involvedIslSimpleFlow = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def involvedIslSimpleFlow = flow.retrieveAllEntityPaths().getInvolvedIsls()
         assert involvedIslSubFlow == involvedIslSimpleFlow
 
         when: "Update Y-Flow to become diverse with simple multiSwitch flow"

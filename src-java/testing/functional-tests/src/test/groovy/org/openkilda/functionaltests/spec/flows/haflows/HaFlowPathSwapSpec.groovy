@@ -13,7 +13,7 @@ import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.haflow.HaFlowPathNotSwappedExpectedError
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.model.stats.HaFlowStats
 import org.openkilda.messaging.payload.flow.FlowState

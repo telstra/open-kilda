@@ -1,5 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
+import org.openkilda.functionaltests.helpers.model.FlowRuleEntity
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedWithConflictExpectedError
@@ -433,8 +434,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         then: "The flow is built through one of the long paths"
         def fullFlowPath = flow.retrieveAllEntityPaths()
-        def forwardIsls = fullFlowPath.flowPath.getInvolvedIsls(Direction.FORWARD)
-        def reverseIsls = fullFlowPath.flowPath.getInvolvedIsls(Direction.REVERSE)
+        def forwardIsls = fullFlowPath.getInvolvedIsls(Direction.FORWARD)
+        def reverseIsls = fullFlowPath.getInvolvedIsls(Direction.REVERSE)
         assert forwardIsls.intersect(modifiedIsls).isEmpty()
         assert forwardIsls.size() > shortestIslCountPath
 
@@ -716,8 +717,8 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
 
         and: "Rules for main and protected paths are created"
         wait(WAIT_OFFSET) {
-            HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
-                    .collectEntries { [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
+            HashMap<SwitchId, List<FlowRuleEntity>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
+                    .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowRuleEntity>>
             flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
         }
 
@@ -901,10 +902,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow is valid and pingable"
         updatedFlow.validateAndCollectDiscrepancies().isEmpty()
-        with(updatedFlow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        updatedFlow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The src switch passes switch validation"
         !switchHelper.synchronizeAndCollectFixedDiscrepancies(srcSwitch.getDpId()).isPresent()
@@ -944,10 +942,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow is valid and pingable"
         updatedFlow.validateAndCollectDiscrepancies().isEmpty()
-        with(updatedFlow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        updatedFlow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The new and old dst switches pass switch validation"
         wait(RULES_DELETION_TIME) {
@@ -964,7 +959,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def flow = flowFactory.getRandom(switchPair)
 
         when: "Make the current path less preferable than alternatives"
-        def initialFlowIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def initialFlowIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
         switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { !it.containsAll(initialFlowIsls) }
                 .each { islHelper.makePathIslsMorePreferable(it, initialFlowIsls) }
 
@@ -977,7 +972,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         def newFlowPath
         wait(rerouteDelay + WAIT_OFFSET) {
             newFlowPath = flow.retrieveAllEntityPaths()
-            assert newFlowPath.flowPath.getInvolvedIsls() != initialFlowIsls
+            assert newFlowPath.getInvolvedIsls() != initialFlowIsls
         }
 
         and: "Flow is updated"
@@ -997,7 +992,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         when: "Make the current path less preferable than alternatives"
         def initialFlowPath = flow.retrieveAllEntityPaths()
-        def initialFlowIsls = initialFlowPath.flowPath.getInvolvedIsls()
+        def initialFlowIsls = initialFlowPath.getInvolvedIsls()
         switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { !it.containsAll(initialFlowIsls) }
                 .each { islHelper.makePathIslsMorePreferable(it, initialFlowIsls) }
 
@@ -1011,7 +1006,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay) {
-            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialFlowIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialFlowIsls
         }
 
         when: "Update the flow: vlanId on the dst endpoint"
@@ -1024,7 +1019,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay) {
-            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialFlowIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialFlowIsls
         }
 
         when: "Update the flow: port number and vlanId on the src/dst endpoints"
@@ -1042,7 +1037,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow path is not rebuild"
         timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
-            assert updatedFlow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialFlowIsls
+            assert updatedFlow.retrieveAllEntityPaths().getInvolvedIsls() == initialFlowIsls
         }
 
         and: "Flow is valid"
@@ -1092,10 +1087,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
 
         and: "Flow is valid and pingable"
         updatedFlow.validateAndCollectDiscrepancies().isEmpty()
-        with(updatedFlow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        updatedFlow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "Involved switches pass switch validation"
         def involvedSwitches = updatedFlow.retrieveAllEntityPaths().getInvolvedSwitches()

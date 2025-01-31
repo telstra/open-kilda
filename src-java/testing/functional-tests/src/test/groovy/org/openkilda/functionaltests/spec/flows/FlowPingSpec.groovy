@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.LOW_PRIORITY
 import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE
@@ -9,7 +9,6 @@ import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_R
 import static org.openkilda.testing.Constants.DefaultRule.VERIFICATION_UNICAST_VXLAN_RULE_COOKIE
 import static org.openkilda.testing.Constants.STATS_LOGGING_TIMEOUT
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotCreatedExpectedError
@@ -17,6 +16,7 @@ import org.openkilda.functionaltests.extension.tags.IterationTag
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
+import org.openkilda.functionaltests.helpers.model.FlowDirection
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.Path
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
@@ -174,9 +174,7 @@ class FlowPingSpec extends HealthCheckSpecification {
 
         //build a flow
         def flow = flowFactory.getRandom(swPair)
-
-        expectedPingResult.flowId = flow.flowId
-        assert aswitchPathIsls == flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        assert aswitchPathIsls == flow.retrieveAllEntityPaths().getInvolvedIsls()
 
         when: "Break the flow by removing rules from a-switch"
         def islToBreak = aswitchPathIsls.find { it.aswitch }
@@ -186,57 +184,54 @@ class FlowPingSpec extends HealthCheckSpecification {
         aSwitchFlows.removeFlows(rulesToRemove)
 
         and: "Ping the flow"
-        def response = flow.ping(data.pingInput)
+        def discrepancies = flow.pingAndCollectDiscrepancies(data.pingInput)
 
         then: "Ping response properly shows that certain direction is unpingable"
-        expect response, sameBeanAs(expectedPingResult)
-                .ignoring("forward.latency").ignoring("reverse.latency")
+        discrepancies == data.expectedDiscrepancy
 
         where:
         data << [
                 [
                         breakForward: true,
                         breakReverse: false,
-                        pingInput   : new PingInput()
+                        pingInput   : new PingInput(),
+                        expectedDiscrepancy: [(FlowDirection.FORWARD): "No ping for reasonable time"]
                 ],
                 [
                         breakForward: false,
                         breakReverse: true,
-                        pingInput   : new PingInput()
+                        pingInput   : new PingInput(),
+                        expectedDiscrepancy: [(FlowDirection.REVERSE): "No ping for reasonable time"]
                 ],
                 [
                         breakForward: true,
                         breakReverse: true,
-                        pingInput   : new PingInput()
+                        pingInput   : new PingInput(),
+                        expectedDiscrepancy: [(FlowDirection.FORWARD): "No ping for reasonable time",
+                                              (FlowDirection.REVERSE): "No ping for reasonable time"]
                 ],
                 [
                         breakForward: true,
                         breakReverse: false,
-                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
+                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000),
+                        expectedDiscrepancy: [(FlowDirection.FORWARD): "No ping for reasonable time"]
                 ],
                 [
                         breakForward: false,
                         breakReverse: true,
-                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
+                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000),
+                        expectedDiscrepancy: [(FlowDirection.REVERSE): "No ping for reasonable time"]
                 ],
                 [
                         breakForward: true,
                         breakReverse: true,
-                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000)
+                        pingInput   : new PingInput((getDiscoveryInterval() + 1) * 1000),
+                        expectedDiscrepancy: [(FlowDirection.FORWARD): "No ping for reasonable time",
+                                              (FlowDirection.REVERSE): "No ping for reasonable time"]
                 ]
         ]
         description = "${data.breakForward ? "forward" : ""}${data.breakForward && data.breakReverse ? " and " : ""}" +
                 "${data.breakReverse ? "reverse" : ""} path with ${data.pingInput.timeoutMillis}ms timeout"
-
-        expectedPingResult = new PingOutputBuilder().forward(
-                new UniFlowPingOutput(
-                        pingSuccess: !data.breakForward,
-                        error: data.breakForward ? "No ping for reasonable time" : null)).reverse(
-                new UniFlowPingOutput(
-                        pingSuccess: !data.breakReverse,
-                        error: data.breakReverse ? "No ping for reasonable time" : null))
-                .error(null)
-                .build()
     }
 
     def "Unable to ping a single-switch flow"() {
@@ -276,11 +271,7 @@ class FlowPingSpec extends HealthCheckSpecification {
         def flow = flowFactory.getBuilder(switchPair)
                 .withEncapsulationType(FlowEncapsulationType.VXLAN).build()
                 .create()
-        //make sure that flow is pingable
-        with(flow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+       assert flow.pingAndCollectDiscrepancies().isEmpty()
 
         when: "Break the flow by removing flow rules from the intermediate switch"
         def intermediateSwId = flow.retrieveAllEntityPaths().getInvolvedSwitches()[1]
@@ -291,18 +282,14 @@ class FlowPingSpec extends HealthCheckSpecification {
             switchHelper.deleteSwitchRules(intermediateSwId, cookie)
         }
 
-        and: "Ping the flow"
-        def response = flow.ping()
-
         then: "Ping shows that path is broken"
-        !response.forward.pingSuccess
-        !response.reverse.pingSuccess
+        assert flow.pingAndCollectDiscrepancies().keySet() == [FlowDirection.FORWARD, FlowDirection.REVERSE].toSet()
     }
 
     def "Able to turn on periodic pings on a flow"() {
         when: "Create a flow with periodic pings turned on"
         def endpointSwitches = switchPairs.all().nonNeighbouring().random()
-        def flow = flowFactory.getBuilder(endpointSwitches).withPeriodicPing(true).build()
+        flowFactory.getBuilder(endpointSwitches).withPeriodicPing(true).build()
                 .create()
 
         then: "Packet counter on catch ping rules grows due to pings happening"
@@ -321,7 +308,7 @@ class FlowPingSpec extends HealthCheckSpecification {
     def "Unable to create a single-switch flow with periodic pings"() {
         when: "Try to create a single-switch flow with periodic pings"
         def singleSwitch = topology.activeSwitches.first()
-        def flow = flowFactory.getBuilder(singleSwitch, singleSwitch)
+        flowFactory.getBuilder(singleSwitch, singleSwitch)
                 .withPeriodicPing(true).build()
                 .create()
 

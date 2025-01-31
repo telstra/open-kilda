@@ -86,14 +86,14 @@ export class SwitchDatatableComponent implements OnInit, OnChanges, OnDestroy, A
                 }
             },
             'aoColumns': [
-                {sWidth: '10%'},
+                {sWidth: '16%'},
                 {sWidth: '10%', 'sType': 'name', 'bSortable': true},
                 {sWidth: '10%'},
                 {sWidth: '10%'},
+                {sWidth: '10%'}, // no
                 {sWidth: '10%'},
                 {sWidth: '10%'},
-                {sWidth: '15%'},
-                {sWidth: '25%'},
+                {sWidth: '20%'},
                 {sWidth: '10%'}
             ],
             language: {

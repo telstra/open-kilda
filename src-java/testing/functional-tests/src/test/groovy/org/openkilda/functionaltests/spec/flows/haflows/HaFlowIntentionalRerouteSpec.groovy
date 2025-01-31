@@ -5,15 +5,17 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.TRANSIT_VLAN
+import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.IslHelper
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.FlowWithSubFlowsEntityPath
 import org.openkilda.functionaltests.helpers.model.SwitchTriplet
+import org.openkilda.messaging.info.event.IslInfoData
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.northbound.dto.v2.flows.FlowPathV2.PathNodeV2
 import org.openkilda.northbound.dto.v2.haflows.HaFlowRerouteResult
@@ -72,7 +74,10 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
     @Tags(ISL_PROPS_DB_RESET)
     def "Able to reroute to a better path if it has enough bandwidth"() {
         given: "An HA-Flow with alternate paths available"
-        def swT = switchTriplets.all().findSwitchTripletWithAlternativePaths()
+        def swT = switchTriplets.all().withAllDifferentEndpoints().withSharedEpEp1Ep2InChain().switchTriplets.shuffled().find {
+            // shared-ep1 or shared-ep2 should have 2 direct paths(one is used during flow creation, another will be changed to become preferable)
+            it.pathsEp1.findAll { it.size() == 2 }.size() == 2 || it.pathsEp2.findAll { it.size() == 2 }.size() == 2
+        }
         assumeTrue(swT != null, "No suiting switches found")
         def haFlow = haFlowFactory.getBuilder(swT).withEncapsulationType(TRANSIT_VLAN)
                 .withBandwidth(10000).build().create()
@@ -89,17 +94,13 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         when: "Make one of the alternative paths to be the most preferable among all others"
         def availablePathsIslsEp1 =  swT.retrieveAvailablePathsEp1().collect { it.getInvolvedIsls() }
         def availablePathsIslsEp2 = swT.retrieveAvailablePathsEp2().collect { it.getInvolvedIsls() }
-        def preferableAltPathForSubFlow1 = availablePathsIslsEp1.find { it != initialIslsSubFlow1 }
-        def preferableAltPathForSubFlow2 = availablePathsIslsEp2.find { it != initialIslsSubFlow2 }
 
-        withPool {
-            availablePathsIslsEp1.findAll { it != preferableAltPathForSubFlow1 }.eachParallel {
-                islHelper.makePathIslsMorePreferable(preferableAltPathForSubFlow1, it)
-            }
-            availablePathsIslsEp2.findAll { it != preferableAltPathForSubFlow2 }.eachParallel {
-                islHelper.makePathIslsMorePreferable(preferableAltPathForSubFlow2, it)
-            }
-        }
+        List<Isl> islToUpdate = (availablePathsIslsEp1 + availablePathsIslsEp2)
+                .findAll { !(it.intersect(initialIslsSubFlow1) || it.intersect(initialIslsSubFlow2)) }.collect { it.last() }.unique()
+        islHelper.updateIslsCost(islToUpdate, DEFAULT_COST - 5)
+
+        def preferableAltPathForSubFlow1 = retrievePreferablePathBasedOnCost(availablePathsIslsEp1)
+        def preferableAltPathForSubFlow2 = retrievePreferablePathBasedOnCost(availablePathsIslsEp2)
 
         and: "Make the future path to have exact bandwidth to handle the HA-Flow"
         def thinIsl = setBandwidthForAlternativesPaths(initialFlowIsls,
@@ -107,10 +108,10 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
 
         and: "Init a reroute of the HA-Flow"
         def rerouteResponse = haFlow.reroute()
-        haFlow.waitForBeingInState(FlowState.UP)
 
         then: "The HA-Flow is successfully rerouted and goes through the preferable path"
         rerouteResponse.rerouted
+        haFlow.waitForBeingInState(FlowState.UP)
         def haFlowPathAfterReroute = haFlow.retrievedAllEntityPaths()
         def actualFlowIslsAfterReroute = haFlowPathAfterReroute.getInvolvedIsls()
 
@@ -217,5 +218,30 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
     private List<PathNodeV2> getSubFlowRerouteNodesResponse(HaFlowRerouteResult rerouteResult, String subFlowId) {
         rerouteResult.subFlowPaths.find { it.flowId == subFlowId}.nodes
                 .collect { PathNodeV2.builder().switchId(it.switchId).portNo(it.portNo).segmentLatency(null).build() }
+    }
+
+    private List<Isl> retrievePreferablePathBasedOnCost(List<List<Isl>> availablePathsIsls) {
+        def pathsCost = collectPathsCost(availablePathsIsls)
+        def preferablePath = pathsCost.find { it.value == pathsCost.values().min() }.key
+        // getting rid of any alternative path with the same price
+        pathsCost.findAll { it.value == pathsCost.values().min() }.findAll { it.key != preferablePath }.each {
+            islHelper.updateIslsCost([it.key.last()], it.value + 1)
+        }
+        return preferablePath
+    }
+
+    private Map<List<Isl>, Integer> collectPathsCost(List<List<Isl>> availablePaths) {
+        List<IslInfoData> linkDetails = northbound.getAllLinks()
+        availablePaths.collectEntries { path ->
+            def pathCost = 0
+            path.each { isl ->
+                pathCost += linkDetails.
+                        find {
+                            ((it.source.switchId == isl.srcSwitch.dpId && it.source.portNo == isl.srcPort) &&
+                                    (it.destination.switchId == isl.dstSwitch.dpId && it.destination.portNo == isl.dstPort))
+                        }.cost
+            }
+            [(path): pathCost]
+        }
     }
 }

@@ -4,6 +4,7 @@ import static groovyx.gpars.GParsPool.withPool
 import static org.openkilda.functionaltests.helpers.FlowNameGenerator.FLOW
 import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
 import static org.openkilda.functionaltests.helpers.Wrappers.wait
+import static org.openkilda.functionaltests.helpers.model.FlowDirection.*
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.DELETE_FLOW
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.functionaltests.model.cleanup.CleanupAfter.TEST
@@ -15,7 +16,6 @@ import static org.openkilda.testing.Constants.WAIT_OFFSET
 
 import org.openkilda.functionaltests.model.cleanup.CleanupAfter
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
-import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.info.meter.FlowMeterEntries
 import org.openkilda.messaging.payload.flow.DetectConnectedDevicesPayload
 import org.openkilda.messaging.payload.flow.FlowCreatePayload
@@ -416,7 +416,25 @@ class FlowExtended {
         assert validationResponse.findAll { !it.asExpected } == validationResponse.findAll { !it.discrepancies.isEmpty() },
                 "There is an error in the logic of flow validation"
         validationResponse.findAll { !it.discrepancies.isEmpty() }
-                .collectEntries { [(FlowDirection.getByDirection(it.direction)): it.discrepancies] }
+                .collectEntries { [(getByDirection(it.direction)): it.discrepancies] }
+    }
+
+    Map<FlowDirection, String> pingAndCollectDiscrepancies(PingInput pingInput = new PingInput()) {
+        def pingResponse = ping(pingInput)
+        assert pingResponse.flowId == flowId, "Ping response for an incorrect flow"
+        verifyPingLogic(pingResponse, FORWARD)
+        verifyPingLogic(pingResponse, REVERSE)
+
+        Map<FlowDirection, String> discrepancies = [:]
+        pingResponse.forward.pingSuccess ?: discrepancies.put(FORWARD, pingResponse.forward.error)
+        pingResponse.reverse.pingSuccess ?: discrepancies.put(REVERSE, pingResponse.reverse.error)
+        return discrepancies
+    }
+
+    static private void verifyPingLogic(PingOutput pingPayload, FlowDirection direction) {
+        def pingResult = direction == FORWARD ? pingPayload.forward : pingPayload.reverse
+        assert (pingResult.pingSuccess && !pingResult.error) || (!pingResult.pingSuccess && pingResult.error),
+                "There is an error in the ping logic for $pingResult"
     }
 
     FlowReroutePayload sync() {
@@ -490,7 +508,7 @@ class FlowExtended {
     }
 
     def getFlowRulesCountBySwitch(FlowDirection direction, int involvedSwitchesCount, boolean isSwitchServer42) {
-        def flowEndpoint = direction == FlowDirection.FORWARD ? source : destination
+        def flowEndpoint = direction == FORWARD ? source : destination
         def swProps = northbound.getSwitchProperties(flowEndpoint.switchId)
         int count = involvedSwitchesCount - 1;
 
@@ -813,7 +831,7 @@ class FlowExtended {
      *
      * @param flowInvolvedSwitchesWithRules (map of switch-rules data for further verification)
      */
-    void verifyRulesForProtectedFlowOnSwitches(HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules) {
+    void verifyRulesForProtectedFlowOnSwitches(HashMap<SwitchId, List<FlowRuleEntity>> flowInvolvedSwitchesWithRules) {
         def flowDBInfo = retrieveDetailsFromDB()
         long mainForwardCookie = flowDBInfo.forwardPath.cookie.value
         long mainReverseCookie = flowDBInfo.reversePath.cookie.value

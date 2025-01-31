@@ -82,10 +82,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "Flow is valid and pingable"
         qinqFlow.validateAndCollectDiscrepancies().isEmpty()
-        verifyAll(qinqFlow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        qinqFlow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The flow allows traffic (if applicable)"
         def traffExam = traffExamProvider.get()
@@ -119,10 +116,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "Both flows are pingable"
         [qinqFlow, vlanFlow].each {
-            verifyAll(it.ping()) {
-                it.forward.pingSuccess
-                it.reverse.pingSuccess
-            }
+            it.pingAndCollectDiscrepancies().isEmpty()
         }
 
         then: "Both flows allow traffic"
@@ -178,10 +172,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         }
 
         [qinqFlow, vlanFlow].each {
-            verifyAll(it.ping()) {
-                it.forward.pingSuccess
-                it.reverse.pingSuccess
-            }
+            it.pingAndCollectDiscrepancies().isEmpty()
         }
 
         when: "Delete the flows"
@@ -191,9 +182,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def allSwitches = topology.activeSwitches
         involvedSwitchesforBothFlows.each { swId ->
             def sw = allSwitches.find { item -> item.dpId == swId }
+            def defaultCookies = sw.defaultCookies
             Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
                 assertThat(switchRulesFactory.get(swId).getRules()*.cookie.toArray()).as(swId.toString())
-                        .containsExactlyInAnyOrder(*sw.defaultCookies)
+                        .containsExactlyInAnyOrder(*defaultCookies)
             }
         }
 
@@ -215,6 +207,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
     def "System allows to create a single switch QinQ flow\
 [srcVlan:#srcVlanId, srcInnerVlan:#srcInnerVlanId, dstVlan:#dstVlanId, dstInnerVlan:#dstInnerVlanId, sw:#swPair.src.hwSwString]#trafficDisclaimer"() {
+        given: "Switch default cookies before flow creation have been collected"
+        def defaultCookies = swPair.src.defaultCookies
+
         when: "Create a single switch QinQ flow"
         def qinqFlow = flowFactory.getBuilder(swPair)
                 .withSourceVlan(srcVlanId)
@@ -265,7 +260,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Flow rules are deleted"
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
             assertThat(switchRulesFactory.get(swPair.src.dpId).getRules()*.cookie.toArray())
-                    .containsExactlyInAnyOrder(*swPair.src.defaultCookies)
+                    .containsExactlyInAnyOrder(*defaultCookies)
         }
         switchRulesFactory.get(swPair.src.dpId).getRules().findAll {
             new Cookie(it.cookie).getType() == CookieType.SHARED_OF_FLOW
@@ -328,6 +323,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
     def "System allow to create/update/delete a protected QinQ flow via APIv1"() {
         given: "Two switches with enabled multi table mode"
         def swP = switchPairs.all().withAtLeastNNonOverlappingPaths(2).random()
+        def srcDefaultCookies = swP.src.defaultCookies
+        def dstDefaultCookies = swP.dst.defaultCookies
 
         when: "Create a QinQ flow"
         def flowEntity = flowFactory.getBuilder(swP)
@@ -366,20 +363,18 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "Flow is valid and pingable"
         flow.validateAndCollectDiscrepancies().isEmpty()
-        verifyAll(flow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        flow.pingAndCollectDiscrepancies().isEmpty()
 
         when: "Delete the flow via APIv1"
         flow.deleteV1()
 
         then: "Flows rules are deleted"
-        [swP.src, swP.dst].each { sw ->
-            Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-                assertThat(switchRulesFactory.get(sw.dpId).getRules()*.cookie.toArray())
-                        .containsExactlyInAnyOrder(*sw.defaultCookies)
-            }
+        Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
+            assertThat(switchRulesFactory.get(swP.src.dpId).getRules()*.cookie.toArray())
+                    .containsExactlyInAnyOrder(*srcDefaultCookies)
+            assertThat(switchRulesFactory.get(swP.dst.dpId).getRules()*.cookie.toArray())
+                    .containsExactlyInAnyOrder(*dstDefaultCookies)
+
         }
 
         and: "Shared rule of flow is deleted"
@@ -465,10 +460,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Both flow are valid and pingable"
         [flow1, flow2].each { flow ->
             flow.validateAndCollectDiscrepancies().isEmpty()
-            verifyAll(flow.ping()) {
-                it.forward.pingSuccess
-                it.reverse.pingSuccess
-            }
+            flow.pingAndCollectDiscrepancies().isEmpty()
         }
 
         and: "Flows allow traffic"
@@ -483,10 +475,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         then: "The first flow is still valid and pingable"
         flow1.validateAndCollectDiscrepancies().isEmpty()
-        verifyAll(flow1.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        flow1.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The first flow still allows traffic"
         verifyFlowHasBidirectionalTraffic(exam1, traffExam)
@@ -496,9 +485,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
 (srcVlanId: #srcVlanId, srcInnerVlanId: #srcInnerVlanId, dstVlanId: #dstVlanId, dstInnerVlanId: #dstInnerVlanId)"() {
         given: "A switch with enabled multiTable mode"
         def sw = topology.activeSwitches[0]
+        def defaultCookies = sw.defaultCookies
 
         when: "Create a single switch QinQ flow"
-        def qinqFlow = flowFactory.getBuilder(sw, sw)
+        def qinqFlow = flowFactory.getBuilder(sw, sw, false)
                 .withSourceVlan(srcVlanId)
                 .withSourceInnerVlan(srcInnerVlanId)
                 .withDestinationVlan(dstVlanId)
@@ -532,10 +522,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
         qinqFlow.delete()
 
         then: "Flow rules are deleted"
-        def singleSw = topology.getActiveSwitches().find { it.dpId == sw.dpId }
         Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
-            assertThat(switchRulesFactory.get(singleSw.dpId).getRules()*.cookie.toArray()).as(singleSw.dpId.toString())
-                    .containsExactlyInAnyOrder(*singleSw.defaultCookies)
+            assertThat(switchRulesFactory.get(sw.dpId).getRules()*.cookie.toArray()).as(sw.dpId.toString())
+                    .containsExactlyInAnyOrder(*defaultCookies)
         }
 
         where:
@@ -584,10 +573,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "Flow is valid and pingable"
         qinqFlow.validateAndCollectDiscrepancies().isEmpty()
-        verifyAll(qinqFlow.ping()) {
-            it.forward.pingSuccess
-            it.reverse.pingSuccess
-        }
+        qinqFlow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The flow allows traffic (if applicable)"
         def traffExam = traffExamProvider.get()
@@ -621,12 +607,9 @@ class QinQFlowSpec extends HealthCheckSpecification {
         switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitchesforBothFlows).isEmpty()
 
         and: "Both flows are pingable"
-        [qinqFlow, vlanFlow].each {
-            verifyAll(it.ping()) {
-                it.forward.pingSuccess
-                it.reverse.pingSuccess
-            }
-        }
+        qinqFlow.pingAndCollectDiscrepancies().isEmpty()
+        vlanFlow.pingAndCollectDiscrepancies().isEmpty()
+
 
         then: "Both flows allow traffic"
         if(!trafficDisclaimer) {
@@ -664,12 +647,8 @@ class QinQFlowSpec extends HealthCheckSpecification {
         [qinqFlow, vlanFlow].each {
             it.validateAndCollectDiscrepancies().isEmpty()
         }
-
         [qinqFlow, vlanFlow].each {
-            verifyAll(it.ping()) {
-                it.forward.pingSuccess
-                it.reverse.pingSuccess
-            }
+            it.pingAndCollectDiscrepancies().isEmpty()
         }
 
         when: "Delete the flows"
@@ -678,9 +657,10 @@ class QinQFlowSpec extends HealthCheckSpecification {
         then: "Flows rules are deleted"
         involvedSwitchesforBothFlows.each { swId ->
             def sw = topology.getActiveSwitches().find { it.dpId == swId }
+            def defaultCookies = sw.defaultCookies
             Wrappers.wait(RULES_INSTALLATION_TIME, 1) {
                 assertThat(switchRulesFactory.get(swId).getRules()*.cookie.toArray()).as(swId.toString())
-                        .containsExactlyInAnyOrder(*sw.defaultCookies)
+                        .containsExactlyInAnyOrder(*defaultCookies)
             }
         }
 
@@ -748,7 +728,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
         def flow = flowEntity.create()
 
         when: "Make the current path less preferable than alternatives"
-        def initialPathIsls = flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls()
+        def initialPathIsls = flow.retrieveAllEntityPaths().getInvolvedIsls()
         switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }.findAll { it != initialPathIsls }
                 .each { islHelper.makePathIslsMorePreferable(it, initialPathIsls) }
 
@@ -767,7 +747,7 @@ class QinQFlowSpec extends HealthCheckSpecification {
 
         and: "Flow is not rerouted"
         Wrappers.timedLoop(rerouteDelay + WAIT_OFFSET / 2) {
-            assert flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() == initialPathIsls
+            assert flow.retrieveAllEntityPaths().getInvolvedIsls() == initialPathIsls
         }
 
         and: "System allows traffic on the flow"

@@ -1,6 +1,6 @@
 package org.openkilda.functionaltests.spec.flows
 
-import static com.shazam.shazamcrest.matcher.Matchers.sameBeanAs
+
 import static org.junit.jupiter.api.Assumptions.assumeFalse
 import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HARDWARE
@@ -13,7 +13,6 @@ import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.functionaltests.model.stats.FlowStatsMetric.FLOW_RAW_BYTES
 import static org.openkilda.testing.Constants.WAIT_OFFSET
-import static spock.util.matcher.HamcrestSupport.expect
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.AbstractExpectedError
@@ -28,11 +27,11 @@ import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowActionType
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.FlowExtended
+import org.openkilda.functionaltests.helpers.model.FlowRuleEntity
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.functionaltests.model.stats.FlowStats
-import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.FlowPathDirection
 import org.openkilda.model.FlowPathStatus
@@ -122,9 +121,13 @@ class MirrorEndpointsSpec extends HealthCheckSpecification {
             assert mirrorPointsDetails[0].status == FlowPathStatus.ACTIVE.toString().toLowerCase()
             assert mirrorPointsDetails[0].mirrorPointId == mirrorPointPayload.mirrorPointId
         }
-        with(flow.retrieveMirrorPoints()) {
-            points.size() == 1
-            expect points[0], sameBeanAs(mirrorPointPayload)
+        def flowMirrorDetails = flow.retrieveMirrorPoints()
+        assert flowMirrorDetails.points.size() == 1
+        verifyAll(flowMirrorDetails.points.first()) {
+            assert mirrorPointId == mirrorPointPayload.mirrorPointId
+            assert mirrorPointDirection == mirrorPointPayload.mirrorPointDirection
+            assert mirrorPointSwitchId == mirrorPointPayload.mirrorPointSwitchId
+            assert sinkEndpoint == mirrorPointPayload.sinkEndpoint
         }
 
         and: "Mirror flow rule has an OF group action and higher prio than flow rule"
@@ -864,23 +867,23 @@ flow mirror point cannot be created this flow/).matches(error)
     }
 
 
-    List<FlowEntry> getFlowRules(SwitchId swId) {
+    List<FlowRuleEntity> getFlowRules(SwitchId swId) {
         def swRules = switchRulesFactory.get(swId).getRules()
         swRules.findAll { new FlowSegmentCookie(it.cookie).direction != FlowPathDirection.UNDEFINED }
     }
 
-    static FlowEntry findRule(List<FlowEntry> rules, FlowPathDirection pathDirection, boolean isMirror) {
+    static FlowRuleEntity findRule(List<FlowRuleEntity> rules, FlowPathDirection pathDirection, boolean isMirror) {
         rules.find {
             def cookie = new FlowSegmentCookie(it.cookie)
             cookie.direction == pathDirection && cookie.isMirror() == isMirror
         }
     }
 
-    static FlowEntry findFlowRule(List<FlowEntry> rules, FlowPathDirection pathDirection) {
+    static FlowRuleEntity findFlowRule(List<FlowRuleEntity> rules, FlowPathDirection pathDirection) {
         findRule(rules, pathDirection, false)
     }
 
-    static FlowEntry findMirrorRule(List<FlowEntry> rules, FlowPathDirection pathDirection) {
+    static FlowRuleEntity findMirrorRule(List<FlowRuleEntity> rules, FlowPathDirection pathDirection) {
         findRule(rules, pathDirection, true)
     }
 

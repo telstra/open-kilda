@@ -6,10 +6,10 @@ import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
-import org.openkilda.functionaltests.helpers.HaFlowFactory
+import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
-import org.openkilda.functionaltests.helpers.model.YFlowFactory
+import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Autowired
@@ -72,9 +72,8 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         and: "HA-Flow passes flow validation"
         withPool {
             [haFlow1, haFlow2, haFlow3].eachParallel { HaFlowExtended haFlow ->
-                def validationResponse = haFlow.validate()
-                assert validationResponse.asExpected
-                assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty() }
+                def validationResponse = haFlow.validateAndCollectDiscrepancy()
+                assert validationResponse.asExpected && validationResponse.subFlowsDiscrepancies.isEmpty()
             }
         }
     }
@@ -127,9 +126,8 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         and: "HA-Flow passes flow validation"
         withPool {
             [haFlow1, haFlow2].eachParallel { HaFlowExtended haFlow ->
-                def validationResponse = haFlow.validate()
-                assert validationResponse.asExpected
-                assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty()}
+                def validationResponse = haFlow.validateAndCollectDiscrepancy()
+                assert validationResponse.asExpected && validationResponse.subFlowsDiscrepancies.isEmpty()
             }
         }
     }
@@ -181,9 +179,8 @@ class HaFlowDiversitySpec extends HealthCheckSpecification {
         and: "HA-Flow passes flow validation"
         withPool {
             [haFlow1, haFlow2].eachParallel { HaFlowExtended haFlow ->
-                def validationResponse = haFlow.validate()
-                assert validationResponse.asExpected
-                assert validationResponse.getSubFlowValidationResults().every { it.getDiscrepancies().isEmpty()}
+                def validationResponse = haFlow.validateAndCollectDiscrepancy()
+                assert validationResponse.asExpected && validationResponse.subFlowsDiscrepancies.isEmpty()
             }
         }
     }

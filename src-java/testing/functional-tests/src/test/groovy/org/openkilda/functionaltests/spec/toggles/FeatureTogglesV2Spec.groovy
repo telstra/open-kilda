@@ -139,7 +139,7 @@ feature toggle"() {
 
         and: "Init a flow reroute by breaking current path"
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def islToBreak = flowPathInfo.flowPath.getInvolvedIsls().first()
+        def islToBreak = flowPathInfo.getInvolvedIsls().first()
         islHelper.breakIsl(islToBreak)
 
         then: "Flow is rerouted"
@@ -161,7 +161,7 @@ feature toggle"() {
 
         and: "Init a flow reroute by breaking a new current path"
         def newFlowPathInfo = flow.retrieveAllEntityPaths()
-        def newIslToBreak = newFlowPathInfo.flowPath.getInvolvedIsls().first()
+        def newIslToBreak = newFlowPathInfo.getInvolvedIsls().first()
         islHelper.breakIsl(newIslToBreak)
 
         then: "Flow is rerouted"
@@ -199,7 +199,7 @@ feature toggle"() {
 
         and: "Init a flow reroute by breaking current path"
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def islToBreak = flowPathInfo.flowPath.getInvolvedIsls().first()
+        def islToBreak = flowPathInfo.getInvolvedIsls().first()
         islHelper.breakIsl(islToBreak)
 
         then: "Flow is not rerouted"
@@ -249,7 +249,7 @@ feature toggle"() {
 
         //you have to break all altPaths to avoid rerouting when flowPath is broken
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def flowInvolvedIsls = flowPathInfo.flowPath.getInvolvedIsls()
+        def flowInvolvedIsls = flowPathInfo.getInvolvedIsls()
         def altIsls = topology.getRelatedIsls(switchPair.src) - flowInvolvedIsls.first()
         islHelper.breakIsls(altIsls)
 

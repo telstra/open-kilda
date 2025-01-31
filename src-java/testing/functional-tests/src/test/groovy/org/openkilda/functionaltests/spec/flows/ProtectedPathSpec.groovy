@@ -227,8 +227,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def flowPathInfo = flow.retrieveAllEntityPaths()
         !flowPathInfo.flowPath.protectedPath.isPathAbsent()
 
-        def initialMainPath =  flowPathInfo.flowPath.getMainPathInvolvedIsls()
-        def initialProtectedPath =flowPathInfo.flowPath.getProtectedPathInvolvedIsls()
+        def initialMainPath =  flowPathInfo.getMainPathInvolvedIsls()
+        def initialProtectedPath = flowPathInfo.getProtectedPathInvolvedIsls()
         initialMainPath.intersect(initialProtectedPath).isEmpty()
 
         and: "Rules for main and protected paths are created"
@@ -273,8 +273,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Flow paths are swapped"
         flow.waitForBeingInState(FlowState.UP)
         def flowPathInfoAfterSwapping = flow.retrieveAllEntityPaths()
-        def newMainPath = flowPathInfoAfterSwapping.flowPath.getMainPathInvolvedIsls()
-        def newProtectedPath = flowPathInfoAfterSwapping.flowPath.getProtectedPathInvolvedIsls()
+        def newMainPath = flowPathInfoAfterSwapping.getMainPathInvolvedIsls()
+        def newProtectedPath = flowPathInfoAfterSwapping.getProtectedPathInvolvedIsls()
         verifyAll {
             assert newMainPath == initialProtectedPath
             assert newProtectedPath == initialMainPath
@@ -359,13 +359,13 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         flowPathsInfo.each { assert !it.flowPath.protectedPath.isPathAbsent()}
 
         and: "Current paths are not equal to protected paths"
-        def firstFlowMainPathIsls = flowPathsInfo.first().flowPath.getMainPathInvolvedIsls()
-        def firstFlowProtectedPathIsls = flowPathsInfo.first().flowPath.getProtectedPathInvolvedIsls()
+        def firstFlowMainPathIsls = flowPathsInfo.first().getMainPathInvolvedIsls()
+        def firstFlowProtectedPathIsls = flowPathsInfo.first().getProtectedPathInvolvedIsls()
         assert firstFlowMainPathIsls.intersect(firstFlowProtectedPathIsls).isEmpty()
         //check that all other flows use the same paths, so above verification applies to all of them
         flowPathsInfo.each { flowPathInfo ->
-            assert flowPathInfo.flowPath.getMainPathInvolvedIsls() == firstFlowMainPathIsls
-            assert flowPathInfo.flowPath.getProtectedPathInvolvedIsls() == firstFlowProtectedPathIsls
+            assert flowPathInfo.getMainPathInvolvedIsls() == firstFlowMainPathIsls
+            assert flowPathInfo.getProtectedPathInvolvedIsls() == firstFlowProtectedPathIsls
         }
 
         and: "Bandwidth is reserved for protected paths on involved ISLs"
@@ -388,11 +388,11 @@ class ProtectedPathSpec extends HealthCheckSpecification {
                 assert flow.retrieveFlowStatus().status == FlowState.UP
                 def flowPathInfoAfterRerouting = flow.retrieveAllEntityPaths()
 
-                assert flowPathInfoAfterRerouting.flowPath.getMainPathInvolvedIsls() == firstFlowProtectedPathIsls
+                assert flowPathInfoAfterRerouting.getMainPathInvolvedIsls() == firstFlowProtectedPathIsls
                 if (4 <= uniquePathCount) {
                     // protected path is recalculated due to the main path broken ISl
-                    assert flowPathInfoAfterRerouting.flowPath.getProtectedPathInvolvedIsls() != firstFlowMainPathIsls
-                    assert flowPathInfoAfterRerouting.flowPath.getProtectedPathInvolvedIsls() != firstFlowProtectedPathIsls
+                    assert flowPathInfoAfterRerouting.getProtectedPathInvolvedIsls() != firstFlowMainPathIsls
+                    assert flowPathInfoAfterRerouting.getProtectedPathInvolvedIsls() != firstFlowProtectedPathIsls
                 }
             }
         }
@@ -403,7 +403,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Path of the flow is not changed"
         flows.each { flow ->
             flow.waitForBeingInState(FlowState.UP)
-            assert flow.retrieveAllEntityPaths().flowPath.getMainPathInvolvedIsls() == firstFlowProtectedPathIsls
+            assert flow.retrieveAllEntityPaths().getMainPathInvolvedIsls() == firstFlowProtectedPathIsls
         }
 
         where:
@@ -422,8 +422,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def initialFlowPath = flow.retrieveAllEntityPaths()
 
         and: "Other paths have not enough bandwidth to host the flow in case of reroute"
-        def originalMainPathIsls = initialFlowPath.flowPath.getMainPathInvolvedIsls()
-        def originalProtectedPathIsls = initialFlowPath.flowPath.getProtectedPathInvolvedIsls()
+        def originalMainPathIsls = initialFlowPath.getMainPathInvolvedIsls()
+        def originalProtectedPathIsls = initialFlowPath.getProtectedPathInvolvedIsls()
         def usedIsls = originalMainPathIsls + originalProtectedPathIsls
         def otherIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
                 .findAll { !it.containsAll(originalMainPathIsls) && !it.containsAll(originalProtectedPathIsls) }.flatten()
@@ -438,7 +438,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Main path swaps to protected, flow becomes degraded, main path UP, protected DOWN"
         Wrappers.wait(WAIT_OFFSET) {
             def newPath = flow.retrieveAllEntityPaths()
-            assert newPath.flowPath.getMainPathInvolvedIsls() == originalProtectedPathIsls
+            assert newPath.getMainPathInvolvedIsls() == originalProtectedPathIsls
             verifyAll(flow.retrieveDetails()) {
                 status == FlowState.DEGRADED
                 statusDetails.mainPath == "Up"
@@ -453,7 +453,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Main path remains the same, flow becomes UP, main path UP, protected UP"
         Wrappers.wait(WAIT_OFFSET * 2) {
             def newPath = flow.retrieveAllEntityPaths()
-            assert newPath.flowPath.getMainPathInvolvedIsls() == originalProtectedPathIsls
+            assert newPath.getMainPathInvolvedIsls() == originalProtectedPathIsls
             verifyAll(flow.retrieveDetails()) {
                 status == FlowState.UP
                 statusDetails.mainPath == "Up"
@@ -473,8 +473,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def initialFlowPath = flow.retrieveAllEntityPaths()
 
         and: "Other paths are not available (ISLs are down)"
-        def originalMainPathIsls = initialFlowPath.flowPath.getMainPathInvolvedIsls()
-        def originalProtectedPathIsls = initialFlowPath.flowPath.getProtectedPathInvolvedIsls()
+        def originalMainPathIsls = initialFlowPath.getMainPathInvolvedIsls()
+        def originalProtectedPathIsls = initialFlowPath.getProtectedPathInvolvedIsls()
         def usedIsls = originalMainPathIsls + originalProtectedPathIsls
         def otherIsls = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls()}
                 .findAll { it != originalMainPathIsls && it != originalProtectedPathIsls }.flatten()
@@ -489,7 +489,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Main path swaps to protected, flow becomes degraded, main path UP, protected DOWN"
         Wrappers.wait(WAIT_OFFSET) {
             def newPath = flow.retrieveAllEntityPaths()
-            assert newPath.flowPath.getMainPathInvolvedIsls() == originalProtectedPathIsls
+            assert newPath.getMainPathInvolvedIsls() == originalProtectedPathIsls
             verifyAll(flow.retrieveDetails()) {
                 status == FlowState.DEGRADED
                 statusDetails.mainPath == "Up"
@@ -504,8 +504,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Main path remains the same (no swap), flow becomes UP, main path remains UP, protected path becomes UP"
         Wrappers.wait(WAIT_OFFSET) {
             def newPath = flow.retrieveAllEntityPaths()
-            assert newPath.flowPath.getMainPathInvolvedIsls() == originalProtectedPathIsls
-            assert newPath.flowPath.getProtectedPathInvolvedIsls() == originalMainPathIsls
+            assert newPath.getMainPathInvolvedIsls() == originalProtectedPathIsls
+            assert newPath.getProtectedPathInvolvedIsls() == originalMainPathIsls
             verifyAll(flow.retrieveDetails()) {
                 status == FlowState.UP
                 statusDetails.mainPath == "Up"
@@ -530,8 +530,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def flowPathInfo = flow.retrieveAllEntityPaths()
         assert !flowPathInfo.flowPath.protectedPath.isPathAbsent()
 
-        def initialMainPathIsls = flowPathInfo.flowPath.getMainPathInvolvedIsls()
-        def initialProtectedPathIsls = flowPathInfo.flowPath.getProtectedPathInvolvedIsls()
+        def initialMainPathIsls = flowPathInfo.getMainPathInvolvedIsls()
+        def initialProtectedPathIsls = flowPathInfo.getProtectedPathInvolvedIsls()
         assert initialMainPathIsls.intersect(initialProtectedPathIsls).isEmpty()
 
         when: "Make the current and protected path less preferable than alternatives"
@@ -551,11 +551,11 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Path is not changed to protected path"
         def flowPathInfoAfterRerouting = flow.retrieveAllEntityPaths()
-        def mainPathIsls = flowPathInfoAfterRerouting.flowPath.getMainPathInvolvedIsls()
+        def mainPathIsls = flowPathInfoAfterRerouting.getMainPathInvolvedIsls()
         mainPathIsls != initialMainPathIsls
         mainPathIsls != initialProtectedPathIsls
         //protected path is rerouted too, because more preferable path is exist
-        def newCurrentProtectedPathIsls = flowPathInfoAfterRerouting.flowPath.getProtectedPathInvolvedIsls()
+        def newCurrentProtectedPathIsls = flowPathInfoAfterRerouting.getProtectedPathInvolvedIsls()
         newCurrentProtectedPathIsls != initialMainPathIsls
         newCurrentProtectedPathIsls != initialProtectedPathIsls
         Wrappers.wait(WAIT_OFFSET) { assert flow.retrieveFlowStatus().status == FlowState.UP }
@@ -583,8 +583,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def flowPathInfo = flow.retrieveAllEntityPaths()
         assert !flowPathInfo.flowPath.protectedPath.isPathAbsent()
 
-        def initialMainPathIsls = flowPathInfo.flowPath.getMainPathInvolvedIsls()
-        def initialProtectedPathIsls = flowPathInfo.flowPath.getProtectedPathInvolvedIsls()
+        def initialMainPathIsls = flowPathInfo.getMainPathInvolvedIsls()
+        def initialProtectedPathIsls = flowPathInfo.getProtectedPathInvolvedIsls()
         assert initialMainPathIsls.intersect(initialProtectedPathIsls).isEmpty()
 
         when: "Make the current and protected path less preferable than alternatives"
@@ -600,12 +600,12 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         then: "Flow is switched to protected path"
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             def newPathInfo = flow.retrieveAllEntityPaths()
-            def newMainPath = newPathInfo.flowPath.getMainPathInvolvedIsls()
+            def newMainPath = newPathInfo.getMainPathInvolvedIsls()
             assert flow.retrieveFlowStatus().status == FlowState.UP
             assert newMainPath != initialMainPathIsls
             assert newMainPath == initialProtectedPathIsls
 
-            def newCurrentProtectedPath = newPathInfo.flowPath.getProtectedPathInvolvedIsls()
+            def newCurrentProtectedPath = newPathInfo.getProtectedPathInvolvedIsls()
             if (4 <= uniquePathCount) {
                 assert newCurrentProtectedPath != initialMainPathIsls
                 assert newCurrentProtectedPath != initialProtectedPathIsls
@@ -616,7 +616,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         islHelper.restoreIsl(islToBreak)
 
         then: "Path of the flow is not changed"
-        flow.retrieveAllEntityPaths().flowPath.getMainPathInvolvedIsls() == initialProtectedPathIsls
+        flow.retrieveAllEntityPaths().getMainPathInvolvedIsls() == initialProtectedPathIsls
 
         where:
         flowDescription | bandwidth
@@ -635,8 +635,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def flowPathInfo = flow.retrieveAllEntityPaths()
         assert !flowPathInfo.flowPath.protectedPath.isPathAbsent()
 
-        def initialMainPath = flowPathInfo.flowPath.getMainPathInvolvedIsls()
-        def initialProtectedPath = flowPathInfo.flowPath.getProtectedPathInvolvedIsls()
+        def initialMainPath = flowPathInfo.getMainPathInvolvedIsls()
+        def initialProtectedPath = flowPathInfo.getProtectedPathInvolvedIsls()
 
         when: "Init intentional reroute"
         def rerouteResponse = flow.reroute()
@@ -645,8 +645,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         !rerouteResponse.rerouted
 
         def newFlowPathInfo = flow.retrieveAllEntityPaths()
-        newFlowPathInfo.flowPath.getMainPathInvolvedIsls() == initialMainPath
-        newFlowPathInfo.flowPath.getProtectedPathInvolvedIsls() == initialProtectedPath
+        newFlowPathInfo.getMainPathInvolvedIsls() == initialMainPath
+        newFlowPathInfo.getProtectedPathInvolvedIsls() == initialProtectedPath
     }
 
     @Tags([LOW_PRIORITY, ISL_PROPS_DB_RESET])
@@ -718,8 +718,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def initialFlowPathInfo = flow.retrieveAllEntityPaths()
         !initialFlowPathInfo.flowPath.protectedPath.isPathAbsent()
 
-        def initialMainPathIsls = initialFlowPathInfo.flowPath.getMainPathInvolvedIsls()
-        def initialProtectedPathIsls = initialFlowPathInfo.flowPath.getProtectedPathInvolvedIsls()
+        def initialMainPathIsls = initialFlowPathInfo.getMainPathInvolvedIsls()
+        def initialProtectedPathIsls = initialFlowPathInfo.getProtectedPathInvolvedIsls()
         assert initialMainPathIsls.intersect(initialProtectedPathIsls).isEmpty()
 
         def protectedIslsInfo = initialProtectedPathIsls.collect { islUtils.getIslInfo(it).get() }
@@ -739,17 +739,17 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         FlowEntityPath newFlowPathInfo
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
             newFlowPathInfo = flow.retrieveAllEntityPaths()
-            assert newFlowPathInfo.flowPath.getProtectedPathInvolvedIsls() != initialProtectedPathIsls
+            assert newFlowPathInfo.getProtectedPathInvolvedIsls() != initialProtectedPathIsls
             assert flow.retrieveFlowStatus().status == FlowState.UP
         }
 
         and: "Current path is not changed"
-        initialMainPathIsls == newFlowPathInfo.flowPath.getMainPathInvolvedIsls()
+        initialMainPathIsls == newFlowPathInfo.getMainPathInvolvedIsls()
 
         and: "Bandwidth is reserved for new protected path on involved ISLs"
         def allLinks
         Wrappers.wait(PROTECTED_PATH_INSTALLATION_TIME) {
-            def newProtectedIsls = newFlowPathInfo.flowPath.getProtectedPathInvolvedIsls()
+            def newProtectedIsls = newFlowPathInfo.getProtectedPathInvolvedIsls()
             allLinks = northbound.getAllLinks()
             def newProtectedIslsInfo = newProtectedIsls.collect { islUtils.getIslInfo(allLinks, it).get() }
 
@@ -775,7 +775,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         islHelper.restoreIsl(islToBreakProtectedPath)
 
         then: "Path is not recalculated again"
-        flow.retrieveAllEntityPaths().flowPath.getProtectedPathInvolvedIsls()== newFlowPathInfo.flowPath.getProtectedPathInvolvedIsls()
+        flow.retrieveAllEntityPaths().getProtectedPathInvolvedIsls()== newFlowPathInfo.getProtectedPathInvolvedIsls()
     }
 
     @Tags(ISL_RECOVER_ON_FAIL)
@@ -794,7 +794,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def initialFlowPathInfo = flow.retrieveAllEntityPaths()
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
-        def flowPathPortOnSourceSwitch = initialFlowPathInfo.flowPath.getMainPathInvolvedIsls().first().srcPort
+        def flowPathPortOnSourceSwitch = initialFlowPathInfo.getMainPathInvolvedIsls().first().srcPort
         def broughtDownIsls = topology.getRelatedIsls(switchPair.getSrc())
                 .findAll{it.srcSwitch == switchPair.getSrc() && it.srcPort != flowPathPortOnSourceSwitch }
         islHelper.breakIsls(broughtDownIsls)
@@ -831,7 +831,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         assert !flowPathInfo.flowPath.protectedPath.isPathAbsent()
 
         when: "All alternative paths are unavailable"
-        def mainPathIsls = flowPathInfo.flowPath.getMainPathInvolvedIsls()
+        def mainPathIsls = flowPathInfo.getMainPathInvolvedIsls()
         def untouchableIsls = mainPathIsls.collectMany { [it, it.reversed] }
         def altPaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
                 .findAll { !it.containsAll(mainPathIsls) }
@@ -879,8 +879,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         when: "Main paths breaks"
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def mainPathIsl = flowPathInfo.flowPath.getMainPathInvolvedIsls().first()
-        def protectedPathIsl = flowPathInfo.flowPath.getProtectedPathInvolvedIsls().first()
+        def mainPathIsl = flowPathInfo.getMainPathInvolvedIsls().first()
+        def protectedPathIsl = flowPathInfo.getProtectedPathInvolvedIsls().first()
         islHelper.breakIsl(mainPathIsl)
 
         and: "Protected path breaks when swap is in progress"
@@ -895,8 +895,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
             Wrappers.timedLoop(3) { //this should be a stable result, all reroutes must finish
                 assert flow.retrieveFlowStatus().status == FlowState.UP
                 def currentPath = flow.retrieveAllEntityPaths()
-                assert currentPath.flowPath.getMainPathInvolvedIsls().intersect([mainPathIsl, protectedPathIsl]).isEmpty()
-                assert currentPath.flowPath.getProtectedPathInvolvedIsls().intersect([mainPathIsl, protectedPathIsl]).isEmpty()
+                assert currentPath.getMainPathInvolvedIsls().intersect([mainPathIsl, protectedPathIsl]).isEmpty()
+                assert currentPath.getProtectedPathInvolvedIsls().intersect([mainPathIsl, protectedPathIsl]).isEmpty()
 
             }
         }
@@ -915,8 +915,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def flowPathInfo = flow.retrieveAllEntityPaths()
         assert !flowPathInfo.flowPath.protectedPath.isPathAbsent()
 
-        def initialMainPathIsls = flowPathInfo.flowPath.getMainPathInvolvedIsls()
-        def initialProtectedPathIsls = flowPathInfo.flowPath.getProtectedPathInvolvedIsls()
+        def initialMainPathIsls = flowPathInfo.getMainPathInvolvedIsls()
+        def initialProtectedPathIsls = flowPathInfo.getProtectedPathInvolvedIsls()
         assert initialMainPathIsls.intersect(initialProtectedPathIsls).isEmpty()
 
         when: "Make the current and protected path less preferable than alternatives"
@@ -938,12 +938,12 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def newMainPath
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             flowPathInfoAfterRerouting = flow.retrieveAllEntityPaths()
-            newMainPath = flowPathInfoAfterRerouting.flowPath.getMainPathInvolvedIsls()
+            newMainPath = flowPathInfoAfterRerouting.getMainPathInvolvedIsls()
             newMainPath != initialMainPathIsls && newMainPath != initialProtectedPathIsls
         }
 
         and: "Flow protected path shouldn't be rerouted due to lack of non overlapping path"
-        flowPathInfoAfterRerouting.flowPath.getProtectedPathInvolvedIsls() == initialProtectedPathIsls
+        flowPathInfoAfterRerouting.getProtectedPathInvolvedIsls() == initialProtectedPathIsls
 
         and: "Flow and both its paths are UP"
         Wrappers.wait(WAIT_OFFSET) {
@@ -974,7 +974,7 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         } ?: assumeTrue(false, "No suiting switches found")
 
         //select paths for further manipulations
-        def availablePathsIsls = swPair.retrieveAvailablePaths().collect { it.getInvolvedIsls()}
+        def availablePathsIsls = allPathCandidates.collect { it.getInvolvedIsls()}
         def mainPath1Isls = availablePathsIsls.first()
         def mainPath2Isls = availablePathsIsls.find { it != mainPath1Isls }
         def protectedPathIsls = availablePathsIsls.find { it != mainPath1Isls && it != mainPath2Isls }
@@ -1120,14 +1120,14 @@ class ProtectedPathSpec extends HealthCheckSpecification {
         def flow = flowFactory.getBuilder(switchPair).withProtectedPath(true).build().create()
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
-        def flowPathIsl = flow.retrieveAllEntityPaths().flowPath.getMainPathInvolvedIsls()
+        def flowPathIsl = flow.retrieveAllEntityPaths().getMainPathInvolvedIsls()
         def broughtDownIsls = topology.getRelatedIsls(switchPair.src) - flowPathIsl
         islHelper.breakIsls(broughtDownIsls)
 
         when: "Break ISL on a protected path (bring port down) for changing the flow state to DEGRADED"
         def flowPathInfo = flow.retrieveAllEntityPaths()
-        def protectedIsls = flowPathInfo.flowPath.getProtectedPathInvolvedIsls()
-        def currentIsls = flowPathInfo.flowPath.getMainPathInvolvedIsls()
+        def protectedIsls = flowPathInfo.getProtectedPathInvolvedIsls()
+        def currentIsls = flowPathInfo.getMainPathInvolvedIsls()
         islHelper.breakIsl(protectedIsls[0])
 
         then: "Flow state is changed to DEGRADED"
@@ -1257,8 +1257,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "All alternative paths are unavailable (bring ports down on the source switch)"
         def initialFlowPathInfo = flow.retrieveAllEntityPaths()
-        def mainPathIsl = initialFlowPathInfo.flowPath.getMainPathInvolvedIsls()
-        def protectedIslToBreak = initialFlowPathInfo.flowPath.getProtectedPathInvolvedIsls()
+        def mainPathIsl = initialFlowPathInfo.getMainPathInvolvedIsls()
+        def protectedIslToBreak = initialFlowPathInfo.getProtectedPathInvolvedIsls()
         def broughtDownIsls = topology.getRelatedIsls(switchPair.src) - mainPathIsl.first() - protectedIslToBreak.first()
         islHelper.breakIsls(broughtDownIsls)
 
@@ -1284,8 +1284,8 @@ class ProtectedPathSpec extends HealthCheckSpecification {
 
         and: "Protected path is recalculated only"
         def newFlowPathInfo = flow.retrieveAllEntityPaths()
-        newFlowPathInfo.flowPath.getMainPathInvolvedIsls() == mainPathIsl
-        newFlowPathInfo.flowPath.getProtectedPathInvolvedIsls() == alternativeIsl
+        newFlowPathInfo.getMainPathInvolvedIsls() == mainPathIsl
+        newFlowPathInfo.getProtectedPathInvolvedIsls() == alternativeIsl
     }
 
     @Tags(LOW_PRIORITY)

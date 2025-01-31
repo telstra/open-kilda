@@ -114,8 +114,13 @@
         <td class="divTableCell" title="{{checkValue(row.address)}}">
             {{ checkValue(row.address) }}
         </td>
-        <td class="divTableCell" title="{{checkValue(row.hostname)}}">
+        <td class="divTableCell" title="{{checkValue(row.hostname)}}" [contextMenu]="copyHostName">
             {{ checkValue(row.hostname) }}
+            <context-menu #copyHostName>
+                <ng-template contextMenuItem (execute)="copyToClip($event,'hostname',i);">
+                    Copy to Clipboard
+                </ng-template>
+            </context-menu>
         </td>
         <td class="divTableCell"
             title="{{ row['inventory_switch_detail']?.['pop-location']?.['pop-code'] ? checkValue(row['inventory_switch_detail']['pop-location']['pop-code']) : ''}}">

@@ -26,9 +26,7 @@
           </span>
             <i class="fa fa-search" (click)="toggleSearch($event,'expandedSrcSwitchName')"></i>
             <input  value="{{ srcSwitch }}" class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search"  [hidden]="!expandedSrcSwitchName" id="expandedSrcSwitchName"/>
-          
         </th>
-        <th> <span title="Source Switch">Src Switch ID</span></th>
         <th >
           <span title="Source Port">
             Src Port
@@ -51,9 +49,7 @@
           </span>
             <i class="fa fa-search" (click)="toggleSearch($event,'expandedTargetSwitchName')"></i>
             <input  value="{{ dstSwitch }}" class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedTargetSwitchName" id="expandedTargetSwitchName"/>
-          
         </th>
-        <th > <span  title="Destination Switch">Dst Switch ID</span></th>
         <th >
           <span title="Destination Port">
             Dst Port
@@ -68,8 +64,6 @@
         </span>
           <i class="fa fa-search" (click)="toggleSearch($event,'expandedTargetSwitchVlan')"></i>
           <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedTargetSwitchVlan" id="expandedTargetSwitchVlan"/>
-        
-        
         </th>
         <th >
             <span title="Bandwidth (Mbps)">
@@ -96,26 +90,6 @@
                  <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedDescription" id="expandedDescription"/>
                
         </th>
-
-
-        <th >
-          <span title="Created">
-              Created
-             </span>
-               <i class="fa fa-search" (click)="toggleSearch($event,'expandedCreated')"></i>
-               <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedCreated" id="expandedCreated"/>
-             
-       </th>
-
-       <!-- <th >
-        <span title="Updated">
-          Updated
-           </span>
-             <i class="fa fa-search" (click)="toggleSearch($event,'expandedUpdated')"></i>
-             <input class="heading_search_box" (click)="stopPropagationmethod($event)" (keydown.enter)="stopPropagationmethod($event)" type="search" placeholder="Search" [hidden]="!expandedUpdated" id="expandedUpdated"/>
-       </th> -->
-
-
         <th >
           <span title="type">
               type
@@ -130,7 +104,7 @@
         <td class="divTableCell">
           <input [disabled]="row.status == 'UP' || row.status == 'IN PROGRESS' || (storeLinkSetting  && row.state) "  type="checkbox" class="large-checkbox" name="checkedFlow[row.flowid]" [checked]="checkedFlow[row.flowid]" (click) = "toggleSelection(row)" />
         </td>
-        <td (click)="showFlow(row)" class="divTableCell" title="{{row.flowid }}" [contextMenu]="copyFLow"> 
+        <td (click)="showFlow(row)" class="divTableCell" title="{{row.flowid }}" [contextMenu]="copyFLow">
            {{row.flowid || "-"}} 
            <context-menu #copyFLow>
               <ng-template contextMenuItem (execute)="copyToClip($event,'flowid',i);">
@@ -138,46 +112,40 @@
               </ng-template>
            </context-menu>
          </td>
-         <td (click)="showFlow(row)" class="divTableCell" title="{{row.y_flow_id }}" [contextMenu]="copyFLow">
+         <td (click)="showFlow(row)" class="divTableCell" title="{{row.y_flow_id }}" [contextMenu]="copyYFLow">
           {{row.y_flow_id || "-"}}
-          <context-menu #copyFLow>
+          <context-menu #copyYFLow>
              <ng-template contextMenuItem (execute)="copyToClip($event,'y_flow_id',i);">
                Copy to Clipboard
              </ng-template>
           </context-menu>
         </td>
-        <td (click)="showFlow(row)" title="{{row.source_switch_name}}" [contextMenu]="copySourceSwitch">
-          {{row.source_switch_name || "-"}}
+        <td (click)="showFlow(row)" title="{{row.source_switch}}" [contextMenu]="copySourceSwitch">
+          {{row.source_switch || "-"}}
           <context-menu #copySourceSwitch>
-              <ng-template contextMenuItem (execute)="copyToClip($event,'source_switch_name',i);">
+              <ng-template contextMenuItem (execute)="copyToClip($event,'source_switch',i);">
                 Copy to Clipboard
               </ng-template>
             </context-menu>
         </td>
-        <td (click)="showFlow(row)" title="{{row.src_switch}}">{{row.source_switch || "-"}}</td>
         <td (click)="showFlow(row)" title="{{row.src_port}}">{{row.src_port || "-"}}</td>
         <td (click)="showFlow(row)">{{row.src_vlan || "-"}}</td>
-        <td (click)="showFlow(row)" title="{{row.target_switch_name}}" [contextMenu]="copyTargetSwitch">
-          {{row.target_switch_name || "-"}}
+        <td (click)="showFlow(row)" title="{{row.target_switch}}" [contextMenu]="copyTargetSwitch">
+          {{row.target_switch || "-"}}
           <context-menu #copyTargetSwitch>
-            <ng-template contextMenuItem (execute)="copyToClip($event,'target_switch_name',i);">
+            <ng-template contextMenuItem (execute)="copyToClip($event,'target_switch',i);">
               Copy to Clipboard
             </ng-template>
           </context-menu>
         </td>
-         <td (click)="showFlow(row)" title="{{row.target_switch}}">{{row.target_switch || "-"}}</td>
         <td (click)="showFlow(row)">{{row.dst_port || "-"}}</td>
         <td (click)="showFlow(row)">{{row.dst_vlan || "-"}}</td>
         <td (click)="showFlow(row)" >{{row.maximum_bandwidth / 1000  || "-"}}</td>
         <td (click)="showFlow(row)" title="{{row.status || row.state ||  '-'}}">{{ row.status || row.state ||  "-"}}</td>
         <td (click)="showFlow(row)" title="{{row.description}}">{{row.description || "-"}}</td>
-        <td (click)="showFlow(row)" title="{{row['created'] | date:'yyyy/MM/dd H:mm:s'}}">{{row['created'] | date:'yyyy/MM/dd H:mm:s'}}</td>
-        <!-- <td>{{row['last-updated']}}</td> -->
-        <td (click)="showFlow(row)">{{ descrepancyString(row) }}</td>
+        <td (click)="showFlow(row)" title="{{descrepancyString(row)}}">{{ descrepancyString(row) }}</td>
         <td >
           <a class="pull-left" title="Edit Flow" *ngIf="commonService.hasPermission('fw_flow_update') && (!storeLinkSetting || (row.hasOwnProperty('controller-flow')  && row['controller-flow'] ) ||  (storeLinkSetting && row.hasOwnProperty('discrepancy') && row['discrepancy'].hasOwnProperty('controller-discrepancy') && !row['discrepancy']['controller-discrepancy']))" [routerLink]="['/flows/edit',row.flowid]"><i class="fa fa-edit"></i></a></td>
-        
-        
       </tr>
     </tbody>
   </table>

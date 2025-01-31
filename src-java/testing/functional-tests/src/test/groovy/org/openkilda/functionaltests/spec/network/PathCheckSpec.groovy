@@ -133,7 +133,7 @@ class PathCheckSpec extends HealthCheckSpecification {
                 .find { it.retrieveNodes().size() > 4 && it.retrieveNodes().intersect(flowForwardPath).size() > 1 }
 
         and: "Involved ISls have been collected"
-        def flowInvolvedISLs = flowPathDetails.flowPath.getInvolvedIsls(Direction.FORWARD)
+        def flowInvolvedISLs = flowPathDetails.getInvolvedIsls(Direction.FORWARD)
         def intersectedPathInvolvedISLs = intersectingPath.getInvolvedIsls()
         def commonISLs = flowInvolvedISLs.intersect(intersectedPathInvolvedISLs)
         assert !commonISLs.isEmpty(), "Path for verification has no intersected segment(s) with the flow."

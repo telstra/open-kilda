@@ -108,12 +108,10 @@
                         <label class="col-sm-4 col-form-label">Evacuate:</label>
                         <div class="col-sm-4 switchdetails_div_address col-form-label">
                             <div class="onoffswitch">
-                                <input type="checkbox" (change)="evacuateSwitch($event)" name="onoffswitchevacuate"
-                                       class="onoffswitch-checkbox" id="onoffswitchevacuate" [checked]="evacuate">
-                                <label class="onoffswitch-label" for="onoffswitchevacuate">
-                                    <span class="onoffswitch-inner onoffswitch-inner-maintenance-switch"></span>
-                                    <span class="onoffswitch-switch"></span>
-                                </label>
+                                <button type="button" class="btn pull-left kilda_btn"
+                                        style="padding: 0px 9px!important; margin: 0px 0px -10px 0px;"
+                                        (click)="evacuateSwitch($event)">Evacuate
+                                </button> &nbsp;
                             </div>
                         </div>
                     </div>

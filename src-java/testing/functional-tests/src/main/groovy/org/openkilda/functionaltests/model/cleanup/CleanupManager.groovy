@@ -105,11 +105,11 @@ class CleanupManager {
         exceptions += runActionsAsynchronously(actions[PORT_UP])
         exceptions += runActionsAsynchronously(actions[RESTORE_ISL])
         exceptions += runActionsAsynchronously(actions[CLEAN_LINK_DELAY])
-        if (actions[RESET_ISLS_COST]) {
-            exceptions += runActionsSynchronously([actions[RESET_ISLS_COST].first()])
-        }
         if (actions[DELETE_ISLS_PROPERTIES]) {
             exceptions += runActionsSynchronously([actions[DELETE_ISLS_PROPERTIES].first()])
+        }
+        if (actions[RESET_ISLS_COST]) {
+            exceptions += runActionsSynchronously([actions[RESET_ISLS_COST].first()])
         }
         exceptions += runActionsSynchronously(actions[DELETE_HAFLOW])
         exceptions += runActionsAsynchronously(actions[SYNCHRONIZE_SWITCH])

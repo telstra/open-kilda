@@ -3,11 +3,13 @@ package org.openkilda.functionaltests.helpers.model
 import static org.openkilda.functionaltests.helpers.TopologyHelper.convertToPathNodePayload
 
 import org.openkilda.messaging.info.event.PathNode
+import org.openkilda.model.SwitchId
 import org.openkilda.testing.model.topology.TopologyDefinition
 import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import groovy.transform.EqualsAndHashCode
+import groovy.transform.Memoized
 import groovy.transform.TupleConstructor
 
 @TupleConstructor
@@ -20,7 +22,7 @@ class SwitchTriplet {
     List<List<PathNode>> pathsEp2
 
     @JsonIgnore
-    TopologyDefinition topologyDefinition
+    TopologyDefinition topology
 
     @JsonIgnore
     SwitchTriplet getReversed() {
@@ -75,14 +77,34 @@ class SwitchTriplet {
             areEp1Ep2AndEp1OrEp2AndShEpNeighbour
     }
 
+    @Memoized
+    List<SwitchId> findPotentialYPoints() {
+        def sortedEp1Paths = pathsEp1.sort { it.size() }
+        def potentialEp1Paths = sortedEp1Paths.takeWhile { it.size() == sortedEp1Paths[0].size() }
+        def potentialEp2Paths = potentialEp1Paths.collect { potentialEp1Path ->
+            def sortedEp2Paths = pathsEp2.sort {
+                it.size() - it.intersect(potentialEp1Path).size()
+            }
+            [path1: potentialEp1Path,
+             potentialPaths2: sortedEp2Paths.takeWhile {it.size() == sortedEp2Paths[0].size() }]
+        }
+        return potentialEp2Paths.collectMany {path1WithPath2 ->
+            path1WithPath2.potentialPaths2.collect { List<PathNode> potentialPath2 ->
+                def switches = path1WithPath2.path1.switchId
+                        .intersect(potentialPath2.switchId)
+                switches ? switches[-1] : null
+            }
+        }.findAll().unique()
+    }
+
     List<Path> retrieveAvailablePathsEp1(){
         convertToPathNodePayload(pathsEp1).collect{
-            new Path(it, topologyDefinition)
+            new Path(it, topology)
         }
     }
     List<Path> retrieveAvailablePathsEp2(){
         convertToPathNodePayload(pathsEp2).collect{
-            new Path(it, topologyDefinition)
+            new Path(it, topology)
         }
     }
 }

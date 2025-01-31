@@ -20,10 +20,10 @@ import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
 import org.openkilda.functionaltests.helpers.model.Path
+import org.openkilda.functionaltests.helpers.model.FlowRuleEntity
 import org.openkilda.functionaltests.helpers.model.SwitchPair
 import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
 import org.openkilda.functionaltests.model.stats.Direction
-import org.openkilda.messaging.info.rule.FlowEntry
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.SwitchId
 import org.openkilda.model.cookie.Cookie
@@ -105,10 +105,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is pingable"
-        verifyAll(flow.ping()) {
-            forward.pingSuccess
-            reverse.pingSuccess
-        }
+        flow.pingAndCollectDiscrepancies().isEmpty()
 
         and: "The flow allows traffic"
         def traffExam = traffExamProvider.get()
@@ -127,10 +124,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         }
 
         and: "Flow is pingable"
-        verifyAll(flow.ping()) {
-            forward.pingSuccess
-            reverse.pingSuccess
-        }
+        flow.pingAndCollectDiscrepancies().isEmpty()
 
         when: "Try to update the encapsulation type to #encapsulationUpdate.toString()"
         def updateEntity = flow.deepCopy().tap {
@@ -149,10 +143,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         and: "Flow is pingable (though sometimes we have to wait)"
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(flow.ping()) {
-                forward.pingSuccess
-                reverse.pingSuccess
-            }
+           flow.pingAndCollectDiscrepancies().isEmpty()
         }
 
         and: "Rules are recreated"
@@ -257,8 +248,8 @@ class VxlanFlowSpec extends HealthCheckSpecification {
 
         and: "Rules for main and protected paths are created"
         Wrappers.wait(WAIT_OFFSET) {
-            HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
-                    .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
+            HashMap<SwitchId, List<FlowRuleEntity>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
+                    .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowRuleEntity>>
             flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
         }
 
@@ -461,7 +452,7 @@ class VxlanFlowSpec extends HealthCheckSpecification {
                 .build().create()
 
         then: "Flow is built through vxlan-enabled path, even though it is not the shortest"
-        flow.retrieveAllEntityPaths().flowPath.getInvolvedIsls() != noVxlanPathIsls
+        flow.retrieveAllEntityPaths().getInvolvedIsls() != noVxlanPathIsls
     }
 
     @Tags([LOW_PRIORITY, TOPOLOGY_DEPENDENT])
