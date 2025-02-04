@@ -1,6 +1,7 @@
 package org.openkilda.functionaltests.model.switches
 
-import org.openkilda.testing.model.topology.TopologyDefinition
+
+import org.openkilda.testing.model.topology.TopologyDefinition.Switch
 
 enum Manufacturer {
     OVS("nicira"),
@@ -14,7 +15,7 @@ enum Manufacturer {
         this.descriptionPart = descriptionPart
     }
 
-    boolean isSwitchMatch(TopologyDefinition.Switch aSwitch) {
+    boolean isSwitchMatch(Switch aSwitch) {
         return aSwitch.nbFormat().hardware =~ descriptionPart ||
                 aSwitch.nbFormat().manufacturer.toLowerCase().contains(descriptionPart)
     }

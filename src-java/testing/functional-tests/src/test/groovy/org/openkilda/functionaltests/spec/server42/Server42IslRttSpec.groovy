@@ -186,7 +186,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         and: "ISL RTT rules are not installed for the new link because it is the same as moved(portNumber)"
         wait(RULES_INSTALLATION_TIME) {
             // newIsl.srcSwitch == isl.srcSwitch
-            assert switchRulesFactory.get(newIsl.srcSwitch.dpId).getServer42ISLRules().size() ==
+            assert switchRulesFactory.get(newIsl.srcSwitch.dpId).getServer42ISLRelatedRules().size() ==
                     (northbound.getLinks(newIsl.srcSwitch.dpId, null, null, null).size() - 1 + 2)
             // -1 = moved link, 2 = SERVER_42_ISL_RTT_TURNING_COOKIE + SERVER_42_ISL_RTT_OUTPUT_COOKIE
         }
@@ -297,14 +297,14 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         switchHelper.setServer42IslRttForSwitch(sw, false)
 
         then: "No IslRtt rules on the switch"
-        wait(RULES_DELETION_TIME) { switchRulesFactory.get(sw.dpId).getServer42ISLRules().isEmpty() }
+        wait(RULES_DELETION_TIME) { switchRulesFactory.get(sw.dpId).getServer42ISLRelatedRules().isEmpty() }
 
         when: "server42IslRtt feature toggle is set to true"
         featureToggles.server42IslRtt(true)
 
         then: "No IslRtt rules on the switch"
         timedLoop(3) {
-            switchRulesFactory.get(sw.dpId).getServer42ISLRules().isEmpty()
+            switchRulesFactory.get(sw.dpId).getServer42ISLRelatedRules().isEmpty()
             sleep(1000)
         }
 
@@ -316,7 +316,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
 
         then: "No IslRtt rules on the switch"
         timedLoop(3) {
-            switchRulesFactory.get(sw.dpId).getServer42ISLRules().isEmpty()
+            switchRulesFactory.get(sw.dpId).getServer42ISLRelatedRules().isEmpty()
             sleep(1000)
         }
 
@@ -326,7 +326,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         then: "IslRtt rules are installed on the switch"
         FlowRuleEntity s42IslRttTurningRule
         wait(RULES_INSTALLATION_TIME) {
-            def s42IslRttRules = switchRulesFactory.get(sw.dpId).getServer42ISLRules()
+            def s42IslRttRules = switchRulesFactory.get(sw.dpId).getServer42ISLRelatedRules()
             assert s42IslRttRules.size() == (northbound.getLinks(sw.dpId, null, null, null).size() + 2)
             s42IslRttTurningRule = s42IslRttRules.find { it.cookie == Cookie.SERVER_42_ISL_RTT_TURNING_COOKIE }
         }
@@ -340,7 +340,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         then: "SERVER_42_ISL_RTT_OUTPUT_COOKIE and SERVER_42_ISL_RTT_INPUT rules updated according to the changes"
         and: "SERVER_42_ISL_RTT_TURNING_COOKIE is not changed"
         wait(RULES_INSTALLATION_TIME) {
-            def rules = switchRulesFactory.get(sw.dpId).getServer42ISLRules()
+            def rules = switchRulesFactory.get(sw.dpId).getServer42ISLRelatedRules()
             assert rules.size() == northbound.getLinks(sw.dpId, null, null, null).size() + 2
             assert rules.findAll {
                 new Cookie(it.cookie).getType() == CookieType.SERVER_42_ISL_RTT_INPUT
@@ -359,7 +359,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
                 .tap({ it.server42IslRtt = RttState.AUTO.toString() }))
 
         then: "No IslRtt rules on the switch"
-        wait(RULES_DELETION_TIME) { switchRulesFactory.get(sw.dpId).getServer42ISLRules().isEmpty() }
+        wait(RULES_DELETION_TIME) { switchRulesFactory.get(sw.dpId).getServer42ISLRelatedRules().isEmpty() }
 
         when: "server42IslRtt feature toggle is set true"
         featureToggles.server42IslRtt(true)
@@ -374,7 +374,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         then: "SERVER_42_ISL_RTT_OUTPUT_COOKIE and SERVER_42_ISL_RTT_INPUT rules updated according to the changes"
         and: "SERVER_42_ISL_RTT_TURNING_COOKIE is not changed"
         wait(RULES_INSTALLATION_TIME) {
-            def rules = switchRulesFactory.get(sw.dpId).getServer42ISLRules()
+            def rules = switchRulesFactory.get(sw.dpId).getServer42ISLRelatedRules()
             assert rules.size() == northbound.getLinks(sw.dpId, null, null, null).size() + 2
             assert rules.findAll {
                 new Cookie(it.cookie).getType() == CookieType.SERVER_42_ISL_RTT_INPUT
@@ -474,7 +474,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
         switchHelper.setServer42IslRttAndWaitForRulesInstallation(isl.dstSwitch, true, true)
 
         when: "Delete ISL Rtt rules on the src switch"
-        def rulesToDelete = switchRulesFactory.get(isl.srcSwitch.dpId).getServer42ISLRules()
+        def rulesToDelete = switchRulesFactory.get(isl.srcSwitch.dpId).getServer42ISLRelatedRules()
         withPool {
             rulesToDelete.eachParallel { switchHelper.deleteSwitchRules(isl.srcSwitch.dpId, it.cookie) }
         }
@@ -502,7 +502,7 @@ class Server42IslRttSpec extends HealthCheckSpecification {
 
         and: "ISL Rtt rules are really installed"
         wait(RULES_INSTALLATION_TIME) {
-            def installedRules = switchRulesFactory.get(isl.srcSwitch.dpId).getServer42ISLRules()
+            def installedRules = switchRulesFactory.get(isl.srcSwitch.dpId).getServer42ISLRelatedRules()
             assertThat(installedRules).containsExactlyInAnyOrder(*rulesToDelete)
         }
 

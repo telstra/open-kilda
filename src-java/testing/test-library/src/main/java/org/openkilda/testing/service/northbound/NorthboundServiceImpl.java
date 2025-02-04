@@ -67,6 +67,7 @@ import org.openkilda.testing.model.topology.TopologyDefinition.Isl;
 import org.openkilda.testing.service.northbound.payloads.PathDto;
 import org.openkilda.testing.service.northbound.payloads.PathRequestParameter;
 import org.openkilda.testing.service.northbound.payloads.PathsDto;
+import org.openkilda.testing.service.northbound.payloads.SwitchSyncExtendedResult;
 import org.openkilda.testing.service.northbound.payloads.SwitchValidationExtendedResult;
 
 import com.google.common.collect.ImmutableMap;
@@ -288,11 +289,13 @@ public class NorthboundServiceImpl implements NorthboundService {
     }
 
     @Override
-    public SwitchSyncResult synchronizeSwitch(SwitchId switchId, boolean removeExcess) {
+    public SwitchSyncExtendedResult synchronizeSwitch(SwitchId switchId, boolean removeExcess) {
         HttpEntity<SwitchSyncRequest> httpEntity = new HttpEntity<>(new SwitchSyncRequest(removeExcess),
                 buildHeadersWithCorrelationId());
-        return restTemplate.exchange("/api/v1/switches/{switch_id}/synchronize", HttpMethod.PATCH, httpEntity,
-                SwitchSyncResult.class, switchId).getBody();
+        SwitchSyncResult syncResult =  Objects.requireNonNull(restTemplate.exchange(
+                "/api/v1/switches/{switch_id}/synchronize", HttpMethod.PATCH, httpEntity,
+                SwitchSyncResult.class, switchId).getBody());
+        return new SwitchSyncExtendedResult(switchId, syncResult);
     }
 
     @Override
