@@ -16,7 +16,7 @@ If you want to test full functionality then you have to perform the following ma
 class LicenseSpec extends GrpcBaseSpecification {
     @Tags(HARDWARE)
     @Ignore("https://github.com/telstra/open-kilda/issues/4592")
-    def "Not able to set incorrect license on #sw.hwSwString"() {
+    def "Not able to set incorrect license on #sw.hardware-#sw.software"() {
         when: "Try to set incorrect license key"
         String licenseFileName = "incorrectLicenseFileName.key"
         String incorrectLicense = "incorrect license data"
