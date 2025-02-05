@@ -72,6 +72,8 @@ import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.northbound.dto.v1.switches.SwitchPropertiesDto
 import org.openkilda.northbound.dto.v2.switches.LagPortResponse
 import org.openkilda.northbound.dto.v2.switches.MeterInfoDtoV2
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectEntry
+import org.openkilda.northbound.dto.v2.switches.SwitchConnectedDevicesResponse
 import org.openkilda.northbound.dto.v2.switches.SwitchFlowsPerPortResponse
 import org.openkilda.northbound.dto.v2.switches.SwitchLocationDtoV2
 import org.openkilda.northbound.dto.v2.switches.SwitchPatchDto
@@ -81,6 +83,7 @@ import org.openkilda.testing.service.floodlight.model.Floodlight
 import org.openkilda.testing.service.floodlight.model.FloodlightConnectMode
 import org.openkilda.testing.service.lockkeeper.LockKeeperService
 import org.openkilda.testing.service.lockkeeper.model.FloodlightResourceAddress
+import org.openkilda.testing.service.lockkeeper.model.TrafficControlData
 import org.openkilda.testing.service.northbound.NorthboundService
 import org.openkilda.testing.service.northbound.NorthboundServiceV2
 import org.openkilda.testing.service.northbound.payloads.SwitchSyncExtendedResult
@@ -151,8 +154,8 @@ class SwitchExtended {
 
     @Override
     String toString() {
-        return String.format("Switch: %s, islPorts: %s, traffGen(s) port(s) %s, nbDetails: %s",
-                switchId, islPorts, traffGenPorts, nbDetails)
+        return String.format("Switch: %s, islPorts: %s, traffGen(s) port(s) %s, nbDetails: %s,  FL regions: %s",
+                switchId, islPorts, traffGenPorts, nbDetails, regions)
     }
 
     @JsonIgnore
@@ -173,6 +176,10 @@ class SwitchExtended {
 
     String getOfVersion() {
         sw.ofVersion
+    }
+
+    List<String> getRegions(){
+        sw.regions
     }
 
     /**
@@ -513,14 +520,30 @@ class SwitchExtended {
         northbound.getLinks(switchId, null, null, null)
     }
 
+    List<IslInfoData> collectForwardAndReverseRelatedLinks() {
+        northbound.getAllLinks().findAll { switchId in [it.source.switchId, it.destination.switchId] }
+    }
+
     def delete(Boolean force = false) {
         return northbound.deleteSwitch(sw.dpId, force)
+    }
+
+    SwitchConnectedDevicesResponse getConnectedDevices() {
+        northboundV2.getConnectedDevices(switchId)
     }
 
     boolean isS42FlowRttEnabled() {
         def swProps = northbound.getSwitchProperties(sw.dpId)
         def featureToggles = northbound.getFeatureToggles()
         swProps.server42FlowRtt && featureToggles.server42FlowRtt
+    }
+
+    /***
+     * getting switch connections details to floodlight
+     * @return list of floodlight connections
+     */
+    List<SwitchConnectEntry> getConnectedFloodLights() {
+        northboundV2.getSwitchConnections(sw.dpId).connections
     }
 
     /***
@@ -551,9 +574,10 @@ class SwitchExtended {
      * @param FL mode
      * @param waitForRelatedLinks make sure that all switch related ISLs are FAILED
      */
-    List<FloodlightResourceAddress> knockout(FloodlightConnectMode mode, boolean waitForRelatedLinks, double timeout = WAIT_OFFSET) {
+    List<FloodlightResourceAddress> knockout(FloodlightConnectMode mode, boolean waitForRelatedLinks,
+                                             boolean waitForRelatedLinksWhenRecover = true, double timeout = WAIT_OFFSET) {
         def blockData = lockKeeper.knockoutSwitch(sw, mode)
-        cleanupManager.addAction(REVIVE_SWITCH, { revive(blockData, true) }, CleanupAfter.TEST)
+        cleanupManager.addAction(REVIVE_SWITCH, { revive(blockData, waitForRelatedLinksWhenRecover) }, CleanupAfter.TEST)
         Wrappers.wait(timeout) {
             assert northbound.getSwitch(sw.dpId).state == DEACTIVATED
         }
@@ -568,6 +592,10 @@ class SwitchExtended {
 
     List<FloodlightResourceAddress> knockout(FloodlightConnectMode mode) {
         knockout(mode, false)
+    }
+
+    List<FloodlightResourceAddress> knockoutWithoutLinksCheckWhenRecover(FloodlightConnectMode mode) {
+        knockout(mode, false, false)
     }
 
     List<FloodlightResourceAddress> knockout(List<String> regions) {
@@ -606,12 +634,19 @@ class SwitchExtended {
     }
 
     void verifyRelatedLinksState(IslChangeType expectedState) {
-        def relatedLinks = northbound.getAllLinks().findAll {
-            switchId in [it.source.switchId, it.destination.switchId]
-        }
+        def relatedLinks = collectForwardAndReverseRelatedLinks()
         assert relatedLinks.size() == islPorts.size() * 2
 
         relatedLinks.each { isl -> assert isl.state == expectedState }
+    }
+
+    void shapeTraffic(TrafficControlData tcData) {
+        cleanupManager.addAction(OTHER, { cleanupTrafficShaperRules() })
+        lockKeeper.shapeSwitchesTraffic([sw], tcData)
+    }
+
+    void cleanupTrafficShaperRules() {
+        lockKeeper.cleanupTrafficShaperRules(sw.regions.flatten())
     }
 
     void waitForS42FlowRttRulesSetup(boolean isS42ToggleOn = true) {

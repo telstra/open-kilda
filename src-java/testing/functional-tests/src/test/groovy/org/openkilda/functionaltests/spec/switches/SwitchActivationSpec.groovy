@@ -6,8 +6,8 @@ import static org.openkilda.functionaltests.extension.tags.Tag.SMOKE_SWITCHES
 import static org.openkilda.functionaltests.extension.tags.Tag.SWITCH_RECOVER_ON_FAIL
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_SWITCH_PROPERTIES
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.SYNCHRONIZE_SWITCH
+import static org.openkilda.messaging.info.event.IslChangeType.*
 import static org.openkilda.messaging.info.event.SwitchChangeType.ACTIVATED
-import static org.openkilda.messaging.info.event.SwitchChangeType.DEACTIVATED
 import static org.openkilda.model.MeterId.MAX_SYSTEM_RULE_METER_ID
 import static org.openkilda.model.MeterId.MIN_FLOW_METER_ID
 import static org.openkilda.testing.Constants.WAIT_OFFSET
@@ -21,7 +21,6 @@ import org.openkilda.functionaltests.helpers.factory.FlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.model.cleanup.CleanupManager
 import org.openkilda.messaging.command.switches.DeleteRulesAction
-import org.openkilda.messaging.info.event.IslChangeType
 import org.openkilda.model.MeterId
 import org.openkilda.model.cookie.Cookie
 import org.openkilda.rulemanager.FlowSpeakerData
@@ -57,25 +56,23 @@ class SwitchActivationSpec extends HealthCheckSpecification {
     def "Missing flow rules/meters are installed on a new switch before connecting to the controller"() {
         given: "A switch with missing flow rules/meters and not connected to the controller"
         def switchPair = switchPairs.all().neighbouring().random()
+        def srcSw = switches.all().findSpecific(switchPair.src.dpId)
         def flow = flowFactory.getRandom(switchPair)
 
-        def originalMeterIds = northbound.getAllMeters(switchPair.src.dpId).meterEntries*.meterId
-        assert originalMeterIds.size() == 1 + switchPair.src.defaultMeters.size()
-        def createdCookies = northbound.getSwitchRules(switchPair.src.dpId).flowEntries.findAll {
-            !new Cookie(it.cookie).serviceFlag
-        }*.cookie
-        def srcSwProps = switchHelper.getCachedSwProps(switchPair.src.dpId)
-        def amountOfServer42IngressRules = srcSwProps.server42FlowRtt ? 1 : 0
-        def amountOfServer42SharedRules = srcSwProps.server42FlowRtt
-                && flow.source.vlanId ? 1 : 0
-        def amountOfFlowRules = 3 + amountOfServer42IngressRules + amountOfServer42SharedRules
+        def originalMeterIds = srcSw.metersManager.getMeters().meterId
+        assert originalMeterIds.size() == 1 + srcSw.collectDefaultMeters().size()
+
+        def createdCookies = srcSw.rulesManager.getRules()
+                .findAll { !new Cookie(it.cookie).serviceFlag }*.cookie
+        def amountOfFlowRules = srcSw.collectFlowRelatedRulesAmount(flow)
         assert createdCookies.size() == amountOfFlowRules
 
         def nonDefaultMeterIds = originalMeterIds.findAll({it > MAX_SYSTEM_RULE_METER_ID})
-        northbound.deleteMeter(switchPair.src.dpId, nonDefaultMeterIds[0])
-        switchHelper.deleteSwitchRules(switchPair.src.dpId, DeleteRulesAction.IGNORE_DEFAULTS)
+        srcSw.metersManager.delete(nonDefaultMeterIds[0])
+        srcSw.rulesManager.delete(DeleteRulesAction.IGNORE_DEFAULTS)
+
         Wrappers.wait(WAIT_OFFSET) {
-            with(switchHelper.validateAndCollectFoundDiscrepancies(switchPair.src.dpId).get()) {
+            with(srcSw.validate()) {
                 it.rules.missing*.cookie.containsAll(createdCookies)
                 it.rules.excess.empty
                 it.rules.misconfigured.empty
@@ -85,46 +82,46 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             }
         }
 
-        def blockData = switchHelper.knockoutSwitch(switchPair.src, RW)
+        def blockData = srcSw.knockout(RW)
 
         when: "Connect the switch to the controller"
-        switchHelper.reviveSwitch(switchPair.src, blockData)
+        srcSw.revive(blockData)
 
         then: "Missing flow rules/meters were synced during switch activation"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(switchPair.src.dpId).isPresent()
+        !srcSw.validateAndCollectFoundDiscrepancies().isPresent()
     }
 
     @Tags([SMOKE_SWITCHES, SWITCH_RECOVER_ON_FAIL])
     def "Excess transitVlanRules/meters are synced from a new switch before connecting to the controller"() {
         given: "A switch with excess rules/meters and not connected to the controller"
-        def sw = topology.getActiveSwitches().first()
+        def sw = switches.all().first()
 
         def producer = new KafkaProducer(producerProps)
         //pick a meter id which is not yet used on src switch
-        def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
-                                                                  .meterEntries*.meterId).first()
-        cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId)})
-        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
+        def excessMeterId = ((MIN_FLOW_METER_ID..100) - sw.metersManager.getMeters().meterId).first()
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, { sw.synchronizeAndCollectFixedDiscrepancies() })
+
+        producer.send(new ProducerRecord(speakerTopic, sw.switchId.toString(), buildMessage(
                 FlowSpeakerData.builder()
-                        .switchId(sw.dpId)
+                        .switchId(sw.switchId)
                         .ofVersion(OfVersion.of(sw.ofVersion))
                         .cookie(new Cookie(1))
                         .table(OfTable.EGRESS)
                         .priority(100)
                         .instructions(Instructions.builder().build())
                         .build()).toJson())).get()
-        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
+        producer.send(new ProducerRecord(speakerTopic, sw.switchId.toString(), buildMessage(
                 FlowSpeakerData.builder()
-                        .switchId(sw.dpId)
+                        .switchId(sw.switchId)
                         .ofVersion(OfVersion.of(sw.ofVersion))
                         .cookie(new Cookie(2))
                         .table(OfTable.TRANSIT)
                         .priority(100)
                         .instructions(Instructions.builder().build())
                         .build()).toJson())).get()
-        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage([
+        producer.send(new ProducerRecord(speakerTopic, sw.switchId.toString(), buildMessage([
                 FlowSpeakerData.builder()
-                        .switchId(sw.dpId)
+                        .switchId(sw.switchId)
                         .ofVersion(OfVersion.of(sw.ofVersion))
                         .cookie(new Cookie(3))
                         .table(OfTable.INPUT)
@@ -132,7 +129,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
                         .instructions(Instructions.builder().build())
                         .build(),
                 MeterSpeakerData.builder()
-                        .switchId(sw.dpId)
+                        .switchId(sw.switchId)
                         .ofVersion(OfVersion.of(sw.ofVersion))
                         .meterId(new MeterId(excessMeterId))
                         .rate(300)
@@ -143,7 +140,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         producer.flush()
 
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get()) {
+            verifyAll(sw.validate()) {
                 it.rules.excess.size() == 3
                 it.rules.misconfigured.empty
                 it.rules.missing.empty
@@ -153,46 +150,44 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             }
         }
 
-        def blockData = switchHelper.knockoutSwitch(sw, RW)
+        def blockData = sw.knockout(RW)
 
         when: "Connect the switch to the controller"
-        switchHelper.reviveSwitch(sw, blockData)
+        sw.revive(blockData)
 
         then: "Excess meters/rules were synced during switch activation"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
+        !sw.synchronizeAndCollectFixedDiscrepancies().isPresent()
     }
 
     @Tags([SMOKE_SWITCHES, SWITCH_RECOVER_ON_FAIL])
     def "Excess vxlanRules/meters are synced from a new switch before connecting to the controller"() {
         given: "A switch with excess rules/meters and not connected to the controller"
-        def sw = topology.getActiveSwitches().find { switchHelper.isVxlanEnabled(it.dpId) }
-
+        def sw = switches.all().withVxlanEnabled().first()
         def producer = new KafkaProducer(producerProps)
         //pick a meter id which is not yet used on src switch
-        def excessMeterId = ((MIN_FLOW_METER_ID..100) - northbound.getAllMeters(sw.dpId)
-                .meterEntries*.meterId).first()
-        cleanupManager.addAction(SYNCHRONIZE_SWITCH, {switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId)})
-        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
+        def excessMeterId = ((MIN_FLOW_METER_ID..100) - sw.metersManager.getMeters().meterId).first()
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, { sw.synchronize()} )
+        producer.send(new ProducerRecord(speakerTopic, sw.switchId.toString(), buildMessage(
                 FlowSpeakerData.builder()
-                        .switchId(sw.dpId)
+                        .switchId(sw.switchId)
                         .ofVersion(OfVersion.of(sw.ofVersion))
                         .cookie(buildCookie(1L))
                         .table(OfTable.EGRESS)
                         .priority(100)
                         .instructions(Instructions.builder().build())
                         .build()).toJson())).get()
-        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage(
+        producer.send(new ProducerRecord(speakerTopic, sw.switchId.toString(), buildMessage(
                 FlowSpeakerData.builder()
-                        .switchId(sw.dpId)
+                        .switchId(sw.switchId)
                         .ofVersion(OfVersion.of(sw.ofVersion))
                         .cookie(buildCookie(2L))
                         .table(OfTable.TRANSIT)
                         .priority(100)
                         .instructions(Instructions.builder().build())
                         .build()).toJson())).get()
-        producer.send(new ProducerRecord(speakerTopic, sw.dpId.toString(), buildMessage([
+        producer.send(new ProducerRecord(speakerTopic, sw.switchId.toString(), buildMessage([
                 FlowSpeakerData.builder()
-                        .switchId(sw.dpId)
+                        .switchId(sw.switchId)
                         .ofVersion(OfVersion.of(sw.ofVersion))
                         .cookie(buildCookie(3L))
                         .table(OfTable.INPUT)
@@ -200,7 +195,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
                         .instructions(Instructions.builder().build())
                         .build(),
                 MeterSpeakerData.builder()
-                        .switchId(sw.dpId)
+                        .switchId(sw.switchId)
                         .ofVersion(OfVersion.of(sw.ofVersion))
                         .meterId(new MeterId(excessMeterId))
                         .rate(300)
@@ -211,7 +206,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         producer.flush()
 
         Wrappers.wait(WAIT_OFFSET) {
-            verifyAll(switchHelper.validateAndCollectFoundDiscrepancies(sw.dpId).get()) {
+            verifyAll(sw.validate()) {
                 it.rules.excess.size() == 3
                 it.rules.missing.empty
                 it.rules.misconfigured.empty
@@ -221,52 +216,43 @@ class SwitchActivationSpec extends HealthCheckSpecification {
             }
         }
 
-        def blockData = switchHelper.knockoutSwitch(sw, RW)
+        def blockData = sw.knockout(RW)
 
         when: "Connect the switch to the controller"
-        switchHelper.reviveSwitch(sw, blockData)
+        sw.revive(blockData)
 
         then: "Excess meters/rules were synced during switch activation"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(sw.dpId).isPresent()
+        !sw.synchronizeAndCollectFixedDiscrepancies().isPresent()
     }
 
     @Tags([SMOKE, SMOKE_SWITCHES, LOCKKEEPER, SWITCH_RECOVER_ON_FAIL])
     def "New connected switch is properly discovered with related ISLs in a reasonable time"() {
         setup: "Disconnect one of the switches and remove it from DB. Pretend this switch never existed"
-        def sw = topology.activeSwitches.first()
-        def isls = topology.getRelatedIsls(sw)
+        def sw = switches.all().first()
+        def isls = topology.getRelatedIsls(sw.switchId)
         /*in case supportedTransitEncapsulation == ["transit_vlan", "vxlan"]
         then after removing/adding the same switch this fields will be changed (["transit_vlan"])
         vxlan encapsulation is not set by default*/
-        def initSwProps = switchHelper.getCachedSwProps(sw.dpId)
-        initSwProps.supportedTransitEncapsulation
-        def blockData = switchHelper.knockoutSwitch(sw, RW)
+        def initSwProps = sw.getProps()
+        def blockData = sw.knockout(RW)
+        //Verifying links actualState (for HW link state isn't changed) as lockKeeper imitates switch off event
         Wrappers.wait(WAIT_OFFSET + discoveryTimeout) {
-            assert northbound.getSwitch(sw.dpId).state == DEACTIVATED
-            def allIsls = northbound.getAllLinks()
-            isls.each { assert islUtils.getIslInfo(allIsls, it).get().actualState == IslChangeType.FAILED }
+            sw.collectForwardAndReverseRelatedLinks().each { assert it.actualState == FAILED }
         }
+
         isls.each { northbound.deleteLink(islUtils.toLinkParameters(it), true) }
-        cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, {switchHelper.updateSwitchProperties(sw, initSwProps)})
-        Wrappers.retry(2) { northbound.deleteSwitch(sw.dpId, false) }
+        cleanupManager.addAction(RESTORE_SWITCH_PROPERTIES, { northbound.updateSwitchProperties(sw.switchId, initSwProps) })
+        Wrappers.retry(2) { sw.delete() }
 
         when: "New switch connects"
-        lockKeeper.reviveSwitch(sw, blockData)
+        sw.revive(blockData, false)
 
         then: "Switch is activated"
-        def switchStatus
-        Wrappers.wait(WAIT_OFFSET / 2) {
-            switchStatus = northbound.getSwitch(sw.dpId).state
-            assert switchStatus == ACTIVATED
-        }
+        sw.getDetails().state == ACTIVATED
 
         and: "Related ISLs are discovered"
         Wrappers.wait(discoveryExhaustedInterval + WAIT_OFFSET / 2 + antiflapCooldown) {
-            def allIsls = northbound.getAllLinks()
-            isls.each {
-                assert islUtils.getIslInfo(allIsls, it).get().actualState == IslChangeType.DISCOVERED
-                assert islUtils.getIslInfo(allIsls, it.reversed).get().actualState == IslChangeType.DISCOVERED
-            }
+            sw.collectForwardAndReverseRelatedLinks().each { assert it.actualState == DISCOVERED }
         }
     }
 }
