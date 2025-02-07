@@ -3,10 +3,12 @@ package org.openkilda.functionaltests.helpers.model
 import static groovyx.gpars.GParsPool.withPool
 import static org.hamcrest.MatcherAssert.assertThat
 import static org.hamcrest.Matchers.hasItem
+import static org.hamcrest.Matchers.notNullValue
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.OTHER
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESET_SWITCH_MAINTENANCE
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.RESTORE_SWITCH_PROPERTIES
 import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.REVIVE_SWITCH
+import static org.openkilda.functionaltests.model.cleanup.CleanupActionType.SYNCHRONIZE_SWITCH
 import static org.openkilda.messaging.info.event.IslChangeType.DISCOVERED
 import static org.openkilda.messaging.info.event.IslChangeType.FAILED
 import static org.openkilda.messaging.info.event.SwitchChangeType.ACTIVATED
@@ -207,6 +209,11 @@ class SwitchExtended {
             availablePorts = allPorts
         }
         Integer portNo = availablePorts.shuffled().first()
+        return new PortExtended(sw, portNo, northbound, northboundV2, cleanupManager)
+    }
+
+    PortExtended getPortInState(String state) {
+        Integer portNo = northbound.getPorts(switchId).find { state in it.state }.portNumber
         return new PortExtended(sw, portNo, northbound, northboundV2, cleanupManager)
     }
 
@@ -413,7 +420,8 @@ class SwitchExtended {
      * reinstalled according to config
      */
     SwitchPropertiesDto updateProperties(SwitchPropertiesDto switchProperties) {
-        cleanupManager.addAction(OTHER, { northbound.updateSwitchProperties(sw.dpId, getCashedProps()) })
+        def initialProps = getCashedProps()
+        cleanupManager.addAction(OTHER, { northbound.updateSwitchProperties(sw.dpId, initialProps) })
         def response = northbound.updateSwitchProperties(sw.dpId, switchProperties)
         Wrappers.wait(RULES_INSTALLATION_TIME) {
             def actualHexCookie = []
@@ -528,6 +536,10 @@ class SwitchExtended {
         return northbound.deleteSwitch(sw.dpId, force)
     }
 
+    SwitchPropertiesDto getPropsV1() {
+        northbound.getSwitchProperties(sw.dpId)
+    }
+
     SwitchConnectedDevicesResponse getConnectedDevices() {
         northboundV2.getConnectedDevices(switchId)
     }
@@ -633,6 +645,11 @@ class SwitchExtended {
         revive(flResourceAddress, false)
     }
 
+    void updateBurstSizeAndRate(Long meterId, Long newBurstSize, Long newRate) {
+        cleanupManager.addAction(SYNCHRONIZE_SWITCH, { synchronize() })
+        lockKeeper.updateBurstSizeAndRate(sw, meterId, newBurstSize, newRate)
+    }
+
     void verifyRelatedLinksState(IslChangeType expectedState) {
         def relatedLinks = collectForwardAndReverseRelatedLinks()
         assert relatedLinks.size() == islPorts.size() * 2
@@ -700,6 +717,11 @@ class SwitchExtended {
     @Memoized
     Set<SwitchFeature> getDbFeatures() {
         database.getSwitch(sw.dpId).features
+    }
+
+    void setFeaturesInDb(Set<SwitchFeature> features) {
+        cleanupManager.addAction(OTHER, { database.setSwitchFeatures(sw.dpId, getDbFeatures())})
+        database.setSwitchFeatures(sw.dpId, features)
     }
 
     boolean isVxlanFeatureEnabled() {
@@ -895,5 +917,23 @@ class SwitchExtended {
             }
         }
         assertions.verify()
+    }
+
+    static void verifySectionInSwitchValidationInfo(SwitchValidationV2ExtendedResult switchValidateInfo,
+                                                    List<String> sections = ["groups", "meters", "logical_ports", "rules"]) {
+        sections.each { String section ->
+            assertThat(switchValidateInfo."$section", notNullValue())
+        }
+    }
+
+    static void verifySectionsAsExpectedFields(SwitchValidationV2ExtendedResult switchValidateInfo,
+                                               List<String> sections = ["groups", "meters", "logical_ports", "rules"]) {
+        boolean result = true;
+        sections.each { String section ->
+            if (!switchValidateInfo."$section".asExpected) {
+                result = false
+            }
+        }
+        assert result == switchValidateInfo.asExpected
     }
 }
