@@ -136,7 +136,10 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
         }
 
         and: "Dst switch validation shows no missing rules"
-        !switchHelper.validateAndCollectFoundDiscrepancies(dstSwitch.dpId).isPresent()
+        with(northbound.validateSwitch(dstSwitch.dpId)) {
+            it.verifyRuleSectionsAreEmpty(["missing", "proper", "misconfigured"])
+            it.verifyMeterSectionsAreEmpty(["missing", "misconfigured", "proper", "excess"])
+        }
 
         when: "Try to validate flow"
         flow.validate()

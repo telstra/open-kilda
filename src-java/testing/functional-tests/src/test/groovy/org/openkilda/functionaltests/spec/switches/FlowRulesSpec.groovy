@@ -475,10 +475,11 @@ class FlowRulesSpec extends HealthCheckSpecification {
                 .create()
 
         def flowPathInfo = flow.retrieveAllEntityPaths()
+        def flowDBInfo = flow.retrieveDetailsFromDB()
 
         HashMap<SwitchId, List<FlowRuleEntity>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
                 .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowRuleEntity>>
-        flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
+        flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules, flowDBInfo)
 
         def mainFlowPath = flowPathInfo.getPathNodes(Direction.FORWARD, false)
         def protectedFlowPath = flowPathInfo.getPathNodes(Direction.FORWARD, true)

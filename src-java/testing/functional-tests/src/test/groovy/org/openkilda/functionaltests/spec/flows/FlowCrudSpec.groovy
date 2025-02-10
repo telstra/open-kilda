@@ -488,10 +488,8 @@ class FlowCrudSpec extends HealthCheckSpecification {
     }
 
     def "Removing flow while it is still in progress of being set up should not cause rule discrepancies"() {
-        given: "A potential flow"
+        given: "Neighbouring switch pair"
         def switchPair = switchPairs.all().neighbouring().random()
-        def flowExpectedPath = switchPair.retrieveAvailablePaths().min { islHelper.getCost(it.getInvolvedIsls()) }
-        def switchesId = flowExpectedPath.getInvolvedSwitches()
 
         when: "Init creation of a new flow"
         def flow = flowFactory.getBuilder(switchPair).build().sendCreateRequest()
@@ -507,10 +505,10 @@ class FlowCrudSpec extends HealthCheckSpecification {
 
         and: "Flow eventually gets into UP state"
         flow.waitForBeingInState(UP)
-        flow.retrieveAllEntityPaths().getInvolvedSwitches().sort() == switchesId.sort()
+        flow.retrieveAllEntityPaths().getInvolvedSwitches().sort() == switchPair.toList().dpId.sort()
 
         and: "All related switches have no discrepancies in rules"
-        switchesId.each {
+        switchPair.toList().dpId.each {
             def syncResult = switchHelper.synchronize(it)
             assert syncResult.rules.installed.isEmpty() && syncResult.rules.removed.isEmpty()
             assert syncResult.meters.installed.isEmpty() && syncResult.meters.removed.isEmpty()
@@ -716,16 +714,17 @@ Failed to find path with requested bandwidth=${IMPOSSIBLY_HIGH_BANDWIDTH}/)
         flowInfo.statusDetails
 
         and: "Rules for main and protected paths are created"
+        def flowDBInfo = flow.retrieveDetailsFromDB()
         wait(WAIT_OFFSET) {
             HashMap<SwitchId, List<FlowRuleEntity>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
                     .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowRuleEntity>>
-            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
+            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules, flowDBInfo)
         }
 
         and: "Validation of flow must be successful"
         flow.validateAndCollectDiscrepancies().isEmpty()
 
-        def flowInfoFromDb = database.getFlow(flow.flowId)
+        def flowInfoFromDb = flow.retrieveDetailsFromDB()
         def protectedForwardCookie = flowInfoFromDb.protectedForwardPath.cookie.value
         def protectedReverseCookie = flowInfoFromDb.protectedReversePath.cookie.value
         def protectedFlowPath = flowPathInfo.flowPath.protectedPath.forward
@@ -828,7 +827,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         wait(PATH_INSTALLATION_TIME) {
             assert flow.retrieveFlowStatus().status == UP
         }
-        def flowInfo = database.getFlow(flow.flowId)
+        def flowInfo = flow.retrieveDetailsFromDB()
         def flowCookies = [flowInfo.forwardPath.cookie.value, flowInfo.reversePath.cookie.value]
         def switches = flow.retrieveAllEntityPaths().getInvolvedSwitches()
         withPool(switches.size()) {
@@ -888,7 +887,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
 
         and: "Flow rules are recreated"
-        def flowInfoFromDb2 = database.getFlow(flow.flowId)
+        def flowInfoFromDb2 = flow.retrieveDetailsFromDB()
         wait(RULES_INSTALLATION_TIME) {
             def rules = switchRulesFactory.get(srcSwitch.dpId).getRules()
                     .findAll { !new Cookie(it.cookie).serviceFlag }
@@ -926,7 +925,7 @@ types .* or update switch properties and add needed encapsulation type./).matche
         }
 
         and: "Flow rules are removed from the old dst switch"
-        def flowInfoFromDb3 = database.getFlow(flow.flowId)
+        def flowInfoFromDb3 = flow.retrieveDetailsFromDB()
         wait(RULES_DELETION_TIME) {
             def cookies = switchRulesFactory.get(dstSwitch.dpId).getRules()
                     .findAll { !new Cookie(it.cookie).serviceFlag }.cookie

@@ -53,7 +53,10 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
         when: "Delete HA-Flow rule on switch"
         def swIdToManipulate = switchToManipulate(haFlow)
         def switchRules = switchRulesFactory.get(swIdToManipulate)
-        def haFlowRuleToDelete = switchRules.forHaFlow(haFlow).shuffled().first()
+        def haFlowCookiesFromDb = (database.getHaFlowCookies(haFlow.haFlowId) +
+                database.getHaSubFlowsCookies(haFlow.subFlows*.haSubFlowId)).collect {it.getValue()}
+        def haFlowRuleToDelete = switchRules.getRules()
+                .findAll{ haFlowCookiesFromDb.contains(it.getCookie()) }.shuffled().first()
         switchRules.delete(haFlowRuleToDelete)
 
         then: "HA-Flow validation returns deleted rule in 'Discrepancies' section"

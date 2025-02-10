@@ -50,7 +50,9 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
 
         def switchToManipulate = swT.shared
         def switchRules = switchRulesFactory.get(switchToManipulate.dpId)
-        def haFlowRulesToDelete = switchRules.forHaFlow(haFlow)
+        def haFlowCookiesFromDb = (database.getHaFlowCookies(haFlow.haFlowId) +
+                database.getHaSubFlowsCookies(haFlow.subFlows*.haSubFlowId)).collect {it.getValue()}
+        def haFlowRulesToDelete = switchRules.getRules().findAll{ haFlowCookiesFromDb.contains(it.getCookie()) }
         assert !haFlowRulesToDelete.isEmpty()
 
         withPool {
@@ -60,7 +62,8 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         }
 
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert switchRulesFactory.get(switchToManipulate.dpId).forHaFlow(haFlow).isEmpty()
+            assert switchRulesFactory.get(switchToManipulate.dpId).getRules()
+                    .findAll{ haFlowCookiesFromDb.contains(it.getCookie()) }.isEmpty()
         }
 
         when: "Synchronize the HA-Flow"
@@ -83,7 +86,7 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         withPool {
             initialHaFlowPaths.getInvolvedSwitches().eachParallel { SwitchId swId ->
                 Wrappers.wait(RULES_INSTALLATION_TIME) {
-                    haRulesAreSynced(swId, haFlow, syncTime)
+                    haRulesAreSynced(swId, haFlowCookiesFromDb, syncTime)
                 }
             }
         }
@@ -127,10 +130,12 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
 
         and: "Missing HA-Flow rules are installed (existing ones are reinstalled) on UP involved switches"
         def upInvolvedSwitches = initialHaFlowPaths.getInvolvedSwitches() - [downSwitch.dpId]
+        def haFlowCookiesFromDb = (database.getHaFlowCookies(haFlow.haFlowId) +
+                database.getHaSubFlowsCookies(haFlow.subFlows*.haSubFlowId)).collect {it.getValue()}
         withPool {
             upInvolvedSwitches.eachParallel { SwitchId swId ->
                 Wrappers.wait(RULES_INSTALLATION_TIME) {
-                    haRulesAreSynced(swId, haFlow, syncTime)
+                    haRulesAreSynced(swId, haFlowCookiesFromDb, syncTime)
                 }
             }
         }
@@ -141,9 +146,9 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         ]
     }
 
-    private void haRulesAreSynced(SwitchId swId, HaFlowExtended haFlow, Date syncTime) {
+    private void haRulesAreSynced(SwitchId swId, List<Long> haFlowCookiesFromDb, Date syncTime) {
         assert switchHelper.validate(swId).asExpected
-        def haRules = switchRulesFactory.get(swId).forHaFlow(haFlow)
+        def haRules = switchRulesFactory.get(swId).getRules().findAll{ haFlowCookiesFromDb.contains(it.getCookie()) }
         assert !haRules.isEmpty()
         haRules.each {
             assert it.durationSeconds < TimeCategory.minus(new Date(), syncTime).toMilliseconds() / 1000.0

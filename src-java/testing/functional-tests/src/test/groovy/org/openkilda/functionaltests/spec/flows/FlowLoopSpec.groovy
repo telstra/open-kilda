@@ -110,7 +110,7 @@ class FlowLoopSpec extends HealthCheckSpecification {
         sleep(1000)
 
         and: "Counter only on the forward flowLoop rule is increased"
-        def flowInfo = database.getFlow(flow.flowId)
+        def flowInfo = flow.retrieveDetailsFromDB()
         def forwardCookie = flowInfo.forwardPath.cookie.value
         def reverseCookie = flowInfo.reversePath.cookie.value
         def rulesOnSrcSw = switchRulesFactory.get(switchPair.src.dpId).getRules()

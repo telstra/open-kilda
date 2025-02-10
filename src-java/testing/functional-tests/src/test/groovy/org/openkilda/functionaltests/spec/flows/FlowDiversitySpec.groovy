@@ -252,12 +252,12 @@ class FlowDiversitySpec extends HealthCheckSpecification {
         def altPaths = switchPair.retrieveAvailablePaths().collect { it.getInvolvedIsls() }
                 .findAll { !it.containsAll(initialFlowIsls)}
 
-        def flow1PathCost = islHelper.getCost(initialFlowIsls) + diversityIslCost + diversitySwitchCost * 2
+        def flow1PathCost = initialFlowIsls.sum { northbound.getLink(it).cost ?: 700 } + diversityIslCost + diversitySwitchCost * 2
         altPaths.each { altPath ->
-            def altPathCost = islHelper.getCost(altPath) + diversitySwitchCost * 2
+            def altPathCost = altPath.sum { northbound.getLink(it).cost ?: 700 } + diversitySwitchCost * 2
             int difference = flow1PathCost - altPathCost
             def firstAltPathIsl = altPath[0]
-            int firstAltPathIslCost = islHelper.getCost([firstAltPathIsl])
+            int firstAltPathIslCost = northbound.getLink(firstAltPathIsl).cost ?: 700
             islHelper.updateIslsCost([firstAltPathIsl], (firstAltPathIslCost + Math.abs(difference) + 1))
         }
 

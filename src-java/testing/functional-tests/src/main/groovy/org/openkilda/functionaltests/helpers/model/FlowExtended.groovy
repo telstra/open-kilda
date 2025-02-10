@@ -831,8 +831,7 @@ class FlowExtended {
      *
      * @param flowInvolvedSwitchesWithRules (map of switch-rules data for further verification)
      */
-    void verifyRulesForProtectedFlowOnSwitches(HashMap<SwitchId, List<FlowRuleEntity>> flowInvolvedSwitchesWithRules) {
-        def flowDBInfo = retrieveDetailsFromDB()
+    void verifyRulesForProtectedFlowOnSwitches(HashMap<SwitchId, List<FlowRuleEntity>> flowInvolvedSwitchesWithRules, def flowDBInfo) {
         long mainForwardCookie = flowDBInfo.forwardPath.cookie.value
         long mainReverseCookie = flowDBInfo.reversePath.cookie.value
         long protectedForwardCookie = flowDBInfo.protectedForwardPath.cookie.value

@@ -247,10 +247,11 @@ class VxlanFlowSpec extends HealthCheckSpecification {
         flow.retrieveDetails().statusDetails
 
         and: "Rules for main and protected paths are created"
+        def flowDBInfo = flow.retrieveDetailsFromDB()
         Wrappers.wait(WAIT_OFFSET) {
             HashMap<SwitchId, List<FlowRuleEntity>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
                     .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowRuleEntity>>
-            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
+            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules, flowDBInfo)
         }
 
         def flowInfoFromDb = flow.retrieveDetailsFromDB()

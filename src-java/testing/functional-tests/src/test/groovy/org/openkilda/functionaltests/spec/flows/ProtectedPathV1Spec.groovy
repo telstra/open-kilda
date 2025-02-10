@@ -107,10 +107,11 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         !flowPathInfo.flowPath.protectedPath.isPathAbsent()
 
         and: "Rules for main and protected paths are created"
+        def flowDBInfo = flow.retrieveDetailsFromDB()
         Wrappers.wait(WAIT_OFFSET) {
             HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules = flowPathInfo.getInvolvedSwitches()
                     .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
-            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
+            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules, flowDBInfo)
         }
 
         and: "Validation of flow must be successful"
@@ -173,10 +174,11 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         Instant.parse(currentLastUpdate) < Instant.parse(flow.retrieveDetailsV1().lastUpdated)
 
         and: "Rules for main and protected paths are created"
+        def flowDBInfo = flow.retrieveDetailsFromDB()
         Wrappers.wait(WAIT_OFFSET) {
             HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules = flowPathInfoAfterUpdating.getInvolvedSwitches()
                     .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
-            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
+            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules, flowDBInfo)
 
             def cookiesAfterEnablingProtectedPath = flowInvolvedSwitchesWithRules.get(switchPair.src.dpId)
                     .findAll { !new Cookie(it.cookie).serviceFlag }*.cookie
@@ -319,10 +321,11 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
         initialMainPath != initialProtectedPath
 
         and: "Rules for main and protected paths are created"
+        def flowDBInfo = flow.retrieveDetailsFromDB()
         Wrappers.wait(WAIT_OFFSET) {
             HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules  = flowPathInfo.getInvolvedSwitches()
                     .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
-            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
+            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules, flowDBInfo)
         }
 
         and: "Source and destination switches pass validation"
@@ -382,10 +385,11 @@ class ProtectedPathV1Spec extends HealthCheckSpecification {
 
         and: "Rules are updated"
         HashMap<SwitchId, List<FlowEntry>> flowInvolvedSwitchesWithRules
+        def updatedFlowDBInfo = flow.retrieveDetailsFromDB()
         Wrappers.wait(WAIT_OFFSET) {
             flowInvolvedSwitchesWithRules  = flowPathInfo.getInvolvedSwitches()
                     .collectEntries{ [(it): switchRulesFactory.get(it).getRules()] } as HashMap<SwitchId, List<FlowEntry>>
-            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules)
+            flow.verifyRulesForProtectedFlowOnSwitches(flowInvolvedSwitchesWithRules, updatedFlowDBInfo)
         }
 
         and: "Old meter is deleted on the src and dst switches"

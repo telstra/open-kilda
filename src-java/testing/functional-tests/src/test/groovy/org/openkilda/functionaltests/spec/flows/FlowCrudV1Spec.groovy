@@ -501,11 +501,8 @@ Failed to find path with requested bandwidth=$invalidFlow.maximumBandwidth/).mat
     }
 
     def "Removing flow while it is still in progress of being created should not cause rule discrepancies"() {
-        given: "A potential flow"
+        given: "Neighbouring switch pair"
         def switchPair = switchPairs.all().neighbouring().random()
-        def availablePaths = switchPair.retrieveAvailablePaths()
-        def flowExpectedPath = availablePaths.min { islHelper.getCost(it.getInvolvedIsls()) }
-        def switchesId = flowExpectedPath.getInvolvedSwitches()
 
         when: "Init creation of a new flow"
         def flow = flowFactory.getBuilder(switchPair).build().sendCreateRequestV1()
@@ -522,10 +519,10 @@ Failed to find path with requested bandwidth=$invalidFlow.maximumBandwidth/).mat
 
         and: "Flow eventually gets into UP state"
         flow.waitForBeingInState(UP)
-        flow.retrieveAllEntityPaths().getInvolvedIsls() == flowExpectedPath.getInvolvedIsls()
+        flow.retrieveAllEntityPaths().getInvolvedSwitches().sort() ==  switchPair.toList().dpId.sort()
 
         and: "All related switches have no discrepancies in rules"
-        switchesId.each {
+        switchPair.toList().dpId.each {
             def syncResult = switchHelper.synchronize(it)
             assert syncResult.rules.installed.isEmpty() && syncResult.rules.removed.isEmpty()
             assert syncResult.meters.installed.isEmpty() && syncResult.meters.removed.isEmpty()
