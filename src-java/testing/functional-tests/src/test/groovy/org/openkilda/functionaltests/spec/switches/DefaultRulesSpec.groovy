@@ -116,7 +116,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         ].combinations()
                 .findAll { dataPiece, SwitchExtended theSw ->
                     //OF_12 has only broadcast rule, so filter out all other combinations for OF_12
-                    !(theSw.ofVersion == "OF_12" && dataPiece.installRulesAction != InstallRulesAction.INSTALL_BROADCAST) &&
+                    !(theSw.isOf12Version() && dataPiece.installRulesAction != InstallRulesAction.INSTALL_BROADCAST) &&
                             //BFD, Round Trip and VXlan are available only on Noviflow
                             !(!theSw.isNoviflow() && dataPiece.installRulesAction in [InstallRulesAction.INSTALL_BFD_CATCH,
                                                                                   InstallRulesAction.INSTALL_ROUND_TRIP_LATENCY,
@@ -255,7 +255,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
                 switches.all().unique()
         ].combinations().findAll { dataPiece, SwitchExtended theSw ->
             //OF_12 switches has only one broadcast rule, so not all iterations will be applicable
-            !(theSw.ofVersion == "OF_12" && dataPiece.cookie != Cookie.VERIFICATION_BROADCAST_RULE_COOKIE) &&
+            !(theSw.isOf12Version() && dataPiece.cookie != Cookie.VERIFICATION_BROADCAST_RULE_COOKIE) &&
                     //dropping this rule on WB5164 will lead to disco-packet storm. Reason: #2595
             !(theSw.isWb5164() && dataPiece.cookie == Cookie.DROP_VERIFICATION_LOOP_RULE_COOKIE)
         }
@@ -383,7 +383,7 @@ class DefaultRulesSpec extends HealthCheckSpecification {
         !featureToggles.getFeatureToggles().server42IslRtt && featureToggles.server42IslRtt(true)
 
         and: "server42IslRtt is enabled on the switch"
-        def originSwProps = sw.getCashedProps()
+        def originSwProps = sw.getCachedProps()
         sw.updateProperties(originSwProps.jacksonCopy().tap({ it.server42IslRtt = RttState.ENABLED.toString() }))
 
         wait(RULES_INSTALLATION_TIME) {

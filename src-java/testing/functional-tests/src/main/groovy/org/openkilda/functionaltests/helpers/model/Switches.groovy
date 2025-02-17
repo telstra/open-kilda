@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.helpers.model
 
 import static groovyx.gpars.GParsPool.withPool
 import static org.junit.jupiter.api.Assumptions.assumeFalse
+import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.helpers.model.SwitchExtended.isS42Supported
 import static org.openkilda.functionaltests.model.switches.Manufacturer.CENTEC
 import static org.openkilda.functionaltests.model.switches.Manufacturer.NOVIFLOW
@@ -12,6 +13,7 @@ import static org.springframework.beans.factory.config.ConfigurableBeanFactory.S
 
 import org.openkilda.functionaltests.helpers.factory.SwitchFactory
 import org.openkilda.functionaltests.model.switches.Manufacturer
+import org.openkilda.model.SwitchFeature
 import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v1.switches.SwitchDto
 import org.openkilda.testing.model.topology.TopologyDefinition
@@ -77,6 +79,10 @@ class Switches {
         switches.findAll().unique { it.hwSwString()}
     }
 
+    List<SwitchExtended> notOF12Version() {
+        switches.findAll { !it.isOf12Version() }
+    }
+
     Switches withS42Support(){
         def swsProps =  northboundV2.getAllSwitchProperties().switchProperties
         switches = switches.findAll { sw -> isS42Supported(swsProps.find { it.switchId == sw.switchId}) }
@@ -101,6 +107,11 @@ class Switches {
 
     Switches withTraffGens() {
         switches = switches.findAll { !it.traffGenPorts.isEmpty() }
+        return this
+    }
+
+    Switches withoutLagSupport() {
+        switches = switches.findAll { !it.dbFeatures.contains(SwitchFeature.LAG) }
         return this
     }
 
@@ -137,6 +148,12 @@ class Switches {
         def desiredSwitches = switches.findAll { it.switchId in switchesToFind }
         assert desiredSwitches.size() == switchesToFind.size()
         desiredSwitches
+    }
+
+    SwitchExtended findWithVxlanFeatureEnabled() {
+        def sw = switches.find { it.isVxlanFeatureEnabled() }
+        assumeTrue(sw as Boolean, "No suiting switch(vxlan-enabled) found")
+        sw
     }
 
     @Memoized

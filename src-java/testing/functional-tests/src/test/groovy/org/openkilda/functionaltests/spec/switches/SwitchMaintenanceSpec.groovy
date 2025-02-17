@@ -34,40 +34,40 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
     @Tags(SMOKE)
     def "Maintenance mode can be set/unset for a particular switch"() {
         given: "An active switch"
-        def sw = topology.activeSwitches.first()
+        def sw = switches.all().first()
 
         when: "Set maintenance mode for the switch"
-        def setMaintenance = switchHelper.setSwitchMaintenance(sw.dpId, true, false)
+        def setMaintenance = sw.setMaintenance(true, false)
 
         then: "Maintenance flag for the switch is really set"
         setMaintenance.underMaintenance
-        northbound.getSwitch(sw.dpId).underMaintenance
+        sw.getDetails().underMaintenance
 
         and: "Maintenance flag for all ISLs going through the switch is set as well"
-        northbound.getAllLinks().findAll { sw.dpId in [it.source, it.destination]*.switchId }.each {
+        northbound.getAllLinks().findAll { sw.switchId in [it.source, it.destination]*.switchId }.each {
             assert it.underMaintenance
         }
 
         and: "Cost for ISLs is not changed"
-        topology.islsForActiveSwitches.findAll { sw.dpId in [it.srcSwitch, it.dstSwitch]*.dpId }.each {
+        topology.islsForActiveSwitches.findAll { sw.switchId in [it.srcSwitch, it.dstSwitch]*.dpId }.each {
             assert database.getIslCost(it) == DEFAULT_COST
             assert database.getIslCost(it.reversed) == DEFAULT_COST
         }
 
         when: "Unset maintenance mode from the switch"
-        def unsetMaintenance = northbound.setSwitchMaintenance(sw.dpId, false, false)
+        def unsetMaintenance = sw.setMaintenance(false, false)
 
         then: "Maintenance flag for the switch is really unset"
         !unsetMaintenance.underMaintenance
-        !northbound.getSwitch(sw.dpId).underMaintenance
+        !sw.getDetails().underMaintenance
 
         and: "Maintenance flag for all ISLs going through the switch is unset as well"
-        northbound.getAllLinks().findAll { sw.dpId in [it.source, it.destination]*.switchId }.each {
+        northbound.getAllLinks().findAll { sw.switchId in [it.source, it.destination]*.switchId }.each {
             assert !it.underMaintenance
         }
 
         and: "Cost for ISLs is not changed"
-        topology.islsForActiveSwitches.findAll { sw.dpId in [it.srcSwitch, it.dstSwitch]*.dpId }.each {
+        topology.islsForActiveSwitches.findAll { sw.switchId in [it.srcSwitch, it.dstSwitch]*.dpId }.each {
             assert database.getIslCost(it) == DEFAULT_COST
             assert database.getIslCost(it.reversed) == DEFAULT_COST
         }
@@ -92,6 +92,7 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
                 .each { islHelper.makePathIslsMorePreferable(flow1PathIsls, it) }
 
         and: "Create a Flow going through these switches"
+        def switchUnderTest = switches.all().findSpecific(swId)
         def flow1 = flowFactory.getRandom(switchPair)
         def flow1Path = flow1.retrieveAllEntityPaths()
         def flow1IntermediateSwIsl = flow1PathIsls.findAll { it in intermediateSwIsls  || it.reversed in intermediateSwIsls }
@@ -114,7 +115,7 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         assert flow2IntermediateSwIsl.intersect(flow1IntermediateSwIsl).isEmpty()
 
         when: "Set maintenance mode without flows evacuation flag for some intermediate switch involved in flow paths"
-        switchHelper.setSwitchMaintenance(swId, true, false)
+        switchUnderTest.setMaintenance(true, false)
 
         then: "Flows are not evacuated (rerouted) and have the same paths"
         timedLoop(3) {
@@ -123,7 +124,7 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         }
 
         when: "Set maintenance mode again with flows evacuation flag for the same switch"
-        northbound.setSwitchMaintenance(swId, true, true)
+        switchUnderTest.setMaintenance(true, true)
 
         then: "Flows are evacuated (rerouted)"
         Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
@@ -176,7 +177,8 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         assert flowPath.getInvolvedSwitches().contains(intermediateSwId)
 
         when: "Set maintenance mode without flows evacuation flag for some intermediate switch involved in flow paths"
-        switchHelper.setSwitchMaintenance(intermediateSwId, true, false)
+        def switchUnderTest = switches.all().findSpecific(intermediateSwId)
+        switchUnderTest.setMaintenance(true, false)
 
         then: "Both Flow and Y-Flow are not evacuated (rerouted) and have the same paths"
         timedLoop(3) {
@@ -185,7 +187,7 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         }
 
         when: "Set maintenance mode again with flows evacuation flag for the same switch"
-        northbound.setSwitchMaintenance(intermediateSwId, true, true)
+        switchUnderTest.setMaintenance(true, true)
 
         then: "Both Flow and Y-Flow are evacuated (rerouted)"
         Wrappers.wait(PATH_INSTALLATION_TIME + WAIT_OFFSET) {
@@ -203,8 +205,9 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
 
     @Tags(ISL_RECOVER_ON_FAIL)
     def "Link discovered by a switch under maintenance is marked as maintained"() {
-        given: "An active link"
-        def isl = topology.islsForActiveSwitches.first()
+        given: "An active switch with an active link"
+        def switchUnderTest = switches.all().random()
+        def isl = topology.getRelatedIsls(switchUnderTest.switchId).first()
 
         and: "Bring port down on the switch to fail the link"
         islHelper.breakIsl(isl)
@@ -215,10 +218,10 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         !islUtils.getIslInfo(isl.reversed)
 
         when: "Set maintenance mode for the switch"
-        switchHelper.setSwitchMaintenance(isl.srcSwitch.dpId, true, false)
+        switchUnderTest.setMaintenance(true, false)
 
         and: "Bring port up to discover the deleted link"
-        antiflap.portUp(isl.srcSwitch.dpId, isl.srcPort)
+        switchUnderTest.getPort(isl.srcPort).up()
 
         then: "The link is discovered and marked as maintained"
         Wrappers.wait(discoveryInterval + WAIT_OFFSET) {

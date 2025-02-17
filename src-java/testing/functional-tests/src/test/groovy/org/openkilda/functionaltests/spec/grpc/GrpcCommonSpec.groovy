@@ -10,7 +10,7 @@ import spock.lang.Ignore
 
 class GrpcCommonSpec extends GrpcBaseSpecification {
 
-    def "Able to get switch status on the #sw.hwSwString switch"() {
+    def "Able to get switch status on the #sw.hardware-#sw.software switch"() {
         when: "Get switch status"
         def response = grpc.getSwitchStatus(sw.address)
 
@@ -28,7 +28,7 @@ class GrpcCommonSpec extends GrpcBaseSpecification {
         sw << getNoviflowSwitches()
     }
 
-    def "Able to get switch packet in out stats on the #sw.hwSwString (#sw.description) switch"() {
+    def "Able to get switch packet in out stats on the #sw.hardware-#sw.software (#sw.description) switch"() {
         when: "Get switch packet in out stats"
         def response = grpc.getPacketInOutStats(sw.address)
 

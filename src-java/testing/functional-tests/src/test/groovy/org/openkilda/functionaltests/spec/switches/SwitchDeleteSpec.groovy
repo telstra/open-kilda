@@ -159,7 +159,7 @@ class SwitchDeleteSpec extends HealthCheckSpecification {
         TraffGen tg = topology.getTraffGen(sw.switchId)
 
         //need to restore supportedTransitEncapsulation field after deleting sw
-        def initSwProps = sw.getCashedProps()
+        def initSwProps = sw.getCachedProps()
         def swIsls = topology.getRelatedIsls(sw.switchId)
 
         // enable connected devices on switch

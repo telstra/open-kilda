@@ -32,7 +32,7 @@ class LogSpec extends GrpcBaseSpecification {
     @Autowired @Shared
     CleanupManager cleanupManager
 
-    def "Able to enable 'log messages' on the #sw.hwSwString switch"() {
+    def "Able to enable 'log messages' on the #sw.hardware-#sw.software switch"() {
         when: "Try to turn on 'log messages'"
         cleanupManager.addAction(OTHER,
                 {grpc.enableLogMessagesOnSwitch(sw.address, new LogMessagesDto(DEFAULT_LOG_MESSAGES_STATE))})
@@ -52,7 +52,7 @@ class LogSpec extends GrpcBaseSpecification {
         sw << getNoviflowSwitches()
     }
 
-    def "Able to enable 'OF log messages' on #sw.hwSwString"() {
+    def "Able to enable 'OF log messages' on #sw.hardware-#sw.software"() {
         when: "Try to turn on 'OF log messages'"
         cleanupManager.addAction(OTHER,
                 {grpc.enableLogMessagesOnSwitch(sw.address, new LogMessagesDto(DEFAULT_LOG_MESSAGES_STATE))})
@@ -73,7 +73,7 @@ class LogSpec extends GrpcBaseSpecification {
         sw << getNoviflowSwitches()
     }
 
-    def "Able to manipulate(CRUD) with a remote log server on #sw.hwSwString"() {
+    def "Able to manipulate(CRUD) with a remote log server on #sw.hardware-#sw.software"() {
         when: "Remove current remote log server configuration"
         cleanupManager.addAction(OTHER, {grpc.setRemoteLogServerForSwitch(sw.address,
                 new RemoteLogServerDto(defaultRemoteLogServerIp, defaultRemoteLogServerPort))})
@@ -105,7 +105,7 @@ class LogSpec extends GrpcBaseSpecification {
     @Tags(HARDWARE)
     @Ignore("https://github.com/telstra/open-kilda/issues/3972")
     def "Not able to set incorrect remote log server configuration(ip/port): #data.remoteIp/#data.remotePort \
-on #sw.hwSwString"() {
+on #sw.hardware-#sw.software"() {
         when: "Try to set incorrect configuration"
         grpc.setRemoteLogServerForSwitch(sw.address, new RemoteLogServerDto(data.remoteIp, data.remotePort))
 

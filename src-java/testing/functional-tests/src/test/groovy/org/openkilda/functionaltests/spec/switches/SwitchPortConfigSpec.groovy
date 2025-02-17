@@ -1,5 +1,7 @@
 package org.openkilda.functionaltests.spec.switches
 
+import static org.openkilda.functionaltests.helpers.model.PortStatus.*
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.Wrappers
@@ -48,34 +50,32 @@ class SwitchPortConfigSpec extends HealthCheckSpecification {
     }
 
     @Tags([HARDWARE, TOPOLOGY_DEPENDENT])
-    def "Able to bring ISL-free port down/up on #sw.hwSwString"() {
+    def "Able to bring ISL-free port down/up on #sw.hwSwString()"() {
         // Not checking OTSDB here, since Kilda won't log into OTSDB for isl-free ports, this is expected.
-
         when: "Bring port down on the switch"
-        def port = topology.getAllowedPortsForSwitch(sw).find { "LINK_DOWN" in northbound.getPort(sw.dpId, it).state }
-        antiflap.portDown(sw.dpId, port)
+        def port = sw.getPortInStatus(LINK_DOWN)
+
+        port.down()
 
         then: "Port is really DOWN"
-        Wrappers.wait(WAIT_OFFSET) { assert "PORT_DOWN" in northbound.getPort(sw.dpId, port).config }
+        Wrappers.wait(WAIT_OFFSET) { assert PORT_DOWN.toString() in port.retrieveDetails().config }
 
         when: "Bring port up on the switch"
-        northbound.portUp(sw.dpId, port)
+        port.up()
 
         then: "Port is really UP"
-        Wrappers.wait(WAIT_OFFSET) { assert !("PORT_DOWN" in northbound.getPort(sw.dpId, port).config) }
+        Wrappers.wait(WAIT_OFFSET) { assert !(PORT_DOWN.toString() in port.retrieveDetails().config) }
 
         where:
         // It is impossible to understand whether ISL-free port is UP/DOWN on OF_12 switches.
         // Such switches always have 'config: []'.
         //also, ban WB5164 due to #2636
-        sw << getTopology().getActiveSwitches().findAll { it.ofVersion != "OF_12" && !it.wb5164 }
-                .unique { it.nbFormat().with { [it.hardware, it.software] } }
+        sw << switches.all().uniqueByHw().findAll { !it.isOf12Version() && !it.wb5164 }
 
     }
 
     List<Isl> getUniqueIsls() {
-        def uniqueSwitches = getTopology().getActiveSwitches()
-                .unique { it.nbFormat().with { [it.hardware, it.software] } }*.dpId
+        def uniqueSwitches = switches.all().uniqueByHw().switchId
         def isls = topology.islsForActiveSwitches.collect { [it, it.reversed] }.flatten()
         return isls.unique { it.srcSwitch.dpId }.findAll { it.srcSwitch.dpId in uniqueSwitches }
     }
