@@ -2,6 +2,7 @@ package org.openkilda.functionaltests.spec.flows.yflows
 
 import static org.openkilda.functionaltests.helpers.FlowNameGenerator.FLOW
 import static org.openkilda.functionaltests.helpers.SwitchHelper.randomVlan
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.flow.FlowNotModifiedExpectedError
@@ -41,8 +42,8 @@ class SubFlowSpec extends HealthCheckSpecification {
         new FlowNotModifiedExpectedError(subFlow.flowId).matches(e)
 
         and: "All involved switches pass switch validation"
-        def involvedSwitches = yFlow.retrieveAllEntityPaths().getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
+        def involvedSwitches = switches.all().findSwitchesInPath(yFlow.retrieveAllEntityPaths())
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches).isEmpty()
 
         and: "Y-Flow and each sublows are in UP state"
         yFlow.waitForBeingInState(FlowState.UP)

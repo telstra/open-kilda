@@ -61,7 +61,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
          */
         switchTriplet = switchTriplets.all(true, false).nonNeighbouring().getSwitchTriplets().find {
             def yPoints = it.findPotentialYPoints()
-            yPoints[0] != it.shared.dpId
+            yPoints[0] != it.shared.switchId
         }
         assumeTrue(switchTriplet != null, "Couldn't find appropriate switch triplet")
 
@@ -79,7 +79,7 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
             it.dpId == yFlow.subFlows.find { it.flowId == yFlowSubFlow1Id }.endpoint.switchId
         }
 
-        switchPair = switchPairs.all().specificPair(switchTriplet.shared, flowDstSwitch)
+        switchPair = switchPairs.all().specificPair(switchTriplet.shared.sw, flowDstSwitch)
         flow = flowFactory.getBuilder(switchPair, false)
                 .withProtectedPath(true)
                 .build().create(UP, CLASS)
@@ -96,14 +96,13 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
         def usedPortsList = yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == yFlowSubFlow2Id }
                 .collect {
                     (it.path.forward.getNodes().nodes + it?.protectedPath?.forward?.getNodes()?.nodes)
-                            .findAll { it?.switchId == switchTriplet.shared.dpId }.portNo
+                            .findAll { it?.switchId == switchTriplet.shared.switchId }.portNo
                 }.flatten()
 
         def sharedEpPort = yFlow.sharedEndpoint.portNumber
-        def sharedSw = switches.all().findSpecific(switchTriplet.shared.dpId)
 
         when: "Get all flows on the switch ports used by subflow under test"
-        def response = sharedSw.getFlowsV2(usedPortsList as List<Integer>)
+        def response = switchTriplet.shared.getFlowsV2(usedPortsList as List<Integer>)
 
         then: "Each port in response has information about subflow"
         response.flowsByPort.every {
@@ -118,11 +117,10 @@ class SwitchesFlowsV2Spec extends HealthCheckSpecification {
     def "System allows to get flows on particular ports on switch"() {
         given: "Y-Flow subflow which ends on switch that is not in the path of another sub-flow or regular flow"
         and: "List of the ports that subflow uses on switch, received from flow path"
-        def switchId = switchPair.dst == switchTriplet.ep1 ? switchTriplet.ep2.dpId : switchTriplet.ep1.dpId
-        def switchWithOnlyOneSubFlow = switches.all().findSpecific(switchId)
+        def switchWithOnlyOneSubFlow = switchPair.dst.dpId == switchTriplet.ep1.switchId ? switchTriplet.ep2 : switchTriplet.ep1
 
         def usedPortsList = yFlow.retrieveAllEntityPaths().subFlowPaths.find { it.flowId == yFlowSubFlow2Id }
-                .collect { it.path.forward.retrieveNodes().findAll { it.switchId == switchId }.portNo }.flatten()
+                .collect { it.path.forward.retrieveNodes().findAll { it.switchId == switchWithOnlyOneSubFlow.switchId }.portNo }.flatten()
 
         when: "Get all flows on the switch ports used by subflow under test"
         def response = switchWithOnlyOneSubFlow.getFlowsV2(usedPortsList as List<Integer>)

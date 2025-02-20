@@ -333,9 +333,9 @@ class HaFlowExtended {
         log.debug("Traffic generation for ha-flow '${haFlowId}'")
         def subFlow1 = subFlows.first()
         def subFlow2 = subFlows.last()
-        Optional<TraffGen> shared = Optional.ofNullable(topologyDefinition.getTraffGen(sharedEndpoint.switchId))
-        Optional<TraffGen> ep1 = Optional.ofNullable(topologyDefinition.getTraffGen(subFlow1.endpointSwitchId))
-        Optional<TraffGen> ep2 = Optional.ofNullable(topologyDefinition.getTraffGen(subFlow2.endpointSwitchId))
+        Optional<TraffGen> shared = Optional.ofNullable(topologyDefinition.getTraffGen(sharedEndpoint.switchId, sharedEndpoint.portNumber))
+        Optional<TraffGen> ep1 = Optional.ofNullable(topologyDefinition.getTraffGen(subFlow1.endpointSwitchId, subFlow1.endpointPort))
+        Optional<TraffGen> ep2 = Optional.ofNullable(topologyDefinition.getTraffGen(subFlow2.endpointSwitchId, subFlow2.endpointPort))
         assert [shared, ep1, ep2].every { it.isPresent() }
 
         List<Vlan> srcVlanId = ImmutableList.of(new Vlan(sharedEndpoint.vlanId), new Vlan(sharedEndpoint.innerVlanId))

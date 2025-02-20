@@ -1,14 +1,16 @@
 package org.openkilda.functionaltests.spec.flows.yflows
 
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
+
 import org.openkilda.functionaltests.HealthCheckSpecification
 import org.openkilda.functionaltests.error.yflow.YFlowNotUpdatedExpectedError
 import org.openkilda.functionaltests.error.yflow.YFlowNotUpdatedWithConflictExpectedError
 import org.openkilda.functionaltests.helpers.model.FlowEncapsulationType
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.functionaltests.helpers.model.YFlowExtended
 import org.openkilda.functionaltests.helpers.factory.YFlowFactory
 import org.openkilda.messaging.payload.flow.FlowState
 import org.openkilda.model.PathComputationStrategy
-import org.openkilda.model.SwitchId
 import org.openkilda.northbound.dto.v2.flows.FlowPatchEndpoint
 import org.openkilda.northbound.dto.v2.yflows.SubFlowPatchPayload
 import org.openkilda.northbound.dto.v2.yflows.YFlowPatchPayload
@@ -35,8 +37,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         def swT = switchTriplets.all().withAllDifferentEndpoints().random()
 
         def yFlow = yFlowFactory.getRandom(swT, false)
-        def oldSharedSwitch = yFlow.sharedEndpoint.switchId
-        List<SwitchId> involvedSwitches = yFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+        List<SwitchExtended> involvedSwitches = switches.all().findSwitchesInPath(yFlow.retrieveAllEntityPaths())
 
         yFlow.tap(data.updateClosure)
         def update = yFlow.convertToUpdate()
@@ -45,16 +46,16 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         def updateResponse = yFlow.sendUpdateRequest(update)
         def updatedYFlow = yFlow.waitForBeingInState(FlowState.UP)
         //update involved switches after update
-        involvedSwitches.addAll(yFlow.retrieveAllEntityPaths().getInvolvedSwitches())
+        involvedSwitches.addAll(switches.all().findSwitchesInPath(yFlow.retrieveAllEntityPaths()))
         // https://github.com/telstra/open-kilda/issues/3411
-        switchHelper.synchronize(oldSharedSwitch, true)
+        swT.shared.synchronize(true)
 
         then: "Requested updates are reflected in the response and in 'get' API"
         updateResponse.hasTheSamePropertiesAs(yFlow, data.isYPointVerificationIncluded)
         updatedYFlow.hasTheSamePropertiesAs(yFlow, data.isYPointVerificationIncluded)
 
         and: "All related switches have no discrepancies"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches.unique()).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches.unique()).isEmpty()
 
         where: data << [
                 [
@@ -75,20 +76,17 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                         descr: "shared switch and subflow switches",
                         updateClosure: { YFlowExtended payload ->
                             def newSwT = switchTriplets.all(true).getSwitchTriplets().find {
-                                it.shared.dpId != payload.sharedEndpoint.switchId &&
-                                        it.ep1.dpId != payload.subFlows[0].endpoint.switchId &&
-                                        it.ep2.dpId != payload.subFlows[1].endpoint.switchId &&
+                                it.shared.switchId != payload.sharedEndpoint.switchId &&
+                                        it.ep1.switchId != payload.subFlows[0].endpoint.switchId &&
+                                        it.ep2.switchId != payload.subFlows[1].endpoint.switchId &&
                                         it.ep1 != it.ep2
                             }
-                            payload.sharedEndpoint.switchId = newSwT.shared.dpId
-                            payload.subFlows[0].endpoint.switchId = newSwT.ep1.dpId
-                            payload.subFlows[1].endpoint.switchId = newSwT.ep2.dpId
-                            payload.sharedEndpoint.portNumber = topology
-                                    .getAllowedPortsForSwitch(topology.find(newSwT.shared.dpId))[-1]
-                            payload.subFlows[0].endpoint.portNumber = topology
-                                    .getAllowedPortsForSwitch(topology.find(newSwT.ep1.dpId))[-1]
-                            payload.subFlows[1].endpoint.portNumber = topology
-                                    .getAllowedPortsForSwitch(topology.find(newSwT.ep2.dpId))[-1]
+                            payload.sharedEndpoint.switchId = newSwT.shared.switchId
+                            payload.subFlows[0].endpoint.switchId = newSwT.ep1.switchId
+                            payload.subFlows[1].endpoint.switchId = newSwT.ep2.switchId
+                            payload.sharedEndpoint.portNumber = newSwT.shared.getPorts()[-1]
+                            payload.subFlows[0].endpoint.portNumber = newSwT.ep1.getPorts()[-1]
+                            payload.subFlows[1].endpoint.portNumber = newSwT.ep2.getPorts()[-1]
                         },
                         isYPointVerificationIncluded: false
                 ],
@@ -105,25 +103,25 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         def switchTriplet = switchTriplets.all(true, true).findSwitchTripletForOneSwitchSubflow()
 
         def yFlow = yFlowFactory.getRandom(switchTriplet, false)
-        yFlow.setDescription("new description")
-        def endPoint = yFlow.getSubFlows().get(0).getEndpoint()
-        endPoint.setPortNumber(topology.getAllowedPortsForSwitch(topology.find(endPoint.getSwitchId())).first())
+        List<SwitchExtended> involvedSwitches = switches.all().findSwitchesInPath(yFlow.retrieveAllEntityPaths())
 
-        List<SwitchId> involvedSwitches = yFlow.retrieveAllEntityPaths().getInvolvedSwitches()
+        yFlow.setDescription("new description")
+        def endPoint = yFlow.subFlows.first().endpoint
+        endPoint.setPortNumber(involvedSwitches.find { it.switchId == endPoint.switchId}.getPorts().first())
         def update = yFlow.convertToUpdate()
 
         when: "Update the y-flow"
         def updateResponse = yFlow.sendUpdateRequest(update)
         def updatedYFlow = yFlow.waitForBeingInState(FlowState.UP)
         //update involved switches after update
-        involvedSwitches.addAll(yFlow.retrieveAllEntityPaths().getInvolvedSwitches())
+        involvedSwitches.addAll(switches.findSwitchesInPath(yFlow.retrieveAllEntityPaths()))
 
         then: "Requested updates are reflected in the response and in 'get' API"
         updateResponse.hasTheSamePropertiesAs(yFlow)
         updatedYFlow.hasTheSamePropertiesAs(yFlow)
 
         and: "All related switches have no discrepancies"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches.unique()).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches.unique()).isEmpty()
     }
 
     def "User can partially update fields of one-switch y-flow"() {
@@ -166,7 +164,7 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         updatedYFlow.hasTheSamePropertiesAs(yFlow)
 
         and: "All related switches have no discrepancies"
-        !switchHelper.synchronizeAndCollectFixedDiscrepancies(swT.shared.dpId).isPresent()
+        !swT.shared.synchronizeAndCollectFixedDiscrepancies().isPresent()
     }
 
     def "User can partially update #data.descr of a y-flow"() {
@@ -174,24 +172,23 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
         def swT = switchTriplets.all().withAllDifferentEndpoints().random()
         def yFlow = yFlowFactory.getRandom(swT, false)
 
-        List<SwitchId> involvedSwitches = yFlow.retrieveAllEntityPaths().getInvolvedSwitches()
-        def oldSharedSwitch = yFlow.sharedEndpoint.switchId
+        List<SwitchExtended> involvedSwitches = switches.all().findSwitchesInPath(yFlow.retrieveAllEntityPaths())
         def patch = data.buildPatchRequest(yFlow)
 
         when: "Partial update the y-flow"
         def updateResponse = yFlow.sendPartialUpdateRequest(patch)
         def updatedYFlow = yFlow.waitForBeingInState(FlowState.UP)
         //update involved switches after update
-        involvedSwitches.addAll(yFlow.retrieveAllEntityPaths().getInvolvedSwitches())
+        involvedSwitches.addAll(switches.all().findSwitchesInPath(yFlow.retrieveAllEntityPaths()))
         // https://github.com/telstra/open-kilda/issues/3411
-        switchHelper.synchronize(oldSharedSwitch, true)
+        swT.shared.synchronize(true)
 
         then: "Requested updates are reflected in the response and in 'get' API"
         updateResponse.hasTheSamePropertiesAs(yFlow, data.isYPointVerificationIncluded)
         updatedYFlow.hasTheSamePropertiesAs(yFlow, data.isYPointVerificationIncluded)
 
         and: "All related switches have no discrepancies"
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(involvedSwitches.unique()).isEmpty()
+        synchronizeAndCollectFixedDiscrepancies(involvedSwitches.unique()).isEmpty()
 
         //buildPatchRequest in addition to providing a patch payload should also updated the yFlow object
         //in order to reflect the expect result after update
@@ -227,39 +224,36 @@ class YFlowUpdateSpec extends HealthCheckSpecification {
                         descr: "shared switch and subflow switches",
                         buildPatchRequest: { YFlowExtended payload ->
                             def newSwT = switchTriplets.all(true).getSwitchTriplets().find {
-                                it.shared.dpId != payload.sharedEndpoint.switchId &&
-                                        it.ep1.dpId != payload.subFlows[0].endpoint.switchId &&
-                                        it.ep2.dpId != payload.subFlows[1].endpoint.switchId &&
+                                it.shared.switchId != payload.sharedEndpoint.switchId &&
+                                        it.ep1.switchId != payload.subFlows[0].endpoint.switchId &&
+                                        it.ep2.switchId != payload.subFlows[1].endpoint.switchId &&
                                         it.ep1 != it.ep2
                             }
-                            payload.sharedEndpoint.switchId = newSwT.shared.dpId
-                            payload.subFlows[0].endpoint.switchId = newSwT.ep1.dpId
-                            payload.subFlows[1].endpoint.switchId = newSwT.ep2.dpId
-                            def port1 = topology
-                                    .getAllowedPortsForSwitch(topology.find(newSwT.ep1.dpId))[-1]
-                            def port2 = topology
-                                    .getAllowedPortsForSwitch(topology.find(newSwT.ep1.dpId))[-1]
-                            def portS = topology
-                                    .getAllowedPortsForSwitch(topology.find(newSwT.shared.dpId))[-1]
+                            payload.sharedEndpoint.switchId = newSwT.shared.switchId
+                            payload.subFlows[0].endpoint.switchId = newSwT.ep1.switchId
+                            payload.subFlows[1].endpoint.switchId = newSwT.ep2.switchId
+                            def port1 = newSwT.ep1.getPorts()[-1]
+                            def port2 = newSwT.ep1.getPorts()[-1]
+                            def portS = newSwT.shared.getPorts()[-1]
                             payload.subFlows[0].endpoint.portNumber = port1
                             payload.subFlows[1].endpoint.portNumber = port2
                             payload.sharedEndpoint.portNumber = portS
 
                             return YFlowPatchPayload.builder()
                                     .sharedEndpoint(YFlowPatchSharedEndpoint.builder()
-                                            .switchId(newSwT.shared.dpId)
+                                            .switchId(newSwT.shared.switchId)
                                             .portNumber(portS)
                                             .build())
                                     .subFlows([SubFlowPatchPayload.builder()
                                                        .endpoint(FlowPatchEndpoint.builder()
-                                                               .switchId(newSwT.ep1.dpId)
+                                                               .switchId(newSwT.ep1.switchId)
                                                                .portNumber(port1)
                                                                .build())
                                                        .flowId(payload.subFlows[0].flowId)
                                                        .build(),
                                                SubFlowPatchPayload.builder()
                                                        .endpoint(FlowPatchEndpoint.builder()
-                                                               .switchId(newSwT.ep2.dpId)
+                                                               .switchId(newSwT.ep2.switchId)
                                                                .portNumber(port2)
                                                                .build())
                                                        .flowId(payload.subFlows[1].flowId)

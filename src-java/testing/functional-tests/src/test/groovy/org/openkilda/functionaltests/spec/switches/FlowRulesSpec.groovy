@@ -74,7 +74,7 @@ class FlowRulesSpec extends HealthCheckSpecification {
     int s42QinqOuterVlanCount = 1
 
     def setupSpec() {
-        (srcSwitch, dstSwitch) = switches.all().getSwitches()[0..1]
+        (srcSwitch, dstSwitch) = switches.all().getListOfSwitches()[0..1]
         s42IsEnabledOnSrcSw = srcSwitch.getProps().server42FlowRtt
         srcSwDefaultRules = srcSwitch.rulesManager.getRules()
         dstSwDefaultRules = dstSwitch.rulesManager.getRules()

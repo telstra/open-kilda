@@ -9,8 +9,8 @@ import org.openkilda.functionaltests.extension.tags.Tags
 import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
-import org.openkilda.functionaltests.helpers.model.SwitchMetersFactory
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
+import org.openkilda.model.SwitchId
 
 import org.springframework.beans.factory.annotation.Autowired
 import spock.lang.Narrative
@@ -19,13 +19,6 @@ import spock.lang.Shared
 @Narrative("""Verify that missing HA-Flow rule is detected by switch/flow validations""")
 @Tags([HA_FLOW])
 class HaFlowValidationSpec extends HealthCheckSpecification {
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
-
-    @Autowired
-    @Shared
-    SwitchMetersFactory switchMetersFactory
 
     @Shared
     @Autowired
@@ -51,10 +44,9 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Delete HA-Flow rule on switch"
-        def swIdToManipulate = switchToManipulate(haFlow)
-        def switchRules = switchRulesFactory.get(swIdToManipulate)
-        def haFlowRuleToDelete = switchRules.forHaFlow(haFlow).shuffled().first()
-        switchRules.delete(haFlowRuleToDelete)
+        SwitchExtended swToManipulate = switches.all().findSpecific(switchToManipulate(haFlow) as SwitchId)
+        def haFlowRuleToDelete = swToManipulate.rulesManager.forHaFlow(haFlow).shuffled().first()
+        swToManipulate.rulesManager.delete(haFlowRuleToDelete)
 
         then: "HA-Flow validation returns deleted rule in 'Discrepancies' section"
         Wrappers.wait(RULES_DELETION_TIME) {
@@ -80,13 +72,11 @@ class HaFlowValidationSpec extends HealthCheckSpecification {
         def haFlow = haFlowFactory.getRandom(swT)
 
         when: "Delete HA-Flow meter"
-        def swIdToManipulate = switchToManipulate(haFlow)
-        def switchMeters = switchMetersFactory.get(swIdToManipulate)
-        def switchRules = switchRulesFactory.get(swIdToManipulate)
+        SwitchExtended swToManipulate = switches.all().findSpecific(switchToManipulate(haFlow) as SwitchId)
 
-        def haFlowMeterToDelete = switchMeters.forHaFlow(haFlow).first()
-        def expectedDeletedSwitchRules = switchRules.relatedToMeter(haFlowMeterToDelete)
-        switchMeters.delete(haFlowMeterToDelete)
+        def haFlowMeterToDelete = swToManipulate.metersManager.forHaFlow(haFlow).first()
+        def expectedDeletedSwitchRules = swToManipulate.rulesManager.relatedToMeter(haFlowMeterToDelete)
+        swToManipulate.metersManager.delete(haFlowMeterToDelete)
 
         then: "HA-Flow validation returns rules related to deleted meter in 'Discrepancies' section"
         Wrappers.wait(RULES_DELETION_TIME) {

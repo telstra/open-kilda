@@ -62,8 +62,7 @@ class SwitchActivationSpec extends HealthCheckSpecification {
         def originalMeterIds = srcSw.metersManager.getMeters().meterId
         assert originalMeterIds.size() == 1 + srcSw.collectDefaultMeters().size()
 
-        def createdCookies = srcSw.rulesManager.getRules()
-                .findAll { !new Cookie(it.cookie).serviceFlag }*.cookie
+        def createdCookies = srcSw.rulesManager.getNotDefaultRules().cookie
         def amountOfFlowRules = srcSw.collectFlowRelatedRulesAmount(flow)
         assert createdCookies.size() == amountOfFlowRules
 

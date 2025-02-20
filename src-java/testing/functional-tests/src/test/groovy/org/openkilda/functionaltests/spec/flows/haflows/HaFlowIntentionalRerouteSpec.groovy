@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue
 import static org.openkilda.functionaltests.extension.tags.Tag.HA_FLOW
 import static org.openkilda.functionaltests.extension.tags.Tag.ISL_PROPS_DB_RESET
 import static org.openkilda.functionaltests.helpers.model.FlowEncapsulationType.TRANSIT_VLAN
+import static org.openkilda.functionaltests.helpers.model.Switches.synchronizeAndCollectFixedDiscrepancies
 import static org.openkilda.testing.Constants.DEFAULT_COST
 import static org.openkilda.testing.Constants.WAIT_OFFSET
 
@@ -64,8 +65,8 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         haFlow.retrievedAllEntityPaths() == initialPath
 
         and: "And involved switches pass validation"
-        def mainPathInvolvedSwitches = initialPath.getInvolvedSwitches()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(mainPathInvolvedSwitches).isEmpty()
+        def mainPathInvolvedSwitches = switches.all().findSwitchesInPath(initialPath)
+        synchronizeAndCollectFixedDiscrepancies(mainPathInvolvedSwitches).isEmpty()
 
         and: "HA-Flow pass validation"
         haFlow.validate().asExpected
@@ -74,7 +75,7 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
     @Tags(ISL_PROPS_DB_RESET)
     def "Able to reroute to a better path if it has enough bandwidth"() {
         given: "An HA-Flow with alternate paths available"
-        def swT = switchTriplets.all().withAllDifferentEndpoints().withSharedEpEp1Ep2InChain().switchTriplets.shuffled().find {
+        def swT = switchTriplets.all().withAllDifferentEndpoints().withSharedEpEp1Ep2InChain().switchTriplets.find {
             // shared-ep1 or shared-ep2 should have 2 direct paths(one is used during flow creation, another will be changed to become preferable)
             it.pathsEp1.findAll { it.size() == 2 }.size() == 2 || it.pathsEp2.findAll { it.size() == 2 }.size() == 2
         }
@@ -83,13 +84,12 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
                 .withBandwidth(10000).build().create()
 
         def initialPath = haFlow.retrievedAllEntityPaths()
-        String ep1FlowId = haFlow.subFlows.find { it.endpointSwitchId == swT.ep1.dpId }.haSubFlowId
-        String ep2FlowId = haFlow.subFlows.find { it.endpointSwitchId == swT.ep2.dpId }.haSubFlowId
+        String ep1FlowId = haFlow.subFlows.find { it.endpointSwitchId == swT.ep1.switchId }.haSubFlowId
+        String ep2FlowId = haFlow.subFlows.find { it.endpointSwitchId == swT.ep2.switchId }.haSubFlowId
         List<Isl> initialIslsSubFlow1 = initialPath.getSubFlowIsls(ep1FlowId)
         List<Isl> initialIslsSubFlow2 = initialPath.getSubFlowIsls(ep2FlowId)
 
         def initialFlowIsls = (initialIslsSubFlow1 + initialIslsSubFlow2).unique()
-        def initialInvolvedSwitchIds = initialPath.getInvolvedSwitches()
 
         when: "Make one of the alternative paths to be the most preferable among all others"
         def availablePathsIslsEp1 =  swT.retrieveAvailablePathsEp1().collect { it.getInvolvedIsls() }
@@ -122,8 +122,9 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         actualFlowIslsAfterReroute.containsAll(thinIsl)
 
         and: "And involved switches pass validation"
-        def allInvolvedSwitchIds = (initialInvolvedSwitchIds + haFlowPathAfterReroute.getInvolvedSwitches()).unique()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
+        def allInvolvedSwitchIds = switches.all().findSpecific(
+                [initialPath, haFlowPathAfterReroute].collectMany { it.getInvolvedSwitches() })
+        synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
 
         and: "HA-Flow pass validation"
         haFlow.validate().asExpected
@@ -145,7 +146,6 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
 
         def initialPath = haFlow.retrievedAllEntityPaths()
         def initialInvolvedIsls = initialPath.getInvolvedIsls()
-        def initialInvolvedSwitchIds = initialPath.getInvolvedSwitches()
 
         when: "Make the current path less preferable than alternatives"
         def alternativePaths = getAlternativesPaths(initialPath, swT)
@@ -175,8 +175,9 @@ class HaFlowIntentionalRerouteSpec extends HealthCheckSpecification {
         haFlowPathAfterReroute != initialPath
 
         and: "And involved switches pass validation"
-        def allInvolvedSwitchIds = (initialInvolvedSwitchIds + haFlowPathAfterReroute.getInvolvedSwitches()).unique()
-        switchHelper.synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
+        def allInvolvedSwitchIds = switches.all().findSpecific(
+                [initialPath, haFlowPathAfterReroute].collectMany { it.getInvolvedSwitches() })
+        synchronizeAndCollectFixedDiscrepancies(allInvolvedSwitchIds).isEmpty()
 
         and: "HA-Flow pass validation"
         haFlow.validate().asExpected

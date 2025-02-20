@@ -160,12 +160,12 @@ class SwitchMaintenanceSpec extends HealthCheckSpecification {
         def yFlow = yFlowFactory.getRandom(swTriplet, false)
         def yFlowPath = yFlow.retrieveAllEntityPaths()
         def intermediateSwId = yFlowPath.getInvolvedSwitches()
-                .find { !(it in [swTriplet.shared.dpId, swTriplet.ep1.dpId, swTriplet.ep2.dpId]) }
+                .find { !(it in [swTriplet.shared.switchId, swTriplet.ep1.switchId, swTriplet.ep2.switchId]) }
         assert intermediateSwId
 
         and: "Two active not neighboring switches and preferable path with intermediate switch"
         def dstSw = swTriplet.pathsEp1[0].size() == 4 ? swTriplet.ep1 : swTriplet.ep2
-        def swPair = switchPairs.all().specificPair(swTriplet.shared, dstSw)
+        def swPair = switchPairs.all().specificPair(swTriplet.shared.sw, dstSw.sw)
         def availablePaths = swPair.retrieveAvailablePaths()
         List<Isl> pathIsls = availablePaths.find { path -> intermediateSwId in path.getInvolvedSwitches() }.getInvolvedIsls()
         availablePaths.collect { it.getInvolvedIsls() }.findAll { it != pathIsls }

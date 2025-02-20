@@ -18,9 +18,8 @@ import org.openkilda.functionaltests.helpers.factory.HaFlowFactory
 import org.openkilda.functionaltests.helpers.Wrappers
 import org.openkilda.functionaltests.helpers.model.FlowRuleEntity
 import org.openkilda.functionaltests.helpers.model.HaFlowExtended
-import org.openkilda.functionaltests.helpers.model.SwitchRulesFactory
+import org.openkilda.functionaltests.helpers.model.SwitchExtended
 import org.openkilda.messaging.payload.flow.FlowState
-import org.openkilda.model.SwitchId
 
 import groovy.time.TimeCategory
 import org.springframework.beans.factory.annotation.Autowired
@@ -28,9 +27,6 @@ import spock.lang.Shared
 
 @Tags([HA_FLOW])
 class HaFlowSyncSpec extends HealthCheckSpecification {
-    @Autowired
-    @Shared
-    SwitchRulesFactory switchRulesFactory
 
     @Shared
     @Autowired
@@ -46,21 +42,16 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
 
         def haFlow = haFlowFactory.getBuilder(swT).withProtectedPath(data.protectedPath)
                 .build().create()
+
         def initialHaFlowPaths = haFlow.retrievedAllEntityPaths()
-
-        def switchToManipulate = swT.shared
-        def switchRules = switchRulesFactory.get(switchToManipulate.dpId)
-        def haFlowRulesToDelete = switchRules.forHaFlow(haFlow)
+        def haFlowRulesToDelete = swT.shared.rulesManager.forHaFlow(haFlow)
         assert !haFlowRulesToDelete.isEmpty()
-
         withPool {
-            haFlowRulesToDelete.eachParallel { FlowRuleEntity rule ->
-                switchRules.delete(rule)
-            }
+            haFlowRulesToDelete.eachParallel { FlowRuleEntity rule -> swT.shared.rulesManager.delete(rule) }
         }
 
         Wrappers.wait(RULES_DELETION_TIME) {
-            assert switchRulesFactory.get(switchToManipulate.dpId).forHaFlow(haFlow).isEmpty()
+            assert swT.shared.rulesManager.forHaFlow(haFlow).isEmpty()
         }
 
         when: "Synchronize the HA-Flow"
@@ -81,9 +72,9 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
 
         and: "Missing HA-Flow rules are installed (existing ones are reinstalled) on all switches"
         withPool {
-            initialHaFlowPaths.getInvolvedSwitches().eachParallel { SwitchId swId ->
+            switches.all().findSwitchesInPath(initialHaFlowPaths).eachParallel { SwitchExtended sw ->
                 Wrappers.wait(RULES_INSTALLATION_TIME) {
-                    haRulesAreSynced(swId, haFlow, syncTime)
+                    haRulesAreSynced(sw, haFlow, syncTime)
                 }
             }
         }
@@ -107,7 +98,8 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         def initialHaFlowPaths = haFlow.retrievedAllEntityPaths()
 
         def downSwitch = swT.shared
-        switchHelper.knockoutSwitch(downSwitch, RW)
+        downSwitch.knockout(RW)
+
         haFlow.waitForBeingInState(FlowState.DOWN, rerouteDelay + FLOW_CRUD_TIMEOUT + WAIT_OFFSET)
 
         when: "Synchronize the HA-Flow"
@@ -120,17 +112,17 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         haFlow.waitForBeingInState(FlowState.DOWN)
 
         and: "Rules on down switch are not synced"
-        syncResponse.unsyncedSwitches == [downSwitch.dpId] as Set
+        syncResponse.unsyncedSwitches == [downSwitch.switchId] as Set
 
         and: "The HA-Flow is not rerouted"
         haFlow.retrievedAllEntityPaths() == initialHaFlowPaths
 
         and: "Missing HA-Flow rules are installed (existing ones are reinstalled) on UP involved switches"
-        def upInvolvedSwitches = initialHaFlowPaths.getInvolvedSwitches() - [downSwitch.dpId]
+        def upInvolvedSwitches = switches.all().findSpecific(initialHaFlowPaths.getInvolvedSwitches() - [downSwitch.switchId])
         withPool {
-            upInvolvedSwitches.eachParallel { SwitchId swId ->
+            upInvolvedSwitches.eachParallel { SwitchExtended sw ->
                 Wrappers.wait(RULES_INSTALLATION_TIME) {
-                    haRulesAreSynced(swId, haFlow, syncTime)
+                    haRulesAreSynced(sw, haFlow, syncTime)
                 }
             }
         }
@@ -141,9 +133,9 @@ class HaFlowSyncSpec extends HealthCheckSpecification {
         ]
     }
 
-    private void haRulesAreSynced(SwitchId swId, HaFlowExtended haFlow, Date syncTime) {
-        assert switchHelper.validate(swId).asExpected
-        def haRules = switchRulesFactory.get(swId).forHaFlow(haFlow)
+    private void haRulesAreSynced(SwitchExtended sw, HaFlowExtended haFlow, Date syncTime) {
+        assert sw.validate().asExpected
+        def haRules = sw.rulesManager.forHaFlow(haFlow)
         assert !haRules.isEmpty()
         haRules.each {
             assert it.durationSeconds < TimeCategory.minus(new Date(), syncTime).toMilliseconds() / 1000.0

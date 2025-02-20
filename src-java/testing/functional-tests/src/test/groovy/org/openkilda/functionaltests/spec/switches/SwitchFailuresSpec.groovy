@@ -123,7 +123,7 @@ class SwitchFailuresSpec extends HealthCheckSpecification {
 
     def "System can handle situation when switch reconnects while flow is being created"() {
         when: "Start creating a flow between switches and lose connection to src before rules are set"
-        def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().switches
+        def (SwitchExtended srcSwitch, SwitchExtended dstSwitch) = switches.all().getListOfSwitches()
         def flow = flowFactory.getBuilder(srcSwitch, dstSwitch).build().sendCreateRequest()
         sleep(50)
         def blockData = srcSwitch.knockout(RW)
