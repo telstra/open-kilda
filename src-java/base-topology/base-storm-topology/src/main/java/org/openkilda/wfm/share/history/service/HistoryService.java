@@ -144,6 +144,8 @@ public class HistoryService {
      */
     public List<FlowEvent> listFlowEvents(String flowId, Instant timeFrom, Instant timeTo, int maxCount) {
         List<FlowEvent> result = new ArrayList<>();
+        log.info("CHUPIN HistoryService, implementation in transactionManager: {}",
+                transactionManager.getImplementation());
         transactionManager.doInTransaction(() -> flowEventRepository
                 .findByFlowIdAndTimeFrame(flowId, timeFrom, timeTo, maxCount)
                 .forEach(entry -> {

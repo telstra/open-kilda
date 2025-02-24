@@ -21,12 +21,9 @@ import org.openkilda.persistence.repositories.Repository;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 public interface FlowEventRepository extends Repository<FlowEvent> {
     boolean existsByTaskId(String taskId);
-
-    Optional<FlowEvent> findByTaskId(String taskId);
 
     List<FlowEvent> findByFlowIdAndTimeFrame(String flowId, Instant timeFrom, Instant timeTo, int maxCount);
 
