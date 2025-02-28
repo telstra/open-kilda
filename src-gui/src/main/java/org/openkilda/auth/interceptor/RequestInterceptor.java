@@ -84,27 +84,21 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
         correlationId = correlationId == null ? UUID.randomUUID().toString() : correlationId;
 
         HttpSession session = request.getSession();
-        UserInfo userInfo = null;
         if (IConstants.SessionTimeout.TIME_IN_MINUTE == null) {
             IConstants.SessionTimeout.TIME_IN_MINUTE = Integer.valueOf(applicationSettingService
                     .getApplicationSettings().get(ApplicationSetting.SESSION_TIMEOUT.name()));
         }
         session.setMaxInactiveInterval(IConstants.SessionTimeout.TIME_IN_MINUTE * 60);
-        userInfo = (UserInfo) session.getAttribute(IConstants.SESSION_OBJECT);
-        if (userInfo != null) {
-            validateUser(userInfo);
-            if (handler instanceof HandlerMethod) {
-                HandlerMethod handlerMethod = (HandlerMethod) handler;
-                Permissions permissions = handlerMethod.getMethod().getAnnotation(Permissions.class);
-                if (permissions != null) {
-                    validateAndPopulatePermisssion(userInfo, permissions);
-                }
+        UserInfo userInfo = (UserInfo) session.getAttribute(IConstants.SESSION_OBJECT);
+        validateUser(userInfo);
+        if (handler instanceof HandlerMethod) {
+            HandlerMethod handlerMethod = (HandlerMethod) handler;
+            Permissions permissions = handlerMethod.getMethod().getAnnotation(Permissions.class);
+            if (permissions != null) {
+                validateAndPopulatePermisssion(userInfo, permissions);
             }
-            updateRequestContext(correlationId, request, userInfo);
-        } else {
-            RequestContext requestContext = serverContext.getRequestContext();
-            requestContext.setCorrelationId(correlationId);
         }
+        updateRequestContext(correlationId, request, userInfo);
         return true;
     }
 
@@ -116,6 +110,10 @@ public class RequestInterceptor extends HandlerInterceptorAdapter {
     }
     
     private void validateUser(final UserInfo userInfo) throws AccessDeniedException {
+        if (userInfo == null) {
+            throw new AccessDeniedException(messageUtils.getUnauthorizedMessage());
+        }
+
         UserEntity userEntity = userRepository.findByUserId(userInfo.getUserId());
         if (userEntity == null || !userEntity.getActiveFlag()) {
             throw new AccessDeniedException(messageUtils.getUnauthorizedMessage());
