@@ -41,6 +41,7 @@ import org.usermanagement.util.MessageUtils;
 
 import java.nio.file.AccessDeniedException;
 
+import javax.annotation.security.PermitAll;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
@@ -50,10 +51,10 @@ public abstract class BaseController implements ErrorController {
 
     @Autowired
     private UserRepository userRepository;
-    
+
     @Autowired
     private MessageUtils messageUtils;
-    
+
     @Autowired
     protected SamlService samlService;
 
@@ -93,6 +94,7 @@ public abstract class BaseController implements ErrorController {
      * @param model the model
      * @throws AccessDeniedException the access denied exception
      */
+    @PermitAll
     @RequestMapping("/401")
     public ModelAndView error(final Model model, HttpServletRequest request) throws AccessDeniedException {
         String referrer = request.getHeader("referer");
@@ -111,6 +113,7 @@ public abstract class BaseController implements ErrorController {
      * org.springframework.boot.autoconfigure.web.ErrorController#getErrorPath()
      */
     @Override
+    @PermitAll
     @RequestMapping("/error")
     public String getErrorPath() {
         return IConstants.View.ERROR;

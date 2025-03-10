@@ -23,7 +23,6 @@ import org.openkilda.security.CustomWebAuthenticationDetails;
 import org.openkilda.security.TwoFactorUtility;
 
 import org.apache.log4j.Logger;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -43,6 +42,7 @@ import org.usermanagement.dao.entity.UserEntity;
 import org.usermanagement.model.UserInfo;
 import org.usermanagement.service.UserService;
 
+import javax.annotation.security.PermitAll;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
@@ -50,7 +50,6 @@ import javax.servlet.http.HttpSession;
  * The Class LoginController : entertain requests of login module.
  *
  * @author Gaurav Chugh
- *
  */
 
 @Controller
@@ -63,7 +62,7 @@ public class LoginController extends BaseController {
 
     @Autowired
     private UserService userService;
-    
+
     @Value("${application.name}")
     private String applicationName;
 
@@ -72,11 +71,12 @@ public class LoginController extends BaseController {
      *
      * @return the model and view
      */
-    @RequestMapping(value = { "/", "/login" })
+    @PermitAll
+    @RequestMapping(value = {"/", "/login"})
     public ModelAndView login(final HttpServletRequest request) {
         return validateAndRedirect(request, IConstants.View.LOGIN);
     }
-    
+
     /**
      * Logout.
      *
@@ -96,10 +96,10 @@ public class LoginController extends BaseController {
      * @param request the request
      * @return the model and view
      */
-    
+    @PermitAll
     @RequestMapping(value = "/authenticate", method = RequestMethod.POST)
     public ModelAndView authenticate(@RequestParam("username") String username,
-            @RequestParam("password") final String password, final HttpServletRequest request, 
+            @RequestParam("password") final String password, final HttpServletRequest request,
             RedirectAttributes redir) {
         ModelAndView modelAndView = new ModelAndView(IConstants.View.LOGIN);
         String error = null;
@@ -166,10 +166,10 @@ public class LoginController extends BaseController {
             error = "Login Failed. Error: " + e.getMessage() + ".";
             modelAndView.setViewName(IConstants.View.REDIRECT_LOGIN);
         }
-        if (error != null) { 
+        if (error != null) {
             redir.addFlashAttribute("error", error);
         }
         return modelAndView;
     }
-    
+
 }
